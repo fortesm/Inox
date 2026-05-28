@@ -1,0 +1,410 @@
+(* Inox 0.1 pre-alpha - Human EBNF
+
+   This grammar is a tool-agnostic, human-readable formal specification.
+   It intentionally avoids ANTLR-specific and PEG-specific notation.
+
+   Source of truth:
+   - AGENTS.md
+   - docs/canonical/syntax.md
+   - docs/canonical/semantics.md
+   - docs/canonical/type-system.md
+
+   Inox is case-insensitive. Literal keywords in this grammar are written in a
+   canonical spelling, but all keyword matching is case-insensitive.
+
+   A semicolon closes a block. It is not a statement terminator.
+
+   Special sequences of the form ? ... ? mark syntax that is known to exist in
+   Inox 0.1 pre-alpha but whose detailed concrete form is not yet specified by
+   the canonical documents. They are not implementation syntax.
+*)
+
+program =
+    module ;
+
+module =
+    "Module" , identifier , module_body , eof ;
+
+module_body =
+    { module_item } ;
+
+module_item =
+      use_declaration
+    | type_block
+    | const_block
+    | const_declaration
+    | var_block
+    | var_declaration
+    | state_block
+    | state_declaration
+    | struct_declaration
+    | enum_declaration
+    | function_declaration
+    | main_declaration ;
+
+block =
+    ":" , block_body , block_close ;
+
+block_body =
+    { block_item } ;
+
+block_item =
+      declaration
+    | statement ;
+
+block_close =
+      ";"
+    | "End" ;
+
+declaration =
+      use_declaration
+    | type_block
+    | const_block
+    | const_declaration
+    | var_block
+    | var_declaration
+    | state_block
+    | state_declaration
+    | struct_declaration
+    | enum_declaration
+    | function_declaration ;
+
+use_declaration =
+    "Use" , ? use declaration body not yet specified by canonical syntax ? ;
+
+type_block =
+    "Type" , block ;
+
+type_declaration =
+    "Type" , ? type declaration body not yet specified by canonical syntax ? ;
+
+const_block =
+    "Const" , block ;
+
+const_declaration =
+    "Const" , ? const declaration body not yet specified by canonical syntax ? ;
+
+var_block =
+    "Var" , block ;
+
+var_declaration =
+    [ "mut" ] , "var" ,
+    ? inline var declaration body not yet specified by canonical syntax ? ;
+
+state_block =
+    "State" , block ;
+
+state_declaration =
+    "State" ,
+    ? state declaration body not yet specified by canonical syntax ? ;
+
+struct_declaration =
+    "Struct" ,
+    ? struct declaration body not yet specified by canonical syntax ? ;
+
+enum_declaration =
+    "Enum" ,
+    ? enum declaration body not yet specified by canonical syntax ? ;
+
+function_declaration =
+    identifier , generic_parameters_opt , parameter_list_opt , block ;
+
+main_declaration =
+    "Main" , parameter_list_opt , block ;
+
+generic_parameters_opt =
+    [ generic_parameters ] ;
+
+generic_parameters =
+    "[" , identifier_list , "]" ;
+
+parameter_list_opt =
+    [ "(" , [ parameter_list ] , ")" ] ;
+
+parameter_list =
+    parameter , { "," , parameter } ;
+
+parameter =
+    [ "mut" ] , identifier ,
+    ? parameter type annotation syntax not yet specified by canonical syntax ? ;
+
+identifier_list =
+    identifier , { "," , identifier } ;
+
+type_expr =
+      primitive_type
+    | named_type
+    | generic_type
+    | array_type
+    | vector_type
+    | set_type
+    | subrange_type ;
+
+primitive_type =
+      "Boolean"
+    | "Int8"
+    | "Int16"
+    | "Int32"
+    | "Int64"
+    | "UInt8"
+    | "UInt16"
+    | "UInt32"
+    | "UInt64"
+    | "Integer"
+    | "UInteger"
+    | "Natural"
+    | "Float32"
+    | "Float64"
+    | "Float"
+    | "Currency"
+    | "Crypto"
+    | "Char"
+    | "String" ;
+
+named_type =
+    qualified_name ;
+
+generic_type =
+    named_type , "[" , type_expr_list , "]" ;
+
+type_expr_list =
+    type_expr , { "," , type_expr } ;
+
+array_type =
+    ? array type syntax with explicit ranges not yet specified by canonical syntax ? ;
+
+vector_type =
+    ? dynamic 0-based vector type syntax not yet specified by canonical syntax ? ;
+
+set_type =
+    ? Pascal/Ada-style set type syntax with finite ordinal base not yet specified by canonical syntax ? ;
+
+subrange_type =
+    range ;
+
+range =
+    expression , ".." , expression ;
+
+statement =
+      assignment_statement
+    | if_statement
+    | unless_statement
+    | while_statement
+    | repeat_statement
+    | for_statement
+    | case_statement
+    | try_statement
+    | raise_statement
+    | expression_statement
+    | block ;
+
+assignment_statement =
+    assignment_expression ;
+
+if_statement =
+    "if" , condition , block ,
+    { "elif" , condition , block } ,
+    [ "else" , block ] ;
+
+unless_statement =
+    "unless" , condition , block ;
+
+while_statement =
+    "while" , condition , block ;
+
+repeat_statement =
+    "repeat" , block_body , "until" , condition , block_close ;
+
+for_statement =
+    "for" , identifier , "in" , range , [ "(" , expression , ")" ] , block ;
+
+case_statement =
+    "case" , expression , ":" ,
+    { case_item } ,
+    [ otherwise_item ] ,
+    block_close ;
+
+case_item =
+    case_choice_list , block ;
+
+case_choice_list =
+    case_choice , { "," , case_choice } ;
+
+case_choice =
+      expression
+    | range ;
+
+otherwise_item =
+    "otherwise" , block ;
+
+try_statement =
+    "try" , block ,
+    [ except_part ] ,
+    [ finally_part ] ;
+
+except_part =
+    "except" , block ;
+
+finally_part =
+    "finally" , block ;
+
+raise_statement =
+    "raise" , [ expression ] ;
+
+expression_statement =
+    expression ;
+
+condition =
+      expression
+    | "(" , expression , ")" ;
+
+(* Expressions, ordered from lowest to highest precedence. Assignment is
+   right-associative. Assignment inside a boolean expression is forbidden by
+   semantics, not by this context-free grammar.
+*)
+
+expression =
+    assignment_expression ;
+
+assignment_expression =
+    logical_expression ,
+    [ ":=" , assignment_expression ] ;
+
+logical_expression =
+    relational_expression ,
+    { logical_operator , relational_expression } ;
+
+logical_operator =
+      "and"
+    | "xor"
+    | "or" ;
+
+relational_expression =
+    membership_expression ,
+    { relational_operator , membership_expression } ;
+
+relational_operator =
+      "="
+    | "#"
+    | "<"
+    | ">"
+    | "<="
+    | ">=" ;
+
+membership_expression =
+    range_expression ,
+    [ "in" , range_expression ] ;
+
+range_expression =
+    additive_expression ,
+    [ ".." , additive_expression ] ;
+
+additive_expression =
+    multiplicative_expression ,
+    { additive_operator , multiplicative_expression } ;
+
+additive_operator =
+      "+"
+    | "-" ;
+
+multiplicative_expression =
+    unary_expression ,
+    { multiplicative_operator , unary_expression } ;
+
+multiplicative_operator =
+      "*"
+    | "/"
+    | "div"
+    | "mod" ;
+
+unary_expression =
+      [ unary_operator ] , power_expression ;
+
+unary_operator =
+      "+"
+    | "-"
+    | "not" ;
+
+(* Exponentiation has higher precedence than unary operators and associates to
+   the right. Therefore -x^2 is parsed as -(x^2).
+*)
+power_expression =
+    postfix_expression ,
+    [ "^" , power_expression ] ;
+
+postfix_expression =
+    primary_expression ,
+    { call_suffix | index_suffix | member_suffix } ;
+
+call_suffix =
+    "(" , [ argument_list ] , ")" ;
+
+index_suffix =
+    "[" , expression , "]" ;
+
+member_suffix =
+    "." , identifier ;
+
+argument_list =
+    expression , { "," , expression } ;
+
+primary_expression =
+      literal
+    | qualified_name
+    | cast_expression
+    | "(" , expression , ")" ;
+
+cast_expression =
+    type_name , "(" , expression , ")" ;
+
+type_name =
+    qualified_name ;
+
+literal =
+      boolean_literal
+    | integer_literal
+    | float_literal
+    | char_literal
+    | string_literal
+    | ? Currency literal syntax not yet specified by canonical syntax ?
+    | ? Crypto literal syntax not yet specified by canonical syntax ? ;
+
+boolean_literal =
+      "True"
+    | "False" ;
+
+qualified_name =
+    identifier , { "." , identifier } ;
+
+identifier =
+    letter , { letter | digit | "_" } ;
+
+integer_literal =
+    digit , { digit } ;
+
+float_literal =
+    digit , { digit } , "." , digit , { digit } ;
+
+char_literal =
+    "'" , ? character content not yet specified by canonical syntax ? , "'" ;
+
+string_literal =
+    '"' , ? UTF-8 string content not yet specified by canonical syntax ? , '"' ;
+
+letter =
+      "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J"
+    | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T"
+    | "U" | "V" | "W" | "X" | "Y" | "Z"
+    | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j"
+    | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t"
+    | "u" | "v" | "w" | "x" | "y" | "z" ;
+
+digit =
+      "0" | "1" | "2" | "3" | "4"
+    | "5" | "6" | "7" | "8" | "9" ;
+
+line_comment =
+    "==" , ? all characters until end of line ? ;
+
+eof =
+    ? end of file ? ;

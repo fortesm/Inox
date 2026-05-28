@@ -1,0 +1,159 @@
+# Inox 0.1 pre-alpha - LLVM Backend
+
+This document is the canonical LLVM backend strategy for Inox 0.1 pre-alpha.
+
+It is based on `AGENTS.md`, `docs/canonical/syntax.md`,
+`docs/canonical/semantics.md`, `docs/canonical/type-system.md`, and
+`docs/canonical/runtime.md`.
+
+## Official Backend
+
+LLVM is the official backend for Inox.
+
+Inox 0.1 pre-alpha has no alternative canonical backend.
+
+## Native Compilation
+
+Inox 0.1 pre-alpha targets native compilation through LLVM.
+
+The compiler lowers Inox programs to LLVM IR, then relies on LLVM for target
+code generation.
+
+The exact object format, linker invocation, and platform ABI details are not
+specified in this document.
+
+## Lowering Pipeline
+
+The backend strategy is:
+
+1. Parse Inox source.
+2. Build an AST.
+3. Perform semantic analysis and type checking.
+4. Lower the checked AST to LLVM IR.
+5. Use LLVM to produce native code.
+
+The AST must already reflect canonical Inox semantics before LLVM IR is
+generated.
+
+## Primitive Type Mapping
+
+The canonical primitive LLVM mappings for Inox 0.1 pre-alpha are:
+
+- `Boolean` -> `i1`
+- `Int8` -> `i8`
+- `Int16` -> `i16`
+- `Int32` -> `i32`
+- `Int64` -> `i64`
+- `UInt8` -> `i8`
+- `UInt16` -> `i16`
+- `UInt32` -> `i32`
+- `UInt64` -> `i64`
+- `Float32` -> `float`
+- `Float64` -> `double`
+- `Char` -> `i32`
+
+`Integer` maps as `Int64`.
+
+`UInteger` maps as `UInt64`.
+
+`Float` maps as `Float64`.
+
+## Signed and Unsigned Operations
+
+Signedness is defined by the LLVM operations selected by the backend, not by a
+different integer storage type.
+
+For example, signed and unsigned integer types of the same bit width may share
+the same LLVM integer representation, while comparisons, division, remainder,
+extension, and overflow checks use the signed or unsigned LLVM operation
+appropriate to the Inox type.
+
+## Runtime Types
+
+Some Inox types are runtime types in 0.1 pre-alpha.
+
+`String` is a runtime type.
+
+The runtime supports `String` as UTF-8.
+
+`Currency` is a runtime type.
+
+The runtime supports `Currency` as an exact monetary decimal, never `Float64`.
+
+`Crypto` is a runtime type.
+
+The runtime supports `Crypto` as an exact high-precision decimal, never
+`Float64`.
+
+The LLVM-level representation of `String`, `Currency`, and `Crypto` is not
+specified in this document.
+
+## Exceptions
+
+Inox exceptions are lightweight and must not depend on heavy RTTI.
+
+The LLVM backend must support:
+
+- `raise`
+- re-raise from an active exception handler
+- `try`
+- `except`
+- `finally`
+
+The exact LLVM exception mechanism, personality function, landing pad strategy,
+or alternative lowering strategy is not specified in this document.
+
+## Runtime Checks
+
+The LLVM backend must lower required runtime checks for:
+
+- `RangeError`
+- `IndexError`
+- `DivisionByZero`
+- `OverflowError`
+- `IOError`
+
+`OverflowError` is raised for arithmetic overflow in safe mode.
+
+The exact check-lowering patterns are not specified in this document.
+
+## Memory Management
+
+Inox 0.1 pre-alpha has no heavy garbage collector.
+
+The LLVM backend must not assume a heavy GC runtime.
+
+The detailed ownership, allocation, and lifetime model is not specified in this
+document.
+
+## RTTI and Reflection
+
+Inox 0.1 pre-alpha has no heavy RTTI.
+
+Inox 0.1 pre-alpha has no reflection.
+
+The backend must not require heavy RTTI or reflection metadata to implement the
+0.1 runtime model.
+
+## Optimization
+
+LLVM passes may be used for future optimization.
+
+The 0.1 pre-alpha backend should remain small and compilable.
+
+No specific optimization pipeline is canonical yet.
+
+## Out of Scope
+
+This document does not define:
+
+- an alternative backend
+- a JIT backend
+- a bytecode backend
+- a complete ABI
+- object file or linker rules
+- exact runtime type layouts
+- a heavy GC strategy
+- heavy RTTI metadata
+- reflection metadata
+- a canonical LLVM optimization pipeline
