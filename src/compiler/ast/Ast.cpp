@@ -25,6 +25,16 @@ const std::string& ModuleNode::name() const
     return name_;
 }
 
+std::vector<AstNodePtr>& ModuleNode::items()
+{
+    return items_;
+}
+
+const std::vector<AstNodePtr>& ModuleNode::items() const
+{
+    return items_;
+}
+
 std::vector<StatementPtr>& ModuleNode::statements()
 {
     return statements_;
@@ -33,6 +43,75 @@ std::vector<StatementPtr>& ModuleNode::statements()
 const std::vector<StatementPtr>& ModuleNode::statements() const
 {
     return statements_;
+}
+
+UseDeclaration::UseDeclaration(std::vector<std::string> path)
+    : AstNode(AstNodeKind::UseDeclaration), path_(std::move(path))
+{
+}
+
+const std::vector<std::string>& UseDeclaration::path() const
+{
+    return path_;
+}
+
+SectionDeclaration::SectionDeclaration(SectionKind sectionKind, std::vector<std::string> tokens)
+    : AstNode(AstNodeKind::SectionDeclaration),
+      sectionKind_(sectionKind),
+      tokens_(std::move(tokens))
+{
+}
+
+SectionKind SectionDeclaration::sectionKind() const
+{
+    return sectionKind_;
+}
+
+const std::vector<std::string>& SectionDeclaration::tokens() const
+{
+    return tokens_;
+}
+
+RawDeclaration::RawDeclaration(std::string head, std::vector<std::string> tokens)
+    : AstNode(AstNodeKind::RawDeclaration),
+      head_(std::move(head)),
+      tokens_(std::move(tokens))
+{
+}
+
+const std::string& RawDeclaration::head() const
+{
+    return head_;
+}
+
+const std::vector<std::string>& RawDeclaration::tokens() const
+{
+    return tokens_;
+}
+
+FunctionDeclaration::FunctionDeclaration(std::string name,
+                                         std::vector<std::string> signatureTokens,
+                                         std::vector<StatementPtr> body)
+    : AstNode(AstNodeKind::FunctionDeclaration),
+      name_(std::move(name)),
+      signatureTokens_(std::move(signatureTokens)),
+      body_(std::move(body))
+{
+}
+
+const std::string& FunctionDeclaration::name() const
+{
+    return name_;
+}
+
+const std::vector<std::string>& FunctionDeclaration::signatureTokens() const
+{
+    return signatureTokens_;
+}
+
+const std::vector<StatementPtr>& FunctionDeclaration::body() const
+{
+    return body_;
 }
 
 LiteralExpression::LiteralExpression(LiteralKind literalKind, std::string value)

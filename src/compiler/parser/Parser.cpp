@@ -38,6 +38,22 @@ Parser::Parser(std::string_view source)
 {
 }
 
+std::unique_ptr<ast::ModuleNode> Parser::parseModule()
+{
+    if (!matchKeyword("module")) {
+        errorAtCurrent("expected 'Module'");
+    }
+
+    const lexer::Token& name = consumeIdentifierLike("expected module name");
+    auto module = std::make_unique<ast::ModuleNode>(name.lexeme);
+
+    while (!isAtEnd()) {
+        module->items().push_back(parseModuleItem());
+    }
+
+    return module;
+}
+
 ast::ExpressionPtr Parser::parseExpression()
 {
     auto expression = parseAssignment();
@@ -511,6 +527,103 @@ ast::StatementPtr Parser::parseExpressionStatement()
     return std::make_unique<ast::ExpressionStatement>(parseAssignment());
 }
 
+ast::AstNodePtr Parser::parseModuleItem()
+{
+    if (matchKeyword("use")) {
+        return parseUseDeclaration();
+    }
+
+    if (matchKeyword("type")) {
+        return parseSectionDeclaration(ast::SectionKind::Type);
+    }
+
+    if (matchKeyword("const")) {
+        return parseSectionDeclaration(ast::SectionKind::Const);
+    }
+
+    if (matchKeyword("state")) {
+        return parseSectionDeclaration(ast::SectionKind::State);
+    }
+
+    if (matchKeyword("var")) {
+        return parseSectionDeclaration(ast::SectionKind::Var);
+    }
+
+    if (checkIdentifierLike() || checkKeyword("main")) {
+        for (std::size_t index = current_; index < tokens_.size(); ++index) {
+            if (tokens_[index].kind == TokenKind::Colon) {
+                return parseFunctionDeclaration();
+            }
+            if (tokens_[index].kind == TokenKind::Semicolon ||
+                tokens_[index].kind == TokenKind::EndOfFile) {
+                break;
+            }
+        }
+    }
+
+    return parseRawDeclaration();
+}
+
+ast::AstNodePtr Parser::parseUseDeclaration()
+{
+    std::vector<std::string> path;
+    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end")) {
+        path.push_back(tokenText(advance()));
+    }
+    consumeBlockClose();
+    return std::make_unique<ast::UseDeclaration>(std::move(path));
+}
+
+ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
+{
+    consume(TokenKind::Colon, "expected ':' after section header");
+
+    std::vector<std::string> tokens;
+    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end")) {
+        tokens.push_back(tokenText(advance()));
+    }
+
+    consumeBlockClose();
+    return std::make_unique<ast::SectionDeclaration>(
+        sectionKind, std::move(tokens));
+}
+
+ast::AstNodePtr Parser::parseRawDeclaration()
+{
+    const lexer::Token& head = advance();
+    std::vector<std::string> tokens;
+
+    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end")) {
+        tokens.push_back(tokenText(advance()));
+    }
+
+    if (!isAtEnd()) {
+        consumeBlockClose();
+    }
+
+    return std::make_unique<ast::RawDeclaration>(
+        tokenText(head), std::move(tokens));
+}
+
+ast::AstNodePtr Parser::parseFunctionDeclaration()
+{
+    const lexer::Token& name = consumeIdentifierLike("expected function name");
+    std::vector<std::string> signatureTokens;
+
+    while (!isAtEnd() && !check(TokenKind::Colon)) {
+        signatureTokens.push_back(tokenText(advance()));
+    }
+
+    consume(TokenKind::Colon, "expected ':' after function signature");
+    auto body = parseBlockBody();
+    consumeBlockClose();
+
+    return std::make_unique<ast::FunctionDeclaration>(
+        name.lexeme,
+        std::move(signatureTokens),
+        std::move(body));
+}
+
 std::vector<ast::StatementPtr> Parser::parseBlockBody()
 {
     std::vector<ast::StatementPtr> statements;
@@ -588,6 +701,12 @@ bool Parser::checkKeyword(std::string_view normalized) const
            peek().normalized == normalized;
 }
 
+bool Parser::checkIdentifierLike() const
+{
+    return !isAtEnd() &&
+           (peek().kind == TokenKind::Identifier || checkKeyword("main"));
+}
+
 bool Parser::match(TokenKind kind)
 {
     if (!check(kind)) {
@@ -609,6 +728,14 @@ bool Parser::matchKeyword(std::string_view normalized)
 const lexer::Token& Parser::consume(TokenKind kind, std::string_view message)
 {
     if (check(kind)) {
+        return advance();
+    }
+    errorAtCurrent(message);
+}
+
+const lexer::Token& Parser::consumeIdentifierLike(std::string_view message)
+{
+    if (checkIdentifierLike()) {
         return advance();
     }
     errorAtCurrent(message);
@@ -704,6 +831,14 @@ ast::UnaryOperator Parser::unaryOperatorFor(const lexer::Token& token)
     }
 
     throw ParseError("unsupported unary operator", token.location);
+}
+
+std::string Parser::tokenText(const lexer::Token& token)
+{
+    if (!token.lexeme.empty()) {
+        return token.lexeme;
+    }
+    return token.normalized;
 }
 
 } // namespace inox::compiler::parser

@@ -1,13 +1,11 @@
 #include "../lexer/Lexer.h"
 #include "../parser/Parser.h"
 
-#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace {
@@ -26,31 +24,6 @@ std::string readFile(const char* path)
 
 using Token = inox::compiler::lexer::Token;
 using TokenKind = inox::compiler::lexer::TokenKind;
-
-bool isMainKeyword(const Token& token)
-{
-    return token.kind == TokenKind::Keyword && token.normalized == "main";
-}
-
-std::vector<Token> tokensForMainBlock(const std::vector<Token>& tokens)
-{
-    for (std::size_t index = 0; index < tokens.size(); ++index) {
-        if (!isMainKeyword(tokens[index])) {
-            continue;
-        }
-
-        while (index < tokens.size() && tokens[index].kind != TokenKind::Colon) {
-            ++index;
-        }
-
-        if (index < tokens.size()) {
-            return std::vector<Token>(tokens.begin() + static_cast<std::ptrdiff_t>(index),
-                                      tokens.end());
-        }
-    }
-
-    return {};
-}
 
 void throwOnInvalidToken(const std::vector<Token>& tokens)
 {
@@ -76,14 +49,8 @@ int main(int argc, char** argv)
         const auto tokens = lexer.tokenize();
         throwOnInvalidToken(tokens);
 
-        auto mainTokens = tokensForMainBlock(tokens);
-        if (!mainTokens.empty()) {
-            inox::compiler::parser::Parser parser(std::move(mainTokens));
-            parser.parseBlockStatement();
-        } else {
-            inox::compiler::parser::Parser parser(tokens);
-            parser.parseStatements();
-        }
+        inox::compiler::parser::Parser parser(tokens);
+        parser.parseModule();
 
         std::cout << "parse ok\n";
     } catch (const inox::compiler::parser::ParseError& error) {

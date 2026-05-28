@@ -8,6 +8,10 @@ namespace inox::compiler::ast {
 
 enum class AstNodeKind {
     Module,
+    UseDeclaration,
+    SectionDeclaration,
+    RawDeclaration,
+    FunctionDeclaration,
     LiteralExpression,
     IdentifierExpression,
     BinaryExpression,
@@ -63,6 +67,13 @@ enum class UnaryOperator {
     Not
 };
 
+enum class SectionKind {
+    Type,
+    Const,
+    State,
+    Var
+};
+
 class AstNode {
 public:
     explicit AstNode(AstNodeKind kind);
@@ -73,6 +84,8 @@ public:
 private:
     AstNodeKind kind_;
 };
+
+using AstNodePtr = std::unique_ptr<AstNode>;
 
 class Expression : public AstNode {
 public:
@@ -104,12 +117,65 @@ public:
     explicit ModuleNode(std::string name);
 
     const std::string& name() const;
+    std::vector<AstNodePtr>& items();
+    const std::vector<AstNodePtr>& items() const;
     std::vector<StatementPtr>& statements();
     const std::vector<StatementPtr>& statements() const;
 
 private:
     std::string name_;
+    std::vector<AstNodePtr> items_;
     std::vector<StatementPtr> statements_;
+};
+
+class UseDeclaration final : public AstNode {
+public:
+    explicit UseDeclaration(std::vector<std::string> path);
+
+    const std::vector<std::string>& path() const;
+
+private:
+    std::vector<std::string> path_;
+};
+
+class SectionDeclaration final : public AstNode {
+public:
+    SectionDeclaration(SectionKind sectionKind, std::vector<std::string> tokens);
+
+    SectionKind sectionKind() const;
+    const std::vector<std::string>& tokens() const;
+
+private:
+    SectionKind sectionKind_;
+    std::vector<std::string> tokens_;
+};
+
+class RawDeclaration final : public AstNode {
+public:
+    RawDeclaration(std::string head, std::vector<std::string> tokens);
+
+    const std::string& head() const;
+    const std::vector<std::string>& tokens() const;
+
+private:
+    std::string head_;
+    std::vector<std::string> tokens_;
+};
+
+class FunctionDeclaration final : public AstNode {
+public:
+    FunctionDeclaration(std::string name,
+                        std::vector<std::string> signatureTokens,
+                        std::vector<StatementPtr> body);
+
+    const std::string& name() const;
+    const std::vector<std::string>& signatureTokens() const;
+    const std::vector<StatementPtr>& body() const;
+
+private:
+    std::string name_;
+    std::vector<std::string> signatureTokens_;
+    std::vector<StatementPtr> body_;
 };
 
 class LiteralExpression final : public Expression {

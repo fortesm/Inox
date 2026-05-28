@@ -3,6 +3,7 @@
 #include "../ast/Ast.h"
 #include "../lexer/Token.h"
 
+#include <cstddef>
 #include <initializer_list>
 #include <memory>
 #include <stdexcept>
@@ -27,6 +28,7 @@ public:
     explicit Parser(std::vector<lexer::Token> tokens);
     explicit Parser(std::string_view source);
 
+    std::unique_ptr<ast::ModuleNode> parseModule();
     ast::ExpressionPtr parseExpression();
     ast::StatementPtr parseStatement();
     std::vector<ast::StatementPtr> parseStatements();
@@ -61,6 +63,12 @@ private:
     ast::StatementPtr parseRaiseStatement();
     ast::StatementPtr parseExpressionStatement();
 
+    ast::AstNodePtr parseModuleItem();
+    ast::AstNodePtr parseUseDeclaration();
+    ast::AstNodePtr parseSectionDeclaration(ast::SectionKind sectionKind);
+    ast::AstNodePtr parseRawDeclaration();
+    ast::AstNodePtr parseFunctionDeclaration();
+
     std::vector<ast::StatementPtr> parseBlockBody();
     std::vector<ast::StatementPtr> parseDelimitedBody(std::initializer_list<std::string_view> stopKeywords);
     bool atAnyKeyword(std::initializer_list<std::string_view> keywords) const;
@@ -72,9 +80,11 @@ private:
     const lexer::Token& previous() const;
     bool check(TokenKind kind) const;
     bool checkKeyword(std::string_view normalized) const;
+    bool checkIdentifierLike() const;
     bool match(TokenKind kind);
     bool matchKeyword(std::string_view normalized);
     const lexer::Token& consume(TokenKind kind, std::string_view message);
+    const lexer::Token& consumeIdentifierLike(std::string_view message);
     const lexer::Token& advance();
 
     [[noreturn]] void errorAtCurrent(std::string_view message) const;
@@ -82,6 +92,7 @@ private:
 
     static ast::BinaryOperator binaryOperatorFor(const lexer::Token& token);
     static ast::UnaryOperator unaryOperatorFor(const lexer::Token& token);
+    static std::string tokenText(const lexer::Token& token);
 
     std::vector<lexer::Token> tokens_;
     std::size_t current_ = 0;
