@@ -47,6 +47,76 @@ ast::ExpressionPtr Parser::parseExpression()
     return expression;
 }
 
+ast::StatementPtr Parser::parseStatement()
+{
+    if (match(TokenKind::Colon)) {
+        auto body = parseBlockBody();
+        consumeBlockClose();
+        return std::make_unique<ast::BlockStatement>(std::move(body));
+    }
+
+    if (matchKeyword("mut")) {
+        consume(TokenKind::Keyword, "expected 'var' after 'mut'");
+        if (previous().normalized != "var") {
+            errorAt(previous(), "expected 'var' after 'mut'");
+        }
+        return parseVarStatement(true);
+    }
+
+    if (matchKeyword("var")) {
+        if (match(TokenKind::Colon)) {
+            auto declarations = parseBlockBody();
+            consumeBlockClose();
+            return std::make_unique<ast::VarBlockStatement>(std::move(declarations));
+        }
+        return parseVarStatement(false);
+    }
+
+    if (matchKeyword("if")) {
+        return parseIfStatement();
+    }
+    if (matchKeyword("unless")) {
+        return parseUnlessStatement();
+    }
+    if (matchKeyword("while")) {
+        return parseWhileStatement();
+    }
+    if (matchKeyword("repeat")) {
+        return parseRepeatStatement();
+    }
+    if (matchKeyword("for")) {
+        return parseForInStatement();
+    }
+    if (matchKeyword("case")) {
+        return parseCaseStatement();
+    }
+    if (matchKeyword("try")) {
+        return parseTryStatement();
+    }
+    if (matchKeyword("raise")) {
+        return parseRaiseStatement();
+    }
+
+    return parseExpressionStatement();
+}
+
+std::vector<ast::StatementPtr> Parser::parseStatements()
+{
+    std::vector<ast::StatementPtr> statements;
+    while (!isAtEnd()) {
+        statements.push_back(parseStatement());
+    }
+    return statements;
+}
+
+std::unique_ptr<ast::BlockStatement> Parser::parseBlockStatement()
+{
+    consume(TokenKind::Colon, "expected ':' to open block");
+    auto body = parseBlockBody();
+    consumeBlockClose();
+    return std::make_unique<ast::BlockStatement>(std::move(body));
+}
+
 ast::ExpressionPtr Parser::parseAssignment()
 {
     auto left = parseLogical();
@@ -253,6 +323,19 @@ ast::ExpressionPtr Parser::parsePrimary()
     errorAtCurrent("expected expression");
 }
 
+ast::ExpressionPtr Parser::parseForIterable()
+{
+    auto lower = parseAdditive();
+    if (!match(TokenKind::DotDot)) {
+        return lower;
+    }
+
+    const lexer::Token& op = previous();
+    auto upper = parsePrimary();
+    return std::make_unique<ast::BinaryExpression>(
+        binaryOperatorFor(op), std::move(lower), std::move(upper));
+}
+
 std::vector<ast::ExpressionPtr> Parser::parseArgumentList()
 {
     std::vector<ast::ExpressionPtr> arguments;
@@ -266,6 +349,216 @@ std::vector<ast::ExpressionPtr> Parser::parseArgumentList()
     } while (match(TokenKind::Comma));
 
     return arguments;
+}
+
+ast::StatementPtr Parser::parseVarStatement(bool isMutable)
+{
+    const lexer::Token& name = consume(TokenKind::Identifier, "expected variable name");
+    ast::ExpressionPtr initializer;
+
+    if (match(TokenKind::ColonEqual)) {
+        initializer = parseAssignment();
+    }
+
+    return std::make_unique<ast::VarStatement>(
+        isMutable, name.lexeme, std::move(initializer));
+}
+
+ast::StatementPtr Parser::parseIfStatement()
+{
+    auto condition = parseAssignment();
+    auto thenBlock = parseBlockStatement();
+    auto thenBody = thenBlock->takeStatements();
+
+    std::vector<ast::ElseIfClause> elseIfClauses;
+    while (matchKeyword("elif")) {
+        auto elseIfCondition = parseAssignment();
+        auto elseIfBlock = parseBlockStatement();
+        elseIfClauses.push_back(ast::ElseIfClause{
+            std::move(elseIfCondition),
+            elseIfBlock->takeStatements()
+        });
+    }
+
+    std::vector<ast::StatementPtr> elseBody;
+    if (matchKeyword("else")) {
+        auto elseBlock = parseBlockStatement();
+        elseBody = elseBlock->takeStatements();
+    }
+
+    return std::make_unique<ast::IfStatement>(
+        std::move(condition),
+        std::move(thenBody),
+        std::move(elseIfClauses),
+        std::move(elseBody));
+}
+
+ast::StatementPtr Parser::parseUnlessStatement()
+{
+    auto condition = parseAssignment();
+    auto body = parseBlockStatement();
+    return std::make_unique<ast::UnlessStatement>(
+        std::move(condition), body->takeStatements());
+}
+
+ast::StatementPtr Parser::parseWhileStatement()
+{
+    auto condition = parseAssignment();
+    auto body = parseBlockStatement();
+    return std::make_unique<ast::WhileStatement>(
+        std::move(condition), body->takeStatements());
+}
+
+ast::StatementPtr Parser::parseRepeatStatement()
+{
+    auto body = parseDelimitedBody({"until"});
+    if (!matchKeyword("until")) {
+        errorAtCurrent("expected 'until' after repeat body");
+    }
+    auto condition = parseAssignment();
+    consumeBlockClose();
+    return std::make_unique<ast::RepeatStatement>(
+        std::move(body), std::move(condition));
+}
+
+ast::StatementPtr Parser::parseForInStatement()
+{
+    const lexer::Token& iterator = consume(TokenKind::Identifier, "expected loop iterator");
+    if (!matchKeyword("in")) {
+        errorAtCurrent("expected 'in' after loop iterator");
+    }
+
+    auto iterable = parseForIterable();
+    ast::ExpressionPtr step;
+    if (match(TokenKind::LeftParen)) {
+        step = parseAssignment();
+        consume(TokenKind::RightParen, "expected ')' after loop step");
+    }
+
+    auto body = parseBlockStatement();
+    return std::make_unique<ast::ForInStatement>(
+        iterator.lexeme,
+        std::move(iterable),
+        std::move(step),
+        body->takeStatements());
+}
+
+ast::StatementPtr Parser::parseCaseStatement()
+{
+    auto expression = parseAssignment();
+    consume(TokenKind::Colon, "expected ':' after case expression");
+
+    std::vector<ast::CaseArm> arms;
+    std::vector<ast::StatementPtr> otherwiseBody;
+
+    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end")) {
+        if (matchKeyword("otherwise")) {
+            auto block = parseBlockStatement();
+            otherwiseBody = block->takeStatements();
+            break;
+        }
+
+        std::vector<ast::ExpressionPtr> choices;
+        choices.push_back(parseAssignment());
+        while (match(TokenKind::Comma)) {
+            choices.push_back(parseAssignment());
+        }
+
+        auto body = parseBlockStatement();
+        arms.push_back(ast::CaseArm{std::move(choices), body->takeStatements()});
+    }
+
+    consumeBlockClose();
+    return std::make_unique<ast::CaseStatement>(
+        std::move(expression),
+        std::move(arms),
+        std::move(otherwiseBody));
+}
+
+ast::StatementPtr Parser::parseTryStatement()
+{
+    auto body = parseBlockStatement();
+
+    std::vector<ast::StatementPtr> exceptBody;
+    if (matchKeyword("except")) {
+        auto exceptBlock = parseBlockStatement();
+        exceptBody = exceptBlock->takeStatements();
+    }
+
+    std::vector<ast::StatementPtr> finallyBody;
+    if (matchKeyword("finally")) {
+        auto finallyBlock = parseBlockStatement();
+        finallyBody = finallyBlock->takeStatements();
+    }
+
+    return std::make_unique<ast::TryStatement>(
+        body->takeStatements(),
+        std::move(exceptBody),
+        std::move(finallyBody));
+}
+
+ast::StatementPtr Parser::parseRaiseStatement()
+{
+    ast::ExpressionPtr expression;
+    if (!atStatementBoundary()) {
+        expression = parseAssignment();
+    }
+    return std::make_unique<ast::RaiseStatement>(std::move(expression));
+}
+
+ast::StatementPtr Parser::parseExpressionStatement()
+{
+    return std::make_unique<ast::ExpressionStatement>(parseAssignment());
+}
+
+std::vector<ast::StatementPtr> Parser::parseBlockBody()
+{
+    std::vector<ast::StatementPtr> statements;
+    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end")) {
+        statements.push_back(parseStatement());
+    }
+    return statements;
+}
+
+std::vector<ast::StatementPtr> Parser::parseDelimitedBody(std::initializer_list<std::string_view> stopKeywords)
+{
+    std::vector<ast::StatementPtr> statements;
+    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end") &&
+           !atAnyKeyword(stopKeywords)) {
+        statements.push_back(parseStatement());
+    }
+    return statements;
+}
+
+bool Parser::atAnyKeyword(std::initializer_list<std::string_view> keywords) const
+{
+    for (std::string_view keyword : keywords) {
+        if (checkKeyword(keyword)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Parser::atStatementBoundary() const
+{
+    return isAtEnd() ||
+           check(TokenKind::Semicolon) ||
+           checkKeyword("end") ||
+           checkKeyword("elif") ||
+           checkKeyword("else") ||
+           checkKeyword("except") ||
+           checkKeyword("finally") ||
+           checkKeyword("until") ||
+           checkKeyword("otherwise");
+}
+
+void Parser::consumeBlockClose()
+{
+    if (match(TokenKind::Semicolon) || matchKeyword("end")) {
+        return;
+    }
+    errorAtCurrent("expected block close ';' or 'End'");
 }
 
 bool Parser::isAtEnd() const

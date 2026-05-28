@@ -1,11 +1,14 @@
 #include "../lexer/Lexer.h"
+#include "../parser/Parser.h"
 
+#include <cstddef>
 #include <fstream>
-#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace {
 
@@ -21,24 +24,41 @@ std::string readFile(const char* path)
     return buffer.str();
 }
 
-void printToken(const inox::compiler::lexer::Token& token)
+using Token = inox::compiler::lexer::Token;
+using TokenKind = inox::compiler::lexer::TokenKind;
+
+bool isMainKeyword(const Token& token)
 {
-    std::cout
-        << token.location.line << ':'
-        << token.location.column << ' '
-        << inox::compiler::lexer::tokenKindName(token.kind)
-        << " lexeme=" << std::quoted(token.lexeme);
+    return token.kind == TokenKind::Keyword && token.normalized == "main";
+}
 
-    if (token.kind == inox::compiler::lexer::TokenKind::Identifier ||
-        token.kind == inox::compiler::lexer::TokenKind::Keyword) {
-        std::cout << " normalized=" << std::quoted(token.normalized);
+std::vector<Token> tokensForMainBlock(const std::vector<Token>& tokens)
+{
+    for (std::size_t index = 0; index < tokens.size(); ++index) {
+        if (!isMainKeyword(tokens[index])) {
+            continue;
+        }
+
+        while (index < tokens.size() && tokens[index].kind != TokenKind::Colon) {
+            ++index;
+        }
+
+        if (index < tokens.size()) {
+            return std::vector<Token>(tokens.begin() + static_cast<std::ptrdiff_t>(index),
+                                      tokens.end());
+        }
     }
 
-    if (token.kind == inox::compiler::lexer::TokenKind::Invalid) {
-        std::cout << " error=" << std::quoted(token.normalized);
-    }
+    return {};
+}
 
-    std::cout << '\n';
+void throwOnInvalidToken(const std::vector<Token>& tokens)
+{
+    for (const auto& token : tokens) {
+        if (token.kind == TokenKind::Invalid) {
+            throw inox::compiler::parser::ParseError(token.normalized, token.location);
+        }
+    }
 }
 
 } // namespace
@@ -53,13 +73,26 @@ int main(int argc, char** argv)
     try {
         const std::string source = readFile(argv[1]);
         inox::compiler::lexer::Lexer lexer(source);
+        const auto tokens = lexer.tokenize();
+        throwOnInvalidToken(tokens);
 
-        for (const auto& token : lexer.tokenize()) {
-            printToken(token);
-            if (token.kind == inox::compiler::lexer::TokenKind::Invalid) {
-                return 1;
-            }
+        auto mainTokens = tokensForMainBlock(tokens);
+        if (!mainTokens.empty()) {
+            inox::compiler::parser::Parser parser(std::move(mainTokens));
+            parser.parseBlockStatement();
+        } else {
+            inox::compiler::parser::Parser parser(tokens);
+            parser.parseStatements();
         }
+
+        std::cout << "parse ok\n";
+    } catch (const inox::compiler::parser::ParseError& error) {
+        std::cerr
+            << "parse error at "
+            << error.location().line << ':'
+            << error.location().column << ": "
+            << error.what() << '\n';
+        return 1;
     } catch (const std::exception& error) {
         std::cerr << "error: " << error.what() << ": " << argv[1] << '\n';
         return 1;

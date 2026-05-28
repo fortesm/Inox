@@ -3,6 +3,8 @@
 #include "../ast/Ast.h"
 #include "../lexer/Token.h"
 
+#include <initializer_list>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -26,6 +28,9 @@ public:
     explicit Parser(std::string_view source);
 
     ast::ExpressionPtr parseExpression();
+    ast::StatementPtr parseStatement();
+    std::vector<ast::StatementPtr> parseStatements();
+    std::unique_ptr<ast::BlockStatement> parseBlockStatement();
 
 private:
     using TokenKind = lexer::TokenKind;
@@ -41,8 +46,26 @@ private:
     ast::ExpressionPtr parsePower();
     ast::ExpressionPtr parsePostfix();
     ast::ExpressionPtr parsePrimary();
+    ast::ExpressionPtr parseForIterable();
 
     std::vector<ast::ExpressionPtr> parseArgumentList();
+
+    ast::StatementPtr parseVarStatement(bool isMutable);
+    ast::StatementPtr parseIfStatement();
+    ast::StatementPtr parseUnlessStatement();
+    ast::StatementPtr parseWhileStatement();
+    ast::StatementPtr parseRepeatStatement();
+    ast::StatementPtr parseForInStatement();
+    ast::StatementPtr parseCaseStatement();
+    ast::StatementPtr parseTryStatement();
+    ast::StatementPtr parseRaiseStatement();
+    ast::StatementPtr parseExpressionStatement();
+
+    std::vector<ast::StatementPtr> parseBlockBody();
+    std::vector<ast::StatementPtr> parseDelimitedBody(std::initializer_list<std::string_view> stopKeywords);
+    bool atAnyKeyword(std::initializer_list<std::string_view> keywords) const;
+    bool atStatementBoundary() const;
+    void consumeBlockClose();
 
     bool isAtEnd() const;
     const lexer::Token& peek() const;

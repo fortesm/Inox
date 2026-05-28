@@ -7,5 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(inox
     src/compiler/main/main.cpp
+    src/compiler/ast/Ast.cpp
     src/compiler/lexer/Lexer.cpp
+    src/compiler/parser/Parser.cpp
 )

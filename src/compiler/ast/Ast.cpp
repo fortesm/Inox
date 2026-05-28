@@ -144,4 +144,257 @@ std::vector<ExpressionPtr> CallExpression::takeArguments()
     return std::move(arguments_);
 }
 
+BlockStatement::BlockStatement(std::vector<StatementPtr> statements)
+    : Statement(AstNodeKind::BlockStatement), statements_(std::move(statements))
+{
+}
+
+const std::vector<StatementPtr>& BlockStatement::statements() const
+{
+    return statements_;
+}
+
+std::vector<StatementPtr> BlockStatement::takeStatements()
+{
+    return std::move(statements_);
+}
+
+ExpressionStatement::ExpressionStatement(ExpressionPtr expression)
+    : Statement(AstNodeKind::ExpressionStatement), expression_(std::move(expression))
+{
+}
+
+const Expression& ExpressionStatement::expression() const
+{
+    return *expression_;
+}
+
+ExpressionPtr ExpressionStatement::takeExpression()
+{
+    return std::move(expression_);
+}
+
+VarStatement::VarStatement(bool isMutable, std::string name, ExpressionPtr initializer)
+    : Statement(AstNodeKind::VarStatement),
+      isMutable_(isMutable),
+      name_(std::move(name)),
+      initializer_(std::move(initializer))
+{
+}
+
+bool VarStatement::isMutable() const
+{
+    return isMutable_;
+}
+
+const std::string& VarStatement::name() const
+{
+    return name_;
+}
+
+const Expression* VarStatement::initializer() const
+{
+    return initializer_.get();
+}
+
+ExpressionPtr VarStatement::takeInitializer()
+{
+    return std::move(initializer_);
+}
+
+VarBlockStatement::VarBlockStatement(std::vector<StatementPtr> declarations)
+    : Statement(AstNodeKind::VarBlockStatement), declarations_(std::move(declarations))
+{
+}
+
+const std::vector<StatementPtr>& VarBlockStatement::declarations() const
+{
+    return declarations_;
+}
+
+std::vector<StatementPtr> VarBlockStatement::takeDeclarations()
+{
+    return std::move(declarations_);
+}
+
+IfStatement::IfStatement(ExpressionPtr condition,
+                         std::vector<StatementPtr> thenBody,
+                         std::vector<ElseIfClause> elseIfClauses,
+                         std::vector<StatementPtr> elseBody)
+    : Statement(AstNodeKind::IfStatement),
+      condition_(std::move(condition)),
+      thenBody_(std::move(thenBody)),
+      elseIfClauses_(std::move(elseIfClauses)),
+      elseBody_(std::move(elseBody))
+{
+}
+
+const Expression& IfStatement::condition() const
+{
+    return *condition_;
+}
+
+const std::vector<StatementPtr>& IfStatement::thenBody() const
+{
+    return thenBody_;
+}
+
+const std::vector<ElseIfClause>& IfStatement::elseIfClauses() const
+{
+    return elseIfClauses_;
+}
+
+const std::vector<StatementPtr>& IfStatement::elseBody() const
+{
+    return elseBody_;
+}
+
+UnlessStatement::UnlessStatement(ExpressionPtr condition, std::vector<StatementPtr> body)
+    : Statement(AstNodeKind::UnlessStatement),
+      condition_(std::move(condition)),
+      body_(std::move(body))
+{
+}
+
+const Expression& UnlessStatement::condition() const
+{
+    return *condition_;
+}
+
+const std::vector<StatementPtr>& UnlessStatement::body() const
+{
+    return body_;
+}
+
+WhileStatement::WhileStatement(ExpressionPtr condition, std::vector<StatementPtr> body)
+    : Statement(AstNodeKind::WhileStatement),
+      condition_(std::move(condition)),
+      body_(std::move(body))
+{
+}
+
+const Expression& WhileStatement::condition() const
+{
+    return *condition_;
+}
+
+const std::vector<StatementPtr>& WhileStatement::body() const
+{
+    return body_;
+}
+
+RepeatStatement::RepeatStatement(std::vector<StatementPtr> body, ExpressionPtr condition)
+    : Statement(AstNodeKind::RepeatStatement),
+      body_(std::move(body)),
+      condition_(std::move(condition))
+{
+}
+
+const std::vector<StatementPtr>& RepeatStatement::body() const
+{
+    return body_;
+}
+
+const Expression& RepeatStatement::condition() const
+{
+    return *condition_;
+}
+
+ForInStatement::ForInStatement(std::string iterator,
+                               ExpressionPtr iterable,
+                               ExpressionPtr step,
+                               std::vector<StatementPtr> body)
+    : Statement(AstNodeKind::ForInStatement),
+      iterator_(std::move(iterator)),
+      iterable_(std::move(iterable)),
+      step_(std::move(step)),
+      body_(std::move(body))
+{
+}
+
+const std::string& ForInStatement::iterator() const
+{
+    return iterator_;
+}
+
+const Expression& ForInStatement::iterable() const
+{
+    return *iterable_;
+}
+
+const Expression* ForInStatement::step() const
+{
+    return step_.get();
+}
+
+const std::vector<StatementPtr>& ForInStatement::body() const
+{
+    return body_;
+}
+
+CaseStatement::CaseStatement(ExpressionPtr expression,
+                             std::vector<CaseArm> arms,
+                             std::vector<StatementPtr> otherwiseBody)
+    : Statement(AstNodeKind::CaseStatement),
+      expression_(std::move(expression)),
+      arms_(std::move(arms)),
+      otherwiseBody_(std::move(otherwiseBody))
+{
+}
+
+const Expression& CaseStatement::expression() const
+{
+    return *expression_;
+}
+
+const std::vector<CaseArm>& CaseStatement::arms() const
+{
+    return arms_;
+}
+
+const std::vector<StatementPtr>& CaseStatement::otherwiseBody() const
+{
+    return otherwiseBody_;
+}
+
+TryStatement::TryStatement(std::vector<StatementPtr> body,
+                           std::vector<StatementPtr> exceptBody,
+                           std::vector<StatementPtr> finallyBody)
+    : Statement(AstNodeKind::TryStatement),
+      body_(std::move(body)),
+      exceptBody_(std::move(exceptBody)),
+      finallyBody_(std::move(finallyBody))
+{
+}
+
+const std::vector<StatementPtr>& TryStatement::body() const
+{
+    return body_;
+}
+
+const std::vector<StatementPtr>& TryStatement::exceptBody() const
+{
+    return exceptBody_;
+}
+
+const std::vector<StatementPtr>& TryStatement::finallyBody() const
+{
+    return finallyBody_;
+}
+
+RaiseStatement::RaiseStatement(ExpressionPtr expression)
+    : Statement(AstNodeKind::RaiseStatement), expression_(std::move(expression))
+{
+}
+
+const Expression* RaiseStatement::expression() const
+{
+    return expression_.get();
+}
+
+ExpressionPtr RaiseStatement::takeExpression()
+{
+    return std::move(expression_);
+}
+
 } // namespace inox::compiler::ast
