@@ -1,0 +1,15 @@
+Module Exceptions
+
+Main() :
+    try :
+        PutLn("before raise")
+        raise OverflowError
+    ;
+    except :
+        PutLn("caught error")
+        raise
+    ;
+    finally :
+        PutLn("cleanup")
+    ;
+;

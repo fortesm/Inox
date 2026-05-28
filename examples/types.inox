@@ -1,0 +1,44 @@
+Module Types
+
+Type :
+    Boolean
+    Int8
+    Int16
+    Int32
+    Int64
+    UInt8
+    UInt16
+    UInt32
+    UInt64
+    Integer
+    UInteger
+    Natural
+    Float32
+    Float64
+    Float
+    Currency
+    Crypto
+    Char
+    String
+    Struct
+    Enum
+    Set
+    Vector
+    1..10
+    Pair[T]
+;
+
+Const :
+    Limit := 10
+;
+
+Main() :
+    var Flag := True
+    var Count := Integer(42)
+    var Money := Currency("12.34")
+    var Coin := Crypto("0.00000001")
+    var Letter := 'A'
+    var Text := "Hello, Inox"
+
+    PutLn(Text)
+;

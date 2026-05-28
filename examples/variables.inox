@@ -1,0 +1,24 @@
+Module Variables
+
+== Lexer smoke test for comments, identifiers, keywords and assignment
+
+Const :
+    MaxCount := 10
+;
+
+State :
+    mut GlobalCount := 0
+;
+
+Main() :
+    var Name := "Ada"
+    var Greeting := "Hello, Inox"
+
+    Var :
+        Count := 1
+        Total := Count + MaxCount
+    ;
+
+    PutLn(Greeting)
+    PutLn(Name)
+;

@@ -1,0 +1,48 @@
+Module ControlFlow
+
+Main() :
+    var I := 0
+
+    if I = 0 :
+        PutLn("zero")
+    ;
+    elif I > 0 :
+        PutLn("positive")
+    ;
+    else :
+        PutLn("negative")
+    ;
+
+    unless I # 0 :
+        PutLn("still zero")
+    ;
+
+    while I < 3 :
+        I := I + 1
+    ;
+
+    repeat
+        I := I - 1
+    until I = 0
+    ;
+
+    for I in 1..10 :
+        PutLn("range")
+    ;
+
+    for I in 1..10(2) :
+        PutLn("step")
+    ;
+
+    case I :
+        0 :
+            PutLn("zero")
+        ;
+        1..10 :
+            PutLn("small")
+        ;
+        otherwise :
+            PutLn("other")
+        ;
+    ;
+;
