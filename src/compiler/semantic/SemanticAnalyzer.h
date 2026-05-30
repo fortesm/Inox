@@ -55,6 +55,7 @@ private:
     static bool isNumericType(std::string_view typeName);
     static bool isIntegerType(std::string_view typeName);
     static bool isPreludeCall(std::string_view name);
+    static bool canAssign(std::string_view targetType, std::string_view valueType);
     static bool typesMatch(std::string_view left, std::string_view right);
 
     SymbolTable symbols_;

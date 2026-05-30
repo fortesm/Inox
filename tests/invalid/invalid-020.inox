@@ -1,0 +1,5 @@
+Module Invalid020
+
+Main() :
+    var X := 10 shl "abc"
+;

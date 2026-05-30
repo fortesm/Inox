@@ -1,0 +1,5 @@
+Module Invalid014
+
+Main() :
+    var X := True * 3
+;

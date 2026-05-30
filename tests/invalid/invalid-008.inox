@@ -1,0 +1,6 @@
+Module Invalid008
+
+Main() :
+    var X := 10
+    X := True
+;

@@ -1,0 +1,8 @@
+Module Invalid012
+
+Wrong() Integer :
+    Return "abc"
+;
+
+Main() :
+;

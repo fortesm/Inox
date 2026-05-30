@@ -1,0 +1,5 @@
+Module Invalid017
+
+Main() :
+    var X := not 10
+;

@@ -510,7 +510,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         const std::string typeName =
             analyzeExpression(static_cast<const ast::ReturnStatement&>(statement).expression());
         if (!currentFunctionReturnType_.empty() &&
-            !typesMatch(currentFunctionReturnType_, typeName)) {
+            !canAssign(currentFunctionReturnType_, typeName)) {
             throw SemanticError(
                 "cannot return " + typeName + " from function returning " +
                 currentFunctionReturnType_);
@@ -677,7 +677,7 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
         }
 
         const std::string rightType = analyzeExpression(expression.right());
-        if (!typesMatch(target.typeName, rightType)) {
+        if (!canAssign(target.typeName, rightType)) {
             throw SemanticError("cannot assign " + rightType + " to " + target.typeName);
         }
         return target.typeName;
@@ -694,13 +694,13 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
         }
     };
     const auto requireNumericOperands = [&] {
-        requireMatchingTypes();
         if ((!leftType.empty() && !isNumericType(leftType)) ||
             (!rightType.empty() && !isNumericType(rightType))) {
             throw SemanticError(
                 "operator '" + std::string(binaryOperatorName(op)) +
                 "' requires numeric operands");
         }
+        requireMatchingTypes();
     };
     const auto requireIntegerOperands = [&] {
         if ((!leftType.empty() && !isIntegerType(leftType)) ||
@@ -842,6 +842,11 @@ bool SemanticAnalyzer::isPreludeCall(std::string_view name)
         }
     }
     return false;
+}
+
+bool SemanticAnalyzer::canAssign(std::string_view targetType, std::string_view valueType)
+{
+    return targetType.empty() || (!valueType.empty() && targetType == valueType);
 }
 
 bool SemanticAnalyzer::typesMatch(std::string_view left, std::string_view right)
