@@ -128,6 +128,8 @@ void SemanticAnalyzer::analyze(const ast::ModuleNode& module)
         declareModuleItem(*item);
     }
 
+    registerFunctionSignatures(module);
+
     if (!hasMain_) {
         throw SemanticError("module must declare Main()");
     }
@@ -135,6 +137,74 @@ void SemanticAnalyzer::analyze(const ast::ModuleNode& module)
     for (const auto& item : module.items()) {
         analyzeModuleItem(*item);
     }
+}
+
+void SemanticAnalyzer::registerFunctionSignatures(const ast::ModuleNode& module)
+{
+    for (const auto& item : module.items()) {
+        if (item->kind() == ast::AstNodeKind::FunctionDeclaration) {
+            registerFunctionSignature(static_cast<const ast::FunctionDeclaration&>(*item));
+        }
+    }
+}
+
+void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration& function)
+{
+    const auto& tokens = function.signatureTokens();
+    if (tokens.size() < 2 || tokens.front() != "(") {
+        throw SemanticError("expected parameter list for function: " + function.name());
+    }
+
+    FunctionSignature signature;
+    signature.name = function.name();
+
+    std::size_t index = 1;
+    while (index < tokens.size() && tokens[index] != ")") {
+        if (!looksLikeIdentifier(tokens[index])) {
+            throw SemanticError("expected parameter name in function: " + function.name());
+        }
+        const std::string parameterName = tokens[index++];
+
+        if (index >= tokens.size() || !looksLikeIdentifier(tokens[index])) {
+            throw SemanticError("expected type for parameter: " + parameterName);
+        }
+        resolveTypeOrThrow(tokens[index]);
+        const std::string parameterType = canonicalTypeName(tokens[index++]);
+
+        for (const FunctionParameter& parameter : signature.parameters) {
+            if (equalsIgnoreCase(parameter.name, parameterName)) {
+                throw SemanticError("duplicate parameter: " + parameterName);
+            }
+        }
+        signature.parameters.push_back(FunctionParameter{parameterName, parameterType});
+
+        if (index < tokens.size() && tokens[index] == ",") {
+            ++index;
+        } else if (index >= tokens.size() || tokens[index] != ")") {
+            throw SemanticError("expected ',' or ')' in function: " + function.name());
+        }
+    }
+
+    if (index >= tokens.size() || tokens[index] != ")") {
+        throw SemanticError("expected ')' in function: " + function.name());
+    }
+    ++index;
+
+    if (index < tokens.size()) {
+        if (index + 1 != tokens.size() || !looksLikeIdentifier(tokens[index])) {
+            throw SemanticError("invalid return type in function: " + function.name());
+        }
+        resolveTypeOrThrow(tokens[index]);
+        signature.returnType = canonicalTypeName(tokens[index]);
+    }
+
+    functions_.emplace(normalizeName(function.name()), std::move(signature));
+}
+
+const FunctionSignature* SemanticAnalyzer::resolveFunctionSignature(std::string_view name) const
+{
+    const auto iterator = functions_.find(normalizeName(name));
+    return iterator != functions_.end() ? &iterator->second : nullptr;
 }
 
 void SemanticAnalyzer::declareBuiltins()
@@ -377,22 +447,23 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
 void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
 {
     const std::string previousReturnType = std::move(currentFunctionReturnType_);
-    currentFunctionReturnType_ = inferFunctionReturnType(function);
+    const bool previousSawReturn = currentFunctionSawReturn_;
+    const FunctionSignature* signature = resolveFunctionSignature(function.name());
+    currentFunctionReturnType_ = signature != nullptr ? signature->returnType : std::string{};
+    currentFunctionSawReturn_ = false;
     symbols_.pushScope();
+    if (signature != nullptr) {
+        for (const FunctionParameter& parameter : signature->parameters) {
+            declareOrThrow(parameter.name, SymbolKind::Variable, parameter.typeName);
+        }
+    }
     analyzeStatements(function.body(), false);
     symbols_.popScope();
-    currentFunctionReturnType_ = previousReturnType;
-}
-
-std::string SemanticAnalyzer::inferFunctionReturnType(const ast::FunctionDeclaration& function) const
-{
-    const auto& tokens = function.signatureTokens();
-    if (tokens.empty() || !looksLikeIdentifier(tokens.back())) {
-        return {};
+    if (!currentFunctionReturnType_.empty() && !currentFunctionSawReturn_) {
+        throw SemanticError("function " + function.name() + " must return a value");
     }
-
-    const TypeSymbol* type = types_.resolve(tokens.back());
-    return type != nullptr ? canonicalTypeName(type->name) : std::string{};
+    currentFunctionReturnType_ = previousReturnType;
+    currentFunctionSawReturn_ = previousSawReturn;
 }
 
 void SemanticAnalyzer::analyzeStatements(const std::vector<ast::StatementPtr>& statements, bool createScope)
@@ -507,10 +578,13 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         break;
     }
     case ast::AstNodeKind::ReturnStatement: {
+        currentFunctionSawReturn_ = true;
         const std::string typeName =
             analyzeExpression(static_cast<const ast::ReturnStatement&>(statement).expression());
-        if (!currentFunctionReturnType_.empty() &&
-            !canAssign(currentFunctionReturnType_, typeName)) {
+        if (currentFunctionReturnType_.empty()) {
+            throw SemanticError("subroutine without return type cannot return a value");
+        }
+        if (!canAssign(currentFunctionReturnType_, typeName)) {
             throw SemanticError(
                 "cannot return " + typeName + " from function returning " +
                 currentFunctionReturnType_);
@@ -604,6 +678,10 @@ std::string SemanticAnalyzer::analyzeExpression(const ast::Expression& expressio
                 }
                 return analyzePreludeCall(callee.name(), argumentTypes);
             }
+
+            if (const FunctionSignature* signature = resolveFunctionSignature(callee.name())) {
+                return analyzeUserFunctionCall(*signature, call.arguments());
+            }
         }
 
         analyzeExpression(call.callee());
@@ -617,6 +695,30 @@ std::string SemanticAnalyzer::analyzeExpression(const ast::Expression& expressio
     }
 
     return {};
+}
+
+std::string SemanticAnalyzer::analyzeUserFunctionCall(
+    const FunctionSignature& signature,
+    const std::vector<ast::ExpressionPtr>& arguments)
+{
+    if (arguments.size() != signature.parameters.size()) {
+        throw SemanticError(
+            "function " + signature.name + " expects " +
+            std::to_string(signature.parameters.size()) + " arguments, got " +
+            std::to_string(arguments.size()));
+    }
+
+    for (std::size_t index = 0; index < arguments.size(); ++index) {
+        const std::string argumentType = analyzeExpression(*arguments[index]);
+        const FunctionParameter& parameter = signature.parameters[index];
+        if (!canAssign(parameter.typeName, argumentType)) {
+            throw SemanticError(
+                "argument " + std::to_string(index + 1) + " of " + signature.name +
+                " expects " + parameter.typeName + ", got " + argumentType);
+        }
+    }
+
+    return signature.returnType;
 }
 
 std::string SemanticAnalyzer::analyzePreludeCall(
@@ -842,6 +944,17 @@ bool SemanticAnalyzer::isPreludeCall(std::string_view name)
         }
     }
     return false;
+}
+
+std::string SemanticAnalyzer::normalizeName(std::string_view name)
+{
+    std::string normalized;
+    normalized.reserve(name.size());
+    for (const char ch : name) {
+        normalized.push_back(static_cast<char>(
+            std::tolower(static_cast<unsigned char>(ch))));
+    }
+    return normalized;
 }
 
 bool SemanticAnalyzer::canAssign(std::string_view targetType, std::string_view valueType)

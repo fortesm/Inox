@@ -10,7 +10,7 @@ Main() :
     var CSvsize := 100
 
     if V < Addr or V >= ImageBase + CSvaddr + CSvsize :
-        Return 0
+        Exit
     ;
 
     if (Rex bitand $40) # 0 and R >= 4 and R <= 7 :

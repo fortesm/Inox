@@ -24,6 +24,11 @@ These programs must fail semantic analysis.
 | `invalid-018.inox` | `bitor` requires integer operands |
 | `invalid-019.inox` | `bitnot` requires an integer operand |
 | `invalid-020.inox` | `shl` requires integer operands |
+| `invalid-021.inox` | call to an unknown function |
+| `invalid-022.inox` | wrong number of function arguments |
+| `invalid-023.inox` | incompatible function argument type |
+| `invalid-024.inox` | subroutine without return type cannot return a value |
+| `invalid-025.inox` | function with return type must return a value |
 
 `invalid-001.inox` uses an inferred local variable because typed local
 declaration syntax is not yet specified canonically.

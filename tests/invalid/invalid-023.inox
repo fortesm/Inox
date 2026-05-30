@@ -1,0 +1,9 @@
+Module Invalid023
+
+Sum(A Integer, B Integer) Integer :
+    Return A + B
+;
+
+Main() :
+    Sum(1, "abc")
+;

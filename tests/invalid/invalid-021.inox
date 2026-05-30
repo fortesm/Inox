@@ -1,0 +1,5 @@
+Module Invalid021
+
+Main() :
+    MissingFunction(1)
+;

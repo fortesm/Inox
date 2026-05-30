@@ -1,0 +1,8 @@
+Module Invalid025
+
+MissingReturn() Integer :
+    PutLn("missing")
+;
+
+Main() :
+;

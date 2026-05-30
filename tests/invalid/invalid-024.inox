@@ -1,0 +1,8 @@
+Module Invalid024
+
+Log() :
+    Return "abc"
+;
+
+Main() :
+;

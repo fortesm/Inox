@@ -1,0 +1,14 @@
+Module Functions
+
+Sum(A Integer, B Integer) Integer :
+    Return A + B
+;
+
+PrintTotal() :
+    PutLn(Sum(1, 2))
+;
+
+Main() :
+    PrintTotal()
+    PutLn(sum(3, 4))
+;
