@@ -1,0 +1,31 @@
+Module Bitwise
+
+Main() :
+    var Rex := $40
+    var R := 5
+    var V := 100
+    var Addr := 10
+    var ImageBase := 20
+    var CSvaddr := 30
+    var CSvsize := 100
+
+    if V < Addr or V >= ImageBase + CSvaddr + CSvsize :
+        Return 0
+    ;
+
+    if (Rex bitand $40) # 0 and R >= 4 and R <= 7 :
+        PutLn("register extension")
+    ;
+
+    while R > 0 :
+        R := R - 1
+
+        if R = 2 :
+            continue
+        ;
+
+        if R = 1 :
+            break
+        ;
+    ;
+;

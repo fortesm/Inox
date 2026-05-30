@@ -476,4 +476,25 @@ ExpressionPtr RaiseStatement::takeExpression()
     return std::move(expression_);
 }
 
+ReturnStatement::ReturnStatement(ExpressionPtr expression)
+    : Statement(AstNodeKind::ReturnStatement), expression_(std::move(expression))
+{
+}
+
+const Expression& ReturnStatement::expression() const
+{
+    return *expression_;
+}
+
+ExpressionPtr ReturnStatement::takeExpression()
+{
+    return std::move(expression_);
+}
+
+ExitStatement::ExitStatement() : Statement(AstNodeKind::ExitStatement) {}
+
+BreakStatement::BreakStatement() : Statement(AstNodeKind::BreakStatement) {}
+
+ContinueStatement::ContinueStatement() : Statement(AstNodeKind::ContinueStatement) {}
+
 } // namespace inox::compiler::ast

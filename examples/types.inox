@@ -1,7 +1,7 @@
 Module Types
 
 Type :
-    Boolean
+    Bool
     Int8
     Int16
     Int32

@@ -25,6 +25,10 @@ not part of the canonical language yet.
 - `Module` closes at EOF.
 - Line comments use `==`.
 - Block comments do not exist in 0.1.
+- Structs declare fields only. Associated methods are declared outside structs.
+- `Return Expression` returns a value from the current subroutine.
+- `Exit` exits the current subroutine without an expression.
+- `break` and `continue` are loop statements.
 
 ## Case Insensitivity
 
@@ -153,7 +157,19 @@ not define the set of conditional constructs or the expression grammar.
 
 The canonical restriction is that statements are not terminated by `;`.
 
-Inox 0.1 pre-alpha includes exception statements using:
+Inox 0.1 pre-alpha includes these subroutine and loop-control statements:
+
+```inox
+Return Expression
+Exit
+break
+continue
+```
+
+`Return` and `Exit` are distinct. `Exit` does not receive an expression.
+There is no implicit `Result` and no `Return := Expression` form.
+
+Inox 0.1 pre-alpha also includes exception statements using:
 
 ```inox
 try
@@ -205,14 +221,20 @@ Operator precedence, from highest to lowest, is:
 1. Parentheses
 2. Calls, indexing, and member access
 3. `^`
-4. Unary `+`, unary `-`, and `not`
+4. Unary `+`, unary `-`, `not`, and `bitnot`
 5. `*`, `/`, `div`, and `mod`
 6. `+` and `-`
-7. `..`
-8. `in`
-9. `=`, `#`, `<`, `>`, `<=`, and `>=`
-10. `and`, `xor`, and `or`
-11. `:=`
+7. `shl` and `shr`
+8. `bitand`
+9. `bitxor`
+10. `bitor`
+11. `..`
+12. `in`
+13. `=`, `#`, `<`, `>`, `<=`, and `>=`
+14. `and`
+15. `xor`
+16. `or`
+17. `:=`
 
 The `^` operator associates to the right.
 
@@ -231,6 +253,13 @@ means:
 Assignment `:=` is right-associative, and chained assignment is allowed.
 
 Assignment inside a boolean expression is forbidden.
+
+The logical boolean operators are `and`, `or`, `xor`, and `not`.
+
+The integer bitwise operators are `bitand`, `bitor`, `bitxor`, `bitnot`,
+`shr`, and `shl`. The symbols `&`, `|`, `~`, `<<`, and `>>` are not bitwise
+operators in Inox 0.1. The `^` operator remains exponentiation and is never
+XOR.
 
 ## Declarations
 
@@ -272,6 +301,19 @@ Block comments do not exist in Inox 0.1.
 
 At minimum, syntax recognition must respect case-insensitivity for language
 tokens.
+
+Integer hexadecimal literals support `$` notation:
+
+```inox
+$7
+$40
+$FF
+$1234ABCD
+```
+
+The `0x` notation is also accepted.
+
+`Ord` is a built-in/prelude function, not a keyword.
 
 ## Non-goals for This Version
 

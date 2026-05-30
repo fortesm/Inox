@@ -37,6 +37,12 @@ decided are explicitly marked as unspecified.
 - Assignment `:=` is right-associative.
 - Chained assignment is allowed.
 - Assignment inside a boolean expression is forbidden.
+- Structs declare fields only. Associated methods are declared outside structs.
+- The canonical boolean type is `Bool`.
+- Integer bitwise operators are `bitand`, `bitor`, `bitxor`, `bitnot`, `shr`,
+  and `shl`.
+- `break` and `continue` apply to the innermost loop.
+- `Return Expression` and expressionless `Exit` are distinct.
 
 ## Case Insensitivity
 
@@ -139,7 +145,19 @@ For module blocks, EOF acts as the module boundary.
 
 Statements are not terminated by `;`.
 
-The full statement semantics for Inox 0.1 pre-alpha are not specified yet.
+`break` exits the innermost loop.
+
+`continue` skips to the next iteration of the innermost loop.
+
+Both are invalid outside loops. Full semantic validation may be implemented
+after parser support.
+
+`Return Expression` exits the current subroutine and returns a value. It is the
+canonical function-return form.
+
+`Exit` exits the current subroutine immediately. It takes no expression and
+returns no value. It does not replace `Return`. There is no implicit `Result`
+and no `Return := Expression` form.
 
 ## Assignment
 
@@ -179,14 +197,20 @@ Operator precedence, from highest to lowest, is:
 1. Parentheses
 2. Calls, indexing, and member access
 3. `^`
-4. Unary `+`, unary `-`, and `not`
+4. Unary `+`, unary `-`, `not`, and `bitnot`
 5. `*`, `/`, `div`, and `mod`
 6. `+` and `-`
-7. `..`
-8. `in`
-9. `=`, `#`, `<`, `>`, `<=`, and `>=`
-10. `and`, `xor`, and `or`
-11. `:=`
+7. `shl` and `shr`
+8. `bitand`
+9. `bitxor`
+10. `bitor`
+11. `..`
+12. `in`
+13. `=`, `#`, `<`, `>`, `<=`, and `>=`
+14. `and`
+15. `xor`
+16. `or`
+17. `:=`
 
 The `^` operator is exponentiation and associates to the right.
 
@@ -207,6 +231,11 @@ Assignment `:=` is right-associative.
 Chained assignment is allowed.
 
 Assignment inside a boolean expression is forbidden.
+
+The logical boolean operators are `and`, `or`, `xor`, and `not`.
+
+The integer bitwise operators are `bitand`, `bitor`, `bitxor`, `bitnot`,
+`shr`, and `shl`. The `^` operator is exponentiation and is never XOR.
 
 ## Conversion Rules
 
@@ -321,7 +350,11 @@ specified in a canonical document.
 
 ## Enums
 
-Enum semantics are not specified yet for Inox 0.1 pre-alpha.
+Inox 0.1 pre-alpha has simple enums in Pascal/Ada style.
+
+Enums are nominal types.
+
+Enum values are finite and ordinal.
 
 This document does not define:
 
@@ -333,8 +366,8 @@ This document does not define:
 - conversion to or from integers
 - enum ranges
 
-Compilers and tools must not invent enum behavior until it is specified in a
-canonical document.
+Compilers and tools must not invent enum behavior beyond the simple, nominal,
+finite, ordinal model until it is specified in a canonical document.
 
 ## Conditions
 
@@ -414,6 +447,7 @@ The automatic prelude includes:
 `Sys.Std` provides:
 
 - `Length`
+- `Ord`
 
 The automatic prelude exposes these names without explicit `Use`.
 

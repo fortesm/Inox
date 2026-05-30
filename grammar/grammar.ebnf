@@ -107,7 +107,7 @@ enum_declaration =
     ? enum declaration body not yet specified by canonical syntax ? ;
 
 function_declaration =
-    identifier , generic_parameters_opt , parameter_list_opt , block ;
+    qualified_name , generic_parameters_opt , parameter_list_opt , block ;
 
 main_declaration =
     "Main" , parameter_list_opt , block ;
@@ -141,7 +141,7 @@ type_expr =
     | subrange_type ;
 
 primitive_type =
-      "Boolean"
+      "Bool"
     | "Int8"
     | "Int16"
     | "Int32"
@@ -195,6 +195,10 @@ statement =
     | case_statement
     | try_statement
     | raise_statement
+    | return_statement
+    | exit_statement
+    | break_statement
+    | continue_statement
     | expression_statement
     | block ;
 
@@ -251,6 +255,18 @@ finally_part =
 raise_statement =
     "raise" , [ expression ] ;
 
+return_statement =
+    "return" , expression ;
+
+exit_statement =
+    "exit" ;
+
+break_statement =
+    "break" ;
+
+continue_statement =
+    "continue" ;
+
 expression_statement =
     expression ;
 
@@ -267,17 +283,17 @@ expression =
     assignment_expression ;
 
 assignment_expression =
-    logical_expression ,
+    or_expression ,
     [ ":=" , assignment_expression ] ;
 
-logical_expression =
-    relational_expression ,
-    { logical_operator , relational_expression } ;
+or_expression =
+    xor_expression , { "or" , xor_expression } ;
 
-logical_operator =
-      "and"
-    | "xor"
-    | "or" ;
+xor_expression =
+    and_expression , { "xor" , and_expression } ;
+
+and_expression =
+    relational_expression , { "and" , relational_expression } ;
 
 relational_expression =
     membership_expression ,
@@ -296,8 +312,24 @@ membership_expression =
     [ "in" , range_expression ] ;
 
 range_expression =
-    additive_expression ,
-    [ ".." , additive_expression ] ;
+    bitor_expression ,
+    [ ".." , bitor_expression ] ;
+
+bitor_expression =
+    bitxor_expression , { "bitor" , bitxor_expression } ;
+
+bitxor_expression =
+    bitand_expression , { "bitxor" , bitand_expression } ;
+
+bitand_expression =
+    shift_expression , { "bitand" , shift_expression } ;
+
+shift_expression =
+    additive_expression , { shift_operator , additive_expression } ;
+
+shift_operator =
+      "shl"
+    | "shr" ;
 
 additive_expression =
     multiplicative_expression ,
@@ -323,7 +355,8 @@ unary_expression =
 unary_operator =
       "+"
     | "-"
-    | "not" ;
+    | "not"
+    | "bitnot" ;
 
 (* Exponentiation has higher precedence than unary operators and associates to
    the right. Therefore -x^2 is parsed as -(x^2).
@@ -380,7 +413,9 @@ identifier =
     letter , { letter | digit | "_" } ;
 
 integer_literal =
-    digit , { digit } ;
+      digit , { digit }
+    | "$" , hex_digit , { hex_digit }
+    | "0x" , hex_digit , { hex_digit } ;
 
 float_literal =
     digit , { digit } , "." , digit , { digit } ;
@@ -402,6 +437,11 @@ letter =
 digit =
       "0" | "1" | "2" | "3" | "4"
     | "5" | "6" | "7" | "8" | "9" ;
+
+hex_digit =
+      digit
+    | "A" | "B" | "C" | "D" | "E" | "F"
+    | "a" | "b" | "c" | "d" | "e" | "f" ;
 
 line_comment =
     "==" , ? all characters until end of line ? ;

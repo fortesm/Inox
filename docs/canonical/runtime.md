@@ -63,11 +63,17 @@ are not specified in this document.
 `Sys.Std` provides:
 
 - `Length`
+- `Ord`
 
 `Length` returns the length of a supported value.
 
 The exact set of supported value categories for `Length` is not specified in
 this document.
+
+`Ord` returns the ordinal value of a supported value.
+
+The exact set of supported value categories for `Ord` is not specified in this
+document.
 
 ## Exceptions
 

@@ -28,7 +28,11 @@ enum class AstNodeKind {
     ForInStatement,
     CaseStatement,
     TryStatement,
-    RaiseStatement
+    RaiseStatement,
+    ReturnStatement,
+    ExitStatement,
+    BreakStatement,
+    ContinueStatement
 };
 
 enum class LiteralKind {
@@ -47,6 +51,11 @@ enum class BinaryOperator {
     Divide,
     IntegerDivide,
     Modulo,
+    ShiftLeft,
+    ShiftRight,
+    BitAnd,
+    BitXor,
+    BitOr,
     Power,
     Range,
     In,
@@ -64,7 +73,8 @@ enum class BinaryOperator {
 enum class UnaryOperator {
     Plus,
     Minus,
-    Not
+    Not,
+    BitNot
 };
 
 enum class SectionKind {
@@ -406,6 +416,32 @@ public:
 
 private:
     ExpressionPtr expression_;
+};
+
+class ReturnStatement final : public Statement {
+public:
+    explicit ReturnStatement(ExpressionPtr expression);
+
+    const Expression& expression() const;
+    ExpressionPtr takeExpression();
+
+private:
+    ExpressionPtr expression_;
+};
+
+class ExitStatement final : public Statement {
+public:
+    ExitStatement();
+};
+
+class BreakStatement final : public Statement {
+public:
+    BreakStatement();
+};
+
+class ContinueStatement final : public Statement {
+public:
+    ContinueStatement();
 };
 
 } // namespace inox::compiler::ast

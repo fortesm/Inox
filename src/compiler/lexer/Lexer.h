@@ -28,12 +28,14 @@ private:
 
     Token identifierOrKeyword(SourceLocation start, std::size_t startOffset);
     Token number(SourceLocation start, std::size_t startOffset);
+    Token dollarHexNumber(SourceLocation start, std::size_t startOffset);
     Token stringLiteral(SourceLocation start, std::size_t startOffset);
     Token charLiteral(SourceLocation start, std::size_t startOffset);
 
     static bool isIdentifierStart(char ch);
     static bool isIdentifierPart(char ch);
     static bool isDigit(char ch);
+    static bool isHexDigit(char ch);
     static std::string normalize(std::string_view text);
     static bool isKeyword(std::string_view normalized);
 

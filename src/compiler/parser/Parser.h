@@ -38,10 +38,16 @@ private:
     using TokenKind = lexer::TokenKind;
 
     ast::ExpressionPtr parseAssignment();
-    ast::ExpressionPtr parseLogical();
+    ast::ExpressionPtr parseOr();
+    ast::ExpressionPtr parseXor();
+    ast::ExpressionPtr parseAnd();
     ast::ExpressionPtr parseRelational();
     ast::ExpressionPtr parseMembership();
     ast::ExpressionPtr parseRange();
+    ast::ExpressionPtr parseBitOr();
+    ast::ExpressionPtr parseBitXor();
+    ast::ExpressionPtr parseBitAnd();
+    ast::ExpressionPtr parseShift();
     ast::ExpressionPtr parseAdditive();
     ast::ExpressionPtr parseMultiplicative();
     ast::ExpressionPtr parseUnary();
@@ -61,6 +67,7 @@ private:
     ast::StatementPtr parseCaseStatement();
     ast::StatementPtr parseTryStatement();
     ast::StatementPtr parseRaiseStatement();
+    ast::StatementPtr parseReturnStatement();
     ast::StatementPtr parseExpressionStatement();
 
     ast::AstNodePtr parseModuleItem();

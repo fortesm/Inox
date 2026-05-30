@@ -28,6 +28,7 @@ Historical discussions are reference material only.
 - Float = Float64.
 - Currency and Crypto exist.
 - Decimal does not exist.
+- The canonical boolean type is Bool. Boolean is not a built-in type.
 - Generics use [].
 - Shadowing is forbidden.
 - State is used for mutable global state.
@@ -48,6 +49,12 @@ Historical discussions are reference material only.
 - The automatic prelude includes Sys.IO, Sys.Math, and Sys.Std.
 - Line comments use ==.
 - Block comments do not exist in 0.1.
+- Struct declares fields only. Associated methods are declared outside Struct.
+- Boolean logical operators are and, or, xor, and not.
+- Integer bitwise operators are bitand, bitor, bitxor, bitnot, shr, and shl.
+- ^ is exponentiation and is never XOR.
+- break and continue are loop statements.
+- Return Expression returns a value. Exit takes no expression.
 
 ## Case Semantics
 
@@ -65,9 +72,12 @@ Historical discussions are reference material only.
 - ^ is exponentiation and associates to the right.
 - Exponentiation has higher precedence than unary operators.
 - -x^2 means -(x^2).
-- Unary operators are +, -, and not.
+- Unary operators are +, -, not, and bitnot.
 - Multiplicative operators are *, /, div, and mod.
 - Additive operators are + and -.
+- Shift operators are shl and shr.
+- Integer bitwise operators, from highest to lowest precedence, are bitand,
+  bitxor, and bitor.
 - Range operator is ..
 - Membership operator is in.
 - Relational operators are =, #, <, >, <=, and >=.
@@ -90,7 +100,7 @@ Historical discussions are reference material only.
 
 - Sys.IO provides Put, PutLn, and ReadLn.
 - Sys.Math provides Sin, Cos, Sqrt, and Abs.
-- Sys.Std provides Length.
+- Sys.Std provides Length and Ord.
 - The automatic prelude exposes these names without explicit Use.
 
 ## Currency

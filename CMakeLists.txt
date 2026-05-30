@@ -10,4 +10,6 @@ add_executable(inox
     src/compiler/ast/Ast.cpp
     src/compiler/lexer/Lexer.cpp
     src/compiler/parser/Parser.cpp
+    src/compiler/semantic/SemanticAnalyzer.cpp
+    src/compiler/semantic/Symbol.cpp
 )

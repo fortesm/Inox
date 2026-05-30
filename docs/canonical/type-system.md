@@ -35,7 +35,11 @@ A program must not declare distinct types whose names differ only by case.
 
 ## Boolean
 
-`Boolean` is the boolean type.
+`Bool` is the boolean type.
+
+`Boolean` is not a built-in type.
+
+The literals `true` and `false` have type `Bool`.
 
 The detailed truth-value operations and conditional typing rules are not
 specified in this document.

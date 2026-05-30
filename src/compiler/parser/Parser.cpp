@@ -112,6 +112,18 @@ ast::StatementPtr Parser::parseStatement()
     if (matchKeyword("raise")) {
         return parseRaiseStatement();
     }
+    if (matchKeyword("return")) {
+        return parseReturnStatement();
+    }
+    if (matchKeyword("exit")) {
+        return std::make_unique<ast::ExitStatement>();
+    }
+    if (matchKeyword("break")) {
+        return std::make_unique<ast::BreakStatement>();
+    }
+    if (matchKeyword("continue")) {
+        return std::make_unique<ast::ContinueStatement>();
+    }
 
     return parseExpressionStatement();
 }
@@ -135,7 +147,7 @@ std::unique_ptr<ast::BlockStatement> Parser::parseBlockStatement()
 
 ast::ExpressionPtr Parser::parseAssignment()
 {
-    auto left = parseLogical();
+    auto left = parseOr();
 
     if (match(TokenKind::ColonEqual)) {
         const lexer::Token& op = previous();
@@ -147,11 +159,39 @@ ast::ExpressionPtr Parser::parseAssignment()
     return left;
 }
 
-ast::ExpressionPtr Parser::parseLogical()
+ast::ExpressionPtr Parser::parseOr()
+{
+    auto expression = parseXor();
+
+    while (checkKeyword("or")) {
+        const lexer::Token& op = advance();
+        auto right = parseXor();
+        expression = std::make_unique<ast::BinaryExpression>(
+            binaryOperatorFor(op), std::move(expression), std::move(right));
+    }
+
+    return expression;
+}
+
+ast::ExpressionPtr Parser::parseXor()
+{
+    auto expression = parseAnd();
+
+    while (checkKeyword("xor")) {
+        const lexer::Token& op = advance();
+        auto right = parseAnd();
+        expression = std::make_unique<ast::BinaryExpression>(
+            binaryOperatorFor(op), std::move(expression), std::move(right));
+    }
+
+    return expression;
+}
+
+ast::ExpressionPtr Parser::parseAnd()
 {
     auto expression = parseRelational();
 
-    while (checkKeyword("and") || checkKeyword("xor") || checkKeyword("or")) {
+    while (checkKeyword("and")) {
         const lexer::Token& op = advance();
         auto right = parseRelational();
         expression = std::make_unique<ast::BinaryExpression>(
@@ -193,10 +233,66 @@ ast::ExpressionPtr Parser::parseMembership()
 
 ast::ExpressionPtr Parser::parseRange()
 {
-    auto expression = parseAdditive();
+    auto expression = parseBitOr();
 
     if (match(TokenKind::DotDot)) {
         const lexer::Token& op = previous();
+        auto right = parseBitOr();
+        expression = std::make_unique<ast::BinaryExpression>(
+            binaryOperatorFor(op), std::move(expression), std::move(right));
+    }
+
+    return expression;
+}
+
+ast::ExpressionPtr Parser::parseBitOr()
+{
+    auto expression = parseBitXor();
+
+    while (checkKeyword("bitor")) {
+        const lexer::Token& op = advance();
+        auto right = parseBitXor();
+        expression = std::make_unique<ast::BinaryExpression>(
+            binaryOperatorFor(op), std::move(expression), std::move(right));
+    }
+
+    return expression;
+}
+
+ast::ExpressionPtr Parser::parseBitXor()
+{
+    auto expression = parseBitAnd();
+
+    while (checkKeyword("bitxor")) {
+        const lexer::Token& op = advance();
+        auto right = parseBitAnd();
+        expression = std::make_unique<ast::BinaryExpression>(
+            binaryOperatorFor(op), std::move(expression), std::move(right));
+    }
+
+    return expression;
+}
+
+ast::ExpressionPtr Parser::parseBitAnd()
+{
+    auto expression = parseShift();
+
+    while (checkKeyword("bitand")) {
+        const lexer::Token& op = advance();
+        auto right = parseShift();
+        expression = std::make_unique<ast::BinaryExpression>(
+            binaryOperatorFor(op), std::move(expression), std::move(right));
+    }
+
+    return expression;
+}
+
+ast::ExpressionPtr Parser::parseShift()
+{
+    auto expression = parseAdditive();
+
+    while (checkKeyword("shl") || checkKeyword("shr")) {
+        const lexer::Token& op = advance();
         auto right = parseAdditive();
         expression = std::make_unique<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
@@ -236,7 +332,8 @@ ast::ExpressionPtr Parser::parseMultiplicative()
 
 ast::ExpressionPtr Parser::parseUnary()
 {
-    if (check(TokenKind::Plus) || check(TokenKind::Minus) || checkKeyword("not")) {
+    if (check(TokenKind::Plus) || check(TokenKind::Minus) ||
+        checkKeyword("not") || checkKeyword("bitnot")) {
         const lexer::Token& op = advance();
         auto operand = parseUnary();
         return std::make_unique<ast::UnaryExpression>(
@@ -323,6 +420,12 @@ ast::ExpressionPtr Parser::parsePrimary()
     if (match(TokenKind::CharLiteral)) {
         return std::make_unique<ast::LiteralExpression>(
             ast::LiteralKind::Char, previous().lexeme);
+    }
+
+    if (checkKeyword("true") || checkKeyword("false")) {
+        const lexer::Token& token = advance();
+        return std::make_unique<ast::LiteralExpression>(
+            ast::LiteralKind::Boolean, token.normalized);
     }
 
     if (check(TokenKind::Identifier)) {
@@ -520,6 +623,14 @@ ast::StatementPtr Parser::parseRaiseStatement()
         expression = parseAssignment();
     }
     return std::make_unique<ast::RaiseStatement>(std::move(expression));
+}
+
+ast::StatementPtr Parser::parseReturnStatement()
+{
+    if (atStatementBoundary()) {
+        errorAtCurrent("expected expression after 'return'");
+    }
+    return std::make_unique<ast::ReturnStatement>(parseAssignment());
 }
 
 ast::StatementPtr Parser::parseExpressionStatement()
@@ -798,6 +909,21 @@ ast::BinaryOperator Parser::binaryOperatorFor(const lexer::Token& token)
         if (token.normalized == "mod") {
             return ast::BinaryOperator::Modulo;
         }
+        if (token.normalized == "shl") {
+            return ast::BinaryOperator::ShiftLeft;
+        }
+        if (token.normalized == "shr") {
+            return ast::BinaryOperator::ShiftRight;
+        }
+        if (token.normalized == "bitand") {
+            return ast::BinaryOperator::BitAnd;
+        }
+        if (token.normalized == "bitxor") {
+            return ast::BinaryOperator::BitXor;
+        }
+        if (token.normalized == "bitor") {
+            return ast::BinaryOperator::BitOr;
+        }
         if (token.normalized == "in") {
             return ast::BinaryOperator::In;
         }
@@ -828,6 +954,9 @@ ast::UnaryOperator Parser::unaryOperatorFor(const lexer::Token& token)
     }
     if (token.kind == TokenKind::Keyword && token.normalized == "not") {
         return ast::UnaryOperator::Not;
+    }
+    if (token.kind == TokenKind::Keyword && token.normalized == "bitnot") {
+        return ast::UnaryOperator::BitNot;
     }
 
     throw ParseError("unsupported unary operator", token.location);

@@ -1,5 +1,6 @@
 #include "../lexer/Lexer.h"
 #include "../parser/Parser.h"
+#include "../semantic/SemanticAnalyzer.h"
 
 #include <fstream>
 #include <iostream>
@@ -50,15 +51,23 @@ int main(int argc, char** argv)
         throwOnInvalidToken(tokens);
 
         inox::compiler::parser::Parser parser(tokens);
-        parser.parseModule();
+        auto module = parser.parseModule();
 
         std::cout << "parse ok\n";
+
+        inox::compiler::semantic::SemanticAnalyzer semanticAnalyzer;
+        semanticAnalyzer.analyze(*module);
+
+        std::cout << "semantic ok\n";
     } catch (const inox::compiler::parser::ParseError& error) {
         std::cerr
             << "parse error at "
             << error.location().line << ':'
             << error.location().column << ": "
             << error.what() << '\n';
+        return 1;
+    } catch (const inox::compiler::semantic::SemanticError& error) {
+        std::cerr << "semantic error: " << error.what() << '\n';
         return 1;
     } catch (const std::exception& error) {
         std::cerr << "error: " << error.what() << ": " << argv[1] << '\n';

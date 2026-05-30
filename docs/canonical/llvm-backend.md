@@ -39,7 +39,7 @@ generated.
 
 The canonical primitive LLVM mappings for Inox 0.1 pre-alpha are:
 
-- `Boolean` -> `i1`
+- `Bool` -> `i1`
 - `Int8` -> `i8`
 - `Int16` -> `i16`
 - `Int32` -> `i32`

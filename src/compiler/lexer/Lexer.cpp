@@ -9,11 +9,13 @@ namespace inox::compiler::lexer {
 
 namespace {
 
-constexpr std::array<std::string_view, 32> kKeywords = {
+constexpr std::array<std::string_view, 44> kKeywords = {
     "module", "use", "type", "const", "var", "state", "struct", "enum",
     "main", "if", "elif", "else", "unless", "while", "repeat", "until",
     "for", "in", "case", "otherwise", "try", "except", "finally", "raise",
-    "end", "mut", "div", "mod", "and", "xor", "or", "not"
+    "end", "mut", "div", "mod", "and", "xor", "or", "not",
+    "bitand", "bitor", "bitxor", "bitnot", "shr", "shl", "break", "continue",
+    "return", "exit", "true", "false"
 };
 
 } // namespace
@@ -75,6 +77,8 @@ Token Lexer::nextToken()
         return makeToken(TokenKind::Slash, start, startOffset);
     case '^':
         return makeToken(TokenKind::Caret, start, startOffset);
+    case '$':
+        return dollarHexNumber(start, startOffset);
     case '.':
         if (match('.')) {
             return makeToken(TokenKind::DotDot, start, startOffset);
@@ -198,6 +202,17 @@ Token Lexer::identifierOrKeyword(SourceLocation start, std::size_t startOffset)
 
 Token Lexer::number(SourceLocation start, std::size_t startOffset)
 {
+    if (source_[startOffset] == '0' && (peek() == 'x' || peek() == 'X')) {
+        advance();
+        if (!isHexDigit(peek())) {
+            return invalidToken(start, startOffset, "expected hexadecimal digit after 0x");
+        }
+        while (isHexDigit(peek())) {
+            advance();
+        }
+        return makeToken(TokenKind::IntegerLiteral, start, startOffset);
+    }
+
     while (isDigit(peek())) {
         advance();
     }
@@ -208,6 +223,19 @@ Token Lexer::number(SourceLocation start, std::size_t startOffset)
             advance();
         }
         return makeToken(TokenKind::FloatLiteral, start, startOffset);
+    }
+
+    return makeToken(TokenKind::IntegerLiteral, start, startOffset);
+}
+
+Token Lexer::dollarHexNumber(SourceLocation start, std::size_t startOffset)
+{
+    if (!isHexDigit(peek())) {
+        return invalidToken(start, startOffset, "expected hexadecimal digit after '$'");
+    }
+
+    while (isHexDigit(peek())) {
+        advance();
     }
 
     return makeToken(TokenKind::IntegerLiteral, start, startOffset);
@@ -292,6 +320,13 @@ bool Lexer::isIdentifierPart(char ch)
 bool Lexer::isDigit(char ch)
 {
     return ch >= '0' && ch <= '9';
+}
+
+bool Lexer::isHexDigit(char ch)
+{
+    return isDigit(ch) ||
+           (ch >= 'a' && ch <= 'f') ||
+           (ch >= 'A' && ch <= 'F');
 }
 
 std::string Lexer::normalize(std::string_view text)
