@@ -1,0 +1,8 @@
+Module IntegerFunction
+
+Sum(A Integer, B Integer) Integer :
+    Return A + B
+;
+
+Main() :
+;
