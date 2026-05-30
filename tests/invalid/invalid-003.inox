@@ -1,0 +1,6 @@
+Module Invalid003
+
+Main() :
+    var X := 10
+    X := X bitand "abc"
+;

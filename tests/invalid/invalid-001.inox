@@ -1,0 +1,6 @@
+Module Invalid001
+
+Main() :
+    var X := 10
+    X := "abc"
+;

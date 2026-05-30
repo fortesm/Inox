@@ -1,0 +1,5 @@
+Module Invalid006
+
+Main() :
+    break
+;

@@ -46,6 +46,7 @@ private:
     std::string analyzeUnaryExpression(const ast::UnaryExpression& expression);
     std::string analyzePreludeCall(std::string_view name,
                                    const std::vector<std::string>& argumentTypes) const;
+    void requireBoolCondition(const ast::Expression& expression);
     std::string inferSectionDeclarationType(const std::vector<std::string>& tokens,
                                             std::size_t nameIndex) const;
 
@@ -59,6 +60,7 @@ private:
     SymbolTable symbols_;
     TypeTable types_;
     std::string currentFunctionReturnType_;
+    std::size_t loopDepth_ = 0;
     bool hasMain_ = false;
 };
 

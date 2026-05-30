@@ -1,0 +1,5 @@
+Module Invalid005
+
+Main() :
+    PutLn(Ord("ABC"))
+;

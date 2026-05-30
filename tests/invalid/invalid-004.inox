@@ -1,0 +1,5 @@
+Module Invalid004
+
+Main() :
+    PutLn(Length(123))
+;

@@ -435,10 +435,10 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         break;
     case ast::AstNodeKind::IfStatement: {
         const auto& ifStatement = static_cast<const ast::IfStatement&>(statement);
-        analyzeExpression(ifStatement.condition());
+        requireBoolCondition(ifStatement.condition());
         analyzeStatements(ifStatement.thenBody(), true);
         for (const auto& clause : ifStatement.elseIfClauses()) {
-            analyzeExpression(*clause.condition);
+            requireBoolCondition(*clause.condition);
             analyzeStatements(clause.body, true);
         }
         analyzeStatements(ifStatement.elseBody(), true);
@@ -446,20 +446,24 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
     }
     case ast::AstNodeKind::UnlessStatement: {
         const auto& unlessStatement = static_cast<const ast::UnlessStatement&>(statement);
-        analyzeExpression(unlessStatement.condition());
+        requireBoolCondition(unlessStatement.condition());
         analyzeStatements(unlessStatement.body(), true);
         break;
     }
     case ast::AstNodeKind::WhileStatement: {
         const auto& whileStatement = static_cast<const ast::WhileStatement&>(statement);
-        analyzeExpression(whileStatement.condition());
+        requireBoolCondition(whileStatement.condition());
+        ++loopDepth_;
         analyzeStatements(whileStatement.body(), true);
+        --loopDepth_;
         break;
     }
     case ast::AstNodeKind::RepeatStatement: {
         const auto& repeatStatement = static_cast<const ast::RepeatStatement&>(statement);
+        ++loopDepth_;
         analyzeStatements(repeatStatement.body(), true);
-        analyzeExpression(repeatStatement.condition());
+        --loopDepth_;
+        requireBoolCondition(repeatStatement.condition());
         break;
     }
     case ast::AstNodeKind::ForInStatement: {
@@ -470,7 +474,9 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         }
         symbols_.pushScope();
         declareOrThrow(forStatement.iterator(), SymbolKind::Variable, "Int64");
+        ++loopDepth_;
         analyzeStatements(forStatement.body(), false);
+        --loopDepth_;
         symbols_.popScope();
         break;
     }
@@ -511,6 +517,16 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         }
         break;
     }
+    case ast::AstNodeKind::BreakStatement:
+        if (loopDepth_ == 0) {
+            throw SemanticError("break outside loop");
+        }
+        break;
+    case ast::AstNodeKind::ContinueStatement:
+        if (loopDepth_ == 0) {
+            throw SemanticError("continue outside loop");
+        }
+        break;
     default:
         break;
     }
@@ -627,7 +643,22 @@ std::string SemanticAnalyzer::analyzePreludeCall(
         }
     }
 
+    if (equalsIgnoreCase(name, "Length")) {
+        throw SemanticError("Length expects String");
+    }
+    if (equalsIgnoreCase(name, "Ord")) {
+        throw SemanticError("Ord expects Char");
+    }
+
     throw SemanticError("no matching prelude signature for call: " + std::string(name));
+}
+
+void SemanticAnalyzer::requireBoolCondition(const ast::Expression& expression)
+{
+    const std::string typeName = analyzeExpression(expression);
+    if (!typeName.empty() && typeName != "Bool") {
+        throw SemanticError("condition must be Bool");
+    }
 }
 
 std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& expression)
@@ -672,13 +703,13 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
         }
     };
     const auto requireIntegerOperands = [&] {
-        requireMatchingTypes();
         if ((!leftType.empty() && !isIntegerType(leftType)) ||
             (!rightType.empty() && !isIntegerType(rightType))) {
             throw SemanticError(
                 "operator '" + std::string(binaryOperatorName(op)) +
                 "' requires integer operands");
         }
+        requireMatchingTypes();
     };
 
     switch (op) {
