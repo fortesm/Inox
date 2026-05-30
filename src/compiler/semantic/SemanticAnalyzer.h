@@ -44,6 +44,8 @@ private:
     std::string analyzeExpression(const ast::Expression& expression);
     std::string analyzeBinaryExpression(const ast::BinaryExpression& expression);
     std::string analyzeUnaryExpression(const ast::UnaryExpression& expression);
+    std::string analyzePreludeCall(std::string_view name,
+                                   const std::vector<std::string>& argumentTypes) const;
     std::string inferSectionDeclarationType(const std::vector<std::string>& tokens,
                                             std::size_t nameIndex) const;
 
@@ -51,6 +53,7 @@ private:
     static bool isInternalSyntheticName(std::string_view name);
     static bool isNumericType(std::string_view typeName);
     static bool isIntegerType(std::string_view typeName);
+    static bool isPreludeCall(std::string_view name);
     static bool typesMatch(std::string_view left, std::string_view right);
 
     SymbolTable symbols_;

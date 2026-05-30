@@ -80,6 +80,29 @@ std::string_view binaryOperatorName(ast::BinaryOperator op)
     return "?";
 }
 
+struct PreludeSignature {
+    std::string_view name;
+    std::vector<std::string_view> parameterTypes;
+    std::string_view returnType;
+};
+
+const std::array<PreludeSignature, 10>& preludeSignatures()
+{
+    static const std::array<PreludeSignature, 10> signatures = {{
+        {"Put", {"*"}, "Void"},
+        {"PutLn", {"*"}, "Void"},
+        {"ReadLn", {}, "String"},
+        {"Length", {"String"}, "Int64"},
+        {"Ord", {"Char"}, "Int64"},
+        {"Sin", {"Float64"}, "Float64"},
+        {"Cos", {"Float64"}, "Float64"},
+        {"Sqrt", {"Float64"}, "Float64"},
+        {"Abs", {"Int64"}, "Int64"},
+        {"Abs", {"Float64"}, "Float64"}
+    }};
+    return signatures;
+}
+
 } // namespace
 
 SemanticError::SemanticError(std::string message)
@@ -556,6 +579,15 @@ std::string SemanticAnalyzer::analyzeExpression(const ast::Expression& expressio
                 }
                 return canonicalTypeName(type->name);
             }
+
+            if (isPreludeCall(callee.name())) {
+                std::vector<std::string> argumentTypes;
+                argumentTypes.reserve(call.arguments().size());
+                for (const auto& argument : call.arguments()) {
+                    argumentTypes.push_back(analyzeExpression(*argument));
+                }
+                return analyzePreludeCall(callee.name(), argumentTypes);
+            }
         }
 
         analyzeExpression(call.callee());
@@ -569,6 +601,33 @@ std::string SemanticAnalyzer::analyzeExpression(const ast::Expression& expressio
     }
 
     return {};
+}
+
+std::string SemanticAnalyzer::analyzePreludeCall(
+    std::string_view name,
+    const std::vector<std::string>& argumentTypes) const
+{
+    for (const PreludeSignature& signature : preludeSignatures()) {
+        if (!equalsIgnoreCase(signature.name, name) ||
+            signature.parameterTypes.size() != argumentTypes.size()) {
+            continue;
+        }
+
+        bool matches = true;
+        for (std::size_t index = 0; index < argumentTypes.size(); ++index) {
+            const std::string_view expected = signature.parameterTypes[index];
+            if (expected != "*" && argumentTypes[index] != expected) {
+                matches = false;
+                break;
+            }
+        }
+
+        if (matches) {
+            return std::string(signature.returnType);
+        }
+    }
+
+    throw SemanticError("no matching prelude signature for call: " + std::string(name));
 }
 
 std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& expression)
@@ -742,6 +801,16 @@ bool SemanticAnalyzer::isIntegerType(std::string_view typeName)
            typeName == "UInt32" ||
            typeName == "UInt64" ||
            typeName == "Natural";
+}
+
+bool SemanticAnalyzer::isPreludeCall(std::string_view name)
+{
+    for (const PreludeSignature& signature : preludeSignatures()) {
+        if (equalsIgnoreCase(signature.name, name)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool SemanticAnalyzer::typesMatch(std::string_view left, std::string_view right)
