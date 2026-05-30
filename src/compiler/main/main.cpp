@@ -1,3 +1,4 @@
+#include "../codegen/LlvmIrEmitter.h"
 #include "../lexer/Lexer.h"
 #include "../parser/Parser.h"
 #include "../semantic/SemanticAnalyzer.h"
@@ -41,13 +42,15 @@ void throwOnInvalidToken(const std::vector<Token>& tokens)
 int main(int argc, char** argv)
 {
     const bool dumpTypes = argc == 3 && std::string(argv[1]) == "--dump-types";
-    if ((!dumpTypes && argc != 2) || (dumpTypes && argc != 3)) {
-        std::cerr << "usage: inox [--dump-types] <source.inox>\n";
+    const bool emitLlvm = argc == 3 && std::string(argv[1]) == "--emit-llvm";
+    const bool hasMode = dumpTypes || emitLlvm;
+    if ((!hasMode && argc != 2) || (hasMode && argc != 3)) {
+        std::cerr << "usage: inox [--dump-types|--emit-llvm] <source.inox>\n";
         return 1;
     }
 
     try {
-        const char* sourcePath = dumpTypes ? argv[2] : argv[1];
+        const char* sourcePath = hasMode ? argv[2] : argv[1];
         const std::string source = readFile(sourcePath);
         inox::compiler::lexer::Lexer lexer(source);
         const auto tokens = lexer.tokenize();
@@ -56,12 +59,18 @@ int main(int argc, char** argv)
         inox::compiler::parser::Parser parser(tokens);
         auto module = parser.parseModule();
 
-        std::cout << "parse ok\n";
+        if (!emitLlvm) {
+            std::cout << "parse ok\n";
+        }
 
         inox::compiler::semantic::SemanticAnalyzer semanticAnalyzer;
         const auto& semanticResult = semanticAnalyzer.analyze(*module);
 
-        std::cout << "semantic ok\n";
+        if (emitLlvm) {
+            std::cout << inox::compiler::codegen::LlvmIrEmitter().emit(*module);
+        } else {
+            std::cout << "semantic ok\n";
+        }
         if (dumpTypes) {
             inox::compiler::semantic::SemanticDumper(std::cout, semanticResult).dump(*module);
         }
@@ -74,6 +83,9 @@ int main(int argc, char** argv)
         return 1;
     } catch (const inox::compiler::semantic::SemanticError& error) {
         std::cerr << "semantic error: " << error.what() << '\n';
+        return 1;
+    } catch (const inox::compiler::codegen::CodegenError& error) {
+        std::cerr << "codegen error: " << error.what() << '\n';
         return 1;
     } catch (const std::exception& error) {
         std::cerr << "error: " << error.what() << '\n';
