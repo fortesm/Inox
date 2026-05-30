@@ -1,6 +1,7 @@
 #include "../lexer/Lexer.h"
 #include "../parser/Parser.h"
 #include "../semantic/SemanticAnalyzer.h"
+#include "../semantic/SemanticDumper.h"
 
 #include <fstream>
 #include <iostream>
@@ -39,13 +40,15 @@ void throwOnInvalidToken(const std::vector<Token>& tokens)
 
 int main(int argc, char** argv)
 {
-    if (argc != 2) {
-        std::cerr << "usage: inox <source.inox>\n";
+    const bool dumpTypes = argc == 3 && std::string(argv[1]) == "--dump-types";
+    if ((!dumpTypes && argc != 2) || (dumpTypes && argc != 3)) {
+        std::cerr << "usage: inox [--dump-types] <source.inox>\n";
         return 1;
     }
 
     try {
-        const std::string source = readFile(argv[1]);
+        const char* sourcePath = dumpTypes ? argv[2] : argv[1];
+        const std::string source = readFile(sourcePath);
         inox::compiler::lexer::Lexer lexer(source);
         const auto tokens = lexer.tokenize();
         throwOnInvalidToken(tokens);
@@ -56,9 +59,12 @@ int main(int argc, char** argv)
         std::cout << "parse ok\n";
 
         inox::compiler::semantic::SemanticAnalyzer semanticAnalyzer;
-        semanticAnalyzer.analyze(*module);
+        const auto& semanticResult = semanticAnalyzer.analyze(*module);
 
         std::cout << "semantic ok\n";
+        if (dumpTypes) {
+            inox::compiler::semantic::SemanticDumper(std::cout, semanticResult).dump(*module);
+        }
     } catch (const inox::compiler::parser::ParseError& error) {
         std::cerr
             << "parse error at "
@@ -70,7 +76,7 @@ int main(int argc, char** argv)
         std::cerr << "semantic error: " << error.what() << '\n';
         return 1;
     } catch (const std::exception& error) {
-        std::cerr << "error: " << error.what() << ": " << argv[1] << '\n';
+        std::cerr << "error: " << error.what() << '\n';
         return 1;
     }
 

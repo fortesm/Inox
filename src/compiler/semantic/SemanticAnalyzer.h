@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Symbol.h"
+#include "SemanticResult.h"
 #include "../ast/Ast.h"
 
 #include <stdexcept>
@@ -31,7 +31,8 @@ class SemanticAnalyzer {
 public:
     SemanticAnalyzer();
 
-    void analyze(const ast::ModuleNode& module);
+    const SemanticResult& analyze(const ast::ModuleNode& module);
+    const SemanticResult& result() const;
 
 private:
     void declareBuiltins();
@@ -56,6 +57,8 @@ private:
     void analyzeStatement(const ast::Statement& statement);
     void analyzeVarBlock(const ast::VarBlockStatement& statement);
     std::string analyzeExpression(const ast::Expression& expression);
+    std::string inferExpressionType(const ast::Expression& expression);
+    std::string analyzeCallExpression(const ast::CallExpression& expression);
     std::string analyzeBinaryExpression(const ast::BinaryExpression& expression);
     std::string analyzeUnaryExpression(const ast::UnaryExpression& expression);
     std::string analyzePreludeCall(std::string_view name,
@@ -75,8 +78,11 @@ private:
     static bool canAssign(std::string_view targetType, std::string_view valueType);
     static bool typesMatch(std::string_view left, std::string_view right);
 
+    ResolvedType resolvedType(std::string typeName) const;
+
     SymbolTable symbols_;
     TypeTable types_;
+    SemanticResult result_;
     std::unordered_map<std::string, FunctionSignature> functions_;
     std::string currentFunctionReturnType_;
     bool currentFunctionSawReturn_ = false;

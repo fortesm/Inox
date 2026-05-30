@@ -116,8 +116,10 @@ SemanticAnalyzer::SemanticAnalyzer()
     declareBuiltinTypes();
 }
 
-void SemanticAnalyzer::analyze(const ast::ModuleNode& module)
+const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
 {
+    result_.clear();
+
     if (module.name().empty()) {
         throw SemanticError("module must have a name");
     }
@@ -137,6 +139,13 @@ void SemanticAnalyzer::analyze(const ast::ModuleNode& module)
     for (const auto& item : module.items()) {
         analyzeModuleItem(*item);
     }
+
+    return result_;
+}
+
+const SemanticResult& SemanticAnalyzer::result() const
+{
+    return result_;
 }
 
 void SemanticAnalyzer::registerFunctionSignatures(const ast::ModuleNode& module)
@@ -624,6 +633,10 @@ void SemanticAnalyzer::analyzeVarBlock(const ast::VarBlockStatement& statement)
                     const auto& identifier = static_cast<const ast::IdentifierExpression&>(binary.left());
                     const std::string typeName = analyzeExpression(binary.right());
                     declareOrThrow(identifier.name(), SymbolKind::Variable, typeName);
+                    const Symbol& symbol = resolveOrThrow(identifier.name());
+                    result_.bind(identifier, symbol);
+                    result_.setExpressionType(identifier, resolvedType(typeName));
+                    result_.setExpressionType(binary, resolvedType(typeName));
                     continue;
                 }
             }
@@ -634,6 +647,13 @@ void SemanticAnalyzer::analyzeVarBlock(const ast::VarBlockStatement& statement)
 }
 
 std::string SemanticAnalyzer::analyzeExpression(const ast::Expression& expression)
+{
+    std::string typeName = inferExpressionType(expression);
+    result_.setExpressionType(expression, resolvedType(typeName));
+    return typeName;
+}
+
+std::string SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
 {
     switch (expression.kind()) {
     case ast::AstNodeKind::LiteralExpression: {
@@ -652,48 +672,68 @@ std::string SemanticAnalyzer::analyzeExpression(const ast::Expression& expressio
         }
         break;
     }
-    case ast::AstNodeKind::IdentifierExpression:
-        return resolveOrThrow(
-            static_cast<const ast::IdentifierExpression&>(expression).name()).typeName;
+    case ast::AstNodeKind::IdentifierExpression: {
+        const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
+        const Symbol& symbol = resolveOrThrow(identifier.name());
+        result_.bind(identifier, symbol);
+        return symbol.typeName;
+    }
     case ast::AstNodeKind::BinaryExpression:
         return analyzeBinaryExpression(static_cast<const ast::BinaryExpression&>(expression));
     case ast::AstNodeKind::UnaryExpression:
         return analyzeUnaryExpression(static_cast<const ast::UnaryExpression&>(expression));
-    case ast::AstNodeKind::CallExpression: {
-        const auto& call = static_cast<const ast::CallExpression&>(expression);
-        if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
-            const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
-            if (const TypeSymbol* type = types_.resolve(callee.name())) {
-                for (const auto& argument : call.arguments()) {
-                    analyzeExpression(*argument);
-                }
-                return canonicalTypeName(type->name);
-            }
-
-            if (isPreludeCall(callee.name())) {
-                std::vector<std::string> argumentTypes;
-                argumentTypes.reserve(call.arguments().size());
-                for (const auto& argument : call.arguments()) {
-                    argumentTypes.push_back(analyzeExpression(*argument));
-                }
-                return analyzePreludeCall(callee.name(), argumentTypes);
-            }
-
-            if (const FunctionSignature* signature = resolveFunctionSignature(callee.name())) {
-                return analyzeUserFunctionCall(*signature, call.arguments());
-            }
-        }
-
-        analyzeExpression(call.callee());
-        for (const auto& argument : call.arguments()) {
-            analyzeExpression(*argument);
-        }
-        return {};
-    }
+    case ast::AstNodeKind::CallExpression:
+        return analyzeCallExpression(static_cast<const ast::CallExpression&>(expression));
     default:
         break;
     }
 
+    return {};
+}
+
+std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
+{
+    if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
+        const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
+        if (const TypeSymbol* type = types_.resolve(callee.name())) {
+            const Symbol& symbol = resolveOrThrow(callee.name());
+            result_.bind(callee, symbol);
+            result_.bind(call, symbol);
+            result_.setExpressionType(callee, resolvedType(canonicalTypeName(type->name)));
+            for (const auto& argument : call.arguments()) {
+                analyzeExpression(*argument);
+            }
+            return canonicalTypeName(type->name);
+        }
+
+        if (isPreludeCall(callee.name())) {
+            const Symbol& symbol = resolveOrThrow(callee.name());
+            result_.bind(callee, symbol);
+            result_.bind(call, symbol);
+            std::vector<std::string> argumentTypes;
+            argumentTypes.reserve(call.arguments().size());
+            for (const auto& argument : call.arguments()) {
+                argumentTypes.push_back(analyzeExpression(*argument));
+            }
+            return analyzePreludeCall(callee.name(), argumentTypes);
+        }
+
+        if (const FunctionSignature* signature = resolveFunctionSignature(callee.name())) {
+            const Symbol& symbol = resolveOrThrow(callee.name());
+            result_.bind(callee, symbol);
+            result_.bind(call, symbol);
+            return analyzeUserFunctionCall(*signature, call.arguments());
+        }
+    }
+
+    analyzeExpression(call.callee());
+    if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
+        const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
+        result_.bind(call, resolveOrThrow(callee.name()));
+    }
+    for (const auto& argument : call.arguments()) {
+        analyzeExpression(*argument);
+    }
     return {};
 }
 
@@ -774,6 +814,8 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
 
         const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression.left());
         const Symbol& target = resolveOrThrow(identifier.name());
+        result_.bind(identifier, target);
+        result_.setExpressionType(identifier, resolvedType(target.typeName));
         if (target.kind != SymbolKind::Variable && target.kind != SymbolKind::State) {
             throw SemanticError("assignment target is not mutable: " + identifier.name());
         }
@@ -965,6 +1007,11 @@ bool SemanticAnalyzer::canAssign(std::string_view targetType, std::string_view v
 bool SemanticAnalyzer::typesMatch(std::string_view left, std::string_view right)
 {
     return left.empty() || right.empty() || left == right;
+}
+
+ResolvedType SemanticAnalyzer::resolvedType(std::string typeName) const
+{
+    return ResolvedType{typeName, types_.resolve(typeName)};
 }
 
 } // namespace inox::compiler::semantic
