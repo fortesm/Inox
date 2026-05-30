@@ -47,6 +47,29 @@ function Invoke-InoxTest {
     }
 }
 
+function Invoke-LlvmEmissionTest {
+    param(
+        [System.IO.FileInfo]$TestFile
+    )
+
+    $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
+    $output = & $InoxExe "--emit-llvm" $TestFile.FullName 2>&1 | Out-String
+    $exitCode = $LASTEXITCODE
+    $hasMainDefinition = $output.Contains("define i32 @main()")
+    $hasZeroReturn = $output.Contains("ret i32 0")
+    $ok = $exitCode -eq 0 -and $hasMainDefinition -and $hasZeroReturn
+
+    if ($ok) {
+        $script:passed++
+        Write-Host "[PASS] $relativePath --emit-llvm"
+    } else {
+        $script:failed++
+        Write-Host "[FAIL] $relativePath --emit-llvm"
+        Write-Host "       expected exit code 0, define i32 @main(), and ret i32 0"
+        Write-Host "       actual exit code: $exitCode"
+    }
+}
+
 $validExamples = Get-ChildItem -LiteralPath (Join-Path $repoRoot "examples") -Filter "*.inox" -File |
     Sort-Object Name
 $invalidTests = Get-ChildItem -LiteralPath (Join-Path $repoRoot "tests\invalid") -Filter "*.inox" -File |
@@ -59,6 +82,8 @@ foreach ($example in $validExamples) {
 foreach ($test in $invalidTests) {
     Invoke-InoxTest -TestFile $test -ExpectSuccess $false
 }
+
+Invoke-LlvmEmissionTest -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\empty.inox"))
 
 $total = $passed + $failed
 Write-Host ""
