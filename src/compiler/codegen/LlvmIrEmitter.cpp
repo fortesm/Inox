@@ -39,6 +39,15 @@ std::string normalize(std::string_view name)
     return normalized;
 }
 
+std::string llvmIntegerLiteral(std::string_view value)
+{
+    if (value.empty() || value.front() != '$') {
+        return std::string(value);
+    }
+
+    return std::to_string(std::stoull(std::string(value.substr(1)), nullptr, 16));
+}
+
 struct IntegerParameter {
     std::string inoxName;
     std::string llvmName;
@@ -221,7 +230,7 @@ private:
             if (literal.literalKind() != ast::LiteralKind::Integer) {
                 break;
             }
-            return literal.value();
+            return llvmIntegerLiteral(literal.value());
         }
         case ast::AstNodeKind::IdentifierExpression: {
             const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
@@ -300,9 +309,24 @@ private:
             return "sub";
         case ast::BinaryOperator::Multiply:
             return "mul";
+        case ast::BinaryOperator::Divide:
+        case ast::BinaryOperator::IntegerDivide:
+            return "sdiv";
+        case ast::BinaryOperator::Modulo:
+            return "srem";
+        case ast::BinaryOperator::ShiftLeft:
+            return "shl";
+        case ast::BinaryOperator::ShiftRight:
+            return "ashr";
+        case ast::BinaryOperator::BitAnd:
+            return "and";
+        case ast::BinaryOperator::BitOr:
+            return "or";
+        case ast::BinaryOperator::BitXor:
+            return "xor";
         default:
             throw CodegenError(
-                "LLVM emission currently supports only +, -, and *");
+                "unsupported Integer operator for LLVM emission");
         }
     }
 

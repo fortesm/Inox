@@ -1,0 +1,19 @@
+Module IntegerOperators
+
+Compute(A Integer, B Integer) Integer :
+    Var :
+        Q := A / B
+        X := A div B
+        Y := A mod B
+        Z := X shl 2
+        W := Z shr 1
+        M := W bitand $FF
+        N := M bitor 1
+        R := N bitxor 3
+    ;
+
+    Return R
+;
+
+Main() :
+;

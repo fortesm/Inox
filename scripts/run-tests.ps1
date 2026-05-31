@@ -101,6 +101,9 @@ Invoke-LlvmEmissionTest `
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-local-assignment.inox")) `
     -RequiredFragments @("define i64 @compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "add i64", "mul i64", "store i64 %tmp2, ptr %a", "store i64 %tmp4, ptr %b", "ret i64", "define i32 @main()", "ret i32 0")
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-integer-operators.inox")) `
+    -RequiredFragments @("define i64 @compute", "%tmp0 = sdiv i64 %a, %b", "%tmp1 = sdiv i64 %a, %b", "srem i64", "shl i64", "ashr i64", "and i64", "or i64", "xor i64", "ret i64", "define i32 @main()", "ret i32 0")
 
 $total = $passed + $failed
 Write-Host ""
