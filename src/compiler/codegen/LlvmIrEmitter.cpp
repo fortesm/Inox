@@ -162,9 +162,9 @@ private:
             throw CodegenError(
                 "LLVM emission currently supports if/else only in Integer functions");
         }
-        if (!statement.elseIfClauses().empty() || statement.elseBody().empty()) {
+        if (statement.elseBody().empty()) {
             throw CodegenError(
-                "LLVM emission currently requires if with else and without elif");
+                "LLVM emission currently requires else for direct-return if chains");
         }
         if (statement.thenBody().size() != 1 ||
             statement.thenBody().front()->kind() != ast::AstNodeKind::ReturnStatement ||
@@ -173,15 +173,45 @@ private:
             throw CodegenError(
                 "LLVM emission currently requires a single Return in each if branch");
         }
+        for (const auto& clause : statement.elseIfClauses()) {
+            if (clause.body.size() != 1 ||
+                clause.body.front()->kind() != ast::AstNodeKind::ReturnStatement) {
+                throw CodegenError(
+                    "LLVM emission currently requires a single Return in each elif branch");
+            }
+        }
 
         const std::size_t label = nextLabel_++;
+        const bool hasElseIf = !statement.elseIfClauses().empty();
         const std::string condition = emitExpression(statement.condition());
         output_ << "  br i1 " << condition
                 << ", label %then" << label
-                << ", label %else" << label << "\n\n";
+                << ", label %" << (hasElseIf ? "elifcond" : "else") << label;
+        if (hasElseIf) {
+            output_ << "_0";
+        }
+        output_ << "\n\n";
 
         output_ << "then" << label << ":\n";
         emitReturn(static_cast<const ast::ReturnStatement&>(*statement.thenBody().front()));
+
+        for (std::size_t index = 0; index < statement.elseIfClauses().size(); ++index) {
+            const auto& clause = statement.elseIfClauses()[index];
+            const bool hasNext = index + 1 < statement.elseIfClauses().size();
+            output_ << "\nelifcond" << label << '_' << index << ":\n";
+            const std::string elseIfCondition = emitExpression(*clause.condition);
+            output_ << "  br i1 " << elseIfCondition
+                    << ", label %elifthen" << label << '_' << index
+                    << ", label %" << (hasNext ? "elifcond" : "else") << label;
+            if (hasNext) {
+                output_ << '_' << index + 1;
+            }
+            output_ << "\n\n";
+
+            output_ << "elifthen" << label << '_' << index << ":\n";
+            emitReturn(static_cast<const ast::ReturnStatement&>(*clause.body.front()));
+        }
+
         output_ << "\nelse" << label << ":\n";
         emitReturn(static_cast<const ast::ReturnStatement&>(*statement.elseBody().front()));
     }
@@ -478,13 +508,29 @@ private:
         }
         case ast::AstNodeKind::UnaryExpression: {
             const auto& unary = static_cast<const ast::UnaryExpression&>(expression);
-            if (unary.op() != ast::UnaryOperator::Not) {
-                break;
+            if (unary.op() == ast::UnaryOperator::Not) {
+                const std::string operand = emitExpression(unary.operand());
+                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << result << " = xor i1 " << operand << ", true\n";
+                return result;
             }
-            const std::string operand = emitExpression(unary.operand());
-            const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-            output_ << "  " << result << " = xor i1 " << operand << ", true\n";
-            return result;
+            if (unary.op() == ast::UnaryOperator::Plus) {
+                return emitExpression(unary.operand());
+            }
+            if (unary.op() == ast::UnaryOperator::Minus) {
+                if (unary.operand().kind() == ast::AstNodeKind::LiteralExpression) {
+                    const auto& literal =
+                        static_cast<const ast::LiteralExpression&>(unary.operand());
+                    if (literal.literalKind() == ast::LiteralKind::Integer) {
+                        return "-" + llvmIntegerLiteral(literal.value());
+                    }
+                }
+                const std::string operand = emitExpression(unary.operand());
+                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << result << " = sub i64 0, " << operand << '\n';
+                return result;
+            }
+            break;
         }
         case ast::AstNodeKind::CallExpression: {
             const auto& call = static_cast<const ast::CallExpression&>(expression);

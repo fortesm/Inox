@@ -1,0 +1,14 @@
+Module ElifReturn
+
+Compare(A Integer, B Integer) Integer :
+    if A > B
+        Return 1
+    elif A = B
+        Return 0
+    else
+        Return -1
+    ;
+;
+
+Main() :
+;
