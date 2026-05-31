@@ -104,19 +104,83 @@ public:
 
     void emit()
     {
-        if (function_.body().size() != 1 ||
-            function_.body().front()->kind() != ast::AstNodeKind::ReturnStatement) {
+        if (function_.body().empty() ||
+            function_.body().back()->kind() != ast::AstNodeKind::ReturnStatement) {
             throw CodegenError(
-                "LLVM emission currently supports only a single Return expression");
+                "LLVM emission currently requires a final Return expression");
+        }
+
+        for (std::size_t index = 0; index + 1 < function_.body().size(); ++index) {
+            emitLocalDeclaration(*function_.body()[index]);
         }
 
         const auto& returnStatement =
-            static_cast<const ast::ReturnStatement&>(*function_.body().front());
+            static_cast<const ast::ReturnStatement&>(*function_.body().back());
         const std::string value = emitExpression(returnStatement.expression());
         output_ << "  ret i64 " << value << '\n';
     }
 
 private:
+    void emitLocalDeclaration(const ast::Statement& statement)
+    {
+        if (statement.kind() == ast::AstNodeKind::VarStatement) {
+            const auto& variable = static_cast<const ast::VarStatement&>(statement);
+            if (variable.initializer() == nullptr) {
+                throw CodegenError(
+                    "LLVM emission currently requires local variable initialization");
+            }
+            emitLocalVariable(variable.name(), *variable.initializer());
+            return;
+        }
+
+        if (statement.kind() == ast::AstNodeKind::VarBlockStatement) {
+            const auto& block = static_cast<const ast::VarBlockStatement&>(statement);
+            for (const auto& declaration : block.declarations()) {
+                emitVarBlockDeclaration(*declaration);
+            }
+            return;
+        }
+
+        throw CodegenError(
+            "LLVM emission currently supports only local variables before Return");
+    }
+
+    void emitVarBlockDeclaration(const ast::Statement& statement)
+    {
+        if (statement.kind() != ast::AstNodeKind::ExpressionStatement) {
+            throw CodegenError(
+                "unsupported local variable declaration in Integer function");
+        }
+
+        const auto& expression =
+            static_cast<const ast::ExpressionStatement&>(statement).expression();
+        if (expression.kind() != ast::AstNodeKind::BinaryExpression) {
+            throw CodegenError(
+                "unsupported local variable declaration in Integer function");
+        }
+
+        const auto& assignment = static_cast<const ast::BinaryExpression&>(expression);
+        if (assignment.op() != ast::BinaryOperator::Assign ||
+            assignment.left().kind() != ast::AstNodeKind::IdentifierExpression) {
+            throw CodegenError(
+                "unsupported local variable declaration in Integer function");
+        }
+
+        const auto& identifier =
+            static_cast<const ast::IdentifierExpression&>(assignment.left());
+        emitLocalVariable(identifier.name(), assignment.right());
+    }
+
+    void emitLocalVariable(std::string_view name, const ast::Expression& initializer)
+    {
+        const std::string normalizedName = normalize(name);
+        const std::string slot = "%" + normalizedName;
+        output_ << "  " << slot << " = alloca i64\n";
+        const std::string value = emitExpression(initializer);
+        output_ << "  store i64 " << value << ", ptr " << slot << '\n';
+        locals_.emplace(normalizedName, slot);
+    }
+
     std::string emitExpression(const ast::Expression& expression)
     {
         switch (expression.kind()) {
@@ -129,9 +193,16 @@ private:
         }
         case ast::AstNodeKind::IdentifierExpression: {
             const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
-            const auto iterator = parameters_.find(normalize(identifier.name()));
-            if (iterator != parameters_.end()) {
-                return iterator->second;
+            const std::string normalizedName = normalize(identifier.name());
+            const auto local = locals_.find(normalizedName);
+            if (local != locals_.end()) {
+                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << result << " = load i64, ptr " << local->second << '\n';
+                return result;
+            }
+            const auto parameter = parameters_.find(normalizedName);
+            if (parameter != parameters_.end()) {
+                return parameter->second;
             }
             break;
         }
@@ -207,6 +278,7 @@ private:
     const ast::FunctionDeclaration& function_;
     const IntegerFunctionSignatures& signatures_;
     std::unordered_map<std::string, std::string> parameters_;
+    std::unordered_map<std::string, std::string> locals_;
     std::size_t nextTemporary_ = 0;
 };
 

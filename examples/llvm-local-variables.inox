@@ -1,0 +1,13 @@
+Module LocalVariables
+
+Compute() Integer :
+    Var :
+        A := 10
+        B := 20
+    ;
+
+    Return A + B
+;
+
+Main() :
+;
