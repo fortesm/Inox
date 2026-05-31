@@ -187,3 +187,8 @@ This document does not define:
 - detailed `Crypto` scale and network rules
 - a complete I/O stream model
 - a complete process or environment model
+
+
+## Temporary backend lowering note
+
+For the temporary textual LLVM backend, `Put` and `PutLn` may lower through C `printf` for `Integer`, `Bool`, and string literals. This is an implementation bridge for smoke tests only and does not define the final Inox runtime ABI.

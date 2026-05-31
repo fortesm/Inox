@@ -1,0 +1,13 @@
+Module PutOutputBasic
+
+Main() :
+    Var :
+        X := 7
+    ;
+
+    Put("X=")
+    PutLn(X)
+    PutLn("ready")
+    PutLn(True)
+    PutLn(X > 0)
+;

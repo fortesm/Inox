@@ -139,3 +139,8 @@ Historical discussions are reference material only.
 - Crypto is never Float64.
 - Crypto is intended for cryptoassets.
 - Detailed support for scales and networks belongs in runtime.md.
+
+
+## Current LLVM backend I/O milestone
+
+The textual LLVM backend currently supports temporary `printf`-based `Put`/`PutLn` lowering for `Integer`, `Bool`, and string literals. This is not the final runtime ABI; preserve it only as an executable smoke-test path until the real runtime is introduced.

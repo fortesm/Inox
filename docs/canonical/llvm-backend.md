@@ -187,3 +187,10 @@ The current textual LLVM backend includes a deliberately small runtime lowering 
 - This is a temporary backend mechanism for validating executable-style I/O paths.
 - It does not yet define the final Inox runtime ABI.
 - String output, `Put`, `ReadLn`, buffering, Unicode and platform-specific console behavior remain future runtime work.
+
+### Temporary output lowering
+
+- `PutLn(Integer)` and `Put(Integer)` currently lower through `printf`.
+- `PutLn(Bool)` and `Put(Bool)` currently lower Bool values through a `select i1` to internal `true`/`false` string constants.
+- `PutLn(String literal)` and `Put(String literal)` currently lower string literals to private LLVM string constants.
+- This is temporary smoke-test lowering, not the final Inox runtime ABI.

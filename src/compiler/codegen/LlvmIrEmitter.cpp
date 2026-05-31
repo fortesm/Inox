@@ -1,6 +1,7 @@
 #include "LlvmIrEmitter.h"
 
 #include <cctype>
+#include <iomanip>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -46,6 +47,70 @@ std::string llvmIntegerLiteral(std::string_view value)
     }
 
     return std::to_string(std::stoull(std::string(value.substr(1)), nullptr, 16));
+}
+
+
+struct LlvmStringConstant {
+    std::size_t size = 0;
+    std::string bytes;
+};
+
+void appendEscapedLlvmByte(std::ostringstream& output, unsigned char byte)
+{
+    if (byte >= 0x20 && byte <= 0x7e && byte != '"' && byte != '\\') {
+        output << static_cast<char>(byte);
+        return;
+    }
+
+    output << '\\'
+           << std::uppercase << std::hex << std::setw(2) << std::setfill('0')
+           << static_cast<int>(byte)
+           << std::nouppercase << std::dec << std::setfill(' ');
+}
+
+LlvmStringConstant llvmStringConstant(std::string_view value)
+{
+    std::ostringstream bytes;
+    std::size_t size = 0;
+
+    for (std::size_t index = 0; index < value.size(); ++index) {
+        unsigned char byte = static_cast<unsigned char>(value[index]);
+        if (byte == '\\' && index + 1 < value.size()) {
+            const char escape = value[++index];
+            switch (escape) {
+            case 'n':
+                byte = '\n';
+                break;
+            case 'r':
+                byte = '\r';
+                break;
+            case 't':
+                byte = '\t';
+                break;
+            case '\\':
+                byte = '\\';
+                break;
+            case '"':
+                byte = '"';
+                break;
+            case '0':
+                byte = '\0';
+                break;
+            default:
+                appendEscapedLlvmByte(bytes, '\\');
+                ++size;
+                byte = static_cast<unsigned char>(escape);
+                break;
+            }
+        }
+
+        appendEscapedLlvmByte(bytes, byte);
+        ++size;
+    }
+
+    appendEscapedLlvmByte(bytes, '\0');
+    ++size;
+    return LlvmStringConstant{size, bytes.str()};
 }
 
 struct IntegerParameter {
@@ -117,8 +182,15 @@ public:
     FunctionEmitter(std::ostringstream& output,
                     const ast::FunctionDeclaration& function,
                     const FunctionSignature& signature,
-                    const FunctionSignatures& signatures)
-        : output_(output), function_(function), signature_(signature), signatures_(signatures)
+                    const FunctionSignatures& signatures,
+                    std::vector<std::string>& stringGlobals,
+                    std::size_t& nextStringLiteral)
+        : output_(output),
+          function_(function),
+          signature_(signature),
+          signatures_(signatures),
+          stringGlobals_(stringGlobals),
+          nextStringLiteral_(nextStringLiteral)
     {
         for (const IntegerParameter& parameter : signature.parameters) {
             parameters_.emplace(normalize(parameter.inoxName), "%" + parameter.llvmName);
@@ -618,28 +690,91 @@ private:
     {
         if (expression.kind() != ast::AstNodeKind::CallExpression) {
             throw CodegenError(
-                "LLVM emission currently supports only assignments and PutLn calls as statements");
+                "LLVM emission currently supports only assignments and Put/PutLn calls as statements");
         }
 
         const auto& call = static_cast<const ast::CallExpression&>(expression);
         if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
             throw CodegenError(
-                "LLVM emission currently supports only direct PutLn calls as statements");
+                "LLVM emission currently supports only direct Put/PutLn calls as statements");
         }
 
         const auto& callee =
             static_cast<const ast::IdentifierExpression&>(call.callee());
-        if (!equalsIgnoreCase(callee.name(), "PutLn")) {
+        const bool isPut = equalsIgnoreCase(callee.name(), "Put");
+        const bool isPutLn = equalsIgnoreCase(callee.name(), "PutLn");
+        if (!isPut && !isPutLn) {
             throw CodegenError(
-                "LLVM emission currently supports only PutLn calls as non-assignment statements");
+                "LLVM emission currently supports only Put and PutLn calls as non-assignment statements");
         }
         if (call.arguments().size() != 1) {
-            throw CodegenError("PutLn LLVM emission expects exactly one argument");
+            throw CodegenError("Put/PutLn LLVM emission expects exactly one argument");
         }
 
-        const std::string value = emitExpression(*call.arguments().front());
-        output_ << "  call i32 (ptr, ...) @printf(ptr @.inox.fmt.i64.nl, i64 "
-                << value << ")\n";
+        emitOutputCall(*call.arguments().front(), isPutLn);
+    }
+
+    void emitOutputCall(const ast::Expression& argument, bool newline)
+    {
+        if (argument.kind() == ast::AstNodeKind::LiteralExpression) {
+            const auto& literal = static_cast<const ast::LiteralExpression&>(argument);
+            if (literal.literalKind() == ast::LiteralKind::String) {
+                const std::string value = emitStringLiteral(literal.value());
+                output_ << "  call i32 (ptr, ...) @printf(ptr "
+                        << (newline ? "@.inox.fmt.str.nl" : "@.inox.fmt.str")
+                        << ", ptr " << value << ")\n";
+                return;
+            }
+        }
+
+        if (isBoolExpression(argument)) {
+            const std::string value = emitExpression(argument);
+            const std::string selected = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << selected
+                    << " = select i1 " << value
+                    << ", ptr @.inox.true, ptr @.inox.false\n";
+            output_ << "  call i32 (ptr, ...) @printf(ptr "
+                    << (newline ? "@.inox.fmt.str.nl" : "@.inox.fmt.str")
+                    << ", ptr " << selected << ")\n";
+            return;
+        }
+
+        const std::string value = emitExpression(argument);
+        output_ << "  call i32 (ptr, ...) @printf(ptr "
+                << (newline ? "@.inox.fmt.i64.nl" : "@.inox.fmt.i64")
+                << ", i64 " << value << ")\n";
+    }
+
+    std::string emitStringLiteral(std::string_view value)
+    {
+        const std::string name = ".inox.str." + std::to_string(nextStringLiteral_++);
+        const LlvmStringConstant constant = llvmStringConstant(value);
+        std::ostringstream global;
+        global << "@" << name << " = private unnamed_addr constant ["
+               << constant.size << " x i8] c\"" << constant.bytes << "\"";
+        stringGlobals_.push_back(global.str());
+        return "@" + name;
+    }
+
+    bool isBoolExpression(const ast::Expression& expression) const
+    {
+        if (expression.kind() == ast::AstNodeKind::LiteralExpression) {
+            const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
+            return literal.literalKind() == ast::LiteralKind::Boolean;
+        }
+
+        if (expression.kind() == ast::AstNodeKind::UnaryExpression) {
+            const auto& unary = static_cast<const ast::UnaryExpression&>(expression);
+            return unary.op() == ast::UnaryOperator::Not;
+        }
+
+        if (expression.kind() == ast::AstNodeKind::BinaryExpression) {
+            const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
+            return !llvmComparisonPredicate(binary.op()).empty() ||
+                   !llvmBooleanOperation(binary.op()).empty();
+        }
+
+        return false;
     }
 
     void emitLocalAssignment(const ast::Expression& expression)
@@ -856,6 +991,8 @@ private:
     const ast::FunctionDeclaration& function_;
     const FunctionSignature& signature_;
     const FunctionSignatures& signatures_;
+    std::vector<std::string>& stringGlobals_;
+    std::size_t& nextStringLiteral_;
     std::unordered_map<std::string, std::string> parameters_;
     std::unordered_map<std::string, std::string> locals_;
     std::vector<LoopTargets> loopTargets_;
@@ -866,7 +1003,9 @@ private:
 void emitFunction(std::ostringstream& output,
                   const ast::FunctionDeclaration& function,
                   const FunctionSignature& signature,
-                  const FunctionSignatures& signatures)
+                  const FunctionSignatures& signatures,
+                  std::vector<std::string>& stringGlobals,
+                  std::size_t& nextStringLiteral)
 {
     output << "define " << signature.llvmReturnType << " @" << signature.llvmName << '(';
     for (std::size_t index = 0; index < signature.parameters.size(); ++index) {
@@ -877,7 +1016,7 @@ void emitFunction(std::ostringstream& output,
     }
     output << ") {\n"
            << "entry:\n";
-    FunctionEmitter(output, function, signature, signatures).emit();
+    FunctionEmitter(output, function, signature, signatures, stringGlobals, nextStringLiteral).emit();
     output << "}\n\n";
 }
 
@@ -892,10 +1031,10 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
 {
     const ast::FunctionDeclaration* mainFunction = nullptr;
     FunctionSignatures signatures;
+    std::ostringstream functionOutput;
     std::ostringstream output;
-
-    output << "@.inox.fmt.i64.nl = private unnamed_addr constant [6 x i8] c\"%lld\\0A\\00\"\n"
-           << "declare i32 @printf(ptr, ...)\n\n";
+    std::vector<std::string> stringGlobals;
+    std::size_t nextStringLiteral = 0;
 
     for (const auto& item : module.items()) {
         if (item->kind() != ast::AstNodeKind::FunctionDeclaration) {
@@ -919,7 +1058,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
         const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
         if (!equalsIgnoreCase(function.name(), "Main")) {
             const auto signature = signatures.find(normalize(function.name()));
-            emitFunction(output, function, signature->second, signatures);
+            emitFunction(functionOutput, function, signature->second, signatures, stringGlobals, nextStringLiteral);
         }
     }
 
@@ -927,7 +1066,19 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
         throw CodegenError("LLVM emission requires Main()");
     }
     const FunctionSignature mainSignature{"main", "i32", {}};
-    emitFunction(output, *mainFunction, mainSignature, signatures);
+    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, stringGlobals, nextStringLiteral);
+
+    output << "@.inox.fmt.i64.nl = private unnamed_addr constant [6 x i8] c\"%lld\\0A\\00\"\n"
+           << "@.inox.fmt.i64 = private unnamed_addr constant [5 x i8] c\"%lld\\00\"\n"
+           << "@.inox.fmt.str.nl = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\"\n"
+           << "@.inox.fmt.str = private unnamed_addr constant [3 x i8] c\"%s\\00\"\n"
+           << "@.inox.true = private unnamed_addr constant [5 x i8] c\"true\\00\"\n"
+           << "@.inox.false = private unnamed_addr constant [6 x i8] c\"false\\00\"\n";
+    for (const std::string& global : stringGlobals) {
+        output << global << '\n';
+    }
+    output << "declare i32 @printf(ptr, ...)\n\n";
+    output << functionOutput.str();
     return output.str();
 }
 
