@@ -44,3 +44,7 @@ behaviors rather than type hierarchies.
 Contracts, protocols, behaviors, callbacks, method references,
 visibility/export, property-like syntax, advanced string runtime behavior, and
 LLVM implementation work are not implemented as part of this update.
+
+## Consolidated 0.1 Identity
+
+The complete human-readable language overview is maintained in `docs/canonical/language-reference.md` and rendered as `docs/site/index.html`. The identity of Inox 0.1 is now fixed around post-object-oriented programming: structs are data, associated methods are behavior, and future contracts/protocols/behaviors must not recreate classical inheritance or Java-style interfaces.

@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inox Language Manual 0.1 pre-alpha</title>
+<style>
+:root{--bg:#0f1115;--panel:#161a22;--text:#e8edf2;--muted:#aab6c4;--accent:#8fb3ff;--code:#0b0d12;--border:#2c3442;--link:#9cc2ff;}
+*{box-sizing:border-box} body{margin:0;font-family:Segoe UI,Roboto,Arial,sans-serif;line-height:1.55;background:var(--bg);color:var(--text)}
+a{color:var(--link)} header{padding:2.5rem 1.5rem;background:linear-gradient(120deg,#19233a,#11151f);border-bottom:1px solid var(--border)}
+header h1{margin:0;font-size:2.2rem} header p{max-width:70rem;color:var(--muted);font-size:1.08rem}
+.layout{display:grid;grid-template-columns:minmax(15rem,20rem) minmax(0,1fr);gap:0;max-width:1400px;margin:0 auto}
+nav{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:1.25rem;border-right:1px solid var(--border);background:var(--panel)}
+nav h2{font-size:1rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)} nav ol{padding-left:1.25rem} nav li{margin:.35rem 0}
+main{padding:2rem 2.5rem;max-width:68rem} h2{margin-top:2.4rem;padding-top:.5rem;border-top:1px solid var(--border)} h3{margin-top:1.6rem}
+pre{background:var(--code);border:1px solid var(--border);border-radius:.5rem;padding:1rem;overflow:auto} code{font-family:Consolas,Menlo,monospace} p code, li code{background:#1d2430;padding:.1rem .25rem;border-radius:.25rem}
+ul{margin-top:.35rem} .note{border-left:4px solid var(--accent);padding:.75rem 1rem;background:#151d2c;color:var(--muted)}
+@media(max-width:850px){.layout{display:block}nav{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--border)}main{padding:1.25rem}}
+</style>
+</head><body>
+<header><h1>Inox Language Manual 0.1 pre-alpha</h1><p>A consolidated human and AI reference for the Inox programming language: philosophy, syntax, semantics, type model, runtime direction, backend status, and future boundaries.</p></header>
+<div class="layout">
+<nav><h2>Contents</h2><ol>
+<!-- TOC inserted by document headings below; use browser search or scroll. -->
+</ol></nav><main>
+<p>This document is the consolidated human and AI reference for Inox 0.1 pre-alpha.</p>
+<p>It is written as a tutorial and as a guardrail for future work by human contributors,</p>
+<p>Codex, and other coding agents.</p>
+<p>The canonical source tree remains:</p>
+<ul>
+<li><code>AGENTS.md</code></li>
+<li><code>docs/canonical/vision.md</code></li>
+<li><code>docs/canonical/syntax.md</code></li>
+<li><code>docs/canonical/semantics.md</code></li>
+<li><code>docs/canonical/type-system.md</code></li>
+<li><code>docs/canonical/runtime.md</code></li>
+<li><code>docs/canonical/llvm-backend.md</code></li>
+<li><code>grammar/grammar.ebnf</code></li>
+</ul>
+<p>When this manual and a more specific canonical document disagree, treat the</p>
+<p>specific canonical document as needing correction. Do not silently invent a third</p>
+<p>meaning.</p>
+<hr>
+<h2 id="table-of-contents">Table of contents</h2>
+<p>1. [Purpose](#purpose)</p>
+<p>2. [Design philosophy](#design-philosophy)</p>
+<p>3. [Non-goals](#non-goals)</p>
+<p>4. [Lexical rules](#lexical-rules)</p>
+<p>5. [Blocks and semicolon](#blocks-and-semicolon)</p>
+<p>6. [Modules and Use](#modules-and-use)</p>
+<p>7. [Declarations](#declarations)</p>
+<p>8. [Types](#types)</p>
+<p>9. [Structs](#structs)</p>
+<p>10. [Associated methods](#associated-methods)</p>
+<p>11. [Variables, constants, and state](#variables-constants-and-state)</p>
+<p>12. [Expressions and operators](#expressions-and-operators)</p>
+<p>13. [Control flow](#control-flow)</p>
+<p>14. [Subroutines and functions](#subroutines-and-functions)</p>
+<p>15. [Prelude and runtime](#prelude-and-runtime)</p>
+<p>16. [Strings](#strings)</p>
+<p>17. [Arrays, vectors, ranges, and sets](#arrays-vectors-ranges-and-sets)</p>
+<p>18. [Contracts, protocols, and behaviors](#contracts-protocols-and-behaviors)</p>
+<p>19. [Visibility and modules](#visibility-and-modules)</p>
+<p>20. [LLVM backend status](#llvm-backend-status)</p>
+<p>21. [Portability rules](#portability-rules)</p>
+<p>22. [Style conventions](#style-conventions)</p>
+<p>23. [Canonical examples](#canonical-examples)</p>
+<p>24. [Deferred features](#deferred-features)</p>
+<hr>
+<h2 id="purpose">Purpose</h2>
+<p>Inox is a compiled, strongly typed, case-insensitive language designed to recover</p>
+<p>some of the clarity and low-friction usability of Pascal-family languages while</p>
+<p>avoiding the complexity of classical object orientation.</p>
+<p>The practical 0.1 goal is not to compete immediately with mature industrial</p>
+<p>languages. The practical goal is a small, coherent compiler that can compile useful</p>
+<p>programs with a short edit-build-run cycle and a readable language surface.</p>
+<p>A production-quality 0.1 should feel closer to the simplicity of Turbo Pascal 7</p>
+<p>than to a sprawling framework ecosystem, but with a modern type system direction,</p>
+<p>LLVM backend, structs, composition, and associated methods instead of classes and</p>
+<p>inheritance.</p>
+<hr>
+<h2 id="design-philosophy">Design philosophy</h2>
+<p>Inox is post-object-oriented.</p>
+<p>The language explicitly rejects the idea that every software problem must be</p>
+<p>modeled as a class hierarchy. Not every relation is taxonomic. Reuse should not</p>
+<p>require inheriting a base class or building stacks of interfaces.</p>
+<p>Inox therefore uses:</p>
+<ul>
+<li>nominal static typing;</li>
+<li>structs as data;</li>
+<li>associated methods declared outside structs;</li>
+<li>composition over inheritance;</li>
+<li>future contracts/protocols/behaviors for behavior reuse;</li>
+<li>explicit, strongly checked semantics;</li>
+<li>minimal boilerplate;</li>
+<li>a deliberately DRY style.</li>
+</ul>
+<p>The ergonomic goal is to keep useful call syntax:</p>
+<pre><code>P.Move(3, 7)</code></pre>
+<p>without introducing classes, inheritance, Java-style interfaces, mixins, duck</p>
+<p>typing, or hidden runtime taxonomies.</p>
+<hr>
+<h2 id="non-goals">Non-goals</h2>
+<p>Inox 0.1 does not have:</p>
+<ul>
+<li>classes;</li>
+<li>classical inheritance;</li>
+<li>Java-style interfaces;</li>
+<li>mixins;</li>
+<li>duck typing;</li>
+<li>mandatory class taxonomies;</li>
+<li>duplicated method signatures inside structs;</li>
+<li>heavy RTTI;</li>
+<li>reflection;</li>
+<li>a heavy garbage collector;</li>
+<li>property syntax;</li>
+<li>virtual/abstract method dispatch;</li>
+<li>a complete module/package manager;</li>
+<li>a complete string/Unicode runtime;</li>
+<li>a complete exception ABI.</li>
+</ul>
+<p>Future work may add advanced behavior reuse, but it must not reintroduce classical</p>
+<p>OO under another name.</p>
+<hr>
+<h2 id="lexical-rules">Lexical rules</h2>
+<p>Inox is case-insensitive. The following spellings denote the same keyword or name:</p>
+<pre><code>Main
+main
+MAIN</code></pre>
+<p>The compiler must preserve original lexemes where useful for diagnostics, but</p>
+<p>semantic lookup is case-insensitive.</p>
+<p>Line comments use <code>==</code>:</p>
+<pre><code>== This is a comment.</code></pre>
+<p>Block comments are not part of Inox 0.1.</p>
+<p>String literals use double quotes. Character literals use single quotes.</p>
+<p>Hexadecimal integer literals may use Pascal-style <code>$FF</code> or C-style <code>0xFF</code> where</p>
+<p>supported by the lexer.</p>
+<hr>
+<h2 id="blocks-and-semicolon">Blocks and semicolon</h2>
+<p>The semicolon <code>;</code> closes blocks. It is not a general statement terminator.</p>
+<p>Named subroutine blocks use <code>:</code>:</p>
+<pre><code>Compute() Integer :
+    Return 10
+;</code></pre>
+<p>The <code>;</code> closes the subroutine block. It does not terminate the <code>Return</code> statement.</p>
+<p>Conditional branches are not named blocks. <code>if</code>, <code>elif</code>, and <code>else</code> do not use</p>
+<p><code>then</code> and do not use <code>:</code>. The end of the line after the condition opens the branch:</p>
+<pre><code>if A &gt; B
+    Return A
+else
+    Return B
+;</code></pre>
+<p>There is exactly one <code>;</code> for the whole <code>if</code>/<code>elif</code>/<code>else</code> structure. This is wrong:</p>
+<pre><code>if A &gt; B
+    Return A
+;
+else
+    Return B
+;</code></pre>
+<p>Indentation is visual only. It is not Python-style block syntax.</p>
+<hr>
+<h2 id="modules-and-use">Modules and Use</h2>
+<p>A source file begins with a module declaration:</p>
+<pre><code>Module Demo</code></pre>
+<p><code>Module</code> closes at EOF. There is no final <code>;</code> for the module.</p>
+<p><code>Use</code> is reserved for module imports. In 0.1, the complete multi-file module system</p>
+<p>is not implemented. The automatic prelude is always visible.</p>
+<p>Future <code>Use</code> semantics must avoid uncontrolled name pollution. The preferred</p>
+<p>future direction is explicit modules and predictable conflict handling.</p>
+<hr>
+<h2 id="declarations">Declarations</h2>
+<p>Top-level declarations include:</p>
+<ul>
+<li><code>Use</code></li>
+<li><code>Type</code></li>
+<li><code>Const</code></li>
+<li><code>State</code></li>
+<li>functions/subroutines</li>
+<li><code>Main</code></li>
+</ul>
+<p><code>Type</code> is a section/declarator, inspired by Go. It is not a block and it has no</p>
+<p>closing semicolon.</p>
+<p>Canonical type section:</p>
+<pre><code>Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+    TUser Struct
+        FName String
+        FAge Integer
+    ;</code></pre>
+<p>The <code>;</code> closes each <code>Struct</code>, not the <code>Type</code> section.</p>
+<hr>
+<h2 id="types">Types</h2>
+<p>Inox is strongly and nominally typed.</p>
+<p>Canonical built-in scalar type names include:</p>
+<ul>
+<li><code>Bool</code></li>
+<li><code>Int8</code>, <code>Int16</code>, <code>Int32</code>, <code>Int64</code></li>
+<li><code>UInt8</code>, <code>UInt16</code>, <code>UInt32</code>, <code>UInt64</code></li>
+<li><code>Integer</code> = <code>Int64</code></li>
+<li><code>UInteger</code> = <code>UInt64</code></li>
+<li><code>Natural</code></li>
+<li><code>Float32</code>, <code>Float64</code></li>
+<li><code>Float</code> = <code>Float64</code></li>
+<li><code>Currency</code></li>
+<li><code>Crypto</code></li>
+<li><code>Char</code></li>
+<li><code>String</code></li>
+</ul>
+<p><code>Bool</code> is the canonical boolean type. <code>Boolean</code> is not a built-in type.</p>
+<p><code>Currency</code> is an exact monetary decimal type and is never <code>Float64</code>.</p>
+<p><code>Crypto</code> is an exact high-precision decimal type and is never <code>Float64</code>.</p>
+<p>Implicit conversions are allowed only for safe widening. Casts use:</p>
+<pre><code>Integer(X)
+Currency(&quot;12.34&quot;)</code></pre>
+<hr>
+<h2 id="structs">Structs</h2>
+<p>A <code>Struct</code> declares fields only. It never declares methods and never repeats method</p>
+<p>signatures.</p>
+<p>Canonical syntax:</p>
+<pre><code>Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;</code></pre>
+<p><code>Type</code> has no <code>:</code> and no closing <code>;</code>.</p>
+<p><code>Struct</code> opens the struct body and <code>;</code> closes the struct.</p>
+<p>Struct type names conventionally begin with <code>T</code>. Struct fields conventionally</p>
+<p>begin with <code>F</code>. These are style conventions in 0.1, not compiler errors.</p>
+<h3 id="field-defaults">Field defaults</h3>
+<p>Integer and Bool fields may have literal defaults in the current subset:</p>
+<pre><code>Type
+    TConfig Struct
+        FPort Integer := 8080
+        FEnabled Bool := true
+    ;</code></pre>
+<p>A local struct variable is default-initialized. The current LLVM backend uses zero</p>
+<p>initialization and then emits explicit stores for literal defaults.</p>
+<h3 id="field-access">Field access</h3>
+<p>Field access uses dot syntax:</p>
+<pre><code>P.FX := 10
+P.FY := 20
+Return P.FX + P.FY</code></pre>
+<p>Field lookup is case-insensitive.</p>
+<h3 id="value-semantics">Value semantics</h3>
+<p>Structs are value types. Assignment and parameter passing are intended to copy by</p>
+<p>value unless a future explicit reference/borrow mechanism says otherwise.</p>
+<p>The current backend already passes associated-method receivers by pointer for</p>
+<p>implementation convenience when the receiver is local storage. That does not make</p>
+<p>structs classes and does not introduce inheritance.</p>
+<h3 id="not-in-the-first-struct-subset">Not in the first struct subset</h3>
+<p>The following are deferred:</p>
+<ul>
+<li>variant structs;</li>
+<li>tags such as JSON/DB metadata;</li>
+<li>embedding/composition promotion;</li>
+<li>general struct parameters and returns where not implemented;</li>
+<li>struct comparison;</li>
+<li>heap allocation;</li>
+<li>reference/borrow semantics.</li>
+</ul>
+<hr>
+<h2 id="associated-methods">Associated methods</h2>
+<p>Associated methods are declared outside structs. This is a core Inox rule.</p>
+<p>Canonical method declaration:</p>
+<pre><code>TPoint.Move(Self TPoint, DX Integer, DY Integer) :
+    Self.FX := Self.FX + DX
+    Self.FY := Self.FY + DY
+;</code></pre>
+<p>Canonical call-site sugar:</p>
+<pre><code>P.Move(3, 7)</code></pre>
+<p>The call is lowered as an associated function call with the receiver supplied</p>
+<p>explicitly by the compiler.</p>
+<p>Rules for 0.1:</p>
+<ul>
+<li><code>Self</code> is explicit in the method declaration.</li>
+<li>The receiver parameter is the first parameter.</li>
+<li>Struct declarations do not list or repeat method signatures.</li>
+<li>No virtual dispatch is introduced.</li>
+<li>No inheritance relation is introduced.</li>
+<li>No Java-style interface is introduced.</li>
+<li>Method lookup is nominal and case-insensitive.</li>
+</ul>
+<p>Mutability of <code>Self</code> is intentionally simple in the current subset: local struct</p>
+<p>storage may be mutated by associated methods. A future <code>mut Self</code> spelling may be</p>
+<p>introduced only if it improves static checking without adding boilerplate.</p>
+<hr>
+<h2 id="variables-constants-and-state">Variables, constants, and state</h2>
+<p>Local variables are declared with inline <code>var</code> or a <code>Var</code> block.</p>
+<p>Examples:</p>
+<pre><code>var X := 10</code></pre>
+<pre><code>Var :
+    X := 10
+    Y Integer := 20
+;</code></pre>
+<p>Local variables are mutable in the current 0.1 subset. Constants belong in <code>Const</code>.</p>
+<p>Mutable global state must use <code>State</code> explicitly.</p>
+<p>Shadowing is forbidden in all scopes. Because the language is case-insensitive,</p>
+<p><code>Value</code>, <code>value</code>, and <code>VALUE</code> are the same name.</p>
+<hr>
+<h2 id="expressions-and-operators">Expressions and operators</h2>
+<p>Assignment uses <code>:=</code>.</p>
+<p>Logical Bool operators:</p>
+<ul>
+<li><code>and</code></li>
+<li><code>or</code></li>
+<li><code>xor</code></li>
+<li><code>not</code></li>
+</ul>
+<p>Integer bitwise operators:</p>
+<ul>
+<li><code>bitand</code></li>
+<li><code>bitor</code></li>
+<li><code>bitxor</code></li>
+<li><code>bitnot</code></li>
+<li><code>shr</code></li>
+<li><code>shl</code></li>
+</ul>
+<p>Do not use <code>&amp;</code>, <code>|</code>, <code>~</code>, <code>&lt;&lt;</code>, or <code>&gt;&gt;</code> as bitwise operators in Inox 0.1.</p>
+<p><code>^</code> is exponentiation and is never XOR.</p>
+<p>Precedence, from highest to lowest:</p>
+<p>1. parentheses</p>
+<p>2. calls, indexing, member access</p>
+<p>3. exponentiation <code>^</code></p>
+<p>4. unary <code>+</code>, <code>-</code>, <code>not</code>, <code>bitnot</code></p>
+<p>5. <code>*</code>, <code>/</code>, <code>div</code>, <code>mod</code></p>
+<p>6. <code>+</code>, <code>-</code></p>
+<p>7. <code>shl</code>, <code>shr</code></p>
+<p>8. <code>bitand</code></p>
+<p>9. <code>bitxor</code></p>
+<p>10. <code>bitor</code></p>
+<p>11. range <code>..</code></p>
+<p>12. membership <code>in</code></p>
+<p>13. relational <code>=</code>, <code>#</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code></p>
+<p>14. logical <code>and</code></p>
+<p>15. logical <code>xor</code></p>
+<p>16. logical <code>or</code></p>
+<p>17. assignment <code>:=</code></p>
+<p><code>^</code> is right-associative. Assignment is right-associative. Assignment inside a</p>
+<p>boolean expression is forbidden.</p>
+<hr>
+<h2 id="control-flow">Control flow</h2>
+<h3 id="if-elif-else">if / elif / else</h3>
+<p>Canonical form:</p>
+<pre><code>if A &gt; B
+    Return A
+elif A = B
+    Return 0
+else
+    Return B
+;</code></pre>
+<p>No <code>then</code>. No <code>:</code>. No <code>;</code> between branches.</p>
+<h3 id="while">while</h3>
+<pre><code>while I &gt; 0
+    I := I - 1
+;</code></pre>
+<h3 id="repeat-until">repeat / until</h3>
+<p>Inox <code>repeat</code> is a general loop, not merely Pascal <code>repeat until</code>.</p>
+<p><code>until Condition</code> is a statement inside <code>repeat</code>. It exits the nearest enclosing</p>
+<p><code>repeat</code> when the condition is true.</p>
+<pre><code>repeat
+    Work()
+    until Done
+    ContinueWork()
+;</code></pre>
+<p><code>until</code> may appear at the start, middle, or end of the repeat body, and may appear</p>
+<p>multiple times.</p>
+<pre><code>repeat
+    until Done
+    Work()
+;</code></pre>
+<p>A final <code>until</code> gives Pascal-like behavior:</p>
+<pre><code>repeat
+    Work()
+until Done
+;</code></pre>
+<p><code>repeat</code> without <code>until</code> is an explicit infinite loop and must rely on <code>break</code>,</p>
+<p><code>Exit</code>, or <code>Return</code> to terminate.</p>
+<h3 id="for-in-range">for in range</h3>
+<p>Counted range loops use:</p>
+<pre><code>for I in 1..N
+    Total := Total + I
+;</code></pre>
+<p>Stepped counted range loops use:</p>
+<pre><code>for I in 2..N(2)
+    Total := Total + I
+;</code></pre>
+<p>The current LLVM subset supports inclusive increasing Integer ranges with positive</p>
+<p>step.</p>
+<h3 id="break-and-continue">break and continue</h3>
+<p><code>break</code> exits the innermost loop.</p>
+<p><code>continue</code> continues the innermost loop.</p>
+<p>Current loop constructs are <code>while</code>, <code>repeat</code>, and <code>for</code>.</p>
+<h3 id="case">case</h3>
+<p><code>case</code> follows Ada/SPARK style:</p>
+<ul>
+<li>no fallthrough;</li>
+<li>no <code>break</code>;</li>
+<li>supports individual values and ranges;</li>
+<li><code>otherwise</code> is required unless the compiler can prove exhaustiveness.</li>
+</ul>
+<hr>
+<h2 id="subroutines-and-functions">Subroutines and functions</h2>
+<p>A function has a return type:</p>
+<pre><code>Sum(A Integer, B Integer) Integer :
+    Return A + B
+;</code></pre>
+<p>A subroutine omits the return type:</p>
+<pre><code>Report(Value Integer) :
+    PutLn(Value)
+;</code></pre>
+<p><code>Return Expression</code> returns a value from a function.</p>
+<p><code>Exit</code> exits the current subroutine without an expression.</p>
+<p>There is no implicit <code>Result</code>. There is no <code>Return := Expression</code>.</p>
+<p>Function and subroutine names are case-insensitive.</p>
+<hr>
+<h2 id="prelude-and-runtime">Prelude and runtime</h2>
+<p>The automatic prelude exposes:</p>
+<ul>
+<li><code>Sys.IO</code>: <code>Put</code>, <code>PutLn</code>, <code>ReadLn</code></li>
+<li><code>Sys.Math</code>: <code>Sin</code>, <code>Cos</code>, <code>Sqrt</code>, <code>Abs</code></li>
+<li><code>Sys.Std</code>: <code>Length</code>, <code>Ord</code></li>
+</ul>
+<p>The current backend implements a temporary <code>printf</code>-based lowering for output.</p>
+<p>This is a smoke-test mechanism, not the final runtime ABI.</p>
+<hr>
+<h2 id="strings">Strings</h2>
+<p>Canonical direction:</p>
+<ul>
+<li><code>String</code> is a UTF-8 runtime type.</li>
+<li>String values are immutable unless a future mutable string/buffer type is</li>
+</ul>
+<p>  explicitly introduced.</p>
+<ul>
+<li>String literals are supported by the current output backend.</li>
+<li>Full Unicode indexing semantics are deferred.</li>
+</ul>
+<p>Future runtime should distinguish byte length, Unicode scalar length, and possibly</p>
+<p>grapheme-aware operations rather than overloading one ambiguous <code>Length</code> meaning.</p>
+<hr>
+<h2 id="arrays-vectors-ranges-and-sets">Arrays, vectors, ranges, and sets</h2>
+<p>Canonical direction:</p>
+<ul>
+<li>arrays have explicit index ranges;</li>
+<li>vectors are dynamic and 0-based;</li>
+<li>ranges are finite ordinal intervals where applicable;</li>
+<li>sets follow Pascal/Ada style with a finite ordinal base.</li>
+</ul>
+<p>The detailed concrete syntax for arrays, vectors, and set types remains future</p>
+<p>work. Agents must not invent final syntax for these without explicit approval.</p>
+<hr>
+<h2 id="contracts-protocols-and-behaviors">Contracts, protocols, and behaviors</h2>
+<p>This is the future behavior-reuse mechanism of Inox. It is deliberately not</p>
+<p>Java-style interfaces and not duck typing.</p>
+<p>Canonical constraints for future design:</p>
+<ul>
+<li>no classical inheritance;</li>
+<li>no implicit duck typing;</li>
+<li>no mixins;</li>
+<li>no mandatory class/interface hierarchies;</li>
+<li>no duplicated method signatures inside structs;</li>
+<li>contract/protocol satisfaction should be explicit and statically checked;</li>
+<li>behavior reuse must remain DRY and composition-oriented.</li>
+</ul>
+<p>Detailed syntax is not implemented in 0.1 and must not be invented ad hoc by</p>
+<p>agents.</p>
+<hr>
+<h2 id="visibility-and-modules">Visibility and modules</h2>
+<p>0.1 has no <code>public</code>, <code>private</code>, <code>protected</code>, or <code>published</code> keywords.</p>
+<p>The future visibility model should be module/export based rather than class based.</p>
+<p>Until that model is designed, agents must not introduce visibility keywords.</p>
+<hr>
+<h2 id="llvm-backend-status">LLVM backend status</h2>
+<p>The textual LLVM backend is an incremental prototype. It currently supports:</p>
+<ul>
+<li><code>Integer</code> and <code>Bool</code> expressions;</li>
+<li>arithmetic, bitwise, comparison, and simple Bool operators;</li>
+<li>functions and subroutines;</li>
+<li><code>Main</code> with a body;</li>
+<li>local variables;</li>
+<li>assignments;</li>
+<li><code>if</code>, <code>elif</code>, <code>while</code>, flexible <code>repeat</code>, and <code>for</code> range subsets;</li>
+<li><code>break</code> and <code>continue</code> in implemented loop forms;</li>
+<li>temporary output through <code>Put</code>/<code>PutLn</code>;</li>
+<li>simple structs with Integer/Bool fields;</li>
+<li>literal field defaults for Integer/Bool;</li>
+<li>associated methods in a restricted subset.</li>
+</ul>
+<p>It is not yet the final runtime ABI.</p>
+<hr>
+<h2 id="portability-rules">Portability rules</h2>
+<p>The compiler implementation is portable C++20.</p>
+<p>Supported development hosts:</p>
+<ul>
+<li>Windows with MSVC and CMake;</li>
+<li>Linux with GCC or Clang and CMake.</li>
+</ul>
+<p>Future desired hosts include FreeBSD, Solaris/Illumos, AIX, HP-UX, UnixWare, and</p>
+<p>other Unix systems where feasible.</p>
+<p>Engineering rules:</p>
+<ul>
+<li>prefer standard C++;</li>
+<li>isolate platform differences in CMake or scripts;</li>
+<li>avoid platform <code>#ifdef</code>s unless there is a real platform API boundary;</li>
+<li>do not make Windows-only path assumptions in compiler code;</li>
+<li>keep textual LLVM backend host-independent.</li>
+</ul>
+<hr>
+<h2 id="style-conventions">Style conventions</h2>
+<p>Canonical spelling in documentation:</p>
+<ul>
+<li><code>Module</code></li>
+<li><code>Type</code></li>
+<li><code>Struct</code></li>
+<li><code>Var</code></li>
+<li><code>Const</code></li>
+<li><code>State</code></li>
+<li><code>Main</code></li>
+<li><code>Return</code></li>
+<li><code>Exit</code></li>
+</ul>
+<p>Types and structs conventionally start with <code>T</code>:</p>
+<pre><code>TPoint
+TUser
+TConfig</code></pre>
+<p>Struct fields conventionally start with <code>F</code>:</p>
+<pre><code>FX
+FY
+FName
+FAge</code></pre>
+<p>These are style rules in 0.1, not hard compiler errors.</p>
+<hr>
+<h2 id="canonical-examples">Canonical examples</h2>
+<h3 id="hello">Hello</h3>
+<pre><code>Module Hello
+
+Main() :
+    PutLn(&quot;Hello, Inox&quot;)
+;</code></pre>
+<h3 id="function">Function</h3>
+<pre><code>Module Functions
+
+Sum(A Integer, B Integer) Integer :
+    Return A + B
+;
+
+Main() :
+    PutLn(Sum(3, 4))
+;</code></pre>
+<h3 id="struct">Struct</h3>
+<pre><code>Module StructBasic
+
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+SumPoint() Integer :
+    Var :
+        P TPoint
+    ;
+
+    P.FX := 10
+    P.FY := 20
+
+    Return P.FX + P.FY
+;
+
+Main() :
+    PutLn(SumPoint())
+;</code></pre>
+<h3 id="associated-method">Associated method</h3>
+<pre><code>Module AssociatedMethods
+
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+TPoint.Move(Self TPoint, DX Integer, DY Integer) :
+    Self.FX := Self.FX + DX
+    Self.FY := Self.FY + DY
+;
+
+TPoint.Sum(Self TPoint) Integer :
+    Return Self.FX + Self.FY
+;
+
+Main() :
+    Var :
+        P TPoint
+    ;
+
+    P.FX := 10
+    P.FY := 20
+    P.Move(3, 7)
+    PutLn(P.Sum())
+;</code></pre>
+<hr>
+<h2 id="deferred-features">Deferred features</h2>
+<p>Deferred, but directionally accepted:</p>
+<ul>
+<li>struct embedding as composition with controlled promotion;</li>
+<li>variant structs;</li>
+<li>field metadata tags for JSON/DB;</li>
+<li>full arrays/vectors/sets;</li>
+<li>complete module system;</li>
+<li>contracts/protocols/behaviors;</li>
+<li>final runtime ABI;</li>
+<li>complete strings and Unicode operations;</li>
+<li>exceptions lowering;</li>
+<li>package manager;</li>
+<li>optional linting for naming conventions.</li>
+</ul>
+<p>Explicitly rejected:</p>
+<ul>
+<li>classes;</li>
+<li>inheritance;</li>
+<li>Java-style interfaces;</li>
+<li>duck typing;</li>
+<li>mixins;</li>
+<li>heavy RTTI as a core requirement.</li>
+</ul>
+<script>
+const nav=document.querySelector('nav ol');
+nav.innerHTML='';
+document.querySelectorAll('main h2').forEach(h=>{const li=document.createElement('li');const a=document.createElement('a');a.href='#'+h.id;a.textContent=h.textContent;li.appendChild(a);nav.appendChild(li);});
+</script>
+</main></div></body></html>

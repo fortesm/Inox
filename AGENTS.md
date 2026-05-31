@@ -8,6 +8,18 @@ docs/canonical/
 
 Historical discussions are reference material only.
 
+## Specification Hierarchy
+
+Use this hierarchy when modifying Inox:
+
+1. `AGENTS.md` gives operational rules for agents.
+2. `docs/canonical/language-reference.md` is the consolidated tutorial/reference for humans and agents.
+3. Topic-specific canonical files under `docs/canonical/` refine the language by area.
+4. `grammar/grammar.ebnf` is the human grammar mirror and must remain aligned with syntax decisions.
+5. Examples and tests demonstrate implemented subsets.
+
+If a proposed implementation requires a language decision not covered by these documents, stop and ask before changing code. Do not fill gaps by imitating Pascal, Go, Rust, Java, Python, or C++ unless that behavior is explicitly approved for Inox.
+
 ## Rules for AI Agents
 
 - Do not invent semantics.
@@ -26,6 +38,7 @@ Historical discussions are reference material only.
 - Inox is strongly typed, Ada/ObjectPascal-like.
 - LLVM is the official backend.
 - Keep 0.1 pre-alpha small and compilable.
+- Keep `docs/site/index.html` and `docs/canonical/language-reference.md` aligned when resolving language questions.
 
 
 ## Cross-platform Engineering

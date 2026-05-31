@@ -192,3 +192,7 @@ This document does not define:
 ## Temporary backend lowering note
 
 For the temporary textual LLVM backend, `Put` and `PutLn` may lower through C `printf` for `Integer`, `Bool`, and string literals. User-defined subroutines without return values may lower to LLVM `void` functions and be called as statements. This is an implementation bridge for smoke tests only and does not define the final Inox runtime ABI.
+
+## Consolidated Runtime Direction
+
+`docs/canonical/language-reference.md` and `docs/site/index.html` describe the current runtime direction. The current `printf`-based lowering of `Put`/`PutLn` is temporary. The final runtime must remain portable, lightweight, UTF-8 aware for strings, and free of heavy RTTI or a heavy garbage collector as a 0.1 requirement.

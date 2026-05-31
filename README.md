@@ -8,6 +8,22 @@ The current compiler is a pre-alpha front end plus a textual LLVM IR backend pro
 docs/canonical/
 ```
 
+## Documentation
+
+The consolidated human and AI language manual is available at:
+
+```text
+docs/site/index.html
+```
+
+The same content is maintained in Markdown form at:
+
+```text
+docs/canonical/language-reference.md
+```
+
+Use the HTML manual as the readable tutorial/reference for humans. Use the canonical Markdown files plus `AGENTS.md` as the normative source for Codex and other agents. Do not introduce syntax or semantics that contradict the manual without first updating the canonical documents and tests.
+
 ## Supported host platforms
 
 The compiler is intentionally kept portable C++20 and is expected to build on:

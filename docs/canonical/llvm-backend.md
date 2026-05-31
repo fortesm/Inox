@@ -244,3 +244,7 @@ A value-returning method such as `P.Sum()` is lowered similarly:
 ```
 
 This is direct static dispatch for the current 0.1 subset. It is not virtual dispatch and does not imply classes, inheritance, interfaces, or subtyping.
+
+## Consolidated Backend Reference
+
+The human-readable backend overview is in `docs/canonical/language-reference.md` and `docs/site/index.html`. The textual LLVM backend is an incremental smoke-test backend. It must remain host-independent and portable across Windows/MSVC and Linux/GCC/Clang build environments. Future runtime and ABI work must be documented before implementation.

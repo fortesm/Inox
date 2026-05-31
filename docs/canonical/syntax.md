@@ -440,3 +440,13 @@ PutLn(P.Sum())
 ```
 
 The compiler lowers `P.Method(args)` as a call to the associated function whose qualified name is `TType.Method`, with `P` supplied as the explicit receiver argument. This is not class dispatch, not inheritance, and not a Java-style interface call.
+
+## Consolidated Syntax Reference
+
+The tutorial/reference form of the syntax is maintained in `docs/canonical/language-reference.md` and `docs/site/index.html`. In particular, these points are final for 0.1:
+
+- `Type` has no `:` and no closing `;`.
+- `TName Struct ... ;` is the canonical struct declaration.
+- `if`/`elif`/`else` do not use `then` or `:` and are closed by one final `;`.
+- `repeat` is closed by `;`; `until Condition` is a statement inside repeat, not the loop terminator.
+- Associated methods are declared as qualified names outside structs, for example `TPoint.Move(Self TPoint, DX Integer) : ... ;`.

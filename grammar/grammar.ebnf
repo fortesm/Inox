@@ -472,3 +472,8 @@ eof =
 
 associated_method_declaration ::= identifier "." identifier parameter_list [ type_name ] ":" statement* ";" ;
 method_call ::= expression "." identifier "(" [ argument_list ] ")" ;
+
+(* Consolidation note:
+   The tutorial/reference for this grammar is docs/canonical/language-reference.md
+   and docs/site/index.html. This EBNF is a human grammar mirror and must remain
+   aligned with AGENTS.md and the canonical documents. *)

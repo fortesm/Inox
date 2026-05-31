@@ -546,3 +546,7 @@ Value.Method(args)
 This is syntactic and semantic association, not inheritance and not classical object orientation. A `Struct` declares data fields only. Method declarations remain outside the `Struct`, preserving the DRY rule that method signatures are not duplicated inside aggregate declarations.
 
 The 0.1 backend subset supports associated methods on local struct variables, with field reads and field assignments through the explicit receiver parameter.
+
+## Consolidated Semantic Reference
+
+`docs/canonical/language-reference.md` and `docs/site/index.html` consolidate the 0.1 semantic decisions for humans and agents. The current semantic model is nominal, strongly typed, case-insensitive, post-object-oriented, and composition-oriented. Structs are value types; associated methods are statically resolved behavior associated with nominal struct types. Future behavior reuse must be explicit and statically checked, not duck typing.

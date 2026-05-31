@@ -263,3 +263,7 @@ This document does not define:
 - detailed runtime representation
 - detailed `Currency` rounding semantics
 - detailed `Crypto` scale or network semantics
+
+## Consolidated Type-System Reference
+
+`docs/canonical/language-reference.md` is the consolidated reference for the 0.1 type model. The most important fixed rules are: `Bool` is the only canonical boolean type, `Integer` is `Int64`, structs are nominal value types, structs declare fields only, and associated methods do not create inheritance or subtyping.
