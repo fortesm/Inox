@@ -291,6 +291,61 @@ private:
         output_ << "whileend" << label << ":\n";
     }
 
+    void emitRepeat(const ast::RepeatStatement& statement)
+    {
+        const std::size_t label = nextLabel_++;
+        const std::string bodyTarget = "repeatbody" + std::to_string(label);
+        const std::string endTarget = "repeatend" + std::to_string(label);
+        output_ << "  br label %" << bodyTarget << "\n\n";
+
+        output_ << bodyTarget << ":\n";
+        emitRepeatStatements(statement.body(), bodyTarget, endTarget, label);
+        output_ << '\n';
+
+        output_ << endTarget << ":\n";
+    }
+
+    void emitRepeatStatements(const std::vector<ast::StatementPtr>& statements,
+                              const std::string& bodyTarget,
+                              const std::string& endTarget,
+                              std::size_t repeatLabel)
+    {
+        std::size_t continueIndex = 0;
+        for (std::size_t index = 0; index < statements.size(); ++index) {
+            const ast::Statement& statement = *statements[index];
+            if (statement.kind() == ast::AstNodeKind::ExpressionStatement) {
+                emitLocalAssignment(
+                    static_cast<const ast::ExpressionStatement&>(statement).expression());
+                continue;
+            }
+            if (statement.kind() == ast::AstNodeKind::UntilStatement) {
+                const auto& untilStatement =
+                    static_cast<const ast::UntilStatement&>(statement);
+                const std::string condition = emitExpression(untilStatement.condition());
+                const bool hasFollowingStatements = index + 1 < statements.size();
+                const std::string continueTarget = hasFollowingStatements
+                    ? "repeatcontinue" + std::to_string(repeatLabel) + "_" +
+                          std::to_string(continueIndex++)
+                    : bodyTarget;
+                output_ << "  br i1 " << condition
+                        << ", label %" << endTarget
+                        << ", label %" << continueTarget << '\n';
+                if (hasFollowingStatements) {
+                    output_ << "\n" << continueTarget << ":\n";
+                }
+                continue;
+            }
+
+            throw CodegenError(
+                "LLVM emission currently supports only assignments and until in repeat bodies");
+        }
+
+        if (statements.empty() ||
+            statements.back()->kind() != ast::AstNodeKind::UntilStatement) {
+            output_ << "  br label %" << bodyTarget << '\n';
+        }
+    }
+
     bool emitLoopStatements(const std::vector<ast::StatementPtr>& statements)
     {
         bool terminated = false;
@@ -393,8 +448,13 @@ private:
             return;
         }
 
+        if (statement.kind() == ast::AstNodeKind::RepeatStatement) {
+            emitRepeat(static_cast<const ast::RepeatStatement&>(statement));
+            return;
+        }
+
         throw CodegenError(
-            "LLVM emission currently supports only local variables, assignments, if, and while before Return");
+            "LLVM emission currently supports only local variables, assignments, if, while, and repeat before Return");
     }
 
     void emitVarBlockDeclaration(const ast::Statement& statement)

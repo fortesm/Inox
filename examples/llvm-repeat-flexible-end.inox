@@ -1,0 +1,19 @@
+Module RepeatFlexibleEnd
+
+CountDown(N Integer) Integer :
+    Var :
+        I := N
+        Total := 0
+    ;
+
+    repeat
+        Total := Total + I
+        I := I - 1
+        until I = 0
+    ;
+
+    Return Total
+;
+
+Main() :
+;
