@@ -107,6 +107,9 @@ Invoke-LlvmEmissionTest `
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-bool-comparisons.inox")) `
     -RequiredFragments @("define i1 @isgreater", "define i1 @isequal", "define i1 @isdifferent", "icmp sgt i64", "icmp eq i64", "icmp ne i64", "icmp slt i64", "icmp sle i64", "icmp sge i64", "ret i1", "define i32 @main()", "ret i32 0")
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-bool-operators.inox")) `
+    -RequiredFragments @("define i1 @both", "define i1 @either", "define i1 @different", "define i1 @notpositive", "and i1", "or i1", "xor i1", "xor i1 %tmp0, true", "ret i1", "define i32 @main()", "ret i32 0")
 
 $total = $passed + $failed
 Write-Host ""

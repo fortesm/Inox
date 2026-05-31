@@ -1,0 +1,20 @@
+Module BoolOperators
+
+Both(A Integer, B Integer) Bool :
+    Return (A > 0) and (B > 0)
+;
+
+Either(A Integer, B Integer) Bool :
+    Return (A > 0) or (B > 0)
+;
+
+Different(A Integer, B Integer) Bool :
+    Return (A > 0) xor (B > 0)
+;
+
+NotPositive(A Integer) Bool :
+    Return not (A > 0)
+;
+
+Main() :
+;

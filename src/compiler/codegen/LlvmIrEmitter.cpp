@@ -273,10 +273,24 @@ private:
                 !predicate.empty()) {
                 output_ << "  " << result << " = icmp " << predicate << " i64 "
                         << left << ", " << right << '\n';
+            } else if (const std::string operation = llvmBooleanOperation(binary.op());
+                       !operation.empty()) {
+                output_ << "  " << result << " = " << operation << " i1 "
+                        << left << ", " << right << '\n';
             } else {
                 output_ << "  " << result << " = " << llvmOperation(binary.op()) << " i64 "
                         << left << ", " << right << '\n';
             }
+            return result;
+        }
+        case ast::AstNodeKind::UnaryExpression: {
+            const auto& unary = static_cast<const ast::UnaryExpression&>(expression);
+            if (unary.op() != ast::UnaryOperator::Not) {
+                break;
+            }
+            const std::string operand = emitExpression(unary.operand());
+            const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << result << " = xor i1 " << operand << ", true\n";
             return result;
         }
         case ast::AstNodeKind::CallExpression: {
@@ -371,6 +385,20 @@ private:
             return "sle";
         case ast::BinaryOperator::GreaterEqual:
             return "sge";
+        default:
+            return {};
+        }
+    }
+
+    static std::string llvmBooleanOperation(ast::BinaryOperator op)
+    {
+        switch (op) {
+        case ast::BinaryOperator::And:
+            return "and";
+        case ast::BinaryOperator::Xor:
+            return "xor";
+        case ast::BinaryOperator::Or:
+            return "or";
         default:
             return {};
         }
