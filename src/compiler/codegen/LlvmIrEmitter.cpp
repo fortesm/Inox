@@ -141,8 +141,14 @@ private:
             return;
         }
 
+        if (statement.kind() == ast::AstNodeKind::ExpressionStatement) {
+            emitLocalAssignment(
+                static_cast<const ast::ExpressionStatement&>(statement).expression());
+            return;
+        }
+
         throw CodegenError(
-            "LLVM emission currently supports only local variables before Return");
+            "LLVM emission currently supports only local variables and assignments before Return");
     }
 
     void emitVarBlockDeclaration(const ast::Statement& statement)
@@ -179,6 +185,32 @@ private:
         const std::string value = emitExpression(initializer);
         output_ << "  store i64 " << value << ", ptr " << slot << '\n';
         locals_.emplace(normalizedName, slot);
+    }
+
+    void emitLocalAssignment(const ast::Expression& expression)
+    {
+        if (expression.kind() != ast::AstNodeKind::BinaryExpression) {
+            throw CodegenError(
+                "LLVM emission currently supports only simple local assignments");
+        }
+
+        const auto& assignment = static_cast<const ast::BinaryExpression&>(expression);
+        if (assignment.op() != ast::BinaryOperator::Assign ||
+            assignment.left().kind() != ast::AstNodeKind::IdentifierExpression) {
+            throw CodegenError(
+                "LLVM emission currently supports only simple local assignments");
+        }
+
+        const auto& identifier =
+            static_cast<const ast::IdentifierExpression&>(assignment.left());
+        const auto local = locals_.find(normalize(identifier.name()));
+        if (local == locals_.end()) {
+            throw CodegenError(
+                "LLVM emission currently supports assignment only to local variables");
+        }
+
+        const std::string value = emitExpression(assignment.right());
+        output_ << "  store i64 " << value << ", ptr " << local->second << '\n';
     }
 
     std::string emitExpression(const ast::Expression& expression)
