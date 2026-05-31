@@ -1,0 +1,10 @@
+Module Invalid
+
+Main() :
+    if True
+        Exit
+    ;
+    else
+        Exit
+    ;
+;

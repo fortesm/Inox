@@ -17,6 +17,11 @@ Historical discussions are reference material only.
 - ; is not a statement terminator.
 - : opens named blocks.
 - Parentheses in conditions are optional.
+- `if`, `elif`, and `else` do not use `then` or `:`.
+- A line break after an `if` or `elif` condition opens its branch.
+- A line break after `else` opens its branch.
+- A single `;` closes the complete `if`/`elif`/`else` structure.
+- `;` must not appear between `if`, `elif`, and `else` branches.
 - Shadowing is forbidden.
 - Inox is strongly typed, Ada/ObjectPascal-like.
 - LLVM is the official backend.

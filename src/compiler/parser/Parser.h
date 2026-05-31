@@ -80,6 +80,7 @@ private:
     std::vector<ast::StatementPtr> parseDelimitedBody(std::initializer_list<std::string_view> stopKeywords);
     bool atAnyKeyword(std::initializer_list<std::string_view> keywords) const;
     bool atStatementBoundary() const;
+    void requireHeaderLineBreak();
     void consumeBlockClose();
 
     bool isAtEnd() const;

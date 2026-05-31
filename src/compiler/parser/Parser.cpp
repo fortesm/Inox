@@ -486,24 +486,25 @@ ast::StatementPtr Parser::parseVarStatement(bool isMutable)
 ast::StatementPtr Parser::parseIfStatement()
 {
     auto condition = parseAssignment();
-    auto thenBlock = parseBlockStatement();
-    auto thenBody = thenBlock->takeStatements();
+    requireHeaderLineBreak();
+    auto thenBody = parseDelimitedBody({"elif", "else"});
 
     std::vector<ast::ElseIfClause> elseIfClauses;
     while (matchKeyword("elif")) {
         auto elseIfCondition = parseAssignment();
-        auto elseIfBlock = parseBlockStatement();
+        requireHeaderLineBreak();
         elseIfClauses.push_back(ast::ElseIfClause{
             std::move(elseIfCondition),
-            elseIfBlock->takeStatements()
+            parseDelimitedBody({"elif", "else"})
         });
     }
 
     std::vector<ast::StatementPtr> elseBody;
     if (matchKeyword("else")) {
-        auto elseBlock = parseBlockStatement();
-        elseBody = elseBlock->takeStatements();
+        requireHeaderLineBreak();
+        elseBody = parseDelimitedBody({});
     }
+    consumeBlockClose();
 
     return std::make_unique<ast::IfStatement>(
         std::move(condition),
@@ -775,6 +776,13 @@ bool Parser::atStatementBoundary() const
            checkKeyword("finally") ||
            checkKeyword("until") ||
            checkKeyword("otherwise");
+}
+
+void Parser::requireHeaderLineBreak()
+{
+    if (isAtEnd() || peek().location.line <= previous().location.line) {
+        errorAtCurrent("expected line break after conditional header");
+    }
 }
 
 void Parser::consumeBlockClose()

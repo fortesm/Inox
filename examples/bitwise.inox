@@ -9,22 +9,22 @@ Main() :
     var CSvaddr := 30
     var CSvsize := 100
 
-    if V < Addr or V >= ImageBase + CSvaddr + CSvsize :
+    if V < Addr or V >= ImageBase + CSvaddr + CSvsize
         Exit
     ;
 
-    if (Rex bitand $40) # 0 and R >= 4 and R <= 7 :
+    if (Rex bitand $40) # 0 and R >= 4 and R <= 7
         PutLn("register extension")
     ;
 
     while R > 0 :
         R := R - 1
 
-        if R = 2 :
+        if R = 2
             continue
         ;
 
-        if R = 1 :
+        if R = 1
             break
         ;
     ;

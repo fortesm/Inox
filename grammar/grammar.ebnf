@@ -206,9 +206,16 @@ assignment_statement =
     assignment_expression ;
 
 if_statement =
-    "if" , condition , block ,
-    { "elif" , condition , block } ,
-    [ "else" , block ] ;
+    "if" , condition , line_break , conditional_body ,
+    { "elif" , condition , line_break , conditional_body } ,
+    [ "else" , line_break , conditional_body ] ,
+    block_close ;
+
+conditional_body =
+    { block_item } ;
+
+(* A conditional_body ends before elif, else, or the block_close belonging to
+   the current if_statement. *)
 
 unless_statement =
     "unless" , condition , block ;
@@ -445,6 +452,9 @@ hex_digit =
 
 line_comment =
     "==" , ? all characters until end of line ? ;
+
+line_break =
+    ? end of source line ? ;
 
 eof =
     ? end of file ? ;

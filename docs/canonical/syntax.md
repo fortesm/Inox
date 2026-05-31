@@ -13,6 +13,10 @@ not part of the canonical language yet.
 - `;` is not a statement terminator.
 - `:` opens named blocks.
 - Parentheses in conditions are optional.
+- `if`, `elif`, and `else` do not use `then` or `:`.
+- The line break after an `if` or `elif` condition opens its branch.
+- The line break after `else` opens its branch.
+- A single `;` closes the complete `if`/`elif`/`else` structure.
 - Generics use `[]`.
 - Casts use `TypeName(expr)`.
 - Inline `var` and `Var` blocks coexist.
@@ -82,6 +86,10 @@ End
 The semicolon closes the block itself. It does not terminate the previous
 statement.
 
+Conditional branches are the deliberate exception to the named-block opening
+form. `if`, `elif`, and `else` branches are opened by a line break and do not
+use `:`.
+
 ## Modules
 
 A `Module` closes at EOF.
@@ -136,22 +144,35 @@ block-name syntax beyond what is explicitly approved.
 When a syntactic construct contains a condition, parentheses around that
 condition are optional.
 
-These two forms are syntactically equivalent:
+For `if`, the end of the source line after the condition opens the branch.
+`if`, `elif`, and `else` do not use `then` or `:`.
 
 ```inox
-Construct condition :
-    ...
+if Ready
+    Return 1
+else
+    Return 0
+;
+```
+
+The complete conditional structure has one closing `;`. There is no `;`
+between the `if`, `elif`, and `else` branches.
+
+These two condition forms are syntactically equivalent:
+
+```inox
+if Ready
+    Return 1
 ;
 ```
 
 ```inox
-Construct (condition) :
-    ...
+if (Ready)
+    Return 1
 ;
 ```
 
-This rule only states the optionality of parentheses around conditions. It does
-not define the set of conditional constructs or the expression grammar.
+Indentation is visual only. It does not close blocks.
 
 ## Statements
 

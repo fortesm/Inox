@@ -16,6 +16,9 @@ decided are explicitly marked as unspecified.
 - `;` is not a statement terminator.
 - `:` opens named blocks.
 - Parentheses in conditions are optional.
+- `if`, `elif`, and `else` branches are opened by line breaks, without `then`
+  or `:`.
+- A single `;` closes a complete `if`/`elif`/`else` structure.
 - The official backend is LLVM.
 - Inox 0.1 pre-alpha must remain small and compilable.
 - `Integer` is `Int64`.
@@ -113,8 +116,9 @@ mutation rules for `State` are not specified yet.
 
 ## Blocks
 
-Blocks are explicit semantic regions corresponding to the syntax opened by `:`
-and closed by either `;` or `End`.
+Blocks are explicit semantic regions. Named blocks are opened by `:` and closed
+by either `;` or `End`. Conditional branches are opened by a line break after
+`if`, `elif`, or `else`, and one `;` closes the complete conditional structure.
 
 The following two block endings are semantically equivalent:
 
@@ -376,19 +380,22 @@ Parentheses around conditions are optional.
 The following two syntactic forms have the same semantic condition:
 
 ```inox
-Construct condition :
-    ...
+if Ready
+    Return 1
 ;
 ```
 
 ```inox
-Construct (condition) :
-    ...
+if (Ready)
+    Return 1
 ;
 ```
 
-The semantics of truth values, conditional constructs, and condition expression
-typing are not specified yet.
+For `if`, `elif`, and `else`, the line break opens the branch. These constructs
+do not use `then` or `:`. A single `;` closes the complete conditional
+structure; it does not appear between branches. Indentation is visual only.
+
+Conditions must have type `Bool`.
 
 ## Primitive Numeric Types
 

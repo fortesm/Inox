@@ -1,6 +1,6 @@
 # Invalid Examples
 
-These programs must fail semantic analysis.
+These programs must fail parsing or semantic analysis.
 
 | File | Expected diagnostic |
 | --- | --- |
@@ -29,6 +29,9 @@ These programs must fail semantic analysis.
 | `invalid-023.inox` | incompatible function argument type |
 | `invalid-024.inox` | subroutine without return type cannot return a value |
 | `invalid-025.inox` | function with return type must return a value |
+| `invalid-026.inox` | `if` branch must not use `:` |
+| `invalid-027.inox` | `;` must not appear between `if` and `else` branches |
+| `invalid-028.inox` | conditional header must end with a line break |
 
 `invalid-001.inox` uses an inferred local variable because typed local
 declaration syntax is not yet specified canonically.

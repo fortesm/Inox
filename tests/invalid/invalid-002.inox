@@ -1,7 +1,7 @@
 Module Invalid002
 
 Main() :
-    if 123 :
+    if 123
         PutLn("error")
     ;
 ;

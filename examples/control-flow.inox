@@ -3,13 +3,11 @@ Module ControlFlow
 Main() :
     var I := 0
 
-    if I = 0 :
+    if I = 0
         PutLn("zero")
-    ;
-    elif I > 0 :
+    elif I > 0
         PutLn("positive")
-    ;
-    else :
+    else
         PutLn("negative")
     ;
 
