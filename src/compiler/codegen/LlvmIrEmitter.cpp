@@ -299,23 +299,48 @@ private:
         output_ << "  br label %" << bodyTarget << "\n\n";
 
         output_ << bodyTarget << ":\n";
-        emitRepeatStatements(statement.body(), bodyTarget, endTarget, label);
+        loopTargets_.push_back(LoopTargets{bodyTarget, endTarget});
+        const bool terminated = emitRepeatStatements(statement.body(), bodyTarget, endTarget, label);
+        loopTargets_.pop_back();
+        if (!terminated) {
+            output_ << "  br label %" << bodyTarget << '\n';
+        }
         output_ << '\n';
 
         output_ << endTarget << ":\n";
     }
 
-    void emitRepeatStatements(const std::vector<ast::StatementPtr>& statements,
+    bool emitRepeatStatements(const std::vector<ast::StatementPtr>& statements,
                               const std::string& bodyTarget,
                               const std::string& endTarget,
                               std::size_t repeatLabel)
     {
         std::size_t continueIndex = 0;
+        bool terminated = false;
         for (std::size_t index = 0; index < statements.size(); ++index) {
+            if (terminated) {
+                throw CodegenError(
+                    "LLVM emission does not support statements after terminating repeat branch");
+            }
+
             const ast::Statement& statement = *statements[index];
             if (statement.kind() == ast::AstNodeKind::ExpressionStatement) {
                 emitLocalAssignment(
                     static_cast<const ast::ExpressionStatement&>(statement).expression());
+                continue;
+            }
+            if (statement.kind() == ast::AstNodeKind::IfStatement) {
+                emitLoopIf(static_cast<const ast::IfStatement&>(statement));
+                continue;
+            }
+            if (statement.kind() == ast::AstNodeKind::BreakStatement) {
+                output_ << "  br label %" << currentLoopTargets().breakTarget << '\n';
+                terminated = true;
+                continue;
+            }
+            if (statement.kind() == ast::AstNodeKind::ContinueStatement) {
+                output_ << "  br label %" << currentLoopTargets().continueTarget << '\n';
+                terminated = true;
                 continue;
             }
             if (statement.kind() == ast::AstNodeKind::UntilStatement) {
@@ -332,18 +357,17 @@ private:
                         << ", label %" << continueTarget << '\n';
                 if (hasFollowingStatements) {
                     output_ << "\n" << continueTarget << ":\n";
+                } else {
+                    terminated = true;
                 }
                 continue;
             }
 
             throw CodegenError(
-                "LLVM emission currently supports only assignments and until in repeat bodies");
+                "LLVM emission currently supports only assignments, if, break, continue, and until in repeat bodies");
         }
 
-        if (statements.empty() ||
-            statements.back()->kind() != ast::AstNodeKind::UntilStatement) {
-            output_ << "  br label %" << bodyTarget << '\n';
-        }
+        return terminated;
     }
 
     bool emitLoopStatements(const std::vector<ast::StatementPtr>& statements)
@@ -380,7 +404,7 @@ private:
         }
 
         throw CodegenError(
-            "LLVM emission currently supports only assignments, if, break, and continue in while bodies");
+            "LLVM emission currently supports only assignments, if, break, and continue in loop bodies");
     }
 
     void emitLoopIf(const ast::IfStatement& statement)
@@ -407,7 +431,7 @@ private:
     {
         if (loopTargets_.empty()) {
             throw CodegenError(
-                "LLVM emission supports break and continue only inside while");
+                "LLVM emission supports break and continue only inside loops");
         }
         return loopTargets_.back();
     }

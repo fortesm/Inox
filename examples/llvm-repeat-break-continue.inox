@@ -1,0 +1,26 @@
+Module RepeatBreakContinue
+
+FindValue(N Integer) Integer :
+    Var :
+        I := N
+    ;
+
+    repeat
+        I := I - 1
+
+        if I = 3
+            continue
+        ;
+
+        if I = 1
+            break
+        ;
+
+        until I = 0
+    ;
+
+    Return I
+;
+
+Main() :
+;
