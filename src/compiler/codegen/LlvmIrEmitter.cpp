@@ -187,6 +187,47 @@ private:
         output_ << "  ret " << signature_.llvmReturnType << ' ' << value << '\n';
     }
 
+    void emitIfMerge(const ast::IfStatement& statement)
+    {
+        if (!statement.elseIfClauses().empty() || statement.elseBody().empty()) {
+            throw CodegenError(
+                "LLVM emission currently requires if with else and without elif");
+        }
+
+        const std::size_t label = nextLabel_++;
+        const std::string condition = emitExpression(statement.condition());
+        output_ << "  br i1 " << condition
+                << ", label %then" << label
+                << ", label %else" << label << "\n\n";
+
+        output_ << "then" << label << ":\n";
+        emitAssignmentBranch(statement.thenBody());
+        output_ << "  br label %endif" << label << "\n\n";
+
+        output_ << "else" << label << ":\n";
+        emitAssignmentBranch(statement.elseBody());
+        output_ << "  br label %endif" << label << "\n\n";
+
+        output_ << "endif" << label << ":\n";
+    }
+
+    void emitAssignmentBranch(const std::vector<ast::StatementPtr>& statements)
+    {
+        if (statements.empty()) {
+            throw CodegenError(
+                "LLVM emission currently requires assignments in each if branch");
+        }
+
+        for (const auto& statement : statements) {
+            if (statement->kind() != ast::AstNodeKind::ExpressionStatement) {
+                throw CodegenError(
+                    "LLVM emission currently supports only assignments in continuing if branches");
+            }
+            emitLocalAssignment(
+                static_cast<const ast::ExpressionStatement&>(*statement).expression());
+        }
+    }
+
     void emitLocalDeclaration(const ast::Statement& statement)
     {
         if (statement.kind() == ast::AstNodeKind::VarStatement) {
@@ -213,8 +254,13 @@ private:
             return;
         }
 
+        if (statement.kind() == ast::AstNodeKind::IfStatement) {
+            emitIfMerge(static_cast<const ast::IfStatement&>(statement));
+            return;
+        }
+
         throw CodegenError(
-            "LLVM emission currently supports only local variables and assignments before Return");
+            "LLVM emission currently supports only local variables, assignments, and if before Return");
     }
 
     void emitVarBlockDeclaration(const ast::Statement& statement)
