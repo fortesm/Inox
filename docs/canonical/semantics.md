@@ -515,3 +515,24 @@ Return P.FX
 ```
 
 The initial implemented field types are `Integer` and `Bool`. Variant structs, tags, embedding, default field values, struct parameters, struct returns, and struct equality are future work.
+
+
+## Associated Method Semantics
+
+Associated methods are functions or subroutines qualified by a nominal type name. The initial canonical form is:
+
+```inox
+TType.Method(Self TType, Args...) ReturnType :
+    ...
+;
+```
+
+The receiver is explicit in the declaration and is passed implicitly at the call site:
+
+```inox
+Value.Method(args)
+```
+
+This is syntactic and semantic association, not inheritance and not classical object orientation. A `Struct` declares data fields only. Method declarations remain outside the `Struct`, preserving the DRY rule that method signatures are not duplicated inside aggregate declarations.
+
+The 0.1 backend subset supports associated methods on local struct variables, with field reads and field assignments through the explicit receiver parameter.

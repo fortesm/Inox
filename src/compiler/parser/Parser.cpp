@@ -765,6 +765,14 @@ ast::AstNodePtr Parser::parseRawDeclaration()
 ast::AstNodePtr Parser::parseFunctionDeclaration()
 {
     const lexer::Token& name = consumeIdentifierLike("expected function name");
+    std::string functionName = name.lexeme;
+    if (match(TokenKind::Dot)) {
+        const lexer::Token& methodName = consume(
+            TokenKind::Identifier, "expected method name after '.'");
+        functionName += ".";
+        functionName += methodName.lexeme;
+    }
+
     std::vector<std::string> signatureTokens;
 
     while (!isAtEnd() && !check(TokenKind::Colon)) {
@@ -776,7 +784,7 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
     consumeBlockClose();
 
     return std::make_unique<ast::FunctionDeclaration>(
-        name.lexeme,
+        std::move(functionName),
         std::move(signatureTokens),
         std::move(body));
 }

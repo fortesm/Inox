@@ -139,7 +139,7 @@ Struct declarations contain fields only. The compiler must not require or allow 
 
 The first implemented subset supports local variables of simple structs with `Integer` and `Bool` fields, field assignment, and field access. Struct names conventionally start with `T`; fields conventionally start with `F`, but these are style conventions in 0.1.
 
-Future work includes default field values, variant structs, tags, embedding/composition with promotion, methods associated outside the struct, struct parameters/returns, and struct comparison rules.
+Future work includes default field values, variant structs, tags, embedding/composition with promotion, general struct parameters/returns, and struct comparison rules. The current backend already supports a restricted associated-method subset with an explicit struct receiver parameter.
 
 ## Arrays
 

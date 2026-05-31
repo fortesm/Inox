@@ -217,4 +217,30 @@ lowers to an LLVM aggregate type similar to:
 %tpoint = type { i64, i64 }
 ```
 
-Local struct variables are lowered with `alloca`, default zero initialization via `zeroinitializer`, and field access through `getelementptr`. The implemented backend subset supports `Integer` and `Bool` fields, field assignment, and field reads. Struct parameters, struct returns, embedding, tags, variant structs, and defaults for individual fields are intentionally out of scope for this milestone.
+Local struct variables are lowered with `alloca`, default zero initialization via `zeroinitializer`, and field access through `getelementptr`. The implemented backend subset supports `Integer` and `Bool` fields, field assignment, field reads, and restricted associated methods with an explicit struct receiver lowered as a pointer parameter. General struct parameters, struct returns, embedding, tags, variant structs, and defaults for individual fields remain out of scope for this milestone.
+
+
+### Associated Method Lowering
+
+The current textual LLVM backend supports a restricted associated-method form:
+
+```inox
+TPoint.Move(Self TPoint, DX Integer, DY Integer) :
+    Self.FX := Self.FX + DX
+    Self.FY := Self.FY + DY
+;
+```
+
+A call such as `P.Move(3, 7)` is lowered as a direct call to `@tpoint.move`, with the local struct storage for `P` passed as the explicit receiver pointer:
+
+```llvm
+call void @tpoint.move(ptr %p, i64 3, i64 7)
+```
+
+A value-returning method such as `P.Sum()` is lowered similarly:
+
+```llvm
+%tmp = call i64 @tpoint.sum(ptr %p)
+```
+
+This is direct static dispatch for the current 0.1 subset. It is not virtual dispatch and does not imply classes, inheritance, interfaces, or subtyping.

@@ -1,0 +1,32 @@
+Module AssociatedMethods
+
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+TPoint.Move(Self TPoint, DX Integer, DY Integer) :
+    Self.FX := Self.FX + DX
+    Self.FY := Self.FY + DY
+;
+
+TPoint.Sum(Self TPoint) Integer :
+    Return Self.FX + Self.FY
+;
+
+MakeAndSum() Integer :
+    Var :
+        P TPoint
+    ;
+
+    P.FX := 10
+    P.FY := 20
+    P.Move(3, 7)
+
+    Return P.Sum()
+;
+
+Main() :
+    PutLn(MakeAndSum())
+;

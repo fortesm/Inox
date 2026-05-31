@@ -72,6 +72,7 @@ private:
     std::string inferExpressionType(const ast::Expression& expression);
     std::string analyzeCallExpression(const ast::CallExpression& expression);
     std::string analyzeMemberExpression(const ast::CallExpression& expression);
+    std::string analyzeMethodCallExpression(const ast::CallExpression& expression);
     std::string analyzeBinaryExpression(const ast::BinaryExpression& expression);
     std::string analyzeUnaryExpression(const ast::UnaryExpression& expression);
     std::string analyzePreludeCall(std::string_view name,

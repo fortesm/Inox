@@ -111,3 +111,8 @@ The textual LLVM backend can now emit temporary `printf`-based output for `Put`/
 ## Current LLVM backend milestone
 
 The textual LLVM backend currently supports integer and boolean expressions, functions and subroutines, local variables, structured control flow, basic output through temporary `printf` lowering, and a first simple struct subset with local structs and field access.
+
+
+## Current Associated Method Milestone
+
+The compiler currently supports a restricted associated-method subset for simple structs. Methods are declared outside structs with an explicit receiver parameter, for example `TPoint.Sum(Self TPoint) Integer`, and local values can call them with `P.Sum()`. The LLVM backend lowers these calls as direct static calls with the receiver storage passed explicitly.

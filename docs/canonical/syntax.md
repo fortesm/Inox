@@ -412,3 +412,28 @@ P.FY := 20
 ```
 
 Field access uses `.` and field assignment uses `:=`.
+
+
+## Associated Method Declarations
+
+Associated methods are declared outside `Struct`. The struct declaration never repeats method signatures. The canonical initial form uses an explicit receiver parameter:
+
+```inox
+TPoint.Move(Self TPoint, DX Integer, DY Integer) :
+    Self.FX := Self.FX + DX
+    Self.FY := Self.FY + DY
+;
+
+TPoint.Sum(Self TPoint) Integer :
+    Return Self.FX + Self.FY
+;
+```
+
+Call-site syntax uses member-call sugar:
+
+```inox
+P.Move(3, 7)
+PutLn(P.Sum())
+```
+
+The compiler lowers `P.Method(args)` as a call to the associated function whose qualified name is `TType.Method`, with `P` supplied as the explicit receiver argument. This is not class dispatch, not inheritance, and not a Java-style interface call.

@@ -791,6 +791,11 @@ std::string SemanticAnalyzer::inferExpressionType(const ast::Expression& express
 
 std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
 {
+    if (call.callee().kind() == ast::AstNodeKind::CallExpression &&
+        isMemberCall(static_cast<const ast::CallExpression&>(call.callee()))) {
+        return analyzeMethodCallExpression(call);
+    }
+
     if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
         const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
         if (equalsIgnoreCase(callee.name(), "__member")) {
@@ -855,6 +860,55 @@ std::string SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression&
 
     result_.setExpressionType(fieldIdentifier, resolvedType(field->typeName));
     return field->typeName;
+}
+
+std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpression& call)
+{
+    const auto& member = static_cast<const ast::CallExpression&>(call.callee());
+    if (member.arguments().size() != 2 ||
+        member.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
+        throw SemanticError("method call requires object and method name");
+    }
+
+    const std::string receiverType = analyzeExpression(*member.arguments()[0]);
+    const auto& methodIdentifier =
+        static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
+    const std::string qualifiedName = receiverType + "." + methodIdentifier.name();
+    const FunctionSignature* signature = resolveFunctionSignature(qualifiedName);
+    if (signature == nullptr) {
+        throw SemanticError("unknown method " + methodIdentifier.name() + " for " + receiverType);
+    }
+
+    if (signature->parameters.empty()) {
+        throw SemanticError("method " + signature->name + " must declare an explicit receiver parameter");
+    }
+    if (!canAssign(signature->parameters.front().typeName, receiverType)) {
+        throw SemanticError(
+            "method " + signature->name + " receiver expects " +
+            signature->parameters.front().typeName + ", got " + receiverType);
+    }
+    if (call.arguments().size() + 1 != signature->parameters.size()) {
+        throw SemanticError(
+            "method " + signature->name + " expects " +
+            std::to_string(signature->parameters.size() - 1) + " explicit arguments, got " +
+            std::to_string(call.arguments().size()));
+    }
+
+    const Symbol& symbol = resolveOrThrow(signature->name);
+    result_.bind(methodIdentifier, symbol);
+    result_.bind(call, symbol);
+
+    for (std::size_t index = 0; index < call.arguments().size(); ++index) {
+        const std::string argumentType = analyzeExpression(*call.arguments()[index]);
+        const FunctionParameter& parameter = signature->parameters[index + 1];
+        if (!canAssign(parameter.typeName, argumentType)) {
+            throw SemanticError(
+                "argument " + std::to_string(index + 1) + " of " + signature->name +
+                " expects " + parameter.typeName + ", got " + argumentType);
+        }
+    }
+
+    return signature->returnType;
 }
 
 std::string SemanticAnalyzer::analyzeUserFunctionCall(

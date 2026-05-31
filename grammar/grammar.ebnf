@@ -468,3 +468,7 @@ line_break =
 
 eof =
     ? end of file ? ;
+
+
+associated_method_declaration ::= identifier "." identifier parameter_list [ type_name ] ":" statement* ";" ;
+method_call ::= expression "." identifier "(" [ argument_list ] ")" ;
