@@ -110,7 +110,7 @@ The textual LLVM backend can now emit temporary `printf`-based output for `Put`/
 
 ## Current LLVM backend milestone
 
-The textual LLVM backend currently supports integer and boolean expressions, functions and subroutines, local variables, structured control flow, basic output through temporary `printf` lowering, and a first simple struct subset with local structs and field access.
+The textual LLVM backend currently supports integer and boolean expressions, functions and subroutines, local variables, structured control flow, basic output through temporary `printf` lowering, and a first simple struct subset with local structs, field access, and literal field defaults for Integer/Bool fields.
 
 
 ## Current Associated Method Milestone

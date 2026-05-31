@@ -507,14 +507,24 @@ Var :
 ;
 ```
 
-The current LLVM prototype initializes local struct storage with a zero/default value. Field access is nominal and case-insensitive:
+The current LLVM prototype initializes local struct storage with a zero/default value, then applies any supported field default values. Field access is nominal and case-insensitive:
 
 ```inox
 P.FX := 10
 Return P.FX
 ```
 
-The initial implemented field types are `Integer` and `Bool`. Variant structs, tags, embedding, default field values, struct parameters, struct returns, and struct equality are future work.
+The initial implemented field types are `Integer` and `Bool`. Field default values are supported for literal `Integer` and `Bool` defaults:
+
+```inox
+Type
+    TConfig Struct
+        FPort Integer := 8080
+        FEnabled Bool := true
+    ;
+```
+
+Variant structs, tags, embedding, general struct parameters, struct returns, and struct equality remain future work.
 
 
 ## Associated Method Semantics

@@ -100,7 +100,7 @@ struct_declaration =
     identifier , "Struct" , { struct_field } , ";" ;
 
 struct_field =
-    identifier , type_name ;
+    identifier , type_name , [ ":=" , literal ] ;
 
 type_name =
     identifier ;

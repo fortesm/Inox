@@ -179,6 +179,9 @@ run_llvm_emission_test "$repo_root/examples/llvm-struct-basic.inox" \
 run_llvm_emission_test "$repo_root/examples/llvm-associated-methods.inox" \
     "%tpoint = type { i64, i64 }" "define void @tpoint.move" "define i64 @tpoint.sum" "ptr %self" "call void @tpoint.move" "call i64 @tpoint.sum" "getelementptr %tpoint" "ret void" "ret i64" "define i32 @main()" "ret i32 0"
 
+run_llvm_emission_test "$repo_root/examples/llvm-struct-field-defaults.inox" \
+    "%tconfig = type { i64, i1 }" "define i64 @getport" "alloca %tconfig" "zeroinitializer" "store i64 8080" "store i1 1" "getelementptr %tconfig" "load i64" "call i64 @getport" "ret i32 0"
+
 total=$((passed + failed))
 echo ""
 echo "Summary: $passed passed, $failed failed, $total total"

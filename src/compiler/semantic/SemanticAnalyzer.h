@@ -30,6 +30,8 @@ struct FunctionSignature {
 struct StructField {
     std::string name;
     std::string typeName;
+    bool hasDefault = false;
+    std::string defaultValue;
 };
 
 struct StructType {

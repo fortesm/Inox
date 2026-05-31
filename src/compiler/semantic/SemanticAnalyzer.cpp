@@ -1,5 +1,6 @@
 #include "SemanticAnalyzer.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cctype>
@@ -430,12 +431,25 @@ void SemanticAnalyzer::registerStructDeclaration(const std::vector<std::string>&
 
         const std::string fieldName = tokens[index++];
         const std::string fieldType = tokens[index++];
-        for (const StructField& field : structType.fields) {
-            if (equalsIgnoreCase(field.name, fieldName)) {
+        StructField field;
+        field.name = fieldName;
+        field.typeName = canonicalTypeName(fieldType);
+
+        if (index < tokens.size() && tokens[index] == ":=") {
+            ++index;
+            if (index >= tokens.size() || tokens[index] == ";") {
+                throw SemanticError("expected default value for struct field: " + fieldName);
+            }
+            field.hasDefault = true;
+            field.defaultValue = tokens[index++];
+        }
+
+        for (const StructField& existingField : structType.fields) {
+            if (equalsIgnoreCase(existingField.name, fieldName)) {
                 throw SemanticError("duplicate struct field: " + fieldName);
             }
         }
-        structType.fields.push_back(StructField{fieldName, canonicalTypeName(fieldType)});
+        structType.fields.push_back(std::move(field));
     }
 
     if (index >= tokens.size() || tokens[index] != ";") {
@@ -457,9 +471,35 @@ void SemanticAnalyzer::validateStructDeclaration(const std::vector<std::string>&
             !looksLikeIdentifier(tokens[index + 1])) {
             throw SemanticError("invalid struct field declaration in: " + typeName);
         }
+        const std::string fieldName = tokens[index];
         index += 1;
+        const std::string fieldType = canonicalTypeName(tokens[index]);
         resolveTypeOrThrow(tokens[index]);
         index += 1;
+
+        if (index < tokens.size() && tokens[index] == ":=") {
+            ++index;
+            if (index >= tokens.size() || tokens[index] == ";") {
+                throw SemanticError("expected default value for struct field: " + fieldName);
+            }
+            const std::string defaultValue = tokens[index++];
+            if (equalsIgnoreCase(fieldType, "Integer") || equalsIgnoreCase(fieldType, "Int64")) {
+                const bool isDecimal = !defaultValue.empty() &&
+                    std::all_of(defaultValue.begin(), defaultValue.end(), [](unsigned char ch) {
+                        return std::isdigit(ch) != 0;
+                    });
+                const bool isHex = defaultValue.size() > 1 && defaultValue.front() == '$';
+                if (!isDecimal && !isHex) {
+                    throw SemanticError("Integer struct field default must be an integer literal: " + fieldName);
+                }
+            } else if (equalsIgnoreCase(fieldType, "Bool")) {
+                if (!equalsIgnoreCase(defaultValue, "true") && !equalsIgnoreCase(defaultValue, "false")) {
+                    throw SemanticError("Bool struct field default must be true or false: " + fieldName);
+                }
+            } else {
+                throw SemanticError("struct field defaults are currently supported only for Integer and Bool: " + fieldName);
+            }
+        }
     }
 
     if (index >= tokens.size() || tokens[index] != ";") {

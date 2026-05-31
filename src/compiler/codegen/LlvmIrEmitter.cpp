@@ -49,6 +49,15 @@ std::string llvmIntegerLiteral(std::string_view value)
     return std::to_string(std::stoull(std::string(value.substr(1)), nullptr, 16));
 }
 
+std::string llvmDefaultLiteral(std::string_view value, std::string_view llvmType)
+{
+    if (llvmType == "i1") {
+        return equalsIgnoreCase(value, "true") ? "1" : "0";
+    }
+
+    return llvmIntegerLiteral(value);
+}
+
 
 struct LlvmStringConstant {
     std::size_t size = 0;
@@ -133,6 +142,8 @@ struct StructFieldInfo {
     std::string inoxName;
     std::string llvmType;
     std::size_t index = 0;
+    bool hasDefault = false;
+    std::string defaultValue;
 };
 
 struct StructDefinition {
@@ -216,8 +227,21 @@ void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefi
                 throw CodegenError(
                     "LLVM emission currently supports only Integer and Bool struct fields");
             }
-            definition.fields.push_back(
-                StructFieldInfo{fieldName, llvmFieldType, definition.fields.size()});
+
+            StructFieldInfo field;
+            field.inoxName = fieldName;
+            field.llvmType = llvmFieldType;
+            field.index = definition.fields.size();
+            if (index < tokens.size() && tokens[index] == ":=") {
+                ++index;
+                if (index >= tokens.size() || tokens[index] == ";") {
+                    throw CodegenError("expected default value for struct field: " + fieldName);
+                }
+                field.hasDefault = true;
+                field.defaultValue = tokens[index++];
+            }
+
+            definition.fields.push_back(std::move(field));
         }
 
         if (index >= tokens.size() || tokens[index] != ";") {
@@ -849,6 +873,18 @@ private:
             }
             output_ << "  store " << structType->llvmName
                     << " zeroinitializer, ptr " << slot << '\n';
+            for (const StructFieldInfo& field : structType->fields) {
+                if (!field.hasDefault) {
+                    continue;
+                }
+                const std::string fieldPointer = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << fieldPointer << " = getelementptr " << structType->llvmName
+                        << ", ptr " << slot
+                        << ", i32 0, i32 " << field.index << '\n';
+                output_ << "  store " << field.llvmType << ' '
+                        << llvmDefaultLiteral(field.defaultValue, field.llvmType)
+                        << ", ptr " << fieldPointer << '\n';
+            }
             locals_.emplace(normalizedName,
                             LocalInfo{slot, std::string(typeName), structType->llvmName});
             return;

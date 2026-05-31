@@ -217,7 +217,7 @@ lowers to an LLVM aggregate type similar to:
 %tpoint = type { i64, i64 }
 ```
 
-Local struct variables are lowered with `alloca`, default zero initialization via `zeroinitializer`, and field access through `getelementptr`. The implemented backend subset supports `Integer` and `Bool` fields, field assignment, field reads, and restricted associated methods with an explicit struct receiver lowered as a pointer parameter. General struct parameters, struct returns, embedding, tags, variant structs, and defaults for individual fields remain out of scope for this milestone.
+Local struct variables are lowered with `alloca`, default zero initialization via `zeroinitializer`, and field access through `getelementptr`. The implemented backend subset supports `Integer` and `Bool` fields, literal field defaults for those field types, field assignment, field reads, and restricted associated methods with an explicit struct receiver lowered as a pointer parameter. General struct parameters, struct returns, embedding, tags, and variant structs remain out of scope for this milestone.
 
 
 ### Associated Method Lowering

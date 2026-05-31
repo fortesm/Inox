@@ -68,7 +68,7 @@ Historical discussions are reference material only.
 - Block comments do not exist in 0.1.
 - `Type` is a section/declarator, not a block: it has no `:` and no closing `;`.
 - Canonical struct syntax is `TName Struct ... ;`; the `;` closes the Struct itself.
-- Struct declares fields only. Associated methods are declared outside Struct.
+- Struct declares fields only. Associated methods are declared outside Struct. Literal defaults for Integer and Bool fields are allowed in the current subset.
 - Associated method syntax is `TType.Method(Self TType, Args...) ReturnType : ... ;`. The receiver parameter is explicit; call-site sugar is `Value.Method(args)`.
 - Struct type names conventionally begin with `T`; struct fields conventionally begin with `F`, but 0.1 does not reject other names.
 - Boolean logical operators are and, or, xor, and not.
