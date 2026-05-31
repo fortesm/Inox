@@ -1,8 +1,138 @@
+# ============================================================
+# Inox - Git Ignore
+# C++ / CMake / Visual Studio / LLVM / Aider
+# ============================================================
+
+# --------------------
+# Build directories
+# --------------------
 build/
-*.exe
+Build/
+out/
+Out/
+bin/
+obj/
+Debug/
+Release/
+x64/
+x86/
+ARM64/
+
+# --------------------
+# CMake
+# --------------------
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+compile_commands.json
+
+# --------------------
+# C/C++ build artifacts
+# --------------------
 *.obj
+*.o
+*.exe
+*.dll
+*.lib
+*.exp
 *.pdb
 *.ilk
+*.pch
+*.idb
+*.ipdb
+*.iobj
+
+# --------------------
+# Visual Studio
+# --------------------
+.vs/
+*.vcxproj.user
+*.suo
+*.sln.cache
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+*.ipch/
+*.tlog
+*.lastbuildstate
+*.unsuccessfulbuild
+
+# --------------------
+# LLVM / Clang local files
+# --------------------
+.clangd/
+.cache/
+*.ll.tmp
+*.bc
+*.s
+
+# Atenção:
+# NÃO ignore .clang-format ou .clang-tidy se quiser versionar
+# regras de formatação/análise futuramente.
+
+# --------------------
+# Aider local state
+# --------------------
+.aider.input.history
+.aider.chat.history.md
+.aider.llm.history
+.aider.tags.cache.v3/
+.aider.repo.map
+
+# Se criar .aider.conf.yml com configuração do projeto,
+# recomendo versionar, não ignorar.
+
+# --------------------
+# Python / scripts auxiliares
+# --------------------
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+venv/
+env/
+.venv/
+
+# --------------------
+# Logs and temp files
+# --------------------
 *.log
-.vscode/
-.idea/
+logs/
+tmp/
+temp/
+Temp/
+*.tmp
+*.temp
+*~
+
+# --------------------
+# Secrets / local env
+# --------------------
+.env
+.env.local
+.env.*.local
+*.pem
+secrets.json
+credentials.json
+
+# --------------------
+# OS files
+# --------------------
+.DS_Store
+Thumbs.db
+
+# --------------------
+# Package/dependency managers
+# --------------------
+vcpkg_installed/
+conan/
+
+# --------------------
+# Personal local notes
+# --------------------
+Todo.txt
+.aider*
