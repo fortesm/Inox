@@ -1,0 +1,16 @@
+Module IfNoElse
+
+ClampPositive(A Integer) Integer :
+    Var :
+        X := A
+    ;
+
+    if X < 0
+        X := 0
+    ;
+
+    Return X
+;
+
+Main() :
+;

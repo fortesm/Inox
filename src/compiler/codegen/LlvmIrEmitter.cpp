@@ -194,24 +194,27 @@ private:
 
     void emitIfMerge(const ast::IfStatement& statement)
     {
-        if (!statement.elseIfClauses().empty() || statement.elseBody().empty()) {
+        if (!statement.elseIfClauses().empty()) {
             throw CodegenError(
-                "LLVM emission currently requires if with else and without elif");
+                "LLVM emission currently supports if without elif");
         }
 
         const std::size_t label = nextLabel_++;
+        const bool hasElse = !statement.elseBody().empty();
         const std::string condition = emitExpression(statement.condition());
         output_ << "  br i1 " << condition
                 << ", label %then" << label
-                << ", label %else" << label << "\n\n";
+                << ", label %" << (hasElse ? "else" : "endif") << label << "\n\n";
 
         output_ << "then" << label << ":\n";
         emitAssignmentBranch(statement.thenBody());
         output_ << "  br label %endif" << label << "\n\n";
 
-        output_ << "else" << label << ":\n";
-        emitAssignmentBranch(statement.elseBody());
-        output_ << "  br label %endif" << label << "\n\n";
+        if (hasElse) {
+            output_ << "else" << label << ":\n";
+            emitAssignmentBranch(statement.elseBody());
+            output_ << "  br label %endif" << label << "\n\n";
+        }
 
         output_ << "endif" << label << ":\n";
     }
