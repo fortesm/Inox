@@ -127,6 +127,13 @@ public:
 
     void emit()
     {
+        if (function_.body().size() == 1 &&
+            function_.body().front()->kind() == ast::AstNodeKind::IfStatement) {
+            emitIfReturn(
+                static_cast<const ast::IfStatement&>(*function_.body().front()));
+            return;
+        }
+
         if (function_.body().empty() ||
             function_.body().back()->kind() != ast::AstNodeKind::ReturnStatement) {
             throw CodegenError(
@@ -144,6 +151,42 @@ public:
     }
 
 private:
+    void emitIfReturn(const ast::IfStatement& statement)
+    {
+        if (signature_.llvmReturnType != "i64") {
+            throw CodegenError(
+                "LLVM emission currently supports if/else only in Integer functions");
+        }
+        if (!statement.elseIfClauses().empty() || statement.elseBody().empty()) {
+            throw CodegenError(
+                "LLVM emission currently requires if with else and without elif");
+        }
+        if (statement.thenBody().size() != 1 ||
+            statement.thenBody().front()->kind() != ast::AstNodeKind::ReturnStatement ||
+            statement.elseBody().size() != 1 ||
+            statement.elseBody().front()->kind() != ast::AstNodeKind::ReturnStatement) {
+            throw CodegenError(
+                "LLVM emission currently requires a single Return in each if branch");
+        }
+
+        const std::size_t label = nextLabel_++;
+        const std::string condition = emitExpression(statement.condition());
+        output_ << "  br i1 " << condition
+                << ", label %then" << label
+                << ", label %else" << label << "\n\n";
+
+        output_ << "then" << label << ":\n";
+        emitReturn(static_cast<const ast::ReturnStatement&>(*statement.thenBody().front()));
+        output_ << "\nelse" << label << ":\n";
+        emitReturn(static_cast<const ast::ReturnStatement&>(*statement.elseBody().front()));
+    }
+
+    void emitReturn(const ast::ReturnStatement& statement)
+    {
+        const std::string value = emitExpression(statement.expression());
+        output_ << "  ret " << signature_.llvmReturnType << ' ' << value << '\n';
+    }
+
     void emitLocalDeclaration(const ast::Statement& statement)
     {
         if (statement.kind() == ast::AstNodeKind::VarStatement) {
@@ -411,6 +454,7 @@ private:
     std::unordered_map<std::string, std::string> parameters_;
     std::unordered_map<std::string, std::string> locals_;
     std::size_t nextTemporary_ = 0;
+    std::size_t nextLabel_ = 0;
 };
 
 void emitFunction(std::ostringstream& output,

@@ -1,0 +1,13 @@
+Module IfReturn
+
+Max(A Integer, B Integer) Integer :
+    if A > B :
+        Return A
+    ;
+    else :
+        Return B
+    ;
+;
+
+Main() :
+;
