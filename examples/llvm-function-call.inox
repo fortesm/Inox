@@ -1,0 +1,12 @@
+Module FunctionCall
+
+Sum(A Integer, B Integer) Integer :
+    Return A + B
+;
+
+Double(X Integer) Integer :
+    Return Sum(X, X)
+;
+
+Main() :
+;

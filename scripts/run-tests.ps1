@@ -92,6 +92,9 @@ Invoke-LlvmEmissionTest `
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-integer-function.inox")) `
     -RequiredFragments @("define i64 @sum", "%tmp0 = add i64 %a, %b", "ret i64 %tmp0", "define i32 @main()", "ret i32 0")
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-function-call.inox")) `
+    -RequiredFragments @("define i64 @sum", "define i64 @double", "%tmp0 = call i64 @sum(i64 %x, i64 %x)", "ret i64 %tmp0", "define i32 @main()", "ret i32 0")
 
 $total = $passed + $failed
 Write-Host ""

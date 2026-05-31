@@ -44,6 +44,14 @@ struct IntegerParameter {
     std::string llvmName;
 };
 
+struct IntegerFunctionSignature {
+    std::string llvmName;
+    std::vector<IntegerParameter> parameters;
+};
+
+using IntegerFunctionSignatures =
+    std::unordered_map<std::string, IntegerFunctionSignature>;
+
 std::vector<IntegerParameter> parseIntegerSignature(const ast::FunctionDeclaration& function)
 {
     const auto& tokens = function.signatureTokens();
@@ -85,10 +93,11 @@ class IntegerFunctionEmitter {
 public:
     IntegerFunctionEmitter(std::ostringstream& output,
                            const ast::FunctionDeclaration& function,
-                           const std::vector<IntegerParameter>& parameters)
-        : output_(output), function_(function)
+                           const IntegerFunctionSignature& signature,
+                           const IntegerFunctionSignatures& signatures)
+        : output_(output), function_(function), signatures_(signatures)
     {
-        for (const IntegerParameter& parameter : parameters) {
+        for (const IntegerParameter& parameter : signature.parameters) {
             parameters_.emplace(normalize(parameter.inoxName), "%" + parameter.llvmName);
         }
     }
@@ -136,6 +145,41 @@ private:
                     << left << ", " << right << '\n';
             return result;
         }
+        case ast::AstNodeKind::CallExpression: {
+            const auto& call = static_cast<const ast::CallExpression&>(expression);
+            if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
+                break;
+            }
+
+            const auto& callee =
+                static_cast<const ast::IdentifierExpression&>(call.callee());
+            const auto signature = signatures_.find(normalize(callee.name()));
+            if (signature == signatures_.end()) {
+                break;
+            }
+            if (call.arguments().size() != signature->second.parameters.size()) {
+                throw CodegenError(
+                    "unsupported call argument count in Integer function: " +
+                    function_.name());
+            }
+
+            std::vector<std::string> arguments;
+            arguments.reserve(call.arguments().size());
+            for (const auto& argument : call.arguments()) {
+                arguments.push_back(emitExpression(*argument));
+            }
+
+            const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << result << " = call i64 @" << signature->second.llvmName << '(';
+            for (std::size_t index = 0; index < arguments.size(); ++index) {
+                if (index != 0) {
+                    output_ << ", ";
+                }
+                output_ << "i64 " << arguments[index];
+            }
+            output_ << ")\n";
+            return result;
+        }
         default:
             break;
         }
@@ -161,25 +205,26 @@ private:
 
     std::ostringstream& output_;
     const ast::FunctionDeclaration& function_;
+    const IntegerFunctionSignatures& signatures_;
     std::unordered_map<std::string, std::string> parameters_;
     std::size_t nextTemporary_ = 0;
 };
 
 void emitIntegerFunction(std::ostringstream& output,
-                         const ast::FunctionDeclaration& function)
+                         const ast::FunctionDeclaration& function,
+                         const IntegerFunctionSignature& signature,
+                         const IntegerFunctionSignatures& signatures)
 {
-    const std::vector<IntegerParameter> parameters = parseIntegerSignature(function);
-
-    output << "define i64 @" << normalize(function.name()) << '(';
-    for (std::size_t index = 0; index < parameters.size(); ++index) {
+    output << "define i64 @" << signature.llvmName << '(';
+    for (std::size_t index = 0; index < signature.parameters.size(); ++index) {
         if (index != 0) {
             output << ", ";
         }
-        output << "i64 %" << parameters[index].llvmName;
+        output << "i64 %" << signature.parameters[index].llvmName;
     }
     output << ") {\n"
            << "entry:\n";
-    IntegerFunctionEmitter(output, function, parameters).emit();
+    IntegerFunctionEmitter(output, function, signature, signatures).emit();
     output << "}\n\n";
 }
 
@@ -193,6 +238,7 @@ CodegenError::CodegenError(std::string message)
 std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
 {
     const ast::FunctionDeclaration* mainFunction = nullptr;
+    IntegerFunctionSignatures signatures;
     std::ostringstream output;
 
     for (const auto& item : module.items()) {
@@ -204,7 +250,24 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
         if (equalsIgnoreCase(function.name(), "Main")) {
             mainFunction = &function;
         } else {
-            emitIntegerFunction(output, function);
+            const std::string normalizedName = normalize(function.name());
+            signatures.emplace(
+                normalizedName,
+                IntegerFunctionSignature{
+                    normalizedName,
+                    parseIntegerSignature(function)});
+        }
+    }
+
+    for (const auto& item : module.items()) {
+        if (item->kind() != ast::AstNodeKind::FunctionDeclaration) {
+            continue;
+        }
+
+        const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
+        if (!equalsIgnoreCase(function.name(), "Main")) {
+            const auto signature = signatures.find(normalize(function.name()));
+            emitIntegerFunction(output, function, signature->second, signatures);
         }
     }
 
