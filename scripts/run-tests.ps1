@@ -6,14 +6,29 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($InoxExe)) {
-    $InoxExe = Join-Path $repoRoot "build\Debug\inox.exe"
+    $candidateExecutables = @(
+        (Join-Path $repoRoot "build\Debug\inox.exe"),
+        (Join-Path $repoRoot "build\inox"),
+        (Join-Path $repoRoot "build-linux\inox"),
+        (Join-Path $repoRoot "build-clang\inox")
+    )
+
+    $InoxExe = $candidateExecutables | Where-Object {
+        Test-Path -LiteralPath $_ -PathType Leaf
+    } | Select-Object -First 1
+
+    if ([string]::IsNullOrWhiteSpace($InoxExe)) {
+        $InoxExe = Join-Path $repoRoot "build\Debug\inox.exe"
+    }
 } elseif (-not [System.IO.Path]::IsPathRooted($InoxExe)) {
     $InoxExe = Join-Path $repoRoot $InoxExe
 }
 
 if (-not (Test-Path -LiteralPath $InoxExe -PathType Leaf)) {
     Write-Host "Inox executable not found: $InoxExe"
-    Write-Host "Run: cmake --build build"
+    Write-Host "Run one of:"
+    Write-Host "  Windows: cmake --build build --config Debug"
+    Write-Host "  Linux:   cmake --build build"
     exit 1
 }
 

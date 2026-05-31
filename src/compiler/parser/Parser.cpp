@@ -29,7 +29,7 @@ const lexer::SourceLocation& ParseError::location() const
 Parser::Parser(std::vector<lexer::Token> tokens) : tokens_(std::move(tokens))
 {
     if (tokens_.empty() || tokens_.back().kind != TokenKind::EndOfFile) {
-        tokens_.push_back(lexer::Token{TokenKind::EndOfFile});
+        tokens_.push_back(lexer::Token{TokenKind::EndOfFile, "", "", {}});
     }
 }
 

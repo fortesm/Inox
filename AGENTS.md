@@ -27,6 +27,18 @@ Historical discussions are reference material only.
 - LLVM is the official backend.
 - Keep 0.1 pre-alpha small and compilable.
 
+
+## Cross-platform Engineering
+
+- The compiler must remain portable C++20.
+- Supported development hosts are Windows/MSVC and Linux/GCC or Clang.
+- Prefer standard C++ and CMake over host-specific code.
+- Do not add platform `#ifdef`s unless a real platform API boundary requires them.
+- Keep platform differences in CMake or scripts where possible.
+- Validate Windows changes with `cmake --build build --config Debug` and `pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1`.
+- Validate Linux changes with `cmake --build build` and `./scripts/run-tests.sh`.
+- When committing, add only task-scoped files explicitly and never use `git add .`.
+
 ## Inox 0.1 pre-alpha Consolidated Decisions
 
 - Integer = Int64.

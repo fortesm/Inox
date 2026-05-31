@@ -157,3 +157,23 @@ This document does not define:
 - heavy RTTI metadata
 - reflection metadata
 - a canonical LLVM optimization pipeline
+
+## Host Portability
+
+The Inox compiler implementation targets portable C++20. The current textual LLVM IR backend is host-independent and should build with MSVC on Windows and GCC or Clang on Linux through CMake. Host-specific behavior belongs in CMake or test scripts unless a future runtime feature genuinely requires a platform API boundary.
+
+Validation commands:
+
+Windows:
+
+```powershell
+cmake --build build --config Debug
+pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1
+```
+
+Linux:
+
+```bash
+cmake --build build
+./scripts/run-tests.sh
+```
