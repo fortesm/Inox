@@ -30,15 +30,13 @@ module_body =
 
 module_item =
       use_declaration
-    | type_block
+    | type_section
     | const_block
     | const_declaration
     | var_block
     | var_declaration
     | state_block
     | state_declaration
-    | struct_declaration
-    | enum_declaration
     | function_declaration
     | main_declaration ;
 
@@ -58,25 +56,25 @@ block_close =
 
 declaration =
       use_declaration
-    | type_block
+    | type_section
     | const_block
     | const_declaration
     | var_block
     | var_declaration
     | state_block
     | state_declaration
-    | struct_declaration
-    | enum_declaration
     | function_declaration ;
 
 use_declaration =
     "Use" , ? use declaration body not yet specified by canonical syntax ? ;
 
-type_block =
-    "Type" , block ;
+type_section =
+    "Type" , { type_declaration } ;
 
 type_declaration =
-    "Type" , ? type declaration body not yet specified by canonical syntax ? ;
+      struct_declaration
+    | enum_declaration
+    | ? other type declaration forms not yet fully specified ? ;
 
 const_block =
     "Const" , block ;
@@ -99,8 +97,13 @@ state_declaration =
     ? state declaration body not yet specified by canonical syntax ? ;
 
 struct_declaration =
-    "Struct" ,
-    ? struct declaration body not yet specified by canonical syntax ? ;
+    identifier , "Struct" , { struct_field } , ";" ;
+
+struct_field =
+    identifier , type_name ;
+
+type_name =
+    identifier ;
 
 enum_declaration =
     "Enum" ,

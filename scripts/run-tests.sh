@@ -173,6 +173,9 @@ run_llvm_emission_test "$repo_root/examples/llvm-put-output-basic.inox" \
 run_llvm_emission_test "$repo_root/examples/llvm-subroutine-calls.inox" \
     "define i64 @value" "define void @report" "call void @report" "ret void" "report=" "call i32 (ptr, ...) @printf" "define i32 @main()" "ret i32 0"
 
+run_llvm_emission_test "$repo_root/examples/llvm-struct-basic.inox" \
+    "%tpoint = type { i64, i64 }" "define i64 @sumpoint" "alloca %tpoint" "zeroinitializer" "getelementptr %tpoint" "store i64 10" "store i64 20" "load i64" "add i64" "call i64 @sumpoint" "ret i32 0"
+
 total=$((passed + failed))
 echo ""
 echo "Summary: $passed passed, $failed failed, $total total"

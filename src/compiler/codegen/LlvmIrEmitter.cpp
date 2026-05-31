@@ -127,6 +127,106 @@ struct FunctionSignature {
 using FunctionSignatures =
     std::unordered_map<std::string, FunctionSignature>;
 
+struct StructFieldInfo {
+    std::string inoxName;
+    std::string llvmType;
+    std::size_t index = 0;
+};
+
+struct StructDefinition {
+    std::string inoxName;
+    std::string llvmName;
+    std::vector<StructFieldInfo> fields;
+};
+
+using StructDefinitions = std::unordered_map<std::string, StructDefinition>;
+
+std::string llvmStructName(std::string_view inoxName)
+{
+    return "%" + normalize(inoxName);
+}
+
+std::string llvmTypeForScalar(std::string_view inoxType)
+{
+    if (equalsIgnoreCase(inoxType, "Integer") || equalsIgnoreCase(inoxType, "Int64")) {
+        return "i64";
+    }
+    if (equalsIgnoreCase(inoxType, "Bool")) {
+        return "i1";
+    }
+    return {};
+}
+
+std::string llvmTypeForInoxType(std::string_view inoxType, const StructDefinitions& structs)
+{
+    if (const std::string scalar = llvmTypeForScalar(inoxType); !scalar.empty()) {
+        return scalar;
+    }
+    const auto structType = structs.find(normalize(inoxType));
+    if (structType != structs.end()) {
+        return structType->second.llvmName;
+    }
+    return {};
+}
+
+const StructDefinition* findStruct(const StructDefinitions& structs, std::string_view inoxName)
+{
+    const auto iterator = structs.find(normalize(inoxName));
+    return iterator != structs.end() ? &iterator->second : nullptr;
+}
+
+const StructFieldInfo* findStructField(const StructDefinition& structType, std::string_view fieldName)
+{
+    for (const StructFieldInfo& field : structType.fields) {
+        if (equalsIgnoreCase(field.inoxName, fieldName)) {
+            return &field;
+        }
+    }
+    return nullptr;
+}
+
+void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefinitions& structs)
+{
+    if (section.sectionKind() != ast::SectionKind::Type) {
+        return;
+    }
+
+    const auto& tokens = section.tokens();
+    for (std::size_t index = 0; index + 1 < tokens.size();) {
+        if (!equalsIgnoreCase(tokens[index + 1], "Struct")) {
+            ++index;
+            continue;
+        }
+
+        StructDefinition definition;
+        definition.inoxName = tokens[index];
+        definition.llvmName = llvmStructName(tokens[index]);
+        index += 2;
+
+        while (index < tokens.size() && tokens[index] != ";") {
+            if (index + 1 >= tokens.size()) {
+                throw CodegenError("invalid Struct declaration: " + definition.inoxName);
+            }
+            const std::string fieldName = tokens[index++];
+            const std::string fieldType = tokens[index++];
+            const std::string llvmFieldType = llvmTypeForScalar(fieldType);
+            if (llvmFieldType.empty()) {
+                throw CodegenError(
+                    "LLVM emission currently supports only Integer and Bool struct fields");
+            }
+            definition.fields.push_back(
+                StructFieldInfo{fieldName, llvmFieldType, definition.fields.size()});
+        }
+
+        if (index >= tokens.size() || tokens[index] != ";") {
+            throw CodegenError("expected ';' to close Struct: " + definition.inoxName);
+        }
+        ++index;
+        structs.emplace(normalize(definition.inoxName), std::move(definition));
+    }
+}
+
+
 FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& function)
 {
     const auto& tokens = function.signatureTokens();
@@ -183,12 +283,14 @@ public:
                     const ast::FunctionDeclaration& function,
                     const FunctionSignature& signature,
                     const FunctionSignatures& signatures,
+                    const StructDefinitions& structs,
                     std::vector<std::string>& stringGlobals,
                     std::size_t& nextStringLiteral)
         : output_(output),
           function_(function),
           signature_(signature),
           signatures_(signatures),
+          structs_(structs),
           stringGlobals_(stringGlobals),
           nextStringLiteral_(nextStringLiteral)
     {
@@ -238,6 +340,17 @@ private:
     struct LoopTargets {
         std::string continueTarget;
         std::string breakTarget;
+    };
+
+    struct LocalInfo {
+        std::string slot;
+        std::string inoxType;
+        std::string llvmType;
+    };
+
+    struct FieldAddress {
+        std::string pointer;
+        std::string llvmType;
     };
 
     void emitIfReturn(const ast::IfStatement& statement)
@@ -423,7 +536,7 @@ private:
         output_ << "  " << slot << " = alloca i64\n";
         const std::string startValue = emitExpression(range.left());
         output_ << "  store i64 " << startValue << ", ptr " << slot << '\n';
-        locals_.emplace(iteratorName, slot);
+        locals_.emplace(iteratorName, LocalInfo{slot, "Integer", "i64"});
 
         output_ << "  br label %" << conditionTarget << "\n\n";
 
@@ -646,6 +759,18 @@ private:
 
     void emitVarBlockDeclaration(const ast::Statement& statement)
     {
+        if (statement.kind() == ast::AstNodeKind::VarStatement) {
+            const auto& variable = static_cast<const ast::VarStatement&>(statement);
+            if (variable.initializer() == nullptr) {
+                emitTypedLocalVariable(variable.name(), variable.typeName());
+            } else if (!variable.typeName().empty()) {
+                emitTypedLocalVariable(variable.name(), variable.typeName(), variable.initializer());
+            } else {
+                emitLocalVariable(variable.name(), *variable.initializer());
+            }
+            return;
+        }
+
         if (statement.kind() != ast::AstNodeKind::ExpressionStatement) {
             throw CodegenError(
                 "unsupported local variable declaration in Integer function");
@@ -677,7 +802,34 @@ private:
         output_ << "  " << slot << " = alloca i64\n";
         const std::string value = emitExpression(initializer);
         output_ << "  store i64 " << value << ", ptr " << slot << '\n';
-        locals_.emplace(normalizedName, slot);
+        locals_.emplace(normalizedName, LocalInfo{slot, "Integer", "i64"});
+    }
+
+    void emitTypedLocalVariable(std::string_view name, std::string_view typeName, const ast::Expression* initializer = nullptr)
+    {
+        const std::string llvmType = llvmTypeForInoxType(typeName, structs_);
+        if (llvmType.empty()) {
+            throw CodegenError("unsupported local variable type for LLVM emission");
+        }
+
+        const std::string normalizedName = normalize(name);
+        const std::string slot = "%" + normalizedName;
+        output_ << "  " << slot << " = alloca " << llvmType << "\n";
+
+        if (const StructDefinition* structType = findStruct(structs_, typeName)) {
+            if (initializer != nullptr) {
+                throw CodegenError("LLVM emission does not support struct initializers yet");
+            }
+            output_ << "  store " << structType->llvmName
+                    << " zeroinitializer, ptr " << slot << '\n';
+            locals_.emplace(normalizedName,
+                            LocalInfo{slot, std::string(typeName), structType->llvmName});
+            return;
+        }
+
+        const std::string value = initializer != nullptr ? emitExpression(*initializer) : "0";
+        output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
+        locals_.emplace(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
     }
 
     static bool isAssignmentExpression(const ast::Expression& expression)
@@ -812,6 +964,50 @@ private:
         return false;
     }
 
+    FieldAddress emitMemberAddress(const ast::CallExpression& call)
+    {
+        if (call.arguments().size() != 2 ||
+            call.arguments()[0]->kind() != ast::AstNodeKind::IdentifierExpression ||
+            call.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
+            throw CodegenError("LLVM emission currently supports only simple local field access");
+        }
+
+        const auto& base = static_cast<const ast::IdentifierExpression&>(*call.arguments()[0]);
+        const auto& fieldName = static_cast<const ast::IdentifierExpression&>(*call.arguments()[1]);
+        const auto local = locals_.find(normalize(base.name()));
+        if (local == locals_.end()) {
+            throw CodegenError("LLVM emission supports field access only on local struct variables");
+        }
+
+        const StructDefinition* structType = findStruct(structs_, local->second.inoxType);
+        if (structType == nullptr) {
+            throw CodegenError("LLVM emission field access target is not a struct");
+        }
+        const StructFieldInfo* field = findStructField(*structType, fieldName.name());
+        if (field == nullptr) {
+            throw CodegenError("unknown struct field for LLVM emission");
+        }
+
+        const std::string pointer = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << pointer << " = getelementptr " << structType->llvmName
+                << ", ptr " << local->second.slot
+                << ", i32 0, i32 " << field->index << '\n';
+        return FieldAddress{pointer, field->llvmType};
+    }
+
+    static bool isMemberAccessCall(const ast::Expression& expression)
+    {
+        if (expression.kind() != ast::AstNodeKind::CallExpression) {
+            return false;
+        }
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
+            return false;
+        }
+        const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
+        return equalsIgnoreCase(callee.name(), "__member");
+    }
+
     void emitLocalAssignment(const ast::Expression& expression)
     {
         if (expression.kind() != ast::AstNodeKind::BinaryExpression) {
@@ -820,22 +1016,37 @@ private:
         }
 
         const auto& assignment = static_cast<const ast::BinaryExpression&>(expression);
-        if (assignment.op() != ast::BinaryOperator::Assign ||
-            assignment.left().kind() != ast::AstNodeKind::IdentifierExpression) {
+        if (assignment.op() != ast::BinaryOperator::Assign) {
             throw CodegenError(
                 "LLVM emission currently supports only simple local assignments");
         }
 
-        const auto& identifier =
-            static_cast<const ast::IdentifierExpression&>(assignment.left());
-        const auto local = locals_.find(normalize(identifier.name()));
-        if (local == locals_.end()) {
-            throw CodegenError(
-                "LLVM emission currently supports assignment only to local variables");
+        if (assignment.left().kind() == ast::AstNodeKind::IdentifierExpression) {
+            const auto& identifier =
+                static_cast<const ast::IdentifierExpression&>(assignment.left());
+            const auto local = locals_.find(normalize(identifier.name()));
+            if (local == locals_.end()) {
+                throw CodegenError(
+                    "LLVM emission currently supports assignment only to local variables");
+            }
+
+            const std::string value = emitExpression(assignment.right());
+            output_ << "  store " << local->second.llvmType << ' ' << value
+                    << ", ptr " << local->second.slot << '\n';
+            return;
         }
 
-        const std::string value = emitExpression(assignment.right());
-        output_ << "  store i64 " << value << ", ptr " << local->second << '\n';
+        if (isMemberAccessCall(assignment.left())) {
+            const FieldAddress field = emitMemberAddress(
+                static_cast<const ast::CallExpression&>(assignment.left()));
+            const std::string value = emitExpression(assignment.right());
+            output_ << "  store " << field.llvmType << ' ' << value
+                    << ", ptr " << field.pointer << '\n';
+            return;
+        }
+
+        throw CodegenError(
+            "LLVM emission currently supports only local variable or field assignments");
     }
 
     std::string emitExpression(const ast::Expression& expression)
@@ -857,7 +1068,11 @@ private:
             const auto local = locals_.find(normalizedName);
             if (local != locals_.end()) {
                 const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-                output_ << "  " << result << " = load i64, ptr " << local->second << '\n';
+                if (local->second.llvmType.empty() || local->second.llvmType.front() == '%') {
+                    throw CodegenError("LLVM emission cannot use whole struct as scalar expression");
+                }
+                output_ << "  " << result << " = load " << local->second.llvmType
+                        << ", ptr " << local->second.slot << '\n';
                 return result;
             }
             const auto parameter = parameters_.find(normalizedName);
@@ -919,6 +1134,14 @@ private:
 
             const auto& callee =
                 static_cast<const ast::IdentifierExpression&>(call.callee());
+            if (equalsIgnoreCase(callee.name(), "__member")) {
+                const FieldAddress field = emitMemberAddress(call);
+                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << result << " = load " << field.llvmType
+                        << ", ptr " << field.pointer << '\n';
+                return result;
+            }
+
             const auto signature = signatures_.find(normalize(callee.name()));
             if (signature == signatures_.end()) {
                 break;
@@ -1026,10 +1249,11 @@ private:
     const ast::FunctionDeclaration& function_;
     const FunctionSignature& signature_;
     const FunctionSignatures& signatures_;
+    const StructDefinitions& structs_;
     std::vector<std::string>& stringGlobals_;
     std::size_t& nextStringLiteral_;
     std::unordered_map<std::string, std::string> parameters_;
-    std::unordered_map<std::string, std::string> locals_;
+    std::unordered_map<std::string, LocalInfo> locals_;
     std::vector<LoopTargets> loopTargets_;
     std::size_t nextTemporary_ = 0;
     std::size_t nextLabel_ = 0;
@@ -1039,6 +1263,7 @@ void emitFunction(std::ostringstream& output,
                   const ast::FunctionDeclaration& function,
                   const FunctionSignature& signature,
                   const FunctionSignatures& signatures,
+                  const StructDefinitions& structs,
                   std::vector<std::string>& stringGlobals,
                   std::size_t& nextStringLiteral)
 {
@@ -1051,7 +1276,7 @@ void emitFunction(std::ostringstream& output,
     }
     output << ") {\n"
            << "entry:\n";
-    FunctionEmitter(output, function, signature, signatures, stringGlobals, nextStringLiteral).emit();
+    FunctionEmitter(output, function, signature, signatures, structs, stringGlobals, nextStringLiteral).emit();
     output << "}\n\n";
 }
 
@@ -1066,10 +1291,17 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
 {
     const ast::FunctionDeclaration* mainFunction = nullptr;
     FunctionSignatures signatures;
+    StructDefinitions structs;
     std::ostringstream functionOutput;
     std::ostringstream output;
     std::vector<std::string> stringGlobals;
     std::size_t nextStringLiteral = 0;
+
+    for (const auto& item : module.items()) {
+        if (item->kind() == ast::AstNodeKind::SectionDeclaration) {
+            collectStructDefinitions(static_cast<const ast::SectionDeclaration&>(*item), structs);
+        }
+    }
 
     for (const auto& item : module.items()) {
         if (item->kind() != ast::AstNodeKind::FunctionDeclaration) {
@@ -1093,7 +1325,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
         const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
         if (!equalsIgnoreCase(function.name(), "Main")) {
             const auto signature = signatures.find(normalize(function.name()));
-            emitFunction(functionOutput, function, signature->second, signatures, stringGlobals, nextStringLiteral);
+            emitFunction(functionOutput, function, signature->second, signatures, structs, stringGlobals, nextStringLiteral);
         }
     }
 
@@ -1101,7 +1333,21 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
         throw CodegenError("LLVM emission requires Main()");
     }
     const FunctionSignature mainSignature{"main", "i32", {}};
-    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, stringGlobals, nextStringLiteral);
+    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, structs, stringGlobals, nextStringLiteral);
+
+    for (const auto& [_, structType] : structs) {
+        output << structType.llvmName << " = type { ";
+        for (std::size_t index = 0; index < structType.fields.size(); ++index) {
+            if (index != 0) {
+                output << ", ";
+            }
+            output << structType.fields[index].llvmType;
+        }
+        output << " }\n";
+    }
+    if (!structs.empty()) {
+        output << '\n';
+    }
 
     output << "@.inox.fmt.i64.nl = private unnamed_addr constant [6 x i8] c\"%lld\\0A\\00\"\n"
            << "@.inox.fmt.i64 = private unnamed_addr constant [5 x i8] c\"%lld\\00\"\n"

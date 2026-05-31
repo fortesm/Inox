@@ -1,32 +1,10 @@
 Module Types
 
-Type :
-    Bool
-    Int8
-    Int16
-    Int32
-    Int64
-    UInt8
-    UInt16
-    UInt32
-    UInt64
-    Integer
-    UInteger
-    Natural
-    Float32
-    Float64
-    Float
-    Currency
-    Crypto
-    Char
-    String
-    Struct
-    Enum
-    Set
-    Vector
-    1..10
-    Pair[T]
-;
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
 
 Const :
     Limit := 10

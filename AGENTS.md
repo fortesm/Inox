@@ -66,7 +66,10 @@ Historical discussions are reference material only.
 - The automatic prelude includes Sys.IO, Sys.Math, and Sys.Std.
 - Line comments use ==.
 - Block comments do not exist in 0.1.
+- `Type` is a section/declarator, not a block: it has no `:` and no closing `;`.
+- Canonical struct syntax is `TName Struct ... ;`; the `;` closes the Struct itself.
 - Struct declares fields only. Associated methods are declared outside Struct.
+- Struct type names conventionally begin with `T`; struct fields conventionally begin with `F`, but 0.1 does not reject other names.
 - Boolean logical operators are and, or, xor, and not.
 - Integer bitwise operators are bitand, bitor, bitxor, bitnot, shr, and shl.
 - ^ is exponentiation and is never XOR.

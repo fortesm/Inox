@@ -81,7 +81,7 @@ ast::StatementPtr Parser::parseStatement()
 
     if (matchKeyword("var")) {
         if (match(TokenKind::Colon)) {
-            auto declarations = parseBlockBody();
+            auto declarations = parseVarBlockDeclarations();
             consumeBlockClose();
             return std::make_unique<ast::VarBlockStatement>(std::move(declarations));
         }
@@ -486,6 +486,36 @@ ast::StatementPtr Parser::parseVarStatement(bool isMutable)
         isMutable, name.lexeme, std::move(initializer));
 }
 
+std::vector<ast::StatementPtr> Parser::parseVarBlockDeclarations()
+{
+    std::vector<ast::StatementPtr> declarations;
+
+    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end")) {
+        const lexer::Token& name = consume(TokenKind::Identifier, "expected variable name");
+        const std::size_t line = name.location.line;
+
+        std::string typeName;
+        ast::ExpressionPtr initializer;
+
+        if (!isAtEnd() && peek().location.line == line &&
+            (peek().kind == TokenKind::Identifier || peek().kind == TokenKind::Keyword) &&
+            !checkKeyword("if") && !checkKeyword("while") && !checkKeyword("repeat") &&
+            !checkKeyword("for") && !checkKeyword("return") && !checkKeyword("break") &&
+            !checkKeyword("continue") && !checkKeyword("until")) {
+            typeName = tokenText(advance());
+        }
+
+        if (match(TokenKind::ColonEqual)) {
+            initializer = parseAssignment();
+        }
+
+        declarations.push_back(std::make_unique<ast::VarStatement>(
+            false, name.lexeme, std::move(initializer), std::move(typeName)));
+    }
+
+    return declarations;
+}
+
 ast::StatementPtr Parser::parseIfStatement()
 {
     auto condition = parseAssignment();
@@ -694,9 +724,18 @@ ast::AstNodePtr Parser::parseUseDeclaration()
 
 ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
 {
+    std::vector<std::string> tokens;
+
+    if (sectionKind == ast::SectionKind::Type && !check(TokenKind::Colon)) {
+        while (!isAtEnd() && !atTypeSectionBoundary()) {
+            tokens.push_back(tokenText(advance()));
+        }
+        return std::make_unique<ast::SectionDeclaration>(
+            sectionKind, std::move(tokens));
+    }
+
     consume(TokenKind::Colon, "expected ':' after section header");
 
-    std::vector<std::string> tokens;
     while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end")) {
         tokens.push_back(tokenText(advance()));
     }
@@ -782,6 +821,38 @@ bool Parser::atStatementBoundary() const
            checkKeyword("finally") ||
            checkKeyword("until") ||
            checkKeyword("otherwise");
+}
+
+bool Parser::atTypeSectionBoundary() const
+{
+    if (isAtEnd()) {
+        return true;
+    }
+
+    if (checkKeyword("use") || checkKeyword("type") || checkKeyword("const") ||
+        checkKeyword("state") || checkKeyword("var")) {
+        return true;
+    }
+
+    if (!checkIdentifierLike()) {
+        return false;
+    }
+
+    bool sawLeftParen = false;
+    for (std::size_t index = current_ + 1; index < tokens_.size(); ++index) {
+        if (tokens_[index].kind == TokenKind::Semicolon ||
+            tokens_[index].kind == TokenKind::EndOfFile) {
+            return false;
+        }
+        if (tokens_[index].kind == TokenKind::LeftParen) {
+            sawLeftParen = true;
+        }
+        if (tokens_[index].kind == TokenKind::Colon) {
+            return sawLeftParen;
+        }
+    }
+
+    return false;
 }
 
 void Parser::requireHeaderLineBreak()

@@ -253,10 +253,14 @@ ExpressionPtr ExpressionStatement::takeExpression()
     return std::move(expression_);
 }
 
-VarStatement::VarStatement(bool isMutable, std::string name, ExpressionPtr initializer)
+VarStatement::VarStatement(bool isMutable,
+                           std::string name,
+                           ExpressionPtr initializer,
+                           std::string typeName)
     : Statement(AstNodeKind::VarStatement),
       isMutable_(isMutable),
       name_(std::move(name)),
+      typeName_(std::move(typeName)),
       initializer_(std::move(initializer))
 {
 }
@@ -269,6 +273,11 @@ bool VarStatement::isMutable() const
 const std::string& VarStatement::name() const
 {
     return name_;
+}
+
+const std::string& VarStatement::typeName() const
+{
+    return typeName_;
 }
 
 const Expression* VarStatement::initializer() const

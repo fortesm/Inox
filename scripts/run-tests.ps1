@@ -175,6 +175,10 @@ Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-subroutine-calls.inox")) `
     -RequiredFragments @("define i64 @value", "define void @report", "call void @report", "ret void", "report=", "call i32 (ptr, ...) @printf", "define i32 @main()", "ret i32 0")
 
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-struct-basic.inox")) `
+    -RequiredFragments @("%tpoint = type { i64, i64 }", "define i64 @sumpoint", "alloca %tpoint", "zeroinitializer", "getelementptr %tpoint", "store i64 10", "store i64 20", "load i64", "add i64", "call i64 @sumpoint", "ret i32 0")
+
 $total = $passed + $failed
 Write-Host ""
 Write-Host "Summary: $passed passed, $failed failed, $total total"

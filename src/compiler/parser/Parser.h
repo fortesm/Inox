@@ -59,6 +59,7 @@ private:
     std::vector<ast::ExpressionPtr> parseArgumentList();
 
     ast::StatementPtr parseVarStatement(bool isMutable);
+    std::vector<ast::StatementPtr> parseVarBlockDeclarations();
     ast::StatementPtr parseIfStatement();
     ast::StatementPtr parseUnlessStatement();
     ast::StatementPtr parseWhileStatement();
@@ -81,6 +82,7 @@ private:
     std::vector<ast::StatementPtr> parseDelimitedBody(std::initializer_list<std::string_view> stopKeywords);
     bool atAnyKeyword(std::initializer_list<std::string_view> keywords) const;
     bool atStatementBoundary() const;
+    bool atTypeSectionBoundary() const;
     void requireHeaderLineBreak();
     void consumeBlockClose();
 

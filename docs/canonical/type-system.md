@@ -120,6 +120,27 @@ Compilers and tools must not treat `Decimal` as a built-in type.
 The detailed encoding, indexing, slicing, and storage semantics of `Char` and
 `String` are not specified in this document.
 
+
+## Struct Types
+
+Structs are nominal value types. The canonical 0.1 syntax is:
+
+```inox
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+```
+
+`Type` is not a block and has no closing `;`. `Struct` opens the aggregate declaration and `;` closes that struct declaration.
+
+Struct declarations contain fields only. The compiler must not require or allow duplicated method signatures inside structs.
+
+The first implemented subset supports local variables of simple structs with `Integer` and `Bool` fields, field assignment, and field access. Struct names conventionally start with `T`; fields conventionally start with `F`, but these are style conventions in 0.1.
+
+Future work includes default field values, variant structs, tags, embedding/composition with promotion, methods associated outside the struct, struct parameters/returns, and struct comparison rules.
+
 ## Arrays
 
 Arrays have explicit ranges.

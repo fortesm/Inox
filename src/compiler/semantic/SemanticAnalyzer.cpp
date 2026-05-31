@@ -395,11 +395,77 @@ std::string SemanticAnalyzer::inferSectionDeclarationType(
 void SemanticAnalyzer::registerTypeSectionSymbols(const ast::SectionDeclaration& section)
 {
     const auto& tokens = section.tokens();
-    for (std::size_t index = 0; index + 1 < tokens.size(); ++index) {
-        if (looksLikeIdentifier(tokens[index]) && tokens[index + 1] == ":=") {
-            declareTypeOrThrow(tokens[index], false);
+    for (std::size_t index = 0; index < tokens.size();) {
+        if (index + 1 < tokens.size() && looksLikeIdentifier(tokens[index]) &&
+            equalsIgnoreCase(tokens[index + 1], "Struct")) {
+            registerStructDeclaration(tokens, index);
+            continue;
         }
+
+        if (index + 1 < tokens.size() && looksLikeIdentifier(tokens[index]) &&
+            tokens[index + 1] == ":=") {
+            declareTypeOrThrow(tokens[index], false);
+            index += 2;
+            continue;
+        }
+
+        ++index;
     }
+}
+
+void SemanticAnalyzer::registerStructDeclaration(const std::vector<std::string>& tokens, std::size_t& index)
+{
+    const std::string typeName = tokens[index];
+    declareTypeOrThrow(typeName, false);
+
+    StructType structType;
+    structType.name = typeName;
+    index += 2;
+
+    while (index < tokens.size() && tokens[index] != ";") {
+        if (index + 1 >= tokens.size() || !looksLikeIdentifier(tokens[index]) ||
+            !looksLikeIdentifier(tokens[index + 1])) {
+            throw SemanticError("invalid struct field declaration in: " + typeName);
+        }
+
+        const std::string fieldName = tokens[index++];
+        const std::string fieldType = tokens[index++];
+        for (const StructField& field : structType.fields) {
+            if (equalsIgnoreCase(field.name, fieldName)) {
+                throw SemanticError("duplicate struct field: " + fieldName);
+            }
+        }
+        structType.fields.push_back(StructField{fieldName, canonicalTypeName(fieldType)});
+    }
+
+    if (index >= tokens.size() || tokens[index] != ";") {
+        throw SemanticError("expected ';' to close Struct: " + typeName);
+    }
+    ++index;
+
+    structs_.emplace(normalizeName(typeName), std::move(structType));
+}
+
+
+void SemanticAnalyzer::validateStructDeclaration(const std::vector<std::string>& tokens, std::size_t& index) const
+{
+    const std::string typeName = tokens[index];
+    index += 2;
+
+    while (index < tokens.size() && tokens[index] != ";") {
+        if (index + 1 >= tokens.size() || !looksLikeIdentifier(tokens[index]) ||
+            !looksLikeIdentifier(tokens[index + 1])) {
+            throw SemanticError("invalid struct field declaration in: " + typeName);
+        }
+        index += 1;
+        resolveTypeOrThrow(tokens[index]);
+        index += 1;
+    }
+
+    if (index >= tokens.size() || tokens[index] != ";") {
+        throw SemanticError("expected ';' to close Struct: " + typeName);
+    }
+    ++index;
 }
 
 void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& section) const
@@ -407,34 +473,46 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
     const auto& tokens = section.tokens();
 
     if (section.sectionKind() == ast::SectionKind::Type) {
-        for (std::size_t index = 0; index + 2 < tokens.size(); ++index) {
-            if (!looksLikeIdentifier(tokens[index]) || tokens[index + 1] != ":=") {
+        for (std::size_t index = 0; index < tokens.size();) {
+            if (index + 1 < tokens.size() && looksLikeIdentifier(tokens[index]) &&
+                equalsIgnoreCase(tokens[index + 1], "Struct")) {
+                validateStructDeclaration(tokens, index);
                 continue;
             }
 
-            const std::string_view head = tokens[index + 2];
-            if (equalsIgnoreCase(head, "Struct") || equalsIgnoreCase(head, "Enum")) {
-                continue;
-            }
-            if (equalsIgnoreCase(head, "Set") || equalsIgnoreCase(head, "Vector")) {
-                if (index + 4 < tokens.size() && tokens[index + 3] == "[") {
-                    resolveTypeOrThrow(tokens[index + 4]);
+            if (index + 2 < tokens.size() && looksLikeIdentifier(tokens[index]) &&
+                tokens[index + 1] == ":=") {
+                const std::string_view head = tokens[index + 2];
+                if (equalsIgnoreCase(head, "Struct") || equalsIgnoreCase(head, "Enum")) {
+                    index += 3;
+                    continue;
                 }
-                continue;
-            }
-            if (equalsIgnoreCase(head, "Array")) {
-                for (std::size_t typeIndex = index + 3; typeIndex < tokens.size(); ++typeIndex) {
-                    if (tokens[typeIndex] == "]" && typeIndex + 1 < tokens.size() &&
-                        looksLikeIdentifier(tokens[typeIndex + 1])) {
-                        resolveTypeOrThrow(tokens[typeIndex + 1]);
-                        break;
+                if (equalsIgnoreCase(head, "Set") || equalsIgnoreCase(head, "Vector")) {
+                    if (index + 4 < tokens.size() && tokens[index + 3] == "[") {
+                        resolveTypeOrThrow(tokens[index + 4]);
                     }
+                    index += 3;
+                    continue;
                 }
+                if (equalsIgnoreCase(head, "Array")) {
+                    for (std::size_t typeIndex = index + 3; typeIndex < tokens.size(); ++typeIndex) {
+                        if (tokens[typeIndex] == "]" && typeIndex + 1 < tokens.size() &&
+                            looksLikeIdentifier(tokens[typeIndex + 1])) {
+                            resolveTypeOrThrow(tokens[typeIndex + 1]);
+                            break;
+                        }
+                    }
+                    index += 3;
+                    continue;
+                }
+                if (looksLikeIdentifier(head)) {
+                    resolveTypeOrThrow(head);
+                }
+                index += 3;
                 continue;
             }
-            if (looksLikeIdentifier(head)) {
-                resolveTypeOrThrow(head);
-            }
+
+            ++index;
         }
         return;
     }
@@ -503,9 +581,20 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         break;
     case ast::AstNodeKind::VarStatement: {
         const auto& var = static_cast<const ast::VarStatement&>(statement);
-        std::string typeName;
+        std::string typeName = var.typeName().empty() ? std::string{} : canonicalTypeName(var.typeName());
+        if (!var.typeName().empty()) {
+            resolveTypeOrThrow(var.typeName());
+        }
         if (var.initializer() != nullptr) {
-            typeName = analyzeExpression(*var.initializer());
+            const std::string initializerType = analyzeExpression(*var.initializer());
+            if (typeName.empty()) {
+                typeName = initializerType;
+            } else if (!canAssign(typeName, initializerType)) {
+                throw SemanticError("cannot initialize " + typeName + " with " + initializerType);
+            }
+        }
+        if (typeName.empty()) {
+            throw SemanticError("variable requires a type or initializer: " + var.name());
         }
         declareOrThrow(var.name(), SymbolKind::Variable, std::move(typeName));
         break;
@@ -704,6 +793,9 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
 {
     if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
         const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
+        if (equalsIgnoreCase(callee.name(), "__member")) {
+            return analyzeMemberExpression(call);
+        }
         if (const TypeSymbol* type = types_.resolve(callee.name())) {
             const Symbol& symbol = resolveOrThrow(callee.name());
             result_.bind(callee, symbol);
@@ -744,6 +836,25 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
         analyzeExpression(*argument);
     }
     return {};
+}
+
+std::string SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression& call)
+{
+    if (call.arguments().size() != 2 ||
+        call.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
+        throw SemanticError("member access requires object and field name");
+    }
+
+    const std::string baseType = analyzeExpression(*call.arguments()[0]);
+    const auto& fieldIdentifier =
+        static_cast<const ast::IdentifierExpression&>(*call.arguments()[1]);
+    const StructField* field = resolveStructField(baseType, fieldIdentifier.name());
+    if (field == nullptr) {
+        throw SemanticError("unknown field " + fieldIdentifier.name() + " in " + baseType);
+    }
+
+    result_.setExpressionType(fieldIdentifier, resolvedType(field->typeName));
+    return field->typeName;
 }
 
 std::string SemanticAnalyzer::analyzeUserFunctionCall(
@@ -817,23 +928,30 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
     const ast::BinaryOperator op = expression.op();
 
     if (op == ast::BinaryOperator::Assign) {
-        if (expression.left().kind() != ast::AstNodeKind::IdentifierExpression) {
-            throw SemanticError("assignment target must be an identifier");
-        }
+        std::string targetType;
 
-        const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression.left());
-        const Symbol& target = resolveOrThrow(identifier.name());
-        result_.bind(identifier, target);
-        result_.setExpressionType(identifier, resolvedType(target.typeName));
-        if (target.kind != SymbolKind::Variable && target.kind != SymbolKind::State) {
-            throw SemanticError("assignment target is not mutable: " + identifier.name());
+        if (expression.left().kind() == ast::AstNodeKind::IdentifierExpression) {
+            const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression.left());
+            const Symbol& target = resolveOrThrow(identifier.name());
+            result_.bind(identifier, target);
+            result_.setExpressionType(identifier, resolvedType(target.typeName));
+            if (target.kind != SymbolKind::Variable && target.kind != SymbolKind::State) {
+                throw SemanticError("assignment target is not mutable: " + identifier.name());
+            }
+            targetType = target.typeName;
+        } else if (expression.left().kind() == ast::AstNodeKind::CallExpression &&
+                   isMemberCall(static_cast<const ast::CallExpression&>(expression.left()))) {
+            targetType = analyzeMemberExpression(
+                static_cast<const ast::CallExpression&>(expression.left()));
+        } else {
+            throw SemanticError("assignment target must be an identifier or field");
         }
 
         const std::string rightType = analyzeExpression(expression.right());
-        if (!canAssign(target.typeName, rightType)) {
-            throw SemanticError("cannot assign " + rightType + " to " + target.typeName);
+        if (!canAssign(targetType, rightType)) {
+            throw SemanticError("cannot assign " + rightType + " to " + targetType);
         }
-        return target.typeName;
+        return targetType;
     }
 
     const std::string leftType = analyzeExpression(expression.left());
@@ -960,6 +1078,35 @@ bool SemanticAnalyzer::looksLikeIdentifier(std::string_view text)
         }
     }
     return true;
+}
+
+const StructType* SemanticAnalyzer::resolveStruct(std::string_view name) const
+{
+    const auto iterator = structs_.find(normalizeName(name));
+    return iterator != structs_.end() ? &iterator->second : nullptr;
+}
+
+const StructField* SemanticAnalyzer::resolveStructField(std::string_view structName, std::string_view fieldName) const
+{
+    const StructType* structType = resolveStruct(structName);
+    if (structType == nullptr) {
+        return nullptr;
+    }
+    for (const StructField& field : structType->fields) {
+        if (equalsIgnoreCase(field.name, fieldName)) {
+            return &field;
+        }
+    }
+    return nullptr;
+}
+
+bool SemanticAnalyzer::isMemberCall(const ast::CallExpression& expression)
+{
+    if (expression.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
+        return false;
+    }
+    const auto& callee = static_cast<const ast::IdentifierExpression&>(expression.callee());
+    return equalsIgnoreCase(callee.name(), "__member");
 }
 
 bool SemanticAnalyzer::isInternalSyntheticName(std::string_view name)

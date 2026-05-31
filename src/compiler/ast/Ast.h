@@ -278,16 +278,21 @@ private:
 
 class VarStatement final : public Statement {
 public:
-    VarStatement(bool isMutable, std::string name, ExpressionPtr initializer);
+    VarStatement(bool isMutable,
+                 std::string name,
+                 ExpressionPtr initializer,
+                 std::string typeName = {});
 
     bool isMutable() const;
     const std::string& name() const;
+    const std::string& typeName() const;
     const Expression* initializer() const;
     ExpressionPtr takeInitializer();
 
 private:
     bool isMutable_ = false;
     std::string name_;
+    std::string typeName_;
     ExpressionPtr initializer_;
 };
 

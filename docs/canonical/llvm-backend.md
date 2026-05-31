@@ -198,3 +198,23 @@ The current textual LLVM backend includes a deliberately small runtime lowering 
 - User subroutines without return values currently lower to `define void @name(...)` and end with `ret void`.
 - Calls to those subroutines are allowed as statements and lower to `call void @name(...)`.
 - This is temporary smoke-test lowering, not the final Inox runtime ABI.
+
+## Struct Lowering
+
+The current textual LLVM backend supports a first simple struct subset. Canonical Inox:
+
+```inox
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+```
+
+lowers to an LLVM aggregate type similar to:
+
+```llvm
+%tpoint = type { i64, i64 }
+```
+
+Local struct variables are lowered with `alloca`, default zero initialization via `zeroinitializer`, and field access through `getelementptr`. The implemented backend subset supports `Integer` and `Bool` fields, field assignment, and field reads. Struct parameters, struct returns, embedding, tags, variant structs, and defaults for individual fields are intentionally out of scope for this milestone.

@@ -1,0 +1,22 @@
+Module StructBasic
+
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+SumPoint() Integer :
+    Var :
+        P TPoint
+    ;
+
+    P.FX := 10
+    P.FY := 20
+
+    Return P.FX + P.FY
+;
+
+Main() :
+    PutLn(SumPoint())
+;

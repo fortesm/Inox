@@ -40,6 +40,8 @@ decided are explicitly marked as unspecified.
 - Assignment `:=` is right-associative.
 - Chained assignment is allowed.
 - Assignment inside a boolean expression is forbidden.
+- `Type` is a section/declarator, not a block; it has no `:` and no closing `;`.
+- `TName Struct ... ;` declares a nominal struct type; the `;` closes the Struct.
 - Structs declare fields only. Associated methods are declared outside structs.
 - The canonical boolean type is `Bool`.
 - Integer bitwise operators are `bitand`, `bitor`, `bitxor`, `bitnot`, `shr`,
@@ -206,7 +208,7 @@ yet. This document does not yet define:
 - initialization versus reassignment
 - mutability rules
 - copy, move, or reference behavior
-- assignment to array elements, vector elements, record fields, or other
+- assignment to array elements, vector elements, struct fields, or other
   subobjects
 
 No assignment behavior beyond strong typing, safe widening, and explicit casts
@@ -482,3 +484,34 @@ The automatic prelude exposes these names without explicit `Use`.
 This document does not define future language features. It also does not define
 semantics for topics not yet specified by canonical syntax or type-system
 documents.
+
+## Struct Semantics
+
+Structs are nominal value types. In the 0.1 backend subset, a struct declaration has the form:
+
+```inox
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+```
+
+A `Struct` declares fields only. It does not declare or repeat method signatures. Associated methods and protocol/behavior reuse are future layers outside the struct declaration itself.
+
+A local struct variable can be declared in a `Var : ... ;` block:
+
+```inox
+Var :
+    P TPoint
+;
+```
+
+The current LLVM prototype initializes local struct storage with a zero/default value. Field access is nominal and case-insensitive:
+
+```inox
+P.FX := 10
+Return P.FX
+```
+
+The initial implemented field types are `Integer` and `Bool`. Variant structs, tags, embedding, default field values, struct parameters, struct returns, and struct equality are future work.

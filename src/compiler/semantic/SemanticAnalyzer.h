@@ -27,6 +27,16 @@ struct FunctionSignature {
     std::string returnType;
 };
 
+struct StructField {
+    std::string name;
+    std::string typeName;
+};
+
+struct StructType {
+    std::string name;
+    std::vector<StructField> fields;
+};
+
 class SemanticAnalyzer {
 public:
     SemanticAnalyzer();
@@ -50,7 +60,9 @@ private:
     void analyzeModuleItem(const ast::AstNode& item);
     void declareSectionSymbols(const ast::SectionDeclaration& section);
     void registerTypeSectionSymbols(const ast::SectionDeclaration& section);
+    void registerStructDeclaration(const std::vector<std::string>& tokens, std::size_t& index);
     void validateSectionTypes(const ast::SectionDeclaration& section) const;
+    void validateStructDeclaration(const std::vector<std::string>& tokens, std::size_t& index) const;
     void analyzeFunction(const ast::FunctionDeclaration& function);
 
     void analyzeStatements(const std::vector<ast::StatementPtr>& statements, bool createScope);
@@ -59,6 +71,7 @@ private:
     std::string analyzeExpression(const ast::Expression& expression);
     std::string inferExpressionType(const ast::Expression& expression);
     std::string analyzeCallExpression(const ast::CallExpression& expression);
+    std::string analyzeMemberExpression(const ast::CallExpression& expression);
     std::string analyzeBinaryExpression(const ast::BinaryExpression& expression);
     std::string analyzeUnaryExpression(const ast::UnaryExpression& expression);
     std::string analyzePreludeCall(std::string_view name,
@@ -68,12 +81,15 @@ private:
     void requireBoolCondition(const ast::Expression& expression);
     std::string inferSectionDeclarationType(const std::vector<std::string>& tokens,
                                             std::size_t nameIndex) const;
+    const StructType* resolveStruct(std::string_view name) const;
+    const StructField* resolveStructField(std::string_view structName, std::string_view fieldName) const;
 
     static bool looksLikeIdentifier(std::string_view text);
     static bool isInternalSyntheticName(std::string_view name);
     static bool isNumericType(std::string_view typeName);
     static bool isIntegerType(std::string_view typeName);
     static bool isPreludeCall(std::string_view name);
+    static bool isMemberCall(const ast::CallExpression& expression);
     static std::string normalizeName(std::string_view name);
     static bool canAssign(std::string_view targetType, std::string_view valueType);
     static bool typesMatch(std::string_view left, std::string_view right);
@@ -84,6 +100,7 @@ private:
     TypeTable types_;
     SemanticResult result_;
     std::unordered_map<std::string, FunctionSignature> functions_;
+    std::unordered_map<std::string, StructType> structs_;
     std::string currentFunctionReturnType_;
     bool currentFunctionSawReturn_ = false;
     std::size_t loopDepth_ = 0;
