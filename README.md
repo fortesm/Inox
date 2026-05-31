@@ -132,3 +132,8 @@ The textual LLVM backend currently supports integer and boolean expressions, fun
 ## Current Associated Method Milestone
 
 The compiler currently supports a restricted associated-method subset for simple structs. Methods are declared outside structs with an explicit receiver parameter, for example `TPoint.Sum(Self TPoint) Integer`, and local values can call them with `P.Sum()`. The LLVM backend lowers these calls as direct static calls with the receiver storage passed explicitly.
+
+
+## Current Struct Milestone
+
+The current compiler prototype supports simple nominal structs as value types in the LLVM textual backend: local struct variables, Integer/Bool fields, field defaults, field assignment/access, struct assignment by value, ordinary struct parameters, ordinary struct return values, and associated methods declared outside the struct.

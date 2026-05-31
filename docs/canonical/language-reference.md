@@ -323,12 +323,41 @@ Field lookup is case-insensitive.
 
 ### Value semantics
 
-Structs are value types. Assignment and parameter passing are intended to copy by
-value unless a future explicit reference/borrow mechanism says otherwise.
+Structs are value types. Assignment, ordinary parameter passing, and ordinary
+function return copy the struct value. The backend may use internal pointers or
+temporary storage to implement that efficiently, but the source-language
+semantics are value semantics unless a future explicit reference/borrow mechanism
+says otherwise.
 
-The current backend already passes associated-method receivers by pointer for
-implementation convenience when the receiver is local storage. That does not make
-structs classes and does not introduce inheritance.
+Example:
+
+```inox
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+MakePoint(X Integer, Y Integer) TPoint :
+    Var
+        P TPoint
+    ;
+
+    P.FX := X
+    P.FY := Y
+
+    Return P
+;
+
+SumPoint(P TPoint) Integer :
+    Return P.FX + P.FY
+;
+```
+
+Associated-method receivers are lowered by pointer for implementation
+convenience when the receiver is local storage. That receiver lowering does not
+make structs classes and does not introduce inheritance or implicit reference
+semantics for ordinary function parameters.
 
 ### Not in the first struct subset
 
@@ -337,7 +366,6 @@ The following are deferred:
 - variant structs;
 - tags such as JSON/DB metadata;
 - embedding/composition promotion;
-- general struct parameters and returns where not implemented;
 - struct comparison;
 - heap allocation;
 - reference/borrow semantics.

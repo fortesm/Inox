@@ -137,9 +137,11 @@ Type
 
 Struct declarations contain fields only. The compiler must not require or allow duplicated method signatures inside structs.
 
-The first implemented subset supports local variables of simple structs with `Integer` and `Bool` fields, field assignment, field access, and literal default field values for `Integer` and `Bool`. Struct names conventionally start with `T`; fields conventionally start with `F`, but these are style conventions in 0.1.
+The implemented subset supports local variables of simple structs with `Integer` and `Bool` fields, field assignment, field access, literal default field values for `Integer` and `Bool`, struct assignment between values of the same nominal type, ordinary struct parameters, and ordinary struct return values. Struct names conventionally start with `T`; fields conventionally start with `F`, but these are style conventions in 0.1.
 
-Future work includes variant structs, tags, embedding/composition with promotion, general struct parameters/returns, and struct comparison rules. The current backend already supports a restricted associated-method subset with an explicit struct receiver parameter.
+Struct assignment, ordinary parameter passing, and ordinary return are value operations. Associated-method receivers are the exception in the current backend lowering: they are passed as controlled pointers to local storage so methods can read or mutate receiver fields. That implementation detail does not create classes, inheritance, or implicit reference semantics for ordinary functions.
+
+Future work includes variant structs, tags, embedding/composition with promotion, and struct comparison rules. The current backend already supports a restricted associated-method subset with an explicit struct receiver parameter.
 
 ## Arrays
 

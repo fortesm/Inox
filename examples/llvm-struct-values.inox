@@ -1,0 +1,35 @@
+Module StructValues
+
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+MakePoint(X Integer, Y Integer) TPoint :
+    Var
+        P TPoint
+    ;
+
+    P.FX := X
+    P.FY := Y
+
+    Return P
+;
+
+SumPoint(P TPoint) Integer :
+    Return P.FX + P.FY
+;
+
+CopyPoint(P TPoint) TPoint :
+    Var
+        Q TPoint
+    ;
+
+    Q := P
+    Return Q
+;
+
+Main() :
+    PutLn(SumPoint(CopyPoint(MakePoint(10, 20))))
+;

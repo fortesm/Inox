@@ -524,7 +524,11 @@ Type
     ;
 ```
 
-Variant structs, tags, embedding, general struct parameters, struct returns, and struct equality remain future work.
+Struct assignment between values of the same nominal type copies the full struct value. Ordinary struct parameters and ordinary struct return values are also value operations. For example, `SumPoint(P TPoint)` receives a logical copy of `P`, and `MakePoint(...) TPoint` returns a logical struct value.
+
+Associated-method receivers are lowered differently by the current backend: the explicit receiver parameter may be passed as a controlled pointer to local storage so a method can access or mutate fields. This is an implementation strategy for associated methods, not object identity and not inheritance.
+
+Variant structs, tags, embedding, and struct equality remain future work.
 
 
 ## Associated Method Semantics

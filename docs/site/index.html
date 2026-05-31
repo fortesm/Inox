@@ -246,9 +246,9 @@ P.FY := 20
 Return P.FX + P.FY</code></pre>
 <p>Field lookup is case-insensitive.</p>
 <h3 id="value-semantics">Value semantics</h3>
-<p>Structs are value types. Assignment and parameter passing are intended to copy by</p>
+<p>Structs are value types. Assignment, ordinary parameter passing, and ordinary returns copy by</p>
 <p>value unless a future explicit reference/borrow mechanism says otherwise.</p>
-<p>The current backend already passes associated-method receivers by pointer for</p>
+<p>The current backend supports ordinary struct parameters and returns by value. It passes associated-method receivers by pointer for</p>
 <p>implementation convenience when the receiver is local storage. That does not make</p>
 <p>structs classes and does not introduce inheritance.</p>
 <h3 id="not-in-the-first-struct-subset">Not in the first struct subset</h3>
@@ -257,7 +257,6 @@ Return P.FX + P.FY</code></pre>
 <li>variant structs;</li>
 <li>tags such as JSON/DB metadata;</li>
 <li>embedding/composition promotion;</li>
-<li>general struct parameters and returns where not implemented;</li>
 <li>struct comparison;</li>
 <li>heap allocation;</li>
 <li>reference/borrow semantics.</li>

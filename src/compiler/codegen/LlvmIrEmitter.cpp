@@ -198,6 +198,11 @@ const StructFieldInfo* findStructField(const StructDefinition& structType, std::
     return nullptr;
 }
 
+bool isAssociatedMethodName(std::string_view name)
+{
+    return name.find('.') != std::string_view::npos;
+}
+
 void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefinitions& structs)
 {
     if (section.sectionKind() != ast::SectionKind::Type) {
@@ -277,7 +282,10 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
                 throw CodegenError(
                     "LLVM emission currently supports only scalar and struct parameters");
             }
-            llvmParameterType = "ptr";
+
+            const bool isReceiver = isAssociatedMethodName(function.name()) &&
+                parameters.empty() && equalsIgnoreCase(parameterName, "Self");
+            llvmParameterType = isReceiver ? "ptr" : structType->llvmName;
         }
 
         parameters.push_back(FunctionParameter{
@@ -302,14 +310,16 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
         llvmReturnType = "void";
     } else if (index + 1 != tokens.size()) {
         throw CodegenError(
-            "LLVM emission currently supports only Integer and Bool return types, or subroutines without return type");
+            "LLVM emission currently supports Integer, Bool, struct return types, or subroutines without return type");
     } else if (equalsIgnoreCase(tokens[index], "Integer")) {
         llvmReturnType = "i64";
     } else if (equalsIgnoreCase(tokens[index], "Bool")) {
         llvmReturnType = "i1";
+    } else if (const StructDefinition* structType = findStruct(structs, tokens[index])) {
+        llvmReturnType = structType->llvmName;
     } else {
         throw CodegenError(
-            "LLVM emission currently supports only Integer and Bool return types, or subroutines without return type");
+            "LLVM emission currently supports Integer, Bool, struct return types, or subroutines without return type");
     }
 
     return FunctionSignature{
@@ -336,14 +346,20 @@ public:
           nextStringLiteral_(nextStringLiteral)
     {
         for (const FunctionParameter& parameter : signature.parameters) {
-            if (parameter.llvmType == "ptr") {
-                const StructDefinition* structType = findStruct(structs_, parameter.inoxType);
-                if (structType == nullptr) {
-                    throw CodegenError("unknown struct parameter type for LLVM emission");
+            if (const StructDefinition* structType = findStruct(structs_, parameter.inoxType)) {
+                if (parameter.llvmType == "ptr") {
+                    locals_.emplace(
+                        normalize(parameter.inoxName),
+                        LocalInfo{"%" + parameter.llvmName, parameter.inoxType, structType->llvmName});
+                } else {
+                    const std::string slot = "%" + parameter.llvmName + ".addr";
+                    output_ << "  " << slot << " = alloca " << structType->llvmName << "\n";
+                    output_ << "  store " << structType->llvmName << " %" << parameter.llvmName
+                            << ", ptr " << slot << '\n';
+                    locals_.emplace(
+                        normalize(parameter.inoxName),
+                        LocalInfo{slot, parameter.inoxType, structType->llvmName});
                 }
-                locals_.emplace(
-                    normalize(parameter.inoxName),
-                    LocalInfo{"%" + parameter.llvmName, parameter.inoxType, structType->llvmName});
             } else {
                 parameters_.emplace(normalize(parameter.inoxName), "%" + parameter.llvmName);
             }
@@ -1225,8 +1241,8 @@ private:
             const auto local = locals_.find(normalizedName);
             if (local != locals_.end()) {
                 const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-                if (local->second.llvmType.empty() || local->second.llvmType.front() == '%') {
-                    throw CodegenError("LLVM emission cannot use whole struct as scalar expression");
+                if (local->second.llvmType.empty()) {
+                    throw CodegenError("LLVM emission found local value with unknown LLVM type");
                 }
                 output_ << "  " << result << " = load " << local->second.llvmType
                         << ", ptr " << local->second.slot << '\n';
@@ -1306,13 +1322,13 @@ private:
             if (signature == signatures_.end()) {
                 break;
             }
-            if (signature->second.llvmReturnType != "i64") {
+            if (signature->second.llvmReturnType == "void") {
                 throw CodegenError(
-                    "LLVM emission currently supports calls only to Integer functions");
+                    "void function call cannot be used as an expression");
             }
             if (call.arguments().size() != signature->second.parameters.size()) {
                 throw CodegenError(
-                    "unsupported call argument count in Integer function: " +
+                    "unsupported call argument count in function: " +
                     function_.name());
             }
 
@@ -1323,7 +1339,8 @@ private:
             }
 
             const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-            output_ << "  " << result << " = call i64 @" << signature->second.llvmName << '(';
+            output_ << "  " << result << " = call " << signature->second.llvmReturnType
+                    << " @" << signature->second.llvmName << '(';
             for (std::size_t index = 0; index < arguments.size(); ++index) {
                 if (index != 0) {
                     output_ << ", ";
