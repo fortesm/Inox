@@ -144,6 +144,9 @@ Invoke-LlvmEmissionTest `
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-for-range-break-continue.inox")) `
     -RequiredFragments @("define i64 @sumrange", "forcond", "forbody", "forstep", "forend", "br i1", "br label", "icmp sle i64", "icmp eq i64", "add i64", "store i64", "load i64", "ret i64", "define i32 @main()", "ret i32 0")
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-for-range-step.inox")) `
+    -RequiredFragments @("define i64 @sumevenuntil", "forcond", "forbody", "forstep", "forend", "store i64 2, ptr %i", "icmp sle i64", "icmp eq i64", "add i64", ", 2", "br i1", "br label", "ret i64", "define i32 @main()", "ret i32 0")
 
 $total = $passed + $failed
 Write-Host ""

@@ -312,10 +312,6 @@ private:
 
     void emitForIn(const ast::ForInStatement& statement)
     {
-        if (statement.step() != nullptr) {
-            throw CodegenError(
-                "LLVM emission currently supports only implicit step +1 in for loops");
-        }
         if (statement.iterable().kind() != ast::AstNodeKind::BinaryExpression) {
             throw CodegenError(
                 "LLVM emission currently supports only range expressions in for loops");
@@ -371,7 +367,11 @@ private:
         const std::string stepValue = "%tmp" + std::to_string(nextTemporary_++);
         const std::string incrementedValue = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << stepValue << " = load i64, ptr " << slot << '\n';
-        output_ << "  " << incrementedValue << " = add i64 " << stepValue << ", 1\n";
+        const std::string increment = statement.step() != nullptr
+            ? emitExpression(*statement.step())
+            : "1";
+        output_ << "  " << incrementedValue << " = add i64 "
+                << stepValue << ", " << increment << "\n";
         output_ << "  store i64 " << incrementedValue << ", ptr " << slot << '\n';
         output_ << "  br label %" << conditionTarget << "\n\n";
 
