@@ -1,0 +1,18 @@
+Module WhileLoop
+
+SumTo(N Integer) Integer :
+    Var :
+        I := N
+        Total := 0
+    ;
+
+    while I > 0 :
+        Total := Total + I
+        I := I - 1
+    ;
+
+    Return Total
+;
+
+Main() :
+;

@@ -228,6 +228,24 @@ private:
         }
     }
 
+    void emitWhile(const ast::WhileStatement& statement)
+    {
+        const std::size_t label = nextLabel_++;
+        output_ << "  br label %whilecond" << label << "\n\n";
+
+        output_ << "whilecond" << label << ":\n";
+        const std::string condition = emitExpression(statement.condition());
+        output_ << "  br i1 " << condition
+                << ", label %whilebody" << label
+                << ", label %whileend" << label << "\n\n";
+
+        output_ << "whilebody" << label << ":\n";
+        emitAssignmentBranch(statement.body());
+        output_ << "  br label %whilecond" << label << "\n\n";
+
+        output_ << "whileend" << label << ":\n";
+    }
+
     void emitLocalDeclaration(const ast::Statement& statement)
     {
         if (statement.kind() == ast::AstNodeKind::VarStatement) {
@@ -259,8 +277,13 @@ private:
             return;
         }
 
+        if (statement.kind() == ast::AstNodeKind::WhileStatement) {
+            emitWhile(static_cast<const ast::WhileStatement&>(statement));
+            return;
+        }
+
         throw CodegenError(
-            "LLVM emission currently supports only local variables, assignments, and if before Return");
+            "LLVM emission currently supports only local variables, assignments, if, and while before Return");
     }
 
     void emitVarBlockDeclaration(const ast::Statement& statement)
