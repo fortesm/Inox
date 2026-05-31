@@ -1,0 +1,17 @@
+Module ParserCanonical
+
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+Main() :
+    Var
+        P TPoint
+        X Integer := 10
+    ;
+
+    P.FX := X
+    P.FY := 20
+;

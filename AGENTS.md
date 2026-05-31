@@ -167,11 +167,21 @@ The textual LLVM backend currently supports temporary `printf`-based `Put`/`PutL
 When adding or modifying tests, keep the suite layered:
 
 - Human-facing examples go in `examples/`.
-- Syntax-focused valid fixtures go in `tests/parser/valid/`.
+- Lexer fixtures go in `tests/lexer/valid/` or `tests/lexer/invalid/`. Use `--dump-tokens` checks for token spelling/normalization regressions.
+- Syntax-focused valid fixtures go in `tests/parser/valid/` and should be covered by `--parse-only` checks when the parser boundary matters.
 - Syntax-focused invalid fixtures go in `tests/parser/invalid/`.
 - Semantic valid fixtures go in `tests/semantic/valid/`.
 - Semantic invalid fixtures go in `tests/semantic/invalid/`.
 - LLVM emission fixtures go in `tests/codegen/` and must be registered with explicit required IR fragments in both `scripts/run-tests.ps1` and `scripts/run-tests.sh`.
-- End-to-end executable tests will live in `tests/integration/` when introduced.
+- End-to-end executable tests live in `tests/integration/` with matching `.out` files and run when `clang` is available.
 
 Do not delete or move existing `examples/` tests unless a dedicated migration task explicitly says so.
+
+Compiler test modes now available to agents:
+
+- `--dump-tokens` for lexer regression tests;
+- `--parse-only` for parser regression tests;
+- `--dump-types` for typed AST / semantic diagnostics;
+- `--emit-llvm` for codegen checks.
+
+Every implemented feature should add or update fixtures at the narrowest appropriate layer.

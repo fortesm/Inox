@@ -115,6 +115,111 @@ run_llvm_emission_test() {
     fi
 }
 
+
+run_mode_exit_test() {
+    local mode="$1"
+    local test_file="$2"
+    local expect_success="$3"
+    local rel
+    rel="$(relative_path "$test_file")"
+
+    "$inox_exe" "$mode" "$test_file" >/dev/null 2>&1
+    local exit_code=$?
+    local ok=0
+    local expectation="failure"
+
+    if [[ "$expect_success" == "true" ]]; then
+        expectation="success"
+        [[ $exit_code -eq 0 ]] && ok=1
+    else
+        [[ $exit_code -ne 0 ]] && ok=1
+    fi
+
+    if [[ $ok -eq 1 ]]; then
+        record_pass "$rel $mode"
+    else
+        record_fail "$rel $mode" "expected $expectation, exit code $exit_code"
+    fi
+}
+
+run_mode_fragment_test() {
+    local mode="$1"
+    local test_file="$2"
+    shift 2
+    local fragments=("$@")
+    local rel
+    rel="$(relative_path "$test_file")"
+
+    local output
+    output="$($inox_exe "$mode" "$test_file" 2>&1)"
+    local exit_code=$?
+    local missing=()
+
+    for fragment in "${fragments[@]}"; do
+        if ! contains_fragment "$output" "$fragment"; then
+            missing+=("$fragment")
+        fi
+    done
+
+    if [[ $exit_code -eq 0 && ${#missing[@]} -eq 0 ]]; then
+        record_pass "$rel $mode"
+    else
+        local details=("expected exit code 0 and all required fragments" "actual exit code: $exit_code")
+        if [[ ${#missing[@]} -ne 0 ]]; then
+            local joined
+            printf -v joined '%s, ' "${missing[@]}"
+            joined="${joined%, }"
+            details+=("missing: $joined")
+        fi
+        record_fail "$rel $mode" "${details[@]}"
+    fi
+}
+
+run_linked_execution_test() {
+    local test_file="$1"
+    local expected_file="$2"
+    local rel
+    rel="$(relative_path "$test_file")"
+
+    if ! command -v clang >/dev/null 2>&1; then
+        echo "[SKIP] $rel link/run (clang not found)"
+        return 0
+    fi
+
+    local temp_dir
+    temp_dir="$(mktemp -d)"
+    local ll_path="$temp_dir/program.ll"
+    local exe_path="$temp_dir/program"
+
+    "$inox_exe" --emit-llvm "$test_file" > "$ll_path"
+    local emit_exit=$?
+    if [[ $emit_exit -ne 0 ]]; then
+        rm -rf "$temp_dir"
+        record_fail "$rel link/run" "LLVM emission failed with exit code $emit_exit"
+        return 0
+    fi
+
+    clang "$ll_path" -o "$exe_path" >/dev/null 2>&1
+    local clang_exit=$?
+    if [[ $clang_exit -ne 0 ]]; then
+        rm -rf "$temp_dir"
+        record_fail "$rel link/run" "clang link failed with exit code $clang_exit"
+        return 0
+    fi
+
+    local actual expected
+    actual="$($exe_path | sed 's/\r$//')"
+    expected="$(sed 's/\r$//' "$expected_file")"
+
+    if [[ "$actual" == "$expected" ]]; then
+        record_pass "$rel link/run"
+    else
+        record_fail "$rel link/run" "expected output: $expected" "actual output: $actual"
+    fi
+
+    rm -rf "$temp_dir"
+}
+
 run_test_tree() {
     local root="$1"
     local maxdepth="$2"
@@ -131,8 +236,14 @@ run_test_tree "$repo_root/tests/parser/valid" 10 true
 run_test_tree "$repo_root/tests/semantic/valid" 10 true
 
 run_test_tree "$repo_root/tests/invalid" 1 false
+run_test_tree "$repo_root/tests/lexer/invalid" 10 false
 run_test_tree "$repo_root/tests/parser/invalid" 10 false
 run_test_tree "$repo_root/tests/semantic/invalid" 10 false
+
+run_mode_fragment_test --dump-tokens "$repo_root/tests/lexer/valid/tokens-keywords-literals.inox" \
+    'Keyword lexeme="Module" normalized="module"' 'Keyword lexeme="Type" normalized="type"' 'Keyword lexeme="Struct" normalized="struct"' 'IntegerLiteral lexeme="$2A"' 'StringLiteral lexeme="hello"' 'CharLiteral lexeme='
+run_mode_exit_test --parse-only "$repo_root/tests/parser/valid/canonical-type-and-var.inox" true
+run_mode_exit_test --parse-only "$repo_root/tests/parser/invalid/var-colon.inox" false
 
 run_llvm_emission_test "$repo_root/examples/empty.inox" \
     "define i32 @main()" "ret i32 0"
@@ -198,6 +309,8 @@ run_llvm_emission_test "$repo_root/examples/llvm-struct-values.inox" \
 
 
 run_llvm_emission_test "$repo_root/tests/codegen/llvm-struct-value-smoke.inox"     "%tpair = type { i64, i64 }" "define %tpair @makepair" "define i64 @sumpair" "call %tpair @makepair" "call i64 @sumpair" "ret i32 0"
+
+run_linked_execution_test "$repo_root/tests/integration/output-basic.inox" "$repo_root/tests/integration/output-basic.out"
 
 total=$((passed + failed))
 echo ""

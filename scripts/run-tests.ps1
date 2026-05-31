@@ -88,6 +88,119 @@ function Invoke-LlvmEmissionTest {
     }
 }
 
+
+function Invoke-ModeExitTest {
+    param(
+        [string]$Mode,
+        [System.IO.FileInfo]$TestFile,
+        [bool]$ExpectSuccess
+    )
+
+    $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
+    & $InoxExe $Mode $TestFile.FullName *> $null
+    $exitCode = $LASTEXITCODE
+
+    if ($ExpectSuccess) {
+        $ok = $exitCode -eq 0
+        $expectation = "success"
+    } else {
+        $ok = $exitCode -ne 0
+        $expectation = "failure"
+    }
+
+    if ($ok) {
+        $script:passed++
+        Write-Host "[PASS] $relativePath $Mode"
+    } else {
+        $script:failed++
+        Write-Host "[FAIL] $relativePath $Mode (expected $expectation, exit code $exitCode)"
+    }
+}
+
+function Invoke-ModeFragmentTest {
+    param(
+        [string]$Mode,
+        [System.IO.FileInfo]$TestFile,
+        [string[]]$RequiredFragments
+    )
+
+    $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
+    $output = & $InoxExe $Mode $TestFile.FullName 2>&1 | Out-String
+    $exitCode = $LASTEXITCODE
+    $missingFragments = @($RequiredFragments | Where-Object { -not $output.Contains($_) })
+    $ok = $exitCode -eq 0 -and $missingFragments.Count -eq 0
+
+    if ($ok) {
+        $script:passed++
+        Write-Host "[PASS] $relativePath $Mode"
+    } else {
+        $script:failed++
+        Write-Host "[FAIL] $relativePath $Mode"
+        Write-Host "       expected exit code 0 and all required fragments"
+        Write-Host "       actual exit code: $exitCode"
+        if ($missingFragments.Count -ne 0) {
+            Write-Host "       missing: $($missingFragments -join ', ')"
+        }
+    }
+}
+
+function Invoke-LinkedExecutionTest {
+    param(
+        [System.IO.FileInfo]$TestFile,
+        [System.IO.FileInfo]$ExpectedOutputFile
+    )
+
+    $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
+    $clang = Get-Command clang -ErrorAction SilentlyContinue
+    if ($null -eq $clang) {
+        Write-Host "[SKIP] $relativePath link/run (clang not found)"
+        return
+    }
+
+    $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("inox-test-" + [System.Guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $tempDir | Out-Null
+    try {
+        $llPath = Join-Path $tempDir "program.ll"
+        $exePath = Join-Path $tempDir "program.exe"
+        & $InoxExe "--emit-llvm" $TestFile.FullName > $llPath
+        $emitExit = $LASTEXITCODE
+        if ($emitExit -ne 0) {
+            $script:failed++
+            Write-Host "[FAIL] $relativePath link/run"
+            Write-Host "       LLVM emission failed with exit code $emitExit"
+            return
+        }
+
+        & $clang.Source $llPath -o $exePath *> $null
+        $clangExit = $LASTEXITCODE
+        if ($clangExit -ne 0) {
+            $script:failed++
+            Write-Host "[FAIL] $relativePath link/run"
+            Write-Host "       clang link failed with exit code $clangExit"
+            return
+        }
+
+        $actual = & $exePath 2>&1 | Out-String
+        $expected = Get-Content -LiteralPath $ExpectedOutputFile.FullName -Raw
+        $actual = ($actual -replace "`r`n", "`n") -replace "`n+$", ""
+        $expected = ($expected -replace "`r`n", "`n") -replace "`n+$", ""
+
+        if ($actual -eq $expected) {
+            $script:passed++
+            Write-Host "[PASS] $relativePath link/run"
+        } else {
+            $script:failed++
+            Write-Host "[FAIL] $relativePath link/run"
+            Write-Host "       expected output:"
+            Write-Host $expected
+            Write-Host "       actual output:"
+            Write-Host $actual
+        }
+    } finally {
+        Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Get-InoxTestFiles {
     param(
         [string]$RelativePath,
@@ -114,6 +227,7 @@ $validTestRoots = @(
 
 $invalidTestRoots = @(
     @{ Path = "tests\invalid"; Recurse = $false },
+    @{ Path = "tests\lexer\invalid"; Recurse = $true },
     @{ Path = "tests\parser\invalid"; Recurse = $true },
     @{ Path = "tests\semantic\invalid"; Recurse = $true }
 )
@@ -129,6 +243,21 @@ foreach ($rootSpec in $invalidTestRoots) {
         Invoke-InoxTest -TestFile $test -ExpectSuccess $false
     }
 }
+
+Invoke-ModeFragmentTest `
+    -Mode "--dump-tokens" `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\lexer\valid\tokens-keywords-literals.inox")) `
+    -RequiredFragments @('Keyword lexeme="Module" normalized="module"', 'Keyword lexeme="Type" normalized="type"', 'Keyword lexeme="Struct" normalized="struct"', 'IntegerLiteral lexeme="$2A"', 'StringLiteral lexeme="hello"', 'CharLiteral lexeme=')
+
+Invoke-ModeExitTest `
+    -Mode "--parse-only" `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\parser\valid\canonical-type-and-var.inox")) `
+    -ExpectSuccess $true
+
+Invoke-ModeExitTest `
+    -Mode "--parse-only" `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\parser\invalid\var-colon.inox")) `
+    -ExpectSuccess $false
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\empty.inox")) `
@@ -224,6 +353,10 @@ Invoke-LlvmEmissionTest `
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-struct-value-smoke.inox")) `
     -RequiredFragments @("%tpair = type { i64, i64 }", "define %tpair @makepair", "define i64 @sumpair", "call %tpair @makepair", "call i64 @sumpair", "ret i32 0")
+
+Invoke-LinkedExecutionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output-basic.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output-basic.out"))
 
 $total = $passed + $failed
 Write-Host ""

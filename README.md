@@ -142,9 +142,10 @@ The current compiler prototype supports simple nominal structs as value types in
 
 The test suite now uses layer-oriented directories under `tests/`:
 
-- `tests/parser/valid/` and `tests/parser/invalid/` for syntax-focused fixtures.
+- `tests/lexer/valid/` and `tests/lexer/invalid/` for tokenization fixtures checked with `--dump-tokens` or expected lexical failure.
+- `tests/parser/valid/` and `tests/parser/invalid/` for syntax-focused fixtures, including `--parse-only` checks.
 - `tests/semantic/valid/` and `tests/semantic/invalid/` for semantic-analysis fixtures.
 - `tests/codegen/` for LLVM emission fixtures with explicit IR fragments in the runners.
-- `tests/integration/` is reserved for future compile-link-run tests.
+- `tests/integration/` for optional compile-link-run tests when `clang` is available.
 
-`examples/` remains the human-facing tutorial/demo corpus and is also smoke-tested by the runners.
+`examples/` remains the human-facing tutorial/demo corpus and is also smoke-tested by the runners. The compiler driver also exposes `--dump-tokens` and `--parse-only` so lexer and parser regressions can be tested without depending on later compiler phases.

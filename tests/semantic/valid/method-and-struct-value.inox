@@ -1,0 +1,23 @@
+Module SemanticMethodStruct
+
+Type
+    TCounter Struct
+        FValue Integer
+    ;
+
+TCounter.Add(Self TCounter, X Integer) :
+    Self.FValue := Self.FValue + X
+;
+
+Read(C TCounter) Integer :
+    Return C.FValue
+;
+
+Main() :
+    Var
+        C TCounter
+    ;
+
+    C.Add(5)
+    PutLn(Read(C))
+;

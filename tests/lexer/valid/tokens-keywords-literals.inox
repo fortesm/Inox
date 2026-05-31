@@ -1,0 +1,12 @@
+Module TokenSmoke
+
+Type
+    TToken Struct
+        FValue Integer := $2A
+        FFlag Bool := true
+    ;
+
+Main() :
+    Put("hello")
+    PutLn('Z')
+;

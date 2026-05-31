@@ -37,15 +37,30 @@ void throwOnInvalidToken(const std::vector<Token>& tokens)
     }
 }
 
+void dumpTokens(const std::vector<Token>& tokens)
+{
+    for (const auto& token : tokens) {
+        std::cout
+            << token.location.line << ':'
+            << token.location.column << ' '
+            << inox::compiler::lexer::tokenKindName(token.kind)
+            << " lexeme=\"" << token.lexeme << "\""
+            << " normalized=\"" << token.normalized << "\""
+            << '\n';
+    }
+}
+
 } // namespace
 
 int main(int argc, char** argv)
 {
     const bool dumpTypes = argc == 3 && std::string(argv[1]) == "--dump-types";
+    const bool dumpTokensMode = argc == 3 && std::string(argv[1]) == "--dump-tokens";
+    const bool parseOnly = argc == 3 && std::string(argv[1]) == "--parse-only";
     const bool emitLlvm = argc == 3 && std::string(argv[1]) == "--emit-llvm";
-    const bool hasMode = dumpTypes || emitLlvm;
+    const bool hasMode = dumpTypes || dumpTokensMode || parseOnly || emitLlvm;
     if ((!hasMode && argc != 2) || (hasMode && argc != 3)) {
-        std::cerr << "usage: inox [--dump-types|--emit-llvm] <source.inox>\n";
+        std::cerr << "usage: inox [--dump-tokens|--parse-only|--dump-types|--emit-llvm] <source.inox>\n";
         return 1;
     }
 
@@ -54,6 +69,13 @@ int main(int argc, char** argv)
         const std::string source = readFile(sourcePath);
         inox::compiler::lexer::Lexer lexer(source);
         const auto tokens = lexer.tokenize();
+
+        if (dumpTokensMode) {
+            dumpTokens(tokens);
+            throwOnInvalidToken(tokens);
+            return 0;
+        }
+
         throwOnInvalidToken(tokens);
 
         inox::compiler::parser::Parser parser(tokens);
@@ -61,6 +83,10 @@ int main(int argc, char** argv)
 
         if (!emitLlvm) {
             std::cout << "parse ok\n";
+        }
+
+        if (parseOnly) {
+            return 0;
         }
 
         inox::compiler::semantic::SemanticAnalyzer semanticAnalyzer;

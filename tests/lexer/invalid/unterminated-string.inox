@@ -1,0 +1,5 @@
+Module BadString
+
+Main() :
+    PutLn("unterminated)
+;

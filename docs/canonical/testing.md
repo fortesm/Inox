@@ -1,5 +1,7 @@
 # Inox testing strategy
 
+The test suite is part of the Inox language specification. Every parser, semantic, codegen, runtime, or documentation change must pass the full suite before it is committed. Regressions should be captured as small fixtures in the most specific layer that exposes the bug.
+
 The Inox compiler test suite is deliberately layered so contributors and agents
 can understand what a fixture is meant to prove.
 
@@ -9,12 +11,19 @@ can understand what a fixture is meant to prove.
 features. These files double as smoke tests and should remain readable for
 humans learning the language.
 
+## Lexer fixtures
+
+- `tests/lexer/valid/*.inox` contains tokenization-focused sources that are checked with `inox --dump-tokens`.
+- `tests/lexer/invalid/*.inox` contains lexical errors such as unterminated literals and invalid characters.
+
+Lexer fixtures are intentionally allowed to be minimal. They prove token spelling, normalization, case-insensitivity, literal scanning, and invalid-token diagnostics before parser or semantic concerns are involved.
+
 ## Parser fixtures
 
-- `tests/parser/valid/*.inox` contains syntax-focused programs that must parse
-  and pass the current frontend checks.
-- `tests/parser/invalid/*.inox` contains syntax-focused programs that must be
-  rejected, preferably before semantic analysis.
+- `tests/parser/valid/*.inox` contains syntax-focused programs checked with both the normal frontend and `inox --parse-only`.
+- `tests/parser/invalid/*.inox` contains syntax-focused programs that must be rejected, preferably before semantic analysis.
+
+Parser fixtures should prove canonical syntax, such as `Type` without a closing `;`, `Var` without `:`, and `if/elif/else` with a single final `;`.
 
 ## Semantic fixtures
 
@@ -31,12 +40,32 @@ required IR fragments.
 
 ## Integration tests
 
-`tests/integration/` is reserved for future tests that emit LLVM IR, compile or
-link it with the host toolchain, execute the resulting binary, and verify
-stdout/stderr and exit status.
+`tests/integration/` contains end-to-end programs with expected output files. When `clang` is available on the host, the runners emit LLVM IR, link it, execute the resulting binary, and compare stdout. If `clang` is not available, these executable checks are skipped without failing the frontend suite.
 
 ## Portability rules
 
 Tests must not depend on host-specific absolute paths. Platform-specific
 behavior belongs in the test runners or in clearly isolated future integration
 helpers.
+
+## Compiler modes used by tests
+
+The command-line driver exposes small diagnostic modes for compiler-layer tests:
+
+- `inox --dump-tokens file.inox` dumps lexer tokens and exits before parsing.
+- `inox --parse-only file.inox` tokenizes and parses, then exits before semantic analysis.
+- `inox --dump-types file.inox` runs semantic analysis and dumps the typed AST.
+- `inox --emit-llvm file.inox` emits textual LLVM IR.
+
+These modes are intentionally stable enough for regression tests. Output should remain readable and deterministic.
+
+## Regression rule
+
+When a bug is fixed, add a fixture that would have failed before the fix. Prefer the narrowest layer:
+
+1. lexer fixture for tokenization defects;
+2. parser fixture for grammar defects;
+3. semantic fixture for symbol/type/flow defects;
+4. codegen fixture for LLVM shape defects;
+5. integration fixture for executable behavior.
+

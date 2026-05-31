@@ -1,0 +1,19 @@
+Module StructAssignmentMismatch
+
+Type
+    TPoint Struct
+        FX Integer
+    ;
+
+    TOther Struct
+        FX Integer
+    ;
+
+Main() :
+    Var
+        P TPoint
+        O TOther
+    ;
+
+    P := O
+;

@@ -1,0 +1,6 @@
+Module BadTypeColon
+
+Type :
+    TPoint Struct
+        FX Integer
+    ;

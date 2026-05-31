@@ -630,4 +630,11 @@ const nav=document.querySelector('nav ol');
 nav.innerHTML='';
 document.querySelectorAll('main h2').forEach(h=>{const li=document.createElement('li');const a=document.createElement('a');a.href='#'+h.id;a.textContent=h.textContent;li.appendChild(a);nav.appendChild(li);});
 </script>
+
+<section id="testing-strategy">
+<h2>Testing strategy</h2>
+<p>The Inox test suite is layered by compiler phase. Lexer fixtures use <code>--dump-tokens</code>, parser fixtures can use <code>--parse-only</code>, semantic fixtures validate names and types, codegen fixtures verify textual LLVM fragments, and integration tests optionally link and execute emitted LLVM IR when <code>clang</code> is available.</p>
+<p>Every language change should add the narrowest regression fixture that proves the intended behavior and prevents rework.</p>
+</section>
+
 </main></div></body></html>

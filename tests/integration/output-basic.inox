@@ -1,0 +1,10 @@
+Module IntegrationOutput
+
+Value() Integer :
+    Return 42
+;
+
+Main() :
+    Put("value=")
+    PutLn(Value())
+;
