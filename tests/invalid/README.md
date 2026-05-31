@@ -32,6 +32,8 @@ These programs must fail parsing or semantic analysis.
 | `invalid-026.inox` | `if` branch must not use `:` |
 | `invalid-027.inox` | `;` must not appear between `if` and `else` branches |
 | `invalid-028.inox` | conditional header must end with a line break |
+| `invalid-029.inox` | `until` outside `repeat` |
+| `invalid-030.inox` | `until` condition must be `Bool` |
 
 `invalid-001.inox` uses an inferred local variable because typed local
 declaration syntax is not yet specified canonically.

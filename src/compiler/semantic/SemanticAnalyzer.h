@@ -87,6 +87,7 @@ private:
     std::string currentFunctionReturnType_;
     bool currentFunctionSawReturn_ = false;
     std::size_t loopDepth_ = 0;
+    std::size_t repeatDepth_ = 0;
     bool hasMain_ = false;
 };
 

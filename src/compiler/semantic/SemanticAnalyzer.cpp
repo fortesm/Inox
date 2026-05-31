@@ -541,9 +541,18 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
     case ast::AstNodeKind::RepeatStatement: {
         const auto& repeatStatement = static_cast<const ast::RepeatStatement&>(statement);
         ++loopDepth_;
+        ++repeatDepth_;
         analyzeStatements(repeatStatement.body(), true);
+        --repeatDepth_;
         --loopDepth_;
-        requireBoolCondition(repeatStatement.condition());
+        break;
+    }
+    case ast::AstNodeKind::UntilStatement: {
+        const auto& untilStatement = static_cast<const ast::UntilStatement&>(statement);
+        if (repeatDepth_ == 0) {
+            throw SemanticError("until outside repeat");
+        }
+        requireBoolCondition(untilStatement.condition());
         break;
     }
     case ast::AstNodeKind::ForInStatement: {

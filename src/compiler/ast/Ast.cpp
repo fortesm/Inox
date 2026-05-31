@@ -362,10 +362,9 @@ const std::vector<StatementPtr>& WhileStatement::body() const
     return body_;
 }
 
-RepeatStatement::RepeatStatement(std::vector<StatementPtr> body, ExpressionPtr condition)
+RepeatStatement::RepeatStatement(std::vector<StatementPtr> body)
     : Statement(AstNodeKind::RepeatStatement),
-      body_(std::move(body)),
-      condition_(std::move(condition))
+      body_(std::move(body))
 {
 }
 
@@ -374,7 +373,13 @@ const std::vector<StatementPtr>& RepeatStatement::body() const
     return body_;
 }
 
-const Expression& RepeatStatement::condition() const
+UntilStatement::UntilStatement(ExpressionPtr condition)
+    : Statement(AstNodeKind::UntilStatement),
+      condition_(std::move(condition))
+{
+}
+
+const Expression& UntilStatement::condition() const
 {
     return *condition_;
 }

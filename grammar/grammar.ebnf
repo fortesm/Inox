@@ -191,6 +191,7 @@ statement =
     | unless_statement
     | while_statement
     | repeat_statement
+    | until_statement
     | for_statement
     | case_statement
     | try_statement
@@ -224,7 +225,13 @@ while_statement =
     "while" , condition , block ;
 
 repeat_statement =
-    "repeat" , block_body , "until" , condition , block_close ;
+    "repeat" , block_body , block_close ;
+
+until_statement =
+    "until" , condition ;
+
+(* until_statement is valid only within the nearest enclosing repeat_statement.
+   This contextual restriction is enforced semantically. *)
 
 for_statement =
     "for" , identifier , "in" , range , [ "(" , expression , ")" ] , block ;

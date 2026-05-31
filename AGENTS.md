@@ -60,6 +60,12 @@ Historical discussions are reference material only.
 - ^ is exponentiation and is never XOR.
 - break and continue are loop statements.
 - Return Expression returns a value. Exit takes no expression.
+- repeat opens a general loop and is closed by ; or End.
+- until Condition is a statement inside repeat, equivalent to a conditional
+  exit from the nearest repeat.
+- until may appear more than once and at any position inside repeat.
+- repeat without until is an explicit infinite loop.
+- until is invalid outside repeat and its condition must be Bool.
 
 ## Case Semantics
 

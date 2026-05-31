@@ -63,6 +63,7 @@ private:
     ast::StatementPtr parseUnlessStatement();
     ast::StatementPtr parseWhileStatement();
     ast::StatementPtr parseRepeatStatement();
+    ast::StatementPtr parseUntilStatement();
     ast::StatementPtr parseForInStatement();
     ast::StatementPtr parseCaseStatement();
     ast::StatementPtr parseTryStatement();

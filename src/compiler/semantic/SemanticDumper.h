@@ -157,8 +157,12 @@ private:
             const auto& repeatStatement = static_cast<const ast::RepeatStatement&>(statement);
             line(depth, "Repeat");
             dumpStatements(repeatStatement.body(), depth + 1);
+            break;
+        }
+        case ast::AstNodeKind::UntilStatement: {
+            const auto& untilStatement = static_cast<const ast::UntilStatement&>(statement);
             line(depth, "Until");
-            dumpExpression(repeatStatement.condition(), depth + 1);
+            dumpExpression(untilStatement.condition(), depth + 1);
             break;
         }
         case ast::AstNodeKind::ForInStatement: {

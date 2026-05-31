@@ -100,6 +100,9 @@ ast::StatementPtr Parser::parseStatement()
     if (matchKeyword("repeat")) {
         return parseRepeatStatement();
     }
+    if (matchKeyword("until")) {
+        return parseUntilStatement();
+    }
     if (matchKeyword("for")) {
         return parseForInStatement();
     }
@@ -531,14 +534,17 @@ ast::StatementPtr Parser::parseWhileStatement()
 
 ast::StatementPtr Parser::parseRepeatStatement()
 {
-    auto body = parseDelimitedBody({"until"});
-    if (!matchKeyword("until")) {
-        errorAtCurrent("expected 'until' after repeat body");
-    }
-    auto condition = parseAssignment();
+    auto body = parseBlockBody();
     consumeBlockClose();
-    return std::make_unique<ast::RepeatStatement>(
-        std::move(body), std::move(condition));
+    return std::make_unique<ast::RepeatStatement>(std::move(body));
+}
+
+ast::StatementPtr Parser::parseUntilStatement()
+{
+    if (atStatementBoundary()) {
+        errorAtCurrent("expected condition after 'until'");
+    }
+    return std::make_unique<ast::UntilStatement>(parseAssignment());
 }
 
 ast::StatementPtr Parser::parseForInStatement()

@@ -25,6 +25,7 @@ enum class AstNodeKind {
     UnlessStatement,
     WhileStatement,
     RepeatStatement,
+    UntilStatement,
     ForInStatement,
     CaseStatement,
     TryStatement,
@@ -346,13 +347,21 @@ private:
 
 class RepeatStatement final : public Statement {
 public:
-    RepeatStatement(std::vector<StatementPtr> body, ExpressionPtr condition);
+    explicit RepeatStatement(std::vector<StatementPtr> body);
 
     const std::vector<StatementPtr>& body() const;
-    const Expression& condition() const;
 
 private:
     std::vector<StatementPtr> body_;
+};
+
+class UntilStatement final : public Statement {
+public:
+    explicit UntilStatement(ExpressionPtr condition);
+
+    const Expression& condition() const;
+
+private:
     ExpressionPtr condition_;
 };
 

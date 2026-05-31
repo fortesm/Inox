@@ -33,6 +33,8 @@ not part of the canonical language yet.
 - `Return Expression` returns a value from the current subroutine.
 - `Exit` exits the current subroutine without an expression.
 - `break` and `continue` are loop statements.
+- `repeat` opens a general loop.
+- `until Condition` is a statement inside `repeat`.
 
 ## Case Insensitivity
 
@@ -215,7 +217,31 @@ Stepped counted range loops use:
 for I in 1..10(2)
 ```
 
-The surrounding block form for loops is not specified yet.
+`repeat` opens a general loop and is closed by `;` or `End`.
+
+`until Condition` is an internal statement of `repeat`. It may occur at the
+beginning, middle, or end of the body, and a `repeat` may contain multiple
+`until` statements.
+
+```inox
+repeat
+    until Done
+    Work()
+    until Cancelled
+;
+```
+
+`repeat` without `until` is valid and denotes an explicit infinite loop:
+
+```inox
+repeat
+    Work()
+    break
+;
+```
+
+`until` is not a terminal clause that closes `repeat`. The surrounding block
+forms for other loops are not fully specified yet.
 
 ## Case
 

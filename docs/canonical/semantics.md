@@ -46,6 +46,8 @@ decided are explicitly marked as unspecified.
   and `shl`.
 - `break` and `continue` apply to the innermost loop.
 - `Return Expression` and expressionless `Exit` are distinct.
+- `repeat` is a general loop. `until Condition` conditionally exits the nearest
+  enclosing `repeat`.
 
 ## Case Insensitivity
 
@@ -155,6 +157,19 @@ Statements are not terminated by `;`.
 
 Both are invalid outside loops. Full semantic validation may be implemented
 after parser support.
+
+`repeat` is a general loop. It does not require an `until` statement.
+
+`until Condition` is valid only inside `repeat`. Its condition must have type
+`Bool`. When its condition is true, execution exits the nearest enclosing
+`repeat`; otherwise execution continues with the following statement in the
+same `repeat` body. This is equivalent to a conditional loop exit.
+
+An `until` statement may occur at the beginning, middle, or end of a `repeat`
+body. A single `repeat` may contain multiple `until` statements.
+
+A `repeat` body without `until` is an explicit infinite loop. It may still be
+left by `break`, `Exit`, or `Return Expression`.
 
 `Return Expression` exits the current subroutine and returns a value. It is the
 canonical function-return form.
