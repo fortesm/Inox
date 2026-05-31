@@ -1,0 +1,26 @@
+Module WhileBreakContinue
+
+FindFirstBelow(A Integer) Integer :
+    Var :
+        I := A
+        Result := 0
+    ;
+
+    while I > 0 :
+        I := I - 1
+
+        if I = 3
+            continue
+        ;
+
+        if I = 1
+            Result := I
+            break
+        ;
+    ;
+
+    Return Result
+;
+
+Main() :
+;

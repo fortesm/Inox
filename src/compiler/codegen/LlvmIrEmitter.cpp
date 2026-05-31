@@ -151,6 +151,11 @@ public:
     }
 
 private:
+    struct LoopTargets {
+        std::string continueTarget;
+        std::string breakTarget;
+    };
+
     void emitIfReturn(const ast::IfStatement& statement)
     {
         if (signature_.llvmReturnType != "i64") {
@@ -231,6 +236,8 @@ private:
     void emitWhile(const ast::WhileStatement& statement)
     {
         const std::size_t label = nextLabel_++;
+        const std::string conditionTarget = "whilecond" + std::to_string(label);
+        const std::string endTarget = "whileend" + std::to_string(label);
         output_ << "  br label %whilecond" << label << "\n\n";
 
         output_ << "whilecond" << label << ":\n";
@@ -240,10 +247,81 @@ private:
                 << ", label %whileend" << label << "\n\n";
 
         output_ << "whilebody" << label << ":\n";
-        emitAssignmentBranch(statement.body());
-        output_ << "  br label %whilecond" << label << "\n\n";
+        loopTargets_.push_back(LoopTargets{conditionTarget, endTarget});
+        const bool terminated = emitLoopStatements(statement.body());
+        loopTargets_.pop_back();
+        if (!terminated) {
+            output_ << "  br label %" << conditionTarget << '\n';
+        }
+        output_ << '\n';
 
         output_ << "whileend" << label << ":\n";
+    }
+
+    bool emitLoopStatements(const std::vector<ast::StatementPtr>& statements)
+    {
+        bool terminated = false;
+        for (const auto& statement : statements) {
+            if (terminated) {
+                throw CodegenError(
+                    "LLVM emission does not support statements after break or continue");
+            }
+            terminated = emitLoopStatement(*statement);
+        }
+        return terminated;
+    }
+
+    bool emitLoopStatement(const ast::Statement& statement)
+    {
+        if (statement.kind() == ast::AstNodeKind::ExpressionStatement) {
+            emitLocalAssignment(
+                static_cast<const ast::ExpressionStatement&>(statement).expression());
+            return false;
+        }
+        if (statement.kind() == ast::AstNodeKind::IfStatement) {
+            emitLoopIf(static_cast<const ast::IfStatement&>(statement));
+            return false;
+        }
+        if (statement.kind() == ast::AstNodeKind::BreakStatement) {
+            output_ << "  br label %" << currentLoopTargets().breakTarget << '\n';
+            return true;
+        }
+        if (statement.kind() == ast::AstNodeKind::ContinueStatement) {
+            output_ << "  br label %" << currentLoopTargets().continueTarget << '\n';
+            return true;
+        }
+
+        throw CodegenError(
+            "LLVM emission currently supports only assignments, if, break, and continue in while bodies");
+    }
+
+    void emitLoopIf(const ast::IfStatement& statement)
+    {
+        if (!statement.elseIfClauses().empty() || !statement.elseBody().empty()) {
+            throw CodegenError(
+                "LLVM emission currently supports loop if without elif or else");
+        }
+
+        const std::size_t label = nextLabel_++;
+        const std::string condition = emitExpression(statement.condition());
+        output_ << "  br i1 " << condition
+                << ", label %loopthen" << label
+                << ", label %loopendif" << label << "\n\n";
+
+        output_ << "loopthen" << label << ":\n";
+        if (!emitLoopStatements(statement.thenBody())) {
+            output_ << "  br label %loopendif" << label << '\n';
+        }
+        output_ << "\nloopendif" << label << ":\n";
+    }
+
+    const LoopTargets& currentLoopTargets() const
+    {
+        if (loopTargets_.empty()) {
+            throw CodegenError(
+                "LLVM emission supports break and continue only inside while");
+        }
+        return loopTargets_.back();
     }
 
     void emitLocalDeclaration(const ast::Statement& statement)
@@ -522,6 +600,7 @@ private:
     const FunctionSignatures& signatures_;
     std::unordered_map<std::string, std::string> parameters_;
     std::unordered_map<std::string, std::string> locals_;
+    std::vector<LoopTargets> loopTargets_;
     std::size_t nextTemporary_ = 0;
     std::size_t nextLabel_ = 0;
 };

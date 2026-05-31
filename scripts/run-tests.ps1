@@ -119,6 +119,9 @@ Invoke-LlvmEmissionTest `
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-while-loop.inox")) `
     -RequiredFragments @("define i64 @sumto", "whilecond0:", "whilebody0:", "whileend0:", "br i1", "br label %whilecond0", "icmp sgt i64", "add i64", "sub i64", "ret i64", "define i32 @main()", "ret i32 0")
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-while-break-continue.inox")) `
+    -RequiredFragments @("define i64 @findfirstbelow", "whilecond0:", "whilebody0:", "whileend0:", "br i1", "br label %whilecond0", "br label %whileend0", "icmp eq i64", "sub i64", "store i64", "ret i64", "define i32 @main()", "ret i32 0")
 
 $total = $passed + $failed
 Write-Host ""
