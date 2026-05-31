@@ -1,0 +1,32 @@
+Module BoolComparisons
+
+IsGreater(A Integer, B Integer) Bool :
+    Return A > B
+;
+
+IsEqual(A Integer, B Integer) Bool :
+    Return A = B
+;
+
+IsDifferent(A Integer, B Integer) Bool :
+    Return A # B
+;
+
+IsLess(A Integer, B Integer) Bool :
+    Return A < B
+;
+
+IsAtMost(A Integer, B Integer) Bool :
+    Return A <= B
+;
+
+IsAtLeast(A Integer, B Integer) Bool :
+    Return A >= B
+;
+
+AlwaysTrue() Bool :
+    Return True
+;
+
+Main() :
+;

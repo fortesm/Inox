@@ -53,15 +53,16 @@ struct IntegerParameter {
     std::string llvmName;
 };
 
-struct IntegerFunctionSignature {
+struct FunctionSignature {
     std::string llvmName;
+    std::string llvmReturnType;
     std::vector<IntegerParameter> parameters;
 };
 
-using IntegerFunctionSignatures =
-    std::unordered_map<std::string, IntegerFunctionSignature>;
+using FunctionSignatures =
+    std::unordered_map<std::string, FunctionSignature>;
 
-std::vector<IntegerParameter> parseIntegerSignature(const ast::FunctionDeclaration& function)
+FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& function)
 {
     const auto& tokens = function.signatureTokens();
     if (tokens.size() < 3 || tokens.front() != "(") {
@@ -90,21 +91,34 @@ std::vector<IntegerParameter> parseIntegerSignature(const ast::FunctionDeclarati
     }
     ++index;
 
-    if (index + 1 != tokens.size() || !equalsIgnoreCase(tokens[index], "Integer")) {
+    if (index + 1 != tokens.size()) {
         throw CodegenError(
-            "LLVM emission currently supports only Integer return types");
+            "LLVM emission currently supports only Integer and Bool return types");
     }
 
-    return parameters;
+    std::string llvmReturnType;
+    if (equalsIgnoreCase(tokens[index], "Integer")) {
+        llvmReturnType = "i64";
+    } else if (equalsIgnoreCase(tokens[index], "Bool")) {
+        llvmReturnType = "i1";
+    } else {
+        throw CodegenError(
+            "LLVM emission currently supports only Integer and Bool return types");
+    }
+
+    return FunctionSignature{
+        normalize(function.name()),
+        std::move(llvmReturnType),
+        std::move(parameters)};
 }
 
-class IntegerFunctionEmitter {
+class FunctionEmitter {
 public:
-    IntegerFunctionEmitter(std::ostringstream& output,
-                           const ast::FunctionDeclaration& function,
-                           const IntegerFunctionSignature& signature,
-                           const IntegerFunctionSignatures& signatures)
-        : output_(output), function_(function), signatures_(signatures)
+    FunctionEmitter(std::ostringstream& output,
+                    const ast::FunctionDeclaration& function,
+                    const FunctionSignature& signature,
+                    const FunctionSignatures& signatures)
+        : output_(output), function_(function), signature_(signature), signatures_(signatures)
     {
         for (const IntegerParameter& parameter : signature.parameters) {
             parameters_.emplace(normalize(parameter.inoxName), "%" + parameter.llvmName);
@@ -126,7 +140,7 @@ public:
         const auto& returnStatement =
             static_cast<const ast::ReturnStatement&>(*function_.body().back());
         const std::string value = emitExpression(returnStatement.expression());
-        output_ << "  ret i64 " << value << '\n';
+        output_ << "  ret " << signature_.llvmReturnType << ' ' << value << '\n';
     }
 
 private:
@@ -227,10 +241,13 @@ private:
         switch (expression.kind()) {
         case ast::AstNodeKind::LiteralExpression: {
             const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
-            if (literal.literalKind() != ast::LiteralKind::Integer) {
-                break;
+            if (literal.literalKind() == ast::LiteralKind::Integer) {
+                return llvmIntegerLiteral(literal.value());
             }
-            return llvmIntegerLiteral(literal.value());
+            if (literal.literalKind() == ast::LiteralKind::Boolean) {
+                return equalsIgnoreCase(literal.value(), "true") ? "1" : "0";
+            }
+            break;
         }
         case ast::AstNodeKind::IdentifierExpression: {
             const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
@@ -249,12 +266,17 @@ private:
         }
         case ast::AstNodeKind::BinaryExpression: {
             const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
-            const std::string operation = llvmOperation(binary.op());
             const std::string left = emitExpression(binary.left());
             const std::string right = emitExpression(binary.right());
             const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-            output_ << "  " << result << " = " << operation << " i64 "
-                    << left << ", " << right << '\n';
+            if (const std::string predicate = llvmComparisonPredicate(binary.op());
+                !predicate.empty()) {
+                output_ << "  " << result << " = icmp " << predicate << " i64 "
+                        << left << ", " << right << '\n';
+            } else {
+                output_ << "  " << result << " = " << llvmOperation(binary.op()) << " i64 "
+                        << left << ", " << right << '\n';
+            }
             return result;
         }
         case ast::AstNodeKind::CallExpression: {
@@ -268,6 +290,10 @@ private:
             const auto signature = signatures_.find(normalize(callee.name()));
             if (signature == signatures_.end()) {
                 break;
+            }
+            if (signature->second.llvmReturnType != "i64") {
+                throw CodegenError(
+                    "LLVM emission currently supports calls only to Integer functions");
             }
             if (call.arguments().size() != signature->second.parameters.size()) {
                 throw CodegenError(
@@ -330,20 +356,41 @@ private:
         }
     }
 
+    static std::string llvmComparisonPredicate(ast::BinaryOperator op)
+    {
+        switch (op) {
+        case ast::BinaryOperator::Equal:
+            return "eq";
+        case ast::BinaryOperator::NotEqual:
+            return "ne";
+        case ast::BinaryOperator::Less:
+            return "slt";
+        case ast::BinaryOperator::Greater:
+            return "sgt";
+        case ast::BinaryOperator::LessEqual:
+            return "sle";
+        case ast::BinaryOperator::GreaterEqual:
+            return "sge";
+        default:
+            return {};
+        }
+    }
+
     std::ostringstream& output_;
     const ast::FunctionDeclaration& function_;
-    const IntegerFunctionSignatures& signatures_;
+    const FunctionSignature& signature_;
+    const FunctionSignatures& signatures_;
     std::unordered_map<std::string, std::string> parameters_;
     std::unordered_map<std::string, std::string> locals_;
     std::size_t nextTemporary_ = 0;
 };
 
-void emitIntegerFunction(std::ostringstream& output,
-                         const ast::FunctionDeclaration& function,
-                         const IntegerFunctionSignature& signature,
-                         const IntegerFunctionSignatures& signatures)
+void emitFunction(std::ostringstream& output,
+                  const ast::FunctionDeclaration& function,
+                  const FunctionSignature& signature,
+                  const FunctionSignatures& signatures)
 {
-    output << "define i64 @" << signature.llvmName << '(';
+    output << "define " << signature.llvmReturnType << " @" << signature.llvmName << '(';
     for (std::size_t index = 0; index < signature.parameters.size(); ++index) {
         if (index != 0) {
             output << ", ";
@@ -352,7 +399,7 @@ void emitIntegerFunction(std::ostringstream& output,
     }
     output << ") {\n"
            << "entry:\n";
-    IntegerFunctionEmitter(output, function, signature, signatures).emit();
+    FunctionEmitter(output, function, signature, signatures).emit();
     output << "}\n\n";
 }
 
@@ -366,7 +413,7 @@ CodegenError::CodegenError(std::string message)
 std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
 {
     const ast::FunctionDeclaration* mainFunction = nullptr;
-    IntegerFunctionSignatures signatures;
+    FunctionSignatures signatures;
     std::ostringstream output;
 
     for (const auto& item : module.items()) {
@@ -379,11 +426,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
             mainFunction = &function;
         } else {
             const std::string normalizedName = normalize(function.name());
-            signatures.emplace(
-                normalizedName,
-                IntegerFunctionSignature{
-                    normalizedName,
-                    parseIntegerSignature(function)});
+            signatures.emplace(normalizedName, parseFunctionSignature(function));
         }
     }
 
@@ -395,7 +438,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
         const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
         if (!equalsIgnoreCase(function.name(), "Main")) {
             const auto signature = signatures.find(normalize(function.name()));
-            emitIntegerFunction(output, function, signature->second, signatures);
+            emitFunction(output, function, signature->second, signatures);
         }
     }
 
