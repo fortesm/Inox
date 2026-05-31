@@ -1,7 +1,7 @@
 Module WhileBreakContinue
 
 FindFirstBelow(A Integer) Integer :
-    Var :
+    Var
         I := A
         Result := 0
     ;

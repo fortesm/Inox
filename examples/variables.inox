@@ -14,7 +14,7 @@ Main() :
     var Name := "Ada"
     var Greeting := "Hello, Inox"
 
-    Var :
+    Var
         Count := 1
         Total := Count + MaxCount
     ;

@@ -406,7 +406,7 @@ The current 0.1 subset supports default field values for `Integer` and `Bool` fi
 For 0.1, structs declare fields only. They do not declare method signatures, constructors, visibility sections, tags, variants, embedding, or inheritance.
 
 ```inox
-Var :
+Var
     P TPoint
 ;
 

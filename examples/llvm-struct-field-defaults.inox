@@ -7,7 +7,7 @@ Type
     ;
 
 GetPort() Integer :
-    Var :
+    Var
         C TConfig
     ;
 

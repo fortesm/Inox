@@ -499,10 +499,10 @@ Type
 
 A `Struct` declares fields only. It does not declare or repeat method signatures. Associated methods and protocol/behavior reuse are future layers outside the struct declaration itself.
 
-A local struct variable can be declared in a `Var : ... ;` block:
+A local struct variable can be declared in a `Var ... ;` block. `Var` does not use `:`:
 
 ```inox
-Var :
+Var
     P TPoint
 ;
 ```

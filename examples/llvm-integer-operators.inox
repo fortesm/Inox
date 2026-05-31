@@ -1,7 +1,7 @@
 Module IntegerOperators
 
 Compute(A Integer, B Integer) Integer :
-    Var :
+    Var
         Q := A / B
         X := A div B
         Y := A mod B

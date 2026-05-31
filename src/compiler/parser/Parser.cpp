@@ -80,7 +80,11 @@ ast::StatementPtr Parser::parseStatement()
     }
 
     if (matchKeyword("var")) {
+        const lexer::Token& varToken = previous();
         if (match(TokenKind::Colon)) {
+            errorAt(previous(), "Var blocks do not use ':'; use 'Var' followed by declarations and close with ';'");
+        }
+        if (!isAtEnd() && peek().location.line > varToken.location.line) {
             auto declarations = parseVarBlockDeclarations();
             consumeBlockClose();
             return std::make_unique<ast::VarBlockStatement>(std::move(declarations));

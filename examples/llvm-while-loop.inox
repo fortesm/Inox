@@ -1,7 +1,7 @@
 Module WhileLoop
 
 SumTo(N Integer) Integer :
-    Var :
+    Var
         I := N
         Total := 0
     ;

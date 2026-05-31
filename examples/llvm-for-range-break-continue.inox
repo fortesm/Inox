@@ -1,7 +1,7 @@
 Module ForRange
 
 SumRange(N Integer) Integer :
-    Var :
+    Var
         Total := 0
     ;
 

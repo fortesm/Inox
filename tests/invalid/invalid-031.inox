@@ -1,0 +1,7 @@
+Module InvalidVarColon
+
+Main() :
+    Var :
+        X := 10
+    ;
+;

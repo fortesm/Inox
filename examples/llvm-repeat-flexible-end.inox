@@ -1,7 +1,7 @@
 Module RepeatFlexibleEnd
 
 CountDown(N Integer) Integer :
-    Var :
+    Var
         I := N
         Total := 0
     ;

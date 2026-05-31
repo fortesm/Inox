@@ -7,7 +7,7 @@ Type
     ;
 
 SumPoint() Integer :
-    Var :
+    Var
         P TPoint
     ;
 

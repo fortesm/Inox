@@ -1,7 +1,7 @@
 Module PutOutputBasic
 
 Main() :
-    Var :
+    Var
         X := 7
     ;
 

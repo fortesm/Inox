@@ -16,7 +16,7 @@ TPoint.Sum(Self TPoint) Integer :
 ;
 
 MakeAndSum() Integer :
-    Var :
+    Var
         P TPoint
     ;
 

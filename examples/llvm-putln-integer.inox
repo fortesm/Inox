@@ -5,7 +5,7 @@ Value() Integer :
 ;
 
 Main() :
-    Var :
+    Var
         X := 10
     ;
 

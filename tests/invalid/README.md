@@ -34,6 +34,7 @@ These programs must fail parsing or semantic analysis.
 | `invalid-028.inox` | conditional header must end with a line break |
 | `invalid-029.inox` | `until` outside `repeat` |
 | `invalid-030.inox` | `until` condition must be `Bool` |
+| `invalid-031.inox` | `Var` block must not use `:` |
 
 `invalid-001.inox` uses an inferred local variable because typed local
 declaration syntax is not yet specified canonically.

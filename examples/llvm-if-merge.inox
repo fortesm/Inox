@@ -1,7 +1,7 @@
 Module IfMerge
 
 MaxPlusOne(A Integer, B Integer) Integer :
-    Var :
+    Var
         M := 0
     ;
 

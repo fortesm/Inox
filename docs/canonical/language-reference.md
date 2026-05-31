@@ -393,7 +393,7 @@ var X := 10
 ```
 
 ```inox
-Var :
+Var
     X := 10
     Y Integer := 20
 ;
@@ -773,7 +773,7 @@ Type
     ;
 
 SumPoint() Integer :
-    Var :
+    Var
         P TPoint
     ;
 
@@ -809,7 +809,7 @@ TPoint.Sum(Self TPoint) Integer :
 ;
 
 Main() :
-    Var :
+    Var
         P TPoint
     ;
 
