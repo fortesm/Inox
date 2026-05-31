@@ -310,6 +310,75 @@ private:
         output_ << endTarget << ":\n";
     }
 
+    void emitForIn(const ast::ForInStatement& statement)
+    {
+        if (statement.step() != nullptr) {
+            throw CodegenError(
+                "LLVM emission currently supports only implicit step +1 in for loops");
+        }
+        if (statement.iterable().kind() != ast::AstNodeKind::BinaryExpression) {
+            throw CodegenError(
+                "LLVM emission currently supports only range expressions in for loops");
+        }
+
+        const auto& range = static_cast<const ast::BinaryExpression&>(statement.iterable());
+        if (range.op() != ast::BinaryOperator::Range) {
+            throw CodegenError(
+                "LLVM emission currently supports only Start..End for ranges");
+        }
+
+        const std::string iteratorName = normalize(statement.iterator());
+        if (locals_.find(iteratorName) != locals_.end()) {
+            throw CodegenError(
+                "LLVM emission does not support for iterator shadowing local variables");
+        }
+
+        const std::size_t label = nextLabel_++;
+        const std::string conditionTarget = "forcond" + std::to_string(label);
+        const std::string bodyTarget = "forbody" + std::to_string(label);
+        const std::string stepTarget = "forstep" + std::to_string(label);
+        const std::string endTarget = "forend" + std::to_string(label);
+        const std::string slot = "%" + iteratorName;
+
+        output_ << "  " << slot << " = alloca i64\n";
+        const std::string startValue = emitExpression(range.left());
+        output_ << "  store i64 " << startValue << ", ptr " << slot << '\n';
+        locals_.emplace(iteratorName, slot);
+
+        output_ << "  br label %" << conditionTarget << "\n\n";
+
+        output_ << conditionTarget << ":\n";
+        const std::string iteratorValue = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << iteratorValue << " = load i64, ptr " << slot << '\n';
+        const std::string endValue = emitExpression(range.right());
+        const std::string condition = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << condition << " = icmp sle i64 "
+                << iteratorValue << ", " << endValue << '\n';
+        output_ << "  br i1 " << condition
+                << ", label %" << bodyTarget
+                << ", label %" << endTarget << "\n\n";
+
+        output_ << bodyTarget << ":\n";
+        loopTargets_.push_back(LoopTargets{stepTarget, endTarget});
+        const bool terminated = emitLoopStatements(statement.body());
+        loopTargets_.pop_back();
+        if (!terminated) {
+            output_ << "  br label %" << stepTarget << '\n';
+        }
+        output_ << '\n';
+
+        output_ << stepTarget << ":\n";
+        const std::string stepValue = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string incrementedValue = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << stepValue << " = load i64, ptr " << slot << '\n';
+        output_ << "  " << incrementedValue << " = add i64 " << stepValue << ", 1\n";
+        output_ << "  store i64 " << incrementedValue << ", ptr " << slot << '\n';
+        output_ << "  br label %" << conditionTarget << "\n\n";
+
+        output_ << endTarget << ":\n";
+        locals_.erase(iteratorName);
+    }
+
     bool emitRepeatStatements(const std::vector<ast::StatementPtr>& statements,
                               const std::string& bodyTarget,
                               const std::string& endTarget,
@@ -477,8 +546,13 @@ private:
             return;
         }
 
+        if (statement.kind() == ast::AstNodeKind::ForInStatement) {
+            emitForIn(static_cast<const ast::ForInStatement&>(statement));
+            return;
+        }
+
         throw CodegenError(
-            "LLVM emission currently supports only local variables, assignments, if, while, and repeat before Return");
+            "LLVM emission currently supports only local variables, assignments, if, while, repeat, and for before Return");
     }
 
     void emitVarBlockDeclaration(const ast::Statement& statement)
