@@ -127,6 +127,14 @@ public:
 
     void emit()
     {
+        if (signature_.llvmReturnType == "i32") {
+            for (const auto& statement : function_.body()) {
+                emitLocalDeclaration(*statement);
+            }
+            output_ << "  ret i32 0\n";
+            return;
+        }
+
         if (function_.body().size() == 1 &&
             function_.body().front()->kind() == ast::AstNodeKind::IfStatement) {
             emitIfReturn(
@@ -526,8 +534,13 @@ private:
         }
 
         if (statement.kind() == ast::AstNodeKind::ExpressionStatement) {
-            emitLocalAssignment(
-                static_cast<const ast::ExpressionStatement&>(statement).expression());
+            const auto& expression =
+                static_cast<const ast::ExpressionStatement&>(statement).expression();
+            if (isAssignmentExpression(expression)) {
+                emitLocalAssignment(expression);
+            } else {
+                emitExpressionStatement(expression);
+            }
             return;
         }
 
@@ -589,6 +602,44 @@ private:
         const std::string value = emitExpression(initializer);
         output_ << "  store i64 " << value << ", ptr " << slot << '\n';
         locals_.emplace(normalizedName, slot);
+    }
+
+    static bool isAssignmentExpression(const ast::Expression& expression)
+    {
+        if (expression.kind() != ast::AstNodeKind::BinaryExpression) {
+            return false;
+        }
+
+        const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
+        return binary.op() == ast::BinaryOperator::Assign;
+    }
+
+    void emitExpressionStatement(const ast::Expression& expression)
+    {
+        if (expression.kind() != ast::AstNodeKind::CallExpression) {
+            throw CodegenError(
+                "LLVM emission currently supports only assignments and PutLn calls as statements");
+        }
+
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
+            throw CodegenError(
+                "LLVM emission currently supports only direct PutLn calls as statements");
+        }
+
+        const auto& callee =
+            static_cast<const ast::IdentifierExpression&>(call.callee());
+        if (!equalsIgnoreCase(callee.name(), "PutLn")) {
+            throw CodegenError(
+                "LLVM emission currently supports only PutLn calls as non-assignment statements");
+        }
+        if (call.arguments().size() != 1) {
+            throw CodegenError("PutLn LLVM emission expects exactly one argument");
+        }
+
+        const std::string value = emitExpression(*call.arguments().front());
+        output_ << "  call i32 (ptr, ...) @printf(ptr @.inox.fmt.i64.nl, i64 "
+                << value << ")\n";
     }
 
     void emitLocalAssignment(const ast::Expression& expression)
@@ -843,6 +894,9 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
     FunctionSignatures signatures;
     std::ostringstream output;
 
+    output << "@.inox.fmt.i64.nl = private unnamed_addr constant [6 x i8] c\"%lld\\0A\\00\"\n"
+           << "declare i32 @printf(ptr, ...)\n\n";
+
     for (const auto& item : module.items()) {
         if (item->kind() != ast::AstNodeKind::FunctionDeclaration) {
             continue;
@@ -872,15 +926,8 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
     if (mainFunction == nullptr) {
         throw CodegenError("LLVM emission requires Main()");
     }
-    if (!mainFunction->body().empty()) {
-        throw CodegenError(
-            "LLVM emission currently supports only an empty Main()");
-    }
-
-    output << "define i32 @main() {\n"
-           << "entry:\n"
-           << "  ret i32 0\n"
-           << "}\n";
+    const FunctionSignature mainSignature{"main", "i32", {}};
+    emitFunction(output, *mainFunction, mainSignature, signatures);
     return output.str();
 }
 

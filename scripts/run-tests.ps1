@@ -163,6 +163,10 @@ Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-for-range-step.inox")) `
     -RequiredFragments @("define i64 @sumevenuntil", "forcond", "forbody", "forstep", "forend", "store i64 2, ptr %i", "icmp sle i64", "icmp eq i64", "add i64", ", 2", "br i1", "br label", "ret i64", "define i32 @main()", "ret i32 0")
 
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-putln-integer.inox")) `
+    -RequiredFragments @("@.inox.fmt.i64.nl", "declare i32 @printf", "define i64 @value", "define i32 @main()", "call i32 (ptr, ...) @printf", "ret i32 0")
+
 $total = $passed + $failed
 Write-Host ""
 Write-Host "Summary: $passed passed, $failed failed, $total total"

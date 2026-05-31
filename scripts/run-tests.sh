@@ -164,6 +164,9 @@ run_llvm_emission_test "$repo_root/examples/llvm-for-range-break-continue.inox" 
 run_llvm_emission_test "$repo_root/examples/llvm-for-range-step.inox" \
     "define i64 @sumevenuntil" "forcond" "forbody" "forstep" "forend" "store i64 2, ptr %i" "icmp sle i64" "icmp eq i64" "add i64" ", 2" "br i1" "br label" "ret i64" "define i32 @main()" "ret i32 0"
 
+run_llvm_emission_test "$repo_root/examples/llvm-putln-integer.inox" \
+    "@.inox.fmt.i64.nl" "declare i32 @printf" "define i64 @value" "define i32 @main()" "call i32 (ptr, ...) @printf" "ret i32 0"
+
 total=$((passed + failed))
 echo ""
 echo "Summary: $passed passed, $failed failed, $total total"

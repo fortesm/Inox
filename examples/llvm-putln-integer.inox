@@ -1,0 +1,14 @@
+Module PutLnInteger
+
+Value() Integer :
+    Return 42
+;
+
+Main() :
+    Var :
+        X := 10
+    ;
+
+    PutLn(X)
+    PutLn(Value())
+;

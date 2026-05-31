@@ -177,3 +177,13 @@ Linux:
 cmake --build build
 ./scripts/run-tests.sh
 ```
+
+
+## Temporary textual runtime lowering
+
+The current textual LLVM backend includes a deliberately small runtime lowering for early smoke tests:
+
+- `PutLn(Integer)` lowers to an external C `printf` declaration and an internal integer newline format string.
+- This is a temporary backend mechanism for validating executable-style I/O paths.
+- It does not yet define the final Inox runtime ABI.
+- String output, `Put`, `ReadLn`, buffering, Unicode and platform-specific console behavior remain future runtime work.
