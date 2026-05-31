@@ -161,3 +161,17 @@ If a proposed implementation requires a language decision not covered by these d
 ## Current LLVM backend I/O milestone
 
 The textual LLVM backend currently supports temporary `printf`-based `Put`/`PutLn` lowering for `Integer`, `Bool`, and string literals. It also supports user-defined subroutines without return values and statement calls to those subroutines. This is not the final runtime ABI; preserve it only as an executable smoke-test path until the real runtime is introduced.
+
+## Test organization
+
+When adding or modifying tests, keep the suite layered:
+
+- Human-facing examples go in `examples/`.
+- Syntax-focused valid fixtures go in `tests/parser/valid/`.
+- Syntax-focused invalid fixtures go in `tests/parser/invalid/`.
+- Semantic valid fixtures go in `tests/semantic/valid/`.
+- Semantic invalid fixtures go in `tests/semantic/invalid/`.
+- LLVM emission fixtures go in `tests/codegen/` and must be registered with explicit required IR fragments in both `scripts/run-tests.ps1` and `scripts/run-tests.sh`.
+- End-to-end executable tests will live in `tests/integration/` when introduced.
+
+Do not delete or move existing `examples/` tests unless a dedicated migration task explicitly says so.

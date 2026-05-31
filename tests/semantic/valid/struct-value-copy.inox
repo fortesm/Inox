@@ -1,0 +1,30 @@
+Module SemanticStructValueCopy
+
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+MakePoint(X Integer, Y Integer) TPoint :
+    Var
+        P TPoint
+    ;
+
+    P.FX := X
+    P.FY := Y
+
+    Return P
+;
+
+Main() :
+    Var
+        A TPoint
+        B TPoint
+    ;
+
+    A := MakePoint(1, 2)
+    B := A
+
+    PutLn(B.FX + B.FY)
+;

@@ -1,0 +1,19 @@
+Module ParserValidStruct
+
+Type
+    TItem Struct
+        FValue Integer
+    ;
+
+Main() :
+    Var
+        I Integer := 1
+        Item TItem
+    ;
+
+    Item.FValue := I
+
+    if Item.FValue = 1
+        I := I + 1
+    ;
+;

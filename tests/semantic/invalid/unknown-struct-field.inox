@@ -1,0 +1,14 @@
+Module SemanticInvalidUnknownField
+
+Type
+    TPoint Struct
+        FX Integer
+    ;
+
+Main() :
+    Var
+        P TPoint
+    ;
+
+    P.FY := 10
+;

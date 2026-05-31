@@ -1,0 +1,26 @@
+Module CodegenStructValueSmoke
+
+Type
+    TPair Struct
+        FLeft Integer
+        FRight Integer
+    ;
+
+MakePair(A Integer, B Integer) TPair :
+    Var
+        P TPair
+    ;
+
+    P.FLeft := A
+    P.FRight := B
+
+    Return P
+;
+
+SumPair(P TPair) Integer :
+    Return P.FLeft + P.FRight
+;
+
+Main() :
+    PutLn(SumPair(MakePair(4, 5)))
+;

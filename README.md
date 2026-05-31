@@ -137,3 +137,14 @@ The compiler currently supports a restricted associated-method subset for simple
 ## Current Struct Milestone
 
 The current compiler prototype supports simple nominal structs as value types in the LLVM textual backend: local struct variables, Integer/Bool fields, field defaults, field assignment/access, struct assignment by value, ordinary struct parameters, ordinary struct return values, and associated methods declared outside the struct.
+
+## Test suite layout
+
+The test suite now uses layer-oriented directories under `tests/`:
+
+- `tests/parser/valid/` and `tests/parser/invalid/` for syntax-focused fixtures.
+- `tests/semantic/valid/` and `tests/semantic/invalid/` for semantic-analysis fixtures.
+- `tests/codegen/` for LLVM emission fixtures with explicit IR fragments in the runners.
+- `tests/integration/` is reserved for future compile-link-run tests.
+
+`examples/` remains the human-facing tutorial/demo corpus and is also smoke-tested by the runners.

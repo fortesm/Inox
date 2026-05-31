@@ -88,17 +88,46 @@ function Invoke-LlvmEmissionTest {
     }
 }
 
-$validExamples = Get-ChildItem -LiteralPath (Join-Path $repoRoot "examples") -Filter "*.inox" -File |
-    Sort-Object Name
-$invalidTests = Get-ChildItem -LiteralPath (Join-Path $repoRoot "tests\invalid") -Filter "*.inox" -File |
-    Sort-Object Name
+function Get-InoxTestFiles {
+    param(
+        [string]$RelativePath,
+        [switch]$Recurse
+    )
 
-foreach ($example in $validExamples) {
-    Invoke-InoxTest -TestFile $example -ExpectSuccess $true
+    $root = Join-Path $repoRoot $RelativePath
+    if (-not (Test-Path -LiteralPath $root)) {
+        return @()
+    }
+
+    if ($Recurse) {
+        return @(Get-ChildItem -LiteralPath $root -Filter "*.inox" -File -Recurse | Sort-Object FullName)
+    }
+
+    return @(Get-ChildItem -LiteralPath $root -Filter "*.inox" -File | Sort-Object FullName)
 }
 
-foreach ($test in $invalidTests) {
-    Invoke-InoxTest -TestFile $test -ExpectSuccess $false
+$validTestRoots = @(
+    @{ Path = "examples"; Recurse = $false },
+    @{ Path = "tests\parser\valid"; Recurse = $true },
+    @{ Path = "tests\semantic\valid"; Recurse = $true }
+)
+
+$invalidTestRoots = @(
+    @{ Path = "tests\invalid"; Recurse = $false },
+    @{ Path = "tests\parser\invalid"; Recurse = $true },
+    @{ Path = "tests\semantic\invalid"; Recurse = $true }
+)
+
+foreach ($rootSpec in $validTestRoots) {
+    foreach ($test in Get-InoxTestFiles -RelativePath $rootSpec.Path -Recurse:([bool]$rootSpec.Recurse)) {
+        Invoke-InoxTest -TestFile $test -ExpectSuccess $true
+    }
+}
+
+foreach ($rootSpec in $invalidTestRoots) {
+    foreach ($test in Get-InoxTestFiles -RelativePath $rootSpec.Path -Recurse:([bool]$rootSpec.Recurse)) {
+        Invoke-InoxTest -TestFile $test -ExpectSuccess $false
+    }
 }
 
 Invoke-LlvmEmissionTest `
@@ -190,6 +219,11 @@ Invoke-LlvmEmissionTest `
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-struct-values.inox")) `
     -RequiredFragments @("%tpoint = type { i64, i64 }", "define %tpoint @makepoint", "define i64 @sumpoint", "define %tpoint @copypoint", "%p.addr = alloca %tpoint", "store %tpoint %p, ptr %p.addr", "load %tpoint", "ret %tpoint", "call %tpoint @makepoint", "call %tpoint @copypoint", "call i64 @sumpoint", "ret i32 0")
+
+
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-struct-value-smoke.inox")) `
+    -RequiredFragments @("%tpair = type { i64, i64 }", "define %tpair @makepair", "define i64 @sumpair", "call %tpair @makepair", "call i64 @sumpair", "ret i32 0")
 
 $total = $passed + $failed
 Write-Host ""

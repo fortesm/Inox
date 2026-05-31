@@ -115,13 +115,24 @@ run_llvm_emission_test() {
     fi
 }
 
-while IFS= read -r -d '' example; do
-    run_inox_test "$example" true
-done < <(find "$repo_root/examples" -maxdepth 1 -type f -name '*.inox' -print0 | sort -z)
+run_test_tree() {
+    local root="$1"
+    local maxdepth="$2"
+    local expect_success="$3"
 
-while IFS= read -r -d '' test_file; do
-    run_inox_test "$test_file" false
-done < <(find "$repo_root/tests/invalid" -maxdepth 1 -type f -name '*.inox' -print0 | sort -z)
+    [[ -d "$root" ]] || return 0
+    while IFS= read -r -d '' test_file; do
+        run_inox_test "$test_file" "$expect_success"
+    done < <(find "$root" -maxdepth "$maxdepth" -type f -name '*.inox' -print0 | sort -z)
+}
+
+run_test_tree "$repo_root/examples" 1 true
+run_test_tree "$repo_root/tests/parser/valid" 10 true
+run_test_tree "$repo_root/tests/semantic/valid" 10 true
+
+run_test_tree "$repo_root/tests/invalid" 1 false
+run_test_tree "$repo_root/tests/parser/invalid" 10 false
+run_test_tree "$repo_root/tests/semantic/invalid" 10 false
 
 run_llvm_emission_test "$repo_root/examples/empty.inox" \
     "define i32 @main()" "ret i32 0"
@@ -184,6 +195,9 @@ run_llvm_emission_test "$repo_root/examples/llvm-struct-field-defaults.inox" \
 
 run_llvm_emission_test "$repo_root/examples/llvm-struct-values.inox" \
     "%tpoint = type { i64, i64 }" "define %tpoint @makepoint" "define i64 @sumpoint" "define %tpoint @copypoint" "%p.addr = alloca %tpoint" "store %tpoint %p, ptr %p.addr" "load %tpoint" "ret %tpoint" "call %tpoint @makepoint" "call %tpoint @copypoint" "call i64 @sumpoint" "ret i32 0"
+
+
+run_llvm_emission_test "$repo_root/tests/codegen/llvm-struct-value-smoke.inox"     "%tpair = type { i64, i64 }" "define %tpair @makepair" "define i64 @sumpair" "call %tpair @makepair" "call i64 @sumpair" "ret i32 0"
 
 total=$((passed + failed))
 echo ""

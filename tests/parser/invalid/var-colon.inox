@@ -1,0 +1,7 @@
+Module ParserInvalidVarColon
+
+Main() :
+    Var :
+        X Integer := 10
+    ;
+;
