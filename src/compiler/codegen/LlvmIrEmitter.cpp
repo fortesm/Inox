@@ -156,19 +156,19 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
     }
     ++index;
 
-    if (index + 1 != tokens.size()) {
-        throw CodegenError(
-            "LLVM emission currently supports only Integer and Bool return types");
-    }
-
     std::string llvmReturnType;
-    if (equalsIgnoreCase(tokens[index], "Integer")) {
+    if (index == tokens.size()) {
+        llvmReturnType = "void";
+    } else if (index + 1 != tokens.size()) {
+        throw CodegenError(
+            "LLVM emission currently supports only Integer and Bool return types, or subroutines without return type");
+    } else if (equalsIgnoreCase(tokens[index], "Integer")) {
         llvmReturnType = "i64";
     } else if (equalsIgnoreCase(tokens[index], "Bool")) {
         llvmReturnType = "i1";
     } else {
         throw CodegenError(
-            "LLVM emission currently supports only Integer and Bool return types");
+            "LLVM emission currently supports only Integer and Bool return types, or subroutines without return type");
     }
 
     return FunctionSignature{
@@ -199,11 +199,15 @@ public:
 
     void emit()
     {
-        if (signature_.llvmReturnType == "i32") {
+        if (signature_.llvmReturnType == "i32" || signature_.llvmReturnType == "void") {
             for (const auto& statement : function_.body()) {
                 emitLocalDeclaration(*statement);
             }
-            output_ << "  ret i32 0\n";
+            if (signature_.llvmReturnType == "i32") {
+                output_ << "  ret i32 0\n";
+            } else {
+                output_ << "  ret void\n";
+            }
             return;
         }
 
@@ -690,28 +694,59 @@ private:
     {
         if (expression.kind() != ast::AstNodeKind::CallExpression) {
             throw CodegenError(
-                "LLVM emission currently supports only assignments and Put/PutLn calls as statements");
+                "LLVM emission currently supports only assignments and calls as statements");
         }
 
         const auto& call = static_cast<const ast::CallExpression&>(expression);
         if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
             throw CodegenError(
-                "LLVM emission currently supports only direct Put/PutLn calls as statements");
+                "LLVM emission currently supports only direct calls as statements");
         }
 
         const auto& callee =
             static_cast<const ast::IdentifierExpression&>(call.callee());
         const bool isPut = equalsIgnoreCase(callee.name(), "Put");
         const bool isPutLn = equalsIgnoreCase(callee.name(), "PutLn");
-        if (!isPut && !isPutLn) {
-            throw CodegenError(
-                "LLVM emission currently supports only Put and PutLn calls as non-assignment statements");
-        }
-        if (call.arguments().size() != 1) {
-            throw CodegenError("Put/PutLn LLVM emission expects exactly one argument");
+        if (isPut || isPutLn) {
+            if (call.arguments().size() != 1) {
+                throw CodegenError("Put/PutLn LLVM emission expects exactly one argument");
+            }
+            emitOutputCall(*call.arguments().front(), isPutLn);
+            return;
         }
 
-        emitOutputCall(*call.arguments().front(), isPutLn);
+        emitSubroutineCall(call, callee.name());
+    }
+
+    void emitSubroutineCall(const ast::CallExpression& call, std::string_view calleeName)
+    {
+        const auto signature = signatures_.find(normalize(calleeName));
+        if (signature == signatures_.end()) {
+            throw CodegenError(
+                "LLVM emission currently supports only Put/PutLn and user subroutine calls as statements");
+        }
+        if (signature->second.llvmReturnType != "void") {
+            throw CodegenError(
+                "LLVM emission currently supports only subroutine calls as expression statements");
+        }
+        if (call.arguments().size() != signature->second.parameters.size()) {
+            throw CodegenError("unsupported subroutine argument count: " + function_.name());
+        }
+
+        std::vector<std::string> arguments;
+        arguments.reserve(call.arguments().size());
+        for (const auto& argument : call.arguments()) {
+            arguments.push_back(emitExpression(*argument));
+        }
+
+        output_ << "  call void @" << signature->second.llvmName << '(';
+        for (std::size_t index = 0; index < arguments.size(); ++index) {
+            if (index != 0) {
+                output_ << ", ";
+            }
+            output_ << "i64 " << arguments[index];
+        }
+        output_ << ")\n";
     }
 
     void emitOutputCall(const ast::Expression& argument, bool newline)

@@ -191,4 +191,4 @@ This document does not define:
 
 ## Temporary backend lowering note
 
-For the temporary textual LLVM backend, `Put` and `PutLn` may lower through C `printf` for `Integer`, `Bool`, and string literals. This is an implementation bridge for smoke tests only and does not define the final Inox runtime ABI.
+For the temporary textual LLVM backend, `Put` and `PutLn` may lower through C `printf` for `Integer`, `Bool`, and string literals. User-defined subroutines without return values may lower to LLVM `void` functions and be called as statements. This is an implementation bridge for smoke tests only and does not define the final Inox runtime ABI.

@@ -184,13 +184,17 @@ cmake --build build
 The current textual LLVM backend includes a deliberately small runtime lowering for early smoke tests:
 
 - `PutLn(Integer)` lowers to an external C `printf` declaration and an internal integer newline format string.
+- User-defined subroutines without return values lower to LLVM `void` functions.
+- Statement calls to user-defined subroutines lower to LLVM `call void` instructions.
 - This is a temporary backend mechanism for validating executable-style I/O paths.
 - It does not yet define the final Inox runtime ABI.
-- String output, `Put`, `ReadLn`, buffering, Unicode and platform-specific console behavior remain future runtime work.
+- `ReadLn`, buffering, Unicode and platform-specific console behavior remain future runtime work.
 
 ### Temporary output lowering
 
 - `PutLn(Integer)` and `Put(Integer)` currently lower through `printf`.
 - `PutLn(Bool)` and `Put(Bool)` currently lower Bool values through a `select i1` to internal `true`/`false` string constants.
 - `PutLn(String literal)` and `Put(String literal)` currently lower string literals to private LLVM string constants.
+- User subroutines without return values currently lower to `define void @name(...)` and end with `ret void`.
+- Calls to those subroutines are allowed as statements and lower to `call void @name(...)`.
 - This is temporary smoke-test lowering, not the final Inox runtime ABI.

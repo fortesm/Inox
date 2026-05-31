@@ -170,6 +170,9 @@ run_llvm_emission_test "$repo_root/examples/llvm-putln-integer.inox" \
 run_llvm_emission_test "$repo_root/examples/llvm-put-output-basic.inox" \
     "@.inox.fmt.str.nl" "@.inox.fmt.str" "@.inox.true" "@.inox.false" "@.inox.str." "select i1" "call i32 (ptr, ...) @printf" "define i32 @main()" "ret i32 0"
 
+run_llvm_emission_test "$repo_root/examples/llvm-subroutine-calls.inox" \
+    "define i64 @value" "define void @report" "call void @report" "ret void" "report=" "call i32 (ptr, ...) @printf" "define i32 @main()" "ret i32 0"
+
 total=$((passed + failed))
 echo ""
 echo "Summary: $passed passed, $failed failed, $total total"

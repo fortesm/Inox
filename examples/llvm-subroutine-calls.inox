@@ -1,0 +1,14 @@
+Module SubroutineCalls
+
+Value() Integer :
+    Return 42
+;
+
+Report(X Integer) :
+    Put("report=")
+    PutLn(X)
+;
+
+Main() :
+    Report(Value())
+;

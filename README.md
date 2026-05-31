@@ -106,4 +106,4 @@ git status --short
 
 ## Current LLVM backend milestone
 
-The textual LLVM backend can now emit temporary `printf`-based output for `Put`/`PutLn` with `Integer`, `Bool`, and string literals. This is intended as an early backend smoke test, not the final Inox runtime ABI.
+The textual LLVM backend can now emit temporary `printf`-based output for `Put`/`PutLn` with `Integer`, `Bool`, and string literals. It also supports user-defined subroutines without return values and statement calls to those subroutines. This is intended as an early backend smoke test, not the final Inox runtime ABI.

@@ -178,6 +178,10 @@ canonical function-return form.
 returns no value. It does not replace `Return`. There is no implicit `Result`
 and no `Return := Expression` form.
 
+A subroutine without an explicit return type returns no value. It may be called
+as a statement. It must not be used where a value-producing expression is
+required.
+
 ## Assignment
 
 Inox is strongly typed, so assignment must respect the type system.

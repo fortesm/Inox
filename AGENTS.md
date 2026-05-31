@@ -143,4 +143,4 @@ Historical discussions are reference material only.
 
 ## Current LLVM backend I/O milestone
 
-The textual LLVM backend currently supports temporary `printf`-based `Put`/`PutLn` lowering for `Integer`, `Bool`, and string literals. This is not the final runtime ABI; preserve it only as an executable smoke-test path until the real runtime is introduced.
+The textual LLVM backend currently supports temporary `printf`-based `Put`/`PutLn` lowering for `Integer`, `Bool`, and string literals. It also supports user-defined subroutines without return values and statement calls to those subroutines. This is not the final runtime ABI; preserve it only as an executable smoke-test path until the real runtime is introduced.

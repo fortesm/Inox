@@ -187,6 +187,9 @@ Return Expression
 Exit
 break
 continue
+
+A subroutine declaration may omit a return type. Such a subroutine returns no
+value and is called as a statement.
 ```
 
 `Return` and `Exit` are distinct. `Exit` does not receive an expression.
