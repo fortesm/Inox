@@ -1,0 +1,12 @@
+Module StdMathDemo
+
+Use Std.Core
+Use Std.Math
+Use Std.IO
+Use Std.Debug
+
+Main() :
+    PutLn(Min(3, 7))
+    PutLn(Max(3, 7))
+    PutLn(Clamp(150, 0, 100))
+;

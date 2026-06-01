@@ -1,0 +1,21 @@
+Module Std.IO
+
+== Inox 0.1 standard I/O facade.
+==
+== Put and PutLn are currently compiler built-ins/runtime-lowered operations.
+== They are documented here as the canonical Std.IO surface:
+==
+==   Put(Integer)
+==   PutLn(Integer)
+==
+==   Put(Bool)
+==   PutLn(Bool)
+==
+==   Put(String)
+==   PutLn(String)
+==
+==   Put(Char)
+==   PutLn(Char)
+==
+== Input APIs such as ReadLn are deliberately not part of 0.1 because they
+== require a settled Result[T, E], EOF and encoding-error model.

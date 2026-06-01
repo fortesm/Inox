@@ -1,0 +1,58 @@
+Module Std.Math
+
+== Inox 0.1 math helpers.
+==
+== Abs(X Integer) is currently treated as a compiler/prelude intrinsic in the
+== compiler front-end. Std.Math documents it as part of the mathematical
+== surface, but does not redeclare it here to avoid duplicate prelude symbols.
+==
+== Abs must obey the Inox overflow policy: Abs(Integer minimum) is invalid and
+== must trap/error when checked arithmetic is implemented.
+
+Min(A Integer, B Integer) Integer :
+    Var
+        Result Integer := B
+    ;
+
+    if A < B
+        Result := A
+    ;
+
+    Return Result
+;
+
+Max(A Integer, B Integer) Integer :
+    Var
+        Result Integer := B
+    ;
+
+    if A > B
+        Result := A
+    ;
+
+    Return Result
+;
+
+Clamp(X Integer, MinValue Integer, MaxValue Integer) Integer :
+    Var
+        Result Integer := X
+    ;
+
+    if Result < MinValue
+        Result := MinValue
+    ;
+
+    if Result > MaxValue
+        Result := MaxValue
+    ;
+
+    Return Result
+;
+
+IsEven(X Integer) Bool :
+    Return (X mod 2) = 0
+;
+
+IsOdd(X Integer) Bool :
+    Return (X mod 2) # 0
+;

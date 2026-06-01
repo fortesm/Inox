@@ -62,6 +62,16 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - Do not use `git add .`; add only task-scoped paths.
 - Every language change must update code, tests, docs, `docs/site/index.html`, and ADRs when applicable.
 - If a feature is canonical but not implemented, record it as a conformance gap instead of changing the spec.
+- Keep `stdlib/` portable across Windows and Linux. It must not depend on GC,
+  unsafe features, or C interop.
+
+## Standard library 0.1
+
+- `Std.Core` is the conceptual prelude/core module and may document compiler intrinsics.
+- `Std.IO` is the canonical facade for `Put` and `PutLn`.
+- `Std.Math` contains pure Integer helpers implemented in Inox.
+- `Std.Debug` reserves `Assert` until canonical trap/abort behavior exists.
+- Explicit `Use` resolution checks the entry-file directory before `stdlib/`.
 
 ## Current major conformance gaps
 

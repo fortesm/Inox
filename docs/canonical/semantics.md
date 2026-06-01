@@ -11,6 +11,10 @@ declares a semantic dependency and is not textual inclusion. The minimum 0.1
 driver loads local dependencies recursively, imports their declarations for
 analysis and emission, and rejects cyclic `Use` graphs.
 
+Module resolution checks the entry-file directory first and then `stdlib/` at
+the project root. `Std.Core` is the conceptual implicit prelude/core module.
+`Std.IO`, `Std.Math`, and `Std.Debug` are explicit standard-library modules.
+
 ## Mutability
 
 - Parameters are immutable by default.

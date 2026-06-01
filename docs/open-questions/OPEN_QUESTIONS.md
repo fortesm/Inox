@@ -35,5 +35,7 @@ The canonical specification may be ahead of the compiler in these areas:
 - vector implementation;
 - checking-mode overflow traps;
 - final runtime ABI.
+- canonical trap/abort behavior required before `Std.Debug.Assert` can be
+  implemented.
 
 When closing a gap, update code, tests, docs, HTML manual, and ADRs together.

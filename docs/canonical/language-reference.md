@@ -85,10 +85,27 @@ Module Calc.Core Use Sys.IO Use Math.Basic Use Calc.Types
 In 0.1 all module symbols are public by default. `Export`, interface/body separation, aliases, selective imports, and visibility controls are reserved for future versions.
 
 The minimum 0.1 driver resolves imported modules relative to the entry file
-directory. `Use Math.Basic` first checks `Math.Basic.inox`, then
-`Math/Basic.inox`. Dependencies are loaded recursively, cycles are rejected,
-and imported signatures participate in semantic analysis before textual LLVM
-IR is emitted.
+directory and then under the project `stdlib/` directory. `Use Math.Basic`
+checks `Math.Basic.inox`, then `Math/Basic.inox`, in each search root.
+Dependencies are loaded recursively, cycles are rejected, and imported
+signatures participate in semantic analysis before textual LLVM IR is emitted.
+
+## Standard library
+
+The initial portable 0.1 standard library lives under `stdlib/`:
+
+- `Std.Core` is the conceptual prelude/core module. It anchors fundamental
+  names and compiler intrinsics such as future array bounds operations.
+- `Std.IO` documents the canonical `Put` and `PutLn` I/O facade.
+- `Std.Math` contains pure Integer helpers implemented in Inox source,
+  including `Min`, `Max`, `Clamp`, `IsEven`, and `IsOdd`.
+- `Std.Debug` documents the future `Assert` facade. `Assert` remains
+  intentionally unavailable until trap/abort behavior is canonical.
+
+`Std.Core` is conceptually implicit. The other modules are available through
+explicit `Use`, such as `Use Std.Math` and `Use Std.IO`. The standard library
+must remain portable across Windows and Linux and must not depend on GC,
+unsafe features, C interop, or a complex runtime.
 
 ## Build and run driver
 

@@ -4,7 +4,20 @@ The runtime for 0.1 is intentionally small and safe.
 
 ## Output
 
-`Put` and `PutLn` are in `Sys.IO` / prelude. The current LLVM smoke-test backend may lower them through `printf` for `Integer`, `Bool`, `Char`/String milestones, and string literals. This is temporary and not the final ABI.
+`Put` and `PutLn` are exposed canonically through `Std.IO`. The current LLVM smoke-test backend may lower them through `printf` for `Integer`, `Bool`, `Char`/String milestones, and string literals. This is temporary and not the final ABI.
+
+## Standard library boundary
+
+The initial `stdlib/` modules are portable Inox modules and documentation
+anchors:
+
+- `Std.Core` is the conceptual prelude/core module for compiler intrinsics.
+- `Std.IO` is the `Put`/`PutLn` facade.
+- `Std.Math` contains pure Integer helpers written in Inox.
+- `Std.Debug` reserves `Assert` until a canonical trap/abort operation exists.
+
+The 0.1 standard library must not introduce GC, unsafe features, C interop, or
+a complex runtime dependency.
 
 ## Strings
 

@@ -1,0 +1,23 @@
+Module Std.Core
+
+== Inox 0.1 core/prelude module.
+==
+== Std.Core is conceptually imported by default.
+== Fundamental types and compiler intrinsics belong to the prelude layer:
+==
+==   Integer  == Int64
+==   Bool
+==   String   == UTF-8, immutable, non-null, default ""
+==   Char     == Unicode scalar value
+==   Float    == Float64 direction for real numbers
+==
+== Compiler intrinsics documented as part of Std.Core:
+==
+==   Ord(E)       == ordinal value for Enum/Char where supported
+==   Low(A)       == lower bound for fixed Array
+==   High(A)      == upper bound for fixed Array
+==   Length(A)    == length for fixed Array
+==
+== Some Std.Core names are compiler-recognized intrinsics in 0.1, not ordinary
+== functions implemented in Inox source. This file exists so Module/Use,
+== documentation and tooling have a concrete standard-library anchor.

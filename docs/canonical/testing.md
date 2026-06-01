@@ -64,6 +64,10 @@ These modes are intentionally stable enough for regression tests. Output should 
 When Clang is absent, build/run integration checks report `[SKIP]`. Lexer,
 parser, semantic, and textual LLVM checks remain mandatory.
 
+The integration suite also verifies that `Use Std.Math` resolves through the
+project `stdlib/` directory and that its Inox implementations execute through
+the Clang-backed `--run` driver.
+
 ## Regression rule
 
 When a bug is fixed, add a fixture that would have failed before the fix. Prefer the narrowest layer:

@@ -114,8 +114,9 @@ bool isPreludeModule(std::string_view name)
 
 class ModuleLoader {
 public:
-    explicit ModuleLoader(fs::path sourceDirectory)
-        : sourceDirectory_(std::move(sourceDirectory))
+    ModuleLoader(fs::path sourceDirectory, fs::path standardLibraryDirectory)
+        : sourceDirectory_(std::move(sourceDirectory)),
+          standardLibraryDirectory_(std::move(standardLibraryDirectory))
     {
     }
 
@@ -176,32 +177,61 @@ private:
 
     fs::path resolveDependency(std::string_view moduleName) const
     {
-        fs::path flat = sourceDirectory_ / (std::string(moduleName) + ".inox");
-        if (fs::is_regular_file(flat)) {
-            return flat;
-        }
-
         std::string nestedName(moduleName);
         std::replace(nestedName.begin(), nestedName.end(), '.', '/');
-        fs::path nested = sourceDirectory_ / (nestedName + ".inox");
-        if (fs::is_regular_file(nested)) {
-            return nested;
+        for (const fs::path& directory : {sourceDirectory_, standardLibraryDirectory_}) {
+            if (directory.empty()) {
+                continue;
+            }
+            fs::path flat = directory / (std::string(moduleName) + ".inox");
+            if (fs::is_regular_file(flat)) {
+                return flat;
+            }
+            fs::path nested = directory / (nestedName + ".inox");
+            if (fs::is_regular_file(nested)) {
+                return nested;
+            }
         }
 
         throw std::runtime_error("could not resolve module: " + std::string(moduleName));
     }
 
     fs::path sourceDirectory_;
+    fs::path standardLibraryDirectory_;
     std::string entryModuleName_;
     std::unordered_set<std::string> loading_;
     std::unordered_set<std::string> loaded_;
     std::vector<std::unique_ptr<ModuleNode>> modules_;
 };
 
+fs::path findStandardLibraryDirectory(const fs::path& sourcePath)
+{
+    const fs::path workingDirectoryCandidate = fs::current_path() / "stdlib";
+    if (fs::is_directory(workingDirectoryCandidate)) {
+        return workingDirectoryCandidate;
+    }
+
+    for (fs::path directory = sourcePath.parent_path();
+         !directory.empty();
+         directory = directory.parent_path()) {
+        const fs::path candidate = directory / "stdlib";
+        if (fs::is_directory(candidate)) {
+            return candidate;
+        }
+        if (directory == directory.parent_path()) {
+            break;
+        }
+    }
+
+    return {};
+}
+
 std::unique_ptr<ModuleNode> loadProgram(const fs::path& sourcePath)
 {
     const fs::path absolutePath = fs::absolute(sourcePath);
-    return ModuleLoader(absolutePath.parent_path()).loadProgram(absolutePath);
+    return ModuleLoader(
+        absolutePath.parent_path(),
+        findStandardLibraryDirectory(absolutePath)).loadProgram(absolutePath);
 }
 
 std::string shellQuote(const fs::path& path)

@@ -16,6 +16,9 @@ Priority implementation items:
 6. Implement arrays with `Array[Low..High] T`, indexing, bounds checks, `Low`, `High`, `Length`.
 7. Implement `Enum`, `Range`, `Ord`, enum range `for`.
 8. Implement `Set[TEnum]` / `Set[TRange]` if time allows.
+9. Extend the initial portable `stdlib/` modules without adding GC, unsafe
+   features, or C interop; define canonical trap/abort before implementing
+   `Std.Debug.Assert`.
 
 ## 0.2+ design topics
 

@@ -44,6 +44,19 @@ Install LLVM/Clang or put `clang` in `PATH` before using `--build` or `--run`.
 `Use` resolves local modules from the entry file directory. For `Use Math.Basic`,
 the driver checks `Math.Basic.inox` first and `Math/Basic.inox` as a fallback.
 
+## Standard library
+
+The initial portable 0.1 standard library lives under `stdlib/`:
+
+- `Std.Core` is the conceptual prelude/core anchor for compiler intrinsics.
+- `Std.IO` documents the canonical `Put` and `PutLn` facade.
+- `Std.Math` provides pure Integer helpers implemented in Inox.
+- `Std.Debug` documents future `Assert` support, pending canonical trap/abort behavior.
+
+`Use Std.Math` and the other explicit standard-library imports resolve through
+`stdlib/`. The standard library must remain portable across Windows and Linux
+and must not depend on GC, unsafe features, or C interop.
+
 ## Current compiler capabilities
 
 The compiler currently includes lexer, parser, semantic analyzer, layered tests, typed dumps, a textual LLVM backend for a restricted executable subset, native build/run through Clang, and minimal local multi-file `Module`/`Use` support. The backend is intentionally incremental and test-driven.
