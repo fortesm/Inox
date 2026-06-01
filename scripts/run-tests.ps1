@@ -201,6 +201,62 @@ function Invoke-LinkedExecutionTest {
     }
 }
 
+function Invoke-BuildDriverTest {
+    param(
+        [System.IO.FileInfo]$TestFile
+    )
+
+    $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
+    $clang = Get-Command clang -ErrorAction SilentlyContinue
+    if ($null -eq $clang) {
+        Write-Host "[SKIP] $relativePath --build (clang not found)"
+        return
+    }
+
+    & $InoxExe "--build" $TestFile.FullName *> $null
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -eq 0) {
+        $script:passed++
+        Write-Host "[PASS] $relativePath --build"
+    } else {
+        $script:failed++
+        Write-Host "[FAIL] $relativePath --build (exit code $exitCode)"
+    }
+}
+
+function Invoke-RunDriverTest {
+    param(
+        [System.IO.FileInfo]$TestFile,
+        [System.IO.FileInfo]$ExpectedOutputFile
+    )
+
+    $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
+    $clang = Get-Command clang -ErrorAction SilentlyContinue
+    if ($null -eq $clang) {
+        Write-Host "[SKIP] $relativePath --run (clang not found)"
+        return
+    }
+
+    $actual = & $InoxExe "--run" $TestFile.FullName 2>&1 | Out-String
+    $exitCode = $LASTEXITCODE
+    $expected = Get-Content -LiteralPath $ExpectedOutputFile.FullName -Raw
+    $actual = ($actual -replace "`r`n", "`n") -replace "`n+$", ""
+    $expected = ($expected -replace "`r`n", "`n") -replace "`n+$", ""
+
+    if ($exitCode -eq 0 -and $actual -eq $expected) {
+        $script:passed++
+        Write-Host "[PASS] $relativePath --run"
+    } else {
+        $script:failed++
+        Write-Host "[FAIL] $relativePath --run"
+        Write-Host "       exit code: $exitCode"
+        Write-Host "       expected output:"
+        Write-Host $expected
+        Write-Host "       actual output:"
+        Write-Host $actual
+    }
+}
+
 function Get-InoxTestFiles {
     param(
         [string]$RelativePath,
@@ -357,6 +413,19 @@ Invoke-LlvmEmissionTest `
 Invoke-LinkedExecutionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output-basic.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output-basic.out"))
+
+Invoke-BuildDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.inox"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\modules\Main.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\modules\Main.out"))
+Invoke-ModeExitTest `
+    -Mode "--emit-llvm" `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\cycles\Cycle.A.inox")) `
+    -ExpectSuccess $false
 
 $total = $passed + $failed
 Write-Host ""

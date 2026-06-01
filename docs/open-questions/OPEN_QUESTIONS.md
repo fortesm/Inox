@@ -1,18 +1,39 @@
 # Inox Open Questions
 
-There are no blocking open language questions for the current 0.1 implementation path.
+There are no blocking language-design questions for the current 0.1 safe-core path. Decisions 1-20 have been consolidated in:
 
-Deferred topics are not open implementation permission. They are intentionally postponed and must not be implemented ad hoc by agents:
+- `docs/canonical/language-reference.md`
+- `docs/decisions/ADR-0006-inox-0.1-constitution.md`
+- topic files under `docs/canonical/`
+- `AGENTS.md`
 
-- full module/import/export system;
-- visibility keywords;
-- arrays/vectors/sets concrete syntax;
-- full UTF-8 string runtime and indexing semantics;
-- struct embedding/composition promotion;
-- variant structs;
-- JSON/DB field tags;
+## Deferred but directionally decided
+
+These items are not permission for agents to invent semantics. They are deferred architectural topics and require explicit ADRs before implementation:
+
+- ownership/borrow model beyond `Self`/`Self mut`;
+- `Self owned`;
+- `ref` and `ref mut` parameters;
+- arena memory management;
+- unsafe blocks, `Pointer[T]`, and C interop;
 - contracts/protocols/behaviors;
-- final runtime ABI;
-- exception lowering.
+- Chapel-style structured parallelism;
+- data-race safety and non-mutable concurrent data defaults;
+- vector runtime and move semantics;
+- full string/Unicode runtime;
+- full module export/visibility system;
+- variant structs and metadata tags.
 
-If work touches any deferred topic, ask for an explicit design decision first and update `docs/canonical/language-reference.md`, the topic-specific canonical document, and tests.
+## Known implementation conformance gaps
+
+The canonical specification may be ahead of the compiler in these areas:
+
+- canonical `case Expression` without `:`;
+- module exports, visibility, package search, and richer linking beyond the
+  minimum local `Module`/`Use` driver;
+- arrays, enum, range, set implementation;
+- vector implementation;
+- checking-mode overflow traps;
+- final runtime ABI.
+
+When closing a gap, update code, tests, docs, HTML manual, and ADRs together.

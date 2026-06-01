@@ -19,6 +19,8 @@ The command-line driver exposes dedicated regression modes:
 - `--parse-only`
 - `--dump-types`
 - `--emit-llvm`
+- `--build`
+- `--run`
 
 All test files must be portable and must not depend on host-specific paths.
 When fixing a regression, add the narrowest fixture that would have failed before the fix.

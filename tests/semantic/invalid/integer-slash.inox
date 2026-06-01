@@ -1,0 +1,7 @@
+Module InvalidIntegerSlash
+
+Main() :
+    Var
+        X := 10 / 2
+    ;
+;

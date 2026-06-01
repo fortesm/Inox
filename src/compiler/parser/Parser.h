@@ -77,6 +77,7 @@ private:
     ast::AstNodePtr parseSectionDeclaration(ast::SectionKind sectionKind);
     ast::AstNodePtr parseRawDeclaration();
     ast::AstNodePtr parseFunctionDeclaration();
+    std::string parseQualifiedName(std::string_view message);
 
     std::vector<ast::StatementPtr> parseBlockBody();
     std::vector<ast::StatementPtr> parseDelimitedBody(std::initializer_list<std::string_view> stopKeywords);

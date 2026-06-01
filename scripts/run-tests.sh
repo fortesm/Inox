@@ -220,6 +220,49 @@ run_linked_execution_test() {
     rm -rf "$temp_dir"
 }
 
+run_build_driver_test() {
+    local test_file="$1"
+    local rel
+    rel="$(relative_path "$test_file")"
+
+    if ! command -v clang >/dev/null 2>&1; then
+        echo "[SKIP] $rel --build (clang not found)"
+        return 0
+    fi
+
+    "$inox_exe" --build "$test_file" >/dev/null 2>&1
+    local exit_code=$?
+    if [[ $exit_code -eq 0 ]]; then
+        record_pass "$rel --build"
+    else
+        record_fail "$rel --build" "exit code: $exit_code"
+    fi
+}
+
+run_driver_execution_test() {
+    local test_file="$1"
+    local expected_file="$2"
+    local rel
+    rel="$(relative_path "$test_file")"
+
+    if ! command -v clang >/dev/null 2>&1; then
+        echo "[SKIP] $rel --run (clang not found)"
+        return 0
+    fi
+
+    local actual expected exit_code
+    actual="$("$inox_exe" --run "$test_file" 2>&1)"
+    exit_code=$?
+    expected="$(sed 's/\r$//' "$expected_file")"
+    actual="$(printf '%s' "$actual" | sed 's/\r$//')"
+
+    if [[ $exit_code -eq 0 && "$actual" == "$expected" ]]; then
+        record_pass "$rel --run"
+    else
+        record_fail "$rel --run" "exit code: $exit_code" "expected output: $expected" "actual output: $actual"
+    fi
+}
+
 run_test_tree() {
     local root="$1"
     local maxdepth="$2"
@@ -311,6 +354,10 @@ run_llvm_emission_test "$repo_root/examples/llvm-struct-values.inox" \
 run_llvm_emission_test "$repo_root/tests/codegen/llvm-struct-value-smoke.inox"     "%tpair = type { i64, i64 }" "define %tpair @makepair" "define i64 @sumpair" "call %tpair @makepair" "call i64 @sumpair" "ret i32 0"
 
 run_linked_execution_test "$repo_root/tests/integration/output-basic.inox" "$repo_root/tests/integration/output-basic.out"
+run_build_driver_test "$repo_root/tests/integration/run-hello.inox"
+run_driver_execution_test "$repo_root/tests/integration/run-hello.inox" "$repo_root/tests/integration/run-hello.out"
+run_driver_execution_test "$repo_root/tests/integration/modules/Main.inox" "$repo_root/tests/integration/modules/Main.out"
+run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 
 total=$((passed + failed))
 echo ""

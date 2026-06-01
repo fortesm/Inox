@@ -1,0 +1,6 @@
+Module Cycle.A
+
+Use Cycle.B
+
+Main() :
+;

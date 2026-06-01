@@ -1,0 +1,6 @@
+Module HelloRun
+
+Main() :
+    PutLn("Inox 0.1")
+    PutLn(42)
+;

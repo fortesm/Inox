@@ -198,10 +198,6 @@ const StructFieldInfo* findStructField(const StructDefinition& structType, std::
     return nullptr;
 }
 
-bool isAssociatedMethodName(std::string_view name)
-{
-    return name.find('.') != std::string_view::npos;
-}
 
 void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefinitions& structs)
 {
@@ -266,15 +262,33 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
         throw CodegenError("unsupported function signature: " + function.name());
     }
 
+    const std::size_t dot = function.name().find('.');
+    const bool isAssociatedMethod = dot != std::string::npos;
+    const std::string receiverType = isAssociatedMethod ? function.name().substr(0, dot) : std::string{};
+
     std::vector<FunctionParameter> parameters;
     std::size_t index = 1;
     while (index < tokens.size() && tokens[index] != ")") {
-        if (index + 1 >= tokens.size()) {
+        if (index >= tokens.size()) {
             throw CodegenError("unsupported function signature: " + function.name());
         }
 
         const std::string parameterName = tokens[index++];
-        const std::string parameterType = tokens[index++];
+        std::string parameterType;
+        bool isReceiver = false;
+        if (isAssociatedMethod && parameters.empty() && equalsIgnoreCase(parameterName, "Self")) {
+            isReceiver = true;
+            if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
+                ++index;
+            }
+            parameterType = receiverType;
+        } else {
+            if (index >= tokens.size() || tokens[index] == "," || tokens[index] == ")") {
+                throw CodegenError("unsupported function signature: " + function.name());
+            }
+            parameterType = tokens[index++];
+        }
+
         std::string llvmParameterType = llvmTypeForScalar(parameterType);
         if (llvmParameterType.empty()) {
             const StructDefinition* structType = findStruct(structs, parameterType);
@@ -283,8 +297,6 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
                     "LLVM emission currently supports only scalar and struct parameters");
             }
 
-            const bool isReceiver = isAssociatedMethodName(function.name()) &&
-                parameters.empty() && equalsIgnoreCase(parameterName, "Self");
             llvmParameterType = isReceiver ? "ptr" : structType->llvmName;
         }
 

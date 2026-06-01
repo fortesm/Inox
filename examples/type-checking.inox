@@ -19,7 +19,7 @@ Main() :
     var Sum := I + J
     var Difference := I - J
     var Product := I * J
-    var Quotient := I / J
+    var Quotient := I div J
     var IntegerQuotient := I div J
     var Remainder := I mod J
 

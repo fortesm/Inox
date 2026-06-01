@@ -84,6 +84,25 @@ Module Calc.Core Use Sys.IO Use Math.Basic Use Calc.Types
 
 In 0.1 all module symbols are public by default. `Export`, interface/body separation, aliases, selective imports, and visibility controls are reserved for future versions.
 
+The minimum 0.1 driver resolves imported modules relative to the entry file
+directory. `Use Math.Basic` first checks `Math.Basic.inox`, then
+`Math/Basic.inox`. Dependencies are loaded recursively, cycles are rejected,
+and imported signatures participate in semantic analysis before textual LLVM
+IR is emitted.
+
+## Build and run driver
+
+The temporary native driver uses Clang as an external toolchain:
+
+```text
+inox --build file.inox
+inox --run file.inox
+```
+
+`--build` emits textual LLVM IR and a native executable under `build/inox/`.
+`--run` builds the same controlled artifacts and executes the resulting native
+program. Clang must be installed and available in `PATH`.
+
 ## Blocks and statement syntax
 
 Inox uses `;` to close blocks. It is not a general statement terminator.
@@ -529,7 +548,7 @@ Contracts/protocols/behaviors are future static capability checks. They are not 
 This manual is the canonical design target. The current compiler is a pre-alpha implementation and may lag the spec. Known conformance work includes:
 
 - canonical `case Expression` without `:`;
-- full multi-file `Module`/`Use` compilation and LLVM linking;
+- module exports, visibility, and package search beyond local `Module`/`Use`;
 - full enum, range, set, array, vector, and char implementation;
 - checking-mode integer overflow traps;
 - final runtime ABI instead of temporary `printf` lowering;

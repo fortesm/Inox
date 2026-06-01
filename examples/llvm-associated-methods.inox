@@ -6,12 +6,12 @@ Type
         FY Integer
     ;
 
-TPoint.Move(Self TPoint, DX Integer, DY Integer) :
+TPoint.Move(Self mut, DX Integer, DY Integer) :
     Self.FX := Self.FX + DX
     Self.FY := Self.FY + DY
 ;
 
-TPoint.Sum(Self TPoint) Integer :
+TPoint.Sum(Self) Integer :
     Return Self.FX + Self.FY
 ;
 

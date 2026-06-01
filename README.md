@@ -1,151 +1,53 @@
 # Inox
 
-Inox is a compiled, strongly typed, case-insensitive programming language inspired by ObjectPascal, Ada, SPARK, Modula, Oberon and Eiffel.
-
-The current compiler is a pre-alpha front end plus a textual LLVM IR backend prototype. The official language specifications are under:
-
-```text
-docs/canonical/
-```
+Inox is a compiled, strongly typed, post-object-oriented systems language for high-integrity software. It is built around structs as data, associated methods as behavior, composition instead of inheritance, explicit mutability, strong typing, bounds checking, and an LLVM backend.
 
 ## Documentation
 
-The consolidated human and AI language manual is available at:
+Start here:
 
-```text
-docs/site/index.html
-```
-
-The same content is maintained in Markdown form at:
-
-```text
-docs/canonical/language-reference.md
-```
-
-Use the HTML manual as the readable tutorial/reference for humans. Use the canonical Markdown files plus `AGENTS.md` as the normative source for Codex and other agents. Do not introduce syntax or semantics that contradict the manual without first updating the canonical documents and tests.
-
-## Supported host platforms
-
-The compiler is intentionally kept portable C++20 and is expected to build on:
-
-- Windows with Visual Studio Build Tools / MSVC and CMake.
-- Linux with GCC or Clang and CMake.
-
-Platform-specific behavior should be isolated in build/test scripts when needed. Do not add C++ preprocessor conditionals for host platforms unless a real platform API difference requires them.
+- `docs/canonical/language-reference.md` — consolidated tutorial/reference.
+- `docs/site/index.html` — browsable HTML manual.
+- `docs/decisions/ADR-0006-inox-0.1-constitution.md` — frozen 0.1 decisions.
+- `AGENTS.md` — operational instructions for Codex and AI agents.
+- `docs/open-questions/OPEN_QUESTIONS.md` — deferred 0.2+ architecture topics.
 
 ## Build
 
-### Windows / MSVC
-
-Run from a Visual Studio Developer Command Prompt or a terminal where CMake can find MSVC:
-
-```powershell
-cd C:\Projetos\Inox
-cmake -S . -B build -G "Visual Studio 18 2026"
-cmake --build build --config Debug
-```
-
-If the build directory is already configured, the build step is enough:
-
-```powershell
-cmake --build build --config Debug
-```
-
-### Linux / GCC or Clang
+Linux:
 
 ```bash
-cd /path/to/Inox
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
+bash scripts/run-tests.sh
 ```
 
-To force Clang on Linux:
-
-```bash
-CC=clang CXX=clang++ cmake -S . -B build-clang -DCMAKE_BUILD_TYPE=Debug
-cmake --build build-clang
-```
-
-## Tests
-
-### Windows
-
-```powershell
-cd C:\Projetos\Inox
-pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1
-```
-
-You can pass an explicit compiler path:
-
-```powershell
-pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1 -InoxExe .\build\Debug\inox.exe
-```
-
-### Linux
-
-```bash
-cd /path/to/Inox
-./scripts/run-tests.sh
-```
-
-You can pass an explicit compiler path:
-
-```bash
-./scripts/run-tests.sh ./build/inox
-```
-
-## Development workflow
-
-Before committing any compiler change:
-
-1. Build the project for your host platform.
-2. Run the full test suite.
-3. Add only the files changed by the task.
-4. Do not use `git add .`.
-
-Windows example:
+Windows:
 
 ```powershell
 cmake --build build --config Debug
 pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1
-git status --short
 ```
 
-Linux example:
+## Compile and run Inox
 
-```bash
-cmake --build build
-./scripts/run-tests.sh
-git status --short
+The temporary 0.1 driver uses Clang as an external toolchain:
+
+```powershell
+build\Debug\inox.exe --build tests\integration\run-hello.inox
+build\Debug\inox.exe --run tests\integration\run-hello.inox
 ```
 
+Generated `.ll` files and executables are written under `build/inox/`.
+Install LLVM/Clang or put `clang` in `PATH` before using `--build` or `--run`.
 
-## Current LLVM backend milestone
+`Use` resolves local modules from the entry file directory. For `Use Math.Basic`,
+the driver checks `Math.Basic.inox` first and `Math/Basic.inox` as a fallback.
 
-The textual LLVM backend can now emit temporary `printf`-based output for `Put`/`PutLn` with `Integer`, `Bool`, and string literals. It also supports user-defined subroutines without return values and statement calls to those subroutines. This is intended as an early backend smoke test, not the final Inox runtime ABI.
+## Current compiler capabilities
 
-## Current LLVM backend milestone
+The compiler currently includes lexer, parser, semantic analyzer, layered tests, typed dumps, a textual LLVM backend for a restricted executable subset, native build/run through Clang, and minimal local multi-file `Module`/`Use` support. The backend is intentionally incremental and test-driven.
 
-The textual LLVM backend currently supports integer and boolean expressions, functions and subroutines, local variables, structured control flow, basic output through temporary `printf` lowering, and a first simple struct subset with local structs, field access, and literal field defaults for Integer/Bool fields.
+## Design stance
 
-
-## Current Associated Method Milestone
-
-The compiler currently supports a restricted associated-method subset for simple structs. Methods are declared outside structs with an explicit receiver parameter, for example `TPoint.Sum(Self TPoint) Integer`, and local values can call them with `P.Sum()`. The LLVM backend lowers these calls as direct static calls with the receiver storage passed explicitly.
-
-
-## Current Struct Milestone
-
-The current compiler prototype supports simple nominal structs as value types in the LLVM textual backend: local struct variables, Integer/Bool fields, field defaults, field assignment/access, struct assignment by value, ordinary struct parameters, ordinary struct return values, and associated methods declared outside the struct.
-
-## Test suite layout
-
-The test suite now uses layer-oriented directories under `tests/`:
-
-- `tests/lexer/valid/` and `tests/lexer/invalid/` for tokenization fixtures checked with `--dump-tokens` or expected lexical failure.
-- `tests/parser/valid/` and `tests/parser/invalid/` for syntax-focused fixtures, including `--parse-only` checks.
-- `tests/semantic/valid/` and `tests/semantic/invalid/` for semantic-analysis fixtures.
-- `tests/codegen/` for LLVM emission fixtures with explicit IR fragments in the runners.
-- `tests/integration/` for optional compile-link-run tests when `clang` is available.
-
-`examples/` remains the human-facing tutorial/demo corpus and is also smoke-tested by the runners. The compiler driver also exposes `--dump-tokens` and `--parse-only` so lexer and parser regressions can be tested without depending on later compiler phases.
+Inox rejects unsafe defaults: universal null, implicit narrowing, integer wraparound guarantees, unchecked bounds, implicit aliasing, classes, inheritance, and Java-style interfaces. Future work includes modules, arrays, vectors, sets, contracts/protocols/behaviors, arenas, borrowing, unsafe boundaries, and structured parallelism.

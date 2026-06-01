@@ -1,0 +1,7 @@
+Module Main
+
+Use Math.Basic
+
+Main() :
+    PutLn(Add(10, 20))
+;

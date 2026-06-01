@@ -44,8 +44,8 @@ std::unique_ptr<ast::ModuleNode> Parser::parseModule()
         errorAtCurrent("expected 'Module'");
     }
 
-    const lexer::Token& name = consumeIdentifierLike("expected module name");
-    auto module = std::make_unique<ast::ModuleNode>(name.lexeme);
+    auto module = std::make_unique<ast::ModuleNode>(
+        parseQualifiedName("expected module name"));
 
     while (!isAtEnd()) {
         module->items().push_back(parseModuleItem());
@@ -719,10 +719,7 @@ ast::AstNodePtr Parser::parseModuleItem()
 ast::AstNodePtr Parser::parseUseDeclaration()
 {
     std::vector<std::string> path;
-    while (!isAtEnd() && !check(TokenKind::Semicolon)) {
-        path.push_back(tokenText(advance()));
-    }
-    consumeBlockClose();
+    path.push_back(parseQualifiedName("expected module name after 'Use'"));
     return std::make_unique<ast::UseDeclaration>(std::move(path));
 }
 
@@ -791,6 +788,16 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
         std::move(functionName),
         std::move(signatureTokens),
         std::move(body));
+}
+
+std::string Parser::parseQualifiedName(std::string_view message)
+{
+    std::string name = consumeIdentifierLike(message).lexeme;
+    while (match(TokenKind::Dot)) {
+        name += ".";
+        name += consume(TokenKind::Identifier, "expected name after '.'").lexeme;
+    }
+    return name;
 }
 
 std::vector<ast::StatementPtr> Parser::parseBlockBody()

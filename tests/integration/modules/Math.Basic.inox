@@ -1,0 +1,5 @@
+Module Math.Basic
+
+Add(A Integer, B Integer) Integer :
+    Return A + B
+;

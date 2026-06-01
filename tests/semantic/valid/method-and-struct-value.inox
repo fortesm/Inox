@@ -5,7 +5,7 @@ Type
         FValue Integer
     ;
 
-TCounter.Add(Self TCounter, X Integer) :
+TCounter.Add(Self mut, X Integer) :
     Self.FValue := Self.FValue + X
 ;
 

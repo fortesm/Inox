@@ -125,8 +125,6 @@ const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
         throw SemanticError("module must have a name");
     }
 
-    declareOrThrow(module.name(), SymbolKind::Module);
-
     for (const auto& item : module.items()) {
         declareModuleItem(*item);
     }
@@ -168,18 +166,37 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
     FunctionSignature signature;
     signature.name = function.name();
 
+    const std::size_t dot = function.name().find('.');
+    const bool isAssociatedMethod = dot != std::string::npos;
+    const std::string receiverType = isAssociatedMethod ? function.name().substr(0, dot) : std::string{};
+
     std::size_t index = 1;
     while (index < tokens.size() && tokens[index] != ")") {
+        if (equalsIgnoreCase(tokens[index], "mut")) {
+            throw SemanticError("mutable parameters are reserved for a future Inox version: use a local variable or return a new value");
+        }
         if (!looksLikeIdentifier(tokens[index])) {
             throw SemanticError("expected parameter name in function: " + function.name());
         }
         const std::string parameterName = tokens[index++];
+        std::string parameterType;
 
-        if (index >= tokens.size() || !looksLikeIdentifier(tokens[index])) {
-            throw SemanticError("expected type for parameter: " + parameterName);
+        if (isAssociatedMethod && signature.parameters.empty() && equalsIgnoreCase(parameterName, "Self")) {
+            if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
+                ++index;
+            }
+            resolveTypeOrThrow(receiverType);
+            parameterType = canonicalTypeName(receiverType);
+        } else {
+            if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
+                throw SemanticError("mutable parameters are reserved for a future Inox version: use a local variable or return a new value");
+            }
+            if (index >= tokens.size() || !looksLikeIdentifier(tokens[index])) {
+                throw SemanticError("expected type for parameter: " + parameterName);
+            }
+            resolveTypeOrThrow(tokens[index]);
+            parameterType = canonicalTypeName(tokens[index++]);
         }
-        resolveTypeOrThrow(tokens[index]);
-        const std::string parameterType = canonicalTypeName(tokens[index++]);
 
         for (const FunctionParameter& parameter : signature.parameters) {
             if (equalsIgnoreCase(parameter.name, parameterName)) {
@@ -1081,8 +1098,13 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
     case ast::BinaryOperator::Add:
     case ast::BinaryOperator::Subtract:
     case ast::BinaryOperator::Multiply:
-    case ast::BinaryOperator::Divide:
     case ast::BinaryOperator::Power:
+        requireNumericOperands();
+        return leftType;
+    case ast::BinaryOperator::Divide:
+        if (isIntegerType(leftType) && isIntegerType(rightType)) {
+            throw SemanticError("operator '/' is not supported for Integer operands; use 'div' for integer division");
+        }
         requireNumericOperands();
         return leftType;
     case ast::BinaryOperator::IntegerDivide:

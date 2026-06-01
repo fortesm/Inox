@@ -1,198 +1,30 @@
-# Inox 0.1 pre-alpha - Runtime
+# Inox Runtime Canonical Reference
 
-This document is the canonical runtime specification for Inox 0.1 pre-alpha.
+The runtime for 0.1 is intentionally small and safe.
 
-It is based on `AGENTS.md`, `docs/canonical/syntax.md`,
-`docs/canonical/semantics.md`, and `docs/canonical/type-system.md`.
+## Output
 
-The runtime for 0.1 pre-alpha is intentionally small and compilable.
+`Put` and `PutLn` are in `Sys.IO` / prelude. The current LLVM smoke-test backend may lower them through `printf` for `Integer`, `Bool`, `Char`/String milestones, and string literals. This is temporary and not the final ABI.
 
-## Startup
+## Strings
 
-Program startup calls `Main()`.
+`String` is non-null, immutable UTF-8. The empty string `""` is the zero/default value. Full allocation, interning, Unicode normalization, indexing, and length APIs are future runtime/library work.
 
-The detailed command-line argument model, process environment model, and exit
-code model are not specified in this document.
+## Errors
 
-## Automatic Prelude
+Runtime traps/errors include division by zero, bounds errors, range errors, and future overflow checks in checking mode.
 
-The automatic prelude is available without explicit `Use`.
+## Memory management
 
-The prelude includes:
+The 0.1 safe core does not define raw pointers, unsafe blocks, or C interop. Future memory work should cover ownership, moves, arenas, deterministic resource management, borrowing, and explicit unsafe boundaries. No tracing GC is assumed as a core language requirement.
 
-- `Sys.IO`
-- `Sys.Math`
-- `Sys.Std`
+## Out of scope for 0.1 safe core
 
-Names exposed by the automatic prelude participate in normal name resolution.
-Inox is case-insensitive, so prelude names are also case-insensitive.
-
-## Sys.IO
-
-`Sys.IO` provides:
-
-- `Put`
-- `PutLn`
-- `ReadLn`
-
-`Put` writes output.
-
-`PutLn` writes output followed by a line ending.
-
-`ReadLn` reads one line of input.
-
-The detailed stream model, encoding error behavior, buffering behavior, and
-platform-specific line-ending behavior are not specified in this document.
-
-I/O failures raise `IOError`.
-
-## Sys.Math
-
-`Sys.Math` provides:
-
-- `Sin`
-- `Cos`
-- `Sqrt`
-- `Abs`
-
-The detailed numeric domains, precision rules, and exceptional math behavior
-are not specified in this document.
-
-## Sys.Std
-
-`Sys.Std` provides:
-
-- `Length`
-- `Ord`
-
-`Length` returns the length of a supported value.
-
-The exact set of supported value categories for `Length` is not specified in
-this document.
-
-`Ord` returns the ordinal value of a supported value.
-
-The exact set of supported value categories for `Ord` is not specified in this
-document.
-
-## Exceptions
-
-Exceptions exist in Inox 0.1 pre-alpha.
-
-Exception syntax includes:
-
-```inox
-try
-except
-finally
-raise
-```
-
-Exceptions are lightweight, without heavy RTTI.
-
-The runtime must support raising exceptions with `raise`.
-
-The runtime must support re-raise from an active exception handler.
-
-The detailed syntax of re-raise is not specified in this document.
-
-## Error
-
-`Error` is a lightweight structure or lightweight view of the captured error.
-
-`Error` must not require heavy reflection or heavy RTTI.
-
-The exact fields, construction rules, and formatting rules of `Error` are not
-specified in this document.
-
-## Runtime Checks
-
-The runtime supports the following check failures:
-
-- `RangeError`
-- `IndexError`
-- `DivisionByZero`
-- `OverflowError`
-- `IOError`
-
-`RangeError` is used for range-check failures.
-
-`IndexError` is used for invalid indexing.
-
-`DivisionByZero` is used for division by zero.
-
-`OverflowError` is used for arithmetic overflow in safe mode.
-
-`IOError` is used for input/output failures.
-
-The detailed payload, hierarchy, and formatting of these errors are not
-specified in this document.
-
-## String Runtime
-
-The runtime supports `String` as UTF-8.
-
-The detailed indexing, slicing, normalization, and invalid-byte behavior for
-UTF-8 strings are not specified in this document.
-
-## Currency Runtime
-
-The runtime supports `Currency` as an exact monetary decimal.
-
-`Currency` is never `Float64`.
-
-`Currency` is intended for international fiat money.
-
-The detailed rounding semantics for `Currency` belong in this runtime
-specification, but are not specified yet.
-
-The internal representation of `Currency` is not specified in this document.
-
-## Crypto Runtime
-
-The runtime supports `Crypto` as an exact high-precision decimal.
-
-`Crypto` is never `Float64`.
-
-`Crypto` is intended for cryptoassets.
-
-Detailed support for scales and networks belongs in this runtime specification,
-but is not specified yet.
-
-The internal representation of `Crypto` is not specified in this document.
-
-## Memory Management
-
-Inox 0.1 pre-alpha has no heavy garbage collector.
-
-This document does not specify a full memory-management model.
-
-## Reflection and RTTI
-
-Inox 0.1 pre-alpha has no heavy reflection or heavy RTTI.
-
-Exceptions and `Error` must remain lightweight and must not depend on heavy
-RTTI.
-
-## Out of Scope
-
-This document does not define:
-
-- a package manager runtime
-- concurrency runtime
-- heavy garbage collection
-- heavy reflection
-- heavy RTTI
-- detailed `Currency` rounding rules
-- detailed `Crypto` scale and network rules
-- a complete I/O stream model
-- a complete process or environment model
-
-
-## Temporary backend lowering note
-
-For the temporary textual LLVM backend, `Put` and `PutLn` may lower through C `printf` for `Integer`, `Bool`, and string literals. User-defined subroutines without return values may lower to LLVM `void` functions and be called as statements. This is an implementation bridge for smoke tests only and does not define the final Inox runtime ABI.
-
-## Consolidated Runtime Direction
-
-`docs/canonical/language-reference.md` and `docs/site/index.html` describe the current runtime direction. The current `printf`-based lowering of `Put`/`PutLn` is temporary. The final runtime must remain portable, lightweight, UTF-8 aware for strings, and free of heavy RTTI or a heavy garbage collector as a 0.1 requirement.
+- raw `Pointer[T]`;
+- `unsafe` blocks;
+- direct C interop;
+- final ABI;
+- arenas;
+- borrow checker;
+- deterministic destructors/finalizers;
+- full concurrency runtime.
