@@ -425,6 +425,9 @@ Invoke-RunDriverTest `
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\stdlib\StdMathDemo.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\stdlib\StdMathDemo.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\showcase\account-showcase.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\showcase\account-showcase.out"))
 Invoke-ModeExitTest `
     -Mode "--emit-llvm" `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\cycles\Cycle.A.inox")) `

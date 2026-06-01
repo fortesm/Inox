@@ -28,7 +28,7 @@ The current backend supports a restricted executable subset: scalar integer/bool
 
 ## Temporary native driver
 
-`inox --build file.inox` emits textual LLVM IR under `build/inox/` and invokes
+`inox --build file.inox` emits textual LLVM IR under `build/inox-artifacts/` and invokes
 the external `clang` toolchain to create a native executable in the same
 directory. `inox --run file.inox` builds and executes that artifact.
 

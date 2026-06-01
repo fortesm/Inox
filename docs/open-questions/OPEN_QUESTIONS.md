@@ -28,7 +28,7 @@ These items are not permission for agents to invent semantics. They are deferred
 
 The canonical specification may be ahead of the compiler in these areas:
 
-- canonical `case Expression` without `:`;
+- full `case` lowering and enum exhaustiveness checks;
 - module exports, visibility, package search, and richer linking beyond the
   minimum local `Module`/`Use` driver;
 - arrays, enum, range, set implementation;

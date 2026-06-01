@@ -10,7 +10,7 @@ Priority implementation items:
 2. Enforce canonical syntax already decided: `Var` without `:`, `Type` without `:`, canonical associated `Self`/`Self mut`, integer `/` rejection.
 3. Extend the implemented Clang-backed `--build` and `--run` driver beyond the
    minimum local-module workflow as needed.
-4. Implement canonical `case Expression` without `:` and enum exhaustiveness.
+4. Complete `case` lowering and enum exhaustiveness checks now that the canonical parser form is in place.
 5. Extend the implemented local multi-file `Module`/`Use` support with future
    export, visibility, and package decisions.
 6. Implement arrays with `Array[Low..High] T`, indexing, bounds checks, `Low`, `High`, `Length`.

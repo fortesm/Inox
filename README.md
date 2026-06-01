@@ -38,7 +38,7 @@ build\Debug\inox.exe --build tests\integration\run-hello.inox
 build\Debug\inox.exe --run tests\integration\run-hello.inox
 ```
 
-Generated `.ll` files and executables are written under `build/inox/`.
+Generated `.ll` files and executables are written under `build/inox-artifacts/`.
 Install LLVM/Clang or put `clang` in `PATH` before using `--build` or `--run`.
 
 `Use` resolves local modules from the entry file directory. For `Use Math.Basic`,

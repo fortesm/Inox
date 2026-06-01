@@ -527,18 +527,8 @@ private:
 
     void emitAssignmentBranch(const std::vector<ast::StatementPtr>& statements)
     {
-        if (statements.empty()) {
-            throw CodegenError(
-                "LLVM emission currently requires assignments in each if branch");
-        }
-
         for (const auto& statement : statements) {
-            if (statement->kind() != ast::AstNodeKind::ExpressionStatement) {
-                throw CodegenError(
-                    "LLVM emission currently supports only assignments in continuing if branches");
-            }
-            emitLocalAssignment(
-                static_cast<const ast::ExpressionStatement&>(*statement).expression());
+            emitLocalDeclaration(*statement);
         }
     }
 
@@ -670,7 +660,7 @@ private:
 
             const ast::Statement& statement = *statements[index];
             if (statement.kind() == ast::AstNodeKind::ExpressionStatement) {
-                emitLocalAssignment(
+                emitAssignmentOrCallStatement(
                     static_cast<const ast::ExpressionStatement&>(statement).expression());
                 continue;
             }
@@ -731,7 +721,7 @@ private:
     bool emitLoopStatement(const ast::Statement& statement)
     {
         if (statement.kind() == ast::AstNodeKind::ExpressionStatement) {
-            emitLocalAssignment(
+            emitAssignmentOrCallStatement(
                 static_cast<const ast::ExpressionStatement&>(statement).expression());
             return false;
         }
@@ -931,6 +921,15 @@ private:
 
         const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
         return binary.op() == ast::BinaryOperator::Assign;
+    }
+
+    void emitAssignmentOrCallStatement(const ast::Expression& expression)
+    {
+        if (isAssignmentExpression(expression)) {
+            emitLocalAssignment(expression);
+            return;
+        }
+        emitExpressionStatement(expression);
     }
 
     void emitExpressionStatement(const ast::Expression& expression)

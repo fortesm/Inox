@@ -17,7 +17,7 @@ Main() :
         PutLn("register extension")
     ;
 
-    while R > 0 :
+    while R > 0
         R := R - 1
 
         if R = 2

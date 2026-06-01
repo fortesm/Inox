@@ -97,7 +97,7 @@ Module Calc.Core Use Sys.IO Use Math.Basic Use Calc.Types
 inox --build file.inox
 inox --run file.inox
 </code></pre>
-<p>`--build` emits textual LLVM IR and a native executable under `build/inox/`. `--run` builds the same controlled artifacts and executes the resulting native program. Clang must be installed and available in `PATH`.</p>
+<p>`--build` emits textual LLVM IR and a native executable under `build/inox-artifacts/`. `--run` builds the same controlled artifacts and executes the resulting native program. Clang must be installed and available in `PATH`.</p>
 <h2 id="blocks-and-statement-syntax">Blocks and statement syntax</h2>
 <p>Inox uses `;` to close blocks. It is not a general statement terminator.</p>
 <p>Named subroutine/function blocks use `:`:</p>
@@ -417,7 +417,7 @@ finally
 <p>Contracts/protocols/behaviors are future static capability checks. They are not Java interfaces, not abstract classes, not mixins, not duck typing, and not copied Rust traits. A type satisfies a contract by providing required operations, likely associated methods. Satisfaction may be explicit or derivable later, but struct declarations must not duplicate method signatures.</p>
 <h2 id="implementation-status-and-conformance-gaps">Implementation status and conformance gaps</h2>
 <p>This manual is the canonical design target. The current compiler is a pre-alpha implementation and may lag the spec. Known conformance work includes:</p>
-<ul><li>canonical `case Expression` without `:`;</li></ul>
+<ul><li>full `case` lowering and enum exhaustiveness checks;</li></ul>
 <ul><li>module exports, visibility, and package search beyond local `Module`/`Use`;</li></ul>
 <ul><li>full enum, range, set, array, vector, and char implementation;</li></ul>
 <ul><li>checking-mode integer overflow traps;</li></ul>

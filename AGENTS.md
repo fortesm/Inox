@@ -75,7 +75,7 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 
 ## Current major conformance gaps
 
-- canonical `case Expression` parser/lowering;
+- full `case` lowering and enum exhaustiveness checks;
 - module exports, visibility, and package search beyond local `Module`/`Use`;
 - arrays/ranges/enums/sets implementation;
 - vector runtime;

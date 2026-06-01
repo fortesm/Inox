@@ -15,7 +15,7 @@ Main() :
         PutLn("still zero")
     ;
 
-    while I < 3 :
+    while I < 3
         I := I + 1
     ;
 
@@ -24,23 +24,16 @@ Main() :
     until I = 0
     ;
 
-    for J in 1..10 :
+    for J in 1..10
         PutLn("range")
     ;
 
-    for K in 1..10(2) :
+    for K in 1..10(2)
         PutLn("step")
     ;
 
-    case I :
-        0 :
-            PutLn("zero")
-        ;
-        1..10 :
-            PutLn("small")
-        ;
-        otherwise :
-            PutLn("other")
-        ;
+    case I
+        0 PutLn("zero")
+        otherwise PutLn("other")
     ;
 ;

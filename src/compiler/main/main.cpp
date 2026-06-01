@@ -282,7 +282,7 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
             "clang was not found; install LLVM/Clang or put clang in PATH");
     }
 
-    const fs::path outputDirectory = fs::current_path() / "build" / "inox";
+    const fs::path outputDirectory = fs::current_path() / "build" / "inox-artifacts";
     fs::create_directories(outputDirectory);
     const std::string stem = sourcePath.stem().string();
     const BuildArtifacts artifacts{

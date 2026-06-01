@@ -1,0 +1,11 @@
+Module InvalidWhileDo
+
+Main() :
+    Var
+        I := 0
+    ;
+
+    while I < 3 do
+        I := I + 1
+    ;
+;

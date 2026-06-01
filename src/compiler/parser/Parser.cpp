@@ -152,6 +152,14 @@ std::unique_ptr<ast::BlockStatement> Parser::parseBlockStatement()
     return std::make_unique<ast::BlockStatement>(std::move(body));
 }
 
+std::vector<ast::StatementPtr> Parser::parseHeaderDelimitedBlock()
+{
+    requireHeaderLineBreak();
+    auto body = parseBlockBody();
+    consumeBlockClose();
+    return body;
+}
+
 ast::ExpressionPtr Parser::parseAssignment()
 {
     auto left = parseOr();
@@ -561,9 +569,9 @@ ast::StatementPtr Parser::parseUnlessStatement()
 ast::StatementPtr Parser::parseWhileStatement()
 {
     auto condition = parseAssignment();
-    auto body = parseBlockStatement();
+    auto body = parseHeaderDelimitedBlock();
     return std::make_unique<ast::WhileStatement>(
-        std::move(condition), body->takeStatements());
+        std::move(condition), std::move(body));
 }
 
 ast::StatementPtr Parser::parseRepeatStatement()
@@ -595,37 +603,40 @@ ast::StatementPtr Parser::parseForInStatement()
         consume(TokenKind::RightParen, "expected ')' after loop step");
     }
 
-    auto body = parseBlockStatement();
+    auto body = parseHeaderDelimitedBlock();
     return std::make_unique<ast::ForInStatement>(
         iterator.lexeme,
         std::move(iterable),
         std::move(step),
-        body->takeStatements());
+        std::move(body));
 }
 
 ast::StatementPtr Parser::parseCaseStatement()
 {
     auto expression = parseAssignment();
-    consume(TokenKind::Colon, "expected ':' after case expression");
+    requireHeaderLineBreak();
 
     std::vector<ast::CaseArm> arms;
     std::vector<ast::StatementPtr> otherwiseBody;
 
     while (!isAtEnd() && !check(TokenKind::Semicolon)) {
         if (matchKeyword("otherwise")) {
-            auto block = parseBlockStatement();
-            otherwiseBody = block->takeStatements();
+            const std::size_t armLine = previous().location.line;
+            const std::size_t armColumn = previous().location.column;
+            otherwiseBody = parseCaseArmBody(armLine, armColumn);
             break;
         }
 
         std::vector<ast::ExpressionPtr> choices;
+        const std::size_t armLine = peek().location.line;
+        const std::size_t armColumn = peek().location.column;
         choices.push_back(parseAssignment());
         while (match(TokenKind::Comma)) {
             choices.push_back(parseAssignment());
         }
 
-        auto body = parseBlockStatement();
-        arms.push_back(ast::CaseArm{std::move(choices), body->takeStatements()});
+        auto body = parseCaseArmBody(armLine, armColumn);
+        arms.push_back(ast::CaseArm{std::move(choices), std::move(body)});
     }
 
     consumeBlockClose();
@@ -633,6 +644,25 @@ ast::StatementPtr Parser::parseCaseStatement()
         std::move(expression),
         std::move(arms),
         std::move(otherwiseBody));
+}
+
+std::vector<ast::StatementPtr> Parser::parseCaseArmBody(std::size_t armLine, std::size_t armColumn)
+{
+    std::vector<ast::StatementPtr> statements;
+
+    if (!isAtEnd() && !check(TokenKind::Semicolon) && peek().location.line == armLine) {
+        statements.push_back(parseStatement());
+        return statements;
+    }
+
+    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("otherwise")) {
+        if (!statements.empty() && peek().location.column <= armColumn) {
+            break;
+        }
+        statements.push_back(parseStatement());
+    }
+
+    return statements;
 }
 
 ast::StatementPtr Parser::parseTryStatement()

@@ -6,7 +6,7 @@ FindFirstBelow(A Integer) Integer :
         Result := 0
     ;
 
-    while I > 0 :
+    while I > 0
         I := I - 1
 
         if I = 3

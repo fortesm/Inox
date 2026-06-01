@@ -1,0 +1,58 @@
+Module Showcase
+
+Use Std.IO
+Use Std.Math
+
+Type
+    TAccount Struct
+        FBalance Integer := 0
+        FOperations Integer := 0
+    ;
+
+TAccount.Deposit(Self mut, Value Integer) :
+    Self.FBalance := Self.FBalance + Value
+    Self.FOperations := Self.FOperations + 1
+;
+
+TAccount.Withdraw(Self mut, Value Integer) :
+    if Value > Self.FBalance
+        PutLn("withdraw refused")
+    else
+        Self.FBalance := Self.FBalance - Value
+        Self.FOperations := Self.FOperations + 1
+    ;
+;
+
+TAccount.Print(Self) :
+    Put("balance=")
+    PutLn(Self.FBalance)
+
+    Put("operations=")
+    PutLn(Self.FOperations)
+;
+
+Main() :
+    Var
+        Account TAccount
+        Total Integer := 0
+    ;
+
+    PutLn("Inox 0.1 bank showcase")
+    PutLn("value types + associated methods + LLVM backend")
+
+    for I in 1..10
+        Total := Total + I
+    ;
+
+    Put("sum 1..10=")
+    PutLn(Total)
+
+    Account.Deposit(100)
+    Account.Withdraw(35)
+    Account.Withdraw(200)
+
+    Account.Print()
+
+    Put("clamp(150, 0, 100)=")
+    PutLn(Clamp(150, 0, 100))
+;

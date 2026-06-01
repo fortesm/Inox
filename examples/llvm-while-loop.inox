@@ -6,7 +6,7 @@ SumTo(N Integer) Integer :
         Total := 0
     ;
 
-    while I > 0 :
+    while I > 0
         Total := Total + I
         I := I - 1
     ;

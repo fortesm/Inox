@@ -116,7 +116,7 @@ inox --build file.inox
 inox --run file.inox
 ```
 
-`--build` emits textual LLVM IR and a native executable under `build/inox/`.
+`--build` emits textual LLVM IR and a native executable under `build/inox-artifacts/`.
 `--run` builds the same controlled artifacts and executes the resulting native
 program. Clang must be installed and available in `PATH`.
 
@@ -564,7 +564,7 @@ Contracts/protocols/behaviors are future static capability checks. They are not 
 
 This manual is the canonical design target. The current compiler is a pre-alpha implementation and may lag the spec. Known conformance work includes:
 
-- canonical `case Expression` without `:`;
+- full `case` lowering and enum exhaustiveness checks;
 - module exports, visibility, and package search beyond local `Module`/`Use`;
 - full enum, range, set, array, vector, and char implementation;
 - checking-mode integer overflow traps;

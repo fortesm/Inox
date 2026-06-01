@@ -1,0 +1,7 @@
+Inox 0.1 bank showcase
+value types + associated methods + LLVM backend
+sum 1..10=55
+withdraw refused
+balance=65
+operations=2
+clamp(150, 0, 100)=100

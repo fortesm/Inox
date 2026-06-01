@@ -1,0 +1,11 @@
+Module InvalidWhileColon
+
+Main() :
+    Var
+        I := 0
+    ;
+
+    while I < 3 :
+        I := I + 1
+    ;
+;

@@ -56,7 +56,7 @@ The command-line driver exposes small diagnostic modes for compiler-layer tests:
 - `inox --parse-only file.inox` tokenizes and parses, then exits before semantic analysis.
 - `inox --dump-types file.inox` runs semantic analysis and dumps the typed AST.
 - `inox --emit-llvm file.inox` emits textual LLVM IR.
-- `inox --build file.inox` emits `build/inox/*.ll` and builds a native executable with Clang.
+- `inox --build file.inox` emits `build/inox-artifacts/*.ll` and builds a native executable with Clang.
 - `inox --run file.inox` builds and executes the native artifact.
 
 These modes are intentionally stable enough for regression tests. Output should remain readable and deterministic.

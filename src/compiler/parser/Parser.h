@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <initializer_list>
+#include <cstddef>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -33,6 +34,7 @@ public:
     ast::StatementPtr parseStatement();
     std::vector<ast::StatementPtr> parseStatements();
     std::unique_ptr<ast::BlockStatement> parseBlockStatement();
+    std::vector<ast::StatementPtr> parseHeaderDelimitedBlock();
 
 private:
     using TokenKind = lexer::TokenKind;
@@ -67,6 +69,7 @@ private:
     ast::StatementPtr parseUntilStatement();
     ast::StatementPtr parseForInStatement();
     ast::StatementPtr parseCaseStatement();
+    std::vector<ast::StatementPtr> parseCaseArmBody(std::size_t armLine, std::size_t armColumn);
     ast::StatementPtr parseTryStatement();
     ast::StatementPtr parseRaiseStatement();
     ast::StatementPtr parseReturnStatement();

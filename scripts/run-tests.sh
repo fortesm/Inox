@@ -5,7 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 inox_exe="${1:-}"
 
 if [[ -z "$inox_exe" ]]; then
-    if [[ -x "$repo_root/build/inox" ]]; then
+    if [[ -f "$repo_root/build/inox" && -x "$repo_root/build/inox" ]]; then
         inox_exe="$repo_root/build/inox"
     elif [[ -x "$repo_root/build-linux/inox" ]]; then
         inox_exe="$repo_root/build-linux/inox"
@@ -18,7 +18,7 @@ elif [[ "$inox_exe" != /* ]]; then
     inox_exe="$repo_root/$inox_exe"
 fi
 
-if [[ ! -x "$inox_exe" && ! -f "$inox_exe" ]]; then
+if [[ ! -f "$inox_exe" || ! -x "$inox_exe" ]]; then
     echo "Inox executable not found: $inox_exe"
     echo "Run: cmake --build build"
     exit 1
@@ -358,6 +358,7 @@ run_build_driver_test "$repo_root/tests/integration/run-hello.inox"
 run_driver_execution_test "$repo_root/tests/integration/run-hello.inox" "$repo_root/tests/integration/run-hello.out"
 run_driver_execution_test "$repo_root/tests/integration/modules/Main.inox" "$repo_root/tests/integration/modules/Main.out"
 run_driver_execution_test "$repo_root/tests/integration/stdlib/StdMathDemo.inox" "$repo_root/tests/integration/stdlib/StdMathDemo.out"
+run_driver_execution_test "$repo_root/tests/integration/showcase/account-showcase.inox" "$repo_root/tests/integration/showcase/account-showcase.out"
 run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 
 total=$((passed + failed))
