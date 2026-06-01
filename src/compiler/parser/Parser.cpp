@@ -494,7 +494,7 @@ std::vector<ast::StatementPtr> Parser::parseVarBlockDeclarations()
 {
     std::vector<ast::StatementPtr> declarations;
 
-    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end")) {
+    while (!isAtEnd() && !check(TokenKind::Semicolon)) {
         const lexer::Token& name = consume(TokenKind::Identifier, "expected variable name");
         const std::size_t line = name.location.line;
 
@@ -611,7 +611,7 @@ ast::StatementPtr Parser::parseCaseStatement()
     std::vector<ast::CaseArm> arms;
     std::vector<ast::StatementPtr> otherwiseBody;
 
-    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end")) {
+    while (!isAtEnd() && !check(TokenKind::Semicolon)) {
         if (matchKeyword("otherwise")) {
             auto block = parseBlockStatement();
             otherwiseBody = block->takeStatements();
@@ -719,7 +719,7 @@ ast::AstNodePtr Parser::parseModuleItem()
 ast::AstNodePtr Parser::parseUseDeclaration()
 {
     std::vector<std::string> path;
-    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end")) {
+    while (!isAtEnd() && !check(TokenKind::Semicolon)) {
         path.push_back(tokenText(advance()));
     }
     consumeBlockClose();
@@ -740,7 +740,7 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
 
     consume(TokenKind::Colon, "expected ':' after section header");
 
-    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end")) {
+    while (!isAtEnd() && !check(TokenKind::Semicolon)) {
         tokens.push_back(tokenText(advance()));
     }
 
@@ -754,7 +754,7 @@ ast::AstNodePtr Parser::parseRawDeclaration()
     const lexer::Token& head = advance();
     std::vector<std::string> tokens;
 
-    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end")) {
+    while (!isAtEnd() && !check(TokenKind::Semicolon)) {
         tokens.push_back(tokenText(advance()));
     }
 
@@ -796,7 +796,7 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
 std::vector<ast::StatementPtr> Parser::parseBlockBody()
 {
     std::vector<ast::StatementPtr> statements;
-    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end")) {
+    while (!isAtEnd() && !check(TokenKind::Semicolon)) {
         statements.push_back(parseStatement());
     }
     return statements;
@@ -805,7 +805,7 @@ std::vector<ast::StatementPtr> Parser::parseBlockBody()
 std::vector<ast::StatementPtr> Parser::parseDelimitedBody(std::initializer_list<std::string_view> stopKeywords)
 {
     std::vector<ast::StatementPtr> statements;
-    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("end") &&
+    while (!isAtEnd() && !check(TokenKind::Semicolon) &&
            !atAnyKeyword(stopKeywords)) {
         statements.push_back(parseStatement());
     }
@@ -826,7 +826,6 @@ bool Parser::atStatementBoundary() const
 {
     return isAtEnd() ||
            check(TokenKind::Semicolon) ||
-           checkKeyword("end") ||
            checkKeyword("elif") ||
            checkKeyword("else") ||
            checkKeyword("except") ||
@@ -876,10 +875,10 @@ void Parser::requireHeaderLineBreak()
 
 void Parser::consumeBlockClose()
 {
-    if (match(TokenKind::Semicolon) || matchKeyword("end")) {
+    if (match(TokenKind::Semicolon)) {
         return;
     }
-    errorAtCurrent("expected block close ';' or 'End'");
+    errorAtCurrent("expected block close ';'");
 }
 
 bool Parser::isAtEnd() const

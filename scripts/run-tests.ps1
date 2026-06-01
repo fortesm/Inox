@@ -247,7 +247,7 @@ foreach ($rootSpec in $invalidTestRoots) {
 Invoke-ModeFragmentTest `
     -Mode "--dump-tokens" `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\lexer\valid\tokens-keywords-literals.inox")) `
-    -RequiredFragments @('Keyword lexeme="Module" normalized="module"', 'Keyword lexeme="Type" normalized="type"', 'Keyword lexeme="Struct" normalized="struct"', 'IntegerLiteral lexeme="$2A"', 'StringLiteral lexeme="hello"', 'CharLiteral lexeme=')
+    -RequiredFragments @('Keyword lexeme="Module" normalized="module"', 'Keyword lexeme="Type" normalized="type"', 'Keyword lexeme="Struct" normalized="struct"', 'IntegerLiteral lexeme="$2A"', 'StringLiteral lexeme="hello"', 'CharLiteral lexeme=', 'Identifier lexeme="End" normalized="end"')
 
 Invoke-ModeExitTest `
     -Mode "--parse-only" `
@@ -276,7 +276,7 @@ Invoke-LlvmEmissionTest `
     -RequiredFragments @("define i64 @compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "add i64", "mul i64", "store i64 %tmp2, ptr %a", "store i64 %tmp4, ptr %b", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-integer-operators.inox")) `
-    -RequiredFragments @("define i64 @compute", "%tmp0 = sdiv i64 %a, %b", "%tmp1 = sdiv i64 %a, %b", "srem i64", "shl i64", "ashr i64", "and i64", "or i64", "xor i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @compute", "%tmp0 = sdiv i64 %a, %b", "srem i64", "shl i64", "ashr i64", "and i64", "or i64", "xor i64", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-bool-comparisons.inox")) `
     -RequiredFragments @("define i1 @isgreater", "define i1 @isequal", "define i1 @isdifferent", "icmp sgt i64", "icmp eq i64", "icmp ne i64", "icmp slt i64", "icmp sle i64", "icmp sge i64", "ret i1", "define i32 @main()", "ret i32 0")

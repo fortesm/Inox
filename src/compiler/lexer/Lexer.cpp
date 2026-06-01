@@ -9,11 +9,11 @@ namespace inox::compiler::lexer {
 
 namespace {
 
-constexpr std::array<std::string_view, 44> kKeywords = {
+constexpr std::array<std::string_view, 43> kKeywords = {
     "module", "use", "type", "const", "var", "state", "struct", "enum",
     "main", "if", "elif", "else", "unless", "while", "repeat", "until",
     "for", "in", "case", "otherwise", "try", "except", "finally", "raise",
-    "end", "mut", "div", "mod", "and", "xor", "or", "not",
+    "mut", "div", "mod", "and", "xor", "or", "not",
     "bitand", "bitor", "bitxor", "bitnot", "shr", "shl", "break", "continue",
     "return", "exit", "true", "false"
 };

@@ -1,227 +1,110 @@
-# Inox Language Manual 0.1 pre-alpha
+# Inox Language Reference 0.1 Pre-alpha
 
-This document is the consolidated human and AI reference for Inox 0.1 pre-alpha.
-It is written as a tutorial and as a guardrail for future work by human contributors,
-Codex, and other coding agents.
+This is the consolidated human and AI reference for Inox 0.1 pre-alpha. It is the primary tutorial-style source for people and coding agents. Topic-specific canonical files under `docs/canonical/`, ADRs under `docs/decisions/`, `grammar/grammar.ebnf`, and `AGENTS.md` must stay aligned with this document.
 
-The canonical source tree remains:
+## Table of Contents
 
-- `AGENTS.md`
-- `docs/canonical/vision.md`
-- `docs/canonical/syntax.md`
-- `docs/canonical/semantics.md`
-- `docs/canonical/type-system.md`
-- `docs/canonical/runtime.md`
-- `docs/canonical/llvm-backend.md`
-- `grammar/grammar.ebnf`
+1. [Vision](#vision)
+2. [Lexical rules](#lexical-rules)
+3. [Modules and Use](#modules-and-use)
+4. [Blocks and statement syntax](#blocks-and-statement-syntax)
+5. [Declarations](#declarations)
+6. [Functions, subroutines, Return, and Exit](#functions-subroutines-return-and-exit)
+7. [Types](#types)
+8. [Structs and associated methods](#structs-and-associated-methods)
+9. [Mutability and ownership](#mutability-and-ownership)
+10. [Control flow](#control-flow)
+11. [Operators and numeric semantics](#operators-and-numeric-semantics)
+12. [Arrays, Vector, Range, Enum, Set](#arrays-vector-range-enum-set)
+13. [Strings and Char](#strings-and-char)
+14. [Errors, exceptions, null, unsafe](#errors-exceptions-null-unsafe)
+15. [Contracts, protocols, behaviors](#contracts-protocols-behaviors)
+16. [Implementation status and conformance gaps](#implementation-status-and-conformance-gaps)
 
-When this manual and a more specific canonical document disagree, treat the
-specific canonical document as needing correction. Do not silently invent a third
-meaning.
+## Vision
 
----
+Inox is a compiled, strongly typed, post-object-oriented systems language for mission-critical and high-integrity software. It combines lessons from Ada/SPARK, Modula/Oberon/Component Pascal/Zonnon, Eiffel/Sather, Rust, Go, Chapel, modern Pascal, Swift, Kotlin, C#, Java, Julia, and the expressive interpreted languages, while rejecting unsafe or obsolete defaults.
 
-## Table of contents
+The language is designed for systems where silent failure is unacceptable: aviation, finance, crypto, industry, medical equipment, energy, aerospace, scientific computing, high-performance parallel computation, and critical infrastructure.
 
-1. [Purpose](#purpose)
-2. [Design philosophy](#design-philosophy)
-3. [Non-goals](#non-goals)
-4. [Lexical rules](#lexical-rules)
-5. [Blocks and semicolon](#blocks-and-semicolon)
-6. [Modules and Use](#modules-and-use)
-7. [Declarations](#declarations)
-8. [Types](#types)
-9. [Structs](#structs)
-10. [Associated methods](#associated-methods)
-11. [Variables, constants, and state](#variables-constants-and-state)
-12. [Expressions and operators](#expressions-and-operators)
-13. [Control flow](#control-flow)
-14. [Subroutines and functions](#subroutines-and-functions)
-15. [Prelude and runtime](#prelude-and-runtime)
-16. [Strings](#strings)
-17. [Arrays, vectors, ranges, and sets](#arrays-vectors-ranges-and-sets)
-18. [Contracts, protocols, and behaviors](#contracts-protocols-and-behaviors)
-19. [Visibility and modules](#visibility-and-modules)
-20. [LLVM backend status](#llvm-backend-status)
-21. [Portability rules](#portability-rules)
-22. [Style conventions](#style-conventions)
-23. [Canonical examples](#canonical-examples)
-24. [Deferred features](#deferred-features)
-
----
-
-## Purpose
-
-Inox is a compiled, strongly typed, case-insensitive language designed to recover
-some of the clarity and low-friction usability of Pascal-family languages while
-avoiding the complexity of classical object orientation.
-
-The practical 0.1 goal is not to compete immediately with mature industrial
-languages. The practical goal is a small, coherent compiler that can compile useful
-programs with a short edit-build-run cycle and a readable language surface.
-
-A production-quality 0.1 should feel closer to the simplicity of Turbo Pascal 7
-than to a sprawling framework ecosystem, but with a modern type system direction,
-LLVM backend, structs, composition, and associated methods instead of classes and
-inheritance.
-
----
-
-## Design philosophy
-
-Inox is post-object-oriented.
-
-The language explicitly rejects the idea that every software problem must be
-modeled as a class hierarchy. Not every relation is taxonomic. Reuse should not
-require inheriting a base class or building stacks of interfaces.
-
-Inox therefore uses:
-
-- nominal static typing;
-- structs as data;
-- associated methods declared outside structs;
-- composition over inheritance;
-- future contracts/protocols/behaviors for behavior reuse;
-- explicit, strongly checked semantics;
-- minimal boilerplate;
-- a deliberately DRY style.
-
-The ergonomic goal is to keep useful call syntax:
-
-```inox
-P.Move(3, 7)
-```
-
-without introducing classes, inheritance, Java-style interfaces, mixins, duck
-typing, or hidden runtime taxonomies.
-
----
-
-## Non-goals
-
-Inox 0.1 does not have:
-
-- classes;
-- classical inheritance;
-- Java-style interfaces;
-- mixins;
-- duck typing;
-- mandatory class taxonomies;
-- duplicated method signatures inside structs;
-- heavy RTTI;
-- reflection;
-- a heavy garbage collector;
-- property syntax;
-- virtual/abstract method dispatch;
-- a complete module/package manager;
-- a complete string/Unicode runtime;
-- a complete exception ABI.
-
-Future work may add advanced behavior reuse, but it must not reintroduce classical
-OO under another name.
-
----
+Inox prefers explicit safety over convenience when the two conflict.
 
 ## Lexical rules
 
-Inox is case-insensitive. The following spellings denote the same keyword or name:
+Inox is case-insensitive for keywords and identifiers. Documentation uses canonical spelling, but the compiler treats these as equivalent:
 
 ```inox
-Main
-main
-MAIN
+PutLn
+putln
+PUTLN
 ```
-
-The compiler must preserve original lexemes where useful for diagnostics, but
-semantic lookup is case-insensitive.
 
 Line comments use `==`:
 
 ```inox
-== This is a comment.
+X := 10  == comment until end of line
 ```
 
-Block comments are not part of Inox 0.1.
+Block comments do not exist in 0.1.
 
 String literals use double quotes. Character literals use single quotes.
-Hexadecimal integer literals may use Pascal-style `$FF` or C-style `0xFF` where
-supported by the lexer.
-
----
-
-## Blocks and semicolon
-
-The semicolon `;` closes blocks. It is not a general statement terminator.
-
-Named subroutine blocks use `:`:
-
-```inox
-Compute() Integer :
-    Return 10
-;
-```
-
-The `;` closes the subroutine block. It does not terminate the `Return` statement.
-
-Conditional branches are not named blocks. `if`, `elif`, and `else` do not use
-`then` and do not use `:`. The end of the line after the condition opens the branch:
-
-```inox
-if A > B
-    Return A
-else
-    Return B
-;
-```
-
-There is exactly one `;` for the whole `if`/`elif`/`else` structure. This is wrong:
-
-```inox
-if A > B
-    Return A
-;
-else
-    Return B
-;
-```
-
-Indentation is visual only. It is not Python-style block syntax.
-
----
 
 ## Modules and Use
 
-A source file begins with a module declaration:
+A source file starts with a module declaration:
 
 ```inox
-Module Demo
+Module Calc.Core
 ```
 
-`Module` closes at EOF. There is no final `;` for the module.
+Rules:
 
-`Use` is reserved for module imports. In 0.1, the complete multi-file module system
-is not implemented. The automatic prelude is always visible.
+- `Module` is the first declaration in a file.
+- `Module` has no `;`.
+- EOF terminates the module.
+- One `.inox` file corresponds to one logical module.
 
-Future `Use` semantics must avoid uncontrolled name pollution. The preferred
-future direction is explicit modules and predictable conflict handling.
+`Use` declares semantic dependencies:
 
----
+```inox
+Module Calc.Core
+
+Use Sys.IO
+Use Math.Basic
+Use Calc.Types
+```
+
+A compact form is also allowed:
+
+```inox
+Module Calc.Core Use Sys.IO Use Math.Basic Use Calc.Types
+```
+
+`Use` is not textual inclusion. It is not `#include`, not source copying, and not manual linking. It tells the compiler to load imported module types and signatures. Multi-file compilation is required for the 0.1 direction, even if the current implementation is incremental.
+
+In 0.1 all module symbols are public by default. `Export`, interface/body separation, aliases, selective imports, and visibility controls are reserved for future versions.
+
+## Blocks and statement syntax
+
+Inox uses `;` to close blocks. It is not a general statement terminator.
+
+`End`/`end` is not part of Inox syntax. It is not a keyword and must not be accepted as a block closer; only `;` closes Inox blocks.
+
+Named subroutine/function blocks use `:`:
+
+```inox
+Sum(A Integer, B Integer) Integer :
+    Return A + B
+;
+```
+
+Many control structures do not use `:`. The newline after the header opens the body.
 
 ## Declarations
 
-Top-level declarations include:
+### Type
 
-- `Use`
-- `Type`
-- `Const`
-- `State`
-- functions/subroutines
-- `Main`
-
-`Type` is a section/declarator, inspired by Go. It is not a block and it has no
-closing semicolon.
-
-Canonical type section:
+`Type` is a section/declarator, not a block. It has no `:` and no closing `;` of its own.
 
 ```inox
 Type
@@ -230,55 +113,92 @@ Type
         FY Integer
     ;
 
-    TUser Struct
-        FName String
-        FAge Integer
-    ;
+    TMonthRange Range 1..12
+
+    TCardSuit (Club, Diamond, Heart, Spade)
 ```
 
-The `;` closes each `Struct`, not the `Type` section.
+`Struct` and multi-line `Enum` open blocks and therefore close with `;`. `Range` is a simple line declaration and does not use `;`.
 
----
+### Var
+
+`Var` opens a local variable declaration block and closes with `;`. It does not use `:`.
+
+```inox
+Var
+    X Integer := 10
+;
+
+X := X + 1
+```
+
+Variables declared in `Var` are mutable by default.
+
+### Const and State
+
+`Const` declares constants. Mutable global state must be explicit via `State`. Global mutable state should be rare and visible.
+
+## Functions, subroutines, Return, and Exit
+
+A function has a return type:
+
+```inox
+Sum(A Integer, B Integer) Integer :
+    Return A + B
+;
+```
+
+A subroutine has no return type:
+
+```inox
+PrintValue(X Integer) :
+    PutLn(X)
+;
+```
+
+`Main` is a subroutine at language level:
+
+```inox
+Main() :
+    PutLn("hello")
+;
+```
+
+Rules:
+
+- `Return Expression` is required in functions with return values.
+- `Return Expression` is forbidden in subroutines without return values.
+- `Exit` terminates the current subroutine without a value.
+- `Exit` is allowed only in subroutines without return values and in `Main`.
+- `Exit` is forbidden in functions with return types.
+- Falling through the end of a subroutine is allowed.
+- Functions must not fall through without returning a value.
 
 ## Types
 
-Inox is strongly and nominally typed.
+Canonical built-in names include:
 
-Canonical built-in scalar type names include:
+- `Integer` = `Int64`;
+- `UInteger` = `UInt64`;
+- `Float` = `Float64`;
+- `Bool` is the boolean type; `Boolean` is not canonical;
+- `Char` is a Unicode scalar value;
+- `String` is UTF-8, immutable, non-null;
+- `Currency` and `Crypto` are exact decimal domains reserved for precise finance and cryptoasset work.
 
-- `Bool`
-- `Int8`, `Int16`, `Int32`, `Int64`
-- `UInt8`, `UInt16`, `UInt32`, `UInt64`
-- `Integer` = `Int64`
-- `UInteger` = `UInt64`
-- `Natural`
-- `Float32`, `Float64`
-- `Float` = `Float64`
-- `Currency`
-- `Crypto`
-- `Char`
-- `String`
+`Decimal` is not a built-in 0.1 type.
 
-`Bool` is the canonical boolean type. `Boolean` is not a built-in type.
-
-`Currency` is an exact monetary decimal type and is never `Float64`.
-`Crypto` is an exact high-precision decimal type and is never `Float64`.
-
-Implicit conversions are allowed only for safe widening. Casts use:
+Generics use square brackets:
 
 ```inox
-Integer(X)
-Currency("12.34")
+Vector[Integer]
+Set[TCardSuit]
+Array[1..10] Integer
 ```
 
----
+## Structs and associated methods
 
-## Structs
-
-A `Struct` declares fields only. It never declares methods and never repeats method
-signatures.
-
-Canonical syntax:
+Struct syntax is:
 
 ```inox
 Type
@@ -288,15 +208,19 @@ Type
     ;
 ```
 
-`Type` has no `:` and no closing `;`.
-`Struct` opens the struct body and `;` closes the struct.
+Rules:
 
-Struct type names conventionally begin with `T`. Struct fields conventionally
-begin with `F`. These are style conventions in 0.1, not compiler errors.
+- `Struct` is a reserved word.
+- `Struct` opens the struct body.
+- `;` closes the struct.
+- Struct declarations contain fields only.
+- Structs do not declare methods.
+- Structs do not repeat method signatures.
+- Struct type names conventionally begin with `T`.
+- Struct fields conventionally begin with `F`.
+- Those naming conventions are style rules in 0.1, not fatal errors.
 
-### Field defaults
-
-Integer and Bool fields may have literal defaults in the current subset:
+Fields may have literal defaults for supported types:
 
 ```inox
 Type
@@ -306,189 +230,48 @@ Type
     ;
 ```
 
-A local struct variable is default-initialized. The current LLVM backend uses zero
-initialization and then emits explicit stores for literal defaults.
+Structs are value types. Assignment, ordinary parameter passing, and ordinary return values copy the struct value. The backend may use pointers internally for associated receivers, but that does not change the language semantics.
 
-### Field access
-
-Field access uses dot syntax:
+Associated methods are declared outside the struct:
 
 ```inox
-P.FX := 10
-P.FY := 20
-Return P.FX + P.FY
-```
-
-Field lookup is case-insensitive.
-
-### Value semantics
-
-Structs are value types. Assignment, ordinary parameter passing, and ordinary
-function return copy the struct value. The backend may use internal pointers or
-temporary storage to implement that efficiently, but the source-language
-semantics are value semantics unless a future explicit reference/borrow mechanism
-says otherwise.
-
-Example:
-
-```inox
-Type
-    TPoint Struct
-        FX Integer
-        FY Integer
-    ;
-
-MakePoint(X Integer, Y Integer) TPoint :
-    Var
-        P TPoint
-    ;
-
-    P.FX := X
-    P.FY := Y
-
-    Return P
-;
-
-SumPoint(P TPoint) Integer :
-    Return P.FX + P.FY
-;
-```
-
-Associated-method receivers are lowered by pointer for implementation
-convenience when the receiver is local storage. That receiver lowering does not
-make structs classes and does not introduce inheritance or implicit reference
-semantics for ordinary function parameters.
-
-### Not in the first struct subset
-
-The following are deferred:
-
-- variant structs;
-- tags such as JSON/DB metadata;
-- embedding/composition promotion;
-- struct comparison;
-- heap allocation;
-- reference/borrow semantics.
-
----
-
-## Associated methods
-
-Associated methods are declared outside structs. This is a core Inox rule.
-
-Canonical method declaration:
-
-```inox
-TPoint.Move(Self TPoint, DX Integer, DY Integer) :
+TPoint.Move(Self mut, DX Integer, DY Integer) :
     Self.FX := Self.FX + DX
     Self.FY := Self.FY + DY
 ;
-```
 
-Canonical call-site sugar:
-
-```inox
-P.Move(3, 7)
-```
-
-The call is lowered as an associated function call with the receiver supplied
-explicitly by the compiler.
-
-Rules for 0.1:
-
-- `Self` is explicit in the method declaration.
-- The receiver parameter is the first parameter.
-- Struct declarations do not list or repeat method signatures.
-- No virtual dispatch is introduced.
-- No inheritance relation is introduced.
-- No Java-style interface is introduced.
-- Method lookup is nominal and case-insensitive.
-
-Mutability of `Self` is intentionally simple in the current subset: local struct
-storage may be mutated by associated methods. A future `mut Self` spelling may be
-introduced only if it improves static checking without adding boilerplate.
-
----
-
-## Variables, constants, and state
-
-Local variables are declared with inline `var` or a `Var` block.
-
-Examples:
-
-```inox
-var X := 10
-```
-
-```inox
-Var
-    X := 10
-    Y Integer := 20
+TPoint.Sum(Self) Integer :
+    Return Self.FX + Self.FY
 ;
 ```
 
-Local variables are mutable in the current 0.1 subset. Constants belong in `Const`.
-Mutable global state must use `State` explicitly.
+The receiver type is implied by the `TPoint.` prefix. Repeating `TPoint` in the `Self` parameter is redundant and not canonical.
 
-Shadowing is forbidden in all scopes. Because the language is case-insensitive,
-`Value`, `value`, and `VALUE` are the same name.
+Call-site sugar:
 
----
+```inox
+P.Move(3, 7)
+PutLn(P.Sum())
+```
 
-## Expressions and operators
+Conceptually lowers to static associated calls. This is not virtual dispatch and does not create classes, inheritance, interfaces, or subtyping.
 
-Assignment uses `:=`.
+`Self` means read-only receiver. `Self mut` means mutable receiver. `Self owned` is reserved for future ownership-consuming methods.
 
-Logical Bool operators:
+## Mutability and ownership
 
-- `and`
-- `or`
-- `xor`
-- `not`
+Rules:
 
-Integer bitwise operators:
+- Parameters are immutable by default.
+- Local variables declared in `Var` are mutable.
+- Receiver mutation requires `Self mut`.
+- `mut X Integer` for ordinary mutable parameters is reserved for a future version and must be a clear error in 0.1.
 
-- `bitand`
-- `bitor`
-- `bitxor`
-- `bitnot`
-- `shr`
-- `shl`
-
-Do not use `&`, `|`, `~`, `<<`, or `>>` as bitwise operators in Inox 0.1.
-
-`^` is exponentiation and is never XOR.
-
-Precedence, from highest to lowest:
-
-1. parentheses
-2. calls, indexing, member access
-3. exponentiation `^`
-4. unary `+`, `-`, `not`, `bitnot`
-5. `*`, `/`, `div`, `mod`
-6. `+`, `-`
-7. `shl`, `shr`
-8. `bitand`
-9. `bitxor`
-10. `bitor`
-11. range `..`
-12. membership `in`
-13. relational `=`, `#`, `<`, `>`, `<=`, `>=`
-14. logical `and`
-15. logical `xor`
-16. logical `or`
-17. assignment `:=`
-
-`^` is right-associative. Assignment is right-associative. Assignment inside a
-boolean expression is forbidden.
-
----
+Future ownership work includes `Self owned`, `ref X T`, and `ref mut X T`. These are not part of the 0.1 executable subset.
 
 ## Control flow
 
 ### if / elif / else
-
-Canonical form:
 
 ```inox
 if A > B
@@ -500,7 +283,12 @@ else
 ;
 ```
 
-No `then`. No `:`. No `;` between branches.
+Rules:
+
+- no `then`;
+- no `:`;
+- one final `;` closes the whole structure;
+- no `;` between branches.
 
 ### while
 
@@ -510,367 +298,241 @@ while I > 0
 ;
 ```
 
+`break` exits the nearest loop. `continue` proceeds to the next iteration.
+
 ### repeat / until
 
-Inox `repeat` is a general loop, not merely Pascal `repeat until`.
-
-`until Condition` is a statement inside `repeat`. It exits the nearest enclosing
-`repeat` when the condition is true.
+`repeat` is a general loop. `until` is an internal exit statement, not the terminator.
 
 ```inox
 repeat
     Work()
     until Done
-    ContinueWork()
+    MoreWork()
 ;
 ```
 
-`until` may appear at the start, middle, or end of the repeat body, and may appear
-multiple times.
-
-```inox
-repeat
-    until Done
-    Work()
-;
-```
-
-A final `until` gives Pascal-like behavior:
-
-```inox
-repeat
-    Work()
-until Done
-;
-```
-
-`repeat` without `until` is an explicit infinite loop and must rely on `break`,
-`Exit`, or `Return` to terminate.
+`until Condition` exits the nearest repeat when the condition is true. It may appear at the beginning, middle, or end, and may appear more than once.
 
 ### for in range
 
-Counted range loops use:
-
 ```inox
-for I in 1..N
-    Total := Total + I
+for I in A..B
+    ...
+;
+
+for I in A..B (S)
+    ...
 ;
 ```
 
-Stepped counted range loops use:
+Rules:
 
-```inox
-for I in 2..N(2)
-    Total := Total + I
-;
-```
-
-The current LLVM subset supports inclusive increasing Integer ranges with positive
-step.
-
-### break and continue
-
-`break` exits the innermost loop.
-`continue` continues the innermost loop.
-
-Current loop constructs are `while`, `repeat`, and `for`.
+- range endpoints are inclusive;
+- direction comes from `A..B`;
+- `A < B` is ascending;
+- `A > B` is descending;
+- `A = B` executes once;
+- step is always positive;
+- step zero or negative is an error if constant, or a runtime trap if dynamic;
+- `continue` goes to the step/next iteration;
+- `break` exits the loop.
 
 ### case
 
-`case` follows Ada/SPARK style:
-
-- no fallthrough;
-- no `break`;
-- supports individual values and ranges;
-- `otherwise` is required unless the compiler can prove exhaustiveness.
-
----
-
-## Subroutines and functions
-
-A function has a return type:
-
 ```inox
-Sum(A Integer, B Integer) Integer :
-    Return A + B
+case Suit
+    Club
+        PutLn("club")
+    Diamond
+        PutLn("diamond")
+    otherwise
+        PutLn("other")
 ;
 ```
 
-A subroutine omits the return type:
+Single-line arms are allowed:
 
 ```inox
-Report(Value Integer) :
-    PutLn(Value)
+case Suit
+    Club PutLn("club")
+    Diamond PutLn("diamond")
+    otherwise PutLn("other")
 ;
 ```
 
-`Return Expression` returns a value from a function.
+Rules:
 
-`Exit` exits the current subroutine without an expression.
+- no `of`, `when`, `=>`, `:`, or `do`;
+- no fall-through;
+- `otherwise` is optional;
+- for `Enum`, a `case` without `otherwise` must be exhaustive;
+- ranges per arm, multi-values with `|`, and `case` as expression are reserved for future versions.
 
-There is no implicit `Result`. There is no `Return := Expression`.
+## Operators and numeric semantics
 
-Function and subroutine names are case-insensitive.
+Boolean operators:
 
----
-
-## Prelude and runtime
-
-The automatic prelude exposes:
-
-- `Sys.IO`: `Put`, `PutLn`, `ReadLn`
-- `Sys.Math`: `Sin`, `Cos`, `Sqrt`, `Abs`
-- `Sys.Std`: `Length`, `Ord`
-
-The current backend implements a temporary `printf`-based lowering for output.
-This is a smoke-test mechanism, not the final runtime ABI.
-
----
-
-## Strings
-
-Canonical direction:
-
-- `String` is a UTF-8 runtime type.
-- String values are immutable unless a future mutable string/buffer type is
-  explicitly introduced.
-- String literals are supported by the current output backend.
-- Full Unicode indexing semantics are deferred.
-
-Future runtime should distinguish byte length, Unicode scalar length, and possibly
-grapheme-aware operations rather than overloading one ambiguous `Length` meaning.
-
----
-
-## Arrays, vectors, ranges, and sets
-
-Canonical direction:
-
-- arrays have explicit index ranges;
-- vectors are dynamic and 0-based;
-- ranges are finite ordinal intervals where applicable;
-- sets follow Pascal/Ada style with a finite ordinal base.
-
-The detailed concrete syntax for arrays, vectors, and set types remains future
-work. Agents must not invent final syntax for these without explicit approval.
-
----
-
-## Contracts, protocols, and behaviors
-
-This is the future behavior-reuse mechanism of Inox. It is deliberately not
-Java-style interfaces and not duck typing.
-
-Canonical constraints for future design:
-
-- no classical inheritance;
-- no implicit duck typing;
-- no mixins;
-- no mandatory class/interface hierarchies;
-- no duplicated method signatures inside structs;
-- contract/protocol satisfaction should be explicit and statically checked;
-- behavior reuse must remain DRY and composition-oriented.
-
-Detailed syntax is not implemented in 0.1 and must not be invented ad hoc by
-agents.
-
----
-
-## Visibility and modules
-
-0.1 has no `public`, `private`, `protected`, or `published` keywords.
-
-The future visibility model should be module/export based rather than class based.
-Until that model is designed, agents must not introduce visibility keywords.
-
----
-
-## LLVM backend status
-
-The textual LLVM backend is an incremental prototype. It currently supports:
-
-- `Integer` and `Bool` expressions;
-- arithmetic, bitwise, comparison, and simple Bool operators;
-- functions and subroutines;
-- `Main` with a body;
-- local variables;
-- assignments;
-- `if`, `elif`, `while`, flexible `repeat`, and `for` range subsets;
-- `break` and `continue` in implemented loop forms;
-- temporary output through `Put`/`PutLn`;
-- simple structs with Integer/Bool fields;
-- literal field defaults for Integer/Bool;
-- associated methods in a restricted subset.
-
-It is not yet the final runtime ABI.
-
----
-
-## Portability rules
-
-The compiler implementation is portable C++20.
-
-Supported development hosts:
-
-- Windows with MSVC and CMake;
-- Linux with GCC or Clang and CMake.
-
-Future desired hosts include FreeBSD, Solaris/Illumos, AIX, HP-UX, UnixWare, and
-other Unix systems where feasible.
-
-Engineering rules:
-
-- prefer standard C++;
-- isolate platform differences in CMake or scripts;
-- avoid platform `#ifdef`s unless there is a real platform API boundary;
-- do not make Windows-only path assumptions in compiler code;
-- keep textual LLVM backend host-independent.
-
----
-
-## Style conventions
-
-Canonical spelling in documentation:
-
-- `Module`
-- `Type`
-- `Struct`
-- `Var`
-- `Const`
-- `State`
-- `Main`
-- `Return`
-- `Exit`
-
-Types and structs conventionally start with `T`:
-
-```inox
-TPoint
-TUser
-TConfig
+```text
+and  or  xor  not
 ```
 
-Struct fields conventionally start with `F`:
+Integer bitwise operators:
 
-```inox
-FX
-FY
-FName
-FAge
+```text
+bitand  bitor  bitxor  bitnot  shl  shr
 ```
 
-These are style rules in 0.1, not hard compiler errors.
+`^` is exponentiation and never XOR.
 
----
-
-## Canonical examples
-
-### Hello
+Integer division:
 
 ```inox
-Module Hello
+A div B
+A mod B
+```
 
-Main() :
-    PutLn("Hello, Inox")
+`/` is not integer division. For `Integer` operands, `/` is a compile-time error with a message directing the programmer to use `div`. Future `Float` division uses `/` and lowers to LLVM `fdiv`.
+
+Integer overflow is invalid language behavior. It is not wraparound and not saturation. Constant overflow is always a compile-time error. Debug/checking mode should trap at runtime. Release 0.1 does not promise wraparound. The compiler should not emit LLVM `nsw`/`nuw` until checks and optimization policy are mature.
+
+Implicit conversions are allowed only for safe widening explicitly defined by Inox. Narrowing is never implicit. Explicit conversion uses `TypeName(Expression)`. `Integer(FloatExpr)` truncates toward zero and traps/errors if out of range. Constant narrowing with loss is a compile-time error.
+
+## Arrays, Vector, Range, Enum, Set
+
+### Array
+
+Fixed arrays use explicit ranges:
+
+```inox
+Var
+    Values Array[1..10] Integer
 ;
 ```
 
-### Function
+Multidimensional:
 
 ```inox
-Module Functions
-
-Sum(A Integer, B Integer) Integer :
-    Return A + B
+Var
+    Matrix Array[1..10, 1..10] Integer
 ;
 
-Main() :
-    PutLn(Sum(3, 4))
+Matrix[I, J] := 42
+```
+
+Arrays are value types. Bounds checking is on by default. `Low(A)`, `High(A)`, and `Length(A)` are compile-time constants for fixed arrays. Array literals are reserved for later.
+
+### Vector
+
+Future dynamic vectors use:
+
+```inox
+Var
+    Items Vector[Integer]
 ;
 ```
 
-### Struct
+`Vector[T]` is dynamic, 0-based, heap/runtime-managed, bounds-checked, and distinct from `Array`. The selected semantic direction is ownership/move: assignment and by-value passing move the vector O(1) and invalidate the source. Deep copy requires `Clone()`. There is no implicit aliasing.
+
+### Range
 
 ```inox
-Module StructBasic
-
 Type
-    TPoint Struct
-        FX Integer
-        FY Integer
-    ;
-
-SumPoint() Integer :
-    Var
-        P TPoint
-    ;
-
-    P.FX := 10
-    P.FY := 20
-
-    Return P.FX + P.FY
-;
-
-Main() :
-    PutLn(SumPoint())
-;
+    TMonthRange Range 1..12
+    TLetterRange Range 'A'..'Z'
 ```
 
-### Associated method
+`Range` does not open a block and does not close with `;`.
+
+### Enum
+
+Short form:
 
 ```inox
-Module AssociatedMethods
-
 Type
-    TPoint Struct
-        FX Integer
-        FY Integer
+    TCardSuit (Club, Diamond, Heart, Spade)
+```
+
+Multi-line form:
+
+```inox
+Type
+    TDayOfWeek Enum
+        Monday
+        Tuesday
+        Wednesday
+        Thursday
+        Friday
+        Saturday
+        Sunday
     ;
+```
 
-TPoint.Move(Self TPoint, DX Integer, DY Integer) :
-    Self.FX := Self.FX + DX
-    Self.FY := Self.FY + DY
-;
+Enums are nominal and ordinal. There is no implicit conversion to or from `Integer`. Values start at 0 by default. `Ord(E)` returns the ordinal. `TEnum(I)` converts explicitly with bounds check/trap. Enum ranges are valid in `for`.
 
-TPoint.Sum(Self TPoint) Integer :
-    Return Self.FX + Self.FY
-;
+### Set
 
-Main() :
-    Var
-        P TPoint
-    ;
-
-    P.FX := 10
-    P.FY := 20
-    P.Move(3, 7)
-    PutLn(P.Sum())
+```inox
+Var
+    Suits Set[TCardSuit]
 ;
 ```
 
----
+`Set[T]` is a finite mathematical set over a nominal ordinal base. `T` must be an `Enum` or finite `Range`. `Set[Integer]`, `Set[Float]`, and `Set[String]` are invalid. Sets are value types. Default is empty. Membership uses `in`. Equality uses `=` and `#`. Subset/superset may use `<=` and `>=`. Canonical operations are `Union`, `Intersection`, `Difference`, `SymmetricDifference`, `With`, and `Without`. Literal `[A, B, C]` is planned and contextual, but may be deferred.
 
-## Deferred features
+## Strings and Char
 
-Deferred, but directionally accepted:
+`String` is UTF-8, immutable, non-null, and has `""` as its zero/default value. There is no null string. Absence is future `Option[String]`.
 
-- struct embedding as composition with controlled promotion;
-- variant structs;
-- field metadata tags for JSON/DB;
-- full arrays/vectors/sets;
-- complete module system;
-- contracts/protocols/behaviors;
-- final runtime ABI;
-- complete strings and Unicode operations;
-- exceptions lowering;
-- package manager;
-- optional linting for naming conventions.
+0.1 string operations:
 
-Explicitly rejected:
+- string literal;
+- local variable `S String := "..."`;
+- parameter and return type `String`;
+- `Put` and `PutLn` for strings/literals;
+- byte-by-byte equality and inequality with `=` and `#`.
 
-- classes;
-- inheritance;
-- Java-style interfaces;
-- duck typing;
-- mixins;
-- heavy RTTI as a core requirement.
+Reserved/not implemented in 0.1:
+
+- `S[I]` indexing;
+- string concatenation;
+- `ByteLength`, `CharLength`, `GraphemeLength`.
+
+`Char` is a Unicode scalar value, not a byte, not an integer, and not a grapheme cluster. It is conceptually 32-bit. Valid values are U+0000..U+10FFFF excluding UTF-16 surrogate range U+D800..U+DFFF. Literals use single quotes: `'a'`, `'é'`, `'😀'`. Surrogate literals are compile-time errors. Conversions among `Char`, `Byte`, and `Integer` are always explicit.
+
+## Errors, exceptions, null, unsafe
+
+Inox has no universal `null` or `nil`. Normal types are non-null by default. Future absence is `Option[T]`. Future recoverable failure is `Result[T, E]`.
+
+Exceptions exist in 0.1 syntax:
+
+```inox
+try
+    ...
+except
+    ...
+finally
+    ...
+;
+```
+
+`raise` throws or re-raises. Full exception lowering is incremental.
+
+The safe 0.1 core has no raw pointers, no `Pointer[T]`, no `unsafe`, and no direct C interop. Those belong behind explicit future unsafe/interop boundaries.
+
+## Contracts, protocols, behaviors
+
+Contracts/protocols/behaviors are future static capability checks. They are not Java interfaces, not abstract classes, not mixins, not duck typing, and not copied Rust traits. A type satisfies a contract by providing required operations, likely associated methods. Satisfaction may be explicit or derivable later, but struct declarations must not duplicate method signatures.
+
+## Implementation status and conformance gaps
+
+This manual is the canonical design target. The current compiler is a pre-alpha implementation and may lag the spec. Known conformance work includes:
+
+- canonical `case Expression` without `:`;
+- full multi-file `Module`/`Use` compilation and LLVM linking;
+- full enum, range, set, array, vector, and char implementation;
+- checking-mode integer overflow traps;
+- final runtime ABI instead of temporary `printf` lowering;
+- formal ownership/borrow/arena/unsafe design for 0.2+.
+
+When implementing a conformance item, update code, tests, canonical docs, manual HTML, and ADRs together.

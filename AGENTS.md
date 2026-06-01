@@ -1,187 +1,73 @@
 # AGENTS.md
 
-## Canonical Truth
+This file is the operational contract for AI agents working on Inox.
 
-The official Inox specification is under:
-
-docs/canonical/
-
-Historical discussions are reference material only.
-
-## Specification Hierarchy
+## Canonical truth hierarchy
 
 Use this hierarchy when modifying Inox:
 
-1. `AGENTS.md` gives operational rules for agents.
-2. `docs/canonical/language-reference.md` is the consolidated tutorial/reference for humans and agents.
-3. Topic-specific canonical files under `docs/canonical/` refine the language by area.
-4. `grammar/grammar.ebnf` is the human grammar mirror and must remain aligned with syntax decisions.
-5. Examples and tests demonstrate implemented subsets.
+1. `docs/decisions/ADR-0006-inox-0.1-constitution.md` for settled 0.1 language decisions.
+2. `docs/canonical/language-reference.md` as the consolidated tutorial/reference.
+3. Topic-specific files under `docs/canonical/`.
+4. `grammar/grammar.ebnf` as the grammar mirror.
+5. `docs/site/index.html` as the human HTML manual.
+6. Examples and tests as executable evidence of implemented subsets.
 
-If a proposed implementation requires a language decision not covered by these documents, stop and ask before changing code. Do not fill gaps by imitating Pascal, Go, Rust, Java, Python, or C++ unless that behavior is explicitly approved for Inox.
+If these disagree, do not invent a third behavior. Fix the documentation/code mismatch explicitly or ask for a design decision.
 
-## Rules for AI Agents
+## Non-negotiable language identity
 
-- Do not invent semantics.
-- Do not change syntax without explicit approval.
+Inox is post-object-oriented. It has no classes, classical inheritance, Java-style interfaces, mixins, duck typing, or OO visibility model. Structs are data. Associated methods are behavior outside the struct. Future contracts/protocols/behaviors are static capability checks, not OO inheritance.
+
+## Syntax rules agents must not regress
+
 - Inox is case-insensitive.
-- ; closes blocks and is equivalent to End.
-- ; is not a statement terminator.
-- : opens named blocks.
-- Parentheses in conditions are optional.
-- `if`, `elif`, and `else` do not use `then` or `:`.
-- A line break after an `if` or `elif` condition opens its branch.
-- A line break after `else` opens its branch.
-- A single `;` closes the complete `if`/`elif`/`else` structure.
-- `;` must not appear between `if`, `elif`, and `else` branches.
-- Shadowing is forbidden.
-- Inox is strongly typed, Ada/ObjectPascal-like.
-- LLVM is the official backend.
-- Keep 0.1 pre-alpha small and compilable.
-- Keep `docs/site/index.html` and `docs/canonical/language-reference.md` aligned when resolving language questions.
+- Line comments use `==`.
+- `;` closes blocks; it is not a general statement terminator.
+- `End`/`end` is not a keyword and must never be accepted as a block closer.
+- `Module` has no `;`; EOF closes the module.
+- `Use` is semantic dependency, not textual inclusion.
+- `Type` has no `:` and no closing `;`.
+- `Var` has no `:` and closes with `;`.
+- `Struct` syntax is `TName Struct ... ;`.
+- `Range` declarations do not use `;`.
+- `if`/`elif`/`else` use no `then` and no `:`.
+- `case Expression` uses no `of`, `when`, `=>`, `:`, or `do`.
+- `for I in A..B (S)` uses no `do` and no `:`.
+- `repeat` closes with `;`; `until` is an internal statement.
 
+## Type and semantic rules agents must not regress
 
-## Cross-platform Engineering
+- `Integer = Int64`; `Float = Float64`; canonical boolean type is `Bool`.
+- `String` is UTF-8, immutable, non-null, default `""`.
+- `Char` is Unicode scalar value.
+- No universal `null`/`nil`.
+- Integer `/` is invalid; use `div` and `mod`.
+- Integer overflow is invalid; do not promise wraparound.
+- Parameters are immutable by default.
+- Local variables in `Var` are mutable.
+- Associated receivers are `Self` or `Self mut`; do not write `Self TPoint`.
+- `Self mut` is required for mutating methods.
+- `Exit` is not allowed in functions with return values.
+- `Return Expression` is not allowed in subroutines without return types.
+- Structs are nominal value types.
+- `Vector[T]` future semantics are ownership/move, not reference aliasing.
+- `Set[T]` requires finite ordinal base, not arbitrary `Integer`/`String`.
 
-- The compiler must remain portable C++20.
-- Supported development hosts are Windows/MSVC and Linux/GCC or Clang.
-- Prefer standard C++ and CMake over host-specific code.
-- Do not add platform `#ifdef`s unless a real platform API boundary requires them.
-- Keep platform differences in CMake or scripts where possible.
-- Validate Windows changes with `cmake --build build --config Debug` and `pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1`.
-- Validate Linux changes with `cmake --build build` and `./scripts/run-tests.sh`.
-- When committing, add only task-scoped files explicitly and never use `git add .`.
+## Implementation discipline
 
-## Inox 0.1 pre-alpha Consolidated Decisions
+- Keep the compiler portable C++20.
+- Validate Linux with `cmake --build build` and `bash scripts/run-tests.sh`.
+- Validate Windows with `cmake --build build --config Debug` and `pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1`.
+- Do not use `git add .`; add only task-scoped paths.
+- Every language change must update code, tests, docs, `docs/site/index.html`, and ADRs when applicable.
+- If a feature is canonical but not implemented, record it as a conformance gap instead of changing the spec.
 
-- Integer = Int64.
-- Float = Float64.
-- Currency and Crypto exist.
-- Decimal does not exist.
-- The canonical boolean type is Bool. Boolean is not a built-in type.
-- Generics use [].
-- Shadowing is forbidden.
-- State is used for mutable global state.
-- Inline var and Var blocks coexist.
-- Arrays have explicit ranges.
-- Vectors are dynamic and 0-based.
-- Sets follow Pascal/Ada style with a finite ordinal base.
-- Exceptions exist since 0.1.
-- Exception syntax includes try, except, finally, and raise.
-- Exceptions are lightweight, without heavy RTTI.
-- Casts use TypeName(expr).
-- Implicit conversions are allowed only for safe widening.
-- Parentheses in conditions are optional.
-- Counted range loops use for I in 1..10.
-- Stepped counted range loops use for I in 1..10(2).
-- case follows Ada/SPARK style.
-- Module closes at EOF.
-- The automatic prelude includes Sys.IO, Sys.Math, and Sys.Std.
-- Line comments use ==.
-- Block comments do not exist in 0.1.
-- `Type` is a section/declarator, not a block: it has no `:` and no closing `;`.
-- Canonical struct syntax is `TName Struct ... ;`; the `;` closes the Struct itself.
-- Struct declares fields only. Associated methods are declared outside Struct. Literal defaults for Integer and Bool fields are allowed. Simple structs are value types: ordinary struct assignment, ordinary struct parameters, and ordinary struct returns copy the struct value. Associated-method receivers may be lowered as pointers internally but do not create classes or inheritance.
-- Associated method syntax is `TType.Method(Self TType, Args...) ReturnType : ... ;`. The receiver parameter is explicit; call-site sugar is `Value.Method(args)`.
-- Struct type names conventionally begin with `T`; struct fields conventionally begin with `F`, but 0.1 does not reject other names.
-- Boolean logical operators are and, or, xor, and not.
-- Integer bitwise operators are bitand, bitor, bitxor, bitnot, shr, and shl.
-- ^ is exponentiation and is never XOR.
-- break and continue are loop statements.
-- Return Expression returns a value. Exit takes no expression.
-- repeat opens a general loop and is closed by ; or End.
-- until Condition is a statement inside repeat, equivalent to a conditional
-  exit from the nearest repeat.
-- until may appear more than once and at any position inside repeat.
-- repeat without until is an explicit infinite loop.
-- until is invalid outside repeat and its condition must be Bool.
+## Current major conformance gaps
 
-## Case Semantics
-
-- case follows Ada/SPARK style.
-- case has no fallthrough.
-- case does not use break.
-- case accepts individual values and ranges.
-- otherwise is mandatory when the case is not exhaustive.
-- For enums, if all values are covered, otherwise is not mandatory.
-
-## Operator Precedence
-
-- Parentheses have maximum precedence.
-- Calls, indexing, and member access come after parentheses.
-- ^ is exponentiation and associates to the right.
-- Exponentiation has higher precedence than unary operators.
-- -x^2 means -(x^2).
-- Unary operators are +, -, not, and bitnot.
-- Multiplicative operators are *, /, div, and mod.
-- Additive operators are + and -.
-- Shift operators are shl and shr.
-- Integer bitwise operators, from highest to lowest precedence, are bitand,
-  bitxor, and bitor.
-- Range operator is ..
-- Membership operator is in.
-- Relational operators are =, #, <, >, <=, and >=.
-- Logical operators are and, xor, and or.
-- Assignment := is right-associative.
-- Chained assignment is allowed.
-- Assignment inside a boolean expression is forbidden.
-
-## Scope
-
-- Inline var declares in the current block.
-- Var blocks declare in the current block.
-- Names declared inside if, while, for, repeat, case, or try only exist inside
-  that block.
-- Shadowing is forbidden in all scopes.
-- Global Const is allowed.
-- State is the only mechanism for mutable global state.
-
-## Prelude
-
-- Sys.IO provides Put, PutLn, and ReadLn.
-- Sys.Math provides Sin, Cos, Sqrt, and Abs.
-- Sys.Std provides Length and Ord.
-- The automatic prelude exposes these names without explicit Use.
-
-## Currency
-
-- Currency is exact monetary decimal.
-- Currency is never Float64.
-- Currency is intended for international fiat money.
-- Detailed rounding semantics belong in runtime.md.
-
-## Crypto
-
-- Crypto is exact high-precision decimal.
-- Crypto is never Float64.
-- Crypto is intended for cryptoassets.
-- Detailed support for scales and networks belongs in runtime.md.
-
-
-## Current LLVM backend I/O milestone
-
-The textual LLVM backend currently supports temporary `printf`-based `Put`/`PutLn` lowering for `Integer`, `Bool`, and string literals. It also supports user-defined subroutines without return values and statement calls to those subroutines. This is not the final runtime ABI; preserve it only as an executable smoke-test path until the real runtime is introduced.
-
-## Test organization
-
-When adding or modifying tests, keep the suite layered:
-
-- Human-facing examples go in `examples/`.
-- Lexer fixtures go in `tests/lexer/valid/` or `tests/lexer/invalid/`. Use `--dump-tokens` checks for token spelling/normalization regressions.
-- Syntax-focused valid fixtures go in `tests/parser/valid/` and should be covered by `--parse-only` checks when the parser boundary matters.
-- Syntax-focused invalid fixtures go in `tests/parser/invalid/`.
-- Semantic valid fixtures go in `tests/semantic/valid/`.
-- Semantic invalid fixtures go in `tests/semantic/invalid/`.
-- LLVM emission fixtures go in `tests/codegen/` and must be registered with explicit required IR fragments in both `scripts/run-tests.ps1` and `scripts/run-tests.sh`.
-- End-to-end executable tests live in `tests/integration/` with matching `.out` files and run when `clang` is available.
-
-Do not delete or move existing `examples/` tests unless a dedicated migration task explicitly says so.
-
-Compiler test modes now available to agents:
-
-- `--dump-tokens` for lexer regression tests;
-- `--parse-only` for parser regression tests;
-- `--dump-types` for typed AST / semantic diagnostics;
-- `--emit-llvm` for codegen checks.
-
-Every implemented feature should add or update fixtures at the narrowest appropriate layer.
+- canonical `case Expression` parser/lowering;
+- full multi-file `Module`/`Use` compile/link;
+- arrays/ranges/enums/sets implementation;
+- vector runtime;
+- checking-mode overflow traps;
+- final runtime ABI and `--build`/`--run` driver.

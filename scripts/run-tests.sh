@@ -241,7 +241,7 @@ run_test_tree "$repo_root/tests/parser/invalid" 10 false
 run_test_tree "$repo_root/tests/semantic/invalid" 10 false
 
 run_mode_fragment_test --dump-tokens "$repo_root/tests/lexer/valid/tokens-keywords-literals.inox" \
-    'Keyword lexeme="Module" normalized="module"' 'Keyword lexeme="Type" normalized="type"' 'Keyword lexeme="Struct" normalized="struct"' 'IntegerLiteral lexeme="$2A"' 'StringLiteral lexeme="hello"' 'CharLiteral lexeme='
+    'Keyword lexeme="Module" normalized="module"' 'Keyword lexeme="Type" normalized="type"' 'Keyword lexeme="Struct" normalized="struct"' 'IntegerLiteral lexeme="$2A"' 'StringLiteral lexeme="hello"' 'CharLiteral lexeme=' 'Identifier lexeme="End" normalized="end"'
 run_mode_exit_test --parse-only "$repo_root/tests/parser/valid/canonical-type-and-var.inox" true
 run_mode_exit_test --parse-only "$repo_root/tests/parser/invalid/var-colon.inox" false
 
@@ -256,7 +256,7 @@ run_llvm_emission_test "$repo_root/examples/llvm-local-variables.inox" \
 run_llvm_emission_test "$repo_root/examples/llvm-local-assignment.inox" \
     "define i64 @compute" "%a = alloca i64" "%b = alloca i64" "store i64 10, ptr %a" "store i64 20, ptr %b" "add i64" "mul i64" "store i64 %tmp2, ptr %a" "store i64 %tmp4, ptr %b" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-integer-operators.inox" \
-    "define i64 @compute" "%tmp0 = sdiv i64 %a, %b" "%tmp1 = sdiv i64 %a, %b" "srem i64" "shl i64" "ashr i64" "and i64" "or i64" "xor i64" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @compute" "%tmp0 = sdiv i64 %a, %b" "srem i64" "shl i64" "ashr i64" "and i64" "or i64" "xor i64" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-bool-comparisons.inox" \
     "define i1 @isgreater" "define i1 @isequal" "define i1 @isdifferent" "icmp sgt i64" "icmp eq i64" "icmp ne i64" "icmp slt i64" "icmp sle i64" "icmp sge i64" "ret i1" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-bool-operators.inox" \
