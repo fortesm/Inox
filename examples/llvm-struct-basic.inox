@@ -1,3 +1,10 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 Module StructBasic
 
 Type
@@ -6,7 +13,7 @@ Type
         FY Integer
     ;
 
-SumPoint() Integer :
+SumPoint Integer :
     Var
         P TPoint
     ;
@@ -17,6 +24,6 @@ SumPoint() Integer :
     Return P.FX + P.FY
 ;
 
-Main() :
-    PutLn(SumPoint())
+Main :
+    PutLn(SumPoint)
 ;

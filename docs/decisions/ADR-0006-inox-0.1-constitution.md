@@ -19,7 +19,7 @@ Inox 0.1 safe core is defined by the following decisions.
 7. `String` is UTF-8, immutable, non-null, and defaults to `""`.
 8. `Char` is Unicode scalar value, not byte, not integer, not grapheme cluster.
 9. Fixed arrays use `Array[Low..High] Type`; ranges are part of the type; arrays are bounds-checked value types.
-10. `Vector[T]` is future dynamic 0-based owning/move type; assignment moves; `Clone()` copies.
+10. `Vector[T]` is future dynamic 0-based owning/move type; assignment moves; `Clone` copies.
 11. `for I in A..B (S)` is inclusive; direction comes from `A..B`; step is positive.
 12. `Range` declarations in `Type` are simple line declarations and do not use `;`.
 13. Enums have short and multi-line forms, are nominal and ordinal, and do not implicitly convert to/from `Integer`.

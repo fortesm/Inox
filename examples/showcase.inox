@@ -1,3 +1,10 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 Module Showcase
 
 Use Std.IO
@@ -31,7 +38,7 @@ TAccount.Print(Self) :
     PutLn(Self.FOperations)
 ;
 
-Main() :
+Main :
     Var
         Account TAccount
         Total Integer := 0
@@ -51,7 +58,7 @@ Main() :
     Account.Withdraw(35)
     Account.Withdraw(200)
 
-    Account.Print()
+    Account.Print
 
     Put("clamp(150, 0, 100)=")
     PutLn(Clamp(150, 0, 100))

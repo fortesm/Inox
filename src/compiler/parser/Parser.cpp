@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include "Parser.h"
 
 #include "../lexer/Lexer.h"
@@ -378,6 +385,9 @@ ast::ExpressionPtr Parser::parsePostfix()
 
     for (;;) {
         if (match(TokenKind::LeftParen)) {
+            if (check(TokenKind::RightParen)) {
+                errorAtCurrent("empty parentheses are not allowed in calls; omit parentheses when there are no arguments");
+            }
             auto arguments = parseArgumentList();
             consume(TokenKind::RightParen, "expected ')' after argument list");
             expression = std::make_unique<ast::CallExpression>(
@@ -810,6 +820,10 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
         signatureTokens.push_back(tokenText(advance()));
     }
 
+    if (signatureTokens.size() >= 2 && signatureTokens[0] == "(" && signatureTokens[1] == ")") {
+        errorAt(name, "empty parentheses are not allowed in declarations; omit parentheses when there are no parameters");
+    }
+
     consume(TokenKind::Colon, "expected ':' after function signature");
     auto body = parseBlockBody();
     consumeBlockClose();
@@ -896,7 +910,7 @@ bool Parser::atTypeSectionBoundary() const
             sawLeftParen = true;
         }
         if (tokens_[index].kind == TokenKind::Colon) {
-            return sawLeftParen;
+            return true;
         }
     }
 

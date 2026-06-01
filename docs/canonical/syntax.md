@@ -134,3 +134,29 @@ Type
 ```
 
 Range declarations are line declarations and do not close with `;`.
+
+## Empty parentheses
+
+Empty parentheses are not valid Inox syntax. If a declaration has no parameters,
+omit parentheses. If a call has no arguments, omit parentheses.
+
+```inox
+Main :
+    PutLn("Hello")
+;
+
+Report :
+    PutLn("report")
+;
+
+Report
+```
+
+Invalid:
+
+```inox
+Main() :
+;
+
+Report()
+```

@@ -59,3 +59,7 @@ assignment      ::= logical_or (":=" assignment)?
 
 Parser implementation may temporarily lag this mirror. Conformance gaps are listed in `docs/open-questions/OPEN_QUESTIONS.md` and `docs/canonical/roadmap.md`.
 ```
+
+(* Canonical zero-argument rule: empty parentheses are forbidden. *)
+(* A declaration without parameters omits the parameter list entirely. *)
+(* A call without arguments omits parentheses entirely. *)

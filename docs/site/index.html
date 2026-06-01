@@ -149,7 +149,7 @@ PrintValue(X Integer) :
 </code></pre>
 <p>`Main` is a subroutine at language level:</p>
 <pre><code>
-Main() :
+Main :
     PutLn(&quot;hello&quot;)
 ;
 </code></pre>
@@ -220,7 +220,7 @@ TPoint.Sum(Self) Integer :
 <p>Call-site sugar:</p>
 <pre><code>
 P.Move(3, 7)
-PutLn(P.Sum())
+PutLn(P.Sum)
 </code></pre>
 <p>Conceptually lowers to static associated calls. This is not virtual dispatch and does not create classes, inheritance, interfaces, or subtyping.</p>
 <p>`Self` means read-only receiver. `Self mut` means mutable receiver. `Self owned` is reserved for future ownership-consuming methods.</p>
@@ -258,9 +258,9 @@ while I &gt; 0
 <p>`repeat` is a general loop. `until` is an internal exit statement, not the terminator.</p>
 <pre><code>
 repeat
-    Work()
+    Work
     until Done
-    MoreWork()
+    MoreWork
 ;
 </code></pre>
 <p>`until Condition` exits the nearest repeat when the condition is true. It may appear at the beginning, middle, or end, and may appear more than once.</p>
@@ -351,7 +351,7 @@ Var
     Items Vector[Integer]
 ;
 </code></pre>
-<p>`Vector[T]` is dynamic, 0-based, heap/runtime-managed, bounds-checked, and distinct from `Array`. The selected semantic direction is ownership/move: assignment and by-value passing move the vector O(1) and invalidate the source. Deep copy requires `Clone()`. There is no implicit aliasing.</p>
+<p>`Vector[T]` is dynamic, 0-based, heap/runtime-managed, bounds-checked, and distinct from `Array`. The selected semantic direction is ownership/move: assignment and by-value passing move the vector O(1) and invalidate the source. Deep copy requires `Clone`. There is no implicit aliasing.</p>
 <h3>Range</h3>
 <pre><code>
 Type
@@ -424,4 +424,15 @@ finally
 <ul><li>final runtime ABI instead of temporary `printf` lowering;</li></ul>
 <ul><li>formal ownership/borrow/arena/unsafe design for 0.2+.</li></ul>
 <p>When implementing a conformance item, update code, tests, canonical docs, manual HTML, and ADRs together.</p>
+
+<section id="license">
+  <h2>License</h2>
+  <p>Inox is licensed under the Mozilla Public License Version 2.0 (MPL-2.0).</p>
+  <p>The project does not use the MPL 2.0 “Incompatible With Secondary Licenses” notice.</p>
+</section>
+<section id="empty-parentheses">
+  <h2>Empty parentheses are forbidden</h2>
+  <p>Inox uses <code>Main :</code>, <code>Report :</code>, <code>Report</code>, and <code>Account.Print</code>.</p>
+  <p>Forms such as <code>Main() :</code>, <code>Report()</code>, and <code>Account.Print()</code> are invalid.</p>
+</section>
 </article></main></body></html>

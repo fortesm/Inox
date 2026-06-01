@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include "LlvmIrEmitter.h"
 
 #include <cctype>
@@ -258,64 +265,63 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
                                          const StructDefinitions& structs)
 {
     const auto& tokens = function.signatureTokens();
-    if (tokens.size() < 2 || tokens.front() != "(") {
-        throw CodegenError("unsupported function signature: " + function.name());
-    }
 
     const std::size_t dot = function.name().find('.');
     const bool isAssociatedMethod = dot != std::string::npos;
     const std::string receiverType = isAssociatedMethod ? function.name().substr(0, dot) : std::string{};
 
     std::vector<FunctionParameter> parameters;
-    std::size_t index = 1;
-    while (index < tokens.size() && tokens[index] != ")") {
-        if (index >= tokens.size()) {
-            throw CodegenError("unsupported function signature: " + function.name());
+    std::size_t index = 0;
+    if (!tokens.empty() && tokens.front() == "(") {
+        index = 1;
+        if (index < tokens.size() && tokens[index] == ")") {
+            throw CodegenError("empty parentheses are not allowed in declarations: " + function.name());
         }
 
-        const std::string parameterName = tokens[index++];
-        std::string parameterType;
-        bool isReceiver = false;
-        if (isAssociatedMethod && parameters.empty() && equalsIgnoreCase(parameterName, "Self")) {
-            isReceiver = true;
-            if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
-                ++index;
+        while (index < tokens.size() && tokens[index] != ")") {
+            const std::string parameterName = tokens[index++];
+            std::string parameterType;
+            bool isReceiver = false;
+            if (isAssociatedMethod && parameters.empty() && equalsIgnoreCase(parameterName, "Self")) {
+                isReceiver = true;
+                if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
+                    ++index;
+                }
+                parameterType = receiverType;
+            } else {
+                if (index >= tokens.size() || tokens[index] == "," || tokens[index] == ")") {
+                    throw CodegenError("unsupported function signature: " + function.name());
+                }
+                parameterType = tokens[index++];
             }
-            parameterType = receiverType;
-        } else {
-            if (index >= tokens.size() || tokens[index] == "," || tokens[index] == ")") {
+
+            std::string llvmParameterType = llvmTypeForScalar(parameterType);
+            if (llvmParameterType.empty()) {
+                const StructDefinition* structType = findStruct(structs, parameterType);
+                if (structType == nullptr) {
+                    throw CodegenError(
+                        "LLVM emission currently supports only scalar and struct parameters");
+                }
+                llvmParameterType = isReceiver ? "ptr" : structType->llvmName;
+            }
+
+            parameters.push_back(FunctionParameter{
+                parameterName,
+                normalize(parameterName),
+                parameterType,
+                llvmParameterType});
+            if (index < tokens.size() && tokens[index] == ",") {
+                ++index;
+            } else if (index >= tokens.size() || tokens[index] != ")") {
                 throw CodegenError("unsupported function signature: " + function.name());
             }
-            parameterType = tokens[index++];
         }
 
-        std::string llvmParameterType = llvmTypeForScalar(parameterType);
-        if (llvmParameterType.empty()) {
-            const StructDefinition* structType = findStruct(structs, parameterType);
-            if (structType == nullptr) {
-                throw CodegenError(
-                    "LLVM emission currently supports only scalar and struct parameters");
-            }
-
-            llvmParameterType = isReceiver ? "ptr" : structType->llvmName;
-        }
-
-        parameters.push_back(FunctionParameter{
-            parameterName,
-            normalize(parameterName),
-            parameterType,
-            llvmParameterType});
-        if (index < tokens.size() && tokens[index] == ",") {
-            ++index;
-        } else if (index >= tokens.size() || tokens[index] != ")") {
+        if (index >= tokens.size() || tokens[index] != ")") {
             throw CodegenError("unsupported function signature: " + function.name());
         }
+        ++index;
     }
-
-    if (index >= tokens.size() || tokens[index] != ")") {
-        throw CodegenError("unsupported function signature: " + function.name());
-    }
-    ++index;
 
     std::string llvmReturnType;
     if (index == tokens.size()) {
@@ -934,12 +940,22 @@ private:
 
     void emitExpressionStatement(const ast::Expression& expression)
     {
+        if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
+            const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
+            emitNoArgumentSubroutineCall(identifier.name());
+            return;
+        }
+
         if (expression.kind() != ast::AstNodeKind::CallExpression) {
             throw CodegenError(
                 "LLVM emission currently supports only assignments and calls as statements");
         }
 
         const auto& call = static_cast<const ast::CallExpression&>(expression);
+        if (isMemberAccessCall(call)) {
+            emitNoArgumentMethodCall(call, false);
+            return;
+        }
         if (isMemberAccessCall(call.callee())) {
             emitMethodCall(call, false);
             return;
@@ -962,6 +978,24 @@ private:
         }
 
         emitSubroutineCall(call, callee.name());
+    }
+
+    void emitNoArgumentSubroutineCall(std::string_view calleeName)
+    {
+        const auto signature = signatures_.find(normalize(calleeName));
+        if (signature == signatures_.end()) {
+            throw CodegenError(
+                "LLVM emission could not resolve zero-argument subroutine call: " + std::string(calleeName));
+        }
+        if (!signature->second.parameters.empty()) {
+            throw CodegenError(
+                "subroutine requires arguments; use parentheses only when passing arguments");
+        }
+        if (signature->second.llvmReturnType != "void") {
+            throw CodegenError(
+                "function result cannot be ignored in zero-argument call: " + std::string(calleeName));
+        }
+        output_ << "  call void @" << signature->second.llvmName << "()\n";
     }
 
     void emitSubroutineCall(const ast::CallExpression& call, std::string_view calleeName)
@@ -1148,6 +1182,65 @@ private:
         return MethodCallTarget{&signature->second, local->second.slot};
     }
 
+    MethodCallTarget resolveNoArgumentMethodAccess(const ast::CallExpression& member)
+    {
+        if (!isMemberAccessCall(member)) {
+            throw CodegenError("LLVM emission expected member access");
+        }
+        if (member.arguments().size() != 2 ||
+            member.arguments()[0]->kind() != ast::AstNodeKind::IdentifierExpression ||
+            member.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
+            throw CodegenError("LLVM emission currently supports only local zero-argument method calls");
+        }
+
+        const auto& receiver =
+            static_cast<const ast::IdentifierExpression&>(*member.arguments()[0]);
+        const auto& method =
+            static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
+        const auto local = locals_.find(normalize(receiver.name()));
+        if (local == locals_.end()) {
+            throw CodegenError("LLVM emission supports method calls only on local struct variables");
+        }
+        if (findStruct(structs_, local->second.inoxType) == nullptr) {
+            throw CodegenError("LLVM emission method receiver is not a struct");
+        }
+
+        const std::string qualifiedName = local->second.inoxType + "." + method.name();
+        const auto signature = signatures_.find(normalize(qualifiedName));
+        if (signature == signatures_.end()) {
+            throw CodegenError("unknown field or zero-argument method for LLVM emission: " + qualifiedName);
+        }
+        if (signature->second.parameters.size() != 1 ||
+            signature->second.parameters.front().llvmType != "ptr") {
+            throw CodegenError("LLVM zero-argument method emission requires only an explicit struct receiver parameter");
+        }
+        return MethodCallTarget{&signature->second, local->second.slot};
+    }
+
+    std::string emitNoArgumentMethodCall(const ast::CallExpression& member, bool requireValue)
+    {
+        const MethodCallTarget target = resolveNoArgumentMethodAccess(member);
+        const FunctionSignature& signature = *target.signature;
+
+        if (signature.llvmReturnType == "void") {
+            output_ << "  call void @" << signature.llvmName
+                    << "(" << signature.parameters.front().llvmType << ' ' << target.receiverPointer << ")\n";
+            if (requireValue) {
+                throw CodegenError("void method call cannot be used as an expression");
+            }
+            return {};
+        }
+
+        const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << result << " = call " << signature.llvmReturnType
+                << " @" << signature.llvmName
+                << "(" << signature.parameters.front().llvmType << ' ' << target.receiverPointer << ")\n";
+        if (requireValue) {
+            return result;
+        }
+        return {};
+    }
+
     std::string emitMethodCall(const ast::CallExpression& call, bool requireValue)
     {
         const MethodCallTarget target = resolveMethodCall(call);
@@ -1263,6 +1356,19 @@ private:
             if (parameter != parameters_.end()) {
                 return parameter->second;
             }
+            const auto signature = signatures_.find(normalizedName);
+            if (signature != signatures_.end()) {
+                if (!signature->second.parameters.empty()) {
+                    throw CodegenError("function requires arguments; use parentheses only when passing arguments: " + identifier.name());
+                }
+                if (signature->second.llvmReturnType == "void") {
+                    throw CodegenError("void function call cannot be used as an expression");
+                }
+                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << result << " = call " << signature->second.llvmReturnType
+                        << " @" << signature->second.llvmName << "()\n";
+                return result;
+            }
             break;
         }
         case ast::AstNodeKind::BinaryExpression: {
@@ -1322,11 +1428,15 @@ private:
             const auto& callee =
                 static_cast<const ast::IdentifierExpression&>(call.callee());
             if (equalsIgnoreCase(callee.name(), "__member")) {
-                const FieldAddress field = emitMemberAddress(call);
-                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-                output_ << "  " << result << " = load " << field.llvmType
-                        << ", ptr " << field.pointer << '\n';
-                return result;
+                try {
+                    const FieldAddress field = emitMemberAddress(call);
+                    const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+                    output_ << "  " << result << " = load " << field.llvmType
+                            << ", ptr " << field.pointer << '\n';
+                    return result;
+                } catch (const CodegenError&) {
+                    return emitNoArgumentMethodCall(call, true);
+                }
             }
 
             const auto signature = signatures_.find(normalize(callee.name()));
@@ -1518,7 +1628,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
     }
 
     if (mainFunction == nullptr) {
-        throw CodegenError("LLVM emission requires Main()");
+        throw CodegenError("LLVM emission requires Main");
     }
     const FunctionSignature mainSignature{"main", "i32", {}};
     emitFunction(functionOutput, *mainFunction, mainSignature, signatures, structs, stringGlobals, nextStringLiteral);

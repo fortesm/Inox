@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include "SemanticAnalyzer.h"
 
 #include <algorithm>
@@ -132,7 +139,7 @@ const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
     registerFunctionSignatures(module);
 
     if (!hasMain_) {
-        throw SemanticError("module must declare Main()");
+        throw SemanticError("module must declare Main");
     }
 
     for (const auto& item : module.items()) {
@@ -159,9 +166,6 @@ void SemanticAnalyzer::registerFunctionSignatures(const ast::ModuleNode& module)
 void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration& function)
 {
     const auto& tokens = function.signatureTokens();
-    if (tokens.size() < 2 || tokens.front() != "(") {
-        throw SemanticError("expected parameter list for function: " + function.name());
-    }
 
     FunctionSignature signature;
     signature.name = function.name();
@@ -170,52 +174,59 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
     const bool isAssociatedMethod = dot != std::string::npos;
     const std::string receiverType = isAssociatedMethod ? function.name().substr(0, dot) : std::string{};
 
-    std::size_t index = 1;
-    while (index < tokens.size() && tokens[index] != ")") {
-        if (equalsIgnoreCase(tokens[index], "mut")) {
-            throw SemanticError("mutable parameters are reserved for a future Inox version: use a local variable or return a new value");
+    std::size_t index = 0;
+    if (!tokens.empty() && tokens.front() == "(") {
+        index = 1;
+        if (index < tokens.size() && tokens[index] == ")") {
+            throw SemanticError("empty parentheses are not allowed in declarations: " + function.name());
         }
-        if (!looksLikeIdentifier(tokens[index])) {
-            throw SemanticError("expected parameter name in function: " + function.name());
-        }
-        const std::string parameterName = tokens[index++];
-        std::string parameterType;
 
-        if (isAssociatedMethod && signature.parameters.empty() && equalsIgnoreCase(parameterName, "Self")) {
-            if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
-                ++index;
-            }
-            resolveTypeOrThrow(receiverType);
-            parameterType = canonicalTypeName(receiverType);
-        } else {
-            if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
+        while (index < tokens.size() && tokens[index] != ")") {
+            if (equalsIgnoreCase(tokens[index], "mut")) {
                 throw SemanticError("mutable parameters are reserved for a future Inox version: use a local variable or return a new value");
             }
-            if (index >= tokens.size() || !looksLikeIdentifier(tokens[index])) {
-                throw SemanticError("expected type for parameter: " + parameterName);
+            if (!looksLikeIdentifier(tokens[index])) {
+                throw SemanticError("expected parameter name in function: " + function.name());
             }
-            resolveTypeOrThrow(tokens[index]);
-            parameterType = canonicalTypeName(tokens[index++]);
-        }
+            const std::string parameterName = tokens[index++];
+            std::string parameterType;
 
-        for (const FunctionParameter& parameter : signature.parameters) {
-            if (equalsIgnoreCase(parameter.name, parameterName)) {
-                throw SemanticError("duplicate parameter: " + parameterName);
+            if (isAssociatedMethod && signature.parameters.empty() && equalsIgnoreCase(parameterName, "Self")) {
+                if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
+                    ++index;
+                }
+                resolveTypeOrThrow(receiverType);
+                parameterType = canonicalTypeName(receiverType);
+            } else {
+                if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
+                    throw SemanticError("mutable parameters are reserved for a future Inox version: use a local variable or return a new value");
+                }
+                if (index >= tokens.size() || !looksLikeIdentifier(tokens[index])) {
+                    throw SemanticError("expected type for parameter: " + parameterName);
+                }
+                resolveTypeOrThrow(tokens[index]);
+                parameterType = canonicalTypeName(tokens[index++]);
+            }
+
+            for (const FunctionParameter& parameter : signature.parameters) {
+                if (equalsIgnoreCase(parameter.name, parameterName)) {
+                    throw SemanticError("duplicate parameter: " + parameterName);
+                }
+            }
+            signature.parameters.push_back(FunctionParameter{parameterName, parameterType});
+
+            if (index < tokens.size() && tokens[index] == ",") {
+                ++index;
+            } else if (index >= tokens.size() || tokens[index] != ")") {
+                throw SemanticError("expected ',' or ')' in function: " + function.name());
             }
         }
-        signature.parameters.push_back(FunctionParameter{parameterName, parameterType});
 
-        if (index < tokens.size() && tokens[index] == ",") {
-            ++index;
-        } else if (index >= tokens.size() || tokens[index] != ")") {
-            throw SemanticError("expected ',' or ')' in function: " + function.name());
+        if (index >= tokens.size() || tokens[index] != ")") {
+            throw SemanticError("expected ')' in function: " + function.name());
         }
+        ++index;
     }
-
-    if (index >= tokens.size() || tokens[index] != ")") {
-        throw SemanticError("expected ')' in function: " + function.name());
-    }
-    ++index;
 
     if (index < tokens.size()) {
         if (index + 1 != tokens.size() || !looksLikeIdentifier(tokens[index])) {
@@ -829,6 +840,15 @@ std::string SemanticAnalyzer::inferExpressionType(const ast::Expression& express
     }
     case ast::AstNodeKind::IdentifierExpression: {
         const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
+        if (const FunctionSignature* signature = resolveFunctionSignature(identifier.name())) {
+            if (signature->parameters.empty()) {
+                if (const Symbol* symbol = symbols_.currentScope().resolve(identifier.name())) {
+                    result_.bind(identifier, *symbol);
+                }
+                return signature->returnType;
+            }
+            throw SemanticError("function " + identifier.name() + " requires arguments; use parentheses only when passing arguments");
+        }
         const Symbol& symbol = resolveOrThrow(identifier.name());
         result_.bind(identifier, symbol);
         return symbol.typeName;
@@ -911,12 +931,32 @@ std::string SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression&
     const auto& fieldIdentifier =
         static_cast<const ast::IdentifierExpression&>(*call.arguments()[1]);
     const StructField* field = resolveStructField(baseType, fieldIdentifier.name());
-    if (field == nullptr) {
-        throw SemanticError("unknown field " + fieldIdentifier.name() + " in " + baseType);
+    if (field != nullptr) {
+        result_.setExpressionType(fieldIdentifier, resolvedType(field->typeName));
+        return field->typeName;
     }
 
-    result_.setExpressionType(fieldIdentifier, resolvedType(field->typeName));
-    return field->typeName;
+    const std::string qualifiedName = baseType + "." + fieldIdentifier.name();
+    const FunctionSignature* signature = resolveFunctionSignature(qualifiedName);
+    if (signature != nullptr) {
+        if (signature->parameters.empty()) {
+            throw SemanticError("method " + signature->name + " must declare an explicit receiver parameter");
+        }
+        if (signature->parameters.size() != 1) {
+            throw SemanticError("method " + signature->name + " requires arguments; use parentheses only when passing arguments");
+        }
+        if (!canAssign(signature->parameters.front().typeName, baseType)) {
+            throw SemanticError(
+                "method " + signature->name + " receiver expects " +
+                signature->parameters.front().typeName + ", got " + baseType);
+        }
+        const Symbol& symbol = resolveOrThrow(signature->name);
+        result_.bind(fieldIdentifier, symbol);
+        result_.bind(call, symbol);
+        return signature->returnType;
+    }
+
+    throw SemanticError("unknown field or zero-argument method " + fieldIdentifier.name() + " in " + baseType);
 }
 
 std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpression& call)

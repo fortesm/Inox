@@ -47,7 +47,7 @@ Type
 
 ## Vector
 
-`Vector[T]` is future dynamic, 0-based, bounds-checked, heap-managed, and ownership/move based. Assignment moves and invalidates the source. `Clone()` performs deep copy.
+`Vector[T]` is future dynamic, 0-based, bounds-checked, heap-managed, and ownership/move based. Assignment moves and invalidates the source. `Clone` performs deep copy.
 
 ## Set
 

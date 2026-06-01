@@ -50,3 +50,9 @@ Integer overflow is invalid. Constant overflow is a compile-time error. Division
 ## Null and unsafe
 
 There is no universal `null`/`nil`. Unsafe pointers and C interop are not in the 0.1 safe core.
+
+## Zero-argument calls and declarations
+
+A function or subroutine with no parameters is declared without parentheses. A
+call with no arguments is also written without parentheses. Empty parentheses are
+rejected so that the language does not inherit C/Java-style syntactic noise.

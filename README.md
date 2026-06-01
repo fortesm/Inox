@@ -64,3 +64,19 @@ The compiler currently includes lexer, parser, semantic analyzer, layered tests,
 ## Design stance
 
 Inox rejects unsafe defaults: universal null, implicit narrowing, integer wraparound guarantees, unchecked bounds, implicit aliasing, classes, inheritance, and Java-style interfaces. Future work includes modules, arrays, vectors, sets, contracts/protocols/behaviors, arenas, borrowing, unsafe boundaries, and structured parallelism.
+
+## License
+
+Inox is free software licensed under the Mozilla Public License Version 2.0
+(MPL-2.0). See `LICENSE` for the full license text.
+
+Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+
+The project does not use the MPL 2.0 "Incompatible With Secondary Licenses"
+notice. See also `NOTICE.md`, `AUTHORS.md`, `CONTRIBUTING.md`, and
+`TRADEMARK.md`.
+
+## Canonical no-argument syntax
+
+Inox forbids empty parentheses. Use `Main :`, not `Main() :`. Use
+`Account.Print`, not `Account.Print()`.

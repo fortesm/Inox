@@ -195,7 +195,7 @@ PrintValue(X Integer) :
 `Main` is a subroutine at language level:
 
 ```inox
-Main() :
+Main :
     PutLn("hello")
 ;
 ```
@@ -287,7 +287,7 @@ Call-site sugar:
 
 ```inox
 P.Move(3, 7)
-PutLn(P.Sum())
+PutLn(P.Sum)
 ```
 
 Conceptually lowers to static associated calls. This is not virtual dispatch and does not create classes, inheritance, interfaces, or subtyping.
@@ -342,9 +342,9 @@ while I > 0
 
 ```inox
 repeat
-    Work()
+    Work
     until Done
-    MoreWork()
+    MoreWork
 ;
 ```
 
@@ -468,7 +468,7 @@ Var
 ;
 ```
 
-`Vector[T]` is dynamic, 0-based, heap/runtime-managed, bounds-checked, and distinct from `Array`. The selected semantic direction is ownership/move: assignment and by-value passing move the vector O(1) and invalidate the source. Deep copy requires `Clone()`. There is no implicit aliasing.
+`Vector[T]` is dynamic, 0-based, heap/runtime-managed, bounds-checked, and distinct from `Array`. The selected semantic direction is ownership/move: assignment and by-value passing move the vector O(1) and invalidate the source. Deep copy requires `Clone`. There is no implicit aliasing.
 
 ### Range
 
@@ -572,3 +572,60 @@ This manual is the canonical design target. The current compiler is a pre-alpha 
 - formal ownership/borrow/arena/unsafe design for 0.2+.
 
 When implementing a conformance item, update code, tests, canonical docs, manual HTML, and ADRs together.
+
+## Empty parentheses are forbidden
+
+Inox does not use C/Java-style empty parentheses. Parentheses exist only when
+there is at least one parameter or argument.
+
+Canonical declarations without parameters:
+
+```inox
+Main :
+    PutLn("Hello")
+;
+
+PrintReport :
+    PutLn("report")
+;
+```
+
+Canonical calls without arguments:
+
+```inox
+PrintReport
+Account.Print
+```
+
+Invalid forms:
+
+```inox
+Main() :
+;
+
+PrintReport() :
+;
+
+Account.Print()
+```
+
+Calls and declarations with parameters still use parentheses:
+
+```inox
+Add(A Integer, B Integer) Integer :
+    Return A + B
+;
+
+PutLn(42)
+Account.Deposit(100)
+```
+
+## License
+
+The Inox compiler, standard library, runtime components, official examples,
+tests and tools are licensed under the Mozilla Public License Version 2.0
+(MPL-2.0). The project intentionally does not use the MPL 2.0 "Incompatible With
+Secondary Licenses" notice.
+
+See `LICENSE`, `NOTICE.md`, `AUTHORS.md`, `CONTRIBUTING.md` and `TRADEMARK.md` at
+the repository root.

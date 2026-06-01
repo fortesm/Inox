@@ -81,3 +81,12 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - vector runtime;
 - checking-mode overflow traps;
 - final runtime ABI beyond the temporary Clang-backed `--build`/`--run` driver.
+
+## Licensing and empty-parentheses rules
+
+The project is licensed under MPL-2.0. Do not add the MPL "Incompatible With
+Secondary Licenses" notice. Preserve copyright and SPDX headers.
+
+Do not write empty parentheses in Inox code. Use `Main :`, `Report :`, `Report`,
+and `Account.Print`. Forms like `Main() :`, `Report() :`, `Report()`, and
+`Account.Print()` are invalid and must remain covered by regression tests.
