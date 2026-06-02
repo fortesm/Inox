@@ -1,4 +1,3 @@
-````markdown
 # Inox
 
 Inox is an experimental, strongly typed, compiled programming language.
@@ -919,4 +918,3 @@ See also:
 - `AUTHORS.md`;
 - `CONTRIBUTING.md`;
 - `TRADEMARK.md`.
-````
