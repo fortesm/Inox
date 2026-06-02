@@ -4,7 +4,15 @@ The runtime for 0.1 is intentionally small and safe.
 
 ## Output
 
-`Put` and `PutLn` are exposed canonically through `Std.IO`. The current LLVM smoke-test backend may lower them through `printf` for `Integer`, `Bool`, `Char`/String milestones, and string literals. This is temporary and not the final ABI.
+`Put` and `PutLn` are exposed canonically through `Std.IO`. They accept one or more arguments and emit them sequentially without requiring string concatenation. `PutLn` appends exactly one newline after the final argument. The current LLVM smoke-test backend may lower them through `printf` for `Integer`, `Bool`, `Char`/String milestones, and string literals. This is temporary and not the final ABI.
+
+Examples:
+
+```inox
+Put("J=", J)
+PutLn("Ciclo numero ", J)
+PutLn("A", 10, "B", true)
+```
 
 ## Standard library boundary
 

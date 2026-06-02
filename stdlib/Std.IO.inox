@@ -10,19 +10,18 @@ Module Std.IO
 == Inox 0.1 standard I/O facade.
 ==
 == Put and PutLn are currently compiler built-ins/runtime-lowered operations.
-== They are documented here as the canonical Std.IO surface:
+== They are documented here as the canonical Std.IO surface.
 ==
-==   Put(Integer)
-==   PutLn(Integer)
+== Put and PutLn accept one or more arguments. Arguments are emitted in
+== sequence without requiring explicit string concatenation. PutLn appends
+== exactly one newline after the final argument.
 ==
-==   Put(Bool)
-==   PutLn(Bool)
+==   Put("J=", J)
+==   PutLn("Ciclo numero ", J)
+==   PutLn("A", 10, "B", true)
 ==
-==   Put(String)
-==   PutLn(String)
-==
-==   Put(Char)
-==   PutLn(Char)
+== Supported 0.1 output values are currently Integer, Bool and String. Char
+== output remains part of the String/Char milestone and runtime completion.
 ==
 == Input APIs such as ReadLn are deliberately not part of 0.1 because they
 == require a settled Result[T, E], EOF and encoding-error model.

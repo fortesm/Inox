@@ -719,6 +719,12 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             analyzeExpression(*forStatement.step());
         }
         symbols_.pushScope();
+        if (symbols_.currentScope().containsLocal(forStatement.iterator()) ||
+            symbols_.currentScope().containsInAncestors(forStatement.iterator())) {
+            symbols_.popScope();
+            throw SemanticError(
+                "loop iterator conflicts with existing symbol: " + forStatement.iterator());
+        }
         declareOrThrow(forStatement.iterator(), SymbolKind::Variable, "Int64");
         ++loopDepth_;
         analyzeStatements(forStatement.body(), false);
@@ -1036,6 +1042,25 @@ std::string SemanticAnalyzer::analyzePreludeCall(
     std::string_view name,
     const std::vector<std::string>& argumentTypes) const
 {
+    if (equalsIgnoreCase(name, "Put") || equalsIgnoreCase(name, "PutLn")) {
+        if (argumentTypes.empty()) {
+            throw SemanticError(std::string(name) + " expects at least one argument");
+        }
+
+        for (std::size_t index = 0; index < argumentTypes.size(); ++index) {
+            const std::string& typeName = argumentTypes[index];
+            if (typeName == "String" || typeName == "Bool" || isIntegerType(typeName)) {
+                continue;
+            }
+
+            throw SemanticError(
+                "argument " + std::to_string(index + 1) + " of " + std::string(name) +
+                " cannot be printed yet: " + typeName);
+        }
+
+        return "Void";
+    }
+
     for (const PreludeSignature& signature : preludeSignatures()) {
         if (!equalsIgnoreCase(signature.name, name) ||
             signature.parameterTypes.size() != argumentTypes.size()) {

@@ -435,4 +435,10 @@ finally
   <p>Inox uses <code>Main :</code>, <code>Report :</code>, <code>Report</code>, and <code>Account.Print</code>.</p>
   <p>Forms such as <code>Main() :</code>, <code>Report()</code>, and <code>Account.Print()</code> are invalid.</p>
 </section>
-</article></main></body></html>
+</article></main>
+<h2>Std.IO variadic output</h2>
+<p><code>Put</code> and <code>PutLn</code> accept one or more arguments. Arguments are emitted sequentially without string concatenation. <code>PutLn</code> appends exactly one newline after the final argument.</p>
+<pre><code>Put("J=", J)
+PutLn("Ciclo numero ", J)
+PutLn("A", 10, "B", true)</code></pre>
+</body></html>

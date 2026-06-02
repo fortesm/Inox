@@ -528,6 +528,14 @@ Var
 - `Put` and `PutLn` for strings/literals;
 - byte-by-byte equality and inequality with `=` and `#`.
 
+`Put` and `PutLn` accept one or more arguments, Delphi/Object Pascal style. Arguments are emitted sequentially; this is not string concatenation and does not allocate a combined intermediate string. `PutLn` appends exactly one newline after the final argument:
+
+```inox
+Put("J=", J)
+PutLn("Ciclo numero ", J)
+PutLn("A", 10, "B", true)
+```
+
 Reserved/not implemented in 0.1:
 
 - `S[I]` indexing;

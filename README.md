@@ -80,3 +80,14 @@ notice. See also `NOTICE.md`, `AUTHORS.md`, `CONTRIBUTING.md`, and
 
 Inox forbids empty parentheses. Use `Main :`, not `Main() :`. Use
 `Account.Print`, not `Account.Print()`.
+
+
+## Std.IO variadic output
+
+`Put` and `PutLn` accept one or more arguments. Arguments are printed sequentially without string concatenation, and `PutLn` adds one newline after the final argument.
+
+```inox
+Put("J=", J)
+PutLn("Ciclo numero ", J)
+PutLn("A", 10, "B", true)
+```

@@ -970,10 +970,7 @@ private:
         const bool isPut = equalsIgnoreCase(callee.name(), "Put");
         const bool isPutLn = equalsIgnoreCase(callee.name(), "PutLn");
         if (isPut || isPutLn) {
-            if (call.arguments().size() != 1) {
-                throw CodegenError("Put/PutLn LLVM emission expects exactly one argument");
-            }
-            emitOutputCall(*call.arguments().front(), isPutLn);
+            emitOutputCallSequence(call.arguments(), isPutLn);
             return;
         }
 
@@ -1027,6 +1024,17 @@ private:
             output_ << signature->second.parameters[index].llvmType << ' ' << arguments[index];
         }
         output_ << ")\n";
+    }
+
+    void emitOutputCallSequence(const std::vector<ast::ExpressionPtr>& arguments, bool newline)
+    {
+        if (arguments.empty()) {
+            throw CodegenError("Put/PutLn LLVM emission expects at least one argument");
+        }
+
+        for (std::size_t index = 0; index < arguments.size(); ++index) {
+            emitOutputCall(*arguments[index], newline && index + 1 == arguments.size());
+        }
     }
 
     void emitOutputCall(const ast::Expression& argument, bool newline)

@@ -90,3 +90,10 @@ Secondary Licenses" notice. Preserve copyright and SPDX headers.
 Do not write empty parentheses in Inox code. Use `Main :`, `Report :`, `Report`,
 and `Account.Print`. Forms like `Main() :`, `Report() :`, `Report()`, and
 `Account.Print()` are invalid and must remain covered by regression tests.
+
+
+## Std.IO variadic output
+
+`Put` and `PutLn` accept one or more arguments. Emit arguments sequentially; do not require string concatenation. `PutLn` appends exactly one newline after the final argument. Examples: `Put("J=", J)`, `PutLn("Ciclo numero ", J)`, `PutLn("A", 10, "B", true)`.
+
+For `for` iterator conflicts with an existing symbol, prefer the diagnostic `loop iterator conflicts with existing symbol: Name`; keep `shadowing is forbidden` for general non-iterator shadowing.

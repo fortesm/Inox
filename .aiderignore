@@ -1,0 +1,31 @@
+# Build/generated output
+build/
+Build/
+out/
+Out/
+Debug/
+Release/
+x64/
+x86/
+.vs/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+
+# Binaries and object files
+*.exe
+*.obj
+*.o
+*.pdb
+*.ilk
+*.lib
+*.dll
+
+# Local Aider state
+.aider.input.history
+.aider.chat.history.md
+.aider.llm.history
+.aider.tags.cache.v3/
+
+# Local notes
+Todo.txt
