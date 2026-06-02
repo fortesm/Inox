@@ -12,23 +12,14 @@ Inox is currently a 0.1 pre-alpha compiler and language laboratory. The compiler
 | User who only wants to run a prebuilt `inox.exe` | No | No | Needs only the Release executable and the normal system/MSVC runtimes. |
 | User who wants to use `inox.exe --build` or `inox.exe --run` to generate native `.exe` files | Yes, for now | Not to develop the compiler, but a native toolchain is required | If the driver calls `clang`, `lld`, `link.exe`, or other external tools, those tools must be installed. |
 
-## Downloading a prebuilt test release
+## Downloading a prebuilt Windows test release
 
-Prebuilt test packages should be published as GitHub Release assets.
+Users who only want to test the Inox compiler and the language do not need to build the compiler from source.
 
-Recommended asset name:
-
-```text
-inox-windows-x64.zip
-```
-
-Recommended download link format:
+Download the latest Windows x64 test package here:
 
 ```text
-https://github.com/<OWNER>/Inox/releases/latest/download/inox-windows-x64.zip
-```
-
-Replace `<OWNER>` with the actual GitHub account or organization that hosts the repository.
+https://github.com/fortesm/Inox/releases/latest/download/inox-windows-x64.zip
 
 A prebuilt Windows test package has this layout:
 
