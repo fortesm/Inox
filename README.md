@@ -1,5 +1,3 @@
-Removi os marcadores de conflito e consolidei a versão limpa do `README.md`. 
-
 # Inox
 
 Inox is a strongly typed, compiled programming language for high-integrity software.
