@@ -1,10 +1,138 @@
+````markdown
 # Inox
 
-Inox is a compiled, strongly typed, post-object-oriented systems language for high-integrity software. It is built around structs as data, associated methods as behavior, composition instead of inheritance, explicit mutability, strong typing, bounds checking, and an LLVM-oriented backend.
+Inox is an experimental, strongly typed, compiled programming language.
 
-Inox is currently a 0.1 pre-alpha compiler and language laboratory. The compiler is useful for lexer, parser, semantic analysis, documentation, regression tests, LLVM IR emission, and a restricted Clang-backed native build/run path.
+The current implementation is an early compiler prototype written in C++ with a textual LLVM IR backend. The project is under active development and should be considered pre-alpha.
 
-## Usage profiles
+Inox is designed around:
+
+- strong static typing;
+- explicit and readable syntax;
+- block closure with `;`;
+- no `begin` / `end` keywords;
+- no empty parentheses for no-argument calls or declarations;
+- no universal `null`;
+- explicit mutability rules;
+- local scoping with no shadowing;
+- composition-oriented design instead of classical inheritance;
+- future support for contracts, protocols, safer concurrency, and a more complete runtime.
+
+## Current status
+
+The compiler currently includes:
+
+- lexer;
+- parser;
+- semantic analyzer;
+- layered tests;
+- typed dumps;
+- local variables;
+- typed local declarations;
+- assignments;
+- functions and subroutines;
+- `if` / `elif` / `else`;
+- `while`;
+- `repeat` / `until`;
+- `for` ranges;
+- `break` and `continue`;
+- basic structs;
+- associated methods;
+- minimal local multi-file `Module` / `Use` support;
+- a textual LLVM backend for a restricted executable subset;
+- native build/run through Clang;
+- an early standard-library layout under `stdlib/`.
+
+The backend is intentionally incremental and test-driven.
+
+The implementation is not yet a production compiler.
+
+## Downloading a prebuilt Windows test release
+
+Users who only want to test the Inox compiler and the language do **not** need to build the compiler from source.
+
+Download the latest Windows x64 test package here:
+
+[Download inox-windows-x64.zip](https://github.com/fortesm/Inox/releases/latest/download/inox-windows-x64.zip)
+
+The package is intended for people who want to try the language quickly from a ready-to-run `inox.exe`.
+
+The Windows test package has this layout:
+
+```text
+inox-windows-x64/
+    bin/
+        inox.exe
+    stdlib/
+        README.md
+        Std.Core.inox
+        Std.Debug.inox
+        Std.IO.inox
+        Std.Math.inox
+    examples/
+    output/
+        README.txt
+    licenses/
+    README.md
+    set-inox-env.ps1
+```
+
+After extracting the ZIP file, open PowerShell inside the extracted `inox-windows-x64` directory and run:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\set-inox-env.ps1
+```
+
+This configures the current PowerShell session:
+
+```text
+PATH            includes the local bin/ directory
+INOX_STDLIB     points to the bundled stdlib/ directory
+INOX_OUTPUT_DIR points to the bundled output/ directory
+```
+
+Then test the compiler:
+
+```powershell
+inox examples\hello.inox
+```
+
+Expected result:
+
+```text
+parse ok
+semantic ok
+```
+
+To emit LLVM IR:
+
+```powershell
+inox --emit-llvm examples\llvm-put-output-basic.inox
+```
+
+If a native toolchain is installed, the following commands can also build and run a native executable:
+
+```powershell
+inox --build examples\llvm-put-output-basic.inox
+inox --run examples\llvm-put-output-basic.inox
+```
+
+Generated native executables and intermediate files are written to:
+
+```text
+output/
+```
+
+For example:
+
+```text
+output/
+    llvm-put-output-basic.exe
+    llvm-put-output-basic.ll
+```
+
+## Usage profiles and requirements
 
 | Profile | Needs Clang/LLVM? | Needs a C++ compiler? | Notes |
 |---|---:|---:|---|
@@ -12,38 +140,19 @@ Inox is currently a 0.1 pre-alpha compiler and language laboratory. The compiler
 | User who only wants to run a prebuilt `inox.exe` | No | No | Needs only the Release executable and the normal system/MSVC runtimes. |
 | User who wants to use `inox.exe --build` or `inox.exe --run` to generate native `.exe` files | Yes, for now | Not to develop the compiler, but a native toolchain is required | If the driver calls `clang`, `lld`, `link.exe`, or other external tools, those tools must be installed. |
 
-## Downloading a prebuilt Windows test release
+## Testing the language with a prebuilt package
 
-Users who only want to test the Inox compiler and the language do not need to build the compiler from source.
-
-Download the latest Windows x64 test package here:
-
-https://github.com/fortesm/Inox/releases/latest/download/inox-windows-x64.zip
-
-A prebuilt Windows test package has this layout:
-```text
-inox-windows-x64/
-    bin/
-        inox.exe
-    stdlib/
-        Std.Core.inox
-        Std.Debug.inox
-        Std.IO.inox
-        Std.Math.inox
-    examples/
-    output/
-    licenses/
-    README.md
-    set-inox-env.ps1
-```
-
-To test the language with a prebuilt package:
+To test the language with a prebuilt Windows package:
 
 ```powershell
 Expand-Archive .\inox-windows-x64.zip -DestinationPath C:\Tools
 cd C:\Tools\inox-windows-x64
-.\bin\inox.exe .\examples\hello.inox
-.\bin\inox.exe --emit-llvm .\examples\llvm-put-output-basic.inox
+
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\set-inox-env.ps1
+
+inox .\examples\hello.inox
+inox --emit-llvm .\examples\llvm-put-output-basic.inox
 ```
 
 For normal use, either run the compiler from the extracted package root or set `INOX_STDLIB` explicitly:
@@ -51,24 +160,61 @@ For normal use, either run the compiler from the extracted package root or set `
 ```powershell
 $env:INOX_STDLIB = "C:\Tools\inox-windows-x64\stdlib"
 $env:Path += ";C:\Tools\inox-windows-x64\bin"
+
 inox .\examples\hello.inox
 ```
 
-The prebuilt `inox.exe` Release binary does not require Clang, LLVM, or a C++ compiler merely to parse, type-check, or emit LLVM IR. On Windows it may require the normal Microsoft Visual C++ Redistributable runtime.
+The prebuilt `inox.exe` Release binary does **not** require Clang, LLVM, or a C++ compiler merely to parse, type-check, or emit LLVM IR.
 
-## Native build/run of Inox programs
+On Windows, the prebuilt Release binary may require the normal Microsoft Visual C++ Redistributable runtime.
 
-The temporary 0.1 driver can delegate native executable generation to Clang:
+## Important distinction: testing vs building native programs
+
+A prebuilt `inox.exe` can parse, semantically check, and emit LLVM IR without requiring the user to build the compiler from source.
+
+For example, these commands do not require the user to compile the Inox compiler:
+
+```powershell
+inox examples\hello.inox
+inox --emit-llvm examples\llvm-put-output-basic.inox
+```
+
+However, building native executables from Inox programs may still require external native toolchain tools during the current development stage.
+
+Commands such as:
 
 ```powershell
 inox --build examples\llvm-put-output-basic.inox
 inox --run examples\llvm-put-output-basic.inox
 ```
 
-This mode currently requires `clang` in `PATH`. Generated LLVM IR and executables are written to the default artifact directory:
+may require Clang/LLVM, LLD, the MSVC linker, or another supported native toolchain to be installed and available in `PATH`.
+
+This requirement is temporary and reflects the current stage of the compiler. A future Inox SDK may package the required backend/linker tools or provide a more complete standalone build pipeline.
+
+## Native build/run of Inox programs
+
+The temporary 0.1 driver can delegate native executable generation to Clang.
+
+```powershell
+inox --build examples\llvm-put-output-basic.inox
+inox --run examples\llvm-put-output-basic.inox
+```
+
+This mode currently requires `clang` in `PATH`.
+
+Generated LLVM IR and executables are written to the default artifact directory.
+
+When running from the source repository, the default artifact directory is:
 
 ```text
 build/inox-artifacts/
+```
+
+When running from the prebuilt Windows test package, `set-inox-env.ps1` sets:
+
+```text
+output/
 ```
 
 Override that output directory with:
@@ -77,53 +223,11 @@ Override that output directory with:
 $env:INOX_OUTPUT_DIR = "C:\Temp\inox-out"
 ```
 
-## Building the compiler from source
+## Runtime and standard library status
 
-Developers who want to modify or build the Inox compiler need a native C++ toolchain.
+The initial standard library lives under `stdlib/` and is intentionally minimal.
 
-Windows development prerequisites:
-
-- Git for Windows
-- PowerShell 7
-- CMake
-- Ninja
-- LLVM/Clang
-- Visual Studio Build Tools with C++
-- Windows SDK
-
-Recommended Windows build:
-
-```powershell
-cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_CXX_COMPILER=clang++
-cmake --build build --config Debug
-pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1
-```
-
-Debug compiler path:
-
-```text
-build/Debug/inox.exe
-```
-
-Release compiler path:
-
-```text
-build/Release/inox.exe
-```
-
-Linux / Unix-like development build:
-
-```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build
-bash scripts/run-tests.sh
-```
-
-The `build/` directory is generated and must not be versioned.
-
-## Standard library and runtime status
-
-The initial standard library lives under `stdlib/` and is intentionally minimal. The `Std.*.inox` files are early standard-library modules and documentation anchors, not a complete standalone runtime library.
+The `Std.*.inox` files are early standard-library modules and documentation anchors, not a complete standalone runtime library.
 
 Inox does not yet provide a dedicated runtime library such as:
 
@@ -138,7 +242,376 @@ At this stage:
 - the Inox compiler itself is a native C++ program;
 - `Put` and `PutLn` are compiler/runtime-lowered facilities used by the current backend;
 - generated Inox programs may still rely on the host platform toolchain and system runtimes;
-- the standard library and runtime boundary will become explicit as the language matures.
+- the standard library is bundled with the test release so that the compiler can locate standard modules consistently;
+- `INOX_STDLIB` can be used to point the compiler to the standard library directory;
+- `INOX_OUTPUT_DIR` can be used to select the directory where build artifacts are written.
+
+Future work should separate clearly:
+
+- the Inox compiler executable;
+- the Inox standard library;
+- the Inox runtime library;
+- platform-specific backend/linker integration;
+- optional SDK packaging.
+
+## Environment variables
+
+### `INOX_STDLIB`
+
+`INOX_STDLIB` points to the directory containing the Inox standard library files.
+
+In the Windows test package, `set-inox-env.ps1` configures it automatically:
+
+```powershell
+$env:INOX_STDLIB = "<release-root>\stdlib"
+```
+
+Manual example:
+
+```powershell
+$env:INOX_STDLIB = "C:\Tools\inox-windows-x64\stdlib"
+```
+
+### `INOX_OUTPUT_DIR`
+
+`INOX_OUTPUT_DIR` points to the directory where native build artifacts should be written.
+
+In the Windows test package, `set-inox-env.ps1` configures it automatically:
+
+```powershell
+$env:INOX_OUTPUT_DIR = "<release-root>\output"
+```
+
+Manual example:
+
+```powershell
+$env:INOX_OUTPUT_DIR = "C:\Tools\inox-windows-x64\output"
+```
+
+If `INOX_OUTPUT_DIR` is not set, the compiler uses its default output directory.
+
+## Building the compiler from source
+
+Developers who want to modify or build the Inox compiler need a native C++ toolchain.
+
+### Windows development prerequisites
+
+Recommended Windows setup:
+
+- Git for Windows;
+- PowerShell 7;
+- CMake;
+- Ninja;
+- LLVM/Clang;
+- Visual Studio Build Tools with C++;
+- Windows SDK.
+
+The compiler is built with Clang targeting the MSVC ABI:
+
+```text
+x86_64-pc-windows-msvc
+```
+
+Clang is used as the C++ compiler, while Visual Studio Build Tools provide the native Windows platform components required by that target:
+
+- Windows SDK headers and libraries;
+- MSVC C/C++ runtime;
+- MSVC STL;
+- native linker support;
+- platform import libraries.
+
+### Installing the Windows development toolchain
+
+Install the required tools with `winget` from an elevated PowerShell session:
+
+```powershell
+winget install -e --id Microsoft.PowerShell --accept-package-agreements --accept-source-agreements
+winget install -e --id Git.Git --accept-package-agreements --accept-source-agreements
+winget install -e --id Kitware.CMake --accept-package-agreements --accept-source-agreements
+winget install -e --id Ninja-build.Ninja --accept-package-agreements --accept-source-agreements
+winget install -e --id LLVM.LLVM --accept-package-agreements --accept-source-agreements
+```
+
+Install Visual Studio Build Tools with the C++ workload:
+
+```powershell
+winget install -e --id Microsoft.VisualStudio.2022.BuildTools `
+  --accept-package-agreements `
+  --accept-source-agreements `
+  --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+```
+
+After installation, open a new terminal and check:
+
+```powershell
+pwsh --version
+git --version
+cmake --version
+ninja --version
+clang --version
+clang++ --version
+```
+
+When building on Windows, prefer using:
+
+```text
+Developer PowerShell for VS 2022
+```
+
+or a PowerShell session where the Visual Studio C++ environment has been initialized.
+
+### Recommended Windows build
+
+From the repository root:
+
+```powershell
+cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_CXX_COMPILER=clang++
+cmake --build build --config Debug
+pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1
+```
+
+Expected result:
+
+```text
+Summary: 142 passed, 0 failed, 142 total
+```
+
+Debug compiler path:
+
+```text
+build/Debug/inox.exe
+```
+
+Release compiler path:
+
+```text
+build/Release/inox.exe
+```
+
+The `build/` directory is generated and must not be versioned.
+
+### Build Release on Windows
+
+```powershell
+cmake --build build --config Release
+```
+
+The Release executable is:
+
+```text
+build/Release/inox.exe
+```
+
+### Inspect Release dependencies on Windows
+
+```powershell
+llvm-objdump -p .\build\Release\inox.exe | Select-String "DLL Name" -NoEmphasis
+```
+
+A normal Release build should depend on Release MSVC/UCRT runtime libraries such as:
+
+```text
+MSVCP140.dll
+VCRUNTIME140.dll
+KERNEL32.dll
+api-ms-win-crt-*.dll
+```
+
+It should not depend on Debug runtime DLLs such as:
+
+```text
+MSVCP140D.dll
+VCRUNTIME140D.dll
+ucrtbased.dll
+```
+
+It also should not depend on LLVM dynamic libraries unless the compiler is explicitly changed to link against LLVM dynamically.
+
+## Linux / Unix-like development build
+
+On Linux or another Unix-like system, developers need:
+
+- Git;
+- CMake;
+- Ninja or Make;
+- Clang or another supported C++ compiler;
+- the usual system development tools.
+
+A typical Clang/Ninja build is:
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++
+cmake --build build
+bash scripts/run-tests.sh
+```
+
+The generated compiler is usually:
+
+```text
+build/inox
+```
+
+## Packaging a Windows test release
+
+The Windows release package is generated from a Release build.
+
+First build the Release compiler:
+
+```powershell
+cmake --build build --config Release
+```
+
+Then generate the package:
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File .\scripts\package-release.ps1
+```
+
+The generated ZIP is:
+
+```text
+dist/inox-windows-x64.zip
+```
+
+This ZIP is the file that should be uploaded as a GitHub Release asset.
+
+It should not be committed to the Git repository.
+
+## Windows test release package layout
+
+The generated package has this layout:
+
+```text
+inox-windows-x64/
+    bin/
+        inox.exe
+    stdlib/
+        README.md
+        Std.Core.inox
+        Std.Debug.inox
+        Std.IO.inox
+        Std.Math.inox
+    examples/
+    output/
+        README.txt
+    licenses/
+    README.md
+    set-inox-env.ps1
+```
+
+The `bin/` directory contains the prebuilt compiler.
+
+The `stdlib/` directory contains the bundled standard-library files required by the compiler.
+
+The `examples/` directory contains sample Inox source files.
+
+The `output/` directory is the default output directory for generated native programs and intermediate files.
+
+The `set-inox-env.ps1` script configures the current PowerShell session to use the release package.
+
+## Publishing the Windows test release on GitHub
+
+The release ZIP should be uploaded to GitHub Releases as:
+
+```text
+inox-windows-x64.zip
+```
+
+The public download link is:
+
+```text
+https://github.com/fortesm/Inox/releases/latest/download/inox-windows-x64.zip
+```
+
+The link is valid when a GitHub Release exists and contains an asset named exactly:
+
+```text
+inox-windows-x64.zip
+```
+
+Recommended release title:
+
+```text
+Inox Windows x64 Test Release
+```
+
+Recommended tag format:
+
+```text
+v0.1.0-test
+```
+
+## Running examples from the repository
+
+From the repository root, after building the compiler:
+
+```powershell
+.\build\Debug\inox.exe examples\hello.inox
+```
+
+To emit LLVM IR:
+
+```powershell
+.\build\Debug\inox.exe --emit-llvm examples\llvm-put-output-basic.inox
+```
+
+To build and run a native executable, if the required native toolchain is available:
+
+```powershell
+.\build\Debug\inox.exe --build examples\llvm-put-output-basic.inox
+.\build\Debug\inox.exe --run examples\llvm-put-output-basic.inox
+```
+
+Release build equivalent:
+
+```powershell
+.\build\Release\inox.exe examples\hello.inox
+```
+
+## Running examples from the Windows test release
+
+After extracting `inox-windows-x64.zip`, enter the extracted package directory:
+
+```powershell
+cd C:\Tools\inox-windows-x64
+```
+
+Configure the current PowerShell session:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\set-inox-env.ps1
+```
+
+Run a basic example:
+
+```powershell
+inox examples\hello.inox
+```
+
+Emit LLVM IR:
+
+```powershell
+inox --emit-llvm examples\llvm-put-output-basic.inox
+```
+
+Build a native executable, if the required native toolchain is installed:
+
+```powershell
+inox --build examples\llvm-put-output-basic.inox
+```
+
+Run the native executable through the Inox driver:
+
+```powershell
+inox --run examples\llvm-put-output-basic.inox
+```
+
+Generated files are written to:
+
+```text
+output/
+```
 
 ## Documentation
 
@@ -152,18 +625,298 @@ Start here:
 - `AGENTS.md` — operational instructions for AI agents.
 - `docs/open-questions/OPEN_QUESTIONS.md` — deferred 0.2+ architecture topics.
 
-## Current compiler capabilities
+## Project layout
 
-The compiler currently includes lexer, parser, semantic analyzer, layered tests, typed dumps, a textual LLVM backend for a restricted executable subset, native build/run through Clang, and minimal local multi-file `Module`/`Use` support. The backend is intentionally incremental and test-driven.
+```text
+Inox/
+    contrib/
+    docs/
+    examples/
+    grammar/
+    include/
+    libs/
+    licenses/
+    scripts/
+    src/
+    stdlib/
+    tests/
+    tools/
+    utils/
+```
+
+### `src/`
+
+Compiler implementation.
+
+### `stdlib/`
+
+Early Inox standard library files.
+
+### `examples/`
+
+Example Inox programs used for manual testing and regression coverage.
+
+### `tests/`
+
+Compiler regression tests.
+
+### `docs/`
+
+Language, compiler, backend, runtime, and release documentation.
+
+### `scripts/`
+
+Build, test, and packaging helper scripts.
+
+### `licenses/`
+
+License files and third-party license material.
+
+### `contrib/`
+
+Reserved for external contributions and optional experiments.
+
+### `include/`
+
+Reserved for public C/C++ headers or integration interfaces.
+
+### `libs/`
+
+Reserved for internal libraries or future vendored dependencies.
+
+### `tools/`
+
+Reserved for development tools related to the compiler and language.
+
+### `utils/`
+
+Reserved for small helper utilities.
+
+## Language notes
+
+### No empty parentheses for no-argument declarations or calls
+
+Inox forbids empty parentheses for declarations or calls that have no arguments.
+
+Use:
+
+```inox
+Main :
+    PutLn("hello")
+;
+```
+
+Do not use:
+
+```inox
+Main() :
+    PutLn("hello")
+;
+```
+
+For no-argument associated method calls, use:
+
+```inox
+Account.Print
+```
+
+Do not use:
+
+```inox
+Account.Print()
+```
+
+### Block closure
+
+Inox uses `;` to close blocks.
+
+Example:
+
+```inox
+Main :
+    if true
+        PutLn("yes")
+    ;
+;
+```
+
+The semicolon closes the block. It is not a C-like statement terminator.
+
+### Local declarations and assignment
+
+A typed local declaration introduces a new local symbol:
+
+```inox
+X Integer := 10
+```
+
+An assignment updates an existing symbol:
+
+```inox
+X := 20
+```
+
+These are different operations.
+
+### No shadowing
+
+Inox forbids local shadowing.
+
+Invalid:
+
+```inox
+Main :
+    X Integer := 1
+
+    if true
+        X Integer := 2
+    ;
+;
+```
+
+The inner `X` would shadow the outer `X`, so this must be rejected.
+
+Correct:
+
+```inox
+Main :
+    X Integer := 1
+
+    if true
+        X := 2
+    ;
+;
+```
+
+### Block-local scope
+
+A symbol declared inside a block exists only inside that block.
+
+Invalid:
+
+```inox
+Main :
+    if true
+        Y Integer := 10
+    ;
+
+    PutLn(Y)
+;
+```
+
+`Y` is not visible after the `if` block.
+
+### `for` iterator scope
+
+The iterator of a `for` loop is introduced by the loop itself.
+
+Valid:
+
+```inox
+Main :
+    for I in 1..10
+        PutLn(I)
+    ;
+;
+```
+
+The iterator is read-only and is scoped to the loop body.
+
+Invalid:
+
+```inox
+Main :
+    I Integer := 0
+
+    for I in 1..10
+        PutLn(I)
+    ;
+;
+```
+
+The loop iterator conflicts with an existing visible symbol.
+
+Sequential loops may reuse the same iterator name because their scopes do not overlap:
+
+```inox
+Main :
+    for I in 1..10
+        PutLn(I)
+    ;
+
+    for I in 1..100
+        PutLn(I)
+    ;
+;
+```
 
 ## Design stance
 
-Inox rejects unsafe defaults: universal null, implicit narrowing, integer wraparound guarantees, unchecked bounds, implicit aliasing, classes, inheritance, and Java-style interfaces. Future work includes modules, arrays, vectors, sets, contracts/protocols/behaviors, arenas, borrowing, unsafe boundaries, and structured parallelism.
+Inox rejects unsafe defaults:
+
+- universal null;
+- implicit narrowing;
+- integer wraparound guarantees;
+- unchecked bounds;
+- implicit aliasing;
+- classes;
+- inheritance;
+- Java-style interfaces.
+
+Future work includes:
+
+- modules;
+- arrays;
+- vectors;
+- sets;
+- contracts;
+- protocols;
+- behaviors;
+- arenas;
+- borrowing;
+- unsafe boundaries;
+- structured parallelism.
+
+## Version control policy
+
+The following directories are generated and must not be versioned:
+
+```text
+build/
+dist/
+```
+
+Local source ZIP snapshots should not be versioned:
+
+```text
+Inox-source-*.zip
+Inox.zip
+```
+
+Generated test outputs should not be versioned unless they are intentional expected-output fixtures.
+
+The Windows release package:
+
+```text
+dist/inox-windows-x64.zip
+```
+
+must be uploaded as a GitHub Release asset, not committed to the repository.
 
 ## License
 
-Inox is free software licensed under the Mozilla Public License Version 2.0 (MPL-2.0). See `LICENSE` for the full license text.
+Inox is free software licensed under the Mozilla Public License Version 2.0 (MPL-2.0).
+
+See `LICENSE` for the full license text.
 
 Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 
-The project does not use the MPL 2.0 "Incompatible With Secondary Licenses" notice. See also `NOTICE.md`, `AUTHORS.md`, `CONTRIBUTING.md`, and `TRADEMARK.md`.
+The project does not use the MPL 2.0 "Incompatible With Secondary Licenses" notice.
+
+See also:
+
+- `NOTICE.md`;
+- `AUTHORS.md`;
+- `CONTRIBUTING.md`;
+- `TRADEMARK.md`.
+````
