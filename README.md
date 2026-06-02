@@ -20,12 +20,11 @@ Download the latest Windows x64 test package here:
 
 ```text
 https://github.com/fortesm/Inox/releases/latest/download/inox-windows-x64.zip
+```text
 
 A prebuilt Windows test package has this layout:
 
-```text
 inox-windows-x64/
-    README.md
     bin/
         inox.exe
     stdlib/
@@ -34,10 +33,10 @@ inox-windows-x64/
         Std.IO.inox
         Std.Math.inox
     examples/
-        hello.inox
-        ...
+    output/
     licenses/
-        MPL-2.0.txt
+    README.md
+    set-inox-env.ps1
 ```
 
 To test the language with a prebuilt package:
