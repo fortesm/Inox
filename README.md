@@ -1,50 +1,16 @@
 # Inox
 
-Inox is an experimental, strongly typed, compiled programming language.
+Inox is a strongly typed, compiled programming language designed for robust, explicit, and maintainable systems software.
 
-The current implementation is an early compiler prototype written in C++ with a textual LLVM IR backend. The project is under active development and should be considered pre-alpha.
+The language is being designed with the ambition of combining the clarity of Pascal/Ada-style syntax, the safety discipline expected from critical software engineering, and the performance-oriented compilation model of modern LLVM-based toolchains.
 
-Inox is designed around:
+Inox favors explicit structure over implicit magic. Its syntax is intentionally compact, but not cryptic. Blocks are closed with `;`, declarations are readable, types are strong, unsafe defaults are rejected, and semantic mistakes such as accidental shadowing are treated as errors rather than tolerated as style choices.
 
-- strong static typing;
-- explicit and readable syntax;
-- block closure with `;`;
-- no `begin` / `end` keywords;
-- no empty parentheses for no-argument calls or declarations;
-- no universal `null`;
-- explicit mutability rules;
-- local scoping with no shadowing;
-- composition-oriented design instead of classical inheritance;
-- future support for contracts, protocols, safer concurrency, and a more complete runtime.
+The long-term goal is to make Inox suitable for software where correctness, portability, readability, and predictable execution matter: infrastructure, financial systems, scientific computing, industrial automation, cryptography-oriented systems, embedded tooling, and other domains where hidden runtime behavior is unacceptable.
 
-## Current status
+Inox is not a classical object-oriented language. It does not build its design around classes, inheritance trees, or Java-style interfaces. Its direction is composition-first, with data structures, associated methods, explicit capabilities, and future contracts/protocols/behaviors providing reuse without forcing a class hierarchy.
 
-The compiler currently includes:
-
-- lexer;
-- parser;
-- semantic analyzer;
-- layered tests;
-- typed dumps;
-- local variables;
-- typed local declarations;
-- assignments;
-- functions and subroutines;
-- `if` / `elif` / `else`;
-- `while`;
-- `repeat` / `until`;
-- `for` ranges;
-- `break` and `continue`;
-- basic structs;
-- associated methods;
-- minimal local multi-file `Module` / `Use` support;
-- a textual LLVM backend for a restricted executable subset;
-- native build/run through Clang;
-- an early standard-library layout under `stdlib/`.
-
-The backend is intentionally incremental and test-driven.
-
-The implementation is not yet a production compiler.
+The current compiler is an early-stage implementation written in C++ with a textual LLVM IR backend. It already supports a restricted executable subset of the language and is evolving through regression tests, canonical documentation, and incremental backend work.
 
 ## Downloading a prebuilt Windows test release
 
@@ -133,11 +99,11 @@ output/
 
 ## Usage profiles and requirements
 
-| Profile | Needs Clang/LLVM? | Needs a C++ compiler? | Notes |
-|---|---:|---:|---|
-| Inox compiler developer | Yes | Yes | Builds `inox.exe` from the C++ source code. |
-| User who only wants to run a prebuilt `inox.exe` | No | No | Needs only the Release executable and the normal system/MSVC runtimes. |
-| User who wants to use `inox.exe --build` or `inox.exe --run` to generate native `.exe` files | Yes, for now | Not to develop the compiler, but a native toolchain is required | If the driver calls `clang`, `lld`, `link.exe`, or other external tools, those tools must be installed. |
+| Profile                                                                                      | Needs Clang/LLVM? |                                           Needs a C++ compiler? | Notes                                                                                                   |
+| -------------------------------------------------------------------------------------------- | ----------------: | --------------------------------------------------------------: | ------------------------------------------------------------------------------------------------------- |
+| Inox compiler developer                                                                      |               Yes |                                                             Yes | Builds `inox.exe` from the C++ source code.                                                             |
+| User who only wants to run a prebuilt `inox.exe`                                             |                No |                                                              No | Needs only the Release executable and the normal system/MSVC runtimes.                                  |
+| User who wants to use `inox.exe --build` or `inox.exe --run` to generate native `.exe` files |      Yes, for now | Not to develop the compiler, but a native toolchain is required | If the driver calls `clang`, `lld`, `link.exe`, or other external tools, those tools must be installed. |
 
 ## Testing the language with a prebuilt package
 
@@ -238,20 +204,20 @@ inox_runtime.dll
 
 At this stage:
 
-- the Inox compiler itself is a native C++ program;
-- `Put` and `PutLn` are compiler/runtime-lowered facilities used by the current backend;
-- generated Inox programs may still rely on the host platform toolchain and system runtimes;
-- the standard library is bundled with the test release so that the compiler can locate standard modules consistently;
-- `INOX_STDLIB` can be used to point the compiler to the standard library directory;
-- `INOX_OUTPUT_DIR` can be used to select the directory where build artifacts are written.
+* the Inox compiler itself is a native C++ program;
+* `Put` and `PutLn` are compiler/runtime-lowered facilities used by the current backend;
+* generated Inox programs may still rely on the host platform toolchain and system runtimes;
+* the standard library is bundled with the test release so that the compiler can locate standard modules consistently;
+* `INOX_STDLIB` can be used to point the compiler to the standard library directory;
+* `INOX_OUTPUT_DIR` can be used to select the directory where build artifacts are written.
 
 Future work should separate clearly:
 
-- the Inox compiler executable;
-- the Inox standard library;
-- the Inox runtime library;
-- platform-specific backend/linker integration;
-- optional SDK packaging.
+* the Inox compiler executable;
+* the Inox standard library;
+* the Inox runtime library;
+* platform-specific backend/linker integration;
+* optional SDK packaging.
 
 ## Environment variables
 
@@ -297,13 +263,13 @@ Developers who want to modify or build the Inox compiler need a native C++ toolc
 
 Recommended Windows setup:
 
-- Git for Windows;
-- PowerShell 7;
-- CMake;
-- Ninja;
-- LLVM/Clang;
-- Visual Studio Build Tools with C++;
-- Windows SDK.
+* Git for Windows;
+* PowerShell 7;
+* CMake;
+* Ninja;
+* LLVM/Clang;
+* Visual Studio Build Tools with C++;
+* Windows SDK.
 
 The compiler is built with Clang targeting the MSVC ABI:
 
@@ -313,11 +279,11 @@ x86_64-pc-windows-msvc
 
 Clang is used as the C++ compiler, while Visual Studio Build Tools provide the native Windows platform components required by that target:
 
-- Windows SDK headers and libraries;
-- MSVC C/C++ runtime;
-- MSVC STL;
-- native linker support;
-- platform import libraries.
+* Windows SDK headers and libraries;
+* MSVC C/C++ runtime;
+* MSVC STL;
+* native linker support;
+* platform import libraries.
 
 ### Installing the Windows development toolchain
 
@@ -430,11 +396,11 @@ It also should not depend on LLVM dynamic libraries unless the compiler is expli
 
 On Linux or another Unix-like system, developers need:
 
-- Git;
-- CMake;
-- Ninja or Make;
-- Clang or another supported C++ compiler;
-- the usual system development tools.
+* Git;
+* CMake;
+* Ninja or Make;
+* Clang or another supported C++ compiler;
+* the usual system development tools.
 
 A typical Clang/Ninja build is:
 
@@ -612,17 +578,25 @@ Generated files are written to:
 output/
 ```
 
+## Language tutorial
+
+The language tutorial and browsable manual are available here:
+
+[Open the Inox HTML language tutorial](docs/site/index.html)
+
+The tutorial should be kept synchronized with the compiler implementation and the canonical language reference.
+
 ## Documentation
 
 Start here:
 
-- `docs/canonical/language-reference.md` — consolidated tutorial/reference.
-- `docs/development/toolchain.md` — requirements for compiler developers and language testers.
-- `docs/release/prebuilt-usage.md` — packaging and usage guide for prebuilt releases.
-- `docs/site/index.html` — browsable HTML manual.
-- `docs/decisions/ADR-0006-inox-0.1-constitution.md` — frozen 0.1 decisions.
-- `AGENTS.md` — operational instructions for AI agents.
-- `docs/open-questions/OPEN_QUESTIONS.md` — deferred 0.2+ architecture topics.
+* `docs/canonical/language-reference.md` — consolidated tutorial/reference.
+* `docs/development/toolchain.md` — requirements for compiler developers and language testers.
+* `docs/release/prebuilt-usage.md` — packaging and usage guide for prebuilt releases.
+* `docs/site/index.html` — browsable HTML manual.
+* `docs/decisions/ADR-0006-inox-0.1-constitution.md` — frozen 0.1 decisions.
+* `AGENTS.md` — operational instructions for AI agents.
+* `docs/open-questions/OPEN_QUESTIONS.md` — deferred 0.2+ architecture topics.
 
 ## Project layout
 
@@ -691,190 +665,32 @@ Reserved for development tools related to the compiler and language.
 
 Reserved for small helper utilities.
 
-## Language notes
-
-### No empty parentheses for no-argument declarations or calls
-
-Inox forbids empty parentheses for declarations or calls that have no arguments.
-
-Use:
-
-```inox
-Main :
-    PutLn("hello")
-;
-```
-
-Do not use:
-
-```inox
-Main() :
-    PutLn("hello")
-;
-```
-
-For no-argument associated method calls, use:
-
-```inox
-Account.Print
-```
-
-Do not use:
-
-```inox
-Account.Print()
-```
-
-### Block closure
-
-Inox uses `;` to close blocks.
-
-Example:
-
-```inox
-Main :
-    if true
-        PutLn("yes")
-    ;
-;
-```
-
-The semicolon closes the block. It is not a C-like statement terminator.
-
-### Local declarations and assignment
-
-A typed local declaration introduces a new local symbol:
-
-```inox
-X Integer := 10
-```
-
-An assignment updates an existing symbol:
-
-```inox
-X := 20
-```
-
-These are different operations.
-
-### No shadowing
-
-Inox forbids local shadowing.
-
-Invalid:
-
-```inox
-Main :
-    X Integer := 1
-
-    if true
-        X Integer := 2
-    ;
-;
-```
-
-The inner `X` would shadow the outer `X`, so this must be rejected.
-
-Correct:
-
-```inox
-Main :
-    X Integer := 1
-
-    if true
-        X := 2
-    ;
-;
-```
-
-### Block-local scope
-
-A symbol declared inside a block exists only inside that block.
-
-Invalid:
-
-```inox
-Main :
-    if true
-        Y Integer := 10
-    ;
-
-    PutLn(Y)
-;
-```
-
-`Y` is not visible after the `if` block.
-
-### `for` iterator scope
-
-The iterator of a `for` loop is introduced by the loop itself.
-
-Valid:
-
-```inox
-Main :
-    for I in 1..10
-        PutLn(I)
-    ;
-;
-```
-
-The iterator is read-only and is scoped to the loop body.
-
-Invalid:
-
-```inox
-Main :
-    I Integer := 0
-
-    for I in 1..10
-        PutLn(I)
-    ;
-;
-```
-
-The loop iterator conflicts with an existing visible symbol.
-
-Sequential loops may reuse the same iterator name because their scopes do not overlap:
-
-```inox
-Main :
-    for I in 1..10
-        PutLn(I)
-    ;
-
-    for I in 1..100
-        PutLn(I)
-    ;
-;
-```
-
 ## Design stance
 
 Inox rejects unsafe defaults:
 
-- universal null;
-- implicit narrowing;
-- integer wraparound guarantees;
-- unchecked bounds;
-- implicit aliasing;
-- classes;
-- inheritance;
-- Java-style interfaces.
+* universal null;
+* implicit narrowing;
+* integer wraparound guarantees;
+* unchecked bounds;
+* implicit aliasing;
+* classes;
+* inheritance;
+* Java-style interfaces.
 
 Future work includes:
 
-- modules;
-- arrays;
-- vectors;
-- sets;
-- contracts;
-- protocols;
-- behaviors;
-- arenas;
-- borrowing;
-- unsafe boundaries;
-- structured parallelism.
+* modules;
+* arrays;
+* vectors;
+* sets;
+* contracts;
+* protocols;
+* behaviors;
+* arenas;
+* borrowing;
+* unsafe boundaries;
+* structured parallelism.
 
 ## Version control policy
 
@@ -914,7 +730,7 @@ The project does not use the MPL 2.0 "Incompatible With Secondary Licenses" noti
 
 See also:
 
-- `NOTICE.md`;
-- `AUTHORS.md`;
-- `CONTRIBUTING.md`;
-- `TRADEMARK.md`.
+* `NOTICE.md`;
+* `AUTHORS.md`;
+* `CONTRIBUTING.md`;
+* `TRADEMARK.md`.
