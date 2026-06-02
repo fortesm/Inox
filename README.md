@@ -1,6 +1,5 @@
 # Inox
 
-<<<<<<< HEAD
 Inox is a strongly typed, compiled programming language designed for robust, explicit, and maintainable systems software.
 
 The language is being designed with the ambition of combining the clarity of Pascal/Ada-style syntax, the safety discipline expected from critical software engineering, and the performance-oriented compilation model of modern LLVM-based toolchains.
