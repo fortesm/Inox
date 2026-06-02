@@ -15,10 +15,17 @@ Module resolution checks the entry-file directory first and then `stdlib/` at
 the project root. `Std.Core` is the conceptual implicit prelude/core module.
 `Std.IO`, `Std.Math`, and `Std.Debug` are explicit standard-library modules.
 
-## Mutability
+## Mutability and local scope
 
 - Parameters are immutable by default.
-- Local variables declared in `Var` are mutable.
+- Local variables declared inline or in `Var` are mutable.
+- `Name Type := Expression` declares a new symbol.
+- `Name := Expression` assigns to an existing mutable symbol.
+- Shadowing is forbidden: a declaration cannot reuse a name already visible in the current scope or any outer scope.
+- Name comparison is case-insensitive, so `Valor` and `valor` conflict.
+- A local declaration is visible only from its declaration point to the end of the current block.
+- Use before declaration is invalid.
+- Blocks introduce local scopes: subroutine/function body, `if`, `elif`, `else`, `while`, `repeat`, `for`, each `case` arm, `try`, `except`, and `finally`.
 - Mutating associated methods require `Self mut`.
 - Ordinary mutable parameters such as `mut X Integer` are reserved and must be rejected in 0.1.
 
@@ -35,7 +42,7 @@ Structs are nominal value types. Ordinary assignment, ordinary parameters, and o
 
 ## Control flow
 
-`if` has no `then` or `:`. `repeat` is a general loop. `until` is an internal conditional exit. `for I in A..B (S)` has inclusive bounds, direction determined by the range, and positive step.
+`if` has no `then` or `:`. `repeat` is a general loop. `until` is an internal conditional exit. `for I in A..B (S)` has inclusive bounds, direction determined by the range, and positive step. The `for` iterator is implicitly declared, read-only, scoped to the loop body, and must not shadow any visible symbol.
 
 `case` has no fall-through. Enum cases without `otherwise` must be exhaustive.
 

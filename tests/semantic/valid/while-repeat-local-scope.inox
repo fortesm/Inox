@@ -1,0 +1,23 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+Module WhileRepeatLocalScope
+
+Main :
+    I Integer := 0
+
+    while I < 1
+        LocalWhile Integer := I + 1
+        I := LocalWhile
+    ;
+
+    repeat
+        LocalRepeat Integer := I
+        I := LocalRepeat + 1
+        until I > 1
+    ;
+;

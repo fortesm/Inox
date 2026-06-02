@@ -57,6 +57,11 @@ The initial portable 0.1 standard library lives under `stdlib/`:
 `stdlib/`. The standard library must remain portable across Windows and Linux
 and must not depend on GC, unsafe features, or C interop.
 
+
+## Local scope and no shadowing
+
+`X Integer := 10` declares a new local variable. `X := 10` assigns to an existing mutable variable. Shadowing is forbidden across nested scopes, and identifier comparison is case-insensitive. The `for` iterator is implicit, read-only, visible only inside the loop body, and cannot conflict with an existing symbol.
+
 ## Current compiler capabilities
 
 The compiler currently includes lexer, parser, semantic analyzer, layered tests, typed dumps, a textual LLVM backend for a restricted executable subset, native build/run through Clang, and minimal local multi-file `Module`/`Use` support. The backend is intentionally incremental and test-driven.

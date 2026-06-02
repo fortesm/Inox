@@ -782,10 +782,16 @@ private:
         if (statement.kind() == ast::AstNodeKind::VarStatement) {
             const auto& variable = static_cast<const ast::VarStatement&>(statement);
             if (variable.initializer() == nullptr) {
-                throw CodegenError(
-                    "LLVM emission currently requires local variable initialization");
+                if (variable.typeName().empty()) {
+                    throw CodegenError(
+                        "LLVM emission currently requires local variable initialization");
+                }
+                emitTypedLocalVariable(variable.name(), variable.typeName());
+            } else if (!variable.typeName().empty()) {
+                emitTypedLocalVariable(variable.name(), variable.typeName(), variable.initializer());
+            } else {
+                emitLocalVariable(variable.name(), *variable.initializer());
             }
-            emitLocalVariable(variable.name(), *variable.initializer());
             return;
         }
 

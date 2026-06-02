@@ -19,6 +19,7 @@ enum class SymbolKind {
     Module,
     Function,
     Variable,
+    LoopIterator,
     Constant,
     State,
     Type,
@@ -30,6 +31,7 @@ struct Symbol {
     std::string normalizedName;
     SymbolKind kind = SymbolKind::Variable;
     std::string typeName;
+    bool isMutable = false;
 };
 
 struct TypeSymbol {
@@ -44,7 +46,7 @@ public:
     explicit Scope(Scope* parent = nullptr);
 
     Scope* parent() const;
-    const Symbol* declare(std::string name, SymbolKind kind, std::string typeName = {});
+    const Symbol* declare(std::string name, SymbolKind kind, std::string typeName = {}, bool isMutable = false);
     const Symbol* resolve(std::string_view name) const;
     bool containsLocal(std::string_view name) const;
     bool containsInAncestors(std::string_view name) const;

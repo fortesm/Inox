@@ -248,6 +248,8 @@ private:
             return "Function";
         case SymbolKind::Variable:
             return "Variable";
+        case SymbolKind::LoopIterator:
+            return "LoopIterator";
         case SymbolKind::Constant:
             return "Constant";
         case SymbolKind::State:

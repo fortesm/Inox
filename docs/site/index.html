@@ -122,7 +122,11 @@ Type
     TCardSuit (Club, Diamond, Heart, Spade)
 </code></pre>
 <p>`Struct` and multi-line `Enum` open blocks and therefore close with `;`. `Range` is a simple line declaration and does not use `;`.</p>
-<h3>Var</h3>
+<h3>Local variables and Var</h3>
+<p>A local declaration introduces a new symbol. The canonical typed inline form is:</p>
+<pre><code>
+X Integer := 10
+</code></pre>
 <p>`Var` opens a local variable declaration block and closes with `;`. It does not use `:`.</p>
 <pre><code>
 Var
@@ -131,7 +135,34 @@ Var
 
 X := X + 1
 </code></pre>
-<p>Variables declared in `Var` are mutable by default.</p>
+<p>Declarations and assignments are deliberately distinct:</p>
+<pre><code>
+X Integer := 2  == declaration of a new local X
+X := 2          == assignment to an existing X
+</code></pre>
+<p>Local variables are mutable by default. A declaration is visible only from its declaration point to the end of the current block.</p>
+<p>Shadowing is forbidden. A declaration must not reuse a name already visible in the current scope or in an outer scope, including names that differ only by case.</p>
+<p>Valid assignment to an outer variable:</p>
+<pre><code>
+Main :
+    X Integer := 1
+
+    if true
+        X := 2
+    ;
+;
+</code></pre>
+<p>Invalid shadowing:</p>
+<pre><code>
+Main :
+    X Integer := 1
+
+    if true
+        X Integer := 2
+    ;
+;
+</code></pre>
+<p>Variables declared inside `if`, `elif`, `else`, `while`, `repeat`, `for`, a `case` arm, `try`, `except`, or `finally` do not escape that block. Use before declaration is an error.</p>
 <h3>Const and State</h3>
 <p>`Const` declares constants. Mutable global state must be explicit via `State`. Global mutable state should be rare and visible.</p>
 <h2 id="functions-subroutines-return-and-exit">Functions, subroutines, Return, and Exit</h2>
@@ -227,7 +258,9 @@ PutLn(P.Sum)
 <h2 id="mutability-and-ownership">Mutability and ownership</h2>
 <p>Rules:</p>
 <ul><li>Parameters are immutable by default.</li></ul>
-<ul><li>Local variables declared in `Var` are mutable.</li></ul>
+<ul><li>Local variables declared inline or in `Var` are mutable.</li></ul>
+<ul><li>Assignment uses `Name := Expression`; declaration uses `Name Type := Expression`.</li></ul>
+<ul><li>Shadowing is forbidden in all local scopes.</li></ul>
 <ul><li>Receiver mutation requires `Self mut`.</li></ul>
 <ul><li>`mut X Integer` for ordinary mutable parameters is reserved for a future version and must be a clear error in 0.1.</li></ul>
 <p>Future ownership work includes `Self owned`, `ref X T`, and `ref mut X T`. These are not part of the 0.1 executable subset.</p>
@@ -283,7 +316,13 @@ for I in A..B (S)
 <ul><li>step is always positive;</li></ul>
 <ul><li>step zero or negative is an error if constant, or a runtime trap if dynamic;</li></ul>
 <ul><li>`continue` goes to the step/next iteration;</li></ul>
-<ul><li>`break` exits the loop.</li></ul>
+<ul><li>`break` exits the loop;</li></ul>
+<ul><li>the iterator is declared implicitly by the `for`;</li></ul>
+<ul><li>the iterator is read-only;</li></ul>
+<ul><li>the iterator is visible only inside the loop body;</li></ul>
+<ul><li>the iterator must not conflict with any already visible symbol;</li></ul>
+<ul><li>two sequential `for` loops may reuse the same iterator name after the first loop has ended;</li></ul>
+<ul><li>a nested `for` must not reuse the same iterator name as an outer loop.</li></ul>
 <h3>case</h3>
 <pre><code>
 case Suit

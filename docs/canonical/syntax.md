@@ -34,7 +34,13 @@ Type
     TEnum (A, B, C)
 ```
 
-## Var
+## Local declarations and Var
+
+A typed local declaration may appear inline:
+
+```inox
+X Integer := 10
+```
 
 `Var` has no `:` and closes with `;`.
 
@@ -43,6 +49,8 @@ Var
     X Integer := 10
 ;
 ```
+
+`X Integer := 10` declares a new `X`. `X := 10` assigns to an existing `X`. Shadowing is forbidden.
 
 ## Struct
 
@@ -100,6 +108,8 @@ for I in A..B (S)
     ...
 ;
 ```
+
+The iterator is implicit, read-only, scoped to the loop body, and cannot shadow any visible symbol.
 
 ## case
 

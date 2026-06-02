@@ -139,6 +139,10 @@ ast::StatementPtr Parser::parseStatement()
         return std::make_unique<ast::ContinueStatement>();
     }
 
+    if (atTypedLocalStatementStart()) {
+        return parseTypedLocalStatement();
+    }
+
     return parseExpressionStatement();
 }
 
@@ -499,13 +503,44 @@ ast::StatementPtr Parser::parseVarStatement(bool isMutable)
 {
     const lexer::Token& name = consume(TokenKind::Identifier, "expected variable name");
     ast::ExpressionPtr initializer;
+    std::string typeName;
+
+    if (!isAtEnd() && check(TokenKind::Identifier) &&
+        peek().location.line == name.location.line) {
+        const lexer::Token& candidateType = peek();
+        const bool followedByInitializer =
+            current_ + 1 < tokens_.size() &&
+            tokens_[current_ + 1].kind == TokenKind::ColonEqual;
+        const bool followedByStatementBoundary =
+            current_ + 1 >= tokens_.size() ||
+            tokens_[current_ + 1].kind == TokenKind::Semicolon ||
+            tokens_[current_ + 1].kind == TokenKind::EndOfFile ||
+            tokens_[current_ + 1].location.line > candidateType.location.line;
+        if (followedByInitializer || followedByStatementBoundary) {
+            typeName = advance().lexeme;
+        }
+    }
 
     if (match(TokenKind::ColonEqual)) {
         initializer = parseAssignment();
     }
 
     return std::make_unique<ast::VarStatement>(
-        isMutable, name.lexeme, std::move(initializer));
+        isMutable, name.lexeme, std::move(initializer), std::move(typeName));
+}
+
+ast::StatementPtr Parser::parseTypedLocalStatement()
+{
+    const lexer::Token& name = consume(TokenKind::Identifier, "expected variable name");
+    const lexer::Token& type = consume(TokenKind::Identifier, "expected type name");
+
+    ast::ExpressionPtr initializer;
+    if (match(TokenKind::ColonEqual)) {
+        initializer = parseAssignment();
+    }
+
+    return std::make_unique<ast::VarStatement>(
+        false, name.lexeme, std::move(initializer), type.lexeme);
 }
 
 std::vector<ast::StatementPtr> Parser::parseVarBlockDeclarations()
@@ -900,14 +935,10 @@ bool Parser::atTypeSectionBoundary() const
         return false;
     }
 
-    bool sawLeftParen = false;
     for (std::size_t index = current_ + 1; index < tokens_.size(); ++index) {
         if (tokens_[index].kind == TokenKind::Semicolon ||
             tokens_[index].kind == TokenKind::EndOfFile) {
             return false;
-        }
-        if (tokens_[index].kind == TokenKind::LeftParen) {
-            sawLeftParen = true;
         }
         if (tokens_[index].kind == TokenKind::Colon) {
             return true;
@@ -916,6 +947,32 @@ bool Parser::atTypeSectionBoundary() const
 
     return false;
 }
+bool Parser::atTypedLocalStatementStart() const
+{
+    if (current_ + 1 >= tokens_.size()) {
+        return false;
+    }
+
+    const lexer::Token& name = tokens_[current_];
+    const lexer::Token& type = tokens_[current_ + 1];
+    if (name.kind != TokenKind::Identifier || type.kind != TokenKind::Identifier) {
+        return false;
+    }
+    if (type.location.line != name.location.line) {
+        return false;
+    }
+
+    if (current_ + 2 >= tokens_.size()) {
+        return true;
+    }
+
+    const lexer::Token& afterType = tokens_[current_ + 2];
+    return afterType.kind == TokenKind::ColonEqual ||
+           afterType.kind == TokenKind::Semicolon ||
+           afterType.kind == TokenKind::EndOfFile ||
+           afterType.location.line > type.location.line;
+}
+
 
 void Parser::requireHeaderLineBreak()
 {

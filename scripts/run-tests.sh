@@ -303,6 +303,8 @@ run_llvm_emission_test "$repo_root/examples/llvm-function-call.inox" \
     "define i64 @sum" "define i64 @double" "%tmp0 = call i64 @sum(i64 %x, i64 %x)" "ret i64 %tmp0" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-local-variables.inox" \
     "define i64 @compute" "%a = alloca i64" "%b = alloca i64" "store i64 10, ptr %a" "store i64 20, ptr %b" "load i64, ptr %a" "load i64, ptr %b" "add i64" "ret i64" "define i32 @main()" "ret i32 0"
+run_llvm_emission_test "$repo_root/examples/llvm-inline-typed-local.inox" \
+    "define i64 @compute" "%a = alloca i64" "%b = alloca i64" "store i64 10, ptr %a" "store i64 20, ptr %b" "load i64, ptr %a" "load i64, ptr %b" "add i64" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-local-assignment.inox" \
     "define i64 @compute" "%a = alloca i64" "%b = alloca i64" "store i64 10, ptr %a" "store i64 20, ptr %b" "add i64" "mul i64" "store i64 %tmp2, ptr %a" "store i64 %tmp4, ptr %b" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-integer-operators.inox" \

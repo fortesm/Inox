@@ -45,7 +45,7 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - Integer `/` is invalid; use `div` and `mod`.
 - Integer overflow is invalid; do not promise wraparound.
 - Parameters are immutable by default.
-- Local variables in `Var` are mutable.
+- Local variables declared inline or in `Var` are mutable.
 - Associated receivers are `Self` or `Self mut`; do not write `Self TPoint`.
 - `Self mut` is required for mutating methods.
 - `Exit` is not allowed in functions with return values.
@@ -53,6 +53,18 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - Structs are nominal value types.
 - `Vector[T]` future semantics are ownership/move, not reference aliasing.
 - `Set[T]` requires finite ordinal base, not arbitrary `Integer`/`String`.
+
+
+## Local scope and shadowing rules
+
+- `Name Type := Expression` is a declaration.
+- `Name := Expression` is assignment to an existing mutable symbol.
+- Shadowing is forbidden in same and nested scopes.
+- Case-only differences are not distinct names.
+- Use before declaration is invalid.
+- A local symbol dies at the end of its block.
+- `for` iterators are implicit, read-only, loop-scoped, and cannot conflict with visible symbols.
+- Sequential `for` loops may reuse an iterator name after the previous loop scope is closed; nested loops may not reuse an outer iterator name.
 
 ## Implementation discipline
 

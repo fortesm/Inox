@@ -156,7 +156,13 @@ Type
 
 `Struct` and multi-line `Enum` open blocks and therefore close with `;`. `Range` is a simple line declaration and does not use `;`.
 
-### Var
+### Local variables and Var
+
+A local declaration introduces a new symbol. The canonical typed inline form is:
+
+```inox
+X Integer := 10
+```
 
 `Var` opens a local variable declaration block and closes with `;`. It does not use `:`.
 
@@ -168,7 +174,42 @@ Var
 X := X + 1
 ```
 
-Variables declared in `Var` are mutable by default.
+Declarations and assignments are deliberately distinct:
+
+```inox
+X Integer := 2  == declaration of a new local X
+X := 2          == assignment to an existing X
+```
+
+Local variables are mutable by default. A declaration is visible only from its declaration point to the end of the current block.
+
+Shadowing is forbidden. A declaration must not reuse a name already visible in the current scope or in an outer scope, including names that differ only by case.
+
+Valid assignment to an outer variable:
+
+```inox
+Main :
+    X Integer := 1
+
+    if true
+        X := 2
+    ;
+;
+```
+
+Invalid shadowing:
+
+```inox
+Main :
+    X Integer := 1
+
+    if true
+        X Integer := 2
+    ;
+;
+```
+
+Variables declared inside `if`, `elif`, `else`, `while`, `repeat`, `for`, a `case` arm, `try`, `except`, or `finally` do not escape that block. Use before declaration is an error.
 
 ### Const and State
 
@@ -299,7 +340,9 @@ Conceptually lowers to static associated calls. This is not virtual dispatch and
 Rules:
 
 - Parameters are immutable by default.
-- Local variables declared in `Var` are mutable.
+- Local variables declared inline or in `Var` are mutable.
+- Assignment uses `Name := Expression`; declaration uses `Name Type := Expression`.
+- Shadowing is forbidden in all local scopes.
 - Receiver mutation requires `Self mut`.
 - `mut X Integer` for ordinary mutable parameters is reserved for a future version and must be a clear error in 0.1.
 
@@ -372,7 +415,13 @@ Rules:
 - step is always positive;
 - step zero or negative is an error if constant, or a runtime trap if dynamic;
 - `continue` goes to the step/next iteration;
-- `break` exits the loop.
+- `break` exits the loop;
+- the iterator is declared implicitly by the `for`;
+- the iterator is read-only;
+- the iterator is visible only inside the loop body;
+- the iterator must not conflict with any already visible symbol;
+- two sequential `for` loops may reuse the same iterator name after the first loop has ended;
+- a nested `for` must not reuse the same iterator name as an outer loop.
 
 ### case
 

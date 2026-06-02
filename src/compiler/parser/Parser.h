@@ -68,6 +68,7 @@ private:
     std::vector<ast::ExpressionPtr> parseArgumentList();
 
     ast::StatementPtr parseVarStatement(bool isMutable);
+    ast::StatementPtr parseTypedLocalStatement();
     std::vector<ast::StatementPtr> parseVarBlockDeclarations();
     ast::StatementPtr parseIfStatement();
     ast::StatementPtr parseUnlessStatement();
@@ -94,6 +95,7 @@ private:
     bool atAnyKeyword(std::initializer_list<std::string_view> keywords) const;
     bool atStatementBoundary() const;
     bool atTypeSectionBoundary() const;
+    bool atTypedLocalStatementStart() const;
     void requireHeaderLineBreak();
     void consumeBlockClose();
 

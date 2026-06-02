@@ -282,7 +282,11 @@ void SemanticAnalyzer::declareBuiltinTypes()
     declareTypeOrThrow("Float", true, "Float64");
 }
 
-void SemanticAnalyzer::declareOrThrow(std::string_view name, SymbolKind kind, std::string typeName)
+void SemanticAnalyzer::declareOrThrow(
+    std::string_view name,
+    SymbolKind kind,
+    std::string typeName,
+    bool isMutable)
 {
     Scope& scope = symbols_.currentScope();
     if (scope.containsLocal(name)) {
@@ -291,7 +295,7 @@ void SemanticAnalyzer::declareOrThrow(std::string_view name, SymbolKind kind, st
     if (scope.containsInAncestors(name)) {
         throw SemanticError("shadowing is forbidden: " + std::string(name));
     }
-    scope.declare(std::string(name), kind, std::move(typeName));
+    scope.declare(std::string(name), kind, std::move(typeName), isMutable);
 }
 
 void SemanticAnalyzer::declareTypeOrThrow(std::string_view name, bool isBuiltin, std::string aliasOf)
@@ -385,7 +389,8 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
 
         if (looksLikeIdentifier(tokens[index]) &&
             (isInitializerDeclaration || isTypedDeclaration)) {
-            declareOrThrow(tokens[index], kind, inferSectionDeclarationType(tokens, index));
+            const bool isMutable = kind == SymbolKind::Variable || kind == SymbolKind::State;
+            declareOrThrow(tokens[index], kind, inferSectionDeclarationType(tokens, index), isMutable);
         }
     }
 }
@@ -609,7 +614,7 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
     symbols_.pushScope();
     if (signature != nullptr) {
         for (const FunctionParameter& parameter : signature->parameters) {
-            declareOrThrow(parameter.name, SymbolKind::Variable, parameter.typeName);
+            declareOrThrow(parameter.name, SymbolKind::Variable, parameter.typeName, false);
         }
     }
     analyzeStatements(function.body(), false);
@@ -664,7 +669,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         if (typeName.empty()) {
             throw SemanticError("variable requires a type or initializer: " + var.name());
         }
-        declareOrThrow(var.name(), SymbolKind::Variable, std::move(typeName));
+        declareOrThrow(var.name(), SymbolKind::Variable, std::move(typeName), true);
         break;
     }
     case ast::AstNodeKind::VarBlockStatement:
@@ -725,7 +730,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             throw SemanticError(
                 "loop iterator conflicts with existing symbol: " + forStatement.iterator());
         }
-        declareOrThrow(forStatement.iterator(), SymbolKind::Variable, "Int64");
+        declareOrThrow(forStatement.iterator(), SymbolKind::LoopIterator, "Int64", false);
         ++loopDepth_;
         analyzeStatements(forStatement.body(), false);
         --loopDepth_;
@@ -804,7 +809,7 @@ void SemanticAnalyzer::analyzeVarBlock(const ast::VarBlockStatement& statement)
                     binary.left().kind() == ast::AstNodeKind::IdentifierExpression) {
                     const auto& identifier = static_cast<const ast::IdentifierExpression&>(binary.left());
                     const std::string typeName = analyzeExpression(binary.right());
-                    declareOrThrow(identifier.name(), SymbolKind::Variable, typeName);
+                    declareOrThrow(identifier.name(), SymbolKind::Variable, typeName, true);
                     const Symbol& symbol = resolveOrThrow(identifier.name());
                     result_.bind(identifier, symbol);
                     result_.setExpressionType(identifier, resolvedType(typeName));
@@ -1111,7 +1116,11 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
             const Symbol& target = resolveOrThrow(identifier.name());
             result_.bind(identifier, target);
             result_.setExpressionType(identifier, resolvedType(target.typeName));
-            if (target.kind != SymbolKind::Variable && target.kind != SymbolKind::State) {
+            if (target.kind == SymbolKind::LoopIterator) {
+                throw SemanticError("cannot assign to read-only loop iterator: " + identifier.name());
+            }
+            if ((target.kind != SymbolKind::Variable && target.kind != SymbolKind::State) ||
+                !target.isMutable) {
                 throw SemanticError("assignment target is not mutable: " + identifier.name());
             }
             targetType = target.typeName;

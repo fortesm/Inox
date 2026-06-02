@@ -19,12 +19,12 @@ Scope* Scope::parent() const
     return parent_;
 }
 
-const Symbol* Scope::declare(std::string name, SymbolKind kind, std::string typeName)
+const Symbol* Scope::declare(std::string name, SymbolKind kind, std::string typeName, bool isMutable)
 {
     const std::string normalized = normalize(name);
     auto [iterator, inserted] = symbols_.emplace(
         normalized,
-        Symbol{std::move(name), normalized, kind, std::move(typeName)});
+        Symbol{std::move(name), normalized, kind, std::move(typeName), isMutable});
 
     return inserted ? &iterator->second : nullptr;
 }

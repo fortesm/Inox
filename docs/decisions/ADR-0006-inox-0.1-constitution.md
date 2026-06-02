@@ -11,7 +11,7 @@ During 0.1 pre-alpha design, Inox resolved a series of foundational syntax and s
 Inox 0.1 safe core is defined by the following decisions.
 
 1. Associated receivers use `Self`, `Self mut`; `Self owned` is future. Do not repeat the receiver type in `Self` because the method prefix already supplies it.
-2. Ordinary parameters are immutable by default. Local variables in `Var` are mutable. `mut X Integer` is reserved and must be rejected in 0.1.
+2. Ordinary parameters are immutable by default. Local variables declared inline or in `Var` are mutable. `mut X Integer` is reserved and must be rejected in 0.1.
 3. `Exit` is allowed only in subroutines without return values and in `Main`. Functions use `Return Expression`.
 4. Integer overflow is invalid behavior. Constant overflow is always a compile-time error. Runtime overflow should trap in checking mode. Do not promise wraparound.
 5. Integer `/` is invalid. Use `div` and `mod`. Future `/` is real division for `Float`.
@@ -20,7 +20,7 @@ Inox 0.1 safe core is defined by the following decisions.
 8. `Char` is Unicode scalar value, not byte, not integer, not grapheme cluster.
 9. Fixed arrays use `Array[Low..High] Type`; ranges are part of the type; arrays are bounds-checked value types.
 10. `Vector[T]` is future dynamic 0-based owning/move type; assignment moves; `Clone` copies.
-11. `for I in A..B (S)` is inclusive; direction comes from `A..B`; step is positive.
+11. `for I in A..B (S)` is inclusive; direction comes from `A..B`; step is positive; the iterator is implicit, read-only, loop-scoped, and cannot shadow any visible symbol.
 12. `Range` declarations in `Type` are simple line declarations and do not use `;`.
 13. Enums have short and multi-line forms, are nominal and ordinal, and do not implicitly convert to/from `Integer`.
 14. `Set[T]` requires finite ordinal base (`Enum` or finite `Range`) and is not a generic hash set.
@@ -30,6 +30,11 @@ Inox 0.1 safe core is defined by the following decisions.
 18. Future contracts/protocols/behaviors are static capability checks, not Java interfaces, OO subtyping, duck typing, or mixins.
 19. No universal `null`/`nil`. Future absence is `Option[T]`; recoverable failure is `Result[T, E]`.
 20. No raw pointers, `Pointer[T]`, `unsafe`, or C interop in the 0.1 safe core.
+
+
+## Local scope and shadowing
+
+`Name Type := Expression` is a declaration. `Name := Expression` is assignment. Shadowing is forbidden in all local scopes, including case-only spelling differences because Inox is case-insensitive. A local declaration is visible only from its declaration point to the end of the current block. Use before declaration is invalid.
 
 ## Consequences
 

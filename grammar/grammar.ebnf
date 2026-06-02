@@ -22,6 +22,7 @@ enum_block_decl ::= identifier "Enum" identifier* ";"
 
 var_block       ::= "Var" var_decl* ";"
 var_decl        ::= identifier type_name? (":=" expression)?
+local_decl      ::= identifier type_name (":=" expression)?
 
 function_decl   ::= qualified_name "(" parameter_list? ")" return_type? ":" statement* ";"
 block_close     ::= ";"   (* End/end is not a keyword and is not a block closer. *)
@@ -31,9 +32,9 @@ receiver_param  ::= "Self" "mut"? ("," normal_param)*
 normal_param    ::= identifier type_name
 return_type     ::= type_name
 
-statement       ::= var_block | if_stmt | while_stmt | repeat_stmt | for_stmt
-                  | case_stmt | try_stmt | return_stmt | exit_stmt
-                  | break_stmt | continue_stmt | expression_stmt
+statement       ::= local_decl | var_block | if_stmt | while_stmt | repeat_stmt
+                  | until_stmt | for_stmt | case_stmt | try_stmt | return_stmt
+                  | exit_stmt | break_stmt | continue_stmt | expression_stmt
 
 if_stmt         ::= "if" expression NEWLINE statement* elif_clause* else_clause? ";"
 elif_clause     ::= "elif" expression NEWLINE statement*
@@ -43,6 +44,7 @@ while_stmt      ::= "while" expression NEWLINE statement* ";"
 repeat_stmt     ::= "repeat" statement* ";"
 until_stmt      ::= "until" expression
 for_stmt        ::= "for" identifier "in" expression ".." expression ("(" expression ")")? NEWLINE statement* ";"
+                  (* iterator is implicit, read-only, loop-scoped, and may not shadow *)
 
 case_stmt       ::= "case" expression NEWLINE case_arm* otherwise_arm? ";"
 case_arm        ::= expression NEWLINE statement* | expression statement
