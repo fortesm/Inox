@@ -30,13 +30,18 @@ The current backend supports a restricted executable subset: scalar integer/bool
 
 `inox --build file.inox` emits textual LLVM IR under `build/inox-artifacts/` and invokes
 the external `clang` toolchain to create a native executable in the same
-directory. `inox --run file.inox` builds and executes that artifact.
+directory. `inox --run file.inox` builds and executes that artifact. Set
+`INOX_OUTPUT_DIR` to override the artifact directory.
 
 The driver loads local `Use` dependencies recursively before emission. It
-checks `A.B.inox` and then `A/B.inox` relative to the entry file directory,
-rejects dependency cycles, and emits the loaded 0.1 subset as one textual LLVM
-module. This is a minimum module model, not a package manager or final linker
-architecture.
+checks `A.B.inox` and then `A/B.inox` relative to the entry file directory and
+the standard-library search path, rejects dependency cycles, and emits the
+loaded 0.1 subset as one textual LLVM module. This is a minimum module model,
+not a package manager or final linker architecture.
+
+The current backend emits textual LLVM IR and uses external tools for native
+`--build` and `--run`. A prebuilt compiler can still parse, type-check, and emit
+LLVM IR without requiring LLVM or Clang to be installed on the user's machine.
 
 ## Future backend work
 

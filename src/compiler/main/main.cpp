@@ -211,8 +211,65 @@ private:
     std::vector<std::unique_ptr<ModuleNode>> modules_;
 };
 
-fs::path findStandardLibraryDirectory(const fs::path& sourcePath)
+fs::path pathFromEnvironment(const char* variableName)
 {
+    const char* value = std::getenv(variableName);
+    if (value == nullptr || std::string_view(value).empty()) {
+        return {};
+    }
+    return fs::path(value);
+}
+
+fs::path executableDirectory(const char* argv0)
+{
+    if (argv0 == nullptr || std::string_view(argv0).empty()) {
+        return {};
+    }
+
+    fs::path executablePath(argv0);
+    std::error_code error;
+    if (executablePath.is_relative()) {
+        executablePath = fs::absolute(executablePath, error);
+        if (error) {
+            return {};
+        }
+    }
+
+    return executablePath.parent_path();
+}
+
+void requireDirectoryIfSet(const char* variableName, const fs::path& directory)
+{
+    if (directory.empty()) {
+        return;
+    }
+    if (!fs::is_directory(directory)) {
+        throw std::runtime_error(
+            std::string(variableName) + " does not point to an existing directory: " +
+            directory.string());
+    }
+}
+
+fs::path findStandardLibraryDirectory(const fs::path& sourcePath, const fs::path& executableDir)
+{
+    const fs::path environmentCandidate = pathFromEnvironment("INOX_STDLIB");
+    requireDirectoryIfSet("INOX_STDLIB", environmentCandidate);
+    if (!environmentCandidate.empty()) {
+        return environmentCandidate;
+    }
+
+    if (!executableDir.empty()) {
+        const fs::path releaseLayoutCandidate = executableDir.parent_path() / "stdlib";
+        if (fs::is_directory(releaseLayoutCandidate)) {
+            return releaseLayoutCandidate;
+        }
+
+        const fs::path siblingCandidate = executableDir / "stdlib";
+        if (fs::is_directory(siblingCandidate)) {
+            return siblingCandidate;
+        }
+    }
+
     const fs::path workingDirectoryCandidate = fs::current_path() / "stdlib";
     if (fs::is_directory(workingDirectoryCandidate)) {
         return workingDirectoryCandidate;
@@ -233,12 +290,12 @@ fs::path findStandardLibraryDirectory(const fs::path& sourcePath)
     return {};
 }
 
-std::unique_ptr<ModuleNode> loadProgram(const fs::path& sourcePath)
+std::unique_ptr<ModuleNode> loadProgram(const fs::path& sourcePath, const fs::path& executableDir)
 {
     const fs::path absolutePath = fs::absolute(sourcePath);
     return ModuleLoader(
         absolutePath.parent_path(),
-        findStandardLibraryDirectory(absolutePath)).loadProgram(absolutePath);
+        findStandardLibraryDirectory(absolutePath, executableDir)).loadProgram(absolutePath);
 }
 
 std::string shellQuote(const fs::path& path)
@@ -289,7 +346,10 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
             "clang was not found; install LLVM/Clang or put clang in PATH");
     }
 
-    const fs::path outputDirectory = fs::current_path() / "build" / "inox-artifacts";
+    fs::path outputDirectory = pathFromEnvironment("INOX_OUTPUT_DIR");
+    if (outputDirectory.empty()) {
+        outputDirectory = fs::current_path() / "build" / "inox-artifacts";
+    }
     fs::create_directories(outputDirectory);
     const std::string stem = sourcePath.stem().string();
     const BuildArtifacts artifacts{
@@ -316,6 +376,7 @@ int main(int argc, char** argv)
     const bool emitLlvm = argc == 3 && std::string(argv[1]) == "--emit-llvm";
     const bool build = argc == 3 && std::string(argv[1]) == "--build";
     const bool run = argc == 3 && std::string(argv[1]) == "--run";
+    const fs::path executableDir = executableDirectory(argc > 0 ? argv[0] : nullptr);
     const bool hasMode = dumpTypes || dumpTokensMode || parseOnly || emitLlvm || build || run;
     if ((!hasMode && argc != 2) || (hasMode && argc != 3)) {
         std::cerr << "usage: inox [--dump-tokens|--parse-only|--dump-types|--emit-llvm|--build|--run] <source.inox>\n";
@@ -338,7 +399,7 @@ int main(int argc, char** argv)
 
         std::unique_ptr<ModuleNode> module;
         if (dumpTypes || emitLlvm || build || run || !hasMode) {
-            module = loadProgram(fs::path(sourcePath));
+            module = loadProgram(fs::path(sourcePath), executableDir);
         } else {
             inox::compiler::parser::Parser parser(tokens);
             module = parser.parseModule();

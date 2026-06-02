@@ -147,3 +147,11 @@ tests/integration/output/*.out
 
 # Local ZIP snapshots
 Inox-source-*.zip
+
+# Release packages generated locally
+/dist/
+dist/
+
+# Optional user-selected output directory for Inox-built programs
+/inox-out/
+inox-out/

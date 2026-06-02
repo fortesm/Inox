@@ -85,10 +85,15 @@ Module Calc.Core Use Sys.IO Use Math.Basic Use Calc.Types
 In 0.1 all module symbols are public by default. `Export`, interface/body separation, aliases, selective imports, and visibility controls are reserved for future versions.
 
 The minimum 0.1 driver resolves imported modules relative to the entry file
-directory and then under the project `stdlib/` directory. `Use Math.Basic`
+directory and through the configured standard-library directory. `Use Math.Basic`
 checks `Math.Basic.inox`, then `Math/Basic.inox`, in each search root.
 Dependencies are loaded recursively, cycles are rejected, and imported
 signatures participate in semantic analysis before textual LLVM IR is emitted.
+
+Standard-library discovery uses this order: `INOX_STDLIB`, the prebuilt release
+layout (`bin/` next to `stdlib/`), `stdlib/` next to the executable, `stdlib/`
+under the current working directory, and `stdlib/` in the source file directory
+or one of its parents.
 
 ## Standard library
 
@@ -107,6 +112,11 @@ explicit `Use`, such as `Use Std.Math` and `Use Std.IO`. The standard library
 must remain portable across Windows and Linux and must not depend on GC,
 unsafe features, C interop, or a complex runtime.
 
+The current `stdlib/` directory is not a complete standalone runtime library.
+It is an early standard-library layer and documentation anchor. The future
+runtime ABI, startup model, traps, allocation strategy, and platform services
+remain separate design work.
+
 ## Build and run driver
 
 The temporary native driver uses Clang as an external toolchain:
@@ -118,7 +128,11 @@ inox --run file.inox
 
 `--build` emits textual LLVM IR and a native executable under `build/inox-artifacts/`.
 `--run` builds the same controlled artifacts and executes the resulting native
-program. Clang must be installed and available in `PATH`.
+program. Override this artifact directory with `INOX_OUTPUT_DIR`.
+
+Clang must be installed and available in `PATH` for `--build` and `--run` in the
+current implementation. Running a prebuilt `inox.exe` for parsing, semantic
+checking, dumps, or `--emit-llvm` does not require Clang, LLVM, or a C++ compiler.
 
 ## Blocks and statement syntax
 

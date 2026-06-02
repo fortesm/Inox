@@ -83,21 +83,21 @@ Module Calc.Core Use Sys.IO Use Math.Basic Use Calc.Types
 </code></pre>
 <p>`Use` is not textual inclusion. It is not `#include`, not source copying, and not manual linking. It tells the compiler to load imported module types and signatures. Multi-file compilation is required for the 0.1 direction, even if the current implementation is incremental.</p>
 <p>In 0.1 all module symbols are public by default. `Export`, interface/body separation, aliases, selective imports, and visibility controls are reserved for future versions.</p>
-<p>The minimum 0.1 driver resolves imported modules relative to the entry file directory and then under the project `stdlib/` directory. `Use Math.Basic` checks `Math.Basic.inox`, then `Math/Basic.inox`, in each search root. Dependencies are loaded recursively, cycles are rejected, and imported signatures participate in semantic analysis before textual LLVM IR is emitted.</p>
+<p>The minimum 0.1 driver resolves imported modules relative to the entry file directory and through the configured standard-library directory. `Use Math.Basic` checks `Math.Basic.inox`, then `Math/Basic.inox`, in each search root. Standard-library discovery uses `INOX_STDLIB`, the prebuilt release layout, an executable-adjacent `stdlib/`, the current working directory, and source-file parent directories.</p>
 <h2 id="standard-library">Standard library</h2>
 <p>The initial portable 0.1 standard library lives under `stdlib/`:</p>
 <ul><li>`Std.Core` is the conceptual prelude/core module and anchors compiler intrinsics.</li></ul>
 <ul><li>`Std.IO` documents the canonical `Put` and `PutLn` I/O facade.</li></ul>
 <ul><li>`Std.Math` contains pure Integer helpers implemented in Inox source, including `Min`, `Max`, `Clamp`, `IsEven`, and `IsOdd`.</li></ul>
 <ul><li>`Std.Debug` documents future `Assert` support, pending canonical trap/abort behavior.</li></ul>
-<p>`Std.Core` is conceptually implicit. Other standard modules are available through explicit `Use`. The standard library must remain portable across Windows and Linux and must not depend on GC, unsafe features, C interop, or a complex runtime.</p>
+<p>`Std.Core` is conceptually implicit. Other standard modules are available through explicit `Use`. The standard library must remain portable across Windows and Linux and must not depend on GC, unsafe features, C interop, or a complex runtime. The current `stdlib/` directory is not yet a complete standalone language runtime.</p>
 <h2 id="build-and-run-driver">Build and run driver</h2>
 <p>The temporary native driver uses Clang as an external toolchain:</p>
 <pre><code>
 inox --build file.inox
 inox --run file.inox
 </code></pre>
-<p>`--build` emits textual LLVM IR and a native executable under `build/inox-artifacts/`. `--run` builds the same controlled artifacts and executes the resulting native program. Clang must be installed and available in `PATH`.</p>
+<p>`--build` emits textual LLVM IR and a native executable under `build/inox-artifacts/`; set `INOX_OUTPUT_DIR` to override that artifact directory. `--run` builds the same controlled artifact and executes it. Clang must be installed and available in `PATH` for `--build` and `--run`, but not merely to run a prebuilt compiler for parsing, semantic checking, dumps, or `--emit-llvm`.</p>
 <h2 id="blocks-and-statement-syntax">Blocks and statement syntax</h2>
 <p>Inox uses `;` to close blocks. It is not a general statement terminator.</p>
 <p>Named subroutine/function blocks use `:`:</p>

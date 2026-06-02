@@ -59,13 +59,15 @@ The command-line driver exposes small diagnostic modes for compiler-layer tests:
 - `inox --build file.inox` emits `build/inox-artifacts/*.ll` and builds a native executable with Clang.
 - `inox --run file.inox` builds and executes the native artifact.
 
+Set `INOX_OUTPUT_DIR` to override the generated artifact directory. Set `INOX_STDLIB` to test an explicit standard-library location.
+
 These modes are intentionally stable enough for regression tests. Output should remain readable and deterministic.
 
 When Clang is absent, build/run integration checks report `[SKIP]`. Lexer,
 parser, semantic, and textual LLVM checks remain mandatory.
 
 The integration suite also verifies that `Use Std.Math` resolves through the
-project `stdlib/` directory and that its Inox implementations execute through
+standard-library search path and that its Inox implementations execute through
 the Clang-backed `--run` driver.
 
 ## Regression rule
