@@ -137,3 +137,13 @@ conan/
 # --------------------
 Todo.txt
 Relevant Paths.txt
+
+# Build artifacts
+/build/
+build/
+
+# Generated test outputs
+tests/integration/output/*.out
+
+# Local ZIP snapshots
+Inox-source-*.zip
