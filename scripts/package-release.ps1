@@ -42,14 +42,23 @@ New-Item -ItemType Directory -Path (Join-Path $packageRoot "bin") -Force | Out-N
 New-Item -ItemType Directory -Path (Join-Path $packageRoot "stdlib") -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $packageRoot "examples") -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $packageRoot "output") -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $packageRoot "docs") -Force | Out-Null
 
 Copy-Item -LiteralPath $compilerExe -Destination (Join-Path $packageRoot "bin\inox.exe") -Force
-
 Copy-DirectoryContents -Source (Join-Path $repoRoot "stdlib") -Destination (Join-Path $packageRoot "stdlib")
 Copy-DirectoryContents -Source (Join-Path $repoRoot "examples") -Destination (Join-Path $packageRoot "examples")
+Copy-Item -LiteralPath (Join-Path $repoRoot "docs\index.html") -Destination (Join-Path $packageRoot "docs\index.html") -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot "docs\LANGUAGE_REFERENCE.md") -Destination (Join-Path $packageRoot "docs\LANGUAGE_REFERENCE.md") -Force
 
 if (Test-Path -LiteralPath (Join-Path $repoRoot "licenses")) {
     Copy-DirectoryContents -Source (Join-Path $repoRoot "licenses") -Destination (Join-Path $packageRoot "licenses")
+}
+
+foreach ($legalFile in @("LICENSE", "LICENSE.md", "NOTICE.md", "AUTHORS.md", "TRADEMARK.md")) {
+    $candidate = Join-Path $repoRoot $legalFile
+    if (Test-Path -LiteralPath $candidate) {
+        Copy-Item -LiteralPath $candidate -Destination (Join-Path $packageRoot $legalFile) -Force
+    }
 }
 
 $releaseReadme = Join-Path $repoRoot "docs\release\README.md"
@@ -63,10 +72,6 @@ elseif (Test-Path -LiteralPath $rootReadme) {
 }
 else {
     "# Inox Windows x64 Release" | Set-Content -Path (Join-Path $packageRoot "README.md") -Encoding utf8
-    "" | Add-Content -Path (Join-Path $packageRoot "README.md") -Encoding utf8
-    "This package contains a prebuilt Inox compiler, the standard library, examples, and a default output directory." | Add-Content -Path (Join-Path $packageRoot "README.md") -Encoding utf8
-    "" | Add-Content -Path (Join-Path $packageRoot "README.md") -Encoding utf8
-    "Run .\set-inox-env.ps1 before testing the compiler." | Add-Content -Path (Join-Path $packageRoot "README.md") -Encoding utf8
 }
 
 $envScript = @(
@@ -79,6 +84,8 @@ $envScript = @(
     'Write-Host "Inox release environment configured."',
     'Write-Host "INOX_STDLIB=$env:INOX_STDLIB"',
     'Write-Host "INOX_OUTPUT_DIR=$env:INOX_OUTPUT_DIR"',
+    'Write-Host ("Language reference: " + (Join-Path $releaseRoot "docs\LANGUAGE_REFERENCE.md"))',
+    'Write-Host ("HTML copy: " + (Join-Path $releaseRoot "docs\index.html"))',
     'Write-Host "Compiler:"',
     'Get-Command inox -ErrorAction SilentlyContinue'
 )

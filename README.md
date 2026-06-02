@@ -1,5 +1,6 @@
 # Inox
 
+<<<<<<< HEAD
 Inox is a strongly typed, compiled programming language designed for robust, explicit, and maintainable systems software.
 
 The language is being designed with the ambition of combining the clarity of Pascal/Ada-style syntax, the safety discipline expected from critical software engineering, and the performance-oriented compilation model of modern LLVM-based toolchains.
@@ -108,6 +109,60 @@ output/
 ## Testing the language with a prebuilt package
 
 To test the language with a prebuilt Windows package:
+=======
+Inox is a strongly typed, compiled programming language for high-integrity software.
+
+The language is designed for codebases where correctness, explicitness, portability, and predictable execution matter. Its design takes inspiration from the safety discipline of Ada/SPARK, the clarity of Modula/Oberon/Pascal-family languages, the practicality of Go and Rust, and the performance-oriented compilation model enabled by LLVM.
+
+Inox is intentionally post-object-oriented. It does not use classes, inheritance trees, Java-style interfaces, duck typing, or mixins as its foundation. The language is being shaped around structs as data, associated methods as behavior, composition over inheritance, explicit mutability, local reasoning, strong static typing, and future contracts/protocols/behaviors for statically checked capabilities without forcing a classical object hierarchy.
+
+The compiler is currently a pre-alpha implementation of the 0.1 language direction. It is useful for studying the syntax, running examples, validating the compiler pipeline, emitting LLVM IR, and exercising a restricted Clang-backed native build/run path.
+
+## Downloading a prebuilt release
+
+Users who only want to try the Inox language do **not** need to build the compiler from source.
+
+Download the latest Windows x64 test package here:
+
+[Download inox-windows-x64.zip](https://github.com/fortesm/Inox/releases/latest/download/inox-windows-x64.zip)
+
+Download the latest Linux x64 test package here:
+
+[Download inox-linux-x64.zip](https://github.com/fortesm/Inox/releases/latest/download/inox-linux-x64.zip)
+
+Each package contains the compiler executable, the bundled standard library, examples, licenses, an output directory, and a local setup script.
+
+## Language tutorial
+
+The complete language tutorial and reference is available in Markdown here:
+
+[Open the Inox language tutorial and reference](docs/LANGUAGE_REFERENCE.md)
+
+An HTML copy is also kept in the repository for local browsing:
+
+```text
+docs/index.html
+```
+
+Prebuilt release packages include the same documentation under:
+
+```text
+docs/LANGUAGE_REFERENCE.md
+docs/index.html
+```
+
+## Usage profiles and requirements
+
+| Profile | Needs Clang/LLVM? | Needs a C++ compiler? | Notes |
+|---|---:|---:|---|
+| Inox compiler developer | Yes | Yes | Builds `inox.exe` or `inox` from the C++ source code. |
+| User who only wants to run a prebuilt compiler | No | No | Needs only the Release executable and the normal operating-system/runtime libraries. |
+| User who wants to use `inox --build` or `inox --run` to generate native executables | Yes, for now | Not to develop the compiler, but a native toolchain is required | The current driver delegates final native executable generation to external tools such as `clang`. |
+
+## Testing the language on Windows
+
+Extract the Windows package and configure the current PowerShell session:
+>>>>>>> 5c51dcb (Updated docs and releases.)
 
 ```powershell
 Expand-Archive .\inox-windows-x64.zip -DestinationPath C:\Tools
@@ -115,20 +170,28 @@ cd C:\Tools\inox-windows-x64
 
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\set-inox-env.ps1
+<<<<<<< HEAD
 
+inox .\examples\hello.inox
+inox --emit-llvm .\examples\llvm-put-output-basic.inox
+=======
+>>>>>>> 5c51dcb (Updated docs and releases.)
+```
+
+Then run:
+
+```powershell
+<<<<<<< HEAD
+$env:INOX_STDLIB = "C:\Tools\inox-windows-x64\stdlib"
+$env:Path += ";C:\Tools\inox-windows-x64\bin"
+
+=======
+>>>>>>> 5c51dcb (Updated docs and releases.)
 inox .\examples\hello.inox
 inox --emit-llvm .\examples\llvm-put-output-basic.inox
 ```
 
-For normal use, either run the compiler from the extracted package root or set `INOX_STDLIB` explicitly:
-
-```powershell
-$env:INOX_STDLIB = "C:\Tools\inox-windows-x64\stdlib"
-$env:Path += ";C:\Tools\inox-windows-x64\bin"
-
-inox .\examples\hello.inox
-```
-
+<<<<<<< HEAD
 The prebuilt `inox.exe` Release binary does **not** require Clang, LLVM, or a C++ compiler merely to parse, type-check, or emit LLVM IR.
 
 On Windows, the prebuilt Release binary may require the normal Microsoft Visual C++ Redistributable runtime.
@@ -147,12 +210,67 @@ inox --emit-llvm examples\llvm-put-output-basic.inox
 However, building native executables from Inox programs may still require external native toolchain tools during the current development stage.
 
 Commands such as:
+=======
+Expected result for `hello.inox`:
+
+```text
+parse ok
+semantic ok
+```
+
+The setup script configures:
+
+```text
+PATH            includes the local bin/ directory
+INOX_STDLIB     points to the bundled stdlib/ directory
+INOX_OUTPUT_DIR points to the bundled output/ directory
+```
+
+## Testing the language on Linux
+
+Extract the Linux package and source the local environment script:
+
+```bash
+unzip inox-linux-x64.zip -d "$HOME/tools"
+cd "$HOME/tools/inox-linux-x64"
+
+source ./set-inox-env.sh
+```
+
+Then run:
+
+```bash
+inox ./examples/hello.inox
+inox --emit-llvm ./examples/llvm-put-output-basic.inox
+```
+
+Expected result for `hello.inox`:
+
+```text
+parse ok
+semantic ok
+```
+
+## Building native programs with Inox
+
+The prebuilt compiler can parse, type-check, and emit LLVM IR without Clang or a C++ compiler.
+
+Native executable generation is different. The temporary 0.1 driver can delegate final native executable generation to `clang`:
+
+```bash
+inox --build examples/llvm-put-output-basic.inox
+inox --run examples/llvm-put-output-basic.inox
+```
+
+On Windows, the equivalent commands are:
+>>>>>>> 5c51dcb (Updated docs and releases.)
 
 ```powershell
 inox --build examples\llvm-put-output-basic.inox
 inox --run examples\llvm-put-output-basic.inox
 ```
 
+<<<<<<< HEAD
 may require Clang/LLVM, LLD, the MSVC linker, or another supported native toolchain to be installed and available in `PATH`.
 
 This requirement is temporary and reflects the current stage of the compiler. A future Inox SDK may package the required backend/linker tools or provide a more complete standalone build pipeline.
@@ -171,11 +289,23 @@ This mode currently requires `clang` in `PATH`.
 Generated LLVM IR and executables are written to the default artifact directory.
 
 When running from the source repository, the default artifact directory is:
+=======
+This mode currently requires `clang` in `PATH`.
+
+When using a prebuilt package, generated LLVM IR and executables are written to:
+
+```text
+output/
+```
+
+When running from the source repository without `INOX_OUTPUT_DIR`, the default artifact directory is:
+>>>>>>> 5c51dcb (Updated docs and releases.)
 
 ```text
 build/inox-artifacts/
 ```
 
+<<<<<<< HEAD
 When running from the prebuilt Windows test package, `set-inox-env.ps1` sets:
 
 ```text
@@ -183,12 +313,25 @@ output/
 ```
 
 Override that output directory with:
+=======
+Override the output directory with:
+>>>>>>> 5c51dcb (Updated docs and releases.)
 
 ```powershell
 $env:INOX_OUTPUT_DIR = "C:\Temp\inox-out"
 ```
 
+<<<<<<< HEAD
 ## Runtime and standard library status
+=======
+or on Linux:
+
+```bash
+export INOX_OUTPUT_DIR="$HOME/tmp/inox-out"
+```
+
+## Standard library and runtime status
+>>>>>>> 5c51dcb (Updated docs and releases.)
 
 The initial standard library lives under `stdlib/` and is intentionally minimal.
 
@@ -204,6 +347,7 @@ inox_runtime.dll
 
 At this stage:
 
+<<<<<<< HEAD
 * the Inox compiler itself is a native C++ program;
 * `Put` and `PutLn` are compiler/runtime-lowered facilities used by the current backend;
 * generated Inox programs may still rely on the host platform toolchain and system runtimes;
@@ -254,6 +398,22 @@ $env:INOX_OUTPUT_DIR = "C:\Tools\inox-windows-x64\output"
 ```
 
 If `INOX_OUTPUT_DIR` is not set, the compiler uses its default output directory.
+=======
+- the Inox compiler itself is a native C++ program;
+- `Put` and `PutLn` are compiler/runtime-lowered facilities used by the current backend;
+- generated Inox programs may still rely on the host platform toolchain and system runtimes;
+- the standard library is bundled with release packages so the compiler can locate standard modules consistently;
+- `INOX_STDLIB` can be used to point the compiler to the standard-library directory;
+- `INOX_OUTPUT_DIR` can be used to select the directory where build artifacts are written.
+
+Future work should separate clearly:
+
+- the Inox compiler executable;
+- the Inox standard library;
+- the Inox runtime library;
+- platform-specific backend/linker integration;
+- optional SDK packaging.
+>>>>>>> 5c51dcb (Updated docs and releases.)
 
 ## Building the compiler from source
 
@@ -353,6 +513,7 @@ Release compiler path:
 build/Release/inox.exe
 ```
 
+<<<<<<< HEAD
 The `build/` directory is generated and must not be versioned.
 
 ### Build Release on Windows
@@ -403,6 +564,9 @@ On Linux or another Unix-like system, developers need:
 * the usual system development tools.
 
 A typical Clang/Ninja build is:
+=======
+### Linux / Unix-like development build
+>>>>>>> 5c51dcb (Updated docs and releases.)
 
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++
@@ -410,6 +574,7 @@ cmake --build build
 bash scripts/run-tests.sh
 ```
 
+<<<<<<< HEAD
 The generated compiler is usually:
 
 ```text
@@ -433,11 +598,45 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\package-release.ps1
 ```
 
 The generated ZIP is:
+=======
+Release build:
+
+```bash
+cmake -S . -B build-linux -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
+cmake --build build-linux
+```
+
+The generated compiler is usually:
+
+```text
+build/inox
+```
+
+or, with the `build-linux` directory shown above:
+
+```text
+build-linux/inox
+```
+
+The `build/` and `build-linux/` directories are generated and must not be versioned.
+
+## Packaging releases
+
+Windows package:
+
+```powershell
+cmake --build build --config Release
+pwsh -ExecutionPolicy Bypass -File .\scripts\package-release.ps1
+```
+
+Generated package:
+>>>>>>> 5c51dcb (Updated docs and releases.)
 
 ```text
 dist/inox-windows-x64.zip
 ```
 
+<<<<<<< HEAD
 This ZIP is the file that should be uploaded as a GitHub Release asset.
 
 It should not be committed to the Git repository.
@@ -492,12 +691,84 @@ The link is valid when a GitHub Release exists and contains an asset named exact
 
 ```text
 inox-windows-x64.zip
+=======
+Linux package:
+
+```bash
+cmake -S . -B build-linux -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
+cmake --build build-linux
+bash scripts/package-release.sh Release inox-linux-x64 build-linux/inox
+```
+
+Generated package:
+
+```text
+dist/inox-linux-x64.zip
+```
+
+Release ZIP files must be uploaded as GitHub Release assets. They should not be committed to the Git repository.
+
+## Package layout
+
+Windows:
+
+```text
+inox-windows-x64/
+    README.md
+    set-inox-env.ps1
+    bin/
+        inox.exe
+    stdlib/
+    examples/
+    output/
+    docs/
+        LANGUAGE_REFERENCE.md
+        index.html
+    licenses/
+```
+
+Linux:
+
+```text
+inox-linux-x64/
+    README.md
+    set-inox-env.sh
+    bin/
+        inox
+    stdlib/
+    examples/
+    output/
+    docs/
+        LANGUAGE_REFERENCE.md
+        index.html
+    licenses/
+```
+
+## Publishing releases on GitHub
+
+Upload these files as GitHub Release assets:
+
+```text
+inox-windows-x64.zip
+inox-linux-x64.zip
+```
+
+Public download links:
+
+```text
+https://github.com/fortesm/Inox/releases/latest/download/inox-windows-x64.zip
+https://github.com/fortesm/Inox/releases/latest/download/inox-linux-x64.zip
+>>>>>>> 5c51dcb (Updated docs and releases.)
 ```
 
 Recommended release title:
 
 ```text
+<<<<<<< HEAD
 Inox Windows x64 Test Release
+=======
+Inox 0.1 Test Release
+>>>>>>> 5c51dcb (Updated docs and releases.)
 ```
 
 Recommended tag format:
@@ -505,6 +776,7 @@ Recommended tag format:
 ```text
 v0.1.0-test
 ```
+<<<<<<< HEAD
 
 ## Running examples from the repository
 
@@ -585,11 +857,14 @@ The language tutorial and browsable manual are available here:
 [Open the Inox HTML language tutorial](docs/site/index.html)
 
 The tutorial should be kept synchronized with the compiler implementation and the canonical language reference.
+=======
+>>>>>>> 5c51dcb (Updated docs and releases.)
 
 ## Documentation
 
 Start here:
 
+<<<<<<< HEAD
 * `docs/canonical/language-reference.md` — consolidated tutorial/reference.
 * `docs/development/toolchain.md` — requirements for compiler developers and language testers.
 * `docs/release/prebuilt-usage.md` — packaging and usage guide for prebuilt releases.
@@ -597,6 +872,16 @@ Start here:
 * `docs/decisions/ADR-0006-inox-0.1-constitution.md` — frozen 0.1 decisions.
 * `AGENTS.md` — operational instructions for AI agents.
 * `docs/open-questions/OPEN_QUESTIONS.md` — deferred 0.2+ architecture topics.
+=======
+- `docs/LANGUAGE_REFERENCE.md` — complete language tutorial/reference in Markdown.
+- `docs/index.html` — browsable HTML copy of the same tutorial/reference.
+- `docs/canonical/language-reference.md` — consolidated tutorial/reference.
+- `docs/development/toolchain.md` — requirements for compiler developers and language testers.
+- `docs/release/prebuilt-usage.md` — packaging and usage guide for prebuilt releases.
+- `docs/decisions/ADR-0006-inox-0.1-constitution.md` — frozen 0.1 decisions.
+- `AGENTS.md` — operational instructions for AI agents.
+- `docs/open-questions/OPEN_QUESTIONS.md` — deferred 0.2+ architecture topics.
+>>>>>>> 5c51dcb (Updated docs and releases.)
 
 ## Project layout
 
@@ -669,6 +954,7 @@ Reserved for small helper utilities.
 
 Inox rejects unsafe defaults:
 
+<<<<<<< HEAD
 * universal null;
 * implicit narrowing;
 * integer wraparound guarantees;
@@ -691,6 +977,30 @@ Future work includes:
 * borrowing;
 * unsafe boundaries;
 * structured parallelism.
+=======
+- universal null;
+- implicit narrowing;
+- integer wraparound guarantees;
+- unchecked bounds;
+- implicit aliasing;
+- classes;
+- inheritance;
+- Java-style interfaces.
+
+Future work includes:
+
+- modules;
+- arrays;
+- vectors;
+- sets;
+- contracts;
+- protocols;
+- behaviors;
+- arenas;
+- borrowing;
+- unsafe boundaries;
+- structured parallelism.
+>>>>>>> 5c51dcb (Updated docs and releases.)
 
 ## Version control policy
 
@@ -698,6 +1008,10 @@ The following directories are generated and must not be versioned:
 
 ```text
 build/
+<<<<<<< HEAD
+=======
+build-linux/
+>>>>>>> 5c51dcb (Updated docs and releases.)
 dist/
 ```
 
@@ -710,6 +1024,7 @@ Inox.zip
 
 Generated test outputs should not be versioned unless they are intentional expected-output fixtures.
 
+<<<<<<< HEAD
 The Windows release package:
 
 ```text
@@ -717,6 +1032,16 @@ dist/inox-windows-x64.zip
 ```
 
 must be uploaded as a GitHub Release asset, not committed to the repository.
+=======
+Release packages:
+
+```text
+dist/inox-windows-x64.zip
+dist/inox-linux-x64.zip
+```
+
+must be uploaded as GitHub Release assets, not committed to the repository.
+>>>>>>> 5c51dcb (Updated docs and releases.)
 
 ## License
 
@@ -730,7 +1055,14 @@ The project does not use the MPL 2.0 "Incompatible With Secondary Licenses" noti
 
 See also:
 
+<<<<<<< HEAD
 * `NOTICE.md`;
 * `AUTHORS.md`;
 * `CONTRIBUTING.md`;
 * `TRADEMARK.md`.
+=======
+- `NOTICE.md`
+- `AUTHORS.md`
+- `CONTRIBUTING.md`
+- `TRADEMARK.md`
+>>>>>>> 5c51dcb (Updated docs and releases.)
