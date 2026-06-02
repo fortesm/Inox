@@ -18,12 +18,10 @@ Users who only want to test the Inox compiler and the language do not need to bu
 
 Download the latest Windows x64 test package here:
 
-```text
 https://github.com/fortesm/Inox/releases/latest/download/inox-windows-x64.zip
-```text
 
 A prebuilt Windows test package has this layout:
-
+```text
 inox-windows-x64/
     bin/
         inox.exe
