@@ -8,7 +8,7 @@
 Module ControlFlow
 
 Main :
-    var I := 0
+    I := 0
 
     if I = 0
         PutLn("zero")
@@ -18,7 +18,7 @@ Main :
         PutLn("negative")
     ;
 
-    unless I # 0 :
+    unless I # 0
         PutLn("still zero")
     ;
 

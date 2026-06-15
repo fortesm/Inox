@@ -36,4 +36,13 @@ AlwaysTrue Bool :
 ;
 
 Main :
+     A := 5
+     B := 6
+    IsGreater(A, B)  
+    IsEqual(A, B) 
+    IsDifferent(A ,B)  
+    IsLess(A, B) 
+    IsAtMost(A, B) 
+    IsAtLeast(A, B) 
+    AlwaysTrue 
 ;

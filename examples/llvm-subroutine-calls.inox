@@ -14,8 +14,9 @@ Value Integer :
 Report(X Integer) :
     Put("report=")
     PutLn(X)
-;
+; 
 
 Main :
     Report(Value)
+    GetLn()
 ;

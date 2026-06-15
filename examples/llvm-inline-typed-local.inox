@@ -13,5 +13,6 @@ Compute Integer :
     Return A + B
 ;
 
-Main :
+Main : 
+   Compute 
 ;

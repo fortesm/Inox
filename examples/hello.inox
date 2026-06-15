@@ -8,5 +8,5 @@
 Module Hello
 
 Main :
-    PutLn(""Hello, Inox"")
+    PutLn("Hello, Inox")
 ;

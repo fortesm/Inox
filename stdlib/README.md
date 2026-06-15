@@ -7,7 +7,7 @@ This directory contains the minimal standard-library modules agreed for Inox 0.1
 - `Std.Math.inox` — pure Integer helpers that can be implemented in Inox 0.1.
 - `Std.Debug.inox` — debug/checking facade; `Assert` requires trap/runtime support.
 
-These modules are intentionally small. They must remain portable across Windows and Linux and must not introduce unsafe pointers, GC, platform-specific APIs, or undocumented runtime dependencies.
+These modules are intentionally small. They must remain portable across Windows and Linux and another unices and must not introduce unsafe pointers, GC, platform-specific APIs, or undocumented runtime dependencies.
 
 ## Runtime status
 

@@ -8,10 +8,8 @@
 Module PutOutputBasic
 
 Main :
-    Var
-        X := 7
-    ;
-
+    X := 7
+    
     Put("X=")
     PutLn(X)
     PutLn("ready")

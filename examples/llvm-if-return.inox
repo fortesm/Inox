@@ -16,4 +16,19 @@ Max(A Integer, B Integer) Integer :
 ;
 
 Main :
+     A, B Integer := 0
+   
+   Putln("Enter first valid integer")
+   Get(A)   
+
+   Putln("Enter first valid integer")
+   Get(B)
+   
+   if V <= 0 or B <= 0
+      Putln("Invalid Values!")
+      Exit
+   ;
+      
+   Putln("Max number is: ")      
+   Max(A, B )  
 ;

@@ -8,18 +8,24 @@
 Module WhileLoop
 
 SumTo(N Integer) Integer :
-    Var
-        I := N
-        Total := 0
-    ;
-
+    I := N
+    Total := 0
+    
     while I > 0
         Total := Total + I
         I := I - 1
     ;
-
     Return Total
 ;
 
 Main :
+    v := 0
+    PutLn("Enter a valid Integer greather than zero and press enter key:")
+    Get(V)
+    if V <= 0
+       Put("Invalid integer!")
+       exit
+    ;
+    Put("SumTo is: ")      
+    SumTo(V)      
 ;

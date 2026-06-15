@@ -18,4 +18,12 @@ Compare(A Integer, B Integer) Integer :
 ;
 
 Main :
+    X, Y Integer := 0
+    
+    PutLn("enter integer value")  
+    GetLn(X)
+    PutlN("Enter a Integer Value")
+    GetLn(Y)
+    Compare(x,y) 
+    Readln    
 ;

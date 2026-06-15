@@ -39,11 +39,9 @@ TAccount.Print(Self) :
 ;
 
 Main :
-    Var
-        Account TAccount
-        Total Integer := 0
-    ;
-
+    Account TAccount
+    Total Integer := 0
+    
     PutLn("Inox 0.1 bank showcase")
     PutLn("value types + associated methods + LLVM backend")
 

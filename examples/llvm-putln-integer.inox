@@ -12,10 +12,8 @@ Value Integer :
 ;
 
 Main :
-    Var
-        X := 10
-    ;
-
+    X := 10
+    
     PutLn(X)
     PutLn(Value)
 ;

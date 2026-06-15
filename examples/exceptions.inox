@@ -8,15 +8,13 @@
 Module Exceptions
 
 Main :
-    try :
+    try 
         PutLn("before raise")
-        raise OverflowError
-    ;
-    except :
+        raise OverflowError    
+    except 
         PutLn("caught error")
-        raise
-    ;
-    finally :
+        raise    
+    finally 
         PutLn("cleanup")
     ;
 ;

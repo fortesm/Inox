@@ -13,17 +13,16 @@ Type
         FY Integer
     ;
 
-Const :
-    Limit := 10
-;
+Const Limit := 10
+
 
 Main :
-    var Flag := True
-    var Count := Integer(42)
-    var Money := Currency("12.34")
-    var Coin := Crypto("0.00000001")
-    var Letter := 'A'
-    var Text := "Hello, Inox"
+    Flag := True
+    Count := Integer(42)
+    Money := Currency("12.34")
+    Coin := Crypto("0.00000001")
+    Letter := "A"
+    Text := "Hello, Inox"
 
     PutLn(Text)
 ;

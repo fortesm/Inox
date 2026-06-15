@@ -8,16 +8,19 @@
 Module IfNoElse
 
 ClampPositive(A Integer) Integer :
-    Var
-        X := A
-    ;
-
+    X := A
+    
     if X < 0
-        X := 0
+       X := 0
     ;
-
     Return X
 ;
 
 Main :
+   A Integer
+   PutLn("ClampPositive")
+   PutLn("Wirete a value") 
+   Get(A)      
+   ClampPositive(A)
+   Getln()
 ;

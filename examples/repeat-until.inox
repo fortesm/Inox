@@ -8,8 +8,8 @@
 Module RepeatUntil
 
 Main :
-    var I := 3
-    var Total := 0
+    I := 3
+    Total := 0
 
     repeat
         Total := Total + I

@@ -8,10 +8,9 @@
 Module ForRange
 
 SumRange(N Integer) Integer :
-    Var
-        Total := 0
-    ;
-
+    
+    Total := 0
+    
     for I in 1..N
         if I = 3
             continue
@@ -23,9 +22,10 @@ SumRange(N Integer) Integer :
 
         Total := Total + I
     ;
-
     Return Total
 ;
 
 Main :
+    V Integer := 20
+    SumRange(N Integer) Integer :
 ;

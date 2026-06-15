@@ -8,18 +8,19 @@
 Module IfMerge
 
 MaxPlusOne(A Integer, B Integer) Integer :
-    Var
-        M := 0
-    ;
+ 
+    M := 0
 
     if A > B
         M := A
     else
         M := B
     ;
-
     Return M + 1
 ;
 
 Main :
+    A := 5
+    B := 6  
+    MaxPlusOne(A Integer, B Integer) Integer :
 ;

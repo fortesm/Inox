@@ -14,10 +14,9 @@ Type
     ;
 
 MakePoint(X Integer, Y Integer) TPoint :
-    Var
-        P TPoint
-    ;
-
+    
+    P TPoint
+    
     P.FX := X
     P.FY := Y
 
@@ -29,10 +28,8 @@ SumPoint(P TPoint) Integer :
 ;
 
 CopyPoint(P TPoint) TPoint :
-    Var
-        Q TPoint
-    ;
-
+    Q TPoint
+    
     Q := P
     Return Q
 ;

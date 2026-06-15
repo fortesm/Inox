@@ -8,13 +8,13 @@
 Module Bitwise
 
 Main :
-    var Rex := $40
-    var R := 5
-    var V := 100
-    var Addr := 10
-    var ImageBase := 20
-    var CSvaddr := 30
-    var CSvsize := 100
+    Rex := $40
+    R := 5
+    V := 100
+    Addr := 10
+    ImageBase := 20
+    CSvaddr := 30
+    CSvsize := 100
 
     if V < Addr or V >= ImageBase + CSvaddr + CSvsize
         Exit
@@ -26,7 +26,6 @@ Main :
 
     while R > 0
         R := R - 1
-
         if R = 2
             continue
         ;

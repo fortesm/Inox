@@ -24,4 +24,17 @@ NotPositive(A Integer) Bool :
 ;
 
 Main :
+
+   PutLn("enter integer value")  
+   GetLn(A)
+   PutlN("Enter a Integer Value")
+   GetLn(B)
+  
+   Both(A , B)
+   Either(A , B)
+   Different(A , B)
+   NotPositive(A)
+    
+   Readln    
+;
 ;

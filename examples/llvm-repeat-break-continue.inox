@@ -8,9 +8,7 @@
 Module RepeatBreakContinue
 
 FindValue(N Integer) Integer :
-    Var
-        I := N
-    ;
+    I := N  
 
     repeat
         I := I - 1
@@ -25,9 +23,12 @@ FindValue(N Integer) Integer :
 
         until I = 0
     ;
-
     Return I
 ;
 
 Main :
+    V := 0
+    Put("Enter integer value")
+    Get(V)
+    FindValue(V)
 ;

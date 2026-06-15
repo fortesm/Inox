@@ -14,10 +14,8 @@ Type
     ;
 
 GetPort Integer :
-    Var
-        C TConfig
-    ;
-
+    C TConfig
+    
     Return C.FPort
 ;
 

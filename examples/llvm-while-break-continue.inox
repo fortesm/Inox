@@ -8,11 +8,9 @@
 Module WhileBreakContinue
 
 FindFirstBelow(A Integer) Integer :
-    Var
-        I := A
-        Result := 0
-    ;
-
+    I := A
+    Result := 0
+    
     while I > 0
         I := I - 1
 
@@ -25,9 +23,20 @@ FindFirstBelow(A Integer) Integer :
             break
         ;
     ;
-
     Return Result
 ;
 
 Main :
+   V Integer := 0
+   Putln("Enter valid integer")
+   Get(V)
+   
+   if V <= 0
+      Putln("Invalid Value!")
+      PutLn("")
+      Exit
+   ;
+   
+   Putln("FindFirstBelow Value is: ")      
+   FindFirstBelow(V)  
 ;
