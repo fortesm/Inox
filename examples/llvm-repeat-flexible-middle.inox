@@ -10,7 +10,6 @@ Module RepeatFlexibleMiddle
 CountDown(N Integer) Integer :
     I := N
     Total := 0
-    
     repeat
         Total := Total + I
         until I = 0
@@ -20,17 +19,5 @@ CountDown(N Integer) Integer :
 ;
 
 Main :
-   V Integer := 0
-   Putln("Enter valid integer")
-   Get(V)
-   
-   if V <= 0
-      Putln("Invalid Value!")
-      PutLn("")
-      Exit
-   ;
-   
-   Putln("FindFirstBelow Value is: ")      
-   FindFirstBelow(V)  
+   PutLn(CountDown(5))
 ;
-

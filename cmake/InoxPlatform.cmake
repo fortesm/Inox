@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: MPL-2.0
+# Host-platform classification for the Inox compiler build.
+
+set(INOX_HOST_PLATFORM "unknown")
+if(WIN32)
+    set(INOX_HOST_PLATFORM "windows")
+elseif(ANDROID)
+    set(INOX_HOST_PLATFORM "android")
+elseif(APPLE)
+    set(INOX_HOST_PLATFORM "macos")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(INOX_HOST_PLATFORM "linux")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+    set(INOX_HOST_PLATFORM "freebsd")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
+    set(INOX_HOST_PLATFORM "netbsd")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+    set(INOX_HOST_PLATFORM "openbsd")
+elseif(CMAKE_SYSTEM_NAME MATCHES "SunOS")
+    set(INOX_HOST_PLATFORM "solaris-or-illumos")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
+    set(INOX_HOST_PLATFORM "aix")
+elseif(CMAKE_SYSTEM_NAME MATCHES "HP-UX")
+    set(INOX_HOST_PLATFORM "hpux")
+endif()
+
+message(STATUS "Inox host platform: ${INOX_HOST_PLATFORM}")

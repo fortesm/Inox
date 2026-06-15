@@ -23,5 +23,15 @@ Module Std.IO
 == Supported 0.1 output values are currently Integer, Bool and String. Char
 == output remains part of the String/Char milestone and runtime completion.
 ==
-== Input APIs such as ReadLn are deliberately not part of 0.1 because they
-== require a settled Result[T, E], EOF and encoding-error model.
+== Get and GetLn are compiler built-ins lowered by the backend for
+== minimal 0.1 console input. Integer input currently uses internal LLVM
+== helpers based on getchar, not scanf. Empty parentheses remain invalid: use `Get`
+== or `GetLn` without parentheses for no-argument pause/discard forms.
+==
+==   Get(A)       == read Integer/Int64 into A
+==   GetLn(A, B)  == read sequential Integer/Int64 values, then consume line
+==   GetLn        == consume input through end-of-line / console pause
+==
+== The initial supported input values are Integer/Int64. String input, ReadLn,
+== EOF, encoding errors and Result[T, E]-based I/O errors remain deferred until
+== the runtime ABI is settled.

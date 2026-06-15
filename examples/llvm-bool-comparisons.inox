@@ -36,13 +36,14 @@ AlwaysTrue Bool :
 ;
 
 Main :
-     A := 5
-     B := 6
-    IsGreater(A, B)  
-    IsEqual(A, B) 
-    IsDifferent(A ,B)  
-    IsLess(A, B) 
-    IsAtMost(A, B) 
-    IsAtLeast(A, B) 
-    AlwaysTrue 
+    A, B Integer := 0
+    A := 5
+    B := 6
+    PutLn(IsGreater(A, B))
+    PutLn(IsEqual(A, B))
+    PutLn(IsDifferent(A, B))
+    PutLn(IsLess(A, B))
+    PutLn(IsAtMost(A, B))
+    PutLn(IsAtLeast(A, B))
+    PutLn(AlwaysTrue)
 ;

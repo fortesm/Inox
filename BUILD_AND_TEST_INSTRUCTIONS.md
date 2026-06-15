@@ -1,169 +1,138 @@
 # Build, test, and release instructions
 
-This document summarizes the commands used to build the Inox compiler, run the regression suite, and generate prebuilt release packages.
+This document summarizes the current commands used to build the Inox compiler, run the regression suite, and generate prebuilt release packages.
+
+`docs/INOX_CANONICAL.md` remains the authoritative source of truth. This file is operational guidance only.
 
 ## Windows development build
 
 Use PowerShell 7, CMake, Ninja, LLVM/Clang, and Visual Studio Build Tools with C++.
 
-From the repository root:
+Recommended preset flow:
 
 ```powershell
-cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_CXX_COMPILER=clang++
-cmake --build build --config Debug
+cmake --preset windows-clang-msvc
+cmake --build --preset windows-clang-msvc-debug
 pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1
 ```
 
-Expected test result:
+Direct equivalent:
+
+```powershell
+cmake -S . -B build\windows-clang-msvc -G "Ninja Multi-Config" -DCMAKE_CXX_COMPILER=clang++
+cmake --build build\windows-clang-msvc --config Debug
+pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1 -InoxExe .\build\windows-clang-msvc\Debug\inox.exe
+```
+
+Expected current regression result:
 
 ```text
-Summary: 142 passed, 0 failed, 142 total
+Summary: 154 passed, 0 failed, 154 total
 ```
 
 Debug compiler path:
 
 ```text
-build\Debug\inox.exe
+build\windows-clang-msvc\Debug\inox.exe
 ```
 
 Release compiler path:
 
 ```text
-build\Release\inox.exe
+build\windows-clang-msvc\Release\inox.exe
 ```
 
 ## Windows release build
 
 ```powershell
-cmake --build build --config Release
+cmake --build --preset windows-clang-msvc-release
 ```
 
 Optional dependency inspection:
 
 ```powershell
-llvm-objdump -p .\build\Release\inox.exe | Select-String "DLL Name" -NoEmphasis
+llvm-objdump -p .\build\windows-clang-msvc\Release\inox.exe | Select-String "DLL Name" -NoEmphasis
 ```
 
 A normal Release build should depend on Release MSVC/UCRT runtime libraries, not Debug runtime DLLs.
 
-## Windows release package
-
-```powershell
-pwsh -ExecutionPolicy Bypass -File .\scripts\package-release.ps1
-```
-
-Generated package:
-
-```text
-dist\inox-windows-x64.zip
-```
-
-The package contains:
-
-```text
-inox-windows-x64/
-    README.md
-    set-inox-env.ps1
-    bin/
-        inox.exe
-    stdlib/
-    examples/
-    output/
-    manual/
-        index.html
-    licenses/
-```
-
 ## Linux development build
 
+Recommended preset flow:
+
 ```bash
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++
-cmake --build build
+cmake --preset linux-clang-debug
+cmake --build --preset linux-clang-debug
 bash scripts/run-tests.sh
 ```
 
-Expected test result:
+Direct equivalent:
+
+```bash
+cmake -S . -B build/linux-clang-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++
+cmake --build build/linux-clang-debug
+bash scripts/run-tests.sh build/linux-clang-debug/inox
+```
+
+Expected current regression result:
 
 ```text
-Summary: 142 passed, 0 failed, 142 total
+Summary: 154 passed, 0 failed, 154 total
 ```
 
 ## Linux release build
 
 ```bash
-cmake -S . -B build-linux -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
-cmake --build build-linux
+cmake --preset linux-clang-release
+cmake --build --preset linux-clang-release
 ```
 
 Release compiler path:
 
 ```text
-build-linux/inox
+build/linux-clang-release/inox
 ```
 
-## Linux release package
+## CMake structure
 
-```bash
-bash scripts/package-release.sh Release inox-linux-x64 build-linux/inox
-```
-
-Generated package:
+The build is split into reusable CMake modules:
 
 ```text
-dist/inox-linux-x64.zip
+cmake/InoxPlatform.cmake
+cmake/InoxCompilerOptions.cmake
+cmake/InoxWarnings.cmake
+cmake/InoxSanitizers.cmake
+cmake/InoxInstall.cmake
+cmake/toolchains/
 ```
 
-The package contains:
+Validated presets currently target Windows Clang/MSVC and Linux Clang. Other toolchain files are stubs for future real validation.
+
+## Testing Get/GetLn manually
+
+Linux:
+
+```bash
+printf '42\n' | build/linux-clang-debug/inox --run tests/integration/input/get-integer.inox
+printf '40 2 ignored\n' | build/linux-clang-debug/inox --run tests/integration/input/getln-two-integers.inox
+printf '\n' | build/linux-clang-debug/inox --run tests/integration/input/getln-pause.inox
+```
+
+Windows:
+
+```powershell
+"42" | .\build\windows-clang-msvc\Debug\inox.exe --run .\tests\integration\input\get-integer.inox
+"40 2 ignored" | .\build\windows-clang-msvc\Debug\inox.exe --run .\tests\integration\input\getln-two-integers.inox
+"" | .\build\windows-clang-msvc\Debug\inox.exe --run .\tests\integration\input\getln-pause.inox
+```
+
+Expected outputs:
 
 ```text
-inox-linux-x64/
-    README.md
-    set-inox-env.sh
-    bin/
-        inox
-    stdlib/
-    examples/
-    output/
-    manual/
-        index.html
-    licenses/
-```
-
-## Testing a Windows release package
-
-```powershell
-Expand-Archive .\dist\inox-windows-x64.zip -DestinationPath .\dist\check -Force
-cd .\dist\check\inox-windows-x64
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\set-inox-env.ps1
-inox .\examples\hello.inox
-inox --emit-llvm .\examples\llvm-put-output-basic.inox
-```
-
-If Clang is available:
-
-```powershell
-inox --build .\examples\llvm-put-output-basic.inox
-inox --run .\examples\llvm-put-output-basic.inox
-```
-
-## Testing a Linux release package
-
-```bash
-rm -rf dist/check-linux
-mkdir -p dist/check-linux
-unzip -q dist/inox-linux-x64.zip -d dist/check-linux
-cd dist/check-linux/inox-linux-x64
-source ./set-inox-env.sh
-inox ./examples/hello.inox
-inox --emit-llvm ./examples/llvm-put-output-basic.inox
-```
-
-If Clang is available:
-
-```bash
-inox --build ./examples/llvm-put-output-basic.inox
-inox --run ./examples/llvm-put-output-basic.inox
+A=42
+S=42
+before
+after
 ```
 
 ## Git policy
@@ -172,20 +141,8 @@ Do not commit generated directories or packages:
 
 ```text
 build/
-build-linux/
+build-*/
 dist/
 ```
 
-Upload release ZIP files as GitHub Release assets instead:
-
-```text
-inox-windows-x64.zip
-inox-linux-x64.zip
-```
-
-Public download links after publishing a GitHub Release:
-
-```text
-https://github.com/fortesm/Inox/releases/latest/download/inox-windows-x64.zip
-https://github.com/fortesm/Inox/releases/latest/download/inox-linux-x64.zip
-```
+Upload release ZIP files as GitHub Release assets instead.

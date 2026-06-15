@@ -1,0 +1,7 @@
+Module GetLnPause
+
+Main :
+    PutLn("before")
+    GetLn
+    PutLn("after")
+;

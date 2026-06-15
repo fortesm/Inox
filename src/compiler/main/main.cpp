@@ -10,10 +10,13 @@
 #include "../parser/Parser.h"
 #include "../semantic/SemanticAnalyzer.h"
 #include "../semantic/SemanticDumper.h"
+#include "../support/Environment.h"
+#include "../support/FileSystem.h"
+#include "../support/Platform.h"
+#include "../support/Process.h"
 
 #include <algorithm>
 #include <cctype>
-#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -213,29 +216,8 @@ private:
 
 fs::path pathFromEnvironment(const char* variableName)
 {
-    const char* value = std::getenv(variableName);
-    if (value == nullptr || std::string_view(value).empty()) {
-        return {};
-    }
-    return fs::path(value);
-}
-
-fs::path executableDirectory(const char* argv0)
-{
-    if (argv0 == nullptr || std::string_view(argv0).empty()) {
-        return {};
-    }
-
-    fs::path executablePath(argv0);
-    std::error_code error;
-    if (executablePath.is_relative()) {
-        executablePath = fs::absolute(executablePath, error);
-        if (error) {
-            return {};
-        }
-    }
-
-    return executablePath.parent_path();
+    const auto value = inox::compiler::support::getEnvironmentVariable(variableName);
+    return value.has_value() ? fs::path(*value) : fs::path{};
 }
 
 void requireDirectoryIfSet(const char* variableName, const fs::path& directory)
@@ -309,29 +291,9 @@ std::string shellQuote(const fs::path& path)
     return quoted;
 }
 
-const char* nullDevice()
-{
-#ifdef _WIN32
-    return "NUL";
-#else
-    return "/dev/null";
-#endif
-}
-
-const char* executableSuffix()
-{
-#ifdef _WIN32
-    return ".exe";
-#else
-    return "";
-#endif
-}
-
 bool clangExists()
 {
-    const std::string command =
-        std::string("clang --version > ") + nullDevice() + " 2>&1";
-    return std::system(command.c_str()) == 0;
+    return inox::compiler::support::commandExists("clang");
 }
 
 struct BuildArtifacts {
@@ -354,13 +316,13 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
     const std::string stem = sourcePath.stem().string();
     const BuildArtifacts artifacts{
         outputDirectory / (stem + ".ll"),
-        outputDirectory / (stem + executableSuffix())};
+        outputDirectory / (stem + std::string(inox::compiler::support::executableSuffix()))};
     writeFile(artifacts.llvmIr, inox::compiler::codegen::LlvmIrEmitter().emit(module));
 
     const std::string command =
         "clang " + shellQuote(artifacts.llvmIr) + " -o " + shellQuote(artifacts.executable) +
-        " > " + nullDevice() + " 2>&1";
-    if (std::system(command.c_str()) != 0) {
+        " > " + std::string(inox::compiler::support::nullDevicePath()) + " 2>&1";
+    if (inox::compiler::support::runShellCommand(command) != 0) {
         throw std::runtime_error("clang failed while building: " + sourcePath.string());
     }
     return artifacts;
@@ -376,7 +338,7 @@ int main(int argc, char** argv)
     const bool emitLlvm = argc == 3 && std::string(argv[1]) == "--emit-llvm";
     const bool build = argc == 3 && std::string(argv[1]) == "--build";
     const bool run = argc == 3 && std::string(argv[1]) == "--run";
-    const fs::path executableDir = executableDirectory(argc > 0 ? argv[0] : nullptr);
+    const fs::path executableDir = inox::compiler::support::executableDirectory(argc > 0 ? argv[0] : nullptr);
     const bool hasMode = dumpTypes || dumpTokensMode || parseOnly || emitLlvm || build || run;
     if ((!hasMode && argc != 2) || (hasMode && argc != 3)) {
         std::cerr << "usage: inox [--dump-tokens|--parse-only|--dump-types|--emit-llvm|--build|--run] <source.inox>\n";
@@ -421,7 +383,7 @@ int main(int argc, char** argv)
         } else if (build || run) {
             const BuildArtifacts artifacts = buildProgram(fs::path(sourcePath), *module);
             if (run) {
-                return std::system(shellQuote(artifacts.executable).c_str()) == 0 ? 0 : 1;
+                return inox::compiler::support::runShellCommand(shellQuote(artifacts.executable)) == 0 ? 0 : 1;
             }
             std::cout << artifacts.executable.string() << '\n';
         } else {

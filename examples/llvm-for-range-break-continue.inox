@@ -8,24 +8,19 @@
 Module ForRange
 
 SumRange(N Integer) Integer :
-    
     Total := 0
-    
     for I in 1..N
         if I = 3
             continue
         ;
-
         if I = 8
             break
         ;
-
         Total := Total + I
     ;
     Return Total
 ;
 
 Main :
-    V Integer := 20
-    SumRange(N Integer) Integer :
+    PutLn(SumRange(20))
 ;

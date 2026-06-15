@@ -17,5 +17,5 @@ Double(X Integer) Integer :
 
 Main :
    A Integer := 10
-   Double(A)
+   PutLn(Double(A))
 ;

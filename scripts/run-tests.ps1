@@ -14,7 +14,9 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($InoxExe)) {
     $candidateExecutables = @(
+        (Join-Path $repoRoot "build\windows-clang-msvc\Debug\inox.exe"),
         (Join-Path $repoRoot "build\Debug\inox.exe"),
+        (Join-Path $repoRoot "build\linux-clang-debug\inox"),
         (Join-Path $repoRoot "build\inox"),
         (Join-Path $repoRoot "build-linux\inox"),
         (Join-Path $repoRoot "build-clang\inox")
@@ -25,7 +27,7 @@ if ([string]::IsNullOrWhiteSpace($InoxExe)) {
     } | Select-Object -First 1
 
     if ([string]::IsNullOrWhiteSpace($InoxExe)) {
-        $InoxExe = Join-Path $repoRoot "build\Debug\inox.exe"
+        $InoxExe = Join-Path $repoRoot "build\windows-clang-msvc\Debug\inox.exe"
     }
 } elseif (-not [System.IO.Path]::IsPathRooted($InoxExe)) {
     $InoxExe = Join-Path $repoRoot $InoxExe
@@ -34,8 +36,8 @@ if ([string]::IsNullOrWhiteSpace($InoxExe)) {
 if (-not (Test-Path -LiteralPath $InoxExe -PathType Leaf)) {
     Write-Host "Inox executable not found: $InoxExe"
     Write-Host "Run one of:"
-    Write-Host "  Windows: cmake --build build --config Debug"
-    Write-Host "  Linux:   cmake --build build"
+    Write-Host "  Windows: cmake --preset windows-clang-msvc; cmake --build --preset windows-clang-msvc-debug"
+    Write-Host "  Linux:   cmake --preset linux-clang-debug; cmake --build --preset linux-clang-debug"
     exit 1
 }
 
@@ -264,6 +266,40 @@ function Invoke-RunDriverTest {
     }
 }
 
+function Invoke-RunDriverInputTest {
+    param(
+        [System.IO.FileInfo]$TestFile,
+        [System.IO.FileInfo]$InputFile,
+        [System.IO.FileInfo]$ExpectedOutputFile
+    )
+
+    $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
+    $clang = Get-Command clang -ErrorAction SilentlyContinue
+    if ($null -eq $clang) {
+        Write-Host "[SKIP] $relativePath --run < input (clang not found)"
+        return
+    }
+
+    $actual = Get-Content -LiteralPath $InputFile.FullName | & $InoxExe "--run" $TestFile.FullName 2>&1 | Out-String
+    $exitCode = $LASTEXITCODE
+    $expected = Get-Content -LiteralPath $ExpectedOutputFile.FullName -Raw
+    $actual = ($actual -replace "`r`n", "`n") -replace "`n+$", ""
+    $expected = ($expected -replace "`r`n", "`n") -replace "`n+$", ""
+
+    if ($exitCode -eq 0 -and $actual -eq $expected) {
+        $script:passed++
+        Write-Host "[PASS] $relativePath --run < input"
+    } else {
+        $script:failed++
+        Write-Host "[FAIL] $relativePath --run < input"
+        Write-Host "       exit code: $exitCode"
+        Write-Host "       expected output:"
+        Write-Host $expected
+        Write-Host "       actual output:"
+        Write-Host $actual
+    }
+}
+
 function Get-InoxTestFiles {
     param(
         [string]$RelativePath,
@@ -441,6 +477,18 @@ Invoke-RunDriverTest `
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output\variadic-put.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output\variadic-put.out"))
+Invoke-RunDriverInputTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\get-integer.inox")) `
+    -InputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\get-integer.in")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\get-integer.out"))
+Invoke-RunDriverInputTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-two-integers.inox")) `
+    -InputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-two-integers.in")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-two-integers.out"))
+Invoke-RunDriverInputTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-pause.inox")) `
+    -InputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-pause.in")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-pause.out"))
 Invoke-ModeExitTest `
     -Mode "--emit-llvm" `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\cycles\Cycle.A.inox")) `

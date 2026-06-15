@@ -86,6 +86,8 @@ private:
     std::string analyzeUnaryExpression(const ast::UnaryExpression& expression);
     std::string analyzePreludeCall(std::string_view name,
                                    const std::vector<std::string>& argumentTypes) const;
+    std::string analyzeInputCall(std::string_view name,
+                                 const std::vector<ast::ExpressionPtr>& arguments);
     std::string analyzeUserFunctionCall(const FunctionSignature& signature,
                                         const std::vector<ast::ExpressionPtr>& arguments);
     void requireBoolCondition(const ast::Expression& expression);

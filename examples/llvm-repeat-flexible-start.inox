@@ -10,7 +10,6 @@ Module RepeatFlexibleStart
 CountDown(N Integer) Integer :
     I := N
     Total := 0
-    
     repeat
         until I = 0
         Total := Total + I
@@ -20,14 +19,5 @@ CountDown(N Integer) Integer :
 ;
 
 Main :
-   V Integer := 0
-   Putln("Enter valid integer")
-   Get(V)
-   
-   if V <= 0
-      Putln("Invalid Value!")
-      Exit
-   ;
-   
-   Putln("FinvdFirstBelow Value is: ", CountDown(V))       
+   PutLn(CountDown(5))
 ;

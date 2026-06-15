@@ -14,5 +14,5 @@ Compute Integer :
 ;
 
 Main : 
-   Compute 
+   PutLn(Compute)
 ;

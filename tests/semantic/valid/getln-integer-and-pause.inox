@@ -1,0 +1,8 @@
+Module GetLnIntegerAndPauseValid
+
+Main :
+    A, B Integer := 0
+    GetLn(A, B)
+    PutLn(A + B)
+    GetLn
+;

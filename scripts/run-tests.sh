@@ -12,14 +12,18 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 inox_exe="${1:-}"
 
 if [[ -z "$inox_exe" ]]; then
-    if [[ -f "$repo_root/build/inox" && -x "$repo_root/build/inox" ]]; then
+    if [[ -f "$repo_root/build/linux-clang-debug/inox" && -x "$repo_root/build/linux-clang-debug/inox" ]]; then
+        inox_exe="$repo_root/build/linux-clang-debug/inox"
+    elif [[ -f "$repo_root/build/inox" && -x "$repo_root/build/inox" ]]; then
         inox_exe="$repo_root/build/inox"
     elif [[ -x "$repo_root/build-linux/inox" ]]; then
         inox_exe="$repo_root/build-linux/inox"
+    elif [[ -x "$repo_root/build/windows-clang-msvc/Debug/inox.exe" ]]; then
+        inox_exe="$repo_root/build/windows-clang-msvc/Debug/inox.exe"
     elif [[ -x "$repo_root/build/Debug/inox.exe" ]]; then
         inox_exe="$repo_root/build/Debug/inox.exe"
     else
-        inox_exe="$repo_root/build/inox"
+        inox_exe="$repo_root/build/linux-clang-debug/inox"
     fi
 elif [[ "$inox_exe" != /* ]]; then
     inox_exe="$repo_root/$inox_exe"
@@ -270,6 +274,32 @@ run_driver_execution_test() {
     fi
 }
 
+
+run_driver_input_test() {
+    local test_file="$1"
+    local input_file="$2"
+    local expected_file="$3"
+    local rel
+    rel="$(relative_path "$test_file")"
+
+    if ! command -v clang >/dev/null 2>&1; then
+        echo "[SKIP] $rel --run < input (clang not found)"
+        return 0
+    fi
+
+    local actual expected exit_code
+    actual="$("$inox_exe" --run "$test_file" < "$input_file" 2>&1)"
+    exit_code=$?
+    expected="$(sed 's/\r$//' "$expected_file")"
+    actual="$(printf '%s' "$actual" | sed 's/\r$//')"
+
+    if [[ $exit_code -eq 0 && "$actual" == "$expected" ]]; then
+        record_pass "$rel --run < input"
+    else
+        record_fail "$rel --run < input" "exit code: $exit_code" "expected output: $expected" "actual output: $actual"
+    fi
+}
+
 run_test_tree() {
     local root="$1"
     local maxdepth="$2"
@@ -369,6 +399,9 @@ run_driver_execution_test "$repo_root/tests/integration/modules/Main.inox" "$rep
 run_driver_execution_test "$repo_root/tests/integration/stdlib/StdMathDemo.inox" "$repo_root/tests/integration/stdlib/StdMathDemo.out"
 run_driver_execution_test "$repo_root/tests/integration/showcase/account-showcase.inox" "$repo_root/tests/integration/showcase/account-showcase.out"
 run_driver_execution_test "$repo_root/tests/integration/output/variadic-put.inox" "$repo_root/tests/integration/output/variadic-put.out"
+run_driver_input_test "$repo_root/tests/integration/input/get-integer.inox" "$repo_root/tests/integration/input/get-integer.in" "$repo_root/tests/integration/input/get-integer.out"
+run_driver_input_test "$repo_root/tests/integration/input/getln-two-integers.inox" "$repo_root/tests/integration/input/getln-two-integers.in" "$repo_root/tests/integration/input/getln-two-integers.out"
+run_driver_input_test "$repo_root/tests/integration/input/getln-pause.inox" "$repo_root/tests/integration/input/getln-pause.in" "$repo_root/tests/integration/input/getln-pause.out"
 run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 
 total=$((passed + failed))

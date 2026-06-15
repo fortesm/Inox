@@ -8,16 +8,13 @@
 Module LocalAssignment
 
 Compute Integer :
-   
     A := 10
     B := 20  
-
     A := A + B
     B := A * 2
-
     Return B
 ;
 
 Main :
-  Compute
+  PutLn(Compute)
 ;

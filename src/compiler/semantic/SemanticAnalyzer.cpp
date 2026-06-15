@@ -94,11 +94,13 @@ struct PreludeSignature {
     std::string_view returnType;
 };
 
-const std::array<PreludeSignature, 10>& preludeSignatures()
+const std::array<PreludeSignature, 12>& preludeSignatures()
 {
-    static const std::array<PreludeSignature, 10> signatures = {{
+    static const std::array<PreludeSignature, 12> signatures = {{
         {"Put", {"*"}, "Void"},
         {"PutLn", {"*"}, "Void"},
+        {"Get", {}, "Void"},
+        {"GetLn", {}, "Void"},
         {"ReadLn", {}, "String"},
         {"Length", {"String"}, "Int64"},
         {"Ord", {"Char"}, "Int64"},
@@ -247,8 +249,8 @@ const FunctionSignature* SemanticAnalyzer::resolveFunctionSignature(std::string_
 
 void SemanticAnalyzer::declareBuiltins()
 {
-    constexpr std::array<std::string_view, 22> valueBuiltins = {
-        "Put", "PutLn", "ReadLn",
+    constexpr std::array<std::string_view, 24> valueBuiltins = {
+        "Put", "PutLn", "Get", "GetLn", "ReadLn",
         "Sin", "Cos", "Sqrt", "Abs",
         "Length", "Ord",
         "True", "False",
@@ -884,6 +886,11 @@ std::string SemanticAnalyzer::inferExpressionType(const ast::Expression& express
     }
     case ast::AstNodeKind::IdentifierExpression: {
         const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
+        if (equalsIgnoreCase(identifier.name(), "Get") || equalsIgnoreCase(identifier.name(), "GetLn")) {
+            const Symbol& symbol = resolveOrThrow(identifier.name());
+            result_.bind(identifier, symbol);
+            return "Void";
+        }
         if (const FunctionSignature* signature = resolveFunctionSignature(identifier.name())) {
             if (signature->parameters.empty()) {
                 if (const Symbol* symbol = symbols_.currentScope().resolve(identifier.name())) {
@@ -937,6 +944,9 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
             const Symbol& symbol = resolveOrThrow(callee.name());
             result_.bind(callee, symbol);
             result_.bind(call, symbol);
+            if (equalsIgnoreCase(callee.name(), "Get") || equalsIgnoreCase(callee.name(), "GetLn")) {
+                return analyzeInputCall(callee.name(), call.arguments());
+            }
             std::vector<std::string> argumentTypes;
             argumentTypes.reserve(call.arguments().size());
             for (const auto& argument : call.arguments()) {
@@ -1074,6 +1084,44 @@ std::string SemanticAnalyzer::analyzeUserFunctionCall(
     }
 
     return signature.returnType;
+}
+
+std::string SemanticAnalyzer::analyzeInputCall(
+    std::string_view name,
+    const std::vector<ast::ExpressionPtr>& arguments)
+{
+    if (arguments.empty()) {
+        return "Void";
+    }
+
+    for (std::size_t index = 0; index < arguments.size(); ++index) {
+        const ast::Expression& argument = *arguments[index];
+        if (argument.kind() != ast::AstNodeKind::IdentifierExpression) {
+            throw SemanticError(
+                "argument " + std::to_string(index + 1) + " of " + std::string(name) +
+                " must be an assignable variable");
+        }
+
+        const auto& identifier = static_cast<const ast::IdentifierExpression&>(argument);
+        const Symbol& symbol = resolveOrThrow(identifier.name());
+        result_.bind(identifier, symbol);
+        result_.setExpressionType(identifier, resolvedType(symbol.typeName));
+
+        if (symbol.kind == SymbolKind::LoopIterator) {
+            throw SemanticError(std::string(name) + " cannot assign to read-only loop iterator: " + identifier.name());
+        }
+        if ((symbol.kind != SymbolKind::Variable && symbol.kind != SymbolKind::State) ||
+            !symbol.isMutable) {
+            throw SemanticError(std::string(name) + " argument must be an assignable variable: " + identifier.name());
+        }
+        if (!isIntegerType(symbol.typeName)) {
+            throw SemanticError(
+                std::string(name) + " currently supports only Integer/Int64 input, got " +
+                symbol.typeName + " for " + identifier.name());
+        }
+    }
+
+    return "Void";
 }
 
 std::string SemanticAnalyzer::analyzePreludeCall(
@@ -1369,7 +1417,9 @@ bool SemanticAnalyzer::isNumericType(std::string_view typeName)
 
 bool SemanticAnalyzer::isIntegerType(std::string_view typeName)
 {
-    return typeName == "Int8" ||
+    return typeName == "Integer" ||
+           typeName == "UInteger" ||
+           typeName == "Int8" ||
            typeName == "Int16" ||
            typeName == "Int32" ||
            typeName == "Int64" ||

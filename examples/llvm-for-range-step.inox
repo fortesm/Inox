@@ -6,25 +6,21 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 Module ForRangeStep
-    Total := 0  
+
+SumEvenUntil(N Integer) Integer :
+    Total := 0
     for I in 2..N(2)
         if I = 4
             continue
         ;
-
         if I = 10
             break
         ;
-
         Total := Total + I
     ;
     Return Total
 ;
 
 Main :
-    A Integer 
-    PutLn ("Enter a valid Integer")
-    GetLn(A)
-    SumEvenUntil(N Integer) Integer :
-    GetLn
+    PutLn(SumEvenUntil(20))
 ;

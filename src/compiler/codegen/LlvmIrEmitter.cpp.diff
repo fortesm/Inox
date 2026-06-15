@@ -1,0 +1,10 @@
+1320,1321c1320,1325
+<                 throw CodegenError(
+<                     "LLVM emission currently supports assignment only to local variables");
+---
+>                 // CANON-5 / A6 / A7: first appearance of `Name := Expr` is an
+>                 // inline declaration with an inferred type. The semantic layer
+>                 // already validated this; here we allocate a fresh local and
+>                 // store the initializer, mirroring emitLocalVariable.
+>                 emitLocalVariable(identifier.name(), assignment.right());
+>                 return;

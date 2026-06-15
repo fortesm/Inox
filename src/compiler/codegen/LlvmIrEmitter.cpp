@@ -948,6 +948,14 @@ private:
     {
         if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
             const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
+            if (equalsIgnoreCase(identifier.name(), "Get")) {
+                emitInputDiscardToken();
+                return;
+            }
+            if (equalsIgnoreCase(identifier.name(), "GetLn")) {
+                emitInputDiscardLine();
+                return;
+            }
             emitNoArgumentSubroutineCall(identifier.name());
             return;
         }
@@ -977,6 +985,13 @@ private:
         const bool isPutLn = equalsIgnoreCase(callee.name(), "PutLn");
         if (isPut || isPutLn) {
             emitOutputCallSequence(call.arguments(), isPutLn);
+            return;
+        }
+
+        const bool isGet = equalsIgnoreCase(callee.name(), "Get");
+        const bool isGetLn = equalsIgnoreCase(callee.name(), "GetLn");
+        if (isGet || isGetLn) {
+            emitInputCallSequence(call.arguments(), isGetLn);
             return;
         }
 
@@ -1030,6 +1045,49 @@ private:
             output_ << signature->second.parameters[index].llvmType << ' ' << arguments[index];
         }
         output_ << ")\n";
+    }
+
+    void emitInputCallSequence(const std::vector<ast::ExpressionPtr>& arguments, bool consumeRestOfLine)
+    {
+        if (arguments.empty()) {
+            throw CodegenError("Get/GetLn calls with parentheses require at least one argument");
+        }
+
+        for (const auto& argument : arguments) {
+            emitInputReadInteger(*argument);
+        }
+
+        if (consumeRestOfLine) {
+            emitInputDiscardLine();
+        }
+    }
+
+    void emitInputReadInteger(const ast::Expression& argument)
+    {
+        if (argument.kind() != ast::AstNodeKind::IdentifierExpression) {
+            throw CodegenError("Get/GetLn LLVM emission requires assignable local variables");
+        }
+
+        const auto& identifier = static_cast<const ast::IdentifierExpression&>(argument);
+        const auto local = locals_.find(normalize(identifier.name()));
+        if (local == locals_.end()) {
+            throw CodegenError("Get/GetLn LLVM emission currently supports only local variables");
+        }
+        if (local->second.llvmType != "i64") {
+            throw CodegenError("Get/GetLn LLVM emission currently supports only Integer/Int64 variables");
+        }
+
+        output_ << "  call void @__inox_read_i64(ptr " << local->second.slot << ")\n";
+    }
+
+    void emitInputDiscardToken()
+    {
+        output_ << "  call void @__inox_discard_token()\n";
+    }
+
+    void emitInputDiscardLine()
+    {
+        output_ << "  call void @__inox_discard_line()\n";
     }
 
     void emitOutputCallSequence(const std::vector<ast::ExpressionPtr>& arguments, bool newline)
@@ -1603,6 +1661,126 @@ CodegenError::CodegenError(std::string message)
 {
 }
 
+
+std::string inputRuntimeHelpers()
+{
+    return R"llvm(define internal void @__inox_discard_line() {
+entry:
+  br label %loop
+
+loop:
+  %ch = call i32 @getchar()
+  %is_newline = icmp eq i32 %ch, 10
+  %is_eof = icmp eq i32 %ch, -1
+  %done = or i1 %is_newline, %is_eof
+  br i1 %done, label %exit, label %loop
+
+exit:
+  ret void
+}
+
+define internal void @__inox_discard_token() {
+entry:
+  br label %skip_ws
+
+skip_ws:
+  %ch0 = call i32 @getchar()
+  %is_eof0 = icmp eq i32 %ch0, -1
+  %is_space0 = icmp eq i32 %ch0, 32
+  %is_tab0 = icmp eq i32 %ch0, 9
+  %is_lf0 = icmp eq i32 %ch0, 10
+  %is_cr0 = icmp eq i32 %ch0, 13
+  %ws_a0 = or i1 %is_space0, %is_tab0
+  %ws_b0 = or i1 %is_lf0, %is_cr0
+  %is_ws0 = or i1 %ws_a0, %ws_b0
+  %keep_skipping = and i1 %is_ws0, true
+  br i1 %is_eof0, label %exit, label %after_eof
+
+after_eof:
+  br i1 %keep_skipping, label %skip_ws, label %consume
+
+consume:
+  %ch1 = phi i32 [ %ch0, %after_eof ], [ %ch2, %consume_next ]
+  %is_eof1 = icmp eq i32 %ch1, -1
+  %is_space1 = icmp eq i32 %ch1, 32
+  %is_tab1 = icmp eq i32 %ch1, 9
+  %is_lf1 = icmp eq i32 %ch1, 10
+  %is_cr1 = icmp eq i32 %ch1, 13
+  %ws_a1 = or i1 %is_space1, %is_tab1
+  %ws_b1 = or i1 %is_lf1, %is_cr1
+  %is_ws1 = or i1 %ws_a1, %ws_b1
+  %done1a = or i1 %is_eof1, %is_ws1
+  br i1 %done1a, label %exit, label %consume_next
+
+consume_next:
+  %ch2 = call i32 @getchar()
+  br label %consume
+
+exit:
+  ret void
+}
+
+define internal void @__inox_read_i64(ptr %out) {
+entry:
+  br label %skip_ws
+
+skip_ws:
+  %ch0 = call i32 @getchar()
+  %is_eof0 = icmp eq i32 %ch0, -1
+  %is_space0 = icmp eq i32 %ch0, 32
+  %is_tab0 = icmp eq i32 %ch0, 9
+  %is_lf0 = icmp eq i32 %ch0, 10
+  %is_cr0 = icmp eq i32 %ch0, 13
+  %ws_a0 = or i1 %is_space0, %is_tab0
+  %ws_b0 = or i1 %is_lf0, %is_cr0
+  %is_ws0 = or i1 %ws_a0, %ws_b0
+  br i1 %is_eof0, label %store_zero, label %after_eof
+
+after_eof:
+  br i1 %is_ws0, label %skip_ws, label %sign_check
+
+sign_check:
+  %is_minus = icmp eq i32 %ch0, 45
+  br i1 %is_minus, label %minus, label %digits_entry
+
+minus:
+  %ch_after_minus = call i32 @getchar()
+  br label %digits_entry
+
+digits_entry:
+  %sign = phi i64 [ -1, %minus ], [ 1, %sign_check ]
+  %first_ch = phi i32 [ %ch_after_minus, %minus ], [ %ch0, %sign_check ]
+  br label %digits
+
+digits:
+  %ch = phi i32 [ %first_ch, %digits_entry ], [ %next_ch, %digit_body ]
+  %acc = phi i64 [ 0, %digits_entry ], [ %next_acc, %digit_body ]
+  %ge_zero = icmp sge i32 %ch, 48
+  %le_nine = icmp sle i32 %ch, 57
+  %is_digit = and i1 %ge_zero, %le_nine
+  br i1 %is_digit, label %digit_body, label %finish
+
+digit_body:
+  %digit_i32 = sub i32 %ch, 48
+  %digit_i64 = sext i32 %digit_i32 to i64
+  %mul = mul i64 %acc, 10
+  %next_acc = add i64 %mul, %digit_i64
+  %next_ch = call i32 @getchar()
+  br label %digits
+
+finish:
+  %signed = mul i64 %acc, %sign
+  store i64 %signed, ptr %out
+  ret void
+
+store_zero:
+  store i64 0, ptr %out
+  ret void
+}
+
+)llvm";
+}
+
 std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
 {
     const ast::FunctionDeclaration* mainFunction = nullptr;
@@ -1674,7 +1852,9 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
     for (const std::string& global : stringGlobals) {
         output << global << '\n';
     }
-    output << "declare i32 @printf(ptr, ...)\n\n";
+    output << "declare i32 @printf(ptr, ...)\n";
+    output << "declare i32 @getchar()\n\n";
+    output << inputRuntimeHelpers();
     output << functionOutput.str();
     return output.str();
 }

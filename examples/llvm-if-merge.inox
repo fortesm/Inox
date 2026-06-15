@@ -8,9 +8,7 @@
 Module IfMerge
 
 MaxPlusOne(A Integer, B Integer) Integer :
- 
     M := 0
-
     if A > B
         M := A
     else
@@ -20,7 +18,5 @@ MaxPlusOne(A Integer, B Integer) Integer :
 ;
 
 Main :
-    A := 5
-    B := 6  
-    MaxPlusOne(A Integer, B Integer) Integer :
+    PutLn(MaxPlusOne(5, 6))
 ;

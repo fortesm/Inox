@@ -1,0 +1,74 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-clang-msvc",
+      "displayName": "Windows x64 Clang/MSVC ABI",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build/windows-clang-msvc",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "linux-clang-debug",
+      "displayName": "Linux x64 Clang Debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-clang-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-clang-release",
+      "displayName": "Linux x64 Clang Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-clang-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "clang++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-clang-msvc-debug",
+      "configurePreset": "windows-clang-msvc",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-clang-msvc-release",
+      "configurePreset": "windows-clang-msvc",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-clang-debug",
+      "configurePreset": "linux-clang-debug"
+    },
+    {
+      "name": "linux-clang-release",
+      "configurePreset": "linux-clang-release"
+    }
+  ]
+}

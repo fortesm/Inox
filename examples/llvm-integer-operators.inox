@@ -8,7 +8,6 @@
 Module IntegerOperators
 
 Compute(A Integer, B Integer) Integer :
-    
     Q := A div B
     X := A div B
     Y := A mod B
@@ -17,24 +16,9 @@ Compute(A Integer, B Integer) Integer :
     M := W bitand $FF
     N := M bitor 1
     R := N bitxor 3
-    
     Return R
 ;
 
 Main :
-   A, B Integer := 0
-   
-   Putln("Enter first valid integer")
-   Get(A)   
-
-   Putln("Enter first valid integer")
-   Get(B)
-   
-   if V <= 0 or B <= 0
-      Putln("Invalid Values!")
-      Exit
-   ;
-   
-   Putln("Computing is: ")      
-   Compute(A, B)      
+   PutLn(Compute(20, 5))
 ;

@@ -18,5 +18,5 @@ Report(X Integer) :
 
 Main :
     Report(Value)
-    GetLn()
+    GetLn
 ;
