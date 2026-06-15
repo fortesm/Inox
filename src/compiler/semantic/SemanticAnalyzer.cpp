@@ -382,16 +382,49 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
     }
 
     const auto& tokens = section.tokens();
-    for (std::size_t index = 0; index + 1 < tokens.size(); ++index) {
-        const bool isInitializerDeclaration =
-            tokens[index + 1] == ":=" && !(index > 0 && tokens[index - 1] == ":");
-        const bool isTypedDeclaration = tokens[index + 1] == ":";
-
-        if (looksLikeIdentifier(tokens[index]) &&
-            (isInitializerDeclaration || isTypedDeclaration)) {
-            const bool isMutable = kind == SymbolKind::Variable || kind == SymbolKind::State;
-            declareOrThrow(tokens[index], kind, inferSectionDeclarationType(tokens, index), isMutable);
+    const bool isMutable = kind == SymbolKind::Variable || kind == SymbolKind::State;
+    for (std::size_t index = 0; index + 1 < tokens.size();) {
+        if (!looksLikeIdentifier(tokens[index])) {
+            ++index;
+            continue;
         }
+
+        // Canonical forms recognized here:
+        //   Name := Expr            (inferred type)            tokens: Name := value ...
+        //   Name Type := Expr       (explicit type + value)    tokens: Name Type := value ...
+        //   Name Type               (struct/aggregate default) tokens: Name Type
+        // The OLD `Name : Type` form (with a ':') is also tolerated.
+        const std::string& next = tokens[index + 1];
+
+        if (next == ":=") {
+            // Name := Expr  -> inferred-type declaration
+            declareOrThrow(tokens[index], kind,
+                           inferSectionDeclarationType(tokens, index), isMutable);
+            index += 3;  // Name := value
+            continue;
+        }
+
+        if (next == ":") {
+            // legacy Name : Type
+            declareOrThrow(tokens[index], kind,
+                           inferSectionDeclarationType(tokens, index), isMutable);
+            index += 3;  // Name : Type
+            continue;
+        }
+
+        if (looksLikeIdentifier(next)) {
+            // Name Type [:= Expr]  -> explicit-typed declaration.
+            // The TYPE token must NOT be declared as a symbol (it is a type name).
+            declareOrThrow(tokens[index], kind, canonicalTypeName(next), isMutable);
+            if (index + 2 < tokens.size() && tokens[index + 2] == ":=") {
+                index += 4;  // Name Type := value
+            } else {
+                index += 2;  // Name Type
+            }
+            continue;
+        }
+
+        ++index;
     }
 }
 
@@ -1113,6 +1146,29 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
 
         if (expression.left().kind() == ast::AstNodeKind::IdentifierExpression) {
             const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression.left());
+
+            // CANON-5 / A6 + A7: first appearance of a name is a DECLARATION.
+            // `Name := Expr` where Name is not yet visible in any scope is an
+            // inline declaration with the type INFERRED from the initializer
+            // (Ada/SPARK safe inference). A subsequent `Name := Expr` is a plain
+            // assignment, handled by the existing path below.
+            if (symbols_.currentScope().resolve(identifier.name()) == nullptr) {
+                const std::string inferredType = analyzeExpression(expression.right());
+                if (inferredType.empty()) {
+                    throw SemanticError(
+                        "cannot infer type for declaration: " + identifier.name());
+                }
+                declareOrThrow(
+                    identifier.name(),
+                    SymbolKind::Variable,
+                    inferredType,
+                    true);
+                const Symbol& declared = resolveOrThrow(identifier.name());
+                result_.bind(identifier, declared);
+                result_.setExpressionType(identifier, resolvedType(declared.typeName));
+                return inferredType;
+            }
+
             const Symbol& target = resolveOrThrow(identifier.name());
             result_.bind(identifier, target);
             result_.setExpressionType(identifier, resolvedType(target.typeName));

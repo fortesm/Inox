@@ -1,20 +1,26 @@
 == SPDX-License-Identifier: MPL-2.0
-== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+== Copyright (c) 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 ==
 == This Source Code Form is subject to the terms of the Mozilla Public
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+== ASPIRATIONAL EXAMPLE.
+== try / except / finally / raise are canonical Inox syntax but are NOT yet
+== implemented by the current compiler (parser + lowering pending).
+== Canonical rule: try/except/finally use NO ':' ; the block closes with ';'.
+== This file documents the canonical shape for when the feature lands.
+
 Module Exceptions
 
 Main :
-    try 
+    try
         PutLn("before raise")
-        raise OverflowError    
-    except 
+        raise OverflowError
+    except
         PutLn("caught error")
-        raise    
-    finally 
+        raise
+    finally
         PutLn("cleanup")
     ;
 ;

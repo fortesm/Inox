@@ -13,7 +13,7 @@ Const MaxCount := 10
 
 
 State :
-    mut GlobalCount := 0
+    GlobalCount Integer := 0
 ;
 
 Main :

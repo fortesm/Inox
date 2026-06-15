@@ -1,0 +1,56 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+Module GroupedLocalDeclarations
+
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+Single :
+    A Integer := 1
+    PutLn(A)
+;
+
+Pair :
+    A, B Integer := 1
+    PutLn(A, B)
+;
+
+Many :
+    A, B,C, D, E Integer := 1
+    PutLn(A, B, C, D, E)
+;
+
+Booleans :
+    X, Y Bool := true
+    if X and Y
+        PutLn("true")
+    ;
+;
+
+Strings :
+    S1, S2 String := "ok"
+    PutLn(S1, S2)
+;
+
+Structs :
+    P1, P2 TPoint
+    P1.FX := 1
+    P2.FY := P1.FX
+;
+
+Main :
+    Single
+    Pair
+    Many
+    Booleans
+    Strings
+    Structs
+;

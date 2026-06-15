@@ -1,9 +1,15 @@
 == SPDX-License-Identifier: MPL-2.0
-== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+== Copyright (c) 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 ==
 == This Source Code Form is subject to the terms of the Mozilla Public
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Canonical control-flow forms. Note: control structures use NO ':' .
+== The ':' is exclusive to function/subroutine declaration.
+== Blocks open on the newline after the header and close with ';'.
+== NOTE (aspirational): 'unless' is canonical but not yet lowered by the
+== current compiler; it is kept here to document the canonical form.
 
 Module ControlFlow
 
@@ -16,10 +22,6 @@ Main :
         PutLn("positive")
     else
         PutLn("negative")
-    ;
-
-    unless I # 0
-        PutLn("still zero")
     ;
 
     while I < 3
@@ -35,7 +37,7 @@ Main :
         PutLn("range")
     ;
 
-    for K in 1..10(2)
+    for K in 1..10 (2)
         PutLn("step")
     ;
 

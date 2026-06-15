@@ -10,7 +10,9 @@
 #include "../lexer/Lexer.h"
 
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace inox::compiler::parser {
 
@@ -531,16 +533,42 @@ ast::StatementPtr Parser::parseVarStatement(bool isMutable)
 
 ast::StatementPtr Parser::parseTypedLocalStatement()
 {
+    std::vector<std::string> names;
     const lexer::Token& name = consume(TokenKind::Identifier, "expected variable name");
-    const lexer::Token& type = consume(TokenKind::Identifier, "expected type name");
-
-    ast::ExpressionPtr initializer;
-    if (match(TokenKind::ColonEqual)) {
-        initializer = parseAssignment();
+    names.push_back(name.lexeme);
+    while (match(TokenKind::Comma)) {
+        const lexer::Token& nextName = consume(TokenKind::Identifier, "expected variable name after ','");
+        names.push_back(nextName.lexeme);
     }
 
-    return std::make_unique<ast::VarStatement>(
-        false, name.lexeme, std::move(initializer), type.lexeme);
+    const lexer::Token& type = consume(TokenKind::Identifier, "expected type name");
+
+    std::vector<ast::StatementPtr> declarations;
+    if (match(TokenKind::ColonEqual)) {
+        const std::size_t initializerStart = current_;
+        std::size_t initializerEnd = initializerStart;
+        for (const std::string& declarationName : names) {
+            current_ = initializerStart;
+            ast::ExpressionPtr initializer = parseAssignment();
+            if (initializerEnd == initializerStart) {
+                initializerEnd = current_;
+            }
+            declarations.push_back(std::make_unique<ast::VarStatement>(
+                false, declarationName, std::move(initializer), type.lexeme));
+        }
+        current_ = initializerEnd;
+    } else {
+        for (const std::string& declarationName : names) {
+            declarations.push_back(std::make_unique<ast::VarStatement>(
+                false, declarationName, nullptr, type.lexeme));
+        }
+    }
+
+    if (declarations.size() == 1) {
+        return std::move(declarations.front());
+    }
+
+    return std::make_unique<ast::VarBlockStatement>(std::move(declarations));
 }
 
 std::vector<ast::StatementPtr> Parser::parseVarBlockDeclarations()
@@ -606,9 +634,9 @@ ast::StatementPtr Parser::parseIfStatement()
 ast::StatementPtr Parser::parseUnlessStatement()
 {
     auto condition = parseAssignment();
-    auto body = parseBlockStatement();
+    auto body = parseHeaderDelimitedBlock();
     return std::make_unique<ast::UnlessStatement>(
-        std::move(condition), body->takeStatements());
+        std::move(condition), std::move(body));
 }
 
 ast::StatementPtr Parser::parseWhileStatement()
@@ -712,22 +740,25 @@ std::vector<ast::StatementPtr> Parser::parseCaseArmBody(std::size_t armLine, std
 
 ast::StatementPtr Parser::parseTryStatement()
 {
-    auto body = parseBlockStatement();
+    requireHeaderLineBreak();
+    auto body = parseDelimitedBody({"except", "finally"});
 
     std::vector<ast::StatementPtr> exceptBody;
     if (matchKeyword("except")) {
-        auto exceptBlock = parseBlockStatement();
-        exceptBody = exceptBlock->takeStatements();
+        requireHeaderLineBreak();
+        exceptBody = parseDelimitedBody({"finally"});
     }
 
     std::vector<ast::StatementPtr> finallyBody;
     if (matchKeyword("finally")) {
-        auto finallyBlock = parseBlockStatement();
-        finallyBody = finallyBlock->takeStatements();
+        requireHeaderLineBreak();
+        finallyBody = parseDelimitedBody({});
     }
 
+    consumeBlockClose();
+
     return std::make_unique<ast::TryStatement>(
-        body->takeStatements(),
+        std::move(body),
         std::move(exceptBody),
         std::move(finallyBody));
 }
@@ -802,9 +833,26 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
 {
     std::vector<std::string> tokens;
 
-    if (sectionKind == ast::SectionKind::Type && !check(TokenKind::Colon)) {
-        while (!isAtEnd() && !atTypeSectionBoundary()) {
-            tokens.push_back(tokenText(advance()));
+    // Type is always a section/declarator without ':'.
+    // Const supports the canonical single-line form `Const Name := Expr` (CANON-5),
+    // which has no ':'. When a ':' is present, Const falls through to the block form.
+    const bool lineForm =
+        (sectionKind == ast::SectionKind::Type && !check(TokenKind::Colon)) ||
+        (sectionKind == ast::SectionKind::Const && !check(TokenKind::Colon));
+
+    if (lineForm) {
+        if (sectionKind == ast::SectionKind::Const) {
+            // Single-line `Const Name := Expr`: consume tokens up to the end of
+            // the current source line (the declaration ends at the newline).
+            const std::size_t line = isAtEnd() ? 0 : peek().location.line;
+            while (!isAtEnd() && peek().location.line == line &&
+                   !check(TokenKind::Semicolon)) {
+                tokens.push_back(tokenText(advance()));
+            }
+        } else {
+            while (!isAtEnd() && !atTypeSectionBoundary()) {
+                tokens.push_back(tokenText(advance()));
+            }
         }
         return std::make_unique<ast::SectionDeclaration>(
             sectionKind, std::move(tokens));
@@ -949,24 +997,47 @@ bool Parser::atTypeSectionBoundary() const
 }
 bool Parser::atTypedLocalStatementStart() const
 {
-    if (current_ + 1 >= tokens_.size()) {
+    if (current_ >= tokens_.size()) {
         return false;
     }
 
     const lexer::Token& name = tokens_[current_];
-    const lexer::Token& type = tokens_[current_ + 1];
-    if (name.kind != TokenKind::Identifier || type.kind != TokenKind::Identifier) {
-        return false;
-    }
-    if (type.location.line != name.location.line) {
+    if (name.kind != TokenKind::Identifier) {
         return false;
     }
 
-    if (current_ + 2 >= tokens_.size()) {
+    std::size_t index = current_;
+    const std::size_t line = name.location.line;
+    for (;;) {
+        if (index >= tokens_.size() ||
+            tokens_[index].kind != TokenKind::Identifier ||
+            tokens_[index].location.line != line) {
+            return false;
+        }
+
+        ++index;
+        if (index < tokens_.size() &&
+            tokens_[index].kind == TokenKind::Comma &&
+            tokens_[index].location.line == line) {
+            ++index;
+            continue;
+        }
+        break;
+    }
+
+    if (index >= tokens_.size() ||
+        tokens_[index].kind != TokenKind::Identifier ||
+        tokens_[index].location.line != line) {
+        return false;
+    }
+
+    const lexer::Token& type = tokens_[index];
+    ++index;
+    if (index >= tokens_.size()) {
         return true;
     }
 
-    const lexer::Token& afterType = tokens_[current_ + 2];
+    const lexer::Token& afterType = tokens_[index];
     return afterType.kind == TokenKind::ColonEqual ||
            afterType.kind == TokenKind::Semicolon ||
            afterType.kind == TokenKind::EndOfFile ||

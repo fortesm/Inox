@@ -1317,8 +1317,12 @@ private:
                 static_cast<const ast::IdentifierExpression&>(assignment.left());
             const auto local = locals_.find(normalize(identifier.name()));
             if (local == locals_.end()) {
-                throw CodegenError(
-                    "LLVM emission currently supports assignment only to local variables");
+                // CANON-5 / A6 / A7: first appearance of `Name := Expr` is an
+                // inline declaration with an inferred type. The semantic layer
+                // already validated this; here we allocate a fresh local and
+                // store the initializer, mirroring emitLocalVariable.
+                emitLocalVariable(identifier.name(), assignment.right());
+                return;
             }
 
             const std::string value = emitExpression(assignment.right());

@@ -5,24 +5,8 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module IfReturn
-
-Max(A Integer, B Integer) Integer :
-    if A > B
-        Return A
-    else
-        Return B
-    ;
-;
+Module GroupedLocalDuplicate
 
 Main :
-    A, B Integer := 0
-    Result Integer := 0
-
-    A := 7
-    B := 3
-
-    Result := Max(A, B)
-
-    PutLn("Max number is: ", Result)
+    A, B, A Integer := 1
 ;
