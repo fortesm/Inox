@@ -279,6 +279,7 @@ run_driver_input_test() {
     local test_file="$1"
     local input_file="$2"
     local expected_file="$3"
+    local trap_file="${4:-}"
     local rel
     rel="$(relative_path "$test_file")"
 
@@ -290,6 +291,18 @@ run_driver_input_test() {
     local actual expected exit_code
     actual="$("$inox_exe" --run "$test_file" < "$input_file" 2>&1)"
     exit_code=$?
+
+    if [[ -n "$trap_file" ]]; then
+        if [[ $exit_code -ne 0 ]]; then
+            record_pass "$rel --run < input traps"
+        else
+            record_fail "$rel --run < input traps" \
+                "expected non-zero exit code for trap marker: $(basename "$trap_file")" \
+                "actual output: $actual"
+        fi
+        return
+    fi
+
     expected="$(sed 's/\r$//' "$expected_file")"
     actual="$(printf '%s' "$actual" | sed 's/\r$//')"
 
@@ -298,6 +311,37 @@ run_driver_input_test() {
     else
         record_fail "$rel --run < input" "exit code: $exit_code" "expected output: $expected" "actual output: $actual"
     fi
+}
+
+run_driver_input_tests() {
+    local input_root="$repo_root/tests/integration/input"
+    [[ -d "$input_root" ]] || return 0
+
+    while IFS= read -r -d '' test_file; do
+        local base input_file output_file trap_file rel
+        base="${test_file%.inox}"
+        input_file="$base.in"
+        output_file="$base.out"
+        trap_file="$base.trap"
+        rel="$(relative_path "$test_file")"
+
+        if [[ ! -f "$input_file" ]]; then
+            record_fail "$rel --run < input" "missing input file: $input_file"
+            continue
+        fi
+
+        if [[ -f "$output_file" && -f "$trap_file" ]] ||
+           [[ ! -f "$output_file" && ! -f "$trap_file" ]]; then
+            record_fail "$rel --run < input" "expected exactly one of .out or .trap"
+            continue
+        fi
+
+        if [[ -f "$trap_file" ]]; then
+            run_driver_input_test "$test_file" "$input_file" "" "$trap_file"
+        else
+            run_driver_input_test "$test_file" "$input_file" "$output_file"
+        fi
+    done < <(find "$input_root" -maxdepth 1 -type f -name '*.inox' -print0 | sort -z)
 }
 
 run_test_tree() {
@@ -399,9 +443,7 @@ run_driver_execution_test "$repo_root/tests/integration/modules/Main.inox" "$rep
 run_driver_execution_test "$repo_root/tests/integration/stdlib/StdMathDemo.inox" "$repo_root/tests/integration/stdlib/StdMathDemo.out"
 run_driver_execution_test "$repo_root/tests/integration/showcase/account-showcase.inox" "$repo_root/tests/integration/showcase/account-showcase.out"
 run_driver_execution_test "$repo_root/tests/integration/output/variadic-put.inox" "$repo_root/tests/integration/output/variadic-put.out"
-run_driver_input_test "$repo_root/tests/integration/input/get-integer.inox" "$repo_root/tests/integration/input/get-integer.in" "$repo_root/tests/integration/input/get-integer.out"
-run_driver_input_test "$repo_root/tests/integration/input/getln-two-integers.inox" "$repo_root/tests/integration/input/getln-two-integers.in" "$repo_root/tests/integration/input/getln-two-integers.out"
-run_driver_input_test "$repo_root/tests/integration/input/getln-pause.inox" "$repo_root/tests/integration/input/getln-pause.in" "$repo_root/tests/integration/input/getln-pause.out"
+run_driver_input_tests
 run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 
 total=$((passed + failed))

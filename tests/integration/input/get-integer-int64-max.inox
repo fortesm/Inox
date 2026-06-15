@@ -1,0 +1,7 @@
+Module GetIntegerInt64Max
+
+Main :
+    A Integer := 0
+    Get(A)
+    PutLn("A=", A)
+;

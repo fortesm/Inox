@@ -1734,7 +1734,7 @@ skip_ws:
   %ws_a0 = or i1 %is_space0, %is_tab0
   %ws_b0 = or i1 %is_lf0, %is_cr0
   %is_ws0 = or i1 %ws_a0, %ws_b0
-  br i1 %is_eof0, label %store_zero, label %after_eof
+  br i1 %is_eof0, label %fail, label %after_eof
 
 after_eof:
   br i1 %is_ws0, label %skip_ws, label %sign_check
@@ -1748,13 +1748,14 @@ minus:
   br label %digits_entry
 
 digits_entry:
-  %sign = phi i64 [ -1, %minus ], [ 1, %sign_check ]
+  %is_neg = phi i1 [ 1, %minus ], [ 0, %sign_check ]
   %first_ch = phi i32 [ %ch_after_minus, %minus ], [ %ch0, %sign_check ]
   br label %digits
 
 digits:
-  %ch = phi i32 [ %first_ch, %digits_entry ], [ %next_ch, %digit_body ]
-  %acc = phi i64 [ 0, %digits_entry ], [ %next_acc, %digit_body ]
+  %ch = phi i32 [ %first_ch, %digits_entry ], [ %next_ch, %digit_continue ]
+  %acc = phi i64 [ 0, %digits_entry ], [ %next_acc, %digit_continue ]
+  %count = phi i64 [ 0, %digits_entry ], [ %next_count, %digit_continue ]
   %ge_zero = icmp sge i32 %ch, 48
   %le_nine = icmp sle i32 %ch, 57
   %is_digit = and i1 %ge_zero, %le_nine
@@ -1763,19 +1764,51 @@ digits:
 digit_body:
   %digit_i32 = sub i32 %ch, 48
   %digit_i64 = sext i32 %digit_i32 to i64
-  %mul = mul i64 %acc, 10
-  %next_acc = add i64 %mul, %digit_i64
+  ; magnitude accumulation with unsigned overflow detection: acc = acc*10 + d
+  %mul_pair = call { i64, i1 } @llvm.umul.with.overflow.i64(i64 %acc, i64 10)
+  %mul_val = extractvalue { i64, i1 } %mul_pair, 0
+  %mul_ovf = extractvalue { i64, i1 } %mul_pair, 1
+  br i1 %mul_ovf, label %fail, label %add_step
+
+add_step:
+  %add_pair = call { i64, i1 } @llvm.uadd.with.overflow.i64(i64 %mul_val, i64 %digit_i64)
+  %next_acc = extractvalue { i64, i1 } %add_pair, 0
+  %add_ovf = extractvalue { i64, i1 } %add_pair, 1
+  br i1 %add_ovf, label %fail, label %digit_continue
+
+digit_continue:
+  %next_count = add i64 %count, 1
   %next_ch = call i32 @getchar()
   br label %digits
 
 finish:
-  %signed = mul i64 %acc, %sign
-  store i64 %signed, ptr %out
+  ; require at least one digit consumed
+  %no_digits = icmp eq i64 %count, 0
+  br i1 %no_digits, label %fail, label %range_check
+
+range_check:
+  ; acc holds the unsigned magnitude. Validate against signed i64 range:
+  ;   negative: magnitude <= 9223372036854775808 (0x8000000000000000)
+  ;   positive: magnitude <= 9223372036854775807 (0x7FFFFFFFFFFFFFFF)
+  br i1 %is_neg, label %check_neg, label %check_pos
+
+check_neg:
+  %neg_ok = icmp ule i64 %acc, 9223372036854775808
+  br i1 %neg_ok, label %apply_sign, label %fail
+
+check_pos:
+  %pos_ok = icmp ule i64 %acc, 9223372036854775807
+  br i1 %pos_ok, label %apply_sign, label %fail
+
+apply_sign:
+  %neg_val = sub i64 0, %acc
+  %result = select i1 %is_neg, i64 %neg_val, i64 %acc
+  store i64 %result, ptr %out
   ret void
 
-store_zero:
-  store i64 0, ptr %out
-  ret void
+fail:
+  call void @llvm.trap()
+  unreachable
 }
 
 )llvm";
@@ -1853,7 +1886,10 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
         output << global << '\n';
     }
     output << "declare i32 @printf(ptr, ...)\n";
-    output << "declare i32 @getchar()\n\n";
+    output << "declare i32 @getchar()\n";
+    output << "declare void @llvm.trap()\n";
+    output << "declare { i64, i1 } @llvm.umul.with.overflow.i64(i64, i64)\n";
+    output << "declare { i64, i1 } @llvm.uadd.with.overflow.i64(i64, i64)\n\n";
     output << inputRuntimeHelpers();
     output << functionOutput.str();
     return output.str();

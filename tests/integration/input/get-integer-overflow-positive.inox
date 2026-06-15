@@ -1,0 +1,7 @@
+Module GetIntegerOverflowPositive
+
+Main :
+    A Integer := 0
+    Get(A)
+    PutLn("A=", A)
+;

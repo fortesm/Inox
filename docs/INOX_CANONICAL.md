@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.6 (portability layer and Get/GetLn link fix)
+# Version: v3.7 (backend strategy directive — clang stays external)
 # Last updated: 2026-06-15
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -206,6 +206,17 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.7 — 2026-06-15 — approved by Marcelo Fortes
+#   - Added BACKEND STRATEGY DIRECTIVE (SECTION 31): clang remains the external
+#     driver through 0.1.x/0.2.x. The external clang driver is a BUILD-TIME
+#     dependency, NOT technical debt (same model Zig used for years; Rust still
+#     calls the system linker). Embedding libLLVM adds no language capability and
+#     is deferred to 0.3/0.4. Recorded the backend maturation sequence (0.1→1.0),
+#     the OBJECTIVE criterion for leaving clang (bottleneck / API-only capability
+#     / single-binary distribution — none true at 0.1/0.2), and a SCOPE GUARD:
+#     work on how clang is invoked (e.g. Process.cpp process spawning, path
+#     handling) is in scope and must NOT become an on-ramp to replace clang.
 #
 # v3.6 — 2026-06-15 — approved implementation update
 #   - Introduced a dedicated C++ portability support layer under
@@ -1814,8 +1825,66 @@ Currency/Crypto semantics; safe-inference messages; scalar-requires-initializer.
 1.0.0   stable core language, reproducible releases, coherent docs and examples
 ```
 
+## BACKEND STRATEGY DIRECTIVE (LOCKED — clang as external driver)
+
+This directive governs HOW Inox turns LLVM IR into native executables, and WHEN
+that mechanism may change. It exists to prevent a specific, tempting mistake:
+embedding the LLVM C++ libraries (libLLVM) into the compiler too early and
+derailing language work.
+
+### Core principle (binding)
+The external `clang` driver is a BUILD-TIME dependency, NOT technical debt.
+- A user who RUNS an Inox-generated executable does not need clang. Clang is only
+  invoked when GENERATING that executable. This is the same model Zig used for
+  years and that Rust still uses for linking (rustc calls the system linker).
+- Emitting textual LLVM IR and calling clang/llc + a linker is a legitimate,
+  mature stage for an LLVM-based compiler — not a sign of immaturity.
+- Embedding libLLVM adds NO new language capability. It only changes HOW the same
+  IR becomes a binary. It is plumbing, not design.
+- libLLVM is a large dependency whose C++ API breaks across major releases.
+  Embedding it early means owning that maintenance burden instead of investing in
+  what differentiates Inox: the type system (Currency, Crypto, Array, Vector,
+  String, Enum), the error model, overflow traps, and the runtime.
+
+### Backend maturation sequence (intended; not a promise of timing)
+```text
+0.1.x   keep clang as external driver; stabilize language, tests, examples,
+        minimal I/O, current textual-IR backend.
+0.2.x   create libinoxrt; formalize traps (incl. arithmetic overflow traps in
+        checking mode), I/O, strings, minimal runtime. KEEP clang.
+        (This stage is intentionally LONG: full language + runtime maturation.)
+0.3.x   emit object files in a controlled way; introduce lld / linker
+        integration; begin reducing clang's role. Separate "emit .o" from "link".
+0.4.x   integrate LLVM libraries directly; keep --emit-llvm as a debug/dev mode.
+0.5.x   cross-target / sysroot / runtime packaging; Windows/Linux solid; BSD/
+        Solaris/AIX/HP-UX remain HONEST stubs.
+1.0     own frontend + own runtime + integrated LLVM backend + own driver.
+```
+
+### Objective criterion for leaving clang (do NOT leave on aesthetics)
+Sophistication is not the goal; capability is. The external clang driver removes
+NO capability today. It may be replaced (0.3/0.4) ONLY when one of these is
+concretely true — not merely when it "looks unsophisticated":
+1. Clang-as-driver becomes a real bottleneck (e.g. writing `.ll` to disk and
+   re-parsing is too slow for large builds), OR
+2. A needed capability exists only via the libLLVM API (JIT, incremental
+   codegen, fine-grained pass control), OR
+3. Distribution requires a single self-contained binary with no external
+   toolchain dependency.
+None of these is true at 0.1/0.2. Until one is, KEEP clang and mature the
+LANGUAGE and RUNTIME instead. A language with an external clang driver and a
+complete type system is far more useful than one with embedded libLLVM and only
+Integer/Bool.
+
+### Scope guard for backend-adjacent work (e.g. Process.cpp)
+Work that touches HOW clang is invoked (process spawning, path handling, the
+`--build`/`--run` driver) is IN SCOPE for 0.1/0.2 and must NOT be used as an
+on-ramp to replace clang. When editing such files, the task is "improve how we
+call clang" (security, robustness, paths with spaces), NEVER "eliminate clang".
+Replacing the backend is a 0.3/0.4 decision requiring an explicit ADR.
+
 # ============================================================================
-# END OF INOX_CANONICAL.md v3.5
+# END OF INOX_CANONICAL.md v3.7
 # A context-less AI: read SECTION 00, SECTION 02 change log, SECTION 03 agent
 # rules, then the topical SECTIONs relevant to the task, and finally SECTION 30
 # for current implementation status. Never confuse design law with status.

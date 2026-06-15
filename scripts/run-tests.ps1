@@ -270,7 +270,8 @@ function Invoke-RunDriverInputTest {
     param(
         [System.IO.FileInfo]$TestFile,
         [System.IO.FileInfo]$InputFile,
-        [System.IO.FileInfo]$ExpectedOutputFile
+        [System.IO.FileInfo]$ExpectedOutputFile,
+        [System.IO.FileInfo]$TrapFile
     )
 
     $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
@@ -282,6 +283,21 @@ function Invoke-RunDriverInputTest {
 
     $actual = Get-Content -LiteralPath $InputFile.FullName | & $InoxExe "--run" $TestFile.FullName 2>&1 | Out-String
     $exitCode = $LASTEXITCODE
+
+    if ($null -ne $TrapFile) {
+        if ($exitCode -ne 0) {
+            $script:passed++
+            Write-Host "[PASS] $relativePath --run < input traps"
+        } else {
+            $script:failed++
+            Write-Host "[FAIL] $relativePath --run < input traps"
+            Write-Host "       expected non-zero exit code for trap marker: $($TrapFile.Name)"
+            Write-Host "       actual output:"
+            Write-Host $actual
+        }
+        return
+    }
+
     $expected = Get-Content -LiteralPath $ExpectedOutputFile.FullName -Raw
     $actual = ($actual -replace "`r`n", "`n") -replace "`n+$", ""
     $expected = ($expected -replace "`r`n", "`n") -replace "`n+$", ""
@@ -297,6 +313,52 @@ function Invoke-RunDriverInputTest {
         Write-Host $expected
         Write-Host "       actual output:"
         Write-Host $actual
+    }
+}
+
+function Invoke-RunDriverInputTests {
+    $inputRoot = Join-Path $repoRoot "tests\integration\input"
+    if (-not (Test-Path -LiteralPath $inputRoot)) {
+        return
+    }
+
+    foreach ($test in Get-ChildItem -LiteralPath $inputRoot -Filter "*.inox" -File | Sort-Object FullName) {
+        $basePath = [System.IO.Path]::Combine(
+            $test.DirectoryName,
+            [System.IO.Path]::GetFileNameWithoutExtension($test.Name))
+        $inputPath = "$basePath.in"
+        $outputPath = "$basePath.out"
+        $trapPath = "$basePath.trap"
+
+        if (-not (Test-Path -LiteralPath $inputPath -PathType Leaf)) {
+            $script:failed++
+            $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $test.FullName)
+            Write-Host "[FAIL] $relativePath --run < input"
+            Write-Host "       missing input file: $inputPath"
+            continue
+        }
+
+        $hasOutput = Test-Path -LiteralPath $outputPath -PathType Leaf
+        $hasTrap = Test-Path -LiteralPath $trapPath -PathType Leaf
+        if ($hasOutput -eq $hasTrap) {
+            $script:failed++
+            $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $test.FullName)
+            Write-Host "[FAIL] $relativePath --run < input"
+            Write-Host "       expected exactly one of .out or .trap"
+            continue
+        }
+
+        if ($hasTrap) {
+            Invoke-RunDriverInputTest `
+                -TestFile $test `
+                -InputFile (Get-Item -LiteralPath $inputPath) `
+                -TrapFile (Get-Item -LiteralPath $trapPath)
+        } else {
+            Invoke-RunDriverInputTest `
+                -TestFile $test `
+                -InputFile (Get-Item -LiteralPath $inputPath) `
+                -ExpectedOutputFile (Get-Item -LiteralPath $outputPath)
+        }
     }
 }
 
@@ -477,18 +539,7 @@ Invoke-RunDriverTest `
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output\variadic-put.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output\variadic-put.out"))
-Invoke-RunDriverInputTest `
-    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\get-integer.inox")) `
-    -InputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\get-integer.in")) `
-    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\get-integer.out"))
-Invoke-RunDriverInputTest `
-    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-two-integers.inox")) `
-    -InputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-two-integers.in")) `
-    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-two-integers.out"))
-Invoke-RunDriverInputTest `
-    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-pause.inox")) `
-    -InputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-pause.in")) `
-    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-pause.out"))
+Invoke-RunDriverInputTests
 Invoke-ModeExitTest `
     -Mode "--emit-llvm" `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\cycles\Cycle.A.inox")) `

@@ -1,68 +1,59 @@
-# Inox compiler fixes — sessão de 2026-06-15
+# Correção do __inox_read_i64 — leitor de inteiros seguro (fail-fast)
 
-Ambiente: Ubuntu 24.04, g++ 13.3 (-std=c++20). Compilação limpa, zero avisos.
+## Problema corrigido
+O leitor de inteiros do Get/GetLn acumulava dígitos com `mul i64 %acc, 10` +
+`add` SEM checagem de overflow — violando a regra central da constituição Inox
+(CANON-2 / ADR-0006: "no silent integer overflow"). Além disso, entrada inválida
+e EOF viravam 0 silenciosamente.
 
-## Placar de exemplos (examples/*.inox)
-- Início:            10 / 38 compilam (parse + semantic)
-- Após unless+try:   11 / 38
-- Após inferência:   20 / 38
-- Após Const+State:  22 / 38
+## Solução (sem Result[T,E], conforme decidido para 0.1)
+Comportamento fail-fast via `llvm.trap`:
+- overflow (positivo ou negativo)  -> trap
+- entrada inválida (nenhum dígito)  -> trap
+- EOF antes de número               -> trap
+- número válido                     -> armazena o valor
 
-Os 16 restantes são EXEMPLOS genuinamente errados (Get/GetLn inexistente,
-parênteses vazios, função declarada dentro de Main, multi-decl `A, B`), não
-gaps do compilador.
+Implementação:
+- magnitude acumulada como UNSIGNED i64 com deteccao de overflow via
+  `@llvm.umul.with.overflow.i64` e `@llvm.uadd.with.overflow.i64`;
+- sinal aplicado no fim, com validacao de range conforme o sinal:
+  negativo permite magnitude ate 9223372036854775808 (Int64 min);
+  positivo permite ate 9223372036854775807 (Int64 max);
+- exige ao menos um digito (senao trap);
+- EOF inicial -> trap.
 
-## Correções no compilador (alinham o código ao INOX_CANONICAL.md)
+O caso dificil `-9223372036854775808` (Int64 min, cuja magnitude nao cabe como
+i64 positivo) e tratado corretamente porque a magnitude e acumulada unsigned.
 
-### Parser.cpp
-1. `unless` e `try/except/finally` NÃO exigem mais `:` (CANON-4/CANON-15).
-   Eram um bug: usavam parseBlockStatement() que exige `:`, contra o canônico.
-2. `Const Name := Expr` aceito na forma de linha canônica (CANON-5), parando
-   no fim da linha; `Const :` em bloco continua válido.
+## Critérios de aceite — TODOS PASSARAM (verificado por execução nativa)
+    "42"                      -> 42
+    "-42"                     -> -42
+    "9223372036854775807"     -> OK (Int64 max)
+    "-9223372036854775808"    -> OK (Int64 min)
+    "9223372036854775808"     -> trap
+    "-9223372036854775809"    -> trap
+    "abc"                     -> trap
+    "" / EOF                  -> trap
 
-### SemanticAnalyzer.cpp
-3. INFERÊNCIA DE TIPO (CANON-5/A6/A7): `A := 10` na primeira aparição é uma
-   declaração com tipo inferido do inicializador; reaparições são atribuição.
-   Implementado no caso Assign de analyzeBinaryExpression.
-4. Seções State/Const reconhecem `Nome Tipo := Valor` (tipado explícito) sem
-   declarar o nome do tipo como símbolo (corrige "duplicate symbol: Integer").
+## Regressão
+- parse+semantic: 39/39 exemplos (inalterado).
+- IR válido (LLVM 21 verify): 31 antes, 31 depois — ZERO regressão.
+- Os 2 exemplos com IR inválido (llvm-bool-comparisons, llvm-bool-operators) já
+  eram inválidos ANTES desta mudança (bug pré-existente: PutLn de Bool passa i1
+  onde printf espera i64). NÃO relacionado a esta correção.
 
-## Exemplos corrigidos
-- variables.inox: removido `mut` proibido do State (CANON-10); agora
-  `State : GlobalCount Integer := 0 ;`.
-- control-flow.inox / exceptions.inox: reescritos 100% canônicos; `unless`/`try`
-  marcados como aspiracionais onde aplicável.
+## Arquivos
+- LlvmIrEmitter.cpp  -> substitui o seu (helper reescrito + intrinsics declarados)
+- tests/  -> 6 casos novos de integração:
+    get-int64-max (.in/.out)   valor limite positivo
+    get-int64-min (.in/.out)   valor limite negativo
+    get-overflow-pos (.in/.trap)  deve trapar
+    get-overflow-neg (.in/.trap)  deve trapar
+    get-invalid (.in/.trap)       deve trapar
+    get-eof (.in/.trap)           deve trapar
+  (.trap marca os casos que devem abortar; o runner precisa reconhecer essa
+   convenção — ver nota abaixo.)
 
-## Gap conhecido restante (próximo passo)
-O codegen (LlvmIrEmitter) ainda não emite IR para a declaração inferida
-(`A := 10`): "LLVM emission currently supports assignment only to local
-variables". Parse e semantic já aceitam; falta o emitter. É o próximo item.
-
----
-
-## ATUALIZAÇÃO: codegen da inferência (ciclo fechado)
-
-### LlvmIrEmitter.cpp
-5. INFERÊNCIA NO CODEGEN: `A := 10` com nome novo agora ALOCA um local novo
-   (alloca + store) em vez de erro; nome existente continua sendo store. Espelha
-   a lógica do semantic.
-
-### PROVA DE EXECUÇÃO
-O IR gerado foi validado com LLVM 21 (llvmlite) — `verify()` passou — e
-JIT-executado. O programa `llvm-put-output-basic.inox` (que usa `X := 7` por
-inferência) imprimiu:
-    X=7
-    ready
-    true
-    true
-E `llvm-putln-integer.inox` (`X := 10`) imprimiu `10` e `42`.
-
-Ou seja: a inferência atravessa o pipeline COMPLETO — lexer → parser → semantic
-→ codegen → LLVM IR válido → executável que roda e imprime certo.
-
-### Refinamento pendente (anotado, não bloqueante)
-emitLocalVariable assume i64/Integer para a declaração inferida. Para `A := 10`
-está perfeito. Para inferência de Bool (`Flag := True`) ou Char (`L := 'x'`) que
-sejam IMPRESSAS, o tipo no codegen precisaria seguir o tipo inferido pelo
-semantic (i1/i32). Hoje passa porque os exemplos não imprimem esses casos.
-Próximo polimento: propagar o tipo inferido do semantic para o emitLocalVariable.
+## Nota para o runner de testes
+Os casos .trap esperam SIGILL/SIGTRAP (codigo de saida negativo / 132-136). O
+script run-tests precisa tratar "trap esperado" como sucesso para esses 4.
