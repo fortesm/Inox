@@ -1,0 +1,25 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+Module MathShowcase
+
+Use Std.Math
+
+Main :
+    PutLn(Min(7, 3))
+    PutLn(Max(7, 3))
+    PutLn(Clamp(15, 0, 10))
+    PutLn(Sign(-42))
+    PutLn(Sqr(9))
+    PutLn(Cube(4))
+    PutLn(Gcd(48, 36))
+    PutLn(Lcm(4, 6))
+    PutLn(Sqrt(2.0))
+    PutLn(Hypot(3.0, 4.0))
+    PutLn(Floor(3.7))
+    PutLn(Ceil(3.2))
+;

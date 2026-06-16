@@ -319,9 +319,12 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
         outputDirectory / (stem + std::string(inox::compiler::support::executableSuffix()))};
     writeFile(artifacts.llvmIr, inox::compiler::codegen::LlvmIrEmitter().emit(module));
 
-    const std::string command =
-        "clang " + shellQuote(artifacts.llvmIr) + " -o " + shellQuote(artifacts.executable) +
-        " > " + std::string(inox::compiler::support::nullDevicePath()) + " 2>&1";
+    std::string command =
+        "clang " + shellQuote(artifacts.llvmIr) + " -o " + shellQuote(artifacts.executable);
+    if (inox::compiler::support::hostOperatingSystem() != inox::compiler::support::OperatingSystem::Windows) {
+        command += " -lm";
+    }
+    command += " > " + std::string(inox::compiler::support::nullDevicePath()) + " 2>&1";
     if (inox::compiler::support::runShellCommand(command) != 0) {
         throw std::runtime_error("clang failed while building: " + sourcePath.string());
     }

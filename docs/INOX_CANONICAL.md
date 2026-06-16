@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.7 (backend strategy directive — clang stays external)
-# Last updated: 2026-06-15
+# Version: v3.12 (compiler module architecture directive)
+# Last updated: 2026-06-16
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
 #          "Secondary Licenses" notice.
@@ -73,7 +73,8 @@ This section defines document authority, reading order, governance, and the rule
 #       code. An AI MUST NOT update Layer A to match the code.
 #
 # Reading order for a context-less AI:
-#   HOW TO READ -> GOVERNANCE -> CHANGE LOG -> LAYER A -> LAYER B.
+#   HOW TO READ -> GOVERNANCE -> FIRST-ORDER ENGINEERING DIRECTIVE ->
+#   CHANGE LOG -> LAYER A -> LAYER B.
 #
 # ============================================================================
 
@@ -106,11 +107,250 @@ This section defines document authority, reading order, governance, and the rule
 #     - Critical rules are backed by test fixtures. "Code obeys the document" is
 #       PROVEN by running the suite, not asserted.
 #
+# G6. ENGINEERING QUALITY IS CONSTITUTIONAL
+#     - Modern compiler-engineering quality is a first-order canonical rule, not
+#       an optional style preference. New code and every code area touched by a
+#       change MUST follow the directive below. Existing legacy code is improved
+#       incrementally; broad cosmetic rewrites without tests are forbidden.
+#
 # ============================================================================
+
+## FIRST-ORDER ENGINEERING DIRECTIVE — MODERN C++ COMPILER CONSTRUCTION
+
+STATUS: CANONICAL, BINDING, AND READ BEFORE ALL TOPICAL IMPLEMENTATION RULES.
+
+PURPOSE:
+The Inox compiler must be engineered as a maintainable, testable, portable,
+auditable production compiler. Delivery speed never justifies hidden coupling,
+silent failure, invalid LLVM IR, unclear ownership, platform leakage, or
+untested behavior.
+
+This directive applies to every human contributor and every AI coding agent.
+It governs all new code and all existing code modified by a task.
+
+### Sources of influence
+
+This policy adapts, rather than blindly copies:
+- Object Calisthenics;
+- SOLID and responsibility-driven design;
+- modern C++20 practices and RAII;
+- production compiler architecture and LLVM-based compiler construction;
+- portability-oriented systems programming;
+- regression-driven development and verifiable quality gates.
+
+Explanatory references (non-normative; this document remains authoritative):
+- https://medium.com/@rafaelcruz_48213/desenvolva-um-c%C3%B3digo-melhor-com-object-calisthenics-d5364767a9ba
+- https://developerhandbook.stakater.com/architecture/object-calisthenics.html
+
+Object Calisthenics originated as an object-oriented design exercise. Inox
+adopts its intent — cohesion, small units, low nesting, meaningful names,
+encapsulation, testability, and reduced accidental complexity — but adapts its
+literal rules to ASTs, value types, visitors, compiler passes, diagnostics,
+symbol tables, LLVM lowering, and target/platform abstractions.
+
+### E1. Shallow control flow is the default
+
+A function or method SHOULD normally contain no more than one meaningful level
+of nested control flow. Prefer guard clauses, early returns, small helpers,
+explicit state machines, table-driven dispatch, and pass decomposition.
+
+Do not extract code mechanically when extraction makes the algorithm harder to
+understand. A short, obvious parser or lowering loop may justify deeper nesting,
+but the reason must be local and reviewable.
+
+### E2. Avoid unnecessary `else`
+
+After `return`, `continue`, `break`, fatal diagnostic, exception, or trap, do not
+add an `else`. Continue with the normal path. Use `else` only when it expresses
+a genuine two-way domain decision more clearly than guard clauses.
+
+### E3. Keep functions, classes, and files small and cohesive
+
+Each function, class, module, and translation unit must have one coherent
+responsibility. Large functions and files are review signals and must be split
+when they mix concerns or become difficult to test.
+
+No function may combine unrelated phases such as parsing, semantic validation,
+diagnostics construction, LLVM emission, process spawning, and filesystem
+policy.
+
+Numeric size limits are review triggers, not excuses for meaningless
+micro-functions. Cohesion and clarity are the deciding criteria.
+
+### E4. Use meaningful names; avoid project-local abbreviations
+
+Names must reveal domain intent. Abbreviations are permitted only when they are
+standard in compiler or LLVM engineering, including AST, IR, CFG, SSA, ABI, API,
+CLI, EOF, UTF, and LLVM.
+
+Do not introduce opaque names such as `tmpTy`, `cfgx`, `sym2`, or `modreg` in
+public or long-lived code. Very small local scopes may use conventional names
+such as `i`, `j`, or `ch` when meaning is obvious.
+
+### E5. Model domain concepts explicitly
+
+Primitive obsession is forbidden where a value carries compiler meaning or an
+invariant. Prefer explicit types or abstractions such as:
+- SourceLocation and SourceRange;
+- ModuleName, SymbolName, and TypeName;
+- DiagnosticId and DiagnosticBag;
+- TargetTriple, OperatingSystem, BuildMode, and OutputPath;
+- TokenKind, NodeKind, and TypeKind.
+
+Raw strings and integers are acceptable at low-level boundaries, but domain
+logic must not depend on unvalidated primitive conventions scattered throughout
+the project.
+
+### E6. Collections with invariants are first-class abstractions
+
+A collection that owns lookup rules, ordering, scope, uniqueness, diagnostics,
+or lifecycle behavior must become a named abstraction rather than a naked
+`std::vector` or `std::unordered_map` passed throughout the compiler.
+
+Approved examples include SymbolTable, ScopeStack, DiagnosticBag,
+ModuleRegistry, TypeRegistry, SourceFileSet, PassPipeline, and TargetRegistry.
+
+### E7. Do not navigate deeply through another subsystem's internals
+
+Avoid long chains of member access and knowledge of nested representation.
+Prefer intention-revealing queries and subsystem APIs. Direct immutable AST
+navigation is acceptable when local and when it does not leak representation
+across phase boundaries.
+
+### E8. Behavior-oriented APIs over mechanical getters and setters
+
+Do not expose mutable internals through boilerplate getters/setters as a
+substitute for design. Prefer operations that preserve invariants and express
+intent. Immutable AST/value accessors and read-only compiler views are valid.
+External mutation of internal containers or invariants is forbidden.
+
+### E9. Ownership and lifetime must be explicit
+
+Use RAII and explicit ownership. Required direction:
+- `std::unique_ptr` for exclusive ownership;
+- values and references where lifetime is clear;
+- `std::string_view` only when the referenced storage lifetime is guaranteed;
+- `std::filesystem::path` for paths where appropriate;
+- const-correct interfaces;
+- no raw owning pointers;
+- no ordinary manual `new`/`delete`;
+- no resource release dependent on exceptional control flow.
+
+Non-owning pointers/references must be obvious from API and lifetime context.
+
+### E10. Minimize mutable and global state
+
+Hidden global mutable state is forbidden. Prefer immutable AST nodes where
+practical, pass-local state, explicit context objects, and narrow mutation
+boundaries. Shared state must have a documented owner and lifecycle.
+
+### E11. Preserve compiler phase boundaries
+
+The canonical pipeline is:
+source text -> lexer -> parser -> AST -> semantic analysis -> typed/lowered
+representation when available -> LLVM IR -> object/link pipeline -> executable.
+
+A later phase must not silently repair correctness omitted by an earlier phase.
+The parser does not type-check; semantic analysis does not emit LLVM; codegen
+does not invent missing symbols; the driver does not hide frontend failures.
+
+### E12. Platform-specific code is isolated
+
+Platform macros and platform-specific APIs may appear only in the portability
+layer, CMake/toolchain files, and platform-specific scripts. They must not be
+scattered through lexer, parser, AST, semantic analysis, diagnostics, or normal
+backend logic.
+
+Current real validation targets are Windows and Linux. Other platform entries
+may remain honest stubs marked STUB/EXPERIMENTAL/UNSUPPORTED until built and
+tested on the actual operating system.
+
+### E13. No silent failure or valid-looking fallback
+
+Invalid input, failed symbol lookup, unsupported lowering, process failure,
+overflow, invalid path discovery, and malformed LLVM must never be converted
+silently into zero, success, a default type, or partial output.
+
+Until a structured `Result[T,E]` path exists, explicit failure or fail-fast/trap
+is preferable to silent corruption.
+
+### E14. Diagnostics are first-class compiler output
+
+Diagnostics must be precise, stable, and testable. Include source path, line,
+column, symbol/type information, and actionable wording where available.
+Implementation accidents must not leak into user diagnostics except in explicit
+debug modes.
+
+### E15. Codegen must emit valid LLVM IR or stop clearly
+
+A backend feature is implemented only when generated LLVM IR verifies and the
+supported executable behavior passes tests. Unsupported features must produce a
+clear compiler diagnostic. Emitting known-invalid, partial, or misleading IR is
+a release blocker.
+
+### E16. Every behavior and every bug fix requires tests
+
+Every language behavior needs the narrowest applicable coverage:
+lexer/parser valid and invalid tests; semantic valid and invalid tests; LLVM IR
+verification; execution/output tests; and expected-trap tests where applicable.
+
+A bug fix without a regression fixture is incomplete unless a documented,
+exceptional reason makes automation impossible.
+
+### E17. Approved compiler design patterns
+
+Use patterns only when they reduce coupling, clarify ownership, preserve phase
+boundaries, or improve testability. Appropriate patterns include:
+- Visitor or explicit traversal for AST operations;
+- Pass Pipeline for staged analysis and lowering;
+- Symbol Table and Scope Stack abstractions;
+- Diagnostic Engine / Diagnostic Bag;
+- Strategy for backend or target-specific behavior;
+- Adapter/Ports-and-Adapters for platform and process services;
+- Factory functions when AST or domain invariants require controlled creation;
+- RAII wrappers for files, processes, temporary artifacts, and LLVM resources.
+
+Patterns introduced merely for decoration or speculative flexibility are
+forbidden.
+
+### E18. Modern C++ baseline
+
+The compiler uses an explicit C++20 baseline. New and modified code must prefer
+standard-library facilities, RAII, value semantics, const-correctness, explicit
+conversions, and clear error handling. C-style casts and undefined-behavior
+assumptions are forbidden in ordinary compiler code.
+
+### E19. Progressive quality gates are mandatory
+
+The project must progressively enforce:
+- compiler warnings;
+- CTest plus a single principal C++ unit-test framework;
+- integration and regression scripts;
+- LLVM IR verification;
+- release example validation;
+- clang-format;
+- clang-tidy;
+- cppcheck;
+- sanitizers where supported;
+- coverage and complexity reporting;
+- Windows and Linux CI.
+
+A gate may begin as reporting before becoming blocking, but known failures must
+not be hidden or mislabeled as success.
+
+### E20. Refactoring policy
+
+Apply this directive incrementally. When a file or subsystem is changed, improve
+the touched area and add tests. Do not launch repository-wide stylistic rewrites
+that obscure functional changes, invalidate review, or create unbounded risk.
+
+Exceptions to this directive require an explicit explanation in the change,
+review, or canonical proposal. Convenience alone is not justification.
 
 ## NON-NEGOTIABLE RULES
 
 - This document wins over README files, tutorials, generated HTML, stale Markdown, old ADR drafts, previous chats, and AI memory.
+- The FIRST-ORDER ENGINEERING DIRECTIVE in SECTION 00 is mandatory for all new code and every existing code area touched by a change.
 - Layer A / constitutional language rules must not be edited merely because the current code is behind.
 - Layer B / implementation status may be updated to match the code.
 - Every language change requires tests and a dated entry in the change log.
@@ -206,6 +446,50 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.12 — 2026-06-16 — approved by Marcelo Fortes
+#   - Added COMPILER MODULE ARCHITECTURE DIRECTIVE (SECTION 31): how the
+#     compiler's own C++ source is split into modules. Principle: REACTIVE not
+#     PREDICTIVE. Extract a module only when it passes the three Go/UTF-8 tests
+#     (cohesion + stability + reuse). File size or aesthetics alone are NOT
+#     reasons to split; two responsibilities changing for different reasons ARE.
+#     Big reorganizations deferred to 0.2 (runtime/strings/UTF-8/aggregates),
+#     when the real seams are visible. AIs must not launch sweeping refactors on
+#     their own; propose and let the maintainer decide.
+#
+# v3.11 — 2026-06-16 — approved by Marcelo Fortes
+#   - Std.Math hardening + end-to-end exercise. Fixed Pi/Tau/E literals to
+#     Float64-honest precision (~16-17 sig digits; extra digits were decorative).
+#     Added examples/math-showcase.inox and tests/integration/modules/
+#     math-showcase.* calling integer-exact helpers (Min/Max/Clamp/Sign/Sqr/
+#     Cube/Gcd/Lcm) and Float intrinsics (Sqrt/Hypot/Floor/Ceil) from Main, all
+#     verified end-to-end. Registered in both run-tests.sh and run-tests.ps1.
+#     Recorded conformance gaps #20 (Lcm/Sqr/Cube overflow until checking mode)
+#     and #21 (Pi/Tau/E are functions until Float Const lowering exists).
+#
+# v3.10 — 2026-06-16 — approved implementation update
+#   - Expanded Std.Math from a minimal helper module into the first serious
+#     mathematical standard-library layer. Std.Math now includes additional
+#     Integer helpers implemented in Inox source and a Float elementary
+#     function surface lowered through LLVM/libm as a temporary 0.x backend path.
+#   - Added initial backend support for Float64 arithmetic, Float64 printing,
+#     Float64 comparisons, Float64 local inference, Float64 user functions,
+#     elementary math intrinsics/functions, and checked Integer exponentiation
+#     through a backend helper.
+#   - This does NOT complete the final scientific/numerical library: arrays,
+#     vectors, statistics, decimal finance, full IEEE policy, tolerance-based
+#     tests, and clean-room Inox kernels remain roadmap items.
+#
+# v3.8 — 2026-06-16 — approved by Marcelo Fortes
+#   - Made modern compiler-engineering quality a FIRST-ORDER constitutional rule
+#     in SECTION 00, before topical language and implementation rules.
+#   - Canonically adopted an Inox-specific adaptation of Object Calisthenics,
+#     SOLID, modern C++20, LLVM/compiler architecture, explicit ownership, phase
+#     boundaries, platform isolation, first-class diagnostics, valid-IR-only
+#     codegen, regression tests, approved compiler design patterns, and
+#     progressive quality gates.
+#   - Required incremental application to every new or modified code area and
+#     prohibited unbounded repository-wide cosmetic rewrites without tests.
 #
 # v3.7 — 2026-06-15 — approved by Marcelo Fortes
 #   - Added BACKEND STRATEGY DIRECTIVE (SECTION 31): clang remains the external
@@ -350,31 +634,33 @@ shipped doc from INOX_CANONICAL.md.
 # ============================================================================
 1. This document is the single source of truth. Read it and the CHANGE LOG
    before any task. It replaces the entire docs/ directory.
-2. Obey GOVERNANCE G1–G5. They override convenience.
-3. Never reopen ADR-tagged/locked decisions without a new approved ADR.
-4. Never edit Layer A to match the code. Code disagreeing with Layer A is a bug.
-5. You MAY update Layer B to match the code. You MAY PROPOSE Layer A changes only
+2. Read and apply the FIRST-ORDER ENGINEERING DIRECTIVE in SECTION 00 before
+   planning or modifying code. It is mandatory for every new or touched area.
+3. Obey GOVERNANCE G1–G6. They override convenience.
+4. Never reopen ADR-tagged/locked decisions without a new approved ADR.
+5. Never edit Layer A to match the code. Code disagreeing with Layer A is a bug.
+6. You MAY update Layer B to match the code. You MAY PROPOSE Layer A changes only
    in Section B-PROPOSALS, marked PROPOSAL, never applied as fact.
-6. Never infer behavior from another language (G4 / the canonical Agent rule). If
+7. Never infer behavior from another language (G4 / the canonical Agent rule). If
    uncovered, STOP and ask for a language decision.
-7. `:` is EXCLUSIVE to function/subroutine declaration. NO control structure
+8. `:` is EXCLUSIVE to function/subroutine declaration. NO control structure
    (if/elif/else/while/for/repeat/until/case/with) uses `:`. (CANON-4.)
-8. `End`/`end` never closes a block. Only `;`.
-9. No empty parentheses on zero-arg declarations/calls.
-10. `Var` block is removed; declarations are inline-only; `Var` keyword is rejected.
-11. Scalars and enums REQUIRE initializers; structs may use type-default init;
+9. `End`/`end` never closes a block. Only `;`.
+10. No empty parentheses on zero-arg declarations/calls.
+11. `Var` block is removed; declarations are inline-only; `Var` keyword is rejected.
+12. Scalars and enums REQUIRE initializers; structs may use type-default init;
     bare identifiers and assignment-to-undeclared are errors.
-12. Inference picks the most general safe family type; restrictions only by
+13. Inference picks the most general safe family type; restrictions only by
     annotation; no implicit cross-family or to/from-decimal conversion.
-13. Overflow is error, never wraparound (especially Currency/Crypto). No nsw/nuw.
-14. No null/nil. No `mut` parameters (reserved).
-15. `with` uses VB dot-prefix; `.Member` binds innermost; `:=` for assignment; no
+14. Overflow is error, never wraparound (especially Currency/Crypto). No nsw/nuw.
+15. No null/nil. No `mut` parameters (reserved).
+16. `with` uses VB dot-prefix; `.Member` binds innermost; `:=` for assignment; no
     `:`; non-shadowing prevails.
-16. Every language change updates code + tests + this document's Layer B + a dated
+17. Every language change updates code + tests + this document's Layer B + a dated
     CHANGE LOG entry if it is a design change.
-17. For every bug fixed, add a regression fixture in the narrowest layer
+18. For every bug fixed, add a regression fixture in the narrowest layer
     (lexer/parser/semantic/codegen/integration).
-18. Keep `dist/` examples in sync with `examples/`. Never commit build/, dist/*.zip.
+19. Keep `dist/` examples in sync with `examples/`. Never commit build/, dist/*.zip.
 
 
 # ============================================================================
@@ -471,31 +757,33 @@ ADRs together.
 # ============================================================================
 1. This document is the single source of truth. Read it and the CHANGE LOG
    before any task. It replaces the entire docs/ directory.
-2. Obey GOVERNANCE G1–G5. They override convenience.
-3. Never reopen ADR-tagged/locked decisions without a new approved ADR.
-4. Never edit Layer A to match the code. Code disagreeing with Layer A is a bug.
-5. You MAY update Layer B to match the code. You MAY PROPOSE Layer A changes only
+2. Read and apply the FIRST-ORDER ENGINEERING DIRECTIVE in SECTION 00 before
+   planning or modifying code. It is mandatory for every new or touched area.
+3. Obey GOVERNANCE G1–G6. They override convenience.
+4. Never reopen ADR-tagged/locked decisions without a new approved ADR.
+5. Never edit Layer A to match the code. Code disagreeing with Layer A is a bug.
+6. You MAY update Layer B to match the code. You MAY PROPOSE Layer A changes only
    in Section B-PROPOSALS, marked PROPOSAL, never applied as fact.
-6. Never infer behavior from another language (G4 / the canonical Agent rule). If
+7. Never infer behavior from another language (G4 / the canonical Agent rule). If
    uncovered, STOP and ask for a language decision.
-7. `:` is EXCLUSIVE to function/subroutine declaration. NO control structure
+8. `:` is EXCLUSIVE to function/subroutine declaration. NO control structure
    (if/elif/else/while/for/repeat/until/case/with) uses `:`. (CANON-4.)
-8. `End`/`end` never closes a block. Only `;`.
-9. No empty parentheses on zero-arg declarations/calls.
-10. `Var` block is removed; declarations are inline-only; `Var` keyword is rejected.
-11. Scalars and enums REQUIRE initializers; structs may use type-default init;
+9. `End`/`end` never closes a block. Only `;`.
+10. No empty parentheses on zero-arg declarations/calls.
+11. `Var` block is removed; declarations are inline-only; `Var` keyword is rejected.
+12. Scalars and enums REQUIRE initializers; structs may use type-default init;
     bare identifiers and assignment-to-undeclared are errors.
-12. Inference picks the most general safe family type; restrictions only by
+13. Inference picks the most general safe family type; restrictions only by
     annotation; no implicit cross-family or to/from-decimal conversion.
-13. Overflow is error, never wraparound (especially Currency/Crypto). No nsw/nuw.
-14. No null/nil. No `mut` parameters (reserved).
-15. `with` uses VB dot-prefix; `.Member` binds innermost; `:=` for assignment; no
+14. Overflow is error, never wraparound (especially Currency/Crypto). No nsw/nuw.
+15. No null/nil. No `mut` parameters (reserved).
+16. `with` uses VB dot-prefix; `.Member` binds innermost; `:=` for assignment; no
     `:`; non-shadowing prevails.
-16. Every language change updates code + tests + this document's Layer B + a dated
+17. Every language change updates code + tests + this document's Layer B + a dated
     CHANGE LOG entry if it is a design change.
-17. For every bug fixed, add a regression fixture in the narrowest layer
+18. For every bug fixed, add a regression fixture in the narrowest layer
     (lexer/parser/semantic/codegen/integration).
-18. Keep `dist/` examples in sync with `examples/`. Never commit build/, dist/*.zip.
+19. Keep `dist/` examples in sync with `examples/`. Never commit build/, dist/*.zip.
 
 
 # ############################################################################
@@ -1319,8 +1607,14 @@ The initial portable 0.1 standard library lives under `stdlib/`:
 - `Std.Core` — conceptual prelude/core; anchors fundamental names and compiler
   intrinsics such as future array-bounds operations. Conceptually IMPLICIT.
 - `Std.IO` — canonical `Put`/`PutLn` output and minimal `Get`/`GetLn` Integer input facade. Explicit `Use Std.IO`.
-- `Std.Math` — pure Integer helpers implemented in Inox source: `Min`, `Max`,
-  `Clamp`, `IsEven`, `IsOdd`. Explicit `Use Std.Math`.
+- `Std.Math` — strategic mathematical library surface. The initial serious
+  layer includes pure Inox Integer helpers such as `Min`, `Max`, `Clamp`,
+  `EnsureRange`, `InRange`, `Sign`, `IsEven`, `IsOdd`, `Sqr`, `Cube`, `Gcd`,
+  and `Lcm`, plus a temporary Float64 elementary-math surface lowered through
+  LLVM/libm (`Sqrt`, `Cbrt`, `Sin`, `Cos`, `Tan`, `ArcSin`, `ArcCos`,
+  `ArcTan`, `ArcTan2`, `Sinh`, `Cosh`, `Tanh`, `Exp`, `Ln`, `LnXP1`,
+  `Log2`, `Log10`, `LogN`, `Power`, `Floor`, `Ceil`, `FMod`, `Hypot`,
+  `Hypot3`, and angle conversions). Explicit `Use Std.Math`.
 - `Std.Debug` — documents future `Assert`; intentionally UNAVAILABLE until
   trap/abort behavior is canonical.
 The standard library must remain portable across Windows and Linux and must not
@@ -1438,10 +1732,13 @@ Semantic: scoped symbol table, forward signature pass, inference (empty type +
   initializer -> initializer type), prelude calls (Put/PutLn/Clamp/Min/Max),
   struct/method resolution, loop-iterator read-only enforcement, shadowing
   rejection, integer `/` rejection.
-Codegen (textual LLVM IR): integer/bool scalars, locals (alloca/store/load),
-  if/elif/else, while, repeat/until, for-range (+step), break/continue, functions,
-  subroutines, structs, field defaults, struct values, associated methods,
-  Put/PutLn via printf; Get/GetLn Integer input via internal getchar-based LLVM helpers.
+Codegen (textual LLVM IR): integer/bool/Float64 scalars, locals
+  (alloca/store/load), Float64 arithmetic and comparisons, checked Integer `^`
+  through a backend helper, if/elif/else, while, repeat/until, for-range (+step),
+  break/continue, functions, subroutines, structs, field defaults, struct
+  values, associated methods, Put/PutLn via printf including Float64; Get/GetLn
+  Integer input via internal getchar-based LLVM helpers. Elementary Float64 math
+  functions are temporarily lowered through LLVM intrinsics and libm/CRT symbols.
 Driver: --parse-only, --dump-tokens, --dump-types, --emit-llvm, --build, --run.
 Types registered (19): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   Currency, Crypto, Char, String + aliases Integer->Int64, UInteger->UInt64,
@@ -1475,6 +1772,17 @@ Types registered (19): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 17. Vector runtime (move semantics, Clone).
 18. Final I/O ABI (replace printf/getchar helpers); String input and ReadLn.
 19. Std.Debug.Assert (needs canonical trap/abort).
+20. Std.Math integer helpers `Lcm`, `Sqr`, `Cube` can overflow Int64 for large
+    inputs; per ADR-0006 this must trap, but until checking-mode arithmetic
+    traps (#13) exist they wrap silently. Audit these when #13 lands.
+21. Float `Const` lowering: a `Const` of Float type passes semantic analysis but
+    fails codegen ("unsupported expression"). Because of this, Std.Math exposes
+    `Pi`/`Tau`/`E` as zero-argument functions rather than constants. Revisit them
+    as `Const` once Float constant lowering is implemented.
+20. Std.Math is still incomplete beyond the initial serious layer: arrays/vectors
+    are required for statistics; Currency/BigCurrency are required for serious
+    finance; final IEEE NaN/Infinity/rounding/exception policy remains open;
+    many Float functions currently depend on LLVM/libm rather than Inox kernels.
 
 
 # ============================================================================
@@ -1758,6 +2066,13 @@ Types registered (19): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 17. Vector runtime (move semantics, Clone).
 18. Final I/O ABI (replace printf/getchar helpers); String input and ReadLn.
 19. Std.Debug.Assert (needs canonical trap/abort).
+20. Std.Math integer helpers `Lcm`, `Sqr`, `Cube` can overflow Int64 for large
+    inputs; per ADR-0006 this must trap, but until checking-mode arithmetic
+    traps (#13) exist they wrap silently. Audit these when #13 lands.
+21. Float `Const` lowering: a `Const` of Float type passes semantic analysis but
+    fails codegen ("unsupported expression"). Because of this, Std.Math exposes
+    `Pi`/`Tau`/`E` as zero-argument functions rather than constants. Revisit them
+    as `Const` once Float constant lowering is implemented.
 
 ## B-CONFLICTS. KNOWN DOC/CODE CONFLICTS TO RESOLVE
 - Var block still in code (B-GAPS #1).
@@ -1883,9 +2198,62 @@ on-ramp to replace clang. When editing such files, the task is "improve how we
 call clang" (security, robustness, paths with spaces), NEVER "eliminate clang".
 Replacing the backend is a 0.3/0.4 decision requiring an explicit ADR.
 
+## COMPILER MODULE ARCHITECTURE DIRECTIVE (when to split C++ modules)
+
+This directive governs HOW the compiler's own C++ source is divided into modules.
+It exists to avoid two opposite failure modes: the high-coupling monolith (giant
+files mixing unrelated responsibilities) and premature fragmentation (splitting
+before the code has revealed where its real seams are).
+
+### Principle: REACTIVE, not PREDICTIVE
+The ideal module structure becomes visible only AFTER the code reveals its axes
+of change. While the compiler is still young and growing fast (new types, Float,
+arrays, enums, runtime), every new feature can redraw where the natural
+boundaries lie. Designing the module split up front means redesigning it
+repeatedly — work that does not become language. Therefore: do NOT reorganize
+into modules preemptively or for aesthetics. Split when it hurts, extract when
+the criteria below are met.
+
+### The three tests for extracting a module (the Go/UTF-8 criteria)
+Extract a piece into its own module ONLY when it passes ALL THREE:
+1. COHESION — it does one well-defined thing (e.g. UTF-8 handling, symbol table,
+   a single IR-emission concern), not a grab-bag.
+2. STABILITY — its boundary does not change every time a language feature is
+   added. A stable surface is what makes extraction pay off.
+3. REUSE — it has more than one consumer, or a clearly imminent second consumer.
+
+Go separates UTF-8 into its own package precisely because UTF-8 satisfies all
+three: cohesive, stable rules, many consumers. When Inox reaches strings/Unicode,
+UTF-8 will be among the first legitimate extractions for the same reason.
+
+Already correctly extracted under this rule: the `support/` layer (Platform,
+Process, FileSystem, Environment) — cohesive OS-abstraction, stable surface,
+multiple consumers.
+
+### Anti-rules (do NOT use these as reasons to split)
+- File size ALONE is not a reason. A large but cohesive file with a stable
+  boundary stays whole until a second responsibility appears in it.
+- Aesthetics/sophistication is not a reason. Splitting to "look like a real
+  compiler" is fragmentation, not engineering.
+- A file that mixes TWO responsibilities that change for DIFFERENT reasons IS a
+  reason to split (e.g. if one emitter file holds type/struct emission AND
+  runtime-helper emission AND expression emission, those are separable concerns).
+
+### Working rule of thumb
+When a single file passes ~500-800 lines AND mixes responsibilities that change
+for different reasons, divide it along the responsibility seam — not down the
+middle by line count. Capture the decision in the change log if it is structural.
+
+### Timing
+Big reorganizations are deferred until the 0.2 work (runtime, strings/UTF-8,
+aggregates) exposes the real seams. Until then, apply the reactive rule
+per-file. A context-less AI MUST NOT launch a sweeping module refactor on its
+own initiative; propose it (Section B-PROPOSALS) and let the maintainer decide.
+
 # ============================================================================
-# END OF INOX_CANONICAL.md v3.7
-# A context-less AI: read SECTION 00, SECTION 02 change log, SECTION 03 agent
-# rules, then the topical SECTIONs relevant to the task, and finally SECTION 30
+# END OF INOX_CANONICAL.md v3.8
+# A context-less AI: read SECTION 00 including the FIRST-ORDER ENGINEERING
+# DIRECTIVE, SECTION 02 change log, SECTION 03 agent rules, then the topical
+# SECTIONs relevant to the task, and finally SECTION 30
 # for current implementation status. Never confuse design law with status.
 # ============================================================================

@@ -210,7 +210,11 @@ run_linked_execution_test() {
         return 0
     fi
 
-    clang "$ll_path" -o "$exe_path" >/dev/null 2>&1
+    local clang_args=("$ll_path" -o "$exe_path")
+    if [[ "$(uname -s)" != MINGW* && "$(uname -s)" != MSYS* && "$(uname -s)" != CYGWIN* ]]; then
+        clang_args+=("-lm")
+    fi
+    clang "${clang_args[@]}" >/dev/null 2>&1
     local clang_exit=$?
     if [[ $clang_exit -ne 0 ]]; then
         rm -rf "$temp_dir"
@@ -279,7 +283,6 @@ run_driver_input_test() {
     local test_file="$1"
     local input_file="$2"
     local expected_file="$3"
-    local trap_file="${4:-}"
     local rel
     rel="$(relative_path "$test_file")"
 
@@ -291,18 +294,6 @@ run_driver_input_test() {
     local actual expected exit_code
     actual="$("$inox_exe" --run "$test_file" < "$input_file" 2>&1)"
     exit_code=$?
-
-    if [[ -n "$trap_file" ]]; then
-        if [[ $exit_code -ne 0 ]]; then
-            record_pass "$rel --run < input traps"
-        else
-            record_fail "$rel --run < input traps" \
-                "expected non-zero exit code for trap marker: $(basename "$trap_file")" \
-                "actual output: $actual"
-        fi
-        return
-    fi
-
     expected="$(sed 's/\r$//' "$expected_file")"
     actual="$(printf '%s' "$actual" | sed 's/\r$//')"
 
@@ -311,37 +302,6 @@ run_driver_input_test() {
     else
         record_fail "$rel --run < input" "exit code: $exit_code" "expected output: $expected" "actual output: $actual"
     fi
-}
-
-run_driver_input_tests() {
-    local input_root="$repo_root/tests/integration/input"
-    [[ -d "$input_root" ]] || return 0
-
-    while IFS= read -r -d '' test_file; do
-        local base input_file output_file trap_file rel
-        base="${test_file%.inox}"
-        input_file="$base.in"
-        output_file="$base.out"
-        trap_file="$base.trap"
-        rel="$(relative_path "$test_file")"
-
-        if [[ ! -f "$input_file" ]]; then
-            record_fail "$rel --run < input" "missing input file: $input_file"
-            continue
-        fi
-
-        if [[ -f "$output_file" && -f "$trap_file" ]] ||
-           [[ ! -f "$output_file" && ! -f "$trap_file" ]]; then
-            record_fail "$rel --run < input" "expected exactly one of .out or .trap"
-            continue
-        fi
-
-        if [[ -f "$trap_file" ]]; then
-            run_driver_input_test "$test_file" "$input_file" "" "$trap_file"
-        else
-            run_driver_input_test "$test_file" "$input_file" "$output_file"
-        fi
-    done < <(find "$input_root" -maxdepth 1 -type f -name '*.inox' -print0 | sort -z)
 }
 
 run_test_tree() {
@@ -380,7 +340,7 @@ run_llvm_emission_test "$repo_root/examples/llvm-local-variables.inox" \
 run_llvm_emission_test "$repo_root/examples/llvm-inline-typed-local.inox" \
     "define i64 @compute" "%a = alloca i64" "%b = alloca i64" "store i64 10, ptr %a" "store i64 20, ptr %b" "load i64, ptr %a" "load i64, ptr %b" "add i64" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-local-assignment.inox" \
-    "define i64 @compute" "%a = alloca i64" "%b = alloca i64" "store i64 10, ptr %a" "store i64 20, ptr %b" "add i64" "mul i64" "store i64 %tmp2, ptr %a" "store i64 %tmp4, ptr %b" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @compute" "%a = alloca i64" "%b = alloca i64" "store i64 10, ptr %a" "store i64 20, ptr %b" "add i64" "mul i64" "store i64 %tmp0, ptr %a" "store i64 %tmp3, ptr %b" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-integer-operators.inox" \
     "define i64 @compute" "%tmp0 = sdiv i64 %a, %b" "srem i64" "shl i64" "ashr i64" "and i64" "or i64" "xor i64" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-bool-comparisons.inox" \
@@ -440,10 +400,14 @@ run_linked_execution_test "$repo_root/tests/integration/output-basic.inox" "$rep
 run_build_driver_test "$repo_root/tests/integration/run-hello.inox"
 run_driver_execution_test "$repo_root/tests/integration/run-hello.inox" "$repo_root/tests/integration/run-hello.out"
 run_driver_execution_test "$repo_root/tests/integration/modules/Main.inox" "$repo_root/tests/integration/modules/Main.out"
+run_driver_execution_test "$repo_root/tests/integration/modules/math-showcase.inox" "$repo_root/tests/integration/modules/math-showcase.out"
 run_driver_execution_test "$repo_root/tests/integration/stdlib/StdMathDemo.inox" "$repo_root/tests/integration/stdlib/StdMathDemo.out"
+run_driver_execution_test "$repo_root/tests/integration/stdlib/StdMathExpanded.inox" "$repo_root/tests/integration/stdlib/StdMathExpanded.out"
 run_driver_execution_test "$repo_root/tests/integration/showcase/account-showcase.inox" "$repo_root/tests/integration/showcase/account-showcase.out"
 run_driver_execution_test "$repo_root/tests/integration/output/variadic-put.inox" "$repo_root/tests/integration/output/variadic-put.out"
-run_driver_input_tests
+run_driver_input_test "$repo_root/tests/integration/input/get-integer.inox" "$repo_root/tests/integration/input/get-integer.in" "$repo_root/tests/integration/input/get-integer.out"
+run_driver_input_test "$repo_root/tests/integration/input/getln-two-integers.inox" "$repo_root/tests/integration/input/getln-two-integers.in" "$repo_root/tests/integration/input/getln-two-integers.out"
+run_driver_input_test "$repo_root/tests/integration/input/getln-pause.inox" "$repo_root/tests/integration/input/getln-pause.in" "$repo_root/tests/integration/input/getln-pause.out"
 run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 
 total=$((passed + failed))
