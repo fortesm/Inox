@@ -280,17 +280,6 @@ std::unique_ptr<ModuleNode> loadProgram(const fs::path& sourcePath, const fs::pa
         findStandardLibraryDirectory(absolutePath, executableDir)).loadProgram(absolutePath);
 }
 
-std::string shellQuote(const fs::path& path)
-{
-    std::string text = path.string();
-    std::string quoted = "\"";
-    for (const char ch : text) {
-        quoted += ch == '"' ? "\\\"" : std::string(1, ch);
-    }
-    quoted += '"';
-    return quoted;
-}
-
 bool clangExists()
 {
     return inox::compiler::support::commandExists("clang");
@@ -319,10 +308,18 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
         outputDirectory / (stem + std::string(inox::compiler::support::executableSuffix()))};
     writeFile(artifacts.llvmIr, inox::compiler::codegen::LlvmIrEmitter().emit(module));
 
-    const std::string command =
-        "clang " + shellQuote(artifacts.llvmIr) + " -o " + shellQuote(artifacts.executable) +
-        " > " + std::string(inox::compiler::support::nullDevicePath()) + " 2>&1";
-    if (inox::compiler::support::runShellCommand(command) != 0) {
+    // Invoke clang by argument vector (no shell). Each argument is passed
+    // literally, so paths containing spaces (e.g. C:\Program Files\...) survive
+    // intact and no shell metacharacters can be injected. clang remains the
+    // external backend driver (see INOX_CANONICAL SECTION 31 backend directive);
+    // only HOW it is invoked changed, not WHETHER.
+    const int clangExit = inox::compiler::support::runProcess(
+        {"clang",
+         artifacts.llvmIr.string(),
+         "-o",
+         artifacts.executable.string()},
+        /*captureToNull=*/true);
+    if (clangExit != 0) {
         throw std::runtime_error("clang failed while building: " + sourcePath.string());
     }
     return artifacts;
@@ -383,7 +380,11 @@ int main(int argc, char** argv)
         } else if (build || run) {
             const BuildArtifacts artifacts = buildProgram(fs::path(sourcePath), *module);
             if (run) {
-                return inox::compiler::support::runShellCommand(shellQuote(artifacts.executable)) == 0 ? 0 : 1;
+                // Execute the freshly built program directly (no shell), so its
+                // path may contain spaces and its stdin/stdout/stderr are
+                // inherited (needed for Get/GetLn interactive input).
+                return inox::compiler::support::runProcess(
+                           {artifacts.executable.string()}) == 0 ? 0 : 1;
             }
             std::cout << artifacts.executable.string() << '\n';
         } else {
