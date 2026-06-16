@@ -7,19 +7,22 @@
 
 Module Std.Math
 
-== Inox 0.1 math helpers.
+== Inox 0.1 mathematical surface.
 ==
-== Abs(X Integer) is currently treated as a compiler/prelude intrinsic in the
-== compiler front-end. Std.Math documents it as part of the mathematical
-== surface, but does not redeclare it here to avoid duplicate prelude symbols.
+== This module is intentionally clean-room. It does not copy or translate any
+== third-party runtime library. Some elementary Float functions are compiler
+== prelude intrinsics lowered to LLVM/libm by the current backend:
 ==
-== Abs must obey the Inox overflow policy: Abs(Integer minimum) is invalid and
-== must trap/error when checked arithmetic is implemented.
+==   Abs(Float), Sqrt, Cbrt, Sin, Cos, Tan, ArcSin, ArcCos, ArcTan,
+==   ArcTan2, Sinh, Cosh, Tanh, Exp, Ln, LnXP1, Log2, Log10, LogN,
+==   Power, Floor, Ceil, FMod, Hypot, Hypot3,
+==   RadToDeg, DegToRad, RadToGrad, GradToRad, RadToCycle, CycleToRad.
+==
+== Integer helpers below are implemented in Inox source and are part of the
+== first non-toy Std.Math layer.
 
 Min(A Integer, B Integer) Integer :
-    Var
-        Result Integer := B
-    ;
+    Result Integer := B
 
     if A < B
         Result := A
@@ -29,9 +32,7 @@ Min(A Integer, B Integer) Integer :
 ;
 
 Max(A Integer, B Integer) Integer :
-    Var
-        Result Integer := B
-    ;
+    Result Integer := B
 
     if A > B
         Result := A
@@ -41,9 +42,7 @@ Max(A Integer, B Integer) Integer :
 ;
 
 Clamp(X Integer, MinValue Integer, MaxValue Integer) Integer :
-    Var
-        Result Integer := X
-    ;
+    Result Integer := X
 
     if Result < MinValue
         Result := MinValue
@@ -56,10 +55,119 @@ Clamp(X Integer, MinValue Integer, MaxValue Integer) Integer :
     Return Result
 ;
 
+EnsureRange(X Integer, MinValue Integer, MaxValue Integer) Integer :
+    Return Clamp(X, MinValue, MaxValue)
+;
+
+InRange(X Integer, MinValue Integer, MaxValue Integer) Bool :
+    Return (X >= MinValue) and (X <= MaxValue)
+;
+
+Sign(X Integer) Integer :
+    if X < 0
+        Return -1
+    elif X > 0
+        Return 1
+    else
+        Return 0
+    ;
+;
+
 IsEven(X Integer) Bool :
     Return (X mod 2) = 0
 ;
 
 IsOdd(X Integer) Bool :
     Return (X mod 2) # 0
+;
+
+Sqr(X Integer) Integer :
+    Return X * X
+;
+
+Cube(X Integer) Integer :
+    Return X * X * X
+;
+
+Gcd(A Integer, B Integer) Integer :
+    X Integer := Abs(A)
+    Y Integer := Abs(B)
+    T Integer := 0
+
+    while Y # 0
+        T := X mod Y
+        X := Y
+        Y := T
+    ;
+
+    Return X
+;
+
+Lcm(A Integer, B Integer) Integer :
+    Result Integer := 0
+
+    if (A # 0) and (B # 0)
+        Result := (Abs(A) div Gcd(A, B)) * Abs(B)
+    ;
+
+    Return Result
+;
+
+== Float convenience functions implemented in Inox source over backend math
+== intrinsics. They deliberately use Float/Float64, not Currency/Crypto.
+
+Pi Float :
+    Return 3.141592653589793238462643383279502884
+;
+
+Tau Float :
+    Return 6.283185307179586476925286766559005768
+;
+
+E Float :
+    Return 2.718281828459045235360287471352662498
+;
+
+Cotan(X Float) Float :
+    Return 1.0 / Tan(X)
+;
+
+Cot(X Float) Float :
+    Return Cotan(X)
+;
+
+Secant(X Float) Float :
+    Return 1.0 / Cos(X)
+;
+
+Sec(X Float) Float :
+    Return Secant(X)
+;
+
+Cosecant(X Float) Float :
+    Return 1.0 / Sin(X)
+;
+
+Csc(X Float) Float :
+    Return Cosecant(X)
+;
+
+Coth(X Float) Float :
+    Return 1.0 / Tanh(X)
+;
+
+Sech(X Float) Float :
+    Return 1.0 / Cosh(X)
+;
+
+Csch(X Float) Float :
+    Return 1.0 / Sinh(X)
+;
+
+Log(X Float) Float :
+    Return Ln(X)
+;
+
+LogBase(Base Float, X Float) Float :
+    Return LogN(Base, X)
 ;

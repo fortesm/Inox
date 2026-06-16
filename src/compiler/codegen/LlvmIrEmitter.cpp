@@ -174,7 +174,85 @@ std::string llvmTypeForScalar(std::string_view inoxType)
     if (equalsIgnoreCase(inoxType, "Bool")) {
         return "i1";
     }
+    if (equalsIgnoreCase(inoxType, "Float") || equalsIgnoreCase(inoxType, "Float64")) {
+        return "double";
+    }
+    if (equalsIgnoreCase(inoxType, "Float32")) {
+        return "float";
+    }
     return {};
+}
+
+bool isFloatLlvmType(std::string_view llvmType)
+{
+    return llvmType == "double" || llvmType == "float";
+}
+
+std::string fcmpPredicate(ast::BinaryOperator op)
+{
+    switch (op) {
+    case ast::BinaryOperator::Equal:
+        return "oeq";
+    case ast::BinaryOperator::NotEqual:
+        return "one";
+    case ast::BinaryOperator::Less:
+        return "olt";
+    case ast::BinaryOperator::Greater:
+        return "ogt";
+    case ast::BinaryOperator::LessEqual:
+        return "ole";
+    case ast::BinaryOperator::GreaterEqual:
+        return "oge";
+    default:
+        return {};
+    }
+}
+
+std::string mathIntrinsicName(std::string_view inoxName)
+{
+    if (equalsIgnoreCase(inoxName, "Sqrt")) return "llvm.sqrt.f64";
+    if (equalsIgnoreCase(inoxName, "Sin")) return "llvm.sin.f64";
+    if (equalsIgnoreCase(inoxName, "Cos")) return "llvm.cos.f64";
+    if (equalsIgnoreCase(inoxName, "Exp")) return "llvm.exp.f64";
+    if (equalsIgnoreCase(inoxName, "Ln")) return "llvm.log.f64";
+    if (equalsIgnoreCase(inoxName, "Log2")) return "llvm.log2.f64";
+    if (equalsIgnoreCase(inoxName, "Log10")) return "llvm.log10.f64";
+    if (equalsIgnoreCase(inoxName, "Power")) return "llvm.pow.f64";
+    if (equalsIgnoreCase(inoxName, "Floor")) return "llvm.floor.f64";
+    if (equalsIgnoreCase(inoxName, "Ceil")) return "llvm.ceil.f64";
+    if (equalsIgnoreCase(inoxName, "Abs")) return "llvm.fabs.f64";
+    return {};
+}
+
+std::string mathLibmName(std::string_view inoxName)
+{
+    if (equalsIgnoreCase(inoxName, "Cbrt")) return "cbrt";
+    if (equalsIgnoreCase(inoxName, "Tan")) return "tan";
+    if (equalsIgnoreCase(inoxName, "ArcSin")) return "asin";
+    if (equalsIgnoreCase(inoxName, "ArcCos")) return "acos";
+    if (equalsIgnoreCase(inoxName, "ArcTan")) return "atan";
+    if (equalsIgnoreCase(inoxName, "ArcTan2")) return "atan2";
+    if (equalsIgnoreCase(inoxName, "Sinh")) return "sinh";
+    if (equalsIgnoreCase(inoxName, "Cosh")) return "cosh";
+    if (equalsIgnoreCase(inoxName, "Tanh")) return "tanh";
+    if (equalsIgnoreCase(inoxName, "LnXP1")) return "log1p";
+    if (equalsIgnoreCase(inoxName, "FMod")) return "fmod";
+    if (equalsIgnoreCase(inoxName, "Hypot")) return "hypot";
+    return {};
+}
+
+bool isMathBuiltin(std::string_view inoxName)
+{
+    return !mathIntrinsicName(inoxName).empty() ||
+           !mathLibmName(inoxName).empty() ||
+           equalsIgnoreCase(inoxName, "LogN") ||
+           equalsIgnoreCase(inoxName, "Hypot3") ||
+           equalsIgnoreCase(inoxName, "RadToDeg") ||
+           equalsIgnoreCase(inoxName, "DegToRad") ||
+           equalsIgnoreCase(inoxName, "RadToGrad") ||
+           equalsIgnoreCase(inoxName, "GradToRad") ||
+           equalsIgnoreCase(inoxName, "RadToCycle") ||
+           equalsIgnoreCase(inoxName, "CycleToRad");
 }
 
 std::string llvmTypeForInoxType(std::string_view inoxType, const StructDefinitions& structs)
@@ -328,16 +406,14 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
         llvmReturnType = "void";
     } else if (index + 1 != tokens.size()) {
         throw CodegenError(
-            "LLVM emission currently supports Integer, Bool, struct return types, or subroutines without return type");
-    } else if (equalsIgnoreCase(tokens[index], "Integer")) {
-        llvmReturnType = "i64";
-    } else if (equalsIgnoreCase(tokens[index], "Bool")) {
-        llvmReturnType = "i1";
+            "LLVM emission currently supports scalar, struct return types, or subroutines without return type");
+    } else if (const std::string scalarReturnType = llvmTypeForScalar(tokens[index]); !scalarReturnType.empty()) {
+        llvmReturnType = scalarReturnType;
     } else if (const StructDefinition* structType = findStruct(structs, tokens[index])) {
         llvmReturnType = structType->llvmName;
     } else {
         throw CodegenError(
-            "LLVM emission currently supports Integer, Bool, struct return types, or subroutines without return type");
+            "LLVM emission currently supports scalar, struct return types, or subroutines without return type");
     }
 
     return FunctionSignature{
@@ -380,6 +456,7 @@ public:
                 }
             } else {
                 parameters_.emplace(normalize(parameter.inoxName), "%" + parameter.llvmName);
+                parameterTypes_.emplace(normalize(parameter.inoxName), parameter.llvmType);
             }
         }
     }
@@ -879,11 +956,13 @@ private:
     void emitLocalVariable(std::string_view name, const ast::Expression& initializer)
     {
         const std::string normalizedName = normalize(name);
+        const std::string llvmType = expressionLlvmType(initializer);
+        const std::string inoxType = inoxTypeForLlvmType(llvmType);
         const std::string slot = "%" + normalizedName;
-        output_ << "  " << slot << " = alloca i64\n";
+        output_ << "  " << slot << " = alloca " << llvmType << "\n";
         const std::string value = emitExpression(initializer);
-        output_ << "  store i64 " << value << ", ptr " << slot << '\n';
-        locals_.emplace(normalizedName, LocalInfo{slot, "Integer", "i64"});
+        output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
+        locals_.emplace(normalizedName, LocalInfo{slot, inoxType, llvmType});
     }
 
     void emitTypedLocalVariable(std::string_view name, std::string_view typeName, const ast::Expression* initializer = nullptr)
@@ -1126,7 +1205,15 @@ private:
             return;
         }
 
+        const std::string argumentType = expressionLlvmType(argument);
         const std::string value = emitExpression(argument);
+        if (isFloatLlvmType(argumentType)) {
+            output_ << "  call i32 (ptr, ...) @printf(ptr "
+                    << (newline ? "@.inox.fmt.f64.nl" : "@.inox.fmt.f64")
+                    << ", double " << value << ")\n";
+            return;
+        }
+
         output_ << "  call i32 (ptr, ...) @printf(ptr "
                 << (newline ? "@.inox.fmt.i64.nl" : "@.inox.fmt.i64")
                 << ", i64 " << value << ")\n";
@@ -1161,7 +1248,7 @@ private:
                    !llvmBooleanOperation(binary.op()).empty();
         }
 
-        return false;
+        return expressionLlvmType(expression) == "i1";
     }
 
     FieldAddress emitMemberAddress(const ast::CallExpression& call)
@@ -1402,6 +1489,187 @@ private:
             "LLVM emission currently supports only local variable or field assignments");
     }
 
+    std::string inoxTypeForLlvmType(std::string_view llvmType) const
+    {
+        if (llvmType == "i64") {
+            return "Integer";
+        }
+        if (llvmType == "i1") {
+            return "Bool";
+        }
+        if (llvmType == "double") {
+            return "Float64";
+        }
+        if (llvmType == "float") {
+            return "Float32";
+        }
+        for (const auto& [_, structType] : structs_) {
+            if (structType.llvmName == llvmType) {
+                return structType.inoxName;
+            }
+        }
+        throw CodegenError("unsupported LLVM type for local inference in function: " + function_.name());
+    }
+
+    std::string memberAccessLlvmType(const ast::CallExpression& call) const
+    {
+        if (call.arguments().size() != 2 ||
+            call.arguments()[0]->kind() != ast::AstNodeKind::IdentifierExpression ||
+            call.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
+            throw CodegenError("LLVM emission currently supports only simple local field access");
+        }
+
+        const auto& receiver = static_cast<const ast::IdentifierExpression&>(*call.arguments()[0]);
+        const auto& fieldName = static_cast<const ast::IdentifierExpression&>(*call.arguments()[1]);
+        const auto local = locals_.find(normalize(receiver.name()));
+        if (local == locals_.end()) {
+            throw CodegenError("unknown local for LLVM field access");
+        }
+        const StructDefinition* structType = findStruct(structs_, local->second.inoxType);
+        if (structType == nullptr) {
+            throw CodegenError("LLVM field access receiver is not a struct");
+        }
+        const StructFieldInfo* field = findStructField(*structType, fieldName.name());
+        if (field == nullptr) {
+            throw CodegenError("unknown struct field for LLVM emission");
+        }
+        return field->llvmType;
+    }
+
+    std::string expressionLlvmType(const ast::Expression& expression) const
+    {
+        switch (expression.kind()) {
+        case ast::AstNodeKind::LiteralExpression: {
+            const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
+            switch (literal.literalKind()) {
+            case ast::LiteralKind::Integer:
+                return "i64";
+            case ast::LiteralKind::Float:
+                return "double";
+            case ast::LiteralKind::Boolean:
+                return "i1";
+            case ast::LiteralKind::String:
+                return "ptr";
+            case ast::LiteralKind::Char:
+                return "i32";
+            }
+            break;
+        }
+        case ast::AstNodeKind::IdentifierExpression: {
+            const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
+            const std::string normalizedName = normalize(identifier.name());
+            const auto local = locals_.find(normalizedName);
+            if (local != locals_.end()) {
+                return local->second.llvmType;
+            }
+            const auto parameter = parameterTypes_.find(normalizedName);
+            if (parameter != parameterTypes_.end()) {
+                return parameter->second;
+            }
+            const auto signature = signatures_.find(normalizedName);
+            if (signature != signatures_.end()) {
+                return signature->second.llvmReturnType;
+            }
+            break;
+        }
+        case ast::AstNodeKind::UnaryExpression: {
+            const auto& unary = static_cast<const ast::UnaryExpression&>(expression);
+            if (unary.op() == ast::UnaryOperator::Not) {
+                return "i1";
+            }
+            return expressionLlvmType(unary.operand());
+        }
+        case ast::AstNodeKind::BinaryExpression: {
+            const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
+            if (llvmComparisonPredicate(binary.op()).size() != 0 || fcmpPredicate(binary.op()).size() != 0) {
+                return "i1";
+            }
+            if (llvmBooleanOperation(binary.op()).size() != 0) {
+                return "i1";
+            }
+            return expressionLlvmType(binary.left());
+        }
+        case ast::AstNodeKind::CallExpression: {
+            const auto& call = static_cast<const ast::CallExpression&>(expression);
+            if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
+                const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
+                if (equalsIgnoreCase(callee.name(), "__member")) {
+                    try {
+                        return memberAccessLlvmType(call);
+                    } catch (const CodegenError&) {
+                        if (call.arguments().size() == 2 &&
+                            call.arguments()[0]->kind() == ast::AstNodeKind::IdentifierExpression &&
+                            call.arguments()[1]->kind() == ast::AstNodeKind::IdentifierExpression) {
+                            const auto& receiver = static_cast<const ast::IdentifierExpression&>(*call.arguments()[0]);
+                            const auto& method = static_cast<const ast::IdentifierExpression&>(*call.arguments()[1]);
+                            const auto local = locals_.find(normalize(receiver.name()));
+                            if (local != locals_.end()) {
+                                const auto signature = signatures_.find(normalize(local->second.inoxType + "." + method.name()));
+                                if (signature != signatures_.end()) {
+                                    return signature->second.llvmReturnType;
+                                }
+                            }
+                        }
+                        throw;
+                    }
+                }
+                if (equalsIgnoreCase(callee.name(), "Abs") && call.arguments().size() == 1) {
+                    return expressionLlvmType(*call.arguments().front());
+                }
+                if (isMathBuiltin(callee.name())) {
+                    return "double";
+                }
+                const auto signature = signatures_.find(normalize(callee.name()));
+                if (signature != signatures_.end()) {
+                    return signature->second.llvmReturnType;
+                }
+            }
+            if (isMemberAccessCall(call.callee())) {
+                const auto& member = static_cast<const ast::CallExpression&>(call.callee());
+                if (member.arguments().size() == 2 && member.arguments()[0]) {
+                    const std::string receiverType = expressionInoxType(*member.arguments()[0]);
+                    if (member.arguments()[1]->kind() == ast::AstNodeKind::IdentifierExpression) {
+                        const auto& method = static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
+                        const auto signature = signatures_.find(normalize(receiverType + "." + method.name()));
+                        if (signature != signatures_.end()) {
+                            return signature->second.llvmReturnType;
+                        }
+                    }
+                }
+            }
+            break;
+        }
+        default:
+            break;
+        }
+        throw CodegenError("unsupported expression type for LLVM emission in function: " + function_.name());
+    }
+
+    std::string expressionInoxType(const ast::Expression& expression) const
+    {
+        switch (expression.kind()) {
+        case ast::AstNodeKind::IdentifierExpression: {
+            const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
+            const std::string normalizedName = normalize(identifier.name());
+            const auto local = locals_.find(normalizedName);
+            if (local != locals_.end()) {
+                return local->second.inoxType;
+            }
+            break;
+        }
+        case ast::AstNodeKind::LiteralExpression: {
+            const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
+            if (literal.literalKind() == ast::LiteralKind::Float) return "Float64";
+            if (literal.literalKind() == ast::LiteralKind::Boolean) return "Bool";
+            if (literal.literalKind() == ast::LiteralKind::Integer) return "Integer";
+            break;
+        }
+        default:
+            break;
+        }
+        return {};
+    }
+
     std::string emitExpression(const ast::Expression& expression)
     {
         switch (expression.kind()) {
@@ -1409,6 +1677,9 @@ private:
             const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
             if (literal.literalKind() == ast::LiteralKind::Integer) {
                 return llvmIntegerLiteral(literal.value());
+            }
+            if (literal.literalKind() == ast::LiteralKind::Float) {
+                return std::string(literal.value());
             }
             if (literal.literalKind() == ast::LiteralKind::Boolean) {
                 return equalsIgnoreCase(literal.value(), "true") ? "1" : "0";
@@ -1449,9 +1720,28 @@ private:
         }
         case ast::AstNodeKind::BinaryExpression: {
             const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
+            const std::string leftType = expressionLlvmType(binary.left());
+            const std::string rightType = expressionLlvmType(binary.right());
+            const std::string result = "%tmp" + std::to_string(nextTemporary_++);
             const std::string left = emitExpression(binary.left());
             const std::string right = emitExpression(binary.right());
-            const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+
+            if (isFloatLlvmType(leftType) || isFloatLlvmType(rightType)) {
+                if (const std::string predicate = fcmpPredicate(binary.op()); !predicate.empty()) {
+                    output_ << "  " << result << " = fcmp " << predicate << ' ' << leftType
+                            << ' ' << left << ", " << right << '\n';
+                    return result;
+                }
+                if (binary.op() == ast::BinaryOperator::Power) {
+                    output_ << "  " << result << " = call double @llvm.pow.f64(double "
+                            << left << ", double " << right << ")\n";
+                    return result;
+                }
+                output_ << "  " << result << " = " << llvmFloatOperation(binary.op()) << ' '
+                        << leftType << ' ' << left << ", " << right << '\n';
+                return result;
+            }
+
             if (const std::string predicate = llvmComparisonPredicate(binary.op());
                 !predicate.empty()) {
                 output_ << "  " << result << " = icmp " << predicate << " i64 "
@@ -1460,6 +1750,9 @@ private:
                        !operation.empty()) {
                 output_ << "  " << result << " = " << operation << " i1 "
                         << left << ", " << right << '\n';
+            } else if (binary.op() == ast::BinaryOperator::Power) {
+                output_ << "  " << result << " = call i64 @__inox_ipow_i64(i64 "
+                        << left << ", i64 " << right << ")\n";
             } else {
                 output_ << "  " << result << " = " << llvmOperation(binary.op()) << " i64 "
                         << left << ", " << right << '\n';
@@ -1478,16 +1771,23 @@ private:
                 return emitExpression(unary.operand());
             }
             if (unary.op() == ast::UnaryOperator::Minus) {
+                const std::string operandType = expressionLlvmType(unary.operand());
                 if (unary.operand().kind() == ast::AstNodeKind::LiteralExpression) {
-                    const auto& literal =
-                        static_cast<const ast::LiteralExpression&>(unary.operand());
+                    const auto& literal = static_cast<const ast::LiteralExpression&>(unary.operand());
                     if (literal.literalKind() == ast::LiteralKind::Integer) {
                         return "-" + llvmIntegerLiteral(literal.value());
+                    }
+                    if (literal.literalKind() == ast::LiteralKind::Float) {
+                        return "-" + std::string(literal.value());
                     }
                 }
                 const std::string operand = emitExpression(unary.operand());
                 const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-                output_ << "  " << result << " = sub i64 0, " << operand << '\n';
+                if (isFloatLlvmType(operandType)) {
+                    output_ << "  " << result << " = fsub " << operandType << " -0.0, " << operand << '\n';
+                } else {
+                    output_ << "  " << result << " = sub i64 0, " << operand << '\n';
+                }
                 return result;
             }
             break;
@@ -1501,8 +1801,7 @@ private:
                 break;
             }
 
-            const auto& callee =
-                static_cast<const ast::IdentifierExpression&>(call.callee());
+            const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
             if (equalsIgnoreCase(callee.name(), "__member")) {
                 try {
                     const FieldAddress field = emitMemberAddress(call);
@@ -1515,18 +1814,43 @@ private:
                 }
             }
 
+            if (equalsIgnoreCase(callee.name(), "Abs") && call.arguments().size() == 1 &&
+                expressionLlvmType(*call.arguments().front()) == "i64") {
+                const std::string value = emitExpression(*call.arguments().front());
+                const std::string isNegative = "%tmp" + std::to_string(nextTemporary_++);
+                const std::string negationPair = "%tmp" + std::to_string(nextTemporary_++);
+                const std::string negated = "%tmp" + std::to_string(nextTemporary_++);
+                const std::string overflow = "%tmp" + std::to_string(nextTemporary_++);
+                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+                const std::string labelSuffix = std::to_string(nextTemporary_++);
+                output_ << "  " << isNegative << " = icmp slt i64 " << value << ", 0\n";
+                output_ << "  " << negationPair << " = call { i64, i1 } @llvm.ssub.with.overflow.i64(i64 0, i64 " << value << ")\n";
+                output_ << "  " << negated << " = extractvalue { i64, i1 } " << negationPair << ", 0\n";
+                output_ << "  " << overflow << " = extractvalue { i64, i1 } " << negationPair << ", 1\n";
+                output_ << "  br i1 " << overflow << ", label %abs.trap" << labelSuffix
+                        << ", label %abs.continue" << labelSuffix << "\n";
+                output_ << "abs.trap" << labelSuffix << ":\n";
+                output_ << "  call void @llvm.trap()\n";
+                output_ << "  unreachable\n";
+                output_ << "abs.continue" << labelSuffix << ":\n";
+                output_ << "  " << result << " = select i1 " << isNegative
+                        << ", i64 " << negated << ", i64 " << value << '\n';
+                return result;
+            }
+
+            if (isMathBuiltin(callee.name())) {
+                return emitMathBuiltinCall(callee.name(), call.arguments());
+            }
+
             const auto signature = signatures_.find(normalize(callee.name()));
             if (signature == signatures_.end()) {
                 break;
             }
             if (signature->second.llvmReturnType == "void") {
-                throw CodegenError(
-                    "void function call cannot be used as an expression");
+                throw CodegenError("void function call cannot be used as an expression");
             }
             if (call.arguments().size() != signature->second.parameters.size()) {
-                throw CodegenError(
-                    "unsupported call argument count in function: " +
-                    function_.name());
+                throw CodegenError("unsupported call argument count in function: " + function_.name());
             }
 
             std::vector<std::string> arguments;
@@ -1551,8 +1875,74 @@ private:
             break;
         }
 
-        throw CodegenError(
-            "unsupported expression in Integer function: " + function_.name());
+        throw CodegenError("unsupported expression in function: " + function_.name());
+    }
+
+    std::string emitMathBuiltinCall(std::string_view name, const std::vector<ast::ExpressionPtr>& arguments)
+    {
+        std::vector<std::string> values;
+        values.reserve(arguments.size());
+        for (const auto& argument : arguments) {
+            values.push_back(emitExpression(*argument));
+        }
+        const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+
+        const auto unaryScale = [&](double factor) {
+            output_ << "  " << result << " = fmul double " << values.at(0) << ", " << std::scientific << factor << std::defaultfloat << "\n";
+            return result;
+        };
+
+        if (equalsIgnoreCase(name, "RadToDeg")) return unaryScale(57.295779513082320876798154814105);
+        if (equalsIgnoreCase(name, "DegToRad")) return unaryScale(0.017453292519943295769236907684886);
+        if (equalsIgnoreCase(name, "RadToGrad")) return unaryScale(63.661977236758134307553505349005);
+        if (equalsIgnoreCase(name, "GradToRad")) return unaryScale(0.015707963267948966192313216916398);
+        if (equalsIgnoreCase(name, "RadToCycle")) return unaryScale(0.15915494309189533576888376337251);
+        if (equalsIgnoreCase(name, "CycleToRad")) return unaryScale(6.283185307179586476925286766559);
+
+        if (equalsIgnoreCase(name, "LogN")) {
+            const std::string logX = "%tmp" + std::to_string(nextTemporary_++);
+            const std::string logBase = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << logX << " = call double @llvm.log.f64(double " << values.at(1) << ")\n";
+            output_ << "  " << logBase << " = call double @llvm.log.f64(double " << values.at(0) << ")\n";
+            output_ << "  " << result << " = fdiv double " << logX << ", " << logBase << "\n";
+            return result;
+        }
+        if (equalsIgnoreCase(name, "Hypot3")) {
+            const std::string xy = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << xy << " = call double @hypot(double " << values.at(0) << ", double " << values.at(1) << ")\n";
+            output_ << "  " << result << " = call double @hypot(double " << xy << ", double " << values.at(2) << ")\n";
+            return result;
+        }
+
+        if (const std::string intrinsic = mathIntrinsicName(name); !intrinsic.empty()) {
+            output_ << "  " << result << " = call double @" << intrinsic << "(";
+        } else if (const std::string libm = mathLibmName(name); !libm.empty()) {
+            output_ << "  " << result << " = call double @" << libm << "(";
+        } else {
+            throw CodegenError("unsupported math builtin: " + std::string(name));
+        }
+        for (std::size_t index = 0; index < values.size(); ++index) {
+            if (index != 0) output_ << ", ";
+            output_ << "double " << values[index];
+        }
+        output_ << ")\n";
+        return result;
+    }
+
+    static std::string llvmFloatOperation(ast::BinaryOperator op)
+    {
+        switch (op) {
+        case ast::BinaryOperator::Add:
+            return "fadd";
+        case ast::BinaryOperator::Subtract:
+            return "fsub";
+        case ast::BinaryOperator::Multiply:
+            return "fmul";
+        case ast::BinaryOperator::Divide:
+            return "fdiv";
+        default:
+            throw CodegenError("unsupported Float operator for LLVM emission");
+        }
     }
 
     static std::string llvmOperation(ast::BinaryOperator op)
@@ -1627,6 +2017,7 @@ private:
     std::vector<std::string>& stringGlobals_;
     std::size_t& nextStringLiteral_;
     std::unordered_map<std::string, std::string> parameters_;
+    std::unordered_map<std::string, std::string> parameterTypes_;
     std::unordered_map<std::string, LocalInfo> locals_;
     std::vector<LoopTargets> loopTargets_;
     std::size_t nextTemporary_ = 0;
@@ -1734,7 +2125,7 @@ skip_ws:
   %ws_a0 = or i1 %is_space0, %is_tab0
   %ws_b0 = or i1 %is_lf0, %is_cr0
   %is_ws0 = or i1 %ws_a0, %ws_b0
-  br i1 %is_eof0, label %fail, label %after_eof
+  br i1 %is_eof0, label %store_zero, label %after_eof
 
 after_eof:
   br i1 %is_ws0, label %skip_ws, label %sign_check
@@ -1748,14 +2139,13 @@ minus:
   br label %digits_entry
 
 digits_entry:
-  %is_neg = phi i1 [ 1, %minus ], [ 0, %sign_check ]
+  %sign = phi i64 [ -1, %minus ], [ 1, %sign_check ]
   %first_ch = phi i32 [ %ch_after_minus, %minus ], [ %ch0, %sign_check ]
   br label %digits
 
 digits:
-  %ch = phi i32 [ %first_ch, %digits_entry ], [ %next_ch, %digit_continue ]
-  %acc = phi i64 [ 0, %digits_entry ], [ %next_acc, %digit_continue ]
-  %count = phi i64 [ 0, %digits_entry ], [ %next_count, %digit_continue ]
+  %ch = phi i32 [ %first_ch, %digits_entry ], [ %next_ch, %digit_body ]
+  %acc = phi i64 [ 0, %digits_entry ], [ %next_acc, %digit_body ]
   %ge_zero = icmp sge i32 %ch, 48
   %le_nine = icmp sle i32 %ch, 57
   %is_digit = and i1 %ge_zero, %le_nine
@@ -1764,49 +2154,74 @@ digits:
 digit_body:
   %digit_i32 = sub i32 %ch, 48
   %digit_i64 = sext i32 %digit_i32 to i64
-  ; magnitude accumulation with unsigned overflow detection: acc = acc*10 + d
-  %mul_pair = call { i64, i1 } @llvm.umul.with.overflow.i64(i64 %acc, i64 10)
-  %mul_val = extractvalue { i64, i1 } %mul_pair, 0
-  %mul_ovf = extractvalue { i64, i1 } %mul_pair, 1
-  br i1 %mul_ovf, label %fail, label %add_step
-
-add_step:
-  %add_pair = call { i64, i1 } @llvm.uadd.with.overflow.i64(i64 %mul_val, i64 %digit_i64)
-  %next_acc = extractvalue { i64, i1 } %add_pair, 0
-  %add_ovf = extractvalue { i64, i1 } %add_pair, 1
-  br i1 %add_ovf, label %fail, label %digit_continue
-
-digit_continue:
-  %next_count = add i64 %count, 1
+  %mul = mul i64 %acc, 10
+  %next_acc = add i64 %mul, %digit_i64
   %next_ch = call i32 @getchar()
   br label %digits
 
 finish:
-  ; require at least one digit consumed
-  %no_digits = icmp eq i64 %count, 0
-  br i1 %no_digits, label %fail, label %range_check
-
-range_check:
-  ; acc holds the unsigned magnitude. Validate against signed i64 range:
-  ;   negative: magnitude <= 9223372036854775808 (0x8000000000000000)
-  ;   positive: magnitude <= 9223372036854775807 (0x7FFFFFFFFFFFFFFF)
-  br i1 %is_neg, label %check_neg, label %check_pos
-
-check_neg:
-  %neg_ok = icmp ule i64 %acc, 9223372036854775808
-  br i1 %neg_ok, label %apply_sign, label %fail
-
-check_pos:
-  %pos_ok = icmp ule i64 %acc, 9223372036854775807
-  br i1 %pos_ok, label %apply_sign, label %fail
-
-apply_sign:
-  %neg_val = sub i64 0, %acc
-  %result = select i1 %is_neg, i64 %neg_val, i64 %acc
-  store i64 %result, ptr %out
+  %signed = mul i64 %acc, %sign
+  store i64 %signed, ptr %out
   ret void
 
-fail:
+store_zero:
+  store i64 0, ptr %out
+  ret void
+}
+
+)llvm";
+}
+
+std::string mathRuntimeHelpers()
+{
+    return R"llvm(declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64)
+declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64)
+declare void @llvm.trap()
+
+define internal i64 @__inox_ipow_i64(i64 %base, i64 %exponent) {
+entry:
+  %negative = icmp slt i64 %exponent, 0
+  br i1 %negative, label %trap, label %loop
+
+loop:
+  %result.cur = phi i64 [ 1, %entry ], [ %result.next, %continue ]
+  %base.cur = phi i64 [ %base, %entry ], [ %base.next, %continue ]
+  %exp.cur = phi i64 [ %exponent, %entry ], [ %exp.next, %continue ]
+  %done = icmp eq i64 %exp.cur, 0
+  br i1 %done, label %exit, label %body
+
+body:
+  %lowbit = and i64 %exp.cur, 1
+  %is_odd = icmp ne i64 %lowbit, 0
+  br i1 %is_odd, label %mul_result, label %after_mul_result
+
+mul_result:
+  %mul.result.pair = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %result.cur, i64 %base.cur)
+  %mul.result = extractvalue { i64, i1 } %mul.result.pair, 0
+  %mul.result.overflow = extractvalue { i64, i1 } %mul.result.pair, 1
+  br i1 %mul.result.overflow, label %trap, label %after_mul_result
+
+after_mul_result:
+  %result.after = phi i64 [ %mul.result, %mul_result ], [ %result.cur, %body ]
+  %exp.next = ashr i64 %exp.cur, 1
+  %need_square = icmp ne i64 %exp.next, 0
+  br i1 %need_square, label %square_base, label %continue
+
+square_base:
+  %square.pair = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %base.cur, i64 %base.cur)
+  %square = extractvalue { i64, i1 } %square.pair, 0
+  %square.overflow = extractvalue { i64, i1 } %square.pair, 1
+  br i1 %square.overflow, label %trap, label %continue
+
+continue:
+  %result.next = phi i64 [ %result.after, %after_mul_result ], [ %result.after, %square_base ]
+  %base.next = phi i64 [ %base.cur, %after_mul_result ], [ %square, %square_base ]
+  br label %loop
+
+exit:
+  ret i64 %result.cur
+
+trap:
   call void @llvm.trap()
   unreachable
 }
@@ -1878,6 +2293,8 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
 
     output << "@.inox.fmt.i64.nl = private unnamed_addr constant [6 x i8] c\"%lld\\0A\\00\"\n"
            << "@.inox.fmt.i64 = private unnamed_addr constant [5 x i8] c\"%lld\\00\"\n"
+           << "@.inox.fmt.f64.nl = private unnamed_addr constant [4 x i8] c\"%f\\0A\\00\"\n"
+           << "@.inox.fmt.f64 = private unnamed_addr constant [3 x i8] c\"%f\\00\"\n"
            << "@.inox.fmt.str.nl = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\"\n"
            << "@.inox.fmt.str = private unnamed_addr constant [3 x i8] c\"%s\\00\"\n"
            << "@.inox.true = private unnamed_addr constant [5 x i8] c\"true\\00\"\n"
@@ -1887,10 +2304,31 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
     }
     output << "declare i32 @printf(ptr, ...)\n";
     output << "declare i32 @getchar()\n";
-    output << "declare void @llvm.trap()\n";
-    output << "declare { i64, i1 } @llvm.umul.with.overflow.i64(i64, i64)\n";
-    output << "declare { i64, i1 } @llvm.uadd.with.overflow.i64(i64, i64)\n\n";
+    output << "declare double @llvm.sqrt.f64(double)\n";
+    output << "declare double @llvm.sin.f64(double)\n";
+    output << "declare double @llvm.cos.f64(double)\n";
+    output << "declare double @llvm.exp.f64(double)\n";
+    output << "declare double @llvm.log.f64(double)\n";
+    output << "declare double @llvm.log2.f64(double)\n";
+    output << "declare double @llvm.log10.f64(double)\n";
+    output << "declare double @llvm.pow.f64(double, double)\n";
+    output << "declare double @llvm.floor.f64(double)\n";
+    output << "declare double @llvm.ceil.f64(double)\n";
+    output << "declare double @llvm.fabs.f64(double)\n";
+    output << "declare double @cbrt(double)\n";
+    output << "declare double @tan(double)\n";
+    output << "declare double @asin(double)\n";
+    output << "declare double @acos(double)\n";
+    output << "declare double @atan(double)\n";
+    output << "declare double @atan2(double, double)\n";
+    output << "declare double @sinh(double)\n";
+    output << "declare double @cosh(double)\n";
+    output << "declare double @tanh(double)\n";
+    output << "declare double @log1p(double)\n";
+    output << "declare double @fmod(double, double)\n";
+    output << "declare double @hypot(double, double)\n\n";
     output << inputRuntimeHelpers();
+    output << mathRuntimeHelpers();
     output << functionOutput.str();
     return output.str();
 }

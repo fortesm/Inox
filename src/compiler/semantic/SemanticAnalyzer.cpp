@@ -94,9 +94,9 @@ struct PreludeSignature {
     std::string_view returnType;
 };
 
-const std::array<PreludeSignature, 12>& preludeSignatures()
+const std::vector<PreludeSignature>& preludeSignatures()
 {
-    static const std::array<PreludeSignature, 12> signatures = {{
+    static const std::vector<PreludeSignature> signatures = {
         {"Put", {"*"}, "Void"},
         {"PutLn", {"*"}, "Void"},
         {"Get", {}, "Void"},
@@ -104,12 +104,40 @@ const std::array<PreludeSignature, 12>& preludeSignatures()
         {"ReadLn", {}, "String"},
         {"Length", {"String"}, "Int64"},
         {"Ord", {"Char"}, "Int64"},
+
+        {"Abs", {"Int64"}, "Int64"},
+        {"Abs", {"Float64"}, "Float64"},
+        {"Sqrt", {"Float64"}, "Float64"},
+        {"Cbrt", {"Float64"}, "Float64"},
         {"Sin", {"Float64"}, "Float64"},
         {"Cos", {"Float64"}, "Float64"},
-        {"Sqrt", {"Float64"}, "Float64"},
-        {"Abs", {"Int64"}, "Int64"},
-        {"Abs", {"Float64"}, "Float64"}
-    }};
+        {"Tan", {"Float64"}, "Float64"},
+        {"ArcSin", {"Float64"}, "Float64"},
+        {"ArcCos", {"Float64"}, "Float64"},
+        {"ArcTan", {"Float64"}, "Float64"},
+        {"ArcTan2", {"Float64", "Float64"}, "Float64"},
+        {"Sinh", {"Float64"}, "Float64"},
+        {"Cosh", {"Float64"}, "Float64"},
+        {"Tanh", {"Float64"}, "Float64"},
+        {"Exp", {"Float64"}, "Float64"},
+        {"Ln", {"Float64"}, "Float64"},
+        {"LnXP1", {"Float64"}, "Float64"},
+        {"Log2", {"Float64"}, "Float64"},
+        {"Log10", {"Float64"}, "Float64"},
+        {"LogN", {"Float64", "Float64"}, "Float64"},
+        {"Power", {"Float64", "Float64"}, "Float64"},
+        {"Floor", {"Float64"}, "Float64"},
+        {"Ceil", {"Float64"}, "Float64"},
+        {"FMod", {"Float64", "Float64"}, "Float64"},
+        {"Hypot", {"Float64", "Float64"}, "Float64"},
+        {"Hypot3", {"Float64", "Float64", "Float64"}, "Float64"},
+        {"RadToDeg", {"Float64"}, "Float64"},
+        {"DegToRad", {"Float64"}, "Float64"},
+        {"RadToGrad", {"Float64"}, "Float64"},
+        {"GradToRad", {"Float64"}, "Float64"},
+        {"RadToCycle", {"Float64"}, "Float64"},
+        {"CycleToRad", {"Float64"}, "Float64"}
+    };
     return signatures;
 }
 
@@ -249,9 +277,12 @@ const FunctionSignature* SemanticAnalyzer::resolveFunctionSignature(std::string_
 
 void SemanticAnalyzer::declareBuiltins()
 {
-    constexpr std::array<std::string_view, 24> valueBuiltins = {
+    const std::vector<std::string_view> valueBuiltins = {
         "Put", "PutLn", "Get", "GetLn", "ReadLn",
-        "Sin", "Cos", "Sqrt", "Abs",
+        "Abs", "Sqrt", "Cbrt", "Sin", "Cos", "Tan", "ArcSin", "ArcCos", "ArcTan", "ArcTan2",
+        "Sinh", "Cosh", "Tanh", "Exp", "Ln", "LnXP1", "Log2", "Log10", "LogN", "Power",
+        "Floor", "Ceil", "FMod", "Hypot", "Hypot3",
+        "RadToDeg", "DegToRad", "RadToGrad", "GradToRad", "RadToCycle", "CycleToRad",
         "Length", "Ord",
         "True", "False",
         "RangeError", "IndexError", "DivisionByZero", "OverflowError", "IOError",
@@ -1135,7 +1166,7 @@ std::string SemanticAnalyzer::analyzePreludeCall(
 
         for (std::size_t index = 0; index < argumentTypes.size(); ++index) {
             const std::string& typeName = argumentTypes[index];
-            if (typeName == "String" || typeName == "Bool" || isIntegerType(typeName)) {
+            if (typeName == "String" || typeName == "Bool" || isIntegerType(typeName) || typeName == "Float64") {
                 continue;
             }
 
