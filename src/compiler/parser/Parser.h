@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <vector>
 
 namespace inox::compiler::parser {
@@ -118,8 +119,24 @@ private:
     static ast::UnaryOperator unaryOperatorFor(const lexer::Token& token);
     static std::string tokenText(const lexer::Token& token);
 
+    // Operator-precedence ambiguity guard (canonical Layer A). The precedence
+    // table is unambiguous, but the canonical rule REQUIRES explicit parentheses
+    // when mixing operators from families whose relative order people memorize
+    // wrong (and/or/xor mixed together; different bitwise families mixed). An
+    // operand is exempt from the check when it was written inside parentheses,
+    // which is recorded here.
+    void markParenthesized(const ast::Expression* node);
+    bool isParenthesized(const ast::Expression* node) const;
+    void requireNoLogicalMix(
+        const ast::Expression* operand, std::string_view outerOp,
+        const lexer::Token& opToken) const;
+    void requireNoBitwiseMix(
+        const ast::Expression* operand, std::string_view outerOp,
+        const lexer::Token& opToken) const;
+
     std::vector<lexer::Token> tokens_;
     std::size_t current_ = 0;
+    std::unordered_set<const ast::Expression*> parenthesized_;
 };
 
 } // namespace inox::compiler::parser

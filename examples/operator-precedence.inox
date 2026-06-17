@@ -1,0 +1,45 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Demonstrates Inox operator precedence (canonical Layer A).
+==
+== The precedence table is unambiguous and follows mathematical convention:
+==   - relationals bind tighter than logical operators (no Pascal mistake);
+==   - bitwise operators bind tighter than relationals (no C mistake);
+==   - '^' is right-associative and binds very tightly.
+==
+== Parentheses are OPTIONAL where the mathematical reading is clear, and
+== REQUIRED where mixing operator families would be ambiguous (mixing
+== and/or/xor, or mixing different bitwise families). This is the Ada/SPARK
+== safety rule applied only to the genuinely ambiguous cases.
+
+Module OperatorPrecedence
+
+Main :
+    == Arithmetic: '^' tightest, then * /, then + -. No parentheses needed.
+    A := 2 + 3 * 4
+    PutLn(A)            == 14, not 20
+
+    B := 2 * 3 ^ 2
+    PutLn(B)           == 18 (3^2=9, then 2*9), not 36
+
+    == Relational binds tighter than logical: clear, no parentheses needed.
+    X := 1
+    Y := 2
+    Z := 3
+    W := 4
+    Clear := X < Y and Z < W
+    PutLn(Clear)       == True: (X<Y) and (Z<W)
+
+    == Mixing and/or REQUIRES parentheses (canonical safety rule):
+    Safe := X < Y or (Z < W and X < W)
+    PutLn(Safe)        == True
+
+    == Bitwise binds tighter than relational (no C mistake):
+    Bits := 12 bitand 10 = 8
+    PutLn(Bits)        == True: (12 bitand 10) = 8
+;

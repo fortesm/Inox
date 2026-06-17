@@ -187,13 +187,101 @@ ast::ExpressionPtr Parser::parseAssignment()
     return left;
 }
 
+void Parser::markParenthesized(const ast::Expression* node)
+{
+    if (node != nullptr) {
+        parenthesized_.insert(node);
+    }
+}
+
+bool Parser::isParenthesized(const ast::Expression* node) const
+{
+    return node != nullptr && parenthesized_.contains(node);
+}
+
+void Parser::requireNoLogicalMix(
+    const ast::Expression* operand, std::string_view outerOp,
+    const lexer::Token& opToken) const
+{
+    // Canonical Layer A: and/or/xor are all relational-combining logical
+    // operators. Their relative precedence IS defined (and > xor > or), but
+    // people memorize it wrong, so mixing two DIFFERENT logical operators
+    // without parentheses is rejected. An explicitly parenthesized operand is
+    // always allowed.
+    if (operand == nullptr || isParenthesized(operand)) {
+        return;
+    }
+    if (operand->kind() != ast::AstNodeKind::BinaryExpression) {
+        return;
+    }
+    const auto& binary = static_cast<const ast::BinaryExpression&>(*operand);
+    const ast::BinaryOperator inner = binary.op();
+    const bool innerIsLogical =
+        inner == ast::BinaryOperator::And ||
+        inner == ast::BinaryOperator::Or ||
+        inner == ast::BinaryOperator::Xor;
+    if (!innerIsLogical) {
+        return;
+    }
+    std::string innerName;
+    switch (inner) {
+        case ast::BinaryOperator::And: innerName = "and"; break;
+        case ast::BinaryOperator::Or: innerName = "or"; break;
+        case ast::BinaryOperator::Xor: innerName = "xor"; break;
+        default: return;
+    }
+    if (innerName == std::string(outerOp)) {
+        return;  // same operator chained (a and b and c) is fine
+    }
+    throw ParseError(
+        "mixing '" + innerName + "' and '" + std::string(outerOp) +
+            "' requires explicit parentheses; write '" + innerName +
+            "' grouped in parentheses to make the order unambiguous",
+        opToken.location);
+}
+
+void Parser::requireNoBitwiseMix(
+    const ast::Expression* operand, std::string_view outerOp,
+    const lexer::Token& opToken) const
+{
+    // Canonical Layer A: different bitwise families (bitand/bitxor/bitor) and
+    // shifts mixed together must be parenthesized. Same-operator chains are fine.
+    if (operand == nullptr || isParenthesized(operand)) {
+        return;
+    }
+    if (operand->kind() != ast::AstNodeKind::BinaryExpression) {
+        return;
+    }
+    const auto& binary = static_cast<const ast::BinaryExpression&>(*operand);
+    const ast::BinaryOperator inner = binary.op();
+    std::string innerName;
+    switch (inner) {
+        case ast::BinaryOperator::BitAnd: innerName = "bitand"; break;
+        case ast::BinaryOperator::BitXor: innerName = "bitxor"; break;
+        case ast::BinaryOperator::BitOr: innerName = "bitor"; break;
+        case ast::BinaryOperator::ShiftLeft: innerName = "shl"; break;
+        case ast::BinaryOperator::ShiftRight: innerName = "shr"; break;
+        default: return;
+    }
+    if (innerName == std::string(outerOp)) {
+        return;  // same operator chained is fine
+    }
+    throw ParseError(
+        "mixing bitwise operators '" + innerName + "' and '" +
+            std::string(outerOp) +
+            "' requires explicit parentheses to make the order unambiguous",
+        opToken.location);
+}
+
 ast::ExpressionPtr Parser::parseOr()
 {
     auto expression = parseXor();
 
     while (checkKeyword("or")) {
         const lexer::Token& op = advance();
+        requireNoLogicalMix(expression.get(), "or", op);
         auto right = parseXor();
+        requireNoLogicalMix(right.get(), "or", op);
         expression = std::make_unique<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
@@ -207,7 +295,9 @@ ast::ExpressionPtr Parser::parseXor()
 
     while (checkKeyword("xor")) {
         const lexer::Token& op = advance();
+        requireNoLogicalMix(expression.get(), "xor", op);
         auto right = parseAnd();
+        requireNoLogicalMix(right.get(), "xor", op);
         expression = std::make_unique<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
@@ -221,7 +311,9 @@ ast::ExpressionPtr Parser::parseAnd()
 
     while (checkKeyword("and")) {
         const lexer::Token& op = advance();
+        requireNoLogicalMix(expression.get(), "and", op);
         auto right = parseRelational();
+        requireNoLogicalMix(right.get(), "and", op);
         expression = std::make_unique<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
@@ -279,7 +371,9 @@ ast::ExpressionPtr Parser::parseBitOr()
 
     while (checkKeyword("bitor")) {
         const lexer::Token& op = advance();
+        requireNoBitwiseMix(expression.get(), "bitor", op);
         auto right = parseBitXor();
+        requireNoBitwiseMix(right.get(), "bitor", op);
         expression = std::make_unique<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
@@ -293,7 +387,9 @@ ast::ExpressionPtr Parser::parseBitXor()
 
     while (checkKeyword("bitxor")) {
         const lexer::Token& op = advance();
+        requireNoBitwiseMix(expression.get(), "bitxor", op);
         auto right = parseBitAnd();
+        requireNoBitwiseMix(right.get(), "bitxor", op);
         expression = std::make_unique<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
@@ -307,7 +403,9 @@ ast::ExpressionPtr Parser::parseBitAnd()
 
     while (checkKeyword("bitand")) {
         const lexer::Token& op = advance();
+        requireNoBitwiseMix(expression.get(), "bitand", op);
         auto right = parseShift();
+        requireNoBitwiseMix(right.get(), "bitand", op);
         expression = std::make_unique<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
@@ -467,6 +565,7 @@ ast::ExpressionPtr Parser::parsePrimary()
     if (match(TokenKind::LeftParen)) {
         auto expression = parseAssignment();
         consume(TokenKind::RightParen, "expected ')' after expression");
+        markParenthesized(expression.get());
         return expression;
     }
 

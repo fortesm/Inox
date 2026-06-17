@@ -1,0 +1,21 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Mixed and/or is allowed WHEN explicitly parenthesized (canonical Layer A).
+
+Module PrecedenceLogicalGrouped
+
+Main :
+    A := True
+    B := False
+    C := True
+    R1 := A or (B and C)
+    R2 := (A or B) and C
+    R3 := A and B and C
+    R4 := A or B or C
+    PutLn(R1)
+;

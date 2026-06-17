@@ -417,7 +417,7 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
     }
 
     return FunctionSignature{
-        normalize(function.name()),
+        "inox_" + normalize(function.name()),
         std::move(llvmReturnType),
         std::move(parameters)};
 }

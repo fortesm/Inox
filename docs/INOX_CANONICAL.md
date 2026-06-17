@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.12 (compiler module architecture directive)
+# Version: v3.14 (stdlib symbol prefix fix + differential calc test)
 # Last updated: 2026-06-16
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -447,6 +447,29 @@ specification, ADRs, manual HTML, and tests.
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
 #
+# v3.14 — 2026-06-17 — approved by Marcelo Fortes
+#   - Codegen fix: user/stdlib function symbols are now emitted with an `inox_`
+#     prefix (e.g. Std.Math `Log` -> `@inox_log`) so they never collide with C
+#     library symbols. This eliminates an infinite-recursion hang: `Ln`/`Log`
+#     lowered `llvm.log.f64`, which the linker resolved to libm `log`, which had
+#     been shadowed by the stdlib's own `@log` — calling itself forever. `@main`
+#     is unaffected (still `@main`). Added tools/calc_differential_test.py, a
+#     differential calculator test that generates N distinct random expressions,
+#     evaluates each in Python and in Inox, and compares (exact for integers,
+#     tolerance for floats). 300/300 random expressions agree with Python.
+#
+# v3.13 — 2026-06-16 — approved by Marcelo Fortes
+#   - Operator precedence and associativity fixed as canonical law (CANON-20,
+#     SECTION 20) and marked OPEN-3 CLOSED in SECTION 04. Table follows
+#     mathematical convention (no Pascal mistake: relationals > logicals; no C
+#     mistake: bitwise > relationals; and > xor > or; ^ right-associative).
+#     MANDATORY-PARENTHESES rule (Ada/SPARK safety) added: the parser raises a
+#     parse error instead of silently guessing when mixing and/or/xor, mixing
+#     different bitwise families, or mixing bitwise with shift; parentheses stay
+#     optional elsewhere. Parser implements the guard; added examples/
+#     operator-precedence.inox and 7 parser tests (3 valid, 4 invalid). This
+#     table is IMMUTABLE: changing it requires a human-approved ADR.
+#
 # v3.12 — 2026-06-16 — approved by Marcelo Fortes
 #   - Added COMPILER MODULE ARCHITECTURE DIRECTIVE (SECTION 31): how the
 #     compiler's own C++ source is split into modules. Principle: REACTIVE not
@@ -682,6 +705,15 @@ OPEN-2 — CLOSED (v3.3). In-context: a real literal in a decimal-typed context
   error (Ada model). Context-free: use the type constructor `Currency(19.99)` /
   `Crypto(0.001)`, coherent with struct construction (CANON-9). See CANON-8,
   "Decimal literal form".
+
+OPEN-3 — CLOSED (v3.13). Operator precedence and associativity are now canonical
+  law (see CANON-20 in SECTION 20). The table follows mathematical convention
+  (relationals tighter than logicals — not the Pascal mistake; bitwise tighter
+  than relationals — not the C mistake; `and` > `xor` > `or`; `^` right-assoc).
+  Parentheses are optional where the math is clear and REQUIRED where mixing
+  ambiguous operator families (and/or/xor mixed; different bitwise families
+  mixed; bitwise mixed with shift), with a parse error rather than a silent
+  guess. The parser implements this and CANON-20 lists the verifying tests.
 
 (Reference for the decided items: C# requires the `m` suffix and forbids implicit
 float<->decimal conversion; Ada reads decimal literals by context and rejects
@@ -1543,6 +1575,80 @@ Numeric law is part of the type system, but is separated here for quick referenc
 - Decimal literals in decimal-typed context are exact; context-free decimal spelling uses type constructors such as `Currency(19.99)`.
 
 See SECTION 12 / CANON-8 for the full numeric rules.
+
+## CANON-20 — OPERATOR PRECEDENCE AND ASSOCIATIVITY (LAYER A LAW — IMMUTABLE)
+
+This precedence table is canonical law. It is fixed and MUST NOT be changed by
+any AI or contributor. Any change requires an explicit, human-approved ADR with a
+dated CHANGE LOG entry; until then this table governs the parser, and the parser
+must implement exactly this — divergence is a bug to fix in the parser, never a
+reason to alter this table.
+
+### Design intent (why this table)
+Inox precedence follows true mathematical convention and deliberately avoids the
+two classic historical mistakes:
+- It is NOT the Pascal mistake: relational operators bind TIGHTER than the
+  logical operators, so `A < B and C < D` means `(A < B) and (C < D)` with no
+  parentheses required.
+- It is NOT the C mistake: bitwise operators bind TIGHTER than relational
+  operators, so `A bitand B = C` means `(A bitand B) = C`.
+
+### Precedence table (strongest binding first → weakest binding last)
+```text
+Level  Operators                              Associativity
+-----  -------------------------------------  -------------
+ 1     postfix: call f(...), index A[i]       left
+ 2     ^  (exponentiation)                    RIGHT
+ 3     unary: not  -x  +x  bitnot             (prefix, unary)
+ 4     *  /  div  mod                         left
+ 5     +  -                                   left
+ 6     shl  shr  (bit shifts)                 left
+ 7     bitand                                 left
+ 8     bitxor                                 left
+ 9     bitor                                  left
+10     = # < <= > >=  (relational)            left
+11     and                                    left
+12     xor                                    left
+13     or                                     left
+14     :=  (assignment, statement level)      right
+```
+Notes:
+- `^` is RIGHT-associative: `2 ^ 3 ^ 2` = `2 ^ (3 ^ 2)`. It binds tighter than
+  unary minus on its left operand per parsing, e.g. `2 * 3 ^ 2` = `2 * (3 ^ 2)`.
+- All relational operators share one level (10).
+- Among logical operators the order is `and` (11) > `xor` (12) > `or` (13),
+  matching formal boolean algebra (conjunction binds tighter than disjunction).
+
+### MANDATORY-PARENTHESES RULE (Ada/SPARK safety on the ambiguous cases)
+Precedence above is fully defined, but where the relative order of two operator
+families is commonly memorized wrong, Inox REFUSES to guess and REQUIRES explicit
+parentheses. The compiler raises a parse error (it does not silently pick an
+order). Parentheses are otherwise OPTIONAL and may always be used for clarity.
+
+Parentheses are REQUIRED when, without them, the expression would mix:
+1. two DIFFERENT logical operators among `and` / `or` / `xor`
+   - `A or B and C`   -> ERROR; write `A or (B and C)` or `(A or B) and C`
+   - `A xor B and C`  -> ERROR; parenthesize the intended grouping
+2. two DIFFERENT bitwise families among `bitand` / `bitxor` / `bitor`
+   - `A bitand B bitor C` -> ERROR; write `(A bitand B) bitor C`
+3. a bitwise operator mixed with a shift (`shl` / `shr`)
+   - `A bitand B shl C` -> ERROR; write `(A bitand B) shl C` or `A bitand (B shl C)`
+
+Parentheses are NOT required (the math is clear) when:
+- chaining the SAME operator: `A and B and C`, `A + B + C`, `A bitand B bitand C`;
+- combining arithmetic levels: `A + B * C`, `2 * 3 ^ 2`;
+- a relational over arithmetic: `A + B < C`;
+- a logical over relationals: `A < B and C < D` (relationals resolve first).
+
+### Verifiability (CANON-20 tests)
+- tests/parser/valid/precedence-relational-logical.inox  (`A < B and C < D` ok)
+- tests/parser/valid/precedence-logical-grouped.inox     (parenthesized mix ok)
+- tests/parser/valid/precedence-bitwise-grouped.inox     (parenthesized mix ok)
+- tests/parser/invalid/precedence-mix-and-or.inox        (mix -> error)
+- tests/parser/invalid/precedence-mix-and-xor.inox       (mix -> error)
+- tests/parser/invalid/precedence-mix-bitand-bitor.inox  (mix -> error)
+- tests/parser/invalid/precedence-mix-bitand-shl.inox    (mix -> error)
+- examples/operator-precedence.inox                      (worked demonstration)
 
 
 # ============================================================================
