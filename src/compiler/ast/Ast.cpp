@@ -518,4 +518,29 @@ BreakStatement::BreakStatement() : Statement(AstNodeKind::BreakStatement) {}
 
 ContinueStatement::ContinueStatement() : Statement(AstNodeKind::ContinueStatement) {}
 
+WithStatement::WithStatement(ExpressionPtr target,
+                             std::vector<StatementPtr> body,
+                             std::string bindingName)
+    : Statement(AstNodeKind::WithStatement),
+      target_(std::move(target)),
+      body_(std::move(body)),
+      bindingName_(std::move(bindingName))
+{
+}
+
+const Expression& WithStatement::target() const
+{
+    return *target_;
+}
+
+const std::vector<StatementPtr>& WithStatement::body() const
+{
+    return body_;
+}
+
+const std::string& WithStatement::bindingName() const
+{
+    return bindingName_;
+}
+
 } // namespace inox::compiler::ast

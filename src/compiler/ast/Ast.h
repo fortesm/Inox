@@ -40,7 +40,8 @@ enum class AstNodeKind {
     ReturnStatement,
     ExitStatement,
     BreakStatement,
-    ContinueStatement
+    ContinueStatement,
+    WithStatement
 };
 
 enum class LiteralKind {
@@ -463,6 +464,22 @@ public:
 class ContinueStatement final : public Statement {
 public:
     ContinueStatement();
+};
+
+class WithStatement final : public Statement {
+public:
+    WithStatement(ExpressionPtr target,
+                  std::vector<StatementPtr> body,
+                  std::string bindingName);
+
+    const Expression& target() const;
+    const std::vector<StatementPtr>& body() const;
+    const std::string& bindingName() const;
+
+private:
+    ExpressionPtr target_;
+    std::vector<StatementPtr> body_;
+    std::string bindingName_;
 };
 
 } // namespace inox::compiler::ast

@@ -81,6 +81,7 @@ private:
     std::vector<ast::StatementPtr> parseCaseArmBody(std::size_t armLine, std::size_t armColumn);
     ast::StatementPtr parseTryStatement();
     ast::StatementPtr parseRaiseStatement();
+    ast::StatementPtr parseWithStatement();
     ast::StatementPtr parseReturnStatement();
     ast::StatementPtr parseExpressionStatement();
 
@@ -137,6 +138,8 @@ private:
     std::vector<lexer::Token> tokens_;
     std::size_t current_ = 0;
     std::unordered_set<const ast::Expression*> parenthesized_;
+    std::vector<std::string> withTargetStack_;
+    std::size_t withCounter_ = 0;
 };
 
 } // namespace inox::compiler::parser

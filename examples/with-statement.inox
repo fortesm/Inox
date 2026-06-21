@@ -1,0 +1,33 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Demonstrates the 'with' statement (CANON-11).
+== Dot-prefixed members inside the body resolve against the 'with' target.
+== Unprefixed names follow normal scope rules.
+
+Module WithStatement
+
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+SumPoint Integer :
+    P TPoint
+
+    with P
+        .FX := 10
+        .FY := 20
+    ;
+
+    Return P.FX + P.FY
+;
+
+Main :
+    PutLn(SumPoint)
+;

@@ -854,6 +854,33 @@ private:
         return loopTargets_.back();
     }
 
+    void emitWith(const ast::WithStatement& statement)
+    {
+        // The target must be an identifier naming an already-declared local.
+        if (statement.target().kind() != ast::AstNodeKind::IdentifierExpression) {
+            throw CodegenError(
+                "LLVM emission currently supports only local variable targets for 'with'");
+        }
+
+        const auto& targetIdentifier =
+            static_cast<const ast::IdentifierExpression&>(statement.target());
+        const auto targetIt = locals_.find(normalize(targetIdentifier.name()));
+        if (targetIt == locals_.end()) {
+            throw CodegenError(
+                "LLVM emission: 'with' target must be a declared local variable: " +
+                targetIdentifier.name());
+        }
+
+        // Register the synthetic binding as an alias to the same slot/type.
+        locals_.emplace(normalize(statement.bindingName()), targetIt->second);
+
+        // Emit body statements; dot-prefixed members were already expanded by
+        // the parser to __member(__with_N, Field), which resolves via the alias.
+        for (const auto& bodyStatement : statement.body()) {
+            emitLocalDeclaration(*bodyStatement);
+        }
+    }
+
     void emitLocalDeclaration(const ast::Statement& statement)
     {
         if (statement.kind() == ast::AstNodeKind::VarStatement) {
@@ -911,8 +938,13 @@ private:
             return;
         }
 
+        if (statement.kind() == ast::AstNodeKind::WithStatement) {
+            emitWith(static_cast<const ast::WithStatement&>(statement));
+            return;
+        }
+
         throw CodegenError(
-            "LLVM emission currently supports only local variables, assignments, if, while, repeat, and for before Return");
+            "LLVM emission currently supports only local variables, assignments, if, while, repeat, for, and with before Return");
     }
 
     void emitVarBlockDeclaration(const ast::Statement& statement)

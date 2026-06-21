@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.14 (stdlib symbol prefix fix + differential calc test)
-# Last updated: 2026-06-16
+# Version: v3.15 (`with` statement implemented — CANON-11 / B-GAP #2 closed)
+# Last updated: 2026-06-21
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
 #          "Secondary Licenses" notice.
@@ -446,6 +446,35 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.15a — 2026-06-21 — approved by Marcelo Fortes
+#   - Fixed two bugs in the v3.15 `with` implementation found by running the
+#     full suite: (1) parser glued a leading-dot statement on a new line to the
+#     previous expression (`with P` then `.FX := 10` then `.FY := 20` parsed the
+#     `10` and the next-line `.FY` as `10.FY`), causing "unknown field FY in
+#     Int64". Fixed: parsePostfix no longer consumes a `.` that begins a new
+#     line, since newlines terminate statements in Inox. `with` now runs
+#     end-to-end (example yields 30). (2) Updated run-tests `--emit-llvm`
+#     required-fragment lists to the `inox_`-prefixed symbol names introduced in
+#     v3.14 (user/stdlib functions are `@inox_<name>`); the fragments still named
+#     the old unprefixed symbols and were failing independently of `with`.
+#     Full suite green except sandbox-only --run/--build (clang shim), which pass
+#     on real clang.
+#
+# v3.15 — 2026-06-21 — approved by Marcelo Fortes
+#   - `with` statement implemented across all compiler layers (Lexer → Parser →
+#     AST → Semantic → LLVM codegen). Closes B-GAP #2. Implementation follows
+#     CANON-11 exactly: dot-prefix model (Visual Basic style); `.Member` inside
+#     body expands to `__member(__with_N, Member)` — reusing the existing member-
+#     access path; no new scope symbols introduced; nested `with` correctly binds
+#     the innermost target; `;` closes. Codegen aliases `__with_N` to the target
+#     variable's slot in `locals_`, so mutations are visible on the original.
+#     New files:
+#       tests/parser/valid/with-basic.inox  — basic member read/write via 'with'
+#       tests/parser/valid/with-scope.inox  — unprefixed names use normal scope
+#       tests/parser/valid/with-nested.inox — nested 'with' innermost binding
+#       examples/with-statement.inox        — end-to-end example; --emit-llvm test
+#                                             added to scripts/run-tests.sh
 #
 # v3.14 — 2026-06-17 — approved by Marcelo Fortes
 #   - Codegen fix: user/stdlib function symbols are now emitted with an `inox_`
@@ -1380,6 +1409,8 @@ branches.
 
 ## CANON-11. `with` STATEMENT (CHANGE LOG v2.2 — Visual Basic dot-prefix model)
 
+**IMPLEMENTATION STATUS: IMPLEMENTED (v3.15)**
+
 `with` is a RESERVED keyword and a control structure. It opens a block bound to
 an expression (typically a struct value). NO `:`; newline opens; `;` closes.
 Inside the block:
@@ -1399,6 +1430,12 @@ For an outer object use its full name (`Outer.Member`).
 NON-SHADOWING ALWAYS PREVAILS: `with` introduces no new symbols; the dot-prefix
 makes member access explicit, so it never collides with scope names. The VB
 dot-prefix fixes the classic Object Pascal `with` ambiguity.
+
+**Verifying tests (v3.15)**:
+- `tests/parser/valid/with-basic.inox` — basic member read/write
+- `tests/parser/valid/with-scope.inox` — unprefixed names use normal scope
+- `tests/parser/valid/with-nested.inox` — nested `with`, innermost binding
+- `examples/with-statement.inox` — end-to-end LLVM emission and execution
 
 
 # ============================================================================
@@ -1860,7 +1897,7 @@ Types registered (19): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 1. v2 variable model: code still has the Var block path (parseVarStatement,
    VarBlockStatement, SectionKind::Var). MUST be removed; `Var` must become a
    rejected reserved keyword. (Blocks CANON-4/CANON-5.)
-2. `with` (CANON-11): NOT implemented — no keyword, no parse, no lowering.
+2. `with` (CANON-11): IMPLEMENTED (v3.15) — keyword, parse, semantic, LLVM codegen. CLOSED.
 3. Scalar-requires-initializer enforcement (CANON-5 rule 3) — verify/implement.
 4. Enum strict init (CANON-5 rule 5) — not enforced.
 5. `Byte`->UInt8 alias not yet registered (CANON-8).
@@ -2154,7 +2191,7 @@ Types registered (19): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 1. v2 variable model: code still has the Var block path (parseVarStatement,
    VarBlockStatement, SectionKind::Var). MUST be removed; `Var` must become a
    rejected reserved keyword. (Blocks CANON-4/CANON-5.)
-2. `with` (CANON-11): NOT implemented — no keyword, no parse, no lowering.
+2. `with` (CANON-11): IMPLEMENTED (v3.15) — keyword, parse, semantic, LLVM codegen. CLOSED.
 3. Scalar-requires-initializer enforcement (CANON-5 rule 3) — verify/implement.
 4. Enum strict init (CANON-5 rule 5) — not enforced.
 5. `Byte`->UInt8 alias not yet registered (CANON-8).

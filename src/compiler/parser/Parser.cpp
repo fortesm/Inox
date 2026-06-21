@@ -107,6 +107,9 @@ ast::StatementPtr Parser::parseStatement()
     if (matchKeyword("unless")) {
         return parseUnlessStatement();
     }
+    if (matchKeyword("with")) {
+        return parseWithStatement();
+    }
     if (matchKeyword("while")) {
         return parseWhileStatement();
     }
@@ -511,6 +514,29 @@ ast::ExpressionPtr Parser::parsePostfix()
             continue;
         }
 
+        // A '.' that begins a NEW line is NOT postfix member access on the
+        // current expression — it is a dot-prefixed statement inside a 'with'
+        // body (e.g. `.FY := 20`). Newlines terminate statements in Inox, so a
+        // leading-dot on the next line must not be glued to the previous
+        // expression (which would wrongly parse `10` then `.FY` as `10.FY`).
+        if (check(TokenKind::Dot) &&
+            !withTargetStack_.empty() &&
+            peek().location.line > previous().location.line) {
+            break;
+        }
+
+        // A '.' that begins a NEW line is never postfix member access on the
+        // current expression. Newlines terminate statements in Inox, so a
+        // leading dot on the next line starts a new (dot-prefixed) statement
+        // inside a 'with' body — e.g. `.FY := 20`. Without this guard, the
+        // target `P` of `with P` would glue to the next line's `.FX`, and a
+        // right-hand `10` would glue to the following `.FY` as `10.FY`.
+        if (check(TokenKind::Dot) &&
+            current_ > 0 &&
+            peek().location.line > previous().location.line) {
+            break;
+        }
+
         if (match(TokenKind::Dot)) {
             const lexer::Token& name = consume(
                 TokenKind::Identifier, "expected member name after '.'");
@@ -567,6 +593,20 @@ ast::ExpressionPtr Parser::parsePrimary()
         consume(TokenKind::RightParen, "expected ')' after expression");
         markParenthesized(expression.get());
         return expression;
+    }
+
+    // Leading '.' inside a 'with' body: expand to __member(__with_N, Member)
+    if (check(TokenKind::Dot) && !withTargetStack_.empty()) {
+        advance(); // consume '.'
+        const lexer::Token& memberName = consume(
+            TokenKind::Identifier, "expected member name after '.' in 'with' body");
+        std::vector<ast::ExpressionPtr> arguments;
+        arguments.push_back(
+            std::make_unique<ast::IdentifierExpression>(withTargetStack_.back()));
+        arguments.push_back(
+            std::make_unique<ast::IdentifierExpression>(memberName.lexeme));
+        return std::make_unique<ast::CallExpression>(
+            makeSyntheticIdentifier("__member"), std::move(arguments));
     }
 
     errorAtCurrent("expected expression");
@@ -736,6 +776,23 @@ ast::StatementPtr Parser::parseUnlessStatement()
     auto body = parseHeaderDelimitedBlock();
     return std::make_unique<ast::UnlessStatement>(
         std::move(condition), std::move(body));
+}
+
+ast::StatementPtr Parser::parseWithStatement()
+{
+    auto target = parseAssignment();
+    requireHeaderLineBreak();
+
+    const std::string bindingName = "__with_" + std::to_string(withCounter_++);
+    withTargetStack_.push_back(bindingName);
+
+    auto body = parseBlockBody();
+    consumeBlockClose();
+
+    withTargetStack_.pop_back();
+
+    return std::make_unique<ast::WithStatement>(
+        std::move(target), std::move(body), bindingName);
 }
 
 ast::StatementPtr Parser::parseWhileStatement()

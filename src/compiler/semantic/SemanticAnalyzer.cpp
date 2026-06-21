@@ -853,6 +853,18 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             throw SemanticError("continue outside loop");
         }
         break;
+    case ast::AstNodeKind::WithStatement: {
+        const auto& withStatement = static_cast<const ast::WithStatement&>(statement);
+        const std::string targetType = analyzeExpression(withStatement.target());
+        symbols_.pushScope();
+        // Declare the synthetic binding directly — no shadowing check needed
+        // because the name (__with_N) is compiler-generated and never user-visible.
+        symbols_.currentScope().declare(
+            withStatement.bindingName(), SymbolKind::Variable, targetType, true);
+        analyzeStatements(withStatement.body(), false);
+        symbols_.popScope();
+        break;
+    }
     default:
         break;
     }
