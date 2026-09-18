@@ -1,68 +1,68 @@
-# Inox compiler fixes — sessão de 2026-06-15
+# Inox
 
-Ambiente: Ubuntu 24.04, g++ 13.3 (-std=c++20). Compilação limpa, zero avisos.
+**A compiled, strongly typed, post-object-oriented systems language designed for software where silent failure is unacceptable.**
 
-## Placar de exemplos (examples/*.inox)
-- Início:            10 / 38 compilam (parse + semantic)
-- Após unless+try:   11 / 38
-- Após inferência:   20 / 38
-- Após Const+State:  22 / 38
+Inox prioritizes explicit safety, deterministic behavior, and clarity over convenience when the two conflict. It is intended for mission-critical domains in which buffer overflows, null dereferences, silent integer overflow, unchecked mutation, or hidden aliasing can cost lives, capital, or infrastructure.
 
-Os 16 restantes são EXEMPLOS genuinamente errados (Get/GetLn inexistente,
-parênteses vazios, função declarada dentro de Main, multi-decl `A, B`), não
-gaps do compilador.
+## Design Philosophy
 
-## Correções no compilador (alinham o código ao INOX_CANONICAL.md)
+Inox is deliberately **post-object-oriented**. It has no classes, classical inheritance, Java-style interfaces, mixins, or duck typing. Data lives in nominal value types (`Struct`). Behavior lives in free functions, subroutines, and associated methods declared outside the struct. The familiar call form `Object.Method(args)` is retained for ergonomics without turning data into classical objects.
 
-### Parser.cpp
-1. `unless` e `try/except/finally` NÃO exigem mais `:` (CANON-4/CANON-15).
-   Eram um bug: usavam parseBlockStatement() que exige `:`, contra o canônico.
-2. `Const Name := Expr` aceito na forma de linha canônica (CANON-5), parando
-   no fim da linha; `Const :` em bloco continua válido.
+Core safety defaults include:
 
-### SemanticAnalyzer.cpp
-3. INFERÊNCIA DE TIPO (CANON-5/A6/A7): `A := 10` na primeira aparição é uma
-   declaração com tipo inferido do inicializador; reaparições são atribuição.
-   Implementado no caso Assign de analyzeBinaryExpression.
-4. Seções State/Const reconhecem `Nome Tipo := Valor` (tipado explícito) sem
-   declarar o nome do tipo como símbolo (corrige "duplicate symbol: Integer").
+- No universal `null` or `nil`
+- No unsafe pointers in the language core
+- No silent integer overflow
+- Explicit integer division (`div` / `mod`) instead of `/`
+- Parameters immutable by default
+- Mutating methods require an explicit `Self mut` receiver
+- Strong nominal typing with no implicit narrowing
+- Composition preferred over inheritance
 
-## Exemplos corrigidos
-- variables.inox: removido `mut` proibido do State (CANON-10); agora
-  `State : GlobalCount Integer := 0 ;`.
-- control-flow.inox / exceptions.inox: reescritos 100% canônicos; `unless`/`try`
-  marcados como aspiracionais onde aplicável.
+The language draws carefully from several traditions (Ada/SPARK robustness, Rust ownership and mutability discipline, Modula/Oberon modular clarity, modern Pascal ergonomics, C/C++ performance realism, and others) while rejecting defaults that introduce undefined behavior or ambiguity.
 
-## Gap conhecido restante (próximo passo)
-O codegen (LlvmIrEmitter) ainda não emite IR para a declaração inferida
-(`A := 10`): "LLVM emission currently supports assignment only to local
-variables". Parse e semantic já aceitam; falta o emitter. É o próximo item.
+## Target Domains
+
+Inox is aimed at systems where correctness and predictability matter:
+
+- Aviation and air-traffic control  
+- High-precision industrial systems  
+- Finance, exchanges, and monetary infrastructure  
+- Scientific and numerical computing  
+- Aerospace, medicine, and hospital equipment  
+- Energy infrastructure (nuclear, hydroelectric, grids)  
+- Cryptography and large-scale parallel computation  
+
+## Implementation
+
+The reference compiler is written in portable C++20 and targets LLVM. It currently builds and is validated on Windows and Linux. The language core does not rely on a tracing garbage collector; future memory management work favors explicit ownership, moves, arenas, and deterministic resource control.
+
+Inox remains under active development. The current focus is a coherent, well-specified 0.1 foundation with a complete compiler pipeline (lexer → parser → semantic analysis → LLVM IR → executable) and a growing standard library surface.
+
+## Building
+
+See [`BUILD_AND_TEST_INSTRUCTIONS.md`](BUILD_AND_TEST_INSTRUCTIONS.md) for current build, test, and release instructions on Windows and Linux.
+
+## Documentation
+
+The single authoritative source of truth for language design, compiler contract, and project rules is:
+
+- [`docs/INOX_CANONICAL.md`](docs/INOX_CANONICAL.md)
+
+Additional materials (examples, tests, build instructions, and contribution guidelines) live in the repository and are kept consistent with the canonical document.
+
+## Status
+
+Inox is not yet production-ready. The design is stable in its core principles; the implementation continues to expand toward a complete, reliable 1.0 while preserving the safety and engineering standards established for the language.
+
+## License
+
+Mozilla Public License 2.0 (MPL-2.0).
+
+## Author
+
+Marcelo Fortes
 
 ---
 
-## ATUALIZAÇÃO: codegen da inferência (ciclo fechado)
-
-### LlvmIrEmitter.cpp
-5. INFERÊNCIA NO CODEGEN: `A := 10` com nome novo agora ALOCA um local novo
-   (alloca + store) em vez de erro; nome existente continua sendo store. Espelha
-   a lógica do semantic.
-
-### PROVA DE EXECUÇÃO
-O IR gerado foi validado com LLVM 21 (llvmlite) — `verify()` passou — e
-JIT-executado. O programa `llvm-put-output-basic.inox` (que usa `X := 7` por
-inferência) imprimiu:
-    X=7
-    ready
-    true
-    true
-E `llvm-putln-integer.inox` (`X := 10`) imprimiu `10` e `42`.
-
-Ou seja: a inferência atravessa o pipeline COMPLETO — lexer → parser → semantic
-→ codegen → LLVM IR válido → executável que roda e imprime certo.
-
-### Refinamento pendente (anotado, não bloqueante)
-emitLocalVariable assume i64/Integer para a declaração inferida. Para `A := 10`
-está perfeito. Para inferência de Bool (`Flag := True`) ou Char (`L := 'x'`) que
-sejam IMPRESSAS, o tipo no codegen precisaria seguir o tipo inferido pelo
-semantic (i1/i32). Hoje passa porque os exemplos não imprimem esses casos.
-Próximo polimento: propagar o tipo inferido do semantic para o emitLocalVariable.
+Inox is named for stainless steel: resistant, reliable, and free of corrosion by design.
