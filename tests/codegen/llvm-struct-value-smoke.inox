@@ -14,9 +14,7 @@ Type
     ;
 
 MakePair(A Integer, B Integer) TPair :
-    Var
-        P TPair
-    ;
+    P TPair
 
     P.FLeft := A
     P.FRight := B

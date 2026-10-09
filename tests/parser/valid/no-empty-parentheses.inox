@@ -23,9 +23,7 @@ TAccount.Print(Self) :
 ;
 
 Main :
-    Var
-        Account TAccount
-    ;
+    Account TAccount
 
     Report
     PutLn(Value)

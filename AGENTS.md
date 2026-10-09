@@ -28,7 +28,7 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - `Module` has no `;`; EOF closes the module.
 - `Use` is semantic dependency, not textual inclusion.
 - `Type` has no `:` and no closing `;`.
-- `Var` has no `:` and closes with `;`.
+- `Var` blocks and `var`/`mut var` declarations were removed (CANON-5); `Var` and `mut` stay reserved and the parser rejects them with a migration diagnostic. Declare locals inline.
 - `Struct` syntax is `TName Struct ... ;`.
 - `Range` declarations do not use `;`.
 - `if`/`elif`/`else` use no `then` and no `:`.
@@ -47,7 +47,8 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - Integer `/` is invalid; use `div` and `mod`.
 - Integer overflow is invalid; do not promise wraparound.
 - Parameters are immutable by default.
-- Local variables declared inline or in `Var` are mutable.
+- Local variables are declared inline and are mutable.
+- Every variable is born with a value: a scalar declaration requires an initializer (`C Integer := 0`, never `C Integer`); only structs/aggregates may omit `:=` (type-default initialization).
 - Associated receivers are `Self` or `Self mut`; do not write `Self TPoint`.
 - `Self mut` is required for mutating methods.
 - `Exit` is not allowed in functions with return values.

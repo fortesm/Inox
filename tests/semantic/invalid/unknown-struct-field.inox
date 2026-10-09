@@ -13,9 +13,7 @@ Type
     ;
 
 Main :
-    Var
-        P TPoint
-    ;
+    P TPoint
 
     P.FY := 10
 ;

@@ -14,9 +14,7 @@ Type
     ;
 
 MakePoint(X Integer, Y Integer) TPoint :
-    Var
-        P TPoint
-    ;
+    P TPoint
 
     P.FX := X
     P.FY := Y
@@ -25,10 +23,8 @@ MakePoint(X Integer, Y Integer) TPoint :
 ;
 
 Main :
-    Var
-        A TPoint
-        B TPoint
-    ;
+    A TPoint
+    B TPoint
 
     A := MakePoint(1, 2)
     B := A

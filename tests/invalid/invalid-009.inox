@@ -8,6 +8,6 @@
 Module Invalid009
 
 Main :
-    var X := True
+    X := True
     X := 10
 ;

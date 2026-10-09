@@ -8,5 +8,5 @@
 Module Invalid015
 
 Main :
-    var X := 10 < "abc"
+    X := 10 < "abc"
 ;

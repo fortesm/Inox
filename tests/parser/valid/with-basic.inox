@@ -14,9 +14,7 @@ Type
     ;
 
 Main :
-    Var
-        P TPoint
-    ;
+    P TPoint
 
     with P
         .FX := 10

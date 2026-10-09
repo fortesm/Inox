@@ -8,5 +8,5 @@
 Module Invalid016
 
 Main :
-    var X := True and 10
+    X := True and 10
 ;

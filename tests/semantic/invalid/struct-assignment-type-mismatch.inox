@@ -17,10 +17,8 @@ Type
     ;
 
 Main :
-    Var
-        P TPoint
-        O TOther
-    ;
+    P TPoint
+    O TOther
 
     P := O
 ;

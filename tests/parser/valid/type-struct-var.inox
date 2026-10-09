@@ -13,10 +13,8 @@ Type
     ;
 
 Main :
-    Var
-        I Integer := 1
-        Item TItem
-    ;
+    I Integer := 1
+    Item TItem
 
     Item.FValue := I
 

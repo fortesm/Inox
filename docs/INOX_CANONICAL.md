@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.22 (Layer B: the driver reports the toolchain's own diagnostics
-#          when clang fails)
+# Version: v3.23 (Layer B: the compiler enforces CANON-5: scalar declarations
+#          require an initializer; `Var` is rejected with a migration hint)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,34 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.23 — 2026-10-09 — CANON-5 enforcement (Layer B: the implementation now
+#         follows existing Layer A law; no language change). Requested by Marcelo
+#         Fortes on 2026-10-09: "Variável escalar sem valor inicial são proibidas
+#         em Inox"; "o parser não deveria mais aceitar [Var]".
+#   - Semantic analysis rejects a scalar declaration without an initializer
+#     (CANON-5 rule 3): "scalar declaration requires initializer: Name". Structs
+#     may still omit `:=` (type-default initialization, rule 4). Closes B-GAPS #3.
+#   - The parser rejects `Var` blocks, `var`/`mut var` declarations and a
+#     module-level `Var` section with a migration diagnostic naming the inline
+#     forms. `Var` and `mut` stay reserved. The dead parser paths
+#     (parseVarStatement, parseVarBlockDeclarations) are removed. Closes B-GAPS #1
+#     and the matching B-CONFLICTS entry.
+#   - Correction to v3.21: its test `loop-body-locals` and the `float-uninit` /
+#     `float32-uninit` probes relied on uninitialized scalars, which CANON-5
+#     forbids; the v3.21 "zero initializer" fix made a forbidden program run
+#     instead of rejecting it. The test now initializes its scalars, the two
+#     probes are removed (such programs are rejected by semantic analysis), and
+#     new diagnostics cover the rule.
+#   - Tests: 34 test files written with `Var` were rewritten with inline
+#     declarations (invalid tests still fail for their documented reasons; the two
+#     tests about `Var` itself, `var-colon` and `invalid-031`, now exercise the
+#     removal). New diagnostics: `scalar-without-initializer`,
+#     `float-without-initializer`, `var-block-removed`, `mut-var-removed`,
+#     `module-var-removed`. AGENTS.md no longer describes `Var` blocks.
+#   - Note on the v3.22 entry: the "invalid-IR bug fixed in v3.21" it mentions
+#     was a program CANON-5 already forbade (a scalar without an initializer); it
+#     is now rejected by semantic analysis instead of compiled.
 #
 # v3.22 — 2026-10-09 — toolchain diagnostics in the driver (Layer B only; no
 #         language change).
@@ -2508,11 +2536,12 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 - EH-v3.17c: the optional `On Name Type` binding is scoped/type-checked, but
   runtime payload fields/reflection and user-defined exception declaration
   syntax remain deferred.
-1. v2 variable model: code still has the Var block path (parseVarStatement,
-   VarBlockStatement, SectionKind::Var). MUST be removed; `Var` must become a
-   rejected reserved keyword. (Blocks CANON-4/CANON-5.)
+1. v2 variable model: CLOSED (v3.23). The parser rejects `Var` blocks,
+   `var`/`mut var` declarations and a module-level `Var` section with a
+   migration diagnostic; `Var` and `mut` stay reserved (CANON-4/CANON-5).
 2. `with` (CANON-11): IMPLEMENTED (v3.15) — keyword, parse, semantic, LLVM codegen. CLOSED.
-3. Scalar-requires-initializer enforcement (CANON-5 rule 3) — verify/implement.
+3. Scalar-requires-initializer enforcement (CANON-5 rule 3): CLOSED (v3.23).
+   "scalar declaration requires initializer: Name"; structs may omit `:=`.
 4. Enum strict init (CANON-5 rule 5) — not enforced.
 5. `Byte`->UInt8 alias not yet registered (CANON-8).
 6. Natural range semantics (floor 0, negative=error) — name registered, check missing.
@@ -2833,11 +2862,12 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 - EH-v3.17c: the optional `On Name Type` binding is scoped/type-checked, but
   runtime payload fields/reflection and user-defined exception declaration
   syntax remain deferred.
-1. v2 variable model: code still has the Var block path (parseVarStatement,
-   VarBlockStatement, SectionKind::Var). MUST be removed; `Var` must become a
-   rejected reserved keyword. (Blocks CANON-4/CANON-5.)
+1. v2 variable model: CLOSED (v3.23). The parser rejects `Var` blocks,
+   `var`/`mut var` declarations and a module-level `Var` section with a
+   migration diagnostic; `Var` and `mut` stay reserved (CANON-4/CANON-5).
 2. `with` (CANON-11): IMPLEMENTED (v3.15) — keyword, parse, semantic, LLVM codegen. CLOSED.
-3. Scalar-requires-initializer enforcement (CANON-5 rule 3) — verify/implement.
+3. Scalar-requires-initializer enforcement (CANON-5 rule 3): CLOSED (v3.23).
+   "scalar declaration requires initializer: Name"; structs may omit `:=`.
 4. Enum strict init (CANON-5 rule 5) — not enforced.
 5. `Byte`->UInt8 alias not yet registered (CANON-8).
 6. Natural range semantics (floor 0, negative=error) — name registered, check missing.
@@ -2869,7 +2899,7 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
     many Float functions currently depend on LLVM/libm rather than Inox kernels.
 
 ## B-CONFLICTS. KNOWN DOC/CODE CONFLICTS TO RESOLVE
-- Var block still in code (B-GAPS #1).
+- Var block still in code (B-GAPS #1): CLOSED (v3.23).
 - `mut` in State in variables.inox (violates CANON-10).
 - Const inline syntax vs parser requiring `:` — adopt line form, update parser.
 - Public docs/LANGUAGE_REFERENCE.md + docs/index.html are stale/superseded —

@@ -69,9 +69,7 @@ private:
 
     std::vector<ast::ExpressionPtr> parseArgumentList();
 
-    ast::StatementPtr parseVarStatement(bool isMutable);
     ast::StatementPtr parseTypedLocalStatement();
-    std::vector<ast::StatementPtr> parseVarBlockDeclarations();
     ast::StatementPtr parseIfStatement();
     ast::StatementPtr parseUnlessStatement();
     ast::StatementPtr parseWhileStatement();

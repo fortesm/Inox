@@ -854,6 +854,12 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         if (typeName.empty()) {
             throw SemanticError("variable requires a type or initializer: " + var.name());
         }
+        // CANON-5 rule 3/4: every variable is born with a value. Only structs and
+        // aggregates may omit ":=" (type-default initialization); scalars must be
+        // initialized explicitly.
+        if (var.initializer() == nullptr && resolveStruct(typeName) == nullptr) {
+            throw SemanticError("scalar declaration requires initializer: " + var.name());
+        }
         declareOrThrow(var.name(), SymbolKind::Variable, std::move(typeName), true);
         break;
     }

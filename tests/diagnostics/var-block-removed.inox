@@ -5,26 +5,13 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== CANON-11: nested 'with' — '.Member' always binds the innermost 'with' target.
-
-Module ParserValidWithNested
-
-Type
-    TPoint Struct
-        FX Integer
-        FY Integer
-    ;
+== CANON-5: the old Var block was removed; the parser rejects it with a
+== migration hint.
+Module Diagnostics.VarBlockRemoved
 
 Main :
-    A TPoint
-    B TPoint
-
-    with A
-        .FX := 1
-        with B
-            .FX := 10
-            .FY := 20
-        ;
-        .FY := 2
+    Var
+        X Integer := 1
     ;
+    PutLn(X)
 ;

@@ -8,5 +8,5 @@
 Module Invalid014
 
 Main :
-    var X := True * 3
+    X := True * 3
 ;
