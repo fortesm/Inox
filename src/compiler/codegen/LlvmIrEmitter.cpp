@@ -2772,7 +2772,7 @@ private:
     std::size_t slotCounter_ = 0;
     std::vector<LoopTargets> loopTargets_;
     std::vector<std::size_t> repeatLoopDepths_;
-    // Handler regions (On / Else bodies) being emitted, innermost last: the slot
+    // Handler regions (On / Else / plain except bodies) being emitted, innermost last: the slot
     // holding the caught exception state and the loop depth of their try.
     struct HandlerRegion {
         std::string stateSlot;

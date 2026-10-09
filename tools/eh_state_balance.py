@@ -8,10 +8,11 @@
 
 For each tests/eh-lifetime/NAME.inox the tool emits LLVM IR with inox, links it
 against libinoxrt and tools/eh_state_counter.cpp with GNU ld --wrap, runs it,
-and requires (1) the program output to equal NAME.out and (2) the number of
-exception states captured to equal the number released or consumed by a
-rethrow. A leaked state is invisible to the regular suite, which only compares
-output.
+and requires (1) the program output to equal NAME.out and (2) every exception
+state captured to be released or consumed by a rethrow exactly once:
+captures = releases, no state left live, and no release of a state that is not
+live (a double release). A leaked state is invisible to the regular suite,
+which only compares output.
 
 Usage: python tools/eh_state_balance.py path/to/inox [path/to/libinoxrt.a]
 
@@ -27,7 +28,7 @@ import sys
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BALANCE = re.compile(r"\[eh-state\] captures=(\d+) releases=(\d+) live=(\d+)")
+BALANCE = re.compile(r"\[eh-state\] captures=(\d+) releases=(\d+) live=(\d+) invalid=(\d+)")
 
 
 def main(argv):
@@ -79,8 +80,16 @@ def main(argv):
                 problems.append("output differs from %s" % (name[:-5] + ".out"))
             if match is None:
                 problems.append("no exception state was captured")
-            elif match.group(3) != "0":
-                problems.append("%s of %s exception states leaked" % (match.group(3), match.group(1)))
+            else:
+                captures, releases, live, invalid = (int(group) for group in match.groups())
+                if captures == 0:
+                    problems.append("no exception state was captured")
+                if captures != releases:
+                    problems.append("capture/release imbalance: %d captured, %d released" % (captures, releases))
+                if live != 0:
+                    problems.append("%d of %d exception states leaked" % (live, captures))
+                if invalid != 0:
+                    problems.append("%d releases of a state that was not live (double release)" % invalid)
             if problems:
                 print("[FAIL] %s: %s" % (name, "; ".join(problems)))
                 failures += 1

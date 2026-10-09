@@ -20,21 +20,24 @@ namespace {
 std::set<void*>* live = nullptr;
 long captures = 0;
 long releases = 0;
+long invalidReleases = 0;  // released or rethrown but not live: double release
 
 void report()
 {
-    std::fprintf(stderr, "[eh-state] captures=%ld releases=%ld live=%zu\n",
-                 captures, releases, live != nullptr ? live->size() : 0);
+    std::fprintf(stderr, "[eh-state] captures=%ld releases=%ld live=%zu invalid=%ld\n",
+                 captures, releases, live != nullptr ? live->size() : 0, invalidReleases);
 }
 
 void forget(void* state)
 {
-    if (state != nullptr) {
-        ++releases;
-        if (live != nullptr) {
-            live->erase(state);
-        }
+    if (state == nullptr) {
+        return;
     }
+    if (live == nullptr || live->erase(state) != 1) {
+        ++invalidReleases;
+        return;
+    }
+    ++releases;
 }
 }  // namespace
 
