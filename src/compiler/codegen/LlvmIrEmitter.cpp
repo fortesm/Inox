@@ -600,7 +600,7 @@ public:
     {
         if (signature_.llvmReturnType == "i32" || signature_.llvmReturnType == "void") {
             for (const auto& statement : function_.body()) {
-                emitLocalDeclaration(*statement);
+                emitStatement(*statement);
             }
             if (signature_.llvmReturnType == "i32") {
                 output_ << "  ret i32 0\n";
@@ -624,7 +624,7 @@ public:
         }
 
         for (std::size_t index = 0; index + 1 < function_.body().size(); ++index) {
-            emitLocalDeclaration(*function_.body()[index]);
+            emitStatement(*function_.body()[index]);
         }
 
         const auto& returnStatement =
@@ -859,7 +859,7 @@ private:
     void emitAssignmentBranch(const std::vector<ast::StatementPtr>& statements)
     {
         for (const auto& statement : statements) {
-            emitLocalDeclaration(*statement);
+            emitStatement(*statement);
         }
     }
 
@@ -1027,7 +1027,7 @@ private:
         // unreachable continuation label, so the caller may always close the body
         // with a branch back to the loop header.
         for (const auto& statement : statements) {
-            emitLocalDeclaration(*statement);
+            emitStatement(*statement);
         }
         return false;
     }
@@ -1097,7 +1097,7 @@ private:
         // Emit body statements; dot-prefixed members were already expanded by
         // the parser to __member(__with_N, Field), which resolves via the alias.
         for (const auto& bodyStatement : statement.body()) {
-            emitLocalDeclaration(*bodyStatement);
+            emitStatement(*bodyStatement);
         }
     }
 
@@ -1350,7 +1350,7 @@ private:
         output_ << bodyLabel << ":\n";
         unwindTargets_.push_back(landing);
         for (const auto& bodyStatement : statement.body()) {
-            emitLocalDeclaration(*bodyStatement);
+            emitStatement(*bodyStatement);
         }
         unwindTargets_.pop_back();
         output_ << "  store i32 0, ptr " << actionSlot << "\n";
@@ -1368,7 +1368,7 @@ private:
             caughtExceptionStates_.push_back(stateSlot);
             bareRethrowTargets_.push_back(rethrowRequest);
             unwindTargets_.push_back(handlerUnwind);
-            for (const auto& st : statement.exceptBody()) emitLocalDeclaration(*st);
+            for (const auto& st : statement.exceptBody()) emitStatement(*st);
             unwindTargets_.pop_back();
             bareRethrowTargets_.pop_back();
             caughtExceptionStates_.pop_back();
@@ -1420,7 +1420,7 @@ private:
                     exceptionBindings_.emplace(normalize(handler.bindingName), stateSlot);
                 }
                 unwindTargets_.push_back(handlerUnwind);
-                for (const auto& st : handler.body) emitLocalDeclaration(*st);
+                for (const auto& st : handler.body) emitStatement(*st);
                 unwindTargets_.pop_back();
                 if (!handler.bindingName.empty()) {
                     exceptionBindings_.erase(normalize(handler.bindingName));
@@ -1439,7 +1439,7 @@ private:
                 bareRethrowTargets_.push_back(rethrowRequest);
                 retryContexts_.push_back(retryContext);
                 unwindTargets_.push_back(handlerUnwind);
-                for (const auto& st : statement.elseBody()) emitLocalDeclaration(*st);
+                for (const auto& st : statement.elseBody()) emitStatement(*st);
                 unwindTargets_.pop_back();
                 retryContexts_.pop_back();
                 bareRethrowTargets_.pop_back();
@@ -1489,7 +1489,7 @@ private:
 
             output_ << ensureLabel << ":\n";
             unwindTargets_.push_back(ensureUnwind);
-            for (const auto& st : statement.ensureBody()) emitLocalDeclaration(*st);
+            for (const auto& st : statement.ensureBody()) emitStatement(*st);
             unwindTargets_.pop_back();
             output_ << "  br label %" << afterEnsure << "\n\n";
 
@@ -1581,7 +1581,7 @@ private:
         output_ << continueLabel << ":\n";
     }
 
-    void emitLocalDeclaration(const ast::Statement& statement)
+    void emitStatement(const ast::Statement& statement)
     {
         if (statement.kind() == ast::AstNodeKind::VarStatement) {
             const auto& variable = static_cast<const ast::VarStatement&>(statement);
