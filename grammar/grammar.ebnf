@@ -1,78 +1,276 @@
-# Inox Grammar Mirror 0.1 Pre-alpha
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+-->
 
-This is a human-readable grammar mirror. The authoritative language rules are in `docs/INOX_CANONICAL.md`.
+# Inox Canonical Grammar Mirror
+
+This is the human-readable grammar of Inox. It mirrors `docs/INOX_CANONICAL.md`,
+which is the authority: when this file and the canonical document disagree, the
+canonical document wins and this file is corrected. The parser
+(`src/compiler/parser/Parser.cpp`) must accept exactly this language; where it
+does not, the difference is a Layer B conformance gap, listed at the end of this
+file. `tools/grammar_consistency.py` checks this file automatically.
+
+Notation: `::=` defines a production; `|` alternatives; `( )` grouping;
+`?` optional; `*` zero or more; `+` one or more; `"..."` a terminal written as
+shown (keywords are case-insensitive, CANON-2); `(* ... *)` a comment or a rule
+that the grammar shape alone does not express. `NEWLINE` is a line break:
+newlines terminate statements and open blocks (CANON-4); `;` only closes blocks.
 
 ```ebnf
-module          ::= "Module" module_name use_decl* module_item* EOF
-module_name     ::= identifier ("." identifier)*
-use_decl        ::= "Use" module_name
+(* ---------- Module structure (SECTION 07, SECTION 09 / CANON-3) ---------- *)
 
-module_item     ::= type_section | const_section | state_section | function_decl
+module            ::= "Module" qualified_name use_decl* module_item* EOF
+                      (* no ";" after Module; EOF closes the module *)
+use_decl          ::= "Use" qualified_name
+module_item       ::= type_section | const_decl | state_section | routine_decl
+qualified_name    ::= identifier ( "." identifier )*
 
-type_section    ::= "Type" type_decl*
-type_decl       ::= struct_decl | range_decl | enum_short_decl | enum_block_decl
+(* ---------- Declarations (SECTION 11 / CANON-5, CANON-9, CANON-13) ---------- *)
 
-struct_decl     ::= identifier "Struct" struct_field* ";"
-struct_field    ::= identifier type_name (":=" literal)?
+type_section      ::= "Type" type_decl+
+                      (* section: no ":" and no closing ";" of its own *)
+type_decl         ::= struct_decl | range_decl | enum_short_decl | enum_block_decl
+struct_decl       ::= identifier "Struct" NEWLINE struct_field* ";"
+struct_field      ::= identifier type_ref ( ":=" literal )? NEWLINE
+range_decl        ::= identifier "Range" range_bound ".." range_bound
+range_bound       ::= integer_literal | char_literal | "-" integer_literal
+enum_short_decl   ::= identifier "(" identifier ( "," identifier )* ")"
+enum_block_decl   ::= identifier "Enum" NEWLINE ( identifier NEWLINE )+ ";"
 
-range_decl      ::= identifier "Range" range_bound ".." range_bound
+const_decl        ::= "Const" identifier ":=" expression
+                      (* single line; immutable; inferred type *)
+state_section     ::= "State" ":" NEWLINE state_field* ";"
+state_field       ::= identifier type_ref? ":=" expression NEWLINE
+                      (* State scalars require an initializer; "mut" is forbidden *)
 
-enum_short_decl ::= identifier "(" identifier ("," identifier)* ")"
-enum_block_decl ::= identifier "Enum" identifier* ";"
+(* ---------- Routines (SECTION 15 / CANON-6, CANON-7, CANON-9) ---------- *)
 
-var_block       ::= "Var" var_decl* ";"
-var_decl        ::= identifier type_name? (":=" expression)?
-local_decl      ::= identifier type_name (":=" expression)?
+routine_decl      ::= routine_name parameter_part? type_ref? ":" NEWLINE block_body ";"
+                      (* ":" declares the routine and opens its body (CANON-4);
+                         with type_ref it is a function, without it a subroutine *)
+routine_name      ::= identifier ( "." identifier )?
+                      (* "TPoint.Move" declares an associated method of TPoint *)
+parameter_part    ::= "(" parameter_list ")"
+                      (* never empty: zero parameters means no parentheses at all,
+                         "Main :", never "Main() :" (CANON-7) *)
+parameter_list    ::= receiver ( "," parameter )* | parameter ( "," parameter )*
+receiver          ::= "Self" "mut"?
+                      (* associated methods only; "Self TPoint" is not canonical *)
+parameter         ::= identifier type_ref
+                      (* parameters are immutable; "mut X T" is reserved (error) *)
 
-function_decl   ::= qualified_name "(" parameter_list? ")" return_type? ":" statement* ";"
-block_close     ::= ";"   (* End/end is not a keyword and is not a block closer. *)
-qualified_name  ::= identifier ("." identifier)?
-parameter_list  ::= receiver_param | normal_param ("," normal_param)*
-receiver_param  ::= "Self" "mut"? ("," normal_param)*
-normal_param    ::= identifier type_name
-return_type     ::= type_name
+(* ---------- Types (SECTION 12 / CANON-8, SECTION 21 / CANON-13) ---------- *)
 
-statement       ::= local_decl | var_block | if_stmt | while_stmt | repeat_stmt
-                  | until_stmt | for_stmt | case_stmt | try_stmt | raise_stmt | retry_stmt
-                  | return_stmt | exit_stmt | leave_stmt | continue_stmt | expression_stmt
+type_ref          ::= array_type | generic_type | identifier
+array_type        ::= "Array" "[" array_bounds ( "," array_bounds )* "]" type_ref
+array_bounds      ::= expression ".." expression
+generic_type      ::= identifier "[" type_ref ( "," type_ref )* "]"
+                      (* current canonical spelling: Vector[Integer], Set[TCardSuit].
+                         The approved future direction Vector<T> is not active syntax
+                         until the canonical document records it. *)
 
-if_stmt         ::= "if" expression NEWLINE statement* elif_clause* else_clause? ";"
-elif_clause     ::= "elif" expression NEWLINE statement*
-else_clause     ::= "else" NEWLINE statement*
+(* ---------- Statements and blocks (SECTION 10 / CANON-4) ---------- *)
 
-while_stmt      ::= "while" expression NEWLINE statement* ";"
-repeat_stmt     ::= "repeat" statement* ";"
-until_stmt      ::= "until" expression
-for_stmt        ::= "for" identifier "in" expression ".." expression ("(" expression ")")? NEWLINE statement* ";"
-                  (* iterator is implicit, read-only, loop-scoped, and may not shadow *)
+block_body        ::= statement*
+statement         ::= ( simple_stmt NEWLINE ) | compound_stmt
+simple_stmt       ::= local_decl | assignment_stmt | call_stmt | until_stmt
+                    | raise_stmt | retry_stmt | return_stmt | exit_stmt
+                    | leave_stmt | continue_stmt
+compound_stmt     ::= if_stmt | unless_stmt | with_stmt | while_stmt | repeat_stmt
+                    | for_stmt | case_stmt | try_stmt
 
-case_stmt       ::= "case" expression NEWLINE case_arm* otherwise_arm? ";"
-case_arm        ::= expression NEWLINE statement* | expression statement
-otherwise_arm   ::= "otherwise" NEWLINE statement* | "otherwise" statement
+local_decl        ::= identifier type_ref? ":=" expression
+                    | identifier type_ref
+                      (* three forms only: "A := 5", "B Integer := 6", "P TPoint".
+                         The form without ":=" is valid only for structs/aggregates:
+                         scalars and enums require an initializer (CANON-5).
+                         The first appearance of a name declares it. *)
+assignment_stmt   ::= target ":=" expression
+target            ::= postfix_expr | with_member
+call_stmt         ::= postfix_expr
+                      (* must be a call: a bare identifier or literal is not a
+                         statement; "Report" and "Account.Print" call without "()" *)
 
-try_stmt        ::= "try" NEWLINE statement*
-                    (except_clause ensure_clause? | ensure_clause) ";"
-except_clause   ::= "except" NEWLINE (typed_handlers | statement*)
-typed_handlers  ::= exception_handler+ else_handler?
-exception_handler ::= ("On" exception_type | "On" identifier exception_type) NEWLINE statement* ";"
-else_handler    ::= "Else" NEWLINE statement* ";"
-ensure_clause   ::= "ensure" NEWLINE statement*
-raise_stmt      ::= "Raise" expression | "Raise"
-retry_stmt      ::= "Retry" "(" expression ")"
-exception_type  ::= identifier
+(* ---------- Control flow (SECTION 16 / CANON-12, CANON-11) ---------- *)
 
-return_stmt     ::= "Return" expression
-exit_stmt       ::= "Exit"
-leave_stmt      ::= "leave"
-continue_stmt   ::= "continue"
+if_stmt           ::= "if" expression NEWLINE block_body elif_clause* else_clause? ";"
+elif_clause       ::= "elif" expression NEWLINE block_body
+else_clause       ::= "else" NEWLINE block_body
+                      (* no "then", no ":", one ";" closes the whole structure *)
 
-expression      ::= assignment
-assignment      ::= logical_or (":=" assignment)?
+unless_stmt       ::= "unless" expression NEWLINE block_body ";"
+                      (* negated guard: the body runs when the condition is false;
+                         no elif/else *)
+
+with_stmt         ::= "with" expression NEWLINE block_body ";"
+with_member       ::= "." identifier
+                      (* inside a with body, ".Member" is a member of the innermost
+                         with expression; unprefixed names use normal scope *)
+
+case_stmt         ::= "case" expression NEWLINE case_arm* otherwise_arm? ";"
+case_arm          ::= case_label ( simple_stmt NEWLINE | NEWLINE block_body )
+case_label        ::= expression
+                      (* one value per arm; ranges per arm and multi-values with "|"
+                         are reserved for future versions *)
+otherwise_arm     ::= "otherwise" ( simple_stmt NEWLINE | NEWLINE block_body )
+                      (* no "of", "when", "=>", ":" or "do"; no fall-through *)
+
+(* ---------- Loops (SECTION 17) ---------- *)
+
+while_stmt        ::= "while" expression NEWLINE block_body ";"
+repeat_stmt       ::= "repeat" NEWLINE block_body ";"
+until_stmt        ::= "until" expression
+                      (* an internal conditional exit, valid only inside a repeat
+                         body (at any depth, any number of times); it exits the
+                         nearest enclosing repeat; it is not the terminator *)
+for_stmt          ::= "for" identifier "in" for_range for_step? NEWLINE block_body ";"
+for_range         ::= expression ".." expression
+for_step          ::= "(" expression ")"
+                      (* iterator: implicit, read-only, loop-scoped, no shadowing;
+                         bounds and step are evaluated once (DECISION P-B) *)
+leave_stmt        ::= "leave"
+continue_stmt     ::= "continue"
+                      (* both act on the nearest enclosing loop *)
+
+(* ---------- Routines: transfers (SECTION 15) ---------- *)
+
+return_stmt       ::= "Return" expression
+                      (* required in functions, forbidden in subroutines *)
+exit_stmt         ::= "Exit"
+                      (* subroutines and Main only *)
+
+(* ---------- Exceptions (CANON-15) ---------- *)
+
+try_stmt          ::= "try" NEWLINE block_body
+                      ( except_part ensure_part? | ensure_part ) ";"
+except_part       ::= "except" NEWLINE ( typed_handlers | block_body )
+                      (* a plain except body is a catch-all *)
+typed_handlers    ::= on_handler+ else_handler?
+on_handler        ::= "On" identifier? exception_type NEWLINE block_body ";"
+                      (* "On Name Type" binds the caught exception, immutable;
+                         no ":" and no "Do" *)
+else_handler      ::= "Else" NEWLINE block_body ";"
+exception_type    ::= identifier
+ensure_part       ::= "ensure" NEWLINE block_body
+raise_stmt        ::= "Raise" expression?
+                      (* bare Raise rethrows; valid only inside a handler *)
+retry_stmt        ::= "Retry" "(" expression ")"
+                      (* only inside an active On or Else handler *)
+
+(* ---------- Expressions (CANON-20, immutable precedence law) ---------- *)
+(* Weakest binding first. Level numbers are those of the CANON-20 table.       *)
+
+expression        ::= or_expr
+                      (* ":=" (level 14) is statement level: assignment_stmt *)
+or_expr           ::= xor_expr ( "or" xor_expr )*            (* level 13, left *)
+xor_expr          ::= and_expr ( "xor" and_expr )*           (* level 12, left *)
+and_expr          ::= relational_expr ( "and" relational_expr )*
+                                                             (* level 11, left *)
+                      (* MANDATORY PARENTHESES: two different operators among
+                         and/or/xor may not be mixed without parentheses *)
+relational_expr   ::= membership_expr ( relational_op membership_expr )*
+                                                             (* level 10, left *)
+relational_op     ::= "=" | "#" | "<" | "<=" | ">" | ">="
+membership_expr   ::= range_expr ( "in" range_expr )?
+range_expr        ::= bitor_expr ( ".." bitor_expr )?
+                      (* "in" and ".." are not in the CANON-20 table; the parser
+                         places them between levels 10 and 9, non-associative.
+                         Recorded as an open item for the canonical table. *)
+bitor_expr        ::= bitxor_expr ( "bitor" bitxor_expr )*   (* level 9, left *)
+bitxor_expr       ::= bitand_expr ( "bitxor" bitand_expr )*  (* level 8, left *)
+bitand_expr       ::= shift_expr ( "bitand" shift_expr )*    (* level 7, left *)
+                      (* MANDATORY PARENTHESES: two different bitwise families,
+                         or a bitwise operator with a shift, may not be mixed *)
+shift_expr        ::= additive_expr ( ( "shl" | "shr" ) additive_expr )*
+                                                             (* level 6, left *)
+additive_expr     ::= multiplicative_expr ( ( "+" | "-" ) multiplicative_expr )*
+                                                             (* level 5, left *)
+multiplicative_expr ::= unary_expr ( ( "*" | "/" | "div" | "mod" ) unary_expr )*
+                                                             (* level 4, left *)
+                      (* "/" on Integer operands is a compile-time error *)
+unary_expr        ::= ( "not" | "-" | "+" | "bitnot" ) unary_expr | power_expr
+                                                             (* level 3, prefix *)
+power_expr        ::= postfix_expr ( "^" power_expr )?      (* level 2, RIGHT *)
+postfix_expr      ::= primary ( call_suffix | index_suffix | member_suffix )*
+                                                             (* level 1, left *)
+call_suffix       ::= "(" argument_list ")"
+                      (* never empty: a call without arguments has no "()" *)
+argument_list     ::= argument ( "," argument )*
+argument          ::= expression | identifier ":=" expression
+                      (* "Field := Value" is named struct construction:
+                         TPoint(FX := 10, FY := 20); named only, any order *)
+index_suffix      ::= "[" expression ( "," expression )* "]"
+member_suffix     ::= "." identifier
+primary           ::= literal | identifier | "(" expression ")" | with_member
+
+(* ---------- Lexical elements (SECTION 08 / CANON-2) ---------- *)
+
+literal           ::= integer_literal | real_literal | string_literal
+                    | char_literal | bool_literal
+bool_literal      ::= "true" | "false"
+integer_literal   ::= decimal_digits | "$" hex_digits
+real_literal      ::= decimal_digits "." decimal_digits
+decimal_digits    ::= digit ( "_"? digit )*
+hex_digits        ::= hex_digit ( "_"? hex_digit )*
+                      (* "_" only between digits: never leading, trailing or doubled *)
+string_literal    ::= '"' string_char* '"'
+char_literal      ::= "'" unicode_scalar "'"
+identifier        ::= ( letter | "_" ) ( letter | digit | "_" )*
+                      (* case-insensitive; a reserved word is not an identifier *)
+comment           ::= "==" any_char_except_newline*
+                      (* line comments only; no block comments *)
+digit             ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+hex_digit         ::= digit | "A" | "B" | "C" | "D" | "E" | "F"
+letter            ::= (* a Unicode letter *)
+string_char       ::= (* any Unicode scalar except '"' and NEWLINE *)
+unicode_scalar    ::= (* U+0000..U+10FFFF excluding surrogates U+D800..U+DFFF *)
+any_char_except_newline ::= (* any character other than NEWLINE *)
+NEWLINE           ::= (* a line break *)
+EOF               ::= (* end of the source file *)
 ```
 
-Parser implementation may temporarily lag this mirror. Current conformance gaps are tracked in the Layer B status sections of `docs/INOX_CANONICAL.md`.
-```
+## Rules the grammar shape does not show
 
-(* Canonical zero-argument rule: empty parentheses are forbidden. *)
-(* A declaration without parameters omits the parameter list entirely. *)
-(* A call without arguments omits parentheses entirely. *)
+- Keywords and identifiers are case-insensitive; `Valor` and `valor` are the same
+  name (CANON-2).
+- `;` closes blocks; it is never a statement terminator. Only `;` closes a block
+  (CANON-2, CANON-4).
+- `:` appears only where a routine is declared and in `State :`. No control
+  structure uses `:` (CANON-4).
+- Empty parentheses never appear: not in declarations (`Main :`), not in calls
+  (`Report`, `Account.Print`), not in struct construction (`C TPoint` uses all
+  defaults) (CANON-7).
+- `leave` and `ensure` are reserved words; `break` and `finally` are ordinary
+  identifiers (ADR-0007).
+- `Var` is reserved and is not a declaration form: the old `Var ... ;` block was
+  removed (CANON-4, CANON-5).
+- Shadowing is forbidden in all scopes (SECTION 14).
+
+## Conformance gaps: parser versus this grammar (Layer B)
+
+Measured against the parser on 2026-10-09. Each item is an implementation gap
+to fix in the parser or the semantic analyzer, not a change to the language.
+
+1. Accepted but not canonical:
+   - `Var` blocks and `mut var` are still parsed (CANON-5 says the parser must
+     reject `Var` with a migration diagnostic).
+   - A scalar declared without an initializer (`C Integer`) is accepted
+     (CANON-5 rule 3 requires "scalar declaration requires initializer").
+   - A `:` block statement inside a routine body is parsed (CANON-4: `:` only
+     declares routines).
+   - Several names in one declaration (`A, B Integer := 2`) are accepted
+     (CANON-5 lists three forms only).
+   - `case` arms with comma-separated values (`1, 2 PutLn(...)`) are accepted
+     (multi-value arms are reserved for the future, with `|`).
+2. Canonical but not parsed:
+   - `for I in A..B` where `B` is not a primary expression
+     (`for I in 1..N + 1` is a parse error).
+   - Array and generic types in declarations (`Values Array[1..10] Integer`,
+     `Items Vector[Integer]`, `Suits Set[TCardSuit]`): a local declaration takes
+     a single type name.
+3. Not structurally parsed yet: `Type`, `Const` and `State` sections and routine
+   signatures are kept as token lists by the parser and interpreted later by the
+   semantic analyzer.
+4. Open item for the canonical table: CANON-20 does not list `in` and `..`.
