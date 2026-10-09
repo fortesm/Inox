@@ -155,3 +155,7 @@ dist/
 # Optional user-selected output directory for Inox-built programs
 /inox-out/
 inox-out/
+
+# Machine identity for agents (local only; see AGENTS.md "Machine identity").
+# The tracked template is .inox-machine.example.
+/.inox-machine

@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: MPL-2.0
+# Machine identity for AI agents working on Inox (template).
+#
+# Copy this file to `.inox-machine` in the repository root of each of Marcelo's
+# machines and replace every CHANGE-ME. `.inox-machine` is listed in .gitignore
+# and must never be committed: it describes one physical machine, not the
+# project. While `id` or `role` is CHANGE-ME, agents treat the machine as
+# unidentified.
+#
+# This file is local configuration, not project authority: it may restrict what
+# an agent does on this machine, never expand what AGENTS.md, the canonical
+# governance or Marcelo's current instructions allow (AGENTS.md, "Machine
+# identity").
+#
+# Format: one `key = value` per line; `#` starts a comment.
+
+# Short unique name, used in test reports and PR descriptions.
+# Examples: trabalho, casa
+id = CHANGE-ME
+
+# What the machine is for:
+#   work-test  machine at Marcelo's workplace, for implementation tests
+#   home-dev   machine at Marcelo's home, for day-to-day development
+role = CHANGE-ME
+
+# Examples: Windows 11 x64 / F:\Projetos\Inox
+os = CHANGE-ME
+repo_path = CHANGE-ME
+
+# Toolchain as installed on this machine (versions matter: CI uses others).
+# Examples: clang 22.1.6 (x86_64-pc-windows-msvc); MSVC Build Tools, CMake,
+# Ninja, PowerShell 7; windows-clang-msvc-debug;
+# pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1 -InoxExe .\build\windows-clang-msvc\Debug\inox.exe
+compiler = CHANGE-ME
+build_tools = CHANGE-ME
+build_preset = CHANGE-ME
+test_command = CHANGE-ME
+
+# Optional further restrictions for this machine (they can only narrow the
+# project rules). Example: no network access; do not run the fuzzer here.
+restrictions =
+
+notes =

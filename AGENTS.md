@@ -113,3 +113,34 @@ and `Account.Print`. Forms like `Main() :`, `Report() :`, `Report()`, and
 `Put` and `PutLn` accept one or more arguments. Emit arguments sequentially; do not require string concatenation. `PutLn` appends exactly one newline after the final argument. Examples: `Put("J=", J)`, `PutLn("Ciclo numero ", J)`, `PutLn("A", 10, "B", true)`.
 
 For `for` iterator conflicts with an existing symbol, prefer the diagnostic `loop iterator conflicts with existing symbol: Name`; keep `shadowing is forbidden` for general non-iterator shadowing.
+
+## Pull requests and merges
+
+- Never push directly to `main`. Every change goes through a branch and a pull
+  request.
+- A pull request is reviewed by an agent other than its author, and CI must be
+  green.
+- Only Marcelo merges, and only after he explicitly approves that merge.
+
+## Machine identity
+
+Marcelo works on Inox from more than one machine (for example, one at his
+workplace for implementation tests and one at home for development). Each of
+them has a file `.inox-machine` in the repository root, created from the
+tracked template `.inox-machine.example`. The file is in `.gitignore` and must
+never be committed or copied into tracked files.
+
+- `.inox-machine` is local machine configuration, not project authority. It
+  selects the machine identity and toolchain and may further restrict what an
+  agent does on that machine. It never expands what this file, the canonical
+  governance or Marcelo's current explicit instructions allow.
+- Do not create or modify `.inox-machine` unless Marcelo explicitly asks.
+- At the start of a session on a local checkout, read `.inox-machine` and apply
+  its `restrictions`.
+- If the file is absent, or its `id` or `role` is still `CHANGE-ME`, the machine
+  is unidentified: say so (you may be in CI or in a cloud environment) and do not
+  invent an identity.
+- Use its toolchain entries (`compiler`, `build_preset`, `test_command`) instead
+  of guessing; results differ between toolchains.
+- Name the machine (`id`) when reporting test results, in commit messages that
+  record a validation, and in pull request descriptions: "validated on: <id>".
