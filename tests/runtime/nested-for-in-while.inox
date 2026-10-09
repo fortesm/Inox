@@ -1,0 +1,19 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.21: a for loop nested in a while loop.
+Module Runtime.NestedForInWhile
+
+Main :
+    W Integer := 0
+    while W < 2
+        for J in 1..2
+            PutLn(W * 10 + J)
+        ;
+        W := W + 1
+    ;
+;

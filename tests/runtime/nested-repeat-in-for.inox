@@ -1,0 +1,20 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.21: a repeat loop nested in a for loop; until exits only the repeat.
+Module Runtime.NestedRepeatInFor
+
+Main :
+    for I in 1..2
+        R Integer := 0
+        repeat
+            R := R + 1
+            PutLn(I * 10 + R)
+            until R = 2
+        ;
+    ;
+;

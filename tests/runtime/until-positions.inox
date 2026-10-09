@@ -1,0 +1,93 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.21: `until` exits the nearest repeat wherever it appears in the repeat body:
+== at the start, in the middle, more than once, inside if/elif/else, and inside
+== loops nested in the repeat (CANON-11).
+Module Runtime.UntilPositions
+
+Main :
+    X Integer := 0
+    repeat
+        until X >= 3
+        X := X + 1
+    ;
+    PutLn("x ", X)
+
+    Y Integer := 0
+    repeat
+        Y := Y + 1
+        if Y = 1
+            PutLn("first")
+        elif Y = 4
+            until true
+        else
+            PutLn("y ", Y)
+        ;
+    ;
+    PutLn("y end ", Y)
+
+    Z Integer := 0
+    repeat
+        Z := Z + 1
+        until Z = 10
+        if Z > 1
+            if Z = 3
+                PutLn("z three")
+            else
+                until Z = 4
+            ;
+        ;
+    ;
+    PutLn("z end ", Z)
+
+    for I in 1..2
+        R Integer := 0
+        repeat
+            R := R + 1
+            if R = I
+                until true
+            ;
+        ;
+        PutLn(I, " ", R)
+    ;
+
+    == until inside a loop that belongs to the repeat exits the repeat
+    W Integer := 0
+    repeat
+        while W < 10
+            W := W + 1
+            until W = 2
+        ;
+        PutLn("unreachable")
+    ;
+    PutLn("w ", W)
+
+    F Integer := 0
+    repeat
+        for I in 1..5
+            F := F + 1
+            if I = 3
+                until true
+            ;
+        ;
+    ;
+    PutLn("f ", F)
+
+    == repeat inside repeat: each until exits its own nearest repeat
+    A Integer := 0
+    B Integer := 0
+    repeat
+        A := A + 1
+        repeat
+            B := B + 1
+            until B >= A
+        ;
+        until A = 3
+    ;
+    PutLn("rr ", A, " ", B)
+;

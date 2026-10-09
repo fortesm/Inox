@@ -1,0 +1,64 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.21: leave, continue and Return crossing ensure inside nested loops. A
+== transfer runs exactly the ensure clauses it crosses: leaving an inner loop
+== does not run the ensure of a try that encloses that inner loop.
+Module Integration.NestedLoopEnsureTransfers
+
+Main :
+    for I in 1..2
+        for J in 1..3
+            try
+                if J = 2
+                    continue
+                elif J = 3
+                    leave
+                ;
+                PutLn("body ", I, " ", J)
+            ensure
+                PutLn("ensure ", I, " ", J)
+            ;
+        ;
+    ;
+
+    for I in 1..2
+        try
+            for J in 1..5
+                if J = 2
+                    leave
+                ;
+                PutLn("inner ", I, " ", J)
+            ;
+            PutLn("after inner ", I)
+            if I = 1
+                continue
+            ;
+            PutLn("tail ", I)
+        ensure
+            PutLn("outer ensure ", I)
+        ;
+    ;
+
+    PutLn(Search(2))
+;
+
+Search(N Integer) Integer :
+    for I in 1..3
+        while true
+            try
+                if I = N
+                    Return I * 100
+                ;
+                leave
+            ensure
+                PutLn("search ensure ", I)
+            ;
+        ;
+    ;
+    Return 0
+;

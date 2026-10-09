@@ -76,6 +76,8 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - Do not use `git add .`; add only task-scoped paths.
 - Every language change must update code, tests, docs, `docs/site/index.html`, and ADRs when applicable.
 - If a feature is canonical but not implemented, record it as a conformance gap instead of changing the spec.
+- Lower every block (function bodies, loop bodies, `if`/`elif`/`else` branches, `try` regions) through the single statement dispatcher in the LLVM emitter. Do not add per-container lists of allowed statements; a construct that lowers in one block must lower in every block (v3.21).
+- Run `python tools/backend_gaps.py <inox>` after backend changes: 0 BUG is required, and with clang on PATH it also checks that the emitted IR is accepted.
 - Keep `stdlib/` portable across Windows and Linux. It must not depend on GC,
   unsafe features, or C interop.
 

@@ -1,0 +1,79 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.21: Retry, Raise and a handler that raises inside nested loops. Each Retry
+== runs the ensure once and restarts the try (not the loop); an exhausted Retry
+== runs the ensure and propagates; a new exception raised by a handler replaces
+== the handled one.
+Module Integration.NestedLoopRetryRaise
+
+Main :
+    for I in 1..2
+        N Integer := 0
+        J Integer := 0
+        while J < 2
+            try
+                N := N + 1
+                if N = 1
+                    Raise FileNotFound
+                ;
+                PutLn("ok ", I, " ", J, " ", N)
+            except
+                On FileNotFound
+                    PutLn("retry ", I, " ", J)
+                    Retry(3)
+                ;
+            ensure
+                PutLn("cleanup")
+            ;
+            J := J + 1
+        ;
+    ;
+
+    for I in 1..2
+        try
+            for J in 1..1
+                try
+                    PutLn("attempt ", I)
+                    Raise FileNotFound
+                except
+                    On FileNotFound
+                        Retry(1)
+                    ;
+                ensure
+                    PutLn("inner cleanup")
+                ;
+            ;
+        except
+            On IOError
+                PutLn("outer caught ", I)
+            ;
+        ;
+    ;
+
+    W Integer := 0
+    while W < 2
+        try
+            for K in 1..2
+                try
+                    Raise FileNotFound
+                except
+                    On FileNotFound
+                        Raise RangeError
+                    ;
+                ensure
+                    PutLn("handler cleanup ", W, " ", K)
+                ;
+            ;
+        except
+            On RangeError
+                PutLn("replaced ", W)
+            ;
+        ;
+        W := W + 1
+    ;
+;
