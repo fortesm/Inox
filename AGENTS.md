@@ -111,3 +111,20 @@ and `Account.Print`. Forms like `Main() :`, `Report() :`, `Report()`, and
 `Put` and `PutLn` accept one or more arguments. Emit arguments sequentially; do not require string concatenation. `PutLn` appends exactly one newline after the final argument. Examples: `Put("J=", J)`, `PutLn("Ciclo numero ", J)`, `PutLn("A", 10, "B", true)`.
 
 For `for` iterator conflicts with an existing symbol, prefer the diagnostic `loop iterator conflicts with existing symbol: Name`; keep `shadowing is forbidden` for general non-iterator shadowing.
+
+## Machine identity
+
+Marcelo works on Inox from more than one machine (for example, one at his
+workplace for implementation tests and one at home for development). Each of
+them has a file `.inox-machine` in the repository root, created from the
+tracked template `.inox-machine.example`. The file is in `.gitignore` and must
+never be committed or copied into tracked files.
+
+- At the start of a session on a local checkout, read `.inox-machine` and follow
+  its `role`, `allowed` and `not_allowed` entries.
+- Use its toolchain entries (`compiler`, `build_preset`, `test_command`) instead
+  of guessing; results differ between toolchains.
+- Name the machine (`id`) when reporting test results, in commit messages that
+  record a validation, and in pull request descriptions: "validated on: <id>".
+- If the file is absent, say so: you are in CI, in a cloud environment, or on a
+  machine that has not been identified yet. Do not invent an identity.
