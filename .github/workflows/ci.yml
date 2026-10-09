@@ -37,6 +37,8 @@ jobs:
         run: bash scripts/run-tests.sh build/linux-clang-debug/inox
       - name: Backend gaps (0 BUG, emitted IR checked by clang)
         run: python3 tools/backend_gaps.py build/linux-clang-debug/inox
+      - name: Exception state lifetime (every captured state released)
+        run: python3 tools/eh_state_balance.py build/linux-clang-debug/inox
 
   windows:
     name: Windows (clang, MSVC ABI, Debug)

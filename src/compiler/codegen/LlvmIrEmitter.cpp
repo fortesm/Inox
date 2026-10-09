@@ -737,6 +737,7 @@ private:
     void emitReturn(const ast::ReturnStatement& statement)
     {
         const std::string value = emitExpression(statement.expression());
+        emitReleaseHandlersLeftBy(0);
         if (!cleanupContexts_.empty()) {
             if (returnValueSlot_.empty()) {
                 throw CodegenError("internal error: Return cleanup requires a return-value slot");
@@ -753,6 +754,7 @@ private:
 
     void emitExit()
     {
+        emitReleaseHandlersLeftBy(0);
         if (!cleanupContexts_.empty()) {
             output_ << "  br label %" << cleanupContexts_.back().exitRequestTarget << "\n";
             const std::string dead = newDeadLabel("eh.after.exit");
@@ -782,11 +784,28 @@ private:
         return nullptr;
     }
 
+    // A nonlocal transfer (leave, continue, until, Return, Exit) that leaves a
+    // handler region abandons the exception that handler caught: release its
+    // state before the transfer, innermost first, as a handler that completes
+    // normally does. `targetLoopDepth` is the loop depth the transfer exits to;
+    // handlers of a try at that depth or deeper are left. Return and Exit pass 0
+    // (they leave every handler). The slot is nulled, so an exception raised
+    // later by an ensure on the way does not release it again.
+    void emitReleaseHandlersLeftBy(std::size_t targetLoopDepth)
+    {
+        for (auto it = handlerRegions_.rbegin(); it != handlerRegions_.rend(); ++it) {
+            if (it->loopDepthAtEntry >= targetLoopDepth) {
+                emitReleaseExceptionState(it->stateSlot);
+            }
+        }
+    }
+
     void emitLeaveTransfer()
     {
         if (loopTargets_.empty()) {
             throw CodegenError("leave outside loop");
         }
+        emitReleaseHandlersLeftBy(loopTargets_.size());
         if (const CleanupContext* cleanup = cleanupForLoopTransfer()) {
             output_ << "  br label %" << cleanup->leaveRequestTarget << "\n";
         } else {
@@ -801,6 +820,7 @@ private:
         if (loopTargets_.empty()) {
             throw CodegenError("continue outside loop");
         }
+        emitReleaseHandlersLeftBy(loopTargets_.size());
         if (const CleanupContext* cleanup = cleanupForLoopTransfer()) {
             output_ << "  br label %" << cleanup->continueRequestTarget << "\n";
         } else {
@@ -1050,6 +1070,7 @@ private:
         output_ << "  br i1 " << condition << ", label %" << exitTarget
                 << ", label %" << nextTarget << "\n\n";
         output_ << exitTarget << ":\n";
+        emitReleaseHandlersLeftBy(targetDepth);
         const CleanupContext* crossed = nullptr;
         for (auto it = cleanupContexts_.rbegin(); it != cleanupContexts_.rend(); ++it) {
             if (it->loopDepthAtEntry >= targetDepth) {
@@ -1368,7 +1389,9 @@ private:
             caughtExceptionStates_.push_back(stateSlot);
             bareRethrowTargets_.push_back(rethrowRequest);
             unwindTargets_.push_back(handlerUnwind);
+            handlerRegions_.push_back(HandlerRegion{stateSlot, loopDepthAtEntry});
             for (const auto& st : statement.exceptBody()) emitStatement(*st);
+            handlerRegions_.pop_back();
             unwindTargets_.pop_back();
             bareRethrowTargets_.pop_back();
             caughtExceptionStates_.pop_back();
@@ -1420,7 +1443,9 @@ private:
                     exceptionBindings_.emplace(normalize(handler.bindingName), stateSlot);
                 }
                 unwindTargets_.push_back(handlerUnwind);
+                handlerRegions_.push_back(HandlerRegion{stateSlot, loopDepthAtEntry});
                 for (const auto& st : handler.body) emitStatement(*st);
+                handlerRegions_.pop_back();
                 unwindTargets_.pop_back();
                 if (!handler.bindingName.empty()) {
                     exceptionBindings_.erase(normalize(handler.bindingName));
@@ -1439,7 +1464,9 @@ private:
                 bareRethrowTargets_.push_back(rethrowRequest);
                 retryContexts_.push_back(retryContext);
                 unwindTargets_.push_back(handlerUnwind);
+                handlerRegions_.push_back(HandlerRegion{stateSlot, loopDepthAtEntry});
                 for (const auto& st : statement.elseBody()) emitStatement(*st);
+                handlerRegions_.pop_back();
                 unwindTargets_.pop_back();
                 retryContexts_.pop_back();
                 bareRethrowTargets_.pop_back();
@@ -2745,6 +2772,13 @@ private:
     std::size_t slotCounter_ = 0;
     std::vector<LoopTargets> loopTargets_;
     std::vector<std::size_t> repeatLoopDepths_;
+    // Handler regions (On / Else bodies) being emitted, innermost last: the slot
+    // holding the caught exception state and the loop depth of their try.
+    struct HandlerRegion {
+        std::string stateSlot;
+        std::size_t loopDepthAtEntry = 0;
+    };
+    std::vector<HandlerRegion> handlerRegions_;
     std::vector<std::string> unwindTargets_;
     std::vector<std::string> caughtExceptionStates_;
     std::vector<std::string> bareRethrowTargets_;

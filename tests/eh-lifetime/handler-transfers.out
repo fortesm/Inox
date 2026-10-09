@@ -1,0 +1,12 @@
+leave
+continue cleanup 1
+continue cleanup 2
+until cleanup
+value cleanup
+7
+inner cleanup
+outer cleanup
+42
+quit cleanup
+handler loop 1
+done
