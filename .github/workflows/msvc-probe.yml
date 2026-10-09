@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: MPL-2.0
+# Probe: build the Inox compiler itself with Microsoft's cl.exe (MSVC) instead of
+# clang++, then run the PowerShell suite. Temporary branch-only workflow.
+name: MSVC cl.exe probe
+
+on:
+  push:
+    branches: [ci-msvc-probe]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-msvc:
+    name: Windows (cl.exe builds the compiler)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Developer environment (MSVC x64)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Toolchain versions
+        shell: pwsh
+        run: |
+          cl 2>&1 | Select-Object -First 1
+          clang --version | Select-Object -First 1
+      - name: Configure (cl.exe)
+        run: cmake -S . -B build/msvc -G "Ninja Multi-Config" -DCMAKE_CXX_COMPILER=cl
+      - name: Build (cl.exe, /W4 /permissive-)
+        run: cmake --build build/msvc --config Debug
+      - name: Test suite (known EH-v3.16a failures must match exactly)
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-tests.ps1 -InoxExe build/msvc/Debug/inox.exe *>&1 | Tee-Object -FilePath test-output.txt
+          python tools/ci_known_failures.py test-output.txt ci/windows-known-failures.txt
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msvc-test-output
+          path: test-output.txt
