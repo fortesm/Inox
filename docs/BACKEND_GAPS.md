@@ -65,12 +65,15 @@ Summary: GAP=4, OK=19
 
 ## Reading the table
 
-* **GAP** entries are legal Inox the backend does not lower yet.
+* **GAP** entries are legal Inox the backend does not lower yet. The count
+  refers to the probes in this table, not to every limitation of the backend
+  (for example, `Const` values are still limited to Integer and Bool literals).
 * v3.21 closed the loop-body group (`nested-for`, `while-in-for`,
   `for-in-while`, `repeat-in-for`, `loop-if-elif`, `loop-if-else`,
   `loop-local-var`): loop bodies and `if`/`elif`/`else` branches are lowered by
   the same statement dispatcher as any other block, so a construct that lowers in
-  one block lowers in every block.
+  one block lowers in every block context where semantic analysis accepts it
+  (context rules such as `until` only inside a repeat stay in the analyzer).
 * `until` is a transfer to an explicit target, its nearest repeat
   (`until-in-if`, `until-across-loop`): it may appear anywhere in the repeat
   body, including inside `if`, `try` and loops nested in the repeat, and it runs

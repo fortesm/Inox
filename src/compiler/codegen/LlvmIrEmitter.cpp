@@ -959,7 +959,7 @@ private:
 
         auto temporary = [this]() { return "%tmp" + std::to_string(nextTemporary_++); };
 
-        // CANON-11 `for in range`: both endpoints and the step are evaluated ONCE,
+        // SECTION 17 (LOOPS) `for in range`: both endpoints and the step are evaluated ONCE,
         // before the first iteration (start, end, step order). The direction comes
         // from the endpoints: A<B ascending, A>B descending, A=B runs once. The step
         // is a positive magnitude; a step <= 0 traps before the loop starts.
@@ -1052,7 +1052,7 @@ private:
         return false;
     }
 
-    // CANON-11 `until Condition` exits the nearest repeat when true, wherever it
+    // SECTION 17 (LOOPS) `until Condition` exits the nearest repeat when true, wherever it
     // appears in the repeat body: also inside if/elif/else, try, and loops nested
     // in the repeat. It is a transfer to an explicit target (the repeat), not to
     // the innermost loop: every ensure between the until and that repeat runs,

@@ -499,18 +499,31 @@ specification, ADRs, manual HTML, and tests.
 #     `loop-if-elif`, `loop-if-else`, `loop-local-var`.
 #   - `if` with any number of `elif` and an optional `else` lowers in every
 #     position as one chain of conditional branches joined at a single block.
-#   - `until` (CANON-11) lowers as a transfer to an explicit target, its nearest
+#   - `until` (SECTION 17 - LOOPS) lowers as a transfer to an explicit target, its nearest
 #     repeat, not to the innermost loop: it is lowered wherever it appears in the
 #     repeat body, including inside `if`, `try` and loops nested in the repeat,
 #     and it runs every `ensure` between it and that repeat, innermost first, and
 #     no other (requested in review by ChatGPT).
-#   - Bug fix: a `Float` local declared without an initializer emitted
-#     `store double 0`, invalid LLVM IR that surfaced only as "clang failed while
-#     building". It now starts at `0.0`.
+#   - Bug fix: a `Float`, `Float64` or `Float32` local declared without an
+#     initializer emitted `store double 0` / `store float 0`, invalid LLVM IR that
+#     surfaced only as "clang failed while building". It now starts at `0.0`
+#     (`Float32` found in review by ChatGPT).
+#   - Bug fix (found in review by ChatGPT, present since the transfers were
+#     lowered): a `leave`, `continue`, `until`, `Return` or `Exit` that left an
+#     exception handler (On, Else or plain except) never released the exception
+#     state the handler had caught; every such transfer leaked it. The emitter now
+#     tracks handler regions and releases, innermost first, the state of every
+#     handler the transfer leaves, before any crossed `ensure` runs; the slot is
+#     nulled so a later capture cannot release it twice. New tool
+#     `tools/eh_state_balance.py` links a program with a counting wrapper
+#     (`tools/eh_state_counter.cpp`, GNU ld `--wrap`, Linux) and requires captures
+#     = releases; fixture `tests/eh-lifetime/handler-transfers` (8 of 9 states
+#     leaked before the fix, 0 after).
 #   - `tools/backend_gaps.py` now also compiles the emitted IR with clang when
 #     clang is on PATH and reports a rejection as BUG (it found the bug above).
-#     New probes: `until-in-if`, `until-across-loop`, `float-uninit`.
-#     Measurement: 0 BUG, 4 GAP, 19 OK (was 11 GAP, 9 OK). Backend diagnostics
+#     New probes: `until-in-if`, `until-across-loop`, `float-uninit`,
+#     `float32-uninit`. Measurement: 0 BUG, 4 GAP, 20 OK (was 11 GAP, 9 OK). The
+#     GAP count refers to the probes, not to every backend limitation. Backend diagnostics
 #     for `case` and `unless` now name the construct.
 #   - Tests: the fixture `tests/diagnostics/backend-gap-nested-for` became the
 #     runtime test `nested-for-in-for`; new runtime tests for every closed gap and
@@ -531,9 +544,14 @@ specification, ADRs, manual HTML, and tests.
 #     the MSVC exception bridge lands; they are listed in
 #     `ci/windows-known-failures.txt`.
 #   - CI: `.github/workflows/ci.yml` builds and tests every pull request on Linux
-#     (full suite + backend gaps) and on Windows with the MSVC ABI, where any
-#     failure outside `ci/windows-known-failures.txt` fails the job
-#     (`tools/ci_known_failures.py`).
+#     (full suite, backend gaps, exception state lifetime) and on Windows with the
+#     MSVC ABI (windows-2022, clang 19.1.5). On Windows the set of failing tests
+#     must EQUAL `ci/windows-known-failures.txt` (`tools/ci_known_failures.py`):
+#     an unlisted failure or a listed test that passes fails the job. The list
+#     describes that runner only; on it `fault-not-catchable` and
+#     `nested-loop-ensure-transfers` pass, while on the maintainer's machine
+#     (clang 22.1.6) the 13 EH-v3.16a failures were measured. Toolchain variation
+#     is recorded here, not hidden in the list.
 #
 # v3.20 — 2026-10-09 — keyword rename approved by Marcelo Fortes on 2026-10-09
 #         (lexical change only; no semantic change). Recorded as ADR-0007.
