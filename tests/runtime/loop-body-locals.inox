@@ -6,7 +6,7 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == v3.21: locals declared in loop bodies are re-initialized on every iteration,
-== including a declared-but-uninitialized Integer and Float (zero). Sibling scopes
+== including a declared-but-uninitialized Integer, Float and Float32 (zero). Sibling scopes
 == reuse the same names (former backend gap loop-local-var).
 Module Runtime.LoopBodyLocals
 
@@ -21,6 +21,8 @@ Main :
         F Float
         F := F + 0.5
         PutLn(F)
+        G Float32
+        H Float32 := G
     ;
     for I in 1..2
         X Integer := I + 100
