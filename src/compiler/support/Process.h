@@ -26,6 +26,12 @@ namespace inox::compiler::support {
 // (used for probes like `clang --version`); otherwise they are inherited.
 int runProcess(const std::vector<std::string>& args, bool captureToNull = false);
 
+// Like runProcess, but the child's stdout and stderr are both written to the
+// file `outputPath` (created or truncated), so the caller can report what a tool
+// such as clang printed when it failed. Returns the child's exit code, or -1 if
+// the file could not be opened or the process could not be started.
+int runProcessCapturingOutput(const std::vector<std::string>& args, const std::string& outputPath);
+
 // True if `command` can be executed (probed via `command --version`), with all
 // output discarded. No shell is involved.
 bool commandExists(std::string_view command);

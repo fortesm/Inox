@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.21 (Layer B: compositional statement lowering in the LLVM
-#          backend; nested loops and if/elif/else in loop bodies are lowered)
+# Version: v3.22 (Layer B: the driver reports the toolchain's own diagnostics
+#          when clang fails)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,21 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.22 — 2026-10-09 — toolchain diagnostics in the driver (Layer B only; no
+#         language change).
+#   - `--build`/`--run`: when clang (or the linker it drives) fails, the error now
+#     says which tool failed, its exit code and up to 40 lines of what it printed,
+#     and points to the full log `<output dir>/<name>.toolchain.log`. Before, the
+#     output was discarded and the user saw only "clang failed while building",
+#     which hid the invalid-IR bug fixed in v3.21. The log is removed after a
+#     successful build.
+#   - `support::runProcessCapturingOutput` runs a process with stdout and stderr
+#     redirected to a file (POSIX `posix_spawn` file actions; Windows inherited
+#     file handle); `runProcess` shares the implementation.
+#   - Test (both runners): `run-hello --build (toolchain diagnostics)` provokes a
+#     link failure portably (a directory occupies the executable path) and checks
+#     that the linker's own message is shown. Linux 322/322 (sh and ps1).
 #
 # v3.21 — 2026-10-09 — compositional statement lowering (Layer B only; no
 #         language change). Prioritized by Marcelo Fortes on 2026-10-09;

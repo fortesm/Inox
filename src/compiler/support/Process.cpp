@@ -87,7 +87,13 @@ std::wstring widen(const std::string& narrow)
 
 } // namespace
 
-int runProcess(const std::vector<std::string>& args, bool captureToNull)
+namespace {
+
+// Shared Windows implementation. `redirectPath` empty: inherit the console;
+// otherwise stdout and stderr go to that path (NUL, or a file that is created
+// or truncated).
+int runProcessWindows(const std::vector<std::string>& args, const std::wstring& redirectPath,
+                      bool createFile)
 {
     if (args.empty()) {
         return -1;
@@ -107,14 +113,21 @@ int runProcess(const std::vector<std::string>& args, bool captureToNull)
     STARTUPINFOW startupInfo{};
     startupInfo.cb = sizeof(startupInfo);
 
+    const bool redirect = !redirectPath.empty();
     HANDLE nullHandle = INVALID_HANDLE_VALUE;
-    if (captureToNull) {
+    if (redirect) {
         SECURITY_ATTRIBUTES sa{};
         sa.nLength = sizeof(sa);
         sa.bInheritHandle = TRUE;
-        nullHandle = CreateFileW(L"NUL", GENERIC_WRITE, FILE_SHARE_WRITE,
-                                 &sa, OPEN_EXISTING, 0, nullptr);
-        if (nullHandle != INVALID_HANDLE_VALUE) {
+        nullHandle = CreateFileW(redirectPath.c_str(), GENERIC_WRITE,
+                                 FILE_SHARE_READ | FILE_SHARE_WRITE, &sa,
+                                 createFile ? CREATE_ALWAYS : OPEN_EXISTING,
+                                 FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (nullHandle == INVALID_HANDLE_VALUE) {
+            if (createFile) {
+                return -1;
+            }
+        } else {
             startupInfo.dwFlags |= STARTF_USESTDHANDLES;
             startupInfo.hStdOutput = nullHandle;
             startupInfo.hStdError = nullHandle;
@@ -132,7 +145,7 @@ int runProcess(const std::vector<std::string>& args, bool captureToNull)
         mutableCommandLine.data(),
         nullptr,
         nullptr,
-        captureToNull ? TRUE : FALSE,
+        redirect ? TRUE : FALSE,
         0,
         nullptr,
         nullptr,
@@ -158,9 +171,29 @@ int runProcess(const std::vector<std::string>& args, bool captureToNull)
     return static_cast<int>(exitCode);
 }
 
-#else // POSIX
+} // namespace
 
 int runProcess(const std::vector<std::string>& args, bool captureToNull)
+{
+    return runProcessWindows(args, captureToNull ? std::wstring(L"NUL") : std::wstring(), false);
+}
+
+int runProcessCapturingOutput(const std::vector<std::string>& args, const std::string& outputPath)
+{
+    if (outputPath.empty()) {
+        return -1;
+    }
+    return runProcessWindows(args, widen(outputPath), true);
+}
+
+#else // POSIX
+
+namespace {
+
+// Shared POSIX implementation. `redirectPath` null: inherit stdout/stderr;
+// otherwise both go to that path (the null device, or a file that is created
+// or truncated).
+int runProcessPosix(const std::vector<std::string>& args, const char* redirectPath, bool createFile)
 {
     if (args.empty()) {
         return -1;
@@ -178,15 +211,14 @@ int runProcess(const std::vector<std::string>& args, bool captureToNull)
 
     posix_spawn_file_actions_t actions;
     posix_spawn_file_actions_t* actionsPtr = nullptr;
-    if (captureToNull) {
+    if (redirectPath != nullptr) {
         if (posix_spawn_file_actions_init(&actions) == 0) {
-            posix_spawn_file_actions_addopen(
-                &actions, STDOUT_FILENO, nullDevicePath().data(),
-                O_WRONLY, 0);
-            posix_spawn_file_actions_addopen(
-                &actions, STDERR_FILENO, nullDevicePath().data(),
-                O_WRONLY, 0);
+            const int flags = createFile ? (O_WRONLY | O_CREAT | O_TRUNC) : O_WRONLY;
+            posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, redirectPath, flags, 0644);
+            posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO, STDERR_FILENO);
             actionsPtr = &actions;
+        } else if (createFile) {
+            return -1;
         }
     }
 
@@ -217,6 +249,21 @@ int runProcess(const std::vector<std::string>& args, bool captureToNull)
         return 128 + WTERMSIG(status);
     }
     return -1;
+}
+
+} // namespace
+
+int runProcess(const std::vector<std::string>& args, bool captureToNull)
+{
+    return runProcessPosix(args, captureToNull ? nullDevicePath().data() : nullptr, false);
+}
+
+int runProcessCapturingOutput(const std::vector<std::string>& args, const std::string& outputPath)
+{
+    if (outputPath.empty()) {
+        return -1;
+    }
+    return runProcessPosix(args, outputPath.c_str(), true);
 }
 
 #endif

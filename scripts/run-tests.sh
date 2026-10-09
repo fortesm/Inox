@@ -254,6 +254,33 @@ run_build_driver_test() {
     fi
 }
 
+# The driver must show the toolchain's own diagnostics when clang fails. The
+# failure is provoked portably: a directory occupies the executable path, so the
+# link step cannot write its output.
+run_toolchain_failure_test() {
+    local test_file="$1"
+    local rel stem out_dir actual exit_code
+    rel="$(relative_path "$test_file")"
+
+    if ! command -v clang >/dev/null 2>&1; then
+        echo "[SKIP] $rel --build (toolchain diagnostics; clang not found)"
+        return 0
+    fi
+
+    stem="$(basename "$test_file" .inox)"
+    out_dir="$(mktemp -d)"
+    mkdir -p "$out_dir/$stem" "$out_dir/$stem.exe"
+    actual="$(INOX_OUTPUT_DIR="$out_dir" "$inox_exe" --build "$test_file" 2>&1 >/dev/null)"
+    exit_code=$?
+    rm -rf "$out_dir"
+    if [[ $exit_code -ne 0 && "$actual" == *"failed while building"* &&
+          "$actual" == *"linker command failed"* && "$actual" == *"full toolchain output"* ]]; then
+        record_pass "$rel --build (toolchain diagnostics)"
+    else
+        record_fail "$rel --build (toolchain diagnostics)" "exit code: $exit_code" "actual error: $actual"
+    fi
+}
+
 run_driver_execution_test() {
     local test_file="$1"
     local expected_file="$2"
@@ -491,6 +518,7 @@ run_llvm_emission_test "$repo_root/tests/codegen/llvm-exceptions-retry-smoke.ino
 
 run_linked_execution_test "$repo_root/tests/integration/output-basic.inox" "$repo_root/tests/integration/output-basic.out"
 run_build_driver_test "$repo_root/tests/integration/run-hello.inox"
+run_toolchain_failure_test "$repo_root/tests/integration/run-hello.inox"
 run_driver_execution_test "$repo_root/tests/integration/run-hello.inox" "$repo_root/tests/integration/run-hello.out"
 run_driver_execution_test "$repo_root/tests/integration/exceptions/typed-ensure.inox" "$repo_root/tests/integration/exceptions/typed-ensure.out"
 run_driver_execution_test "$repo_root/tests/integration/exceptions/rethrow.inox" "$repo_root/tests/integration/exceptions/rethrow.out"
