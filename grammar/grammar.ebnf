@@ -32,13 +32,16 @@ receiver_param  ::= "Self" "mut"? ("," normal_param)*
 normal_param    ::= identifier type_name
 return_type     ::= type_name
 
-statement       ::= local_decl | var_block | if_stmt | while_stmt | repeat_stmt
+statement       ::= local_decl | var_block | if_stmt | unless_stmt | while_stmt | repeat_stmt
                   | until_stmt | for_stmt | case_stmt | try_stmt | raise_stmt | retry_stmt
                   | return_stmt | exit_stmt | leave_stmt | continue_stmt | expression_stmt
 
 if_stmt         ::= "if" expression NEWLINE statement* elif_clause* else_clause? ";"
 elif_clause     ::= "elif" expression NEWLINE statement*
 else_clause     ::= "else" NEWLINE statement*
+
+unless_stmt     ::= "unless" expression NEWLINE statement* ";"
+                  (* negated guard: the body runs when the condition is false; no elif/else *)
 
 while_stmt      ::= "while" expression NEWLINE statement* ";"
 repeat_stmt     ::= "repeat" statement* ";"

@@ -876,6 +876,23 @@ private:
         output_ << endTarget << ":\n";
     }
 
+    // SECTION 17 `unless Condition`: a negated single-condition guard. The body
+    // runs when the condition is false; it has no elif/else. The body is lowered
+    // by the general dispatcher like any other block.
+    void emitUnless(const ast::UnlessStatement& statement)
+    {
+        const std::size_t label = nextLabel_++;
+        const std::string bodyTarget = "unlessbody" + std::to_string(label);
+        const std::string endTarget = "unlessend" + std::to_string(label);
+        const std::string condition = emitExpression(statement.condition());
+        output_ << "  br i1 " << condition << ", label %" << endTarget
+                << ", label %" << bodyTarget << "\n\n";
+        output_ << bodyTarget << ":\n";
+        emitAssignmentBranch(statement.body());
+        output_ << "  br label %" << endTarget << "\n\n";
+        output_ << endTarget << ":\n";
+    }
+
     void emitAssignmentBranch(const std::vector<ast::StatementPtr>& statements)
     {
         for (const auto& statement : statements) {
@@ -1650,6 +1667,11 @@ private:
             return;
         }
 
+        if (statement.kind() == ast::AstNodeKind::UnlessStatement) {
+            emitUnless(static_cast<const ast::UnlessStatement&>(statement));
+            return;
+        }
+
         if (statement.kind() == ast::AstNodeKind::WhileStatement) {
             emitWhile(static_cast<const ast::WhileStatement&>(statement));
             return;
@@ -1712,9 +1734,6 @@ private:
 
         if (statement.kind() == ast::AstNodeKind::CaseStatement) {
             throw CodegenUnsupported("LLVM emission does not lower case statements yet");
-        }
-        if (statement.kind() == ast::AstNodeKind::UnlessStatement) {
-            throw CodegenUnsupported("LLVM emission does not lower unless statements yet");
         }
         throw CodegenUnsupported("LLVM emission does not lower this statement kind yet");
     }

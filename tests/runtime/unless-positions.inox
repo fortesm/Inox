@@ -1,0 +1,67 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== `unless Condition` runs its body only when the condition is false (canonical
+== SECTION 17). It composes like any block: in loops, nested in if/unless, with
+== leave/continue/until/Return/Exit inside it.
+Module Runtime.UnlessPositions
+
+Main :
+    unless false
+        PutLn("runs when false")
+    ;
+    unless true
+        PutLn("unreachable")
+    ;
+
+    for I in 1..5
+        unless I mod 2 = 0
+            continue
+        ;
+        PutLn("even ", I)
+        unless I < 4
+            leave
+        ;
+    ;
+
+    X Integer := 0
+    repeat
+        X := X + 1
+        unless X < 3
+            until true
+        ;
+    ;
+    PutLn("x ", X)
+
+    if X = 3
+        unless X > 5
+            unless X = 0
+                PutLn("nested")
+            ;
+        ;
+    ;
+
+    PutLn(Sign(-4))
+    PutLn(Sign(9))
+    Report(false)
+    Report(true)
+;
+
+Sign(N Integer) Integer :
+    unless N >= 0
+        Return -1
+    ;
+    Return 1
+;
+
+Report(Quiet Bool) :
+    unless Quiet
+        PutLn("report")
+        Exit
+    ;
+    PutLn("quiet")
+;

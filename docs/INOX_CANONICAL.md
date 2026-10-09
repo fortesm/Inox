@@ -9,8 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.22 (Layer B: the driver reports the toolchain's own diagnostics
-#          when clang fails)
+# Version: v3.23 (Layer B: `unless` is lowered by the LLVM backend)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +486,17 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.23 — 2026-10-09 — `unless` lowered (Layer B only; no language change).
+#   - The LLVM emitter lowers `unless Condition` (SECTION 17): the body runs when
+#     the condition is false. It goes through the general statement dispatcher,
+#     so it composes in every accepted block context (loops, nested if/unless,
+#     with leave/continue/until/Return/Exit inside). Closes backend gap `unless`
+#     (`tools/backend_gaps.py`: 0 BUG, 3 GAP, 21 OK).
+#   - `grammar/grammar.ebnf` was missing `unless_stmt`; added.
+#     `examples/control-flow.inox` now uses `unless`.
+#   - Test: `tests/runtime/unless-positions` (expected output written from the
+#     rules).
 #
 # v3.22 — 2026-10-09 — toolchain diagnostics in the driver (Layer B only; no
 #         language change).
@@ -1979,7 +1989,11 @@ Single-line arms allowed: `Club PutLn("club")`.
   for future versions.
 
 ### unless
-Negated single-condition guard (parsed; lowering incremental).
+Negated single-condition guard: `unless Condition` runs its body only when the
+condition is false. No `elif`/`else`. Lowered since v3.23.
+    unless Done
+        Work
+    ;
 
 
 # ============================================================================
@@ -2486,14 +2500,13 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
 - `case`/`otherwise` (AST present; LLVM lowering incomplete; exhaustiveness off).
-- `unless` (parsed; not lowered).
 - Enum short/block forms (parsed; not lowered; strict-init not enforced).
 
 ## B-GAPS. CONFORMANCE GAPS (Layer A says it should exist; code doesn't yet)
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  `case`, `unless`, module `State` in expressions, `String` locals, and a
+  `case`, module `State` in expressions, `String` locals, and a
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
@@ -2811,14 +2824,13 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
 - `case`/`otherwise` (AST present; LLVM lowering incomplete; exhaustiveness off).
-- `unless` (parsed; not lowered).
 - Enum short/block forms (parsed; not lowered; strict-init not enforced).
 
 ## B-GAPS. CONFORMANCE GAPS (Layer A says it should exist; code doesn't yet)
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  `case`, `unless`, module `State` in expressions, `String` locals, and a
+  `case`, module `State` in expressions, `String` locals, and a
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.

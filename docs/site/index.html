@@ -270,6 +270,10 @@ elif X &lt; 0
 else
     PutLn(&quot;zero&quot;)
 ;</code></pre>
+<p><code>unless</code> is a negated guard: its body runs only when the condition is false. It has no <code>elif</code>/<code>else</code>:</p>
+<pre><code>unless Done
+    PutLn(&quot;still working&quot;)
+;</code></pre>
 <p><code>while</code> uses no <code>do</code> and no <code>:</code>:</p>
 <pre><code>while X &gt; 0
     X := X - 1

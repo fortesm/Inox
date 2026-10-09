@@ -8,8 +8,8 @@
 == Canonical control-flow forms. Note: control structures use NO ':' .
 == The ':' is exclusive to function/subroutine declaration.
 == Blocks open on the newline after the header and close with ';'.
-== NOTE (aspirational): 'unless' is canonical but not yet lowered by the
-== current compiler; it is kept here to document the canonical form.
+== NOTE: 'case' is canonical but not yet lowered by the LLVM backend
+== (docs/BACKEND_GAPS.md); it is kept here to document the canonical form.
 
 Module ControlFlow
 
@@ -22,6 +22,10 @@ Main :
         PutLn("positive")
     else
         PutLn("negative")
+    ;
+
+    unless I > 0
+        PutLn("not positive")
     ;
 
     while I < 3

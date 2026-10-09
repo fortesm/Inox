@@ -7,7 +7,8 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 
 Status: measured on 2026-10-09 against v3.18, re-measured against v3.20
 (keyword rename only; results unchanged) and against v3.21 (compositional
-statement lowering: 7 gaps closed, 3 probes added, none of them a gap). Layer B — describes the
+statement lowering: 7 gaps closed, 3 probes added, none of them a gap) and
+v3.23 (`unless` lowered). Layer B — describes the
 implementation, not the language.
 
 ## Why this file exists
@@ -47,10 +48,11 @@ which is invalid IR (fixed in v3.21; probe `float-uninit`).
 | `until-in-if` | until inside if within repeat | **OK** |  |
 | `until-across-loop` | until with a loop between it and its repeat | **OK** |  |
 | `float-uninit` | Float local declared without initializer | **OK** |  |
+| `float32-uninit` | Float32 local declared without initializer | **OK** |  |
 | `nested-if` | if inside if (straight-line code) | **OK** |  |
 | `const-use` | module Const used in an expression | **OK** |  |
 | `case` | case statement | **GAP** | LLVM emission does not lower case statements yet |
-| `unless` | unless statement | **GAP** | LLVM emission does not lower unless statements yet |
+| `unless` | unless statement | **OK** |  |
 | `string-local` | String local variable | **GAP** | unsupported expression in function: Main |
 | `bool-local` | Boolean local variable | **OK** |  |
 | `float-arith` | Float arithmetic | **OK** |  |
@@ -61,7 +63,7 @@ which is invalid IR (fixed in v3.21; probe `float-uninit`).
 | `try-in-for` | try/except inside a loop body | **OK** |  |
 | `state-global` | State section variable | **GAP** | unsupported expression in function: Main |
 
-Summary: GAP=4, OK=19
+Summary: GAP=3, OK=21
 
 ## Reading the table
 
@@ -81,7 +83,7 @@ Summary: GAP=4, OK=19
 * `state-global`: semantic analysis resolves module `State` names, but the
   emitter does not yet receive their storage. `const-use` was in the same
   situation and was closed by P-C stage 1 (below).
-* `case` and `unless` are also listed in CANON B-PARSED.
+* `case` is also listed in CANON B-PARSED. `unless` is lowered since v3.23.
 
 ## Direction (DECISION P-C, approved 2026-10-09)
 
