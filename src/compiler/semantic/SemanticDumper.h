@@ -222,9 +222,9 @@ private:
                     dumpStatements(tryStatement.elseBody(), depth + 2);
                 }
             }
-            if (tryStatement.hasFinally()) {
-                line(depth, "Finally");
-                dumpStatements(tryStatement.finallyBody(), depth + 1);
+            if (tryStatement.hasEnsure()) {
+                line(depth, "Ensure");
+                dumpStatements(tryStatement.ensureBody(), depth + 1);
             }
             break;
         }
@@ -249,8 +249,8 @@ private:
         case ast::AstNodeKind::ExitStatement:
             line(depth, "Exit");
             break;
-        case ast::AstNodeKind::BreakStatement:
-            line(depth, "Break");
+        case ast::AstNodeKind::LeaveStatement:
+            line(depth, "Leave");
             break;
         case ast::AstNodeKind::ContinueStatement:
             line(depth, "Continue");

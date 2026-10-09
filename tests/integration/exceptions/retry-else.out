@@ -1,7 +1,7 @@
 attempt 1
 else-handler
-inner-finally
+inner-ensure
 attempt 2
 else-handler
-inner-finally
+inner-ensure
 outer-io

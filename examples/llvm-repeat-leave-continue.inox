@@ -5,10 +5,23 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module Diagnostics.ForStepNegativeConstant
+Module RepeatLeaveContinue
+
+FindValue(N Integer) Integer :
+    I := N
+    repeat
+        I := I - 1
+        if I = 3
+            continue
+        ;
+        if I = 1
+            leave
+        ;
+        until I = 0
+    ;
+    Return I
+;
 
 Main :
-    for I in 1..3(-2)
-        Leave
-    ;
+    PutLn(FindValue(5))
 ;

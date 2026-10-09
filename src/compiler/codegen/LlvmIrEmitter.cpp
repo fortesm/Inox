@@ -637,7 +637,7 @@ private:
     const semantic::SemanticResult& semantics_;
     struct LoopTargets {
         std::string continueTarget;
-        std::string breakTarget;
+        std::string leaveTarget;
     };
 
     struct RetryContext {
@@ -651,10 +651,10 @@ private:
         std::string actionSlot;
         std::string returnRequestTarget;
         std::string exitRequestTarget;
-        std::string breakRequestTarget;
+        std::string leaveRequestTarget;
         std::string continueRequestTarget;
         std::size_t loopDepthAtEntry = 0;
-        std::string breakDestination;
+        std::string leaveDestination;
         std::string continueDestination;
     };
 
@@ -777,17 +777,17 @@ private:
         return nullptr;
     }
 
-    void emitBreakTransfer()
+    void emitLeaveTransfer()
     {
         if (loopTargets_.empty()) {
-            throw CodegenError("break outside loop");
+            throw CodegenError("leave outside loop");
         }
         if (const CleanupContext* cleanup = cleanupForLoopTransfer()) {
-            output_ << "  br label %" << cleanup->breakRequestTarget << "\n";
+            output_ << "  br label %" << cleanup->leaveRequestTarget << "\n";
         } else {
-            output_ << "  br label %" << currentLoopTargets().breakTarget << "\n";
+            output_ << "  br label %" << currentLoopTargets().leaveTarget << "\n";
         }
-        const std::string dead = newDeadLabel("eh.after.break");
+        const std::string dead = newDeadLabel("eh.after.leave");
         output_ << "\n" << dead << ":\n";
     }
 
@@ -1021,8 +1021,8 @@ private:
                 emitTry(static_cast<const ast::TryStatement&>(statement));
                 continue;
             }
-            if (statement.kind() == ast::AstNodeKind::BreakStatement) {
-                output_ << "  br label %" << currentLoopTargets().breakTarget << '\n';
+            if (statement.kind() == ast::AstNodeKind::LeaveStatement) {
+                output_ << "  br label %" << currentLoopTargets().leaveTarget << '\n';
                 terminated = true;
                 continue;
             }
@@ -1052,7 +1052,7 @@ private:
             }
 
             throw CodegenUnsupported(
-                "LLVM emission currently supports only assignments, if, break, continue, and until in repeat bodies");
+                "LLVM emission currently supports only assignments, if, leave, continue, and until in repeat bodies");
         }
 
         return terminated;
@@ -1064,7 +1064,7 @@ private:
         for (const auto& statement : statements) {
             if (terminated) {
                 throw CodegenUnsupported(
-                    "LLVM emission does not support statements after break or continue");
+                    "LLVM emission does not support statements after leave or continue");
             }
             terminated = emitLoopStatement(*statement);
         }
@@ -1086,8 +1086,8 @@ private:
             emitTry(static_cast<const ast::TryStatement&>(statement));
             return false;
         }
-        if (statement.kind() == ast::AstNodeKind::BreakStatement) {
-            output_ << "  br label %" << currentLoopTargets().breakTarget << '\n';
+        if (statement.kind() == ast::AstNodeKind::LeaveStatement) {
+            output_ << "  br label %" << currentLoopTargets().leaveTarget << '\n';
             return true;
         }
         if (statement.kind() == ast::AstNodeKind::ContinueStatement) {
@@ -1096,7 +1096,7 @@ private:
         }
 
         throw CodegenUnsupported(
-            "LLVM emission currently supports only assignments, if, break, and continue in loop bodies");
+            "LLVM emission currently supports only assignments, if, leave, and continue in loop bodies");
     }
 
     void emitLoopIf(const ast::IfStatement& statement)
@@ -1123,7 +1123,7 @@ private:
     {
         if (loopTargets_.empty()) {
             throw CodegenError(
-                "LLVM emission supports break and continue only inside loops");
+                "LLVM emission supports leave and continue only inside loops");
         }
         return loopTargets_.back();
     }
@@ -1322,39 +1322,39 @@ private:
         const std::string dispatch = "eh.dispatch" + std::to_string(id);
         const std::string handlerUnwind = "eh.handler.lpad" + std::to_string(id);
         const std::string handlerUnwindCaptured = "eh.handler.captured" + std::to_string(id);
-        const std::string finallyLabel = "eh.finally" + std::to_string(id);
-        const std::string finallyUnwind = "eh.finally.lpad" + std::to_string(id);
-        const std::string finallyUnwindCaptured = "eh.finally.captured" + std::to_string(id);
-        const std::string afterFinally = "eh.after.finally" + std::to_string(id);
+        const std::string ensureLabel = "eh.ensure" + std::to_string(id);
+        const std::string ensureUnwind = "eh.ensure.lpad" + std::to_string(id);
+        const std::string ensureUnwindCaptured = "eh.ensure.captured" + std::to_string(id);
+        const std::string afterEnsure = "eh.after.ensure" + std::to_string(id);
         const std::string retryPerform = "eh.retry.perform" + std::to_string(id);
         const std::string rethrowRequest = "eh.rethrow.request" + std::to_string(id);
         const std::string returnRequest = "eh.return.request" + std::to_string(id);
         const std::string exitRequest = "eh.exit.request" + std::to_string(id);
-        const std::string breakRequest = "eh.break.request" + std::to_string(id);
+        const std::string leaveRequest = "eh.leave.request" + std::to_string(id);
         const std::string continueRequest = "eh.loop.continue.request" + std::to_string(id);
         const std::string returnPerform = "eh.return.perform" + std::to_string(id);
         const std::string exitPerform = "eh.exit.perform" + std::to_string(id);
-        const std::string breakPerform = "eh.break.perform" + std::to_string(id);
+        const std::string leavePerform = "eh.leave.perform" + std::to_string(id);
         const std::string continuePerform = "eh.loop.continue.perform" + std::to_string(id);
         const std::string continueLabel = "eh.continue" + std::to_string(id);
         const std::string rethrowLabel = "eh.rethrow" + std::to_string(id);
-        const std::string handledLabel = statement.hasFinally() ? finallyLabel : continueLabel;
-        const std::string cleanupForRetry = statement.hasFinally() ? finallyLabel : retryPerform;
+        const std::string handledLabel = statement.hasEnsure() ? ensureLabel : continueLabel;
+        const std::string cleanupForRetry = statement.hasEnsure() ? ensureLabel : retryPerform;
 
         const std::size_t loopDepthAtEntry = loopTargets_.size();
-        const std::string breakDestination = loopTargets_.empty() ? std::string{} : loopTargets_.back().breakTarget;
+        const std::string leaveDestination = loopTargets_.empty() ? std::string{} : loopTargets_.back().leaveTarget;
         const std::string continueDestination = loopTargets_.empty() ? std::string{} : loopTargets_.back().continueTarget;
         const std::string outerReturnRequest = cleanupContexts_.empty()
             ? std::string{} : cleanupContexts_.back().returnRequestTarget;
         const std::string outerExitRequest = cleanupContexts_.empty()
             ? std::string{} : cleanupContexts_.back().exitRequestTarget;
 
-        std::string outerBreakRequest;
+        std::string outerLeaveRequest;
         std::string outerContinueRequest;
         if (loopDepthAtEntry != 0) {
             for (auto it = cleanupContexts_.rbegin(); it != cleanupContexts_.rend(); ++it) {
                 if (it->loopDepthAtEntry >= loopDepthAtEntry) {
-                    outerBreakRequest = it->breakRequestTarget;
+                    outerLeaveRequest = it->leaveRequestTarget;
                     outerContinueRequest = it->continueRequestTarget;
                     break;
                 }
@@ -1365,10 +1365,10 @@ private:
             actionSlot,
             returnRequest,
             exitRequest,
-            breakRequest,
+            leaveRequest,
             continueRequest,
             loopDepthAtEntry,
-            breakDestination,
+            leaveDestination,
             continueDestination};
 
         output_ << "  " << stateSlot << " = alloca ptr\n";
@@ -1379,7 +1379,7 @@ private:
         output_ << "  store i32 0, ptr " << actionSlot << "\n";
         output_ << "  br label %" << bodyLabel << "\n\n";
 
-        if (statement.hasFinally()) {
+        if (statement.hasEnsure()) {
             cleanupContexts_.push_back(cleanupContext);
         }
 
@@ -1494,40 +1494,40 @@ private:
 
         output_ << rethrowRequest << ":\n";
         output_ << "  store i32 1, ptr " << actionSlot << "\n";
-        output_ << "  br label %" << (statement.hasFinally() ? finallyLabel : rethrowLabel) << "\n\n";
+        output_ << "  br label %" << (statement.hasEnsure() ? ensureLabel : rethrowLabel) << "\n\n";
 
-        if (statement.hasFinally()) {
+        if (statement.hasEnsure()) {
             output_ << returnRequest << ":\n";
             output_ << "  store i32 3, ptr " << actionSlot << "\n";
-            output_ << "  br label %" << finallyLabel << "\n\n";
+            output_ << "  br label %" << ensureLabel << "\n\n";
 
             output_ << exitRequest << ":\n";
             output_ << "  store i32 4, ptr " << actionSlot << "\n";
-            output_ << "  br label %" << finallyLabel << "\n\n";
+            output_ << "  br label %" << ensureLabel << "\n\n";
 
             if (loopDepthAtEntry != 0) {
-                output_ << breakRequest << ":\n";
+                output_ << leaveRequest << ":\n";
                 output_ << "  store i32 5, ptr " << actionSlot << "\n";
-                output_ << "  br label %" << finallyLabel << "\n\n";
+                output_ << "  br label %" << ensureLabel << "\n\n";
 
                 output_ << continueRequest << ":\n";
                 output_ << "  store i32 6, ptr " << actionSlot << "\n";
-                output_ << "  br label %" << finallyLabel << "\n\n";
+                output_ << "  br label %" << ensureLabel << "\n\n";
             }
 
             cleanupContexts_.pop_back();
 
-            output_ << finallyLabel << ":\n";
-            unwindTargets_.push_back(finallyUnwind);
-            for (const auto& st : statement.finallyBody()) emitLocalDeclaration(*st);
+            output_ << ensureLabel << ":\n";
+            unwindTargets_.push_back(ensureUnwind);
+            for (const auto& st : statement.ensureBody()) emitLocalDeclaration(*st);
             unwindTargets_.pop_back();
-            output_ << "  br label %" << afterFinally << "\n\n";
+            output_ << "  br label %" << afterEnsure << "\n\n";
 
-            emitExceptionCapture(finallyUnwind, stateSlot, finallyUnwindCaptured, true);
-            output_ << finallyUnwindCaptured << ":\n";
+            emitExceptionCapture(ensureUnwind, stateSlot, ensureUnwindCaptured, true);
+            output_ << ensureUnwindCaptured << ":\n";
             output_ << "  br label %" << rethrowLabel << "\n\n";
 
-            output_ << afterFinally << ":\n";
+            output_ << afterEnsure << ":\n";
             const std::string action = "%eh.action" + std::to_string(nextTemporary_++);
             output_ << "  " << action << " = load i32, ptr " << actionSlot << "\n";
             output_ << "  switch i32 " << action << ", label %" << continueLabel << " [\n";
@@ -1540,7 +1540,7 @@ private:
                 output_ << "    i32 4, label %" << exitPerform << "\n";
             }
             if (loopDepthAtEntry != 0) {
-                output_ << "    i32 5, label %" << breakPerform << "\n";
+                output_ << "    i32 5, label %" << leavePerform << "\n";
                 output_ << "    i32 6, label %" << continuePerform << "\n";
             }
             output_ << "  ]\n\n";
@@ -1569,11 +1569,11 @@ private:
             }
 
             if (loopDepthAtEntry != 0) {
-                output_ << breakPerform << ":\n";
-                if (!outerBreakRequest.empty()) {
-                    output_ << "  br label %" << outerBreakRequest << "\n\n";
+                output_ << leavePerform << ":\n";
+                if (!outerLeaveRequest.empty()) {
+                    output_ << "  br label %" << outerLeaveRequest << "\n\n";
                 } else {
-                    output_ << "  br label %" << breakDestination << "\n\n";
+                    output_ << "  br label %" << leaveDestination << "\n\n";
                 }
 
                 output_ << continuePerform << ":\n";
@@ -1681,8 +1681,8 @@ private:
             return;
         }
 
-        if (statement.kind() == ast::AstNodeKind::BreakStatement) {
-            emitBreakTransfer();
+        if (statement.kind() == ast::AstNodeKind::LeaveStatement) {
+            emitLeaveTransfer();
             return;
         }
 
@@ -2972,7 +2972,7 @@ struct RuntimeFaultKind {
 // CANON-19: a runtime arithmetic fault is a deterministic Inox trap. The
 // program flushes its output, prints "Inox runtime error: <category>" on
 // standard error and terminates with kRuntimeFaultExitStatus. There is no
-// unwinding: try/except/finally cannot intercept it.
+// unwinding: try/except/ensure cannot intercept it.
 constexpr RuntimeFaultKind kRuntimeFaultKinds[] = {
     {1, "integer overflow"},
     {2, "division by zero"},
@@ -3011,7 +3011,7 @@ std::string runtimeFaultSeam()
        << "; It flushes the program's output, prints \"Inox runtime error: <category>\" on\n"
        << "; standard error (file descriptor 2) and terminates with status "
        << kRuntimeFaultExitStatus << " without\n"
-       << "; unwinding, so try/except/finally cannot intercept it. Kinds: 1 integer\n"
+       << "; unwinding, so try/except/ensure cannot intercept it. Kinds: 1 integer\n"
        << "; overflow, 2 division or modulo by zero, 3 shift count outside 0..63, 4 for\n"
        << "; step <= 0, 5 negative exponent, 6 invalid integer input.\n";
     for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {

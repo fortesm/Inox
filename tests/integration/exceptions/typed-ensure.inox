@@ -1,4 +1,4 @@
-Module Integration.ExceptionsTypedFinally
+Module Integration.ExceptionsTypedEnsure
 
 Fail :
     Raise OverflowError
@@ -19,7 +19,7 @@ Main :
         Else
             PutLn("other")
         ;
-    finally
+    ensure
         PutLn("cleanup")
     ;
     PutLn("after")

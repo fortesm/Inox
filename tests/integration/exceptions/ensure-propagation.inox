@@ -1,14 +1,14 @@
 == SPDX-License-Identifier: MPL-2.0
 == Copyright (c) 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 
-Module ExceptionFinallyPropagation
+Module ExceptionEnsurePropagation
 
 Main :
     try
         try
             Raise IOError
-        finally
-            PutLn("inner-finally")
+        ensure
+            PutLn("inner-ensure")
         ;
     except
         On IOError

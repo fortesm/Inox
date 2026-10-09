@@ -14,7 +14,7 @@ SumEvenUntil(N Integer) Integer :
             continue
         ;
         if I = 10
-            break
+            leave
         ;
         Total := Total + I
     ;

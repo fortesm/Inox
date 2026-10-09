@@ -7,7 +7,7 @@
 
 == CANON-19 (P-A, approved 2026-10-09): a runtime arithmetic fault is a
 == deterministic Inox trap, not an exception. No handler, Else, plain except or
-== finally block may run; "before" must still appear (output is flushed).
+== ensure block may run; "before" must still appear (output is flushed).
 Module Runtime.FaultNotCatchable
 
 Main :
@@ -26,8 +26,8 @@ Main :
         Else
             PutLn("caught something")
         ;
-    finally
-        PutLn("finally ran")
+    ensure
+        PutLn("ensure ran")
     ;
     PutLn("continued")
 ;

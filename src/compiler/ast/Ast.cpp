@@ -474,8 +474,8 @@ TryStatement::TryStatement(std::vector<StatementPtr> body,
                            std::vector<StatementPtr> exceptBody,
                            std::vector<ExceptionHandler> handlers,
                            std::vector<StatementPtr> elseBody,
-                           bool hasFinally,
-                           std::vector<StatementPtr> finallyBody)
+                           bool hasEnsure,
+                           std::vector<StatementPtr> ensureBody)
     : Statement(AstNodeKind::TryStatement),
       body_(std::move(body)),
       hasExcept_(hasExcept),
@@ -483,8 +483,8 @@ TryStatement::TryStatement(std::vector<StatementPtr> body,
       exceptBody_(std::move(exceptBody)),
       handlers_(std::move(handlers)),
       elseBody_(std::move(elseBody)),
-      hasFinally_(hasFinally),
-      finallyBody_(std::move(finallyBody))
+      hasEnsure_(hasEnsure),
+      ensureBody_(std::move(ensureBody))
 {
 }
 
@@ -518,14 +518,14 @@ const std::vector<StatementPtr>& TryStatement::elseBody() const
     return elseBody_;
 }
 
-bool TryStatement::hasFinally() const
+bool TryStatement::hasEnsure() const
 {
-    return hasFinally_;
+    return hasEnsure_;
 }
 
-const std::vector<StatementPtr>& TryStatement::finallyBody() const
+const std::vector<StatementPtr>& TryStatement::ensureBody() const
 {
-    return finallyBody_;
+    return ensureBody_;
 }
 
 bool TryStatement::hasTypedHandlers() const
@@ -580,7 +580,7 @@ ExpressionPtr ReturnStatement::takeExpression()
 
 ExitStatement::ExitStatement() : Statement(AstNodeKind::ExitStatement) {}
 
-BreakStatement::BreakStatement() : Statement(AstNodeKind::BreakStatement) {}
+LeaveStatement::LeaveStatement() : Statement(AstNodeKind::LeaveStatement) {}
 
 ContinueStatement::ContinueStatement() : Statement(AstNodeKind::ContinueStatement) {}
 

@@ -50,8 +50,8 @@ REPOSITORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOKENS = [
     "(", ")", ";", ":", "..", "=", ":=", "+", "-", "*", "div", "mod", "^",
     "shl", "shr", "not", "and", "or", "if", "elif", "else", "while", "repeat",
-    "until", "for", "in", "try", "except", "finally", "On", "Raise", "Retry",
-    "break", "continue", "Return", "Exit", "case", "otherwise", "with", "Type",
+    "until", "for", "in", "try", "except", "ensure", "On", "Raise", "Retry",
+    "leave", "continue", "Return", "Exit", "case", "otherwise", "with", "Type",
     "Struct", "Const", "State", "Main", "Module", "Use", "Var",
     "9223372036854775807", "-9223372036854775808", "9223372036854775808",
     "$FFFFFFFFFFFFFFFF", "0", "1.5", "\"s\"", "\n", "    ", "==", "X", "I",

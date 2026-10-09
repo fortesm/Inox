@@ -19,17 +19,17 @@ Main :
 
     repeat
         until I = 0
-        break
+        leave
     ;
 
     repeat
         I := I + 1
         until I = 1
         I := I - 1
-        break
+        leave
     ;
 
     repeat
-        break
+        leave
     ;
 ;

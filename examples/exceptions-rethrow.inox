@@ -16,7 +16,7 @@ Main :
                 PutLn("inner handler")
                 Raise
             ;
-        finally
+        ensure
             PutLn("inner cleanup")
         ;
     except

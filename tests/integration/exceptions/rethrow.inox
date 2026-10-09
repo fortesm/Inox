@@ -9,14 +9,14 @@ Main :
                 PutLn("inner")
                 Raise
             ;
-        finally
+        ensure
             PutLn("inner cleanup")
         ;
     except
         On RangeError
             PutLn("outer")
         ;
-    finally
+    ensure
         PutLn("outer cleanup")
     ;
 ;

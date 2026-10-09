@@ -333,7 +333,7 @@ function Invoke-DriverTrapTest {
     # A compile error also exits non-zero, so require the runtime diagnostic itself.
     # Optional NAME.out next to NAME.trap: the complete output (program output,
     # runtime diagnostic, driver note) must match exactly, which proves that no
-    # handler or finally block ran.
+    # handler or ensure block ran.
     $exactPath = [System.IO.Path]::ChangeExtension($TestFile.FullName, ".out")
     $exactOk = $true
     if (Test-Path -LiteralPath $exactPath) {
@@ -471,7 +471,7 @@ foreach ($rootSpec in $invalidTestRoots) {
 Invoke-ModeFragmentTest `
     -Mode "--dump-tokens" `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\lexer\valid\tokens-keywords-literals.inox")) `
-    -RequiredFragments @('Keyword lexeme="Module" normalized="module"', 'Keyword lexeme="Type" normalized="type"', 'Keyword lexeme="Struct" normalized="struct"', 'Keyword lexeme="Retry" normalized="retry"', 'IntegerLiteral lexeme="$2A"', 'StringLiteral lexeme="hello"', 'CharLiteral lexeme=', 'Identifier lexeme="End" normalized="end"')
+    -RequiredFragments @('Keyword lexeme="Module" normalized="module"', 'Keyword lexeme="Type" normalized="type"', 'Keyword lexeme="Struct" normalized="struct"', 'Keyword lexeme="Retry" normalized="retry"', 'IntegerLiteral lexeme="$2A"', 'StringLiteral lexeme="hello"', 'CharLiteral lexeme=', 'Identifier lexeme="End" normalized="end"', 'Keyword lexeme="Leave" normalized="leave"', 'Keyword lexeme="Ensure" normalized="ensure"', 'Identifier lexeme="Break" normalized="break"', 'Identifier lexeme="Finally" normalized="finally"')
 
 Invoke-ModeExitTest `
     -Mode "--parse-only" `
@@ -520,7 +520,7 @@ Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-while-loop.inox")) `
     -RequiredFragments @("define i64 @inox_sumto", "whilecond0:", "whilebody0:", "whileend0:", "br i1", "br label %whilecond0", "icmp sgt i64", "call i64 @__inox_add_i64", "call i64 @__inox_sub_i64", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
-    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-while-break-continue.inox")) `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-while-leave-continue.inox")) `
     -RequiredFragments @("define i64 @inox_findfirstbelow", "whilecond0:", "whilebody0:", "whileend0:", "br i1", "br label %whilecond0", "br label %whileend0", "icmp eq i64", "call i64 @__inox_sub_i64", "store i64", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-if-no-else.inox")) `
@@ -539,10 +539,10 @@ Invoke-LlvmEmissionTest `
     -RequiredFragments @("define i64 @inox_countdown", "repeatbody", "repeatcontinue", "repeatend", "br i1", "br label", "icmp", "ret i64", "define i32 @main()", "ret i32 0")
 
 Invoke-LlvmEmissionTest `
-    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-repeat-break-continue.inox")) `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-repeat-leave-continue.inox")) `
     -RequiredFragments @("define i64 @inox_findvalue", "repeatbody", "repeatend", "br i1", "br label", "icmp eq i64", "call i64 @__inox_sub_i64", "store i64", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
-    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-for-range-break-continue.inox")) `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-for-range-leave-continue.inox")) `
     -RequiredFragments @("define i64 @inox_sumrange", "forcond", "forbody", "forstep", "forend", "br i1", "br label", "icmp sle i64", "icmp eq i64", "call i64 @__inox_add_i64", "@llvm.sadd.with.overflow.i64", "store i64", "load i64", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-for-range-step.inox")) `
@@ -603,8 +603,8 @@ Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.out"))
 Invoke-RunDriverTest `
-    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\typed-finally.inox")) `
-    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\typed-finally.out"))
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\typed-ensure.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\typed-ensure.out"))
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\rethrow.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\rethrow.out"))
@@ -612,8 +612,8 @@ Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\plain-except.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\plain-except.out"))
 Invoke-RunDriverTest `
-    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\finally-propagation.inox")) `
-    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\finally-propagation.out"))
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\ensure-propagation.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\ensure-propagation.out"))
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\retry-success.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\retry-success.out"))
@@ -636,8 +636,8 @@ Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\taxonomy-range.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\taxonomy-range.out"))
 Invoke-RunDriverTest `
-    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\finally-control-transfers.inox")) `
-    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\finally-control-transfers.out"))
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\ensure-control-transfers.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\ensure-control-transfers.out"))
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\modules\Main.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\modules\Main.out"))

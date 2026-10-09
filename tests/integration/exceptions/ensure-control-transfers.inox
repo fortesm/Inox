@@ -1,13 +1,13 @@
-Module Integration.ExceptionsFinallyControlTransfers
+Module Integration.ExceptionsEnsureControlTransfers
 
 Value Integer :
     try
         try
             Return 7
-        finally
+        ensure
             PutLn("return-inner")
         ;
-    finally
+    ensure
         PutLn("return-outer")
     ;
     Return 0
@@ -20,12 +20,12 @@ Main :
     while true
         try
             try
-                break
-            finally
-                PutLn("break-inner")
+                leave
+            ensure
+                PutLn("leave-inner")
             ;
-        finally
-            PutLn("break-outer")
+        ensure
+            PutLn("leave-outer")
         ;
     ;
 
@@ -33,7 +33,7 @@ Main :
         try
             PutLn("continue-body ", I)
             continue
-        finally
+        ensure
             PutLn("continue-cleanup")
         ;
     ;
@@ -41,7 +41,7 @@ Main :
     PutLn("before-exit")
     try
         Exit
-    finally
+    ensure
         PutLn("exit-cleanup")
     ;
     PutLn("unreachable")

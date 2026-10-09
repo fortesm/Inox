@@ -16,8 +16,8 @@ Main :
                 PutLn("else-handler")
                 Retry(1)
             ;
-        finally
-            PutLn("inner-finally")
+        ensure
+            PutLn("inner-ensure")
         ;
     except
         On IOError

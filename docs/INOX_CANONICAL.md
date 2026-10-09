@@ -9,7 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.19 (canonical consistency pass over v3.18; no language/compiler behavior change)
+# Version: v3.20 (keyword rename approved by Marcelo Fortes: `break` -> `leave`,
+#          `finally` -> `ensure`; no semantic change)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -486,6 +487,35 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.20 — 2026-10-09 — keyword rename approved by Marcelo Fortes on 2026-10-09
+#         (lexical change only; no semantic change). Recorded as ADR-0007.
+#   - `leave` replaces `break`: it exits the nearest enclosing loop (CANON-12/17).
+#     `continue` is unchanged.
+#   - `ensure` replaces `finally` as the try cleanup clause (CANON-15). Its
+#     semantics are unchanged: it runs exactly once on every departure from the
+#     protected construct. `ensure` is NOT a design-by-contract keyword; future
+#     contracts keep `Pre`/`Pos`/`Invariant` (CANON-15 rule 21, FUTURE-2).
+#   - `break` and `finally` are no longer reserved words. They are ordinary
+#     identifiers; no migration diagnostic is kept for them. A bare `break` line
+#     is therefore rejected as a non-statement (CANON-4) and a `finally` line in
+#     the old position leaves the `try` without `except`/`ensure`.
+#   - Implementation: lexer keyword table, parser, AST (`LeaveStatement`,
+#     `hasEnsure`/`ensureBody`), semantic analyzer, AST dumper, LLVM emitter
+#     (identifiers, labels `eh.ensure*`/`eh.leave*` and diagnostics), grammar,
+#     examples, tests, test scripts, `tools/mutation_fuzz.py`,
+#     `docs/BACKEND_GAPS.md` and the HTML manual. Test and example files, and their
+#     module names, that spelled the old keywords were renamed accordingly.
+#   - New tests: lexer (`Leave`/`Ensure` are keywords; `Break`/`Finally` are
+#     identifiers), semantic (`former-keywords-as-identifiers`), diagnostics
+#     (`leave-outside-loop`, `break-is-not-a-statement`, `finally-is-not-a-clause`).
+#   - Historical change-log entries and locked ADR text keep the old spelling
+#     (append-only); ADR-0004 carries a supersession note.
+#   - Layer B correction found during this pass: the lexer has 47 keywords (the
+#     status sections said 46). The count is unchanged by the rename.
+#   - Validation: Linux full suite 309/309 (305 previous + 4 new). Windows is
+#     expected to keep only the known EH-v3.16a failures until the MSVC exception
+#     bridge lands.
 #
 # v3.19 — 2026-10-09 — canonical consistency pass over v3.18; no language/compiler behavior change
 #   - Reconciled all ACTIVE references to the former “checking mode” wording with
@@ -1071,6 +1101,10 @@ Topic intended: exception model. Its substance is now in CANON-15. `try`/`except
 `finally`/`raise` exist in 0.1 syntax; lowering incremental; future Option/Result
 complement, not replace.
 
+Historical supersession note (v3.20; the locked ADR-0004 text above is unchanged):
+the try cleanup clause spelled `finally` above is spelled `ensure` since v3.20
+(ADR-0007). The operative rules are in CANON-15.
+
 ## ADR-0005 — Consolidated 0.1 Language Decisions  (Status: Accepted)
 Context: early decisions were clarified incrementally; consolidated to prevent
 drift between human intent, Codex prompts, and implementation.
@@ -1142,6 +1176,17 @@ ADR-0006 decision 4 used the phrase “Runtime overflow should trap in checking
 mode.” That policy is superseded by DECISION P-A, approved 2026-10-09: runtime
 arithmetic faults are deterministic Inox traps in every conforming build. This
 note records the later approved decision without rewriting the locked ADR.
+
+## ADR-0007 — Loop exit and try cleanup keywords  (Status: Accepted, 2026-10-09)
+Decision (approved by Marcelo Fortes, 2026-10-09): the loop exit statement is
+spelled `leave` and the try cleanup clause is spelled `ensure`. They replace
+`break` and `finally`, which stop being reserved words. `continue` is unchanged.
+Rationale: Inox spells control flow with its own vocabulary instead of carrying
+C/Java defaults (ADR-0005/ADR-0006, GOVERNANCE G4). `ensure` states what the
+clause guarantees (its body runs on every departure) and does not collide with
+design-by-contract, which keeps `Pre`/`Pos`/`Invariant`.
+Consequence: lexical change only. Semantics, lowering and runtime behavior are
+unchanged. No compatibility or migration diagnostic is kept for the old words.
 
 
 # ============================================================================
@@ -1228,6 +1273,9 @@ The detailed module/import rules are in SECTION 09. Lexical/comment rules are in
   `,` separator, `^` exponentiation (never XOR).
 - `End`/`end` is NOT a keyword and is NEVER a block closer. Only `;` closes
   blocks. (This deliberately avoids retaining Pascal/Ruby legacy alternatives.)
+- `leave` (loop exit, CANON-17) and `ensure` (try cleanup clause, CANON-15) are
+  reserved words since v3.20 (ADR-0007). `break` and `finally` are NOT reserved;
+  they are ordinary identifiers.
 
 
 # ============================================================================
@@ -1377,7 +1425,7 @@ Invalid shadowing:
     ;
 
 Variables declared inside if/elif/else/while/repeat/for/case-arm/try/except/
-finally/with do not escape that block. Use before declaration is an error.
+ensure/with do not escape that block. Use before declaration is an error.
 
 ### Safe type inference (Ada/SPARK universal-literal — CHANGE LOG v2.0)
 - Integer literal -> `Integer` (Int64). Real literal -> `Float` (Float64).
@@ -1522,7 +1570,7 @@ See SECTION 11 for the full declaration model.
 - Local declaration visible only declaration-point -> end of current block.
 - Use before declaration is an error.
 - Scoping blocks: subroutine/function body, if/elif/else, while, repeat, for
-  body, each case arm, try/except/finally, with body.
+  body, each case arm, try/except/ensure, with body.
 - Future ownership work: `Self owned`, `ref X T`, `ref mut X T` — NOT part of the
   0.1 executable subset.
 
@@ -1617,13 +1665,13 @@ Canonical forms:
         Else
             RecoverUnknown
         ;
-    finally
+    ensure
         Cleanup
     ;
 
     try
         AcquireAndUse
-    finally
+    ensure
         Release
     ;
 
@@ -1640,20 +1688,20 @@ Canonical forms:
             Log("retrying")
             Retry(3)
         ;
-    finally
+    ensure
         CleanupAttempt
     ;
 
 Rules:
 
-1. `try`, `except`, `On`, `Else`, `finally`, `Raise`, and `Retry` are
+1. `try`, `except`, `On`, `Else`, `ensure`, `Raise`, and `Retry` are
    case-insensitive reserved words where applicable. Exception control-flow
    headers use NO `:` and typed handlers use NO `Do`.
-2. Every `try` MUST contain `except`, `finally`, or both. A bare `try ... ;`
+2. Every `try` MUST contain `except`, `ensure`, or both. A bare `try ... ;`
    is invalid.
 3. A PLAIN `except` body is a catch-all handler for Inox exceptions reaching
    that protected region. Its final `;` is the `try` terminator when no
-   `finally` follows.
+   `ensure` follows.
 4. A TYPED `except` contains one or more explicitly closed handlers:
 
        On ExceptionType
@@ -1690,7 +1738,7 @@ Rules:
     entire function. External state established before the `try` remains; code
     and locals inside the try body are re-entered according to normal lexical
     semantics.
-11. If a `finally` exists, it executes before each new retry. Only after cleanup
+11. If an `ensure` exists, it executes before each new retry. Only after cleanup
     completes does execution return to the beginning of the protected try body.
     If the retry budget is exhausted, `Retry(N)` behaves as a bare rethrow of the
     current exception; it never silently continues after the handler.
@@ -1701,14 +1749,14 @@ Rules:
     active explicit `On`/`Else` handler requested it. A nested handler shadows an
     outer retry context while that nested handler is executing.
 14. `Retry` is not valid in a normal function body, in an unhandled protected
-    region, in a plain `except` body, or inside `finally`.
-15. `finally` is CLEANUP, not a handler. It executes exactly once whenever
+    region, in a plain `except` body, or inside `ensure`.
+15. `ensure` is CLEANUP, not a handler. It executes exactly once whenever
     control leaves the protected construct normally or exceptionally, including
     handled exceptions, unmatched/propagating exceptions, explicit `Raise`,
     `Retry`, `Return`, `Exit`, and loop exit/continue transfers that cross the
-    protected region. If code executed by `finally` raises a new exception, that
+    protected region. If code executed by `ensure` raises a new exception, that
     new exception becomes the propagating exception.
-16. Inox deliberately permits the combined form `try ... except ... finally ... ;`.
+16. Inox deliberately permits the combined form `try ... except ... ensure ... ;`.
 17. Standard exception types currently defined by the prelude/standard-library
     surface are:
 
@@ -1753,8 +1801,8 @@ name/taxonomy table and lowers category matching to nominal RuntimeTypeId tests;
 `libinoxrt` remains generic and transports only opaque ids through the native
 exception mechanism. On Unix-like Itanium-ABI targets, LLVM `invoke`/`landingpad`
 plus the platform unwinder are used. `Retry(N)` lowers to a hidden per-try retry
-counter and action dispatcher. `finally` cleanup edges cover rethrow, retry,
-Return, Exit, break and continue in the currently supported LLVM subset.
+counter and action dispatcher. `ensure` cleanup edges cover rethrow, retry,
+Return, Exit, leave and continue in the currently supported LLVM subset.
 
 ## CANON-11. `with` STATEMENT (CHANGE LOG v2.2 — Visual Basic dot-prefix model)
 
@@ -1795,7 +1843,7 @@ dot-prefix fixes the classic Object Pascal `with` ambiguity.
     while I > 0
         I := I - 1
     ;
-`break` exits the nearest loop; `continue` proceeds to the next iteration.
+`leave` exits the nearest loop; `continue` proceeds to the next iteration.
 
 ### repeat / until
 `repeat` is a general loop; `until` is an INTERNAL conditional exit, not the
@@ -1818,7 +1866,7 @@ at the beginning, middle, or end, and MORE THAN ONCE. `repeat` closes with `;`.
   A>B descending, A=B executes once);
 - step is always positive; step zero/negative is an error if constant, or a
   runtime trap if dynamic;
-- `continue` goes to the step/next iteration; `break` exits;
+- `continue` goes to the step/next iteration; `leave` exits;
 - iterator is declared implicitly, is read-only, visible only inside the loop
   body, and must not conflict with any already visible symbol;
 - two SEQUENTIAL `for` loops may reuse the same iterator name after the first
@@ -2233,7 +2281,7 @@ DECISION P-A (approved by Marcelo Fortes, 2026-10-09). Language law:
   deterministically, with a diagnostic that identifies the category of the fault
   and a non-zero exit status.
 - A trap is NOT an exception. There is no unwinding: `try`/`except` (typed
-  handlers, `Else` and plain `except`) cannot catch it and `finally` blocks do not
+  handlers, `Else` and plain `except`) cannot catch it and `ensure` blocks do not
   run.
 - "Trap" does not mean "let the CPU fail": the compiler emits an explicit check
   before every operation that can fault and never relies on a hardware exception.
@@ -2337,7 +2385,7 @@ textual IR to the LLVM C++ API where justified.
 ## Current backend support status
 
 ## B-WORKS. WHAT WORKS TODAY (verified in source audit)
-Lexer: 46 keywords, case-insensitive normalization, `$XX` hex, `==` comments.
+Lexer: 47 keywords, case-insensitive normalization, `$XX` hex, `==` comments.
 Parser: recursive descent, 2-token lookahead for typed local declarations.
 Semantic: scoped symbol table, forward signature pass, inference (empty type +
   initializer -> initializer type), prelude calls (Put/PutLn/Clamp/Min/Max),
@@ -2346,10 +2394,10 @@ Semantic: scoped symbol table, forward signature pass, inference (empty type +
 Codegen (textual LLVM IR): integer/bool/Float64 scalars, locals
   (alloca/store/load), Float64 arithmetic and comparisons, checked Integer `^`
   through a backend helper, if/elif/else, while, repeat/until, for-range (+step),
-  break/continue, functions, subroutines, structs, field defaults, struct
+  leave/continue, functions, subroutines, structs, field defaults, struct
   values, associated methods, Put/PutLn via printf including Float64; Get/GetLn
   Integer input via internal getchar-based LLVM helpers; core exception lowering
-  (`try`/plain-or-typed `except`/`Else`/`finally`/`Raise`/`Retry`) via `libinoxrt`. Elementary Float64 math
+  (`try`/plain-or-typed `except`/`Else`/`ensure`/`Raise`/`Retry`) via `libinoxrt`. Elementary Float64 math
   functions are temporarily lowered through LLVM intrinsics and libm/CRT symbols.
 Driver: --parse-only, --dump-tokens, --dump-types, --emit-llvm, --build, --run.
 Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
@@ -2374,8 +2422,8 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   `cleanuppad`) lowering remains to be implemented before exception-enabled
   Windows binaries can be claimed supported. This does not affect parsing,
   semantic checking, or non-exception Windows programs.
-- EH-v3.17b: `finally` cleanup edges now cover the currently supported nonlocal
-  transfers `Return`, `Exit`, `break`, and `continue`, including nested finally
+- EH-v3.17b: `ensure` cleanup edges now cover the currently supported nonlocal
+  transfers `Return`, `Exit`, `leave`, and `continue`, including nested ensure
   regions, in addition to exceptional flow and Retry.
 - EH-v3.17c: the optional `On Name Type` binding is scoped/type-checked, but
   runtime payload fields/reflection and user-defined exception declaration
@@ -2665,14 +2713,14 @@ Targets must not be claimed as supported until tested on real or representative 
 This section is volatile implementation status. It may be updated to match the code. It must not override constitutional language rules above.
 
 ## B-WORKS. WHAT WORKS TODAY (verified in source audit)
-Lexer: 46 keywords, case-insensitive normalization, `$XX` hex, `==` comments.
+Lexer: 47 keywords, case-insensitive normalization, `$XX` hex, `==` comments.
 Parser: recursive descent, 2-token lookahead for typed local declarations.
 Semantic: scoped symbol table, forward signature pass, inference (empty type +
   initializer -> initializer type), prelude calls (Put/PutLn/Clamp/Min/Max),
   struct/method resolution, loop-iterator read-only enforcement, shadowing
   rejection, integer `/` rejection.
 Codegen (textual LLVM IR): integer/bool scalars, locals (alloca/store/load),
-  if/elif/else, while, repeat/until, for-range (+step), break/continue, functions,
+  if/elif/else, while, repeat/until, for-range (+step), leave/continue, functions,
   subroutines, structs, field defaults, struct values, associated methods,
   Put/PutLn via printf; Get/GetLn Integer input via internal getchar-based LLVM
   helpers; core exception lowering through `libinoxrt`.
@@ -2699,8 +2747,8 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   `cleanuppad`) lowering remains to be implemented before exception-enabled
   Windows binaries can be claimed supported. This does not affect parsing,
   semantic checking, or non-exception Windows programs.
-- EH-v3.17b: `finally` cleanup edges now cover the currently supported nonlocal
-  transfers `Return`, `Exit`, `break`, and `continue`, including nested finally
+- EH-v3.17b: `ensure` cleanup edges now cover the currently supported nonlocal
+  transfers `Return`, `Exit`, `leave`, and `continue`, including nested ensure
   regions, in addition to exceptional flow and Retry.
 - EH-v3.17c: the optional `On Name Type` binding is scoped/type-checked, but
   runtime payload fields/reflection and user-defined exception declaration

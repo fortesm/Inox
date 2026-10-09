@@ -289,8 +289,15 @@ for I in 10..1 (2)
     PutLn(I)
 ;</code></pre>
 <p>Sequential loops may reuse the same iterator name because their scopes do not overlap.</p>
+<p><code>leave</code> exits the nearest enclosing loop; <code>continue</code> proceeds to its next iteration. Both are valid only inside a loop:</p>
+<pre><code>while true
+    X := X + 1
+    if X &gt; 10
+        leave
+    ;
+;</code></pre>
 <h3>Exceptions</h3>
-<p>Inox provides structured exception handling with <code>try</code>, <code>except</code>, typed <code>On</code> handlers, optional <code>Else</code>, <code>finally</code>, <code>Raise</code>, and bounded <code>Retry(N)</code>. Typed handlers are tested in source order; <code>Else</code> is the catch-all after them. A plain <code>except</code> is itself a catch-all.</p>
+<p>Inox provides structured exception handling with <code>try</code>, <code>except</code>, typed <code>On</code> handlers, optional <code>Else</code>, <code>ensure</code>, <code>Raise</code>, and bounded <code>Retry(N)</code>. Typed handlers are tested in source order; <code>Else</code> is the catch-all after them. A plain <code>except</code> is itself a catch-all.</p>
 <pre><code>try
     RiskyOperation
 except
@@ -306,11 +313,12 @@ except
     Else
         PutLn(&quot;other exception&quot;)
     ;
-finally
+ensure
     Cleanup
 ;</code></pre>
-<p><code>Raise ExceptionType</code> raises a new exception. A bare <code>Raise</code> inside a handler rethrows the exception currently being handled. <code>Retry(N)</code> is valid only in an explicit <code>On</code>/<code>Else</code> handler and permits at most <code>N</code> additional executions of the associated <code>try</code> body. If the budget is exhausted, the current exception is rethrown. When a <code>finally</code> is present, it runs before each retry.</p>
-<p><code>finally</code> executes on normal and exceptional departure, including supported nonlocal control transfers such as <code>Return</code>, <code>Exit</code>, and loop control crossing the construct. A <code>try</code> must contain at least <code>except</code> or <code>finally</code>.</p>
+<p><code>Raise ExceptionType</code> raises a new exception. A bare <code>Raise</code> inside a handler rethrows the exception currently being handled. <code>Retry(N)</code> is valid only in an explicit <code>On</code>/<code>Else</code> handler and permits at most <code>N</code> additional executions of the associated <code>try</code> body. If the budget is exhausted, the current exception is rethrown. When an <code>ensure</code> is present, it runs before each retry.</p>
+<p><code>ensure</code> executes on normal and exceptional departure, including supported nonlocal control transfers such as <code>Return</code>, <code>Exit</code>, and loop control crossing the construct. A <code>try</code> must contain at least <code>except</code> or <code>ensure</code>.</p>
+<p>Since canonical v3.20, <code>leave</code> and <code>ensure</code> are keywords; the former <code>break</code> and <code>finally</code> are ordinary identifiers.</p>
 <p>The v3.17 implementation models the standard exception taxonomy as nominal exception types (for example <code>FileNotFound</code> is a subtype-category match of <code>IOError</code>) while the minimal <code>libinoxrt</code> remains a generic transport/unwind runtime using opaque type identifiers. User-defined exception declaration syntax and payload reflection remain deferred; the canonical language rules are defined in <code>INOX_CANONICAL.md</code>.</p>
 </section>
 <section id="output"><h2>Std.IO and variadic output</h2>

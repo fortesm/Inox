@@ -133,7 +133,7 @@ private:
     std::size_t repeatDepth_ = 0;
     std::size_t exceptionHandlerDepth_ = 0;
     std::size_t retryHandlerDepth_ = 0;
-    std::size_t finallyDepth_ = 0;
+    std::size_t ensureDepth_ = 0;
     bool hasMain_ = false;
     std::unordered_map<const ast::Expression*, std::int64_t> constants_;
 };

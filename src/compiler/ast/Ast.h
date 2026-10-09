@@ -40,7 +40,7 @@ enum class AstNodeKind {
     RetryStatement,
     ReturnStatement,
     ExitStatement,
-    BreakStatement,
+    LeaveStatement,
     ContinueStatement,
     WithStatement
 };
@@ -436,8 +436,8 @@ public:
                  std::vector<StatementPtr> exceptBody,
                  std::vector<ExceptionHandler> handlers,
                  std::vector<StatementPtr> elseBody,
-                 bool hasFinally,
-                 std::vector<StatementPtr> finallyBody);
+                 bool hasEnsure,
+                 std::vector<StatementPtr> ensureBody);
 
     const std::vector<StatementPtr>& body() const;
     bool hasExcept() const;
@@ -445,8 +445,8 @@ public:
     const std::vector<StatementPtr>& exceptBody() const;
     const std::vector<ExceptionHandler>& handlers() const;
     const std::vector<StatementPtr>& elseBody() const;
-    bool hasFinally() const;
-    const std::vector<StatementPtr>& finallyBody() const;
+    bool hasEnsure() const;
+    const std::vector<StatementPtr>& ensureBody() const;
     bool hasTypedHandlers() const;
 
 private:
@@ -456,8 +456,8 @@ private:
     std::vector<StatementPtr> exceptBody_;
     std::vector<ExceptionHandler> handlers_;
     std::vector<StatementPtr> elseBody_;
-    bool hasFinally_ = false;
-    std::vector<StatementPtr> finallyBody_;
+    bool hasEnsure_ = false;
+    std::vector<StatementPtr> ensureBody_;
 };
 
 class RaiseStatement final : public Statement {
@@ -498,9 +498,9 @@ public:
     ExitStatement();
 };
 
-class BreakStatement final : public Statement {
+class LeaveStatement final : public Statement {
 public:
-    BreakStatement();
+    LeaveStatement();
 };
 
 class ContinueStatement final : public Statement {

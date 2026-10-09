@@ -1,0 +1,29 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.20: `break` and `finally` are no longer keywords; they are ordinary
+== identifiers. `leave` exits a loop and `ensure` is the try cleanup clause.
+
+Module FormerKeywordsAsIdentifiers
+
+Main :
+    Break Integer := 1
+    Finally Integer := Break + 1
+
+    while Break < 3
+        Break := Break + 1
+        if Break = 3
+            leave
+        ;
+    ;
+
+    try
+        Finally := Finally + Break
+    ensure
+        Finally := Finally + 1
+    ;
+;

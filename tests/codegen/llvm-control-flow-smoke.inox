@@ -20,7 +20,7 @@ Compute(N Integer) Integer :
         Total := Total + I
 
         if Total > 10
-            break
+            leave
         ;
     ;
 

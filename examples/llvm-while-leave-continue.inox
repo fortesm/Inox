@@ -5,7 +5,7 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module WhileBreakContinue
+Module WhileLeaveContinue
 
 FindFirstBelow(A Integer) Integer :
     I := A
@@ -17,7 +17,7 @@ FindFirstBelow(A Integer) Integer :
         ;
         if I = 1
             Result := I
-            break
+            leave
         ;
     ;
     Return Result

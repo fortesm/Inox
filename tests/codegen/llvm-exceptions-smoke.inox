@@ -11,7 +11,7 @@ Main :
         On IOError
             PutLn("caught")
         ;
-    finally
+    ensure
         PutLn("cleanup")
     ;
 ;

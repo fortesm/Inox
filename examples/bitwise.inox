@@ -31,7 +31,7 @@ Main :
         ;
 
         if R = 1
-            break
+            leave
         ;
     ;
 ;

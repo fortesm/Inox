@@ -12,8 +12,8 @@ Main :
             On FileNotFound
                 Retry(0)
             ;
-        finally
-            PutLn("inner-finally")
+        ensure
+            PutLn("inner-ensure")
         ;
     except
         On IOError

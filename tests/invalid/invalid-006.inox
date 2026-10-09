@@ -8,5 +8,5 @@
 Module Invalid006
 
 Main :
-    break
+    leave
 ;

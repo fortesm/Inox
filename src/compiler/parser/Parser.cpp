@@ -177,8 +177,8 @@ ast::StatementPtr Parser::parseStatement()
     if (matchKeyword("exit")) {
         return endSimpleStatement(std::make_unique<ast::ExitStatement>());
     }
-    if (matchKeyword("break")) {
-        return endSimpleStatement(std::make_unique<ast::BreakStatement>());
+    if (matchKeyword("leave")) {
+        return endSimpleStatement(std::make_unique<ast::LeaveStatement>());
     }
     if (matchKeyword("continue")) {
         return endSimpleStatement(std::make_unique<ast::ContinueStatement>());
@@ -767,7 +767,7 @@ std::vector<ast::StatementPtr> Parser::parseVarBlockDeclarations()
         if (!isAtEnd() && peek().location.line == line &&
             (peek().kind == TokenKind::Identifier || peek().kind == TokenKind::Keyword) &&
             !checkKeyword("if") && !checkKeyword("while") && !checkKeyword("repeat") &&
-            !checkKeyword("for") && !checkKeyword("return") && !checkKeyword("break") &&
+            !checkKeyword("for") && !checkKeyword("return") && !checkKeyword("leave") &&
             !checkKeyword("continue") && !checkKeyword("until")) {
             typeName = tokenText(advance());
         }
@@ -940,7 +940,7 @@ std::vector<ast::StatementPtr> Parser::parseCaseArmBody(std::size_t armLine, std
 ast::StatementPtr Parser::parseTryStatement()
 {
     requireHeaderLineBreak();
-    auto body = parseDelimitedBody({"except", "finally"});
+    auto body = parseDelimitedBody({"except", "ensure"});
 
     bool hasExcept = false;
     bool plainExcept = false;
@@ -964,20 +964,20 @@ ast::StatementPtr Parser::parseTryStatement()
             }
         } else {
             plainExcept = true;
-            exceptBody = parseDelimitedBody({"finally"});
+            exceptBody = parseDelimitedBody({"ensure"});
         }
     }
 
-    bool hasFinally = false;
-    std::vector<ast::StatementPtr> finallyBody;
-    if (matchKeyword("finally")) {
-        hasFinally = true;
+    bool hasEnsure = false;
+    std::vector<ast::StatementPtr> ensureBody;
+    if (matchKeyword("ensure")) {
+        hasEnsure = true;
         requireHeaderLineBreak();
-        finallyBody = parseDelimitedBody({});
+        ensureBody = parseDelimitedBody({});
     }
 
-    if (!hasExcept && !hasFinally) {
-        errorAtCurrent("try requires 'except' or 'finally'");
+    if (!hasExcept && !hasEnsure) {
+        errorAtCurrent("try requires 'except' or 'ensure'");
     }
 
     consumeBlockClose();
@@ -989,8 +989,8 @@ ast::StatementPtr Parser::parseTryStatement()
         std::move(exceptBody),
         std::move(handlers),
         std::move(elseBody),
-        hasFinally,
-        std::move(finallyBody));
+        hasEnsure,
+        std::move(ensureBody));
 }
 
 ast::ExceptionHandler Parser::parseExceptionHandler()
@@ -1238,7 +1238,7 @@ bool Parser::atStatementBoundary() const
            checkKeyword("else") ||
            checkKeyword("except") ||
            checkKeyword("on") ||
-           checkKeyword("finally") ||
+           checkKeyword("ensure") ||
            checkKeyword("until") ||
            checkKeyword("otherwise");
 }

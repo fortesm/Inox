@@ -22,3 +22,9 @@ End :
 ;
 
 Retry(3)
+
+== v3.20: Leave/Ensure are keywords; Break/Finally are ordinary identifiers.
+Leave
+Ensure
+Break
+Finally

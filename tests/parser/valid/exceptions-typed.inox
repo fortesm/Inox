@@ -13,7 +13,7 @@ Main :
         Else
             PutLn("other")
         ;
-    finally
+    ensure
         PutLn("cleanup")
     ;
 ;

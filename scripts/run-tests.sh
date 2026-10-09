@@ -332,7 +332,7 @@ run_driver_trap_test() {
     # A compile error also exits non-zero, so require the runtime diagnostic itself.
     # Optional NAME.out next to NAME.trap: the complete output (program output,
     # runtime diagnostic, driver note) must match exactly, which proves that no
-    # handler or finally block ran.
+    # handler or ensure block ran.
     local exact_file="${test_file%.inox}.out"
     local exact_ok=1
     if [[ -f "$exact_file" && "$actual" != "$(sed 's/\r$//' "$exact_file")" ]]; then
@@ -412,7 +412,7 @@ run_test_tree "$repo_root/tests/parser/invalid" 10 false
 run_test_tree "$repo_root/tests/semantic/invalid" 10 false
 
 run_mode_fragment_test --dump-tokens "$repo_root/tests/lexer/valid/tokens-keywords-literals.inox" \
-    'Keyword lexeme="Module" normalized="module"' 'Keyword lexeme="Type" normalized="type"' 'Keyword lexeme="Struct" normalized="struct"' 'Keyword lexeme="Retry" normalized="retry"' 'IntegerLiteral lexeme="$2A"' 'StringLiteral lexeme="hello"' 'CharLiteral lexeme=' 'Identifier lexeme="End" normalized="end"'
+    'Keyword lexeme="Module" normalized="module"' 'Keyword lexeme="Type" normalized="type"' 'Keyword lexeme="Struct" normalized="struct"' 'Keyword lexeme="Retry" normalized="retry"' 'IntegerLiteral lexeme="$2A"' 'StringLiteral lexeme="hello"' 'CharLiteral lexeme=' 'Identifier lexeme="End" normalized="end"' 'Keyword lexeme="Leave" normalized="leave"' 'Keyword lexeme="Ensure" normalized="ensure"' 'Identifier lexeme="Break" normalized="break"' 'Identifier lexeme="Finally" normalized="finally"'
 run_mode_exit_test --parse-only "$repo_root/tests/parser/valid/canonical-type-and-var.inox" true
 run_mode_exit_test --parse-only "$repo_root/tests/parser/invalid/var-colon.inox" false
 
@@ -440,7 +440,7 @@ run_llvm_emission_test "$repo_root/examples/llvm-if-merge.inox" \
     "define i64 @inox_maxplusone" "%m = alloca i64" "icmp sgt i64" "br i1" "label %then0" "label %else0" "then0:" "else0:" "br label %endif0" "endif0:" "store i64" "load i64" "call i64 @__inox_add_i64" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-while-loop.inox" \
     "define i64 @inox_sumto" "whilecond0:" "whilebody0:" "whileend0:" "br i1" "br label %whilecond0" "icmp sgt i64" "call i64 @__inox_add_i64" "call i64 @__inox_sub_i64" "ret i64" "define i32 @main()" "ret i32 0"
-run_llvm_emission_test "$repo_root/examples/llvm-while-break-continue.inox" \
+run_llvm_emission_test "$repo_root/examples/llvm-while-leave-continue.inox" \
     "define i64 @inox_findfirstbelow" "whilecond0:" "whilebody0:" "whileend0:" "br i1" "br label %whilecond0" "br label %whileend0" "icmp eq i64" "call i64 @__inox_sub_i64" "store i64" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-if-no-else.inox" \
     "define i64 @inox_clamppositive" "%x = alloca i64" "icmp slt i64" "br i1" "label %then0" "label %endif0" "then0:" "br label %endif0" "endif0:" "store i64" "load i64" "ret i64" "define i32 @main()" "ret i32 0"
@@ -452,9 +452,9 @@ run_llvm_emission_test "$repo_root/examples/llvm-repeat-flexible-start.inox" \
     "define i64 @inox_countdown" "repeatbody" "repeatcontinue" "repeatend" "br i1" "br label" "icmp" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-repeat-flexible-middle.inox" \
     "define i64 @inox_countdown" "repeatbody" "repeatcontinue" "repeatend" "br i1" "br label" "icmp" "ret i64" "define i32 @main()" "ret i32 0"
-run_llvm_emission_test "$repo_root/examples/llvm-repeat-break-continue.inox" \
+run_llvm_emission_test "$repo_root/examples/llvm-repeat-leave-continue.inox" \
     "define i64 @inox_findvalue" "repeatbody" "repeatend" "br i1" "br label" "icmp eq i64" "call i64 @__inox_sub_i64" "store i64" "ret i64" "define i32 @main()" "ret i32 0"
-run_llvm_emission_test "$repo_root/examples/llvm-for-range-break-continue.inox" \
+run_llvm_emission_test "$repo_root/examples/llvm-for-range-leave-continue.inox" \
     "define i64 @inox_sumrange" "forcond" "forbody" "forstep" "forend" "br i1" "br label" "icmp sle i64" "icmp eq i64" "call i64 @__inox_add_i64" "@llvm.sadd.with.overflow.i64" "store i64" "load i64" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-for-range-step.inox" \
     "define i64 @inox_sumevenuntil" "forcond" "forbody" "forstep" "forend" "store i64 2, ptr %i" "icmp sle i64" "icmp eq i64" "call i64 @__inox_add_i64" "@__inox_for_step_i64(i64 2)" "@llvm.sadd.with.overflow.i64" "br i1" "br label" "ret i64" "define i32 @main()" "ret i32 0"
@@ -492,10 +492,10 @@ run_llvm_emission_test "$repo_root/tests/codegen/llvm-exceptions-retry-smoke.ino
 run_linked_execution_test "$repo_root/tests/integration/output-basic.inox" "$repo_root/tests/integration/output-basic.out"
 run_build_driver_test "$repo_root/tests/integration/run-hello.inox"
 run_driver_execution_test "$repo_root/tests/integration/run-hello.inox" "$repo_root/tests/integration/run-hello.out"
-run_driver_execution_test "$repo_root/tests/integration/exceptions/typed-finally.inox" "$repo_root/tests/integration/exceptions/typed-finally.out"
+run_driver_execution_test "$repo_root/tests/integration/exceptions/typed-ensure.inox" "$repo_root/tests/integration/exceptions/typed-ensure.out"
 run_driver_execution_test "$repo_root/tests/integration/exceptions/rethrow.inox" "$repo_root/tests/integration/exceptions/rethrow.out"
 run_driver_execution_test "$repo_root/tests/integration/exceptions/plain-except.inox" "$repo_root/tests/integration/exceptions/plain-except.out"
-run_driver_execution_test "$repo_root/tests/integration/exceptions/finally-propagation.inox" "$repo_root/tests/integration/exceptions/finally-propagation.out"
+run_driver_execution_test "$repo_root/tests/integration/exceptions/ensure-propagation.inox" "$repo_root/tests/integration/exceptions/ensure-propagation.out"
 run_driver_execution_test "$repo_root/tests/integration/exceptions/retry-success.inox" "$repo_root/tests/integration/exceptions/retry-success.out"
 run_driver_execution_test "$repo_root/tests/integration/exceptions/retry-exhausted.inox" "$repo_root/tests/integration/exceptions/retry-exhausted.out"
 run_driver_execution_test "$repo_root/tests/integration/exceptions/retry-else.inox" "$repo_root/tests/integration/exceptions/retry-else.out"
@@ -503,7 +503,7 @@ run_driver_execution_test "$repo_root/tests/integration/exceptions/retry-zero.in
 run_driver_execution_test "$repo_root/tests/integration/exceptions/retry-nested.inox" "$repo_root/tests/integration/exceptions/retry-nested.out"
 run_driver_execution_test "$repo_root/tests/integration/exceptions/taxonomy-arithmetic.inox" "$repo_root/tests/integration/exceptions/taxonomy-arithmetic.out"
 run_driver_execution_test "$repo_root/tests/integration/exceptions/taxonomy-range.inox" "$repo_root/tests/integration/exceptions/taxonomy-range.out"
-run_driver_execution_test "$repo_root/tests/integration/exceptions/finally-control-transfers.inox" "$repo_root/tests/integration/exceptions/finally-control-transfers.out"
+run_driver_execution_test "$repo_root/tests/integration/exceptions/ensure-control-transfers.inox" "$repo_root/tests/integration/exceptions/ensure-control-transfers.out"
 run_driver_execution_test "$repo_root/tests/integration/modules/Main.inox" "$repo_root/tests/integration/modules/Main.out"
 run_driver_execution_test "$repo_root/tests/integration/modules/math-showcase.inox" "$repo_root/tests/integration/modules/math-showcase.out"
 run_driver_execution_test "$repo_root/tests/integration/stdlib/StdMathDemo.inox" "$repo_root/tests/integration/stdlib/StdMathDemo.out"

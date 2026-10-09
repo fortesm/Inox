@@ -35,6 +35,8 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - `case Expression` uses no `of`, `when`, `=>`, `:`, or `do`.
 - `for I in A..B (S)` uses no `do` and no `:`.
 - `repeat` closes with `;`; `until` is an internal statement.
+- Loop exit is `leave` and the try cleanup clause is `ensure` (v3.20, ADR-0007).
+  `break` and `finally` are NOT keywords; never emit them as Inox syntax.
 
 ## Type and semantic rules agents must not regress
 

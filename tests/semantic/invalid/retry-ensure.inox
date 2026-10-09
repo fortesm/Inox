@@ -1,4 +1,4 @@
-Module Semantic.RetryFinally
+Module Semantic.RetryEnsure
 
 Main :
     try
@@ -7,7 +7,7 @@ Main :
         On IOError
             PutLn("handled")
         ;
-    finally
+    ensure
         Retry(3)
     ;
 ;

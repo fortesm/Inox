@@ -9,7 +9,7 @@ These programs must fail parsing or semantic analysis.
 | `invalid-003.inox` | `bitand` requires integer operands |
 | `invalid-004.inox` | `Length` expects `String` |
 | `invalid-005.inox` | `Ord` expects `Char` |
-| `invalid-006.inox` | `break` outside loop |
+| `invalid-006.inox` | `leave` outside loop |
 | `invalid-007.inox` | `continue` outside loop |
 | `invalid-008.inox` | cannot assign `Bool` to `Int64` |
 | `invalid-009.inox` | cannot assign `Int64` to `Bool` |

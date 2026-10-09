@@ -1,7 +1,7 @@
 == SPDX-License-Identifier: MPL-2.0
 == Copyright (c) 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 ==
-== Retry(N) means N additional executions of this try body. The finally block
+== Retry(N) means N additional executions of this try body. The ensure block
 == runs before every new attempt and also before propagation on exhaustion.
 
 Module ExceptionsRetry
@@ -23,7 +23,7 @@ Main :
             PutLn("file not ready")
             Retry(3)
         ;
-    finally
+    ensure
         PutLn("cleanup")
     ;
 ;

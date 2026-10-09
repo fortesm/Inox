@@ -728,7 +728,7 @@ bool SemanticAnalyzer::cannotFallThrough(const std::vector<ast::StatementPtr>& s
 }
 
 // Loops are treated as "may fall through" (a loop may run zero times or exit
-// through break). This never accepts a function that can fall through; it may
+// through leave). This never accepts a function that can fall through; it may
 // reject one whose only exit is inside a loop, which then needs a final Return.
 bool SemanticAnalyzer::cannotFallThrough(const ast::Statement& statement)
 {
@@ -769,7 +769,7 @@ bool SemanticAnalyzer::cannotFallThrough(const ast::Statement& statement)
     }
     case ast::AstNodeKind::TryStatement: {
         const auto& tryStatement = static_cast<const ast::TryStatement&>(statement);
-        if (tryStatement.hasFinally() && cannotFallThrough(tryStatement.finallyBody())) {
+        if (tryStatement.hasEnsure() && cannotFallThrough(tryStatement.ensureBody())) {
             return true;
         }
         if (!cannotFallThrough(tryStatement.body())) {
@@ -999,10 +999,10 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             --exceptionHandlerDepth_;
         }
 
-        if (tryStatement.hasFinally()) {
-            ++finallyDepth_;
-            analyzeStatements(tryStatement.finallyBody(), true);
-            --finallyDepth_;
+        if (tryStatement.hasEnsure()) {
+            ++ensureDepth_;
+            analyzeStatements(tryStatement.ensureBody(), true);
+            --ensureDepth_;
         }
         break;
     }
@@ -1027,7 +1027,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
     }
     case ast::AstNodeKind::RetryStatement: {
         const auto& retryStatement = static_cast<const ast::RetryStatement&>(statement);
-        if (retryHandlerDepth_ == 0 || finallyDepth_ != 0) {
+        if (retryHandlerDepth_ == 0 || ensureDepth_ != 0) {
             throw SemanticError("Retry is only allowed inside an active On/Else exception handler");
         }
         const std::string countType = analyzeExpression(retryStatement.count());
@@ -1060,9 +1060,9 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         }
         break;
     }
-    case ast::AstNodeKind::BreakStatement:
+    case ast::AstNodeKind::LeaveStatement:
         if (loopDepth_ == 0) {
-            throw SemanticError("break outside loop");
+            throw SemanticError("leave outside loop");
         }
         break;
     case ast::AstNodeKind::ContinueStatement:

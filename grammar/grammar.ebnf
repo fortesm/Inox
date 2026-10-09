@@ -34,7 +34,7 @@ return_type     ::= type_name
 
 statement       ::= local_decl | var_block | if_stmt | while_stmt | repeat_stmt
                   | until_stmt | for_stmt | case_stmt | try_stmt | raise_stmt | retry_stmt
-                  | return_stmt | exit_stmt | break_stmt | continue_stmt | expression_stmt
+                  | return_stmt | exit_stmt | leave_stmt | continue_stmt | expression_stmt
 
 if_stmt         ::= "if" expression NEWLINE statement* elif_clause* else_clause? ";"
 elif_clause     ::= "elif" expression NEWLINE statement*
@@ -51,19 +51,19 @@ case_arm        ::= expression NEWLINE statement* | expression statement
 otherwise_arm   ::= "otherwise" NEWLINE statement* | "otherwise" statement
 
 try_stmt        ::= "try" NEWLINE statement*
-                    (except_clause finally_clause? | finally_clause) ";"
+                    (except_clause ensure_clause? | ensure_clause) ";"
 except_clause   ::= "except" NEWLINE (typed_handlers | statement*)
 typed_handlers  ::= exception_handler+ else_handler?
 exception_handler ::= ("On" exception_type | "On" identifier exception_type) NEWLINE statement* ";"
 else_handler    ::= "Else" NEWLINE statement* ";"
-finally_clause  ::= "finally" NEWLINE statement*
+ensure_clause   ::= "ensure" NEWLINE statement*
 raise_stmt      ::= "Raise" expression | "Raise"
 retry_stmt      ::= "Retry" "(" expression ")"
 exception_type  ::= identifier
 
 return_stmt     ::= "Return" expression
 exit_stmt       ::= "Exit"
-break_stmt      ::= "break"
+leave_stmt      ::= "leave"
 continue_stmt   ::= "continue"
 
 expression      ::= assignment

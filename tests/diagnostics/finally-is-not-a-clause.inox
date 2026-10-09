@@ -5,22 +5,15 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module ForRange
+== v3.20: `finally` was replaced by `ensure`; `finally` is an ordinary
+== identifier and no longer opens the try cleanup clause.
 
-SumRange(N Integer) Integer :
-    Total := 0
-    for I in 1..N
-        if I = 3
-            continue
-        ;
-        if I = 8
-            break
-        ;
-        Total := Total + I
-    ;
-    Return Total
-;
+Module FinallyIsNotAClause
 
 Main :
-    PutLn(SumRange(20))
+    try
+        PutLn("body")
+    finally
+        PutLn("cleanup")
+    ;
 ;

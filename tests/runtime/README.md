@@ -15,5 +15,5 @@ wraparound or undefined behavior.
 
 A runtime fault is a deterministic Inox trap (CANON-19): the program flushes its
 output, prints `Inox runtime error: <category>` on standard error and exits with
-status 70. It is not an exception: `try`/`except`/`finally` cannot intercept it
+status 70. It is not an exception: `try`/`except`/`ensure` cannot intercept it
 (`fault-not-catchable.inox`).

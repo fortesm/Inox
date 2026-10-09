@@ -1,15 +1,15 @@
 outer 1
 inner 1
-inner-finally
+inner-ensure
 inner 2
-inner-finally
+inner-ensure
 inner-done
-outer-finally
+outer-ensure
 outer 2
 inner 1
-inner-finally
+inner-ensure
 inner 2
-inner-finally
+inner-ensure
 inner-done
-outer-finally
+outer-ensure
 outer-exhausted

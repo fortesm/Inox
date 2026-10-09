@@ -9,7 +9,7 @@ Main :
         On FileNotFound
             Retry(2)
         ;
-    finally
+    ensure
         PutLn("cleanup")
     ;
 ;

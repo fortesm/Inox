@@ -22,14 +22,14 @@ Main :
                     On RangeError
                         Retry(1)
                     ;
-                finally
-                    PutLn("inner-finally")
+                ensure
+                    PutLn("inner-ensure")
                 ;
                 PutLn("inner-done")
                 Retry(1)
             ;
-        finally
-            PutLn("outer-finally")
+        ensure
+            PutLn("outer-ensure")
         ;
     except
         On Exception

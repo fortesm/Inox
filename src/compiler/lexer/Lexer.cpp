@@ -19,9 +19,9 @@ namespace {
 constexpr std::array<std::string_view, 47> kKeywords = {
     "module", "use", "type", "const", "var", "state", "struct", "enum",
     "main", "if", "elif", "else", "unless", "while", "repeat", "until",
-    "for", "in", "case", "otherwise", "try", "except", "on", "do", "finally", "raise", "retry",
+    "for", "in", "case", "otherwise", "try", "except", "on", "do", "ensure", "raise", "retry",
     "with", "mut", "div", "mod", "and", "xor", "or", "not",
-    "bitand", "bitor", "bitxor", "bitnot", "shr", "shl", "break", "continue",
+    "bitand", "bitor", "bitxor", "bitnot", "shr", "shl", "leave", "continue",
     "return", "exit", "true", "false"
 };
 
