@@ -29,7 +29,16 @@ jobs:
       - name: Configure (cl.exe)
         run: cmake -S . -B build/msvc -G "Ninja Multi-Config" -DCMAKE_CXX_COMPILER=cl
       - name: Build (cl.exe, /W4 /permissive-)
-        run: cmake --build build/msvc --config Debug
+        shell: pwsh
+        run: |
+          cmake --build build/msvc --config Debug --clean-first *>&1 | Tee-Object -FilePath build-output.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $id = (Select-String -Path build/msvc/CMakeCache.txt -Pattern '^CMAKE_CXX_COMPILER:' ).Line
+          $ver = (cl 2>&1 | Select-Object -First 1)
+          $warnings = @(Select-String -Path build-output.txt -Pattern 'warning C\d+' | ForEach-Object { $_.Line.Trim() } | Sort-Object -Unique)
+          $units = @(Select-String -Path build-output.txt -Pattern '\.cpp').Count
+          Write-Output "::notice::compiler: $ver | $id | build lines mentioning .cpp: $units | distinct MSVC warnings: $($warnings.Count)"
+          foreach ($w in $warnings | Select-Object -First 20) { Write-Output "::notice::$w" }
       - name: Test suite (known EH-v3.16a failures must match exactly)
         shell: pwsh
         run: |
