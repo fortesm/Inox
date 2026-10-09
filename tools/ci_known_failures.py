@@ -8,10 +8,12 @@
 
 Usage: python tools/ci_known_failures.py RUNNER_LOG KNOWN_FAILURES_FILE
 
-Exit status 1 when the log has no "Summary:" line (the runner did not finish)
-or when a test fails that is not in the known list. A known failure that now
-passes is reported as a GitHub Actions notice, not an error, so the list can be
-shrunk deliberately.
+The observed set of failing tests must EQUAL the known list. Exit status 1 when
+the log has no "Summary:" line (the runner did not finish), when a test fails
+that is not in the list, or when a listed test passes: a stale entry would let a
+future regression of that test pass unnoticed, so the list must be shrunk in the
+same change that fixes the test. The list describes one concrete CI runner and
+toolchain; results on other toolchains are recorded separately.
 """
 
 import re
@@ -48,12 +50,12 @@ def main(argv):
     unexpected = sorted(failed - known)
     fixed = sorted(known - failed)
     for path in fixed:
-        print("::notice::known failure now passes; remove it from the list: " + path)
+        print("::error::known failure now passes; remove it from the list: " + path)
     for path in unexpected:
         print("::error::unexpected failure: " + path)
     print("failures: %d known, %d unexpected; %d known entries now pass"
           % (len(failed & known), len(unexpected), len(fixed)))
-    return 1 if unexpected else 0
+    return 1 if unexpected or fixed else 0
 
 
 if __name__ == "__main__":

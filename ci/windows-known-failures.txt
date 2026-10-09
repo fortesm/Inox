@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: MPL-2.0
-# Tests that are expected to fail on Windows (x86_64-pc-windows-msvc) until the
-# MSVC exception bridge lands (CANON B-GAPS EH-v3.16a). The CI job fails on any
-# failure NOT listed here; a listed test that passes is reported as a notice so
-# this file can be shrunk. Remove entries as the bridge closes them.
+# Tests that fail on the Windows CI runner (windows-2022, clang 19.1.5,
+# x86_64-pc-windows-msvc) until the MSVC exception bridge lands (CANON B-GAPS
+# EH-v3.16a). The failing set must EQUAL this list (tools/ci_known_failures.py):
+# an unlisted failure or a listed test that passes fails the job. This list
+# describes that runner only; results with other toolchains (for example clang
+# 22.1.6 on the maintainer's machine) are recorded separately, not here.
 tests/integration/exceptions/typed-ensure.inox
 tests/integration/exceptions/rethrow.inox
 tests/integration/exceptions/plain-except.inox
@@ -15,7 +17,5 @@ tests/integration/exceptions/retry-nested.inox
 tests/integration/exceptions/taxonomy-arithmetic.inox
 tests/integration/exceptions/taxonomy-range.inox
 tests/integration/exceptions/ensure-control-transfers.inox
-tests/integration/exceptions/nested-loop-ensure-transfers.inox
 tests/integration/exceptions/nested-loop-retry-raise.inox
 tests/integration/exceptions/until-crossing-ensure.inox
-tests/runtime/fault-not-catchable.inox
