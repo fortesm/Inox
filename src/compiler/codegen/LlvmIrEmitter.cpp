@@ -1790,7 +1790,10 @@ private:
             return;
         }
 
-        const std::string value = initializer != nullptr ? emitExpression(*initializer) : "0";
+        // A declared-but-uninitialized scalar starts at its type's zero. LLVM
+        // requires a floating-point literal for double, so `0` is not valid there.
+        const std::string zero = llvmType == "double" ? "0.0" : "0";
+        const std::string value = initializer != nullptr ? emitExpression(*initializer) : zero;
         output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
         locals_.insert_or_assign(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
     }
