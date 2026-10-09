@@ -19,8 +19,9 @@ and classifies the probe as
               "not yet implemented in the LLVM backend" (CodegenUnsupported)
   SEMA        the semantic analyzer rejects it (not a backend gap)
   BUG         anything else after sema accepted: an internal codegen error,
-              a crash, a timeout, or a backend diagnostic that is not marked
-              as unsupported. A BUG is always a defect.
+              a crash, a timeout, a backend diagnostic that is not marked
+              as unsupported, or (when clang is on PATH) emitted LLVM IR that
+              clang rejects. A BUG is always a defect.
 
 Usage (any OS):  python tools/backend_gaps.py path/to/inox [--markdown]
 
@@ -30,6 +31,7 @@ visible and measured instead of discovered by users (CANON E15).
 """
 
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -99,6 +101,36 @@ PROBES = [
         T Integer := I * 2
         Put(T)
     ;
+;
+"""),
+    ("until-in-if", "until inside if within repeat", """Main :
+    X Integer := 0
+    repeat
+        X := X + 1
+        if X > 1
+            until X = 3
+        ;
+    ;
+;
+"""),
+    ("until-across-loop", "until with a loop between it and its repeat", """Main :
+    X Integer := 0
+    repeat
+        while X < 3
+            X := X + 1
+            until X = 2
+        ;
+    ;
+;
+"""),
+    ("float-uninit", "Float local declared without initializer", """Main :
+    F Float
+    F := F + 1.5
+;
+"""),
+    ("float32-uninit", "Float32 local declared without initializer", """Main :
+    F Float32
+    G Float32 := F
 ;
 """),
     ("nested-if", "if inside if (straight-line code)", """Main :
@@ -232,6 +264,32 @@ def run(compiler, mode, path):
     return result.returncode, text.splitlines()[0] if text else ""
 
 
+def verify_ir(compiler, path):
+    """Return None when clang accepts the emitted IR (or clang is absent),
+    otherwise the first line of clang's complaint. Emitting text is not enough:
+    invalid IR would only surface later as an opaque build failure."""
+    clang = shutil.which("clang")
+    if clang is None:
+        return None
+    emitted = subprocess.run([compiler, "--emit-llvm", path], capture_output=True, timeout=60)
+    handle, ir_path = tempfile.mkstemp(suffix=".ll")
+    object_path = ir_path[:-3] + ".o"
+    try:
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(emitted.stdout)
+        result = subprocess.run([clang, "-c", "-w", "-x", "ir", ir_path, "-o", object_path],
+                                capture_output=True, timeout=120)
+        if result.returncode == 0:
+            return None
+        lines = [line for line in result.stderr.decode("utf-8", errors="replace").splitlines()
+                 if "error:" in line]
+        return lines[0].split("error:", 1)[1].strip() if lines else "exit %d" % result.returncode
+    finally:
+        for leftover in (ir_path, object_path):
+            if os.path.exists(leftover):
+                os.unlink(leftover)
+
+
 def classify(compiler, source):
     handle, path = tempfile.mkstemp(suffix=".inox")
     try:
@@ -246,6 +304,9 @@ def classify(compiler, source):
             return "SEMA", message
         code, message = run(compiler, "--emit-llvm", path)
         if code == 0:
+            rejection = verify_ir(compiler, path)
+            if rejection is not None:
+                return "BUG", "emitted LLVM IR rejected by clang: " + rejection
             return "OK", ""
         if code is None:
             return "BUG", "codegen timed out"

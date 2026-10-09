@@ -1,0 +1,42 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.21: locals declared in loop bodies are re-initialized on every iteration,
+== including a declared-but-uninitialized Integer, Float and Float32 (zero). Sibling scopes
+== reuse the same names (former backend gap loop-local-var).
+Module Runtime.LoopBodyLocals
+
+Main :
+    for I in 1..3
+        X Integer := I * 2
+        Y Integer
+        Y := Y + X
+        PutLn(Y)
+    ;
+    for I in 1..2
+        F Float
+        F := F + 0.5
+        PutLn(F)
+        G Float32
+        H Float32 := G
+    ;
+    for I in 1..2
+        X Integer := I + 100
+        PutLn(X)
+    ;
+    W Integer := 0
+    while W < 2
+        if W = 0
+            Z Integer := 7
+            PutLn(Z)
+        else
+            Z Integer := 8
+            PutLn(Z)
+        ;
+        W := W + 1
+    ;
+;

@@ -600,7 +600,7 @@ public:
     {
         if (signature_.llvmReturnType == "i32" || signature_.llvmReturnType == "void") {
             for (const auto& statement : function_.body()) {
-                emitLocalDeclaration(*statement);
+                emitStatement(*statement);
             }
             if (signature_.llvmReturnType == "i32") {
                 output_ << "  ret i32 0\n";
@@ -624,7 +624,7 @@ public:
         }
 
         for (std::size_t index = 0; index + 1 < function_.body().size(); ++index) {
-            emitLocalDeclaration(*function_.body()[index]);
+            emitStatement(*function_.body()[index]);
         }
 
         const auto& returnStatement =
@@ -656,6 +656,11 @@ private:
         std::size_t loopDepthAtEntry = 0;
         std::string leaveDestination;
         std::string continueDestination;
+        // `until` exits the nearest repeat enclosing this try, possibly across
+        // intermediate loops. Empty when the try is not inside a repeat.
+        std::string untilRequestTarget;
+        std::size_t untilTargetDepth = 0;
+        std::string untilDestination;
     };
 
     struct LocalInfo {
@@ -732,6 +737,7 @@ private:
     void emitReturn(const ast::ReturnStatement& statement)
     {
         const std::string value = emitExpression(statement.expression());
+        emitReleaseHandlersLeftBy(0);
         if (!cleanupContexts_.empty()) {
             if (returnValueSlot_.empty()) {
                 throw CodegenError("internal error: Return cleanup requires a return-value slot");
@@ -748,6 +754,7 @@ private:
 
     void emitExit()
     {
+        emitReleaseHandlersLeftBy(0);
         if (!cleanupContexts_.empty()) {
             output_ << "  br label %" << cleanupContexts_.back().exitRequestTarget << "\n";
             const std::string dead = newDeadLabel("eh.after.exit");
@@ -777,11 +784,28 @@ private:
         return nullptr;
     }
 
+    // A nonlocal transfer (leave, continue, until, Return, Exit) that leaves a
+    // handler region abandons the exception that handler caught: release its
+    // state before the transfer, innermost first, as a handler that completes
+    // normally does. `targetLoopDepth` is the loop depth the transfer exits to;
+    // handlers of a try at that depth or deeper are left. Return and Exit pass 0
+    // (they leave every handler). The slot is nulled, so an exception raised
+    // later by an ensure on the way does not release it again.
+    void emitReleaseHandlersLeftBy(std::size_t targetLoopDepth)
+    {
+        for (auto it = handlerRegions_.rbegin(); it != handlerRegions_.rend(); ++it) {
+            if (it->loopDepthAtEntry >= targetLoopDepth) {
+                emitReleaseExceptionState(it->stateSlot);
+            }
+        }
+    }
+
     void emitLeaveTransfer()
     {
         if (loopTargets_.empty()) {
             throw CodegenError("leave outside loop");
         }
+        emitReleaseHandlersLeftBy(loopTargets_.size());
         if (const CleanupContext* cleanup = cleanupForLoopTransfer()) {
             output_ << "  br label %" << cleanup->leaveRequestTarget << "\n";
         } else {
@@ -796,6 +820,7 @@ private:
         if (loopTargets_.empty()) {
             throw CodegenError("continue outside loop");
         }
+        emitReleaseHandlersLeftBy(loopTargets_.size());
         if (const CleanupContext* cleanup = cleanupForLoopTransfer()) {
             output_ << "  br label %" << cleanup->continueRequestTarget << "\n";
         } else {
@@ -807,35 +832,54 @@ private:
 
     void emitIfMerge(const ast::IfStatement& statement)
     {
-        if (!statement.elseIfClauses().empty()) {
-            throw CodegenUnsupported(
-                "LLVM emission currently supports if without elif");
-        }
-
+        // if / elif* / else? lowered as a chain of conditional branches that all
+        // join at one merge block. Each body is lowered by the general statement
+        // dispatcher, so any statement (loops, try, leave, continue, nested if)
+        // composes inside any branch.
         const std::size_t label = nextLabel_++;
+        const std::string endTarget = "endif" + std::to_string(label);
+        const auto& clauses = statement.elseIfClauses();
         const bool hasElse = !statement.elseBody().empty();
-        const std::string condition = emitExpression(statement.condition());
-        output_ << "  br i1 " << condition
-                << ", label %then" << label
-                << ", label %" << (hasElse ? "else" : "endif") << label << "\n\n";
 
-        output_ << "then" << label << ":\n";
-        emitAssignmentBranch(statement.thenBody());
-        output_ << "  br label %endif" << label << "\n\n";
+        auto emitArm = [&](const ast::Expression& condition,
+                           const std::vector<ast::StatementPtr>& body,
+                           std::size_t armIndex,
+                           bool isLastConditionalArm) {
+            const std::string suffix = std::to_string(label) + "_" + std::to_string(armIndex);
+            const std::string thenTarget = armIndex == 0 ? "then" + std::to_string(label) : "elifthen" + suffix;
+            const std::string nextTarget = isLastConditionalArm
+                ? (hasElse ? "else" + std::to_string(label) : endTarget)
+                : "elifcond" + std::to_string(label) + "_" + std::to_string(armIndex + 1);
+            const std::string value = emitExpression(condition);
+            output_ << "  br i1 " << value << ", label %" << thenTarget
+                    << ", label %" << nextTarget << "\n\n";
+            output_ << thenTarget << ":\n";
+            emitAssignmentBranch(body);
+            output_ << "  br label %" << endTarget << "\n\n";
+            if (!isLastConditionalArm) {
+                output_ << nextTarget << ":\n";
+            }
+        };
+
+        emitArm(statement.condition(), statement.thenBody(), 0, clauses.empty());
+        for (std::size_t index = 0; index < clauses.size(); ++index) {
+            emitArm(*clauses[index].condition, clauses[index].body, index + 1,
+                    index + 1 == clauses.size());
+        }
 
         if (hasElse) {
             output_ << "else" << label << ":\n";
             emitAssignmentBranch(statement.elseBody());
-            output_ << "  br label %endif" << label << "\n\n";
+            output_ << "  br label %" << endTarget << "\n\n";
         }
 
-        output_ << "endif" << label << ":\n";
+        output_ << endTarget << ":\n";
     }
 
     void emitAssignmentBranch(const std::vector<ast::StatementPtr>& statements)
     {
         for (const auto& statement : statements) {
-            emitLocalDeclaration(*statement);
+            emitStatement(*statement);
         }
     }
 
@@ -873,7 +917,9 @@ private:
 
         output_ << bodyTarget << ":\n";
         loopTargets_.push_back(LoopTargets{bodyTarget, endTarget});
-        const bool terminated = emitRepeatStatements(statement.body(), bodyTarget, endTarget, label);
+        repeatLoopDepths_.push_back(loopTargets_.size());
+        const bool terminated = emitLoopStatements(statement.body());
+        repeatLoopDepths_.pop_back();
         loopTargets_.pop_back();
         if (!terminated) {
             output_ << "  br label %" << bodyTarget << '\n';
@@ -913,7 +959,7 @@ private:
 
         auto temporary = [this]() { return "%tmp" + std::to_string(nextTemporary_++); };
 
-        // CANON-11 `for in range`: both endpoints and the step are evaluated ONCE,
+        // SECTION 17 (LOOPS) `for in range`: both endpoints and the step are evaluated ONCE,
         // before the first iteration (start, end, step order). The direction comes
         // from the endpoints: A<B ascending, A>B descending, A=B runs once. The step
         // is a positive magnitude; a step <= 0 traps before the loop starts.
@@ -994,129 +1040,50 @@ private:
         }
     }
 
-    bool emitRepeatStatements(const std::vector<ast::StatementPtr>& statements,
-                              const std::string& bodyTarget,
-                              const std::string& endTarget,
-                              std::size_t repeatLabel)
-    {
-        std::size_t continueIndex = 0;
-        bool terminated = false;
-        for (std::size_t index = 0; index < statements.size(); ++index) {
-            if (terminated) {
-                throw CodegenUnsupported(
-                    "LLVM emission does not support statements after terminating repeat branch");
-            }
-
-            const ast::Statement& statement = *statements[index];
-            if (statement.kind() == ast::AstNodeKind::ExpressionStatement) {
-                emitAssignmentOrCallStatement(
-                    static_cast<const ast::ExpressionStatement&>(statement).expression());
-                continue;
-            }
-            if (statement.kind() == ast::AstNodeKind::IfStatement) {
-                emitLoopIf(static_cast<const ast::IfStatement&>(statement));
-                continue;
-            }
-            if (statement.kind() == ast::AstNodeKind::TryStatement) {
-                emitTry(static_cast<const ast::TryStatement&>(statement));
-                continue;
-            }
-            if (statement.kind() == ast::AstNodeKind::LeaveStatement) {
-                output_ << "  br label %" << currentLoopTargets().leaveTarget << '\n';
-                terminated = true;
-                continue;
-            }
-            if (statement.kind() == ast::AstNodeKind::ContinueStatement) {
-                output_ << "  br label %" << currentLoopTargets().continueTarget << '\n';
-                terminated = true;
-                continue;
-            }
-            if (statement.kind() == ast::AstNodeKind::UntilStatement) {
-                const auto& untilStatement =
-                    static_cast<const ast::UntilStatement&>(statement);
-                const std::string condition = emitExpression(untilStatement.condition());
-                const bool hasFollowingStatements = index + 1 < statements.size();
-                const std::string continueTarget = hasFollowingStatements
-                    ? "repeatcontinue" + std::to_string(repeatLabel) + "_" +
-                          std::to_string(continueIndex++)
-                    : bodyTarget;
-                output_ << "  br i1 " << condition
-                        << ", label %" << endTarget
-                        << ", label %" << continueTarget << '\n';
-                if (hasFollowingStatements) {
-                    output_ << "\n" << continueTarget << ":\n";
-                } else {
-                    terminated = true;
-                }
-                continue;
-            }
-
-            throw CodegenUnsupported(
-                "LLVM emission currently supports only assignments, if, leave, continue, and until in repeat bodies");
-        }
-
-        return terminated;
-    }
-
     bool emitLoopStatements(const std::vector<ast::StatementPtr>& statements)
     {
-        bool terminated = false;
+        // Loop bodies are ordinary blocks: every statement goes through the
+        // general dispatcher. leave/continue end the current block and open an
+        // unreachable continuation label, so the caller may always close the body
+        // with a branch back to the loop header.
         for (const auto& statement : statements) {
-            if (terminated) {
-                throw CodegenUnsupported(
-                    "LLVM emission does not support statements after leave or continue");
-            }
-            terminated = emitLoopStatement(*statement);
+            emitStatement(*statement);
         }
-        return terminated;
+        return false;
     }
 
-    bool emitLoopStatement(const ast::Statement& statement)
+    // SECTION 17 (LOOPS) `until Condition` exits the nearest repeat when true, wherever it
+    // appears in the repeat body: also inside if/elif/else, try, and loops nested
+    // in the repeat. It is a transfer to an explicit target (the repeat), not to
+    // the innermost loop: every ensure between the until and that repeat runs,
+    // innermost first, and no other.
+    void emitUntil(const ast::UntilStatement& statement)
     {
-        if (statement.kind() == ast::AstNodeKind::ExpressionStatement) {
-            emitAssignmentOrCallStatement(
-                static_cast<const ast::ExpressionStatement&>(statement).expression());
-            return false;
+        if (repeatLoopDepths_.empty()) {
+            throw CodegenError("until outside repeat");
         }
-        if (statement.kind() == ast::AstNodeKind::IfStatement) {
-            emitLoopIf(static_cast<const ast::IfStatement&>(statement));
-            return false;
-        }
-        if (statement.kind() == ast::AstNodeKind::TryStatement) {
-            emitTry(static_cast<const ast::TryStatement&>(statement));
-            return false;
-        }
-        if (statement.kind() == ast::AstNodeKind::LeaveStatement) {
-            output_ << "  br label %" << currentLoopTargets().leaveTarget << '\n';
-            return true;
-        }
-        if (statement.kind() == ast::AstNodeKind::ContinueStatement) {
-            output_ << "  br label %" << currentLoopTargets().continueTarget << '\n';
-            return true;
-        }
-
-        throw CodegenUnsupported(
-            "LLVM emission currently supports only assignments, if, leave, and continue in loop bodies");
-    }
-
-    void emitLoopIf(const ast::IfStatement& statement)
-    {
-        if (!statement.elseIfClauses().empty() || !statement.elseBody().empty()) {
-            throw CodegenUnsupported(
-                "LLVM emission currently supports loop if without elif or else");
-        }
-
+        const std::size_t targetDepth = repeatLoopDepths_.back();
         const std::size_t label = nextLabel_++;
+        const std::string exitTarget = "untilexit" + std::to_string(label);
+        const std::string nextTarget = "untilnext" + std::to_string(label);
         const std::string condition = emitExpression(statement.condition());
-        output_ << "  br i1 " << condition
-                << ", label %loopthen" << label
-                << ", label %loopendif" << label << "\n\n";
-
-        output_ << "loopthen" << label << ":\n";
-        if (!emitLoopStatements(statement.thenBody())) {
-            output_ << "  br label %loopendif" << label << '\n';
+        output_ << "  br i1 " << condition << ", label %" << exitTarget
+                << ", label %" << nextTarget << "\n\n";
+        output_ << exitTarget << ":\n";
+        emitReleaseHandlersLeftBy(targetDepth);
+        const CleanupContext* crossed = nullptr;
+        for (auto it = cleanupContexts_.rbegin(); it != cleanupContexts_.rend(); ++it) {
+            if (it->loopDepthAtEntry >= targetDepth) {
+                crossed = &*it;
+                break;
+            }
         }
-        output_ << "\nloopendif" << label << ":\n";
+        if (crossed != nullptr) {
+            output_ << "  br label %" << crossed->untilRequestTarget << "\n\n";
+        } else {
+            output_ << "  br label %" << loopTargets_[targetDepth - 1].leaveTarget << "\n\n";
+        }
+        output_ << nextTarget << ":\n";
     }
 
     const LoopTargets& currentLoopTargets() const
@@ -1151,7 +1118,7 @@ private:
         // Emit body statements; dot-prefixed members were already expanded by
         // the parser to __member(__with_N, Field), which resolves via the alias.
         for (const auto& bodyStatement : statement.body()) {
-            emitLocalDeclaration(*bodyStatement);
+            emitStatement(*bodyStatement);
         }
     }
 
@@ -1336,6 +1303,8 @@ private:
         const std::string exitPerform = "eh.exit.perform" + std::to_string(id);
         const std::string leavePerform = "eh.leave.perform" + std::to_string(id);
         const std::string continuePerform = "eh.loop.continue.perform" + std::to_string(id);
+        const std::string untilRequest = "eh.until.request" + std::to_string(id);
+        const std::string untilPerform = "eh.until.perform" + std::to_string(id);
         const std::string continueLabel = "eh.continue" + std::to_string(id);
         const std::string rethrowLabel = "eh.rethrow" + std::to_string(id);
         const std::string handledLabel = statement.hasEnsure() ? ensureLabel : continueLabel;
@@ -1361,6 +1330,19 @@ private:
             }
         }
 
+        const std::size_t untilTargetDepth = repeatLoopDepths_.empty() ? 0 : repeatLoopDepths_.back();
+        const std::string untilDestination = untilTargetDepth == 0
+            ? std::string{} : loopTargets_[untilTargetDepth - 1].leaveTarget;
+        std::string outerUntilRequest;
+        if (untilTargetDepth != 0) {
+            for (auto it = cleanupContexts_.rbegin(); it != cleanupContexts_.rend(); ++it) {
+                if (it->loopDepthAtEntry >= untilTargetDepth) {
+                    outerUntilRequest = it->untilRequestTarget;
+                    break;
+                }
+            }
+        }
+
         const CleanupContext cleanupContext{
             actionSlot,
             returnRequest,
@@ -1369,7 +1351,10 @@ private:
             continueRequest,
             loopDepthAtEntry,
             leaveDestination,
-            continueDestination};
+            continueDestination,
+            untilTargetDepth != 0 ? untilRequest : std::string{},
+            untilTargetDepth,
+            untilDestination};
 
         output_ << "  " << stateSlot << " = alloca ptr\n";
         output_ << "  " << retryCounterSlot << " = alloca i64\n";
@@ -1386,7 +1371,7 @@ private:
         output_ << bodyLabel << ":\n";
         unwindTargets_.push_back(landing);
         for (const auto& bodyStatement : statement.body()) {
-            emitLocalDeclaration(*bodyStatement);
+            emitStatement(*bodyStatement);
         }
         unwindTargets_.pop_back();
         output_ << "  store i32 0, ptr " << actionSlot << "\n";
@@ -1404,7 +1389,9 @@ private:
             caughtExceptionStates_.push_back(stateSlot);
             bareRethrowTargets_.push_back(rethrowRequest);
             unwindTargets_.push_back(handlerUnwind);
-            for (const auto& st : statement.exceptBody()) emitLocalDeclaration(*st);
+            handlerRegions_.push_back(HandlerRegion{stateSlot, loopDepthAtEntry});
+            for (const auto& st : statement.exceptBody()) emitStatement(*st);
+            handlerRegions_.pop_back();
             unwindTargets_.pop_back();
             bareRethrowTargets_.pop_back();
             caughtExceptionStates_.pop_back();
@@ -1456,7 +1443,9 @@ private:
                     exceptionBindings_.emplace(normalize(handler.bindingName), stateSlot);
                 }
                 unwindTargets_.push_back(handlerUnwind);
-                for (const auto& st : handler.body) emitLocalDeclaration(*st);
+                handlerRegions_.push_back(HandlerRegion{stateSlot, loopDepthAtEntry});
+                for (const auto& st : handler.body) emitStatement(*st);
+                handlerRegions_.pop_back();
                 unwindTargets_.pop_back();
                 if (!handler.bindingName.empty()) {
                     exceptionBindings_.erase(normalize(handler.bindingName));
@@ -1475,7 +1464,9 @@ private:
                 bareRethrowTargets_.push_back(rethrowRequest);
                 retryContexts_.push_back(retryContext);
                 unwindTargets_.push_back(handlerUnwind);
-                for (const auto& st : statement.elseBody()) emitLocalDeclaration(*st);
+                handlerRegions_.push_back(HandlerRegion{stateSlot, loopDepthAtEntry});
+                for (const auto& st : statement.elseBody()) emitStatement(*st);
+                handlerRegions_.pop_back();
                 unwindTargets_.pop_back();
                 retryContexts_.pop_back();
                 bareRethrowTargets_.pop_back();
@@ -1515,11 +1506,17 @@ private:
                 output_ << "  br label %" << ensureLabel << "\n\n";
             }
 
+            if (untilTargetDepth != 0) {
+                output_ << untilRequest << ":\n";
+                output_ << "  store i32 7, ptr " << actionSlot << "\n";
+                output_ << "  br label %" << ensureLabel << "\n\n";
+            }
+
             cleanupContexts_.pop_back();
 
             output_ << ensureLabel << ":\n";
             unwindTargets_.push_back(ensureUnwind);
-            for (const auto& st : statement.ensureBody()) emitLocalDeclaration(*st);
+            for (const auto& st : statement.ensureBody()) emitStatement(*st);
             unwindTargets_.pop_back();
             output_ << "  br label %" << afterEnsure << "\n\n";
 
@@ -1542,6 +1539,9 @@ private:
             if (loopDepthAtEntry != 0) {
                 output_ << "    i32 5, label %" << leavePerform << "\n";
                 output_ << "    i32 6, label %" << continuePerform << "\n";
+            }
+            if (untilTargetDepth != 0) {
+                output_ << "    i32 7, label %" << untilPerform << "\n";
             }
             output_ << "  ]\n\n";
 
@@ -1583,6 +1583,15 @@ private:
                     output_ << "  br label %" << continueDestination << "\n\n";
                 }
             }
+
+            if (untilTargetDepth != 0) {
+                output_ << untilPerform << ":\n";
+                if (!outerUntilRequest.empty()) {
+                    output_ << "  br label %" << outerUntilRequest << "\n\n";
+                } else {
+                    output_ << "  br label %" << untilDestination << "\n\n";
+                }
+            }
         }
 
         output_ << retryPerform << ":\n";
@@ -1599,7 +1608,7 @@ private:
         output_ << continueLabel << ":\n";
     }
 
-    void emitLocalDeclaration(const ast::Statement& statement)
+    void emitStatement(const ast::Statement& statement)
     {
         if (statement.kind() == ast::AstNodeKind::VarStatement) {
             const auto& variable = static_cast<const ast::VarStatement&>(statement);
@@ -1696,8 +1705,18 @@ private:
             return;
         }
 
-        throw CodegenUnsupported(
-            "LLVM emission currently supports only local variables, assignments, if, while, repeat, for, and with before Return");
+        if (statement.kind() == ast::AstNodeKind::UntilStatement) {
+            emitUntil(static_cast<const ast::UntilStatement&>(statement));
+            return;
+        }
+
+        if (statement.kind() == ast::AstNodeKind::CaseStatement) {
+            throw CodegenUnsupported("LLVM emission does not lower case statements yet");
+        }
+        if (statement.kind() == ast::AstNodeKind::UnlessStatement) {
+            throw CodegenUnsupported("LLVM emission does not lower unless statements yet");
+        }
+        throw CodegenUnsupported("LLVM emission does not lower this statement kind yet");
     }
 
     void emitVarBlockDeclaration(const ast::Statement& statement)
@@ -1798,7 +1817,11 @@ private:
             return;
         }
 
-        const std::string value = initializer != nullptr ? emitExpression(*initializer) : "0";
+        // A declared-but-uninitialized scalar starts at its type's zero. LLVM
+        // requires a floating-point literal for float and double, so `0` is not
+        // valid there.
+        const std::string zero = isFloatLlvmType(llvmType) ? "0.0" : "0";
+        const std::string value = initializer != nullptr ? emitExpression(*initializer) : zero;
         output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
         locals_.insert_or_assign(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
     }
@@ -2748,6 +2771,14 @@ private:
     std::unordered_set<std::string> usedSlots_;
     std::size_t slotCounter_ = 0;
     std::vector<LoopTargets> loopTargets_;
+    std::vector<std::size_t> repeatLoopDepths_;
+    // Handler regions (On / Else / plain except bodies) being emitted, innermost last: the slot
+    // holding the caught exception state and the loop depth of their try.
+    struct HandlerRegion {
+        std::string stateSlot;
+        std::size_t loopDepthAtEntry = 0;
+    };
+    std::vector<HandlerRegion> handlerRegions_;
     std::vector<std::string> unwindTargets_;
     std::vector<std::string> caughtExceptionStates_;
     std::vector<std::string> bareRethrowTargets_;

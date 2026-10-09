@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.20 (keyword rename approved by Marcelo Fortes: `break` -> `leave`,
-#          `finally` -> `ensure`; no semantic change)
+# Version: v3.21 (Layer B: compositional statement lowering in the LLVM
+#          backend; nested loops and if/elif/else in loop bodies are lowered)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,71 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.21 — 2026-10-09 — compositional statement lowering (Layer B only; no
+#         language change). Prioritized by Marcelo Fortes on 2026-10-09;
+#         reviewed with ChatGPT before implementation.
+#   - The LLVM emitter lowers loop bodies and `if`/`elif`/`else` branches with the
+#     same statement dispatcher as any other block. The container no longer
+#     decides which statements it accepts: `emitLoopStatement`/`emitLoopIf` and
+#     the separate repeat-body dispatcher were removed. Closed backend gaps:
+#     `nested-for`, `while-in-for`, `for-in-while`, `repeat-in-for`,
+#     `loop-if-elif`, `loop-if-else`, `loop-local-var`.
+#   - `if` with any number of `elif` and an optional `else` lowers in every
+#     position as one chain of conditional branches joined at a single block.
+#   - `until` (SECTION 17 - LOOPS) lowers as a transfer to an explicit target, its nearest
+#     repeat, not to the innermost loop: it is lowered wherever it appears in the
+#     repeat body, including inside `if`, `try` and loops nested in the repeat,
+#     and it runs every `ensure` between it and that repeat, innermost first, and
+#     no other (requested in review by ChatGPT).
+#   - Bug fix: a `Float`, `Float64` or `Float32` local declared without an
+#     initializer emitted `store double 0` / `store float 0`, invalid LLVM IR that
+#     surfaced only as "clang failed while building". It now starts at `0.0`
+#     (`Float32` found in review by ChatGPT).
+#   - Bug fix (found in review by ChatGPT, present since the transfers were
+#     lowered): a `leave`, `continue`, `until`, `Return` or `Exit` that left an
+#     exception handler (On, Else or plain except) never released the exception
+#     state the handler had caught; every such transfer leaked it. The emitter now
+#     tracks handler regions and releases, innermost first, the state of every
+#     handler the transfer leaves, before any crossed `ensure` runs; the slot is
+#     nulled so a later capture cannot release it twice. New tool
+#     `tools/eh_state_balance.py` links a program with a counting wrapper
+#     (`tools/eh_state_counter.cpp`, GNU ld `--wrap`, Linux) and requires captures
+#     = releases; fixture `tests/eh-lifetime/handler-transfers` (8 of 9 states
+#     leaked before the fix, 0 after).
+#   - `tools/backend_gaps.py` now also compiles the emitted IR with clang when
+#     clang is on PATH and reports a rejection as BUG (it found the bug above).
+#     New probes: `until-in-if`, `until-across-loop`, `float-uninit`,
+#     `float32-uninit`. Measurement: 0 BUG, 4 GAP, 20 OK (was 11 GAP, 9 OK). The
+#     GAP count refers to the probes, not to every backend limitation. Backend diagnostics
+#     for `case` and `unless` now name the construct.
+#   - Tests: the fixture `tests/diagnostics/backend-gap-nested-for` became the
+#     runtime test `nested-for-in-for`; new runtime tests for every closed gap and
+#     for leave/continue/Return/Exit in if/elif/else at two loop levels
+#     (`nested-loop-transfers`), `until` positions (`until-positions`) and loop-body
+#     locals (`loop-body-locals`); new exception tests (`nested-loop-ensure-
+#     transfers`, `nested-loop-retry-raise`, `until-crossing-ensure`); the
+#     backend-gap diagnostic fixture is now `backend-gap-case`. Two LLVM fragment
+#     checks no longer require the internal `repeatcontinue` label (behavior is
+#     covered by execution tests). Expected outputs were written from the
+#     language rules, not captured from the compiler.
+#   - Validation (E19 principle): Linux clang Debug 321/321; `run-tests.ps1`
+#     321/321 under PowerShell 7 on Linux; GCC Debug+ASan+UBSan 321/321, also
+#     with a 1 MiB stack; `tools/backend_gaps.py` 0 BUG (IR checked by clang);
+#     `tools/mutation_fuzz.py` on the sanitizer build, 4 000 mutants (seeds 41,
+#     42): no CRASH, TIMEOUT or CGERR. Windows is expected to keep only the known
+#     EH-v3.16a failures plus the three new exception tests (they use `try`) until
+#     the MSVC exception bridge lands; they are listed in
+#     `ci/windows-known-failures.txt`.
+#   - CI: `.github/workflows/ci.yml` builds and tests every pull request on Linux
+#     (full suite, backend gaps, exception state lifetime) and on Windows with the
+#     MSVC ABI (windows-2022, clang 19.1.5). On Windows the set of failing tests
+#     must EQUAL `ci/windows-known-failures.txt` (`tools/ci_known_failures.py`):
+#     an unlisted failure or a listed test that passes fails the job. The list
+#     describes that runner only; on it `fault-not-catchable` and
+#     `nested-loop-ensure-transfers` pass, while on the maintainer's machine
+#     (clang 22.1.6) the 13 EH-v3.16a failures were measured. Toolchain variation
+#     is recorded here, not hidden in the list.
 #
 # v3.20 — 2026-10-09 — keyword rename approved by Marcelo Fortes on 2026-10-09
 #         (lexical change only; no semantic change). Recorded as ADR-0007.
@@ -2413,9 +2478,9 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  nested loops, local declarations and `if` with `elif`/`else` inside a loop
-  body, `case`, `unless`, module `State` in expressions, `String` locals, and a
-  module `Const` whose value is not a single Integer or Bool literal. Any other
+  `case`, `unless`, module `State` in expressions, `String` locals, and a
+  module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
+  or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
 - EH-v3.16a: the current native exception lowering is validated on Unix-like
   Itanium-ABI hosts. Windows/MSVC-style LLVM funclet (`catchswitch`/`catchpad`/
@@ -2738,9 +2803,9 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  nested loops, local declarations and `if` with `elif`/`else` inside a loop
-  body, `case`, `unless`, module `State` in expressions, `String` locals, and a
-  module `Const` whose value is not a single Integer or Bool literal. Any other
+  `case`, `unless`, module `State` in expressions, `String` locals, and a
+  module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
+  or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
 - EH-v3.16a: the current native exception lowering is validated on Unix-like
   Itanium-ABI hosts. Windows/MSVC-style LLVM funclet (`catchswitch`/`catchpad`/

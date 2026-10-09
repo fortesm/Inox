@@ -1,0 +1,28 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.21: a while loop nested in a while loop inside an Integer function.
+Module Runtime.NestedWhileInWhileFunction
+
+Main :
+    PutLn(Count(3))
+    PutLn(Count(0))
+;
+
+Count(N Integer) Integer :
+    T Integer := 0
+    I Integer := 0
+    while I < N
+        J Integer := 0
+        while J < N
+            T := T + 1
+            J := J + 1
+        ;
+        I := I + 1
+    ;
+    Return T
+;

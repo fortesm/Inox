@@ -5,15 +5,15 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== Legal Inox that the LLVM backend does not lower yet (docs/BACKEND_GAPS.md).
-== The diagnostic must say the gap is in the backend, not in the program.
-== When nested loops are implemented, move this program to tests/runtime.
-Module Diagnostics.BackendGapNestedFor
+== v3.21: a for loop nested in a while loop.
+Module Runtime.NestedForInWhile
 
 Main :
-    for I in 1..2
+    W Integer := 0
+    while W < 2
         for J in 1..2
-            Put(I)
+            PutLn(W * 10 + J)
         ;
+        W := W + 1
     ;
 ;

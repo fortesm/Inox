@@ -1,0 +1,114 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.21: leave, continue, Return and Exit in if/elif/else branches at two loop
+== levels. leave/continue act on the nearest loop; Return and Exit leave the
+== routine from any depth.
+Module Runtime.NestedLoopTransfers
+
+Main :
+    == continue/leave of the inner loop from if/elif/else
+    S Integer := 0
+    for I in 1..4
+        for J in 1..10
+            if J = 2
+                continue
+            elif J > I
+                leave
+            else
+                S := S + J
+            ;
+        ;
+    ;
+    PutLn("sum ", S)
+
+    == continue/leave of the outer loop after the inner loop finishes
+    for I in 1..4
+        for J in 1..3
+            if J = 2
+                leave
+            ;
+            PutLn("i", I, " j", J)
+        ;
+        if I = 2
+            continue
+        elif I = 4
+            leave
+        else
+            PutLn("tail ", I)
+        ;
+    ;
+
+    == leave of the outer loop from an if after an inner while
+    T Integer := 0
+    for I in 1..5
+        K Integer := 0
+        while K < 3
+            K := K + 1
+            T := T + 1
+        ;
+        if I = 3
+            leave
+        ;
+    ;
+    PutLn("t ", T)
+
+    PutLn(Find(4))
+    PutLn(Find(9))
+    PutLn(Find(7))
+    PutLn(Pick(1))
+    PutLn(Pick(2))
+    PutLn(Pick(3))
+    Walk(2)
+    Walk(9)
+;
+
+Find(N Integer) Integer :
+    for I in 1..3
+        for J in 1..3
+            if I * J = N
+                Return I * 10 + J
+            elif J > I
+                leave
+            else
+                continue
+            ;
+        ;
+    ;
+    Return 0
+;
+
+Pick(N Integer) Integer :
+    for I in 1..2
+        while true
+            if N = 1
+                Return 100
+            elif N = 2
+                Return 200
+            else
+                Return 300 + I
+            ;
+        ;
+    ;
+    Return -1
+;
+
+Walk(N Integer) :
+    for I in 1..3
+        for J in 1..3
+            if I = N
+                PutLn("exit at ", I, " ", J)
+                Exit
+            elif J = 2
+                leave
+            else
+                PutLn("walk ", I, " ", J)
+            ;
+        ;
+    ;
+    PutLn("walk done")
+;

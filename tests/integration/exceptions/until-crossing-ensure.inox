@@ -1,0 +1,77 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.21: `until` is a transfer to its repeat. Inside a try it runs the ensure
+== it crosses when it exits the repeat (and the ensure runs once per iteration
+== when it does not); across intermediate loops it runs every ensure between it
+== and the repeat, innermost first, and no ensure outside the repeat.
+Module Integration.UntilCrossingEnsure
+
+Main :
+    X Integer := 0
+    repeat
+        X := X + 1
+        try
+            until X = 3
+            PutLn("body ", X)
+        ensure
+            PutLn("ensure ", X)
+        ;
+    ;
+    PutLn("end ", X)
+
+    == repeat > try > while > try > until: both ensure clauses run, inner first
+    Y Integer := 0
+    repeat
+        try
+            while true
+                Y := Y + 1
+                try
+                    until Y = 2
+                ensure
+                    PutLn("inner ensure ", Y)
+                ;
+            ;
+        ensure
+            PutLn("outer ensure ", Y)
+        ;
+    ;
+    PutLn("y ", Y)
+
+    == try outside the repeat: the until does not cross it
+    try
+        Z Integer := 0
+        repeat
+            for I in 1..3
+                Z := Z + 1
+                until I = 2
+            ;
+        ;
+        PutLn("z ", Z)
+    ensure
+        PutLn("ensure after normal completion")
+    ;
+
+    == the until of an inner repeat runs only the ensure inside that repeat
+    N Integer := 0
+    repeat
+        N := N + 1
+        try
+            repeat
+                try
+                    until true
+                ensure
+                    PutLn("r2 ensure")
+                ;
+            ;
+            PutLn("after r2 ", N)
+        ensure
+            PutLn("r1 ensure ", N)
+        ;
+        until N = 2
+    ;
+;

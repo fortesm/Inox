@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: MPL-2.0
+# Build and test Inox on every pull request and on main.
+# Linux must pass the full suite. Windows (MSVC ABI) must not fail any test
+# outside ci/windows-known-failures.txt (the EH-v3.16a exception tests until the
+# MSVC exception bridge lands).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux (clang, Debug)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang ninja-build
+          clang --version
+      - name: Configure
+        run: cmake --preset linux-clang-debug
+      - name: Build
+        run: cmake --build --preset linux-clang-debug
+      - name: Test suite
+        run: bash scripts/run-tests.sh build/linux-clang-debug/inox
+      - name: Backend gaps (0 BUG, emitted IR checked by clang)
+        run: python3 tools/backend_gaps.py build/linux-clang-debug/inox
+      - name: Exception state lifetime (every captured state released)
+        run: python3 tools/eh_state_balance.py build/linux-clang-debug/inox
+
+  windows:
+    name: Windows (clang, MSVC ABI, Debug)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Developer environment (MSVC x64)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Toolchain versions
+        shell: pwsh
+        run: |
+          clang --version
+          cmake --version
+          ninja --version
+      - name: Configure
+        run: cmake --preset windows-clang-msvc
+      - name: Build
+        run: cmake --build --preset windows-clang-msvc-debug
+      - name: Test suite (known EH-v3.16a failures tolerated)
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-tests.ps1 -InoxExe build/windows-clang-msvc/Debug/inox.exe *>&1 | Tee-Object -FilePath test-output.txt
+          python tools/ci_known_failures.py test-output.txt ci/windows-known-failures.txt
+      - name: Backend gaps (0 BUG)
+        run: python tools/backend_gaps.py build/windows-clang-msvc/Debug/inox.exe
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-test-output
+          path: test-output.txt

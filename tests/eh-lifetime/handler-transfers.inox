@@ -1,0 +1,116 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.21: every exception state captured for a handler is released exactly once,
+== also when the handler is left by leave, continue, until, Return or Exit, with
+== and without ensure, from On, Else and plain except handlers, and from nested
+== handlers. Checked by tools/eh_state_balance.py (captures = releases).
+Module EhLifetime.HandlerTransfers
+
+Main :
+    while true
+        try
+            Raise RangeError
+        except
+            On RangeError
+                leave
+            ;
+        ;
+    ;
+    PutLn("leave")
+
+    for I in 1..2
+        try
+            Raise RangeError
+        except
+            On FileNotFound
+                PutLn("unreachable")
+            ;
+            Else
+                continue
+            ;
+        ensure
+            PutLn("continue cleanup ", I)
+        ;
+    ;
+
+    repeat
+        try
+            Raise RangeError
+        except
+            until true
+        ensure
+            PutLn("until cleanup")
+        ;
+    ;
+
+    PutLn(Value)
+    PutLn(Nested)
+    Quit
+    try
+        Raise RangeError
+    except
+        On RangeError
+            for I in 1..3
+                if I = 2
+                    leave
+                ;
+                PutLn("handler loop ", I)
+            ;
+        ;
+    ;
+    PutLn("done")
+;
+
+Value Integer :
+    try
+        Raise RangeError
+    except
+        On RangeError
+            Return 7
+        ;
+    ensure
+        PutLn("value cleanup")
+    ;
+    Return 0
+;
+
+Nested Integer :
+    for I in 1..2
+        try
+            Raise RangeError
+        except
+            On RangeError
+                try
+                    Raise FileNotFound
+                except
+                    On FileNotFound
+                        Return 42
+                    ;
+                ensure
+                    PutLn("inner cleanup")
+                ;
+            ;
+        ensure
+            PutLn("outer cleanup")
+        ;
+    ;
+    Return 0
+;
+
+Quit :
+    try
+        Raise RangeError
+    except
+        On RangeError
+            Exit
+        ;
+    ensure
+        PutLn("quit cleanup")
+    ;
+    PutLn("unreachable")
+;

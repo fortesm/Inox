@@ -296,6 +296,26 @@ for I in 10..1 (2)
         leave
     ;
 ;</code></pre>
+<p>Block structures nest recursively whenever the combination is semantically valid: loops inside loops, <code>if</code>/<code>elif</code>/<code>else</code> inside loop bodies, <code>try</code> inside loops, and so on. <code>leave</code> and <code>continue</code> always act on the nearest loop; <code>until</code> may appear anywhere in a <code>repeat</code> body, also inside <code>if</code>, <code>try</code> or a loop nested in the <code>repeat</code>, and exits the nearest <code>repeat</code>:</p>
+<pre><code>for I in 1..3
+    R := 0
+    repeat
+        R := R + 1
+        if R = I
+            until true
+        ;
+    ;
+    for J in 1..3
+        if J = 2
+            continue
+        elif J &gt; I
+            leave
+        else
+            PutLn(I, &quot; &quot;, J)
+        ;
+    ;
+;</code></pre>
+<p>Constructs the semantic analyzer accepts but the LLVM backend does not lower yet are reported as &ldquo;not yet implemented in the LLVM backend&rdquo; and are measured in <code>docs/BACKEND_GAPS.md</code>.</p>
 <h3>Exceptions</h3>
 <p>Inox provides structured exception handling with <code>try</code>, <code>except</code>, typed <code>On</code> handlers, optional <code>Else</code>, <code>ensure</code>, <code>Raise</code>, and bounded <code>Retry(N)</code>. Typed handlers are tested in source order; <code>Else</code> is the catch-all after them. A plain <code>except</code> is itself a catch-all.</p>
 <pre><code>try
