@@ -304,6 +304,127 @@ function Invoke-RunDriverInputTest {
     }
 }
 
+function Invoke-DriverTrapTest {
+    param(
+        [System.IO.FileInfo]$TestFile,
+        [string]$InputPath = ""
+    )
+
+    $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
+    $clang = Get-Command clang -ErrorAction SilentlyContinue
+    if ($null -eq $clang) {
+        Write-Host "[SKIP] $relativePath --run (expect trap; clang not found)"
+        return
+    }
+
+    # NAME.trap holds the diagnostic the program must print, for example
+    # "Inox runtime error: division by zero" (CANON-19).
+    $trapPath = [System.IO.Path]::ChangeExtension($TestFile.FullName, ".trap")
+    $expectedMessage = ((Get-Content -LiteralPath $trapPath -TotalCount 1) -replace "`r$", "").Trim()
+
+    if ($InputPath -ne "") {
+        $actual = Get-Content -LiteralPath $InputPath | & $InoxExe "--run" $TestFile.FullName 2>&1 | Out-String
+    } else {
+        $actual = & $InoxExe "--run" $TestFile.FullName 2>&1 | Out-String
+    }
+    $exitCode = $LASTEXITCODE
+    $actual = ($actual -replace "`r`n", "`n") -replace "`n+$", ""
+
+    # A compile error also exits non-zero, so require the runtime diagnostic itself.
+    # Optional NAME.out next to NAME.trap: the complete output (program output,
+    # runtime diagnostic, driver note) must match exactly, which proves that no
+    # handler or finally block ran.
+    $exactPath = [System.IO.Path]::ChangeExtension($TestFile.FullName, ".out")
+    $exactOk = $true
+    if (Test-Path -LiteralPath $exactPath) {
+        $exactExpected = ((Get-Content -LiteralPath $exactPath -Raw) -replace "`r`n", "`n") -replace "`n+$", ""
+        $exactOk = ($actual -ceq $exactExpected)
+    }
+    if ($exitCode -ne 0 -and $expectedMessage -ne "" -and $actual.Contains($expectedMessage) -and $exactOk) {
+        $script:passed++
+        Write-Host "[PASS] $relativePath --run (trap)"
+    } else {
+        $script:failed++
+        Write-Host "[FAIL] $relativePath --run (trap)"
+        Write-Host "       expected the program to compile, run and stop with: $expectedMessage"
+        Write-Host "       exit code: $exitCode"
+        Write-Host "       actual output:"
+        Write-Host $actual
+    }
+}
+
+# Runs every NAME.inox in a directory according to its sidecar files:
+#   NAME.out  exit 0 and exactly this output     NAME.trap  must trap at run time
+#   NAME.in   optional standard input
+function Invoke-RuntimeTree {
+    param([string]$RelativePath)
+
+    $root = Join-Path $repoRoot $RelativePath
+    if (-not (Test-Path -LiteralPath $root)) {
+        return
+    }
+
+    Get-ChildItem -LiteralPath $root -Filter "*.inox" -File | Sort-Object Name | ForEach-Object {
+        $testFile = $_
+        $base = Join-Path $testFile.DirectoryName ([System.IO.Path]::GetFileNameWithoutExtension($testFile.Name))
+        $inputPath = "$base.in"
+        $hasInput = Test-Path -LiteralPath $inputPath
+        if (Test-Path -LiteralPath "$base.trap") {
+            if ($hasInput) {
+                Invoke-DriverTrapTest -TestFile $testFile -InputPath $inputPath
+            } else {
+                Invoke-DriverTrapTest -TestFile $testFile
+            }
+        } elseif (Test-Path -LiteralPath "$base.out") {
+            if ($hasInput) {
+                Invoke-RunDriverInputTest `
+                    -TestFile $testFile `
+                    -InputFile (Get-Item -LiteralPath $inputPath) `
+                    -ExpectedOutputFile (Get-Item -LiteralPath "$base.out")
+            } else {
+                Invoke-RunDriverTest `
+                    -TestFile $testFile `
+                    -ExpectedOutputFile (Get-Item -LiteralPath "$base.out")
+            }
+        }
+    }
+}
+
+# Each NAME.inox must be rejected, and the error output must contain NAME.err.
+function Invoke-DiagnosticTree {
+    param([string]$RelativePath)
+
+    $root = Join-Path $repoRoot $RelativePath
+    if (-not (Test-Path -LiteralPath $root)) {
+        return
+    }
+
+    Get-ChildItem -LiteralPath $root -Filter "*.inox" -File | Sort-Object Name | ForEach-Object {
+        $testFile = $_
+        $relativeFile = [System.IO.Path]::GetRelativePath($repoRoot, $testFile.FullName)
+        $expectedPath = Join-Path $testFile.DirectoryName ([System.IO.Path]::GetFileNameWithoutExtension($testFile.Name) + ".err")
+        if (-not (Test-Path -LiteralPath $expectedPath)) {
+            $script:failed++
+            Write-Host "[FAIL] $relativeFile diagnostic"
+            Write-Host "       missing expectation file: $expectedPath"
+            return
+        }
+        $expected = ((Get-Content -LiteralPath $expectedPath -Raw) -replace "`r`n", "`n") -replace "`n+$", ""
+        $actual = & $InoxExe "--emit-llvm" $testFile.FullName 2>&1 | Out-String
+        $exitCode = $LASTEXITCODE
+        if ($exitCode -ne 0 -and $actual.Contains($expected)) {
+            $script:passed++
+            Write-Host "[PASS] $relativeFile diagnostic"
+        } else {
+            $script:failed++
+            Write-Host "[FAIL] $relativeFile diagnostic"
+            Write-Host "       exit code: $exitCode"
+            Write-Host "       expected error containing: $expected"
+            Write-Host "       actual error: $actual"
+        }
+    }
+}
+
 function Get-InoxTestFiles {
     param(
         [string]$RelativePath,
@@ -350,7 +471,7 @@ foreach ($rootSpec in $invalidTestRoots) {
 Invoke-ModeFragmentTest `
     -Mode "--dump-tokens" `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\lexer\valid\tokens-keywords-literals.inox")) `
-    -RequiredFragments @('Keyword lexeme="Module" normalized="module"', 'Keyword lexeme="Type" normalized="type"', 'Keyword lexeme="Struct" normalized="struct"', 'IntegerLiteral lexeme="$2A"', 'StringLiteral lexeme="hello"', 'CharLiteral lexeme=', 'Identifier lexeme="End" normalized="end"')
+    -RequiredFragments @('Keyword lexeme="Module" normalized="module"', 'Keyword lexeme="Type" normalized="type"', 'Keyword lexeme="Struct" normalized="struct"', 'Keyword lexeme="Retry" normalized="retry"', 'IntegerLiteral lexeme="$2A"', 'StringLiteral lexeme="hello"', 'CharLiteral lexeme=', 'Identifier lexeme="End" normalized="end"')
 
 Invoke-ModeExitTest `
     -Mode "--parse-only" `
@@ -367,22 +488,22 @@ Invoke-LlvmEmissionTest `
     -RequiredFragments @("define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-integer-function.inox")) `
-    -RequiredFragments @("define i64 @inox_sum", "%tmp0 = add i64 %a, %b", "ret i64 %tmp0", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_sum", "%tmp0 = call i64 @__inox_add_i64(i64 %a, i64 %b)", "ret i64 %tmp0", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-function-call.inox")) `
     -RequiredFragments @("define i64 @inox_sum", "define i64 @inox_double", "%tmp0 = call i64 @inox_sum(i64 %x, i64 %x)", "ret i64 %tmp0", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-local-variables.inox")) `
-    -RequiredFragments @("define i64 @inox_compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "load i64, ptr %a", "load i64, ptr %b", "add i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "load i64, ptr %a", "load i64, ptr %b", "call i64 @__inox_add_i64", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-inline-typed-local.inox")) `
-    -RequiredFragments @("define i64 @inox_compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "load i64, ptr %a", "load i64, ptr %b", "add i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "load i64, ptr %a", "load i64, ptr %b", "call i64 @__inox_add_i64", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-local-assignment.inox")) `
-    -RequiredFragments @("define i64 @inox_compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "add i64", "mul i64", "store i64 %tmp0, ptr %a", "store i64 %tmp3, ptr %b", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "call i64 @__inox_add_i64", "call i64 @__inox_mul_i64", "store i64 %tmp0, ptr %a", "store i64 %tmp3, ptr %b", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-integer-operators.inox")) `
-    -RequiredFragments @("define i64 @inox_compute", "%tmp0 = sdiv i64 %a, %b", "srem i64", "shl i64", "ashr i64", "and i64", "or i64", "xor i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_compute", "%tmp0 = call i64 @__inox_div_i64(i64 %a, i64 %b)", "call i64 @__inox_mod_i64", "call i64 @__inox_shl_i64", "call i64 @__inox_shr_i64", "and i64", "or i64", "xor i64", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-bool-comparisons.inox")) `
     -RequiredFragments @("define i1 @inox_isgreater", "define i1 @inox_isequal", "define i1 @inox_isdifferent", "icmp sgt i64", "icmp eq i64", "icmp ne i64", "icmp slt i64", "icmp sle i64", "icmp sge i64", "ret i1", "define i32 @main()", "ret i32 0")
@@ -394,13 +515,13 @@ Invoke-LlvmEmissionTest `
     -RequiredFragments @("define i64 @inox_max", "icmp sgt i64", "br i1", "label %then0", "label %else0", "then0:", "else0:", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-if-merge.inox")) `
-    -RequiredFragments @("define i64 @inox_maxplusone", "%m = alloca i64", "icmp sgt i64", "br i1", "label %then0", "label %else0", "then0:", "else0:", "br label %endif0", "endif0:", "store i64", "load i64", "add i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_maxplusone", "%m = alloca i64", "icmp sgt i64", "br i1", "label %then0", "label %else0", "then0:", "else0:", "br label %endif0", "endif0:", "store i64", "load i64", "call i64 @__inox_add_i64", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-while-loop.inox")) `
-    -RequiredFragments @("define i64 @inox_sumto", "whilecond0:", "whilebody0:", "whileend0:", "br i1", "br label %whilecond0", "icmp sgt i64", "add i64", "sub i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_sumto", "whilecond0:", "whilebody0:", "whileend0:", "br i1", "br label %whilecond0", "icmp sgt i64", "call i64 @__inox_add_i64", "call i64 @__inox_sub_i64", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-while-break-continue.inox")) `
-    -RequiredFragments @("define i64 @inox_findfirstbelow", "whilecond0:", "whilebody0:", "whileend0:", "br i1", "br label %whilecond0", "br label %whileend0", "icmp eq i64", "sub i64", "store i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_findfirstbelow", "whilecond0:", "whilebody0:", "whileend0:", "br i1", "br label %whilecond0", "br label %whileend0", "icmp eq i64", "call i64 @__inox_sub_i64", "store i64", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-if-no-else.inox")) `
     -RequiredFragments @("define i64 @inox_clamppositive", "%x = alloca i64", "icmp slt i64", "br i1", "label %then0", "label %endif0", "then0:", "br label %endif0", "endif0:", "store i64", "load i64", "ret i64", "define i32 @main()", "ret i32 0")
@@ -419,13 +540,13 @@ Invoke-LlvmEmissionTest `
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-repeat-break-continue.inox")) `
-    -RequiredFragments @("define i64 @inox_findvalue", "repeatbody", "repeatend", "br i1", "br label", "icmp eq i64", "sub i64", "store i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_findvalue", "repeatbody", "repeatend", "br i1", "br label", "icmp eq i64", "call i64 @__inox_sub_i64", "store i64", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-for-range-break-continue.inox")) `
-    -RequiredFragments @("define i64 @inox_sumrange", "forcond", "forbody", "forstep", "forend", "br i1", "br label", "icmp sle i64", "icmp eq i64", "add i64", "store i64", "load i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_sumrange", "forcond", "forbody", "forstep", "forend", "br i1", "br label", "icmp sle i64", "icmp eq i64", "call i64 @__inox_add_i64", "@llvm.sadd.with.overflow.i64", "store i64", "load i64", "ret i64", "define i32 @main()", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-for-range-step.inox")) `
-    -RequiredFragments @("define i64 @inox_sumevenuntil", "forcond", "forbody", "forstep", "forend", "store i64 2, ptr %i", "icmp sle i64", "icmp eq i64", "add i64", ", 2", "br i1", "br label", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_sumevenuntil", "forcond", "forbody", "forstep", "forend", "store i64 2, ptr %i", "icmp sle i64", "icmp eq i64", "call i64 @__inox_add_i64", "@__inox_for_step_i64(i64 2)", "@llvm.sadd.with.overflow.i64", "br i1", "br label", "ret i64", "define i32 @main()", "ret i32 0")
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-putln-integer.inox")) `
@@ -441,7 +562,7 @@ Invoke-LlvmEmissionTest `
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-struct-basic.inox")) `
-    -RequiredFragments @("%tpoint = type { i64, i64 }", "define i64 @inox_sumpoint", "alloca %tpoint", "zeroinitializer", "getelementptr %tpoint", "store i64 10", "store i64 20", "load i64", "add i64", "call i64 @inox_sumpoint", "ret i32 0")
+    -RequiredFragments @("%tpoint = type { i64, i64 }", "define i64 @inox_sumpoint", "alloca %tpoint", "zeroinitializer", "getelementptr %tpoint", "store i64 10", "store i64 20", "load i64", "call i64 @__inox_add_i64", "call i64 @inox_sumpoint", "ret i32 0")
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-associated-methods.inox")) `
@@ -453,7 +574,7 @@ Invoke-LlvmEmissionTest `
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\with-statement.inox")) `
-    -RequiredFragments @("%tpoint = type { i64, i64 }", "define i64 @inox_sumpoint", "alloca %tpoint", "getelementptr %tpoint", "store i64 10", "store i64 20", "load i64", "add i64", "call i64 @inox_sumpoint", "ret i32 0")
+    -RequiredFragments @("%tpoint = type { i64, i64 }", "define i64 @inox_sumpoint", "alloca %tpoint", "getelementptr %tpoint", "store i64 10", "store i64 20", "load i64", "call i64 @__inox_add_i64", "call i64 @inox_sumpoint", "ret i32 0")
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\llvm-struct-values.inox")) `
@@ -464,6 +585,14 @@ Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-struct-value-smoke.inox")) `
     -RequiredFragments @("%tpair = type { i64, i64 }", "define %tpair @inox_makepair", "define i64 @inox_sumpair", "call %tpair @inox_makepair", "call i64 @inox_sumpair", "ret i32 0")
 
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-exceptions-smoke.inox")) `
+    -RequiredFragments @("personality ptr @__gxx_personality_v0", "invoke void @inox_fail()", "landingpad { ptr, i32 } catch ptr null", "call i64 @__inox_exception_type", "call void @__inox_exception_release", "call void @__inox_exception_rethrow")
+
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-exceptions-retry-smoke.inox")) `
+    -RequiredFragments @("%eh.retry.slot", "%eh.action.slot", "icmp slt i64", "store i32 2", "switch i32", "eh.retry.perform")
+
 Invoke-LinkedExecutionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output-basic.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output-basic.out"))
@@ -473,6 +602,42 @@ Invoke-BuildDriverTest `
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\typed-finally.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\typed-finally.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\rethrow.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\rethrow.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\plain-except.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\plain-except.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\finally-propagation.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\finally-propagation.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\retry-success.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\retry-success.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\retry-exhausted.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\retry-exhausted.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\retry-else.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\retry-else.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\retry-zero.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\retry-zero.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\retry-nested.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\retry-nested.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\taxonomy-arithmetic.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\taxonomy-arithmetic.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\taxonomy-range.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\taxonomy-range.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\finally-control-transfers.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\finally-control-transfers.out"))
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\modules\Main.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\modules\Main.out"))
@@ -491,18 +656,9 @@ Invoke-RunDriverTest `
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output\variadic-put.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output\variadic-put.out"))
-Invoke-RunDriverInputTest `
-    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\get-integer.inox")) `
-    -InputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\get-integer.in")) `
-    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\get-integer.out"))
-Invoke-RunDriverInputTest `
-    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-two-integers.inox")) `
-    -InputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-two-integers.in")) `
-    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-two-integers.out"))
-Invoke-RunDriverInputTest `
-    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-pause.inox")) `
-    -InputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-pause.in")) `
-    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\input\getln-pause.out"))
+Invoke-RuntimeTree "tests\integration\input"
+Invoke-RuntimeTree "tests\runtime"
+Invoke-DiagnosticTree "tests\diagnostics"
 Invoke-ModeExitTest `
     -Mode "--emit-llvm" `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\cycles\Cycle.A.inox")) `

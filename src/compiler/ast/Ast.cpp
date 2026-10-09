@@ -154,6 +154,9 @@ BinaryExpression::BinaryExpression(BinaryOperator op, ExpressionPtr left, Expres
       left_(std::move(left)),
       right_(std::move(right))
 {
+    const std::size_t leftDepth = left_ ? left_->depth() : 0;
+    const std::size_t rightDepth = right_ ? right_->depth() : 0;
+    depth_ = 1 + (leftDepth > rightDepth ? leftDepth : rightDepth);
 }
 
 BinaryOperator BinaryExpression::op() const
@@ -186,6 +189,7 @@ UnaryExpression::UnaryExpression(UnaryOperator op, ExpressionPtr operand)
       op_(op),
       operand_(std::move(operand))
 {
+    depth_ = 1 + (operand_ ? operand_->depth() : 0);
 }
 
 UnaryOperator UnaryExpression::op() const
@@ -208,6 +212,13 @@ CallExpression::CallExpression(ExpressionPtr callee, std::vector<ExpressionPtr> 
       callee_(std::move(callee)),
       arguments_(std::move(arguments))
 {
+    std::size_t deepest = callee_ ? callee_->depth() : 0;
+    for (const auto& argument : arguments_) {
+        if (argument && argument->depth() > deepest) {
+            deepest = argument->depth();
+        }
+    }
+    depth_ = 1 + deepest;
 }
 
 const Expression& CallExpression::callee() const
@@ -458,11 +469,21 @@ const std::vector<StatementPtr>& CaseStatement::otherwiseBody() const
 }
 
 TryStatement::TryStatement(std::vector<StatementPtr> body,
+                           bool hasExcept,
+                           bool plainExcept,
                            std::vector<StatementPtr> exceptBody,
+                           std::vector<ExceptionHandler> handlers,
+                           std::vector<StatementPtr> elseBody,
+                           bool hasFinally,
                            std::vector<StatementPtr> finallyBody)
     : Statement(AstNodeKind::TryStatement),
       body_(std::move(body)),
+      hasExcept_(hasExcept),
+      plainExcept_(plainExcept),
       exceptBody_(std::move(exceptBody)),
+      handlers_(std::move(handlers)),
+      elseBody_(std::move(elseBody)),
+      hasFinally_(hasFinally),
       finallyBody_(std::move(finallyBody))
 {
 }
@@ -472,14 +493,44 @@ const std::vector<StatementPtr>& TryStatement::body() const
     return body_;
 }
 
+bool TryStatement::hasExcept() const
+{
+    return hasExcept_;
+}
+
+bool TryStatement::hasPlainExcept() const
+{
+    return plainExcept_;
+}
+
 const std::vector<StatementPtr>& TryStatement::exceptBody() const
 {
     return exceptBody_;
 }
 
+const std::vector<ExceptionHandler>& TryStatement::handlers() const
+{
+    return handlers_;
+}
+
+const std::vector<StatementPtr>& TryStatement::elseBody() const
+{
+    return elseBody_;
+}
+
+bool TryStatement::hasFinally() const
+{
+    return hasFinally_;
+}
+
 const std::vector<StatementPtr>& TryStatement::finallyBody() const
 {
     return finallyBody_;
+}
+
+bool TryStatement::hasTypedHandlers() const
+{
+    return hasExcept_ && !plainExcept_;
 }
 
 RaiseStatement::RaiseStatement(ExpressionPtr expression)
@@ -495,6 +546,21 @@ const Expression* RaiseStatement::expression() const
 ExpressionPtr RaiseStatement::takeExpression()
 {
     return std::move(expression_);
+}
+
+RetryStatement::RetryStatement(ExpressionPtr count)
+    : Statement(AstNodeKind::RetryStatement), count_(std::move(count))
+{
+}
+
+const Expression& RetryStatement::count() const
+{
+    return *count_;
+}
+
+ExpressionPtr RetryStatement::takeCount()
+{
+    return std::move(count_);
 }
 
 ReturnStatement::ReturnStatement(ExpressionPtr expression)

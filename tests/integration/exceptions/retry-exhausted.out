@@ -1,0 +1,7 @@
+attempt 1
+inner-finally
+attempt 2
+inner-finally
+attempt 3
+inner-finally
+outer-io

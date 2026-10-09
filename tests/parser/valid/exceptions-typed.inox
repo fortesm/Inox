@@ -1,0 +1,19 @@
+Module Parser.ExceptionsTyped
+
+Main :
+    try
+        Raise OverflowError
+    except
+        On OverflowError
+            PutLn("overflow")
+        ;
+        On E IOError
+            PutLn("io")
+        ;
+        Else
+            PutLn("other")
+        ;
+    finally
+        PutLn("cleanup")
+    ;
+;

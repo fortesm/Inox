@@ -1,0 +1,14 @@
+Module Semantic.DuplicateExceptionHandler
+
+Main :
+    try
+        Raise IOError
+    except
+        On IOError
+            PutLn("first")
+        ;
+        On IOError
+            PutLn("duplicate")
+        ;
+    ;
+;

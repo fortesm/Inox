@@ -18,6 +18,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace inox::compiler::parser {
@@ -80,7 +81,9 @@ private:
     ast::StatementPtr parseCaseStatement();
     std::vector<ast::StatementPtr> parseCaseArmBody(std::size_t armLine, std::size_t armColumn);
     ast::StatementPtr parseTryStatement();
+    ast::ExceptionHandler parseExceptionHandler();
     ast::StatementPtr parseRaiseStatement();
+    ast::StatementPtr parseRetryStatement();
     ast::StatementPtr parseWithStatement();
     ast::StatementPtr parseReturnStatement();
     ast::StatementPtr parseExpressionStatement();
@@ -112,6 +115,41 @@ private:
     const lexer::Token& consume(TokenKind kind, std::string_view message);
     const lexer::Token& consumeIdentifierLike(std::string_view message);
     const lexer::Token& advance();
+
+    // Implementation limits (CANON-19, checked arithmetic and limits). They turn pathological input into a
+    // normal diagnostic instead of a native stack overflow.
+    // The values are measured, not guessed: they are the largest nesting the
+    // deepest recursive pass survives on a 1 MiB main-thread stack (the Windows
+    // default) in the worst build we have, Debug + AddressSanitizer, divided by
+    // a safety factor of about two. See docs/INOX_CANONICAL.md (CANON-21).
+    static constexpr std::size_t kMaxStatementNesting = 64;
+    static constexpr std::size_t kMaxExpressionNesting = 256;
+    static constexpr std::size_t kMaxExpressionDepth = 128;
+
+    class DepthGuard {
+    public:
+        DepthGuard(const Parser& owner, std::size_t& counter, std::size_t limit, const char* what);
+        ~DepthGuard();
+        DepthGuard(const DepthGuard&) = delete;
+        DepthGuard& operator=(const DepthGuard&) = delete;
+
+    private:
+        std::size_t& counter_;
+    };
+
+    template <typename T, typename... Args>
+    std::unique_ptr<T> makeExpr(Args&&... args)
+    {
+        auto node = std::make_unique<T>(std::forward<Args>(args)...);
+        checkExpressionDepth(*node);
+        return node;
+    }
+
+    void checkExpressionDepth(const ast::Expression& expression) const;
+    ast::StatementPtr endSimpleStatement(ast::StatementPtr statement);
+
+    std::size_t statementNesting_ = 0;
+    std::size_t expressionNesting_ = 0;
 
     [[noreturn]] void errorAtCurrent(std::string_view message) const;
     [[noreturn]] void errorAt(const lexer::Token& token, std::string_view message) const;

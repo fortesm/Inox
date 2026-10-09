@@ -1,0 +1,11 @@
+Module Integration.ExceptionsTaxonomyArithmetic
+
+Main :
+    try
+        Raise DivisionByZero
+    except
+        On ArithmeticError
+            PutLn("caught-arithmetic")
+        ;
+    ;
+;

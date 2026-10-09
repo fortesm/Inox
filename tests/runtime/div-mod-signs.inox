@@ -1,0 +1,19 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+Module Runtime.DivModSigns
+
+Main :
+    A Integer := -7
+    B Integer := 2
+    PutLn(A div B)
+    PutLn(A mod B)
+    C Integer := 7
+    D Integer := -2
+    PutLn(C div D)
+    PutLn(C mod D)
+;

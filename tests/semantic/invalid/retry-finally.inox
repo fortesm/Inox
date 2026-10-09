@@ -1,0 +1,13 @@
+Module Semantic.RetryFinally
+
+Main :
+    try
+        Raise IOError
+    except
+        On IOError
+            PutLn("handled")
+        ;
+    finally
+        Retry(3)
+    ;
+;

@@ -33,6 +33,13 @@ set(INOX_COMPILER_SOURCES
     src/compiler/support/Process.cpp
 )
 
+add_library(inoxrt STATIC
+    runtime/ExceptionRuntime.cpp
+)
+
+inox_apply_compiler_options(inoxrt)
+inox_apply_warnings(inoxrt)
+
 add_executable(inox ${INOX_COMPILER_SOURCES})
 
 inox_apply_compiler_options(inox)

@@ -2,4 +2,9 @@
 # Minimal install rule; release packaging scripts may layer on top of this.
 
 include(GNUInstallDirs)
-install(TARGETS inox RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS inox
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+install(TARGETS inoxrt
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)

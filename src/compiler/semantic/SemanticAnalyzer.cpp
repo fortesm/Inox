@@ -6,11 +6,16 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include "SemanticAnalyzer.h"
+#include "../exceptions/ExceptionTypes.h"
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cctype>
+#include <cstdint>
+#include <limits>
+#include <string>
+#include <unordered_set>
 #include <utility>
 
 namespace inox::compiler::semantic {
@@ -285,7 +290,6 @@ void SemanticAnalyzer::declareBuiltins()
         "RadToDeg", "DegToRad", "RadToGrad", "GradToRad", "RadToCycle", "CycleToRad",
         "Length", "Ord",
         "True", "False",
-        "RangeError", "IndexError", "DivisionByZero", "OverflowError", "IOError",
         "__index", "__member",
         "Sys", "IO", "Math", "Std"
     };
@@ -313,6 +317,14 @@ void SemanticAnalyzer::declareBuiltinTypes()
     declareTypeOrThrow("Integer", true, "Int64");
     declareTypeOrThrow("UInteger", true, "UInt64");
     declareTypeOrThrow("Float", true, "Float64");
+
+    // Exception identifiers are genuine nominal TYPES, not enum constants or
+    // ordinary values. Their taxonomy is centralized in ExceptionTypes.h; the
+    // stdlib documents the public surface while the compiler owns bootstrap
+    // type identity until user-defined Exception declarations are specified.
+    for (const auto& info : exceptions::kStandardExceptionTypes) {
+        declareTypeOrThrow(info.name, true);
+    }
 }
 
 void SemanticAnalyzer::declareOrThrow(
@@ -433,6 +445,9 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
             // Name := Expr  -> inferred-type declaration
             declareOrThrow(tokens[index], kind,
                            inferSectionDeclarationType(tokens, index), isMutable);
+            if (kind == SymbolKind::Constant && index + 2 < tokens.size()) {
+                recordConstantValue(tokens[index], tokens[index + 2]);
+            }
             index += 3;  // Name := value
             continue;
         }
@@ -450,6 +465,9 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
             // The TYPE token must NOT be declared as a symbol (it is a type name).
             declareOrThrow(tokens[index], kind, canonicalTypeName(next), isMutable);
             if (index + 2 < tokens.size() && tokens[index + 2] == ":=") {
+                if (kind == SymbolKind::Constant && index + 3 < tokens.size()) {
+                    recordConstantValue(tokens[index], tokens[index + 3]);
+                }
                 index += 4;  // Name Type := value
             } else {
                 index += 2;  // Name Type
@@ -522,6 +540,10 @@ void SemanticAnalyzer::registerStructDeclaration(const std::vector<std::string>&
     structType.name = typeName;
     index += 2;
 
+    // Duplicate detection by normalized (case-insensitive) name keeps a large
+    // struct linear; the former scan over all earlier fields was quadratic.
+    std::unordered_set<std::string> seenFieldNames;
+
     while (index < tokens.size() && tokens[index] != ";") {
         if (index + 1 >= tokens.size() || !looksLikeIdentifier(tokens[index]) ||
             !looksLikeIdentifier(tokens[index + 1])) {
@@ -543,10 +565,8 @@ void SemanticAnalyzer::registerStructDeclaration(const std::vector<std::string>&
             field.defaultValue = tokens[index++];
         }
 
-        for (const StructField& existingField : structType.fields) {
-            if (equalsIgnoreCase(existingField.name, fieldName)) {
-                throw SemanticError("duplicate struct field: " + fieldName);
-            }
+        if (!seenFieldNames.insert(normalizeName(fieldName)).second) {
+            throw SemanticError("duplicate struct field: " + fieldName);
         }
         structType.fields.push_back(std::move(field));
     }
@@ -688,8 +708,89 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
     if (!currentFunctionReturnType_.empty() && !currentFunctionSawReturn_) {
         throw SemanticError("function " + function.name() + " must return a value");
     }
+    if (!currentFunctionReturnType_.empty() && !cannotFallThrough(function.body())) {
+        throw SemanticError("function " + function.name() +
+                            " may reach its end without returning a value; every path must end "
+                            "in Return or Raise (CANON-12)");
+    }
     currentFunctionReturnType_ = previousReturnType;
     currentFunctionSawReturn_ = previousSawReturn;
+}
+
+bool SemanticAnalyzer::cannotFallThrough(const std::vector<ast::StatementPtr>& statements)
+{
+    for (const auto& statement : statements) {
+        if (statement && cannotFallThrough(*statement)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Loops are treated as "may fall through" (a loop may run zero times or exit
+// through break). This never accepts a function that can fall through; it may
+// reject one whose only exit is inside a loop, which then needs a final Return.
+bool SemanticAnalyzer::cannotFallThrough(const ast::Statement& statement)
+{
+    switch (statement.kind()) {
+    case ast::AstNodeKind::ReturnStatement:
+    case ast::AstNodeKind::RaiseStatement:
+    case ast::AstNodeKind::RetryStatement:
+        return true;
+    case ast::AstNodeKind::BlockStatement:
+        return cannotFallThrough(static_cast<const ast::BlockStatement&>(statement).statements());
+    case ast::AstNodeKind::WithStatement:
+        return cannotFallThrough(static_cast<const ast::WithStatement&>(statement).body());
+    case ast::AstNodeKind::IfStatement: {
+        const auto& ifStatement = static_cast<const ast::IfStatement&>(statement);
+        if (ifStatement.elseBody().empty() || !cannotFallThrough(ifStatement.thenBody()) ||
+            !cannotFallThrough(ifStatement.elseBody())) {
+            return false;
+        }
+        for (const ast::ElseIfClause& clause : ifStatement.elseIfClauses()) {
+            if (!cannotFallThrough(clause.body)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    case ast::AstNodeKind::CaseStatement: {
+        const auto& caseStatement = static_cast<const ast::CaseStatement&>(statement);
+        if (caseStatement.otherwiseBody().empty() ||
+            !cannotFallThrough(caseStatement.otherwiseBody())) {
+            return false;
+        }
+        for (const ast::CaseArm& arm : caseStatement.arms()) {
+            if (!cannotFallThrough(arm.body)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    case ast::AstNodeKind::TryStatement: {
+        const auto& tryStatement = static_cast<const ast::TryStatement&>(statement);
+        if (tryStatement.hasFinally() && cannotFallThrough(tryStatement.finallyBody())) {
+            return true;
+        }
+        if (!cannotFallThrough(tryStatement.body())) {
+            return false;
+        }
+        if (tryStatement.hasPlainExcept() && !cannotFallThrough(tryStatement.exceptBody())) {
+            return false;
+        }
+        for (const ast::ExceptionHandler& handler : tryStatement.handlers()) {
+            if (!cannotFallThrough(handler.body)) {
+                return false;
+            }
+        }
+        if (!tryStatement.elseBody().empty() && !cannotFallThrough(tryStatement.elseBody())) {
+            return false;
+        }
+        return true;
+    }
+    default:
+        return false;
+    }
 }
 
 void SemanticAnalyzer::analyzeStatements(const std::vector<ast::StatementPtr>& statements, bool createScope)
@@ -710,14 +811,32 @@ void SemanticAnalyzer::analyzeStatements(const std::vector<ast::StatementPtr>& s
 void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
 {
     switch (statement.kind()) {
+    case ast::AstNodeKind::ExitStatement:
+        // CANON-12: `Exit` is valid only in subroutines without a return value
+        // and in Main; it is FORBIDDEN in functions. Found by mutation fuzzing:
+        // previously only the LLVM backend noticed.
+        if (!currentFunctionReturnType_.empty()) {
+            throw SemanticError("Exit is not valid in a function that returns a value; use Return (CANON-12)");
+        }
+        break;
     case ast::AstNodeKind::BlockStatement: {
         const auto& block = static_cast<const ast::BlockStatement&>(statement);
         analyzeStatements(block.statements(), true);
         break;
     }
-    case ast::AstNodeKind::ExpressionStatement:
-        analyzeExpression(static_cast<const ast::ExpressionStatement&>(statement).expression());
+    case ast::AstNodeKind::ExpressionStatement: {
+        const ast::Expression& statementExpression =
+            static_cast<const ast::ExpressionStatement&>(statement).expression();
+        requireStatementExpression(statementExpression);
+        analyzeExpression(statementExpression);
+        if (statementExpression.kind() == ast::AstNodeKind::CallExpression) {
+            const auto& call = static_cast<const ast::CallExpression&>(statementExpression);
+            if (isMemberCall(call) && result_.symbolOf(call) == nullptr) {
+                throw SemanticError("field access is not a statement: only assignments and calls may be used as statements");
+            }
+        }
         break;
+    }
     case ast::AstNodeKind::VarStatement: {
         const auto& var = static_cast<const ast::VarStatement&>(statement);
         std::string typeName = var.typeName().empty() ? std::string{} : canonicalTypeName(var.typeName());
@@ -788,6 +907,10 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         analyzeExpression(forStatement.iterable());
         if (forStatement.step() != nullptr) {
             analyzeExpression(*forStatement.step());
+            std::int64_t constantStep = 0;
+            if (constantIntegerValue(*forStatement.step(), constantStep) && constantStep <= 0) {
+                throw SemanticError("for-loop step must be a positive integer");
+            }
         }
         symbols_.pushScope();
         if (symbols_.currentScope().containsLocal(forStatement.iterator()) ||
@@ -817,15 +940,109 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
     }
     case ast::AstNodeKind::TryStatement: {
         const auto& tryStatement = static_cast<const ast::TryStatement&>(statement);
+
         analyzeStatements(tryStatement.body(), true);
-        analyzeStatements(tryStatement.exceptBody(), true);
-        analyzeStatements(tryStatement.finallyBody(), true);
+
+        if (tryStatement.hasPlainExcept()) {
+            // Bare Raise is meaningful here, but Retry is intentionally not:
+            // Retry belongs to an explicit On/Else handler for this try.
+            ++exceptionHandlerDepth_;
+            analyzeStatements(tryStatement.exceptBody(), true);
+            --exceptionHandlerDepth_;
+        }
+
+        bool catchesAll = false;
+        std::unordered_map<std::string, bool> seenHandlers;
+        std::vector<std::string> precedingHandlerTypes;
+        for (const auto& handler : tryStatement.handlers()) {
+            if (!isExceptionType(handler.typeName)) {
+                throw SemanticError("unknown exception type in On handler: " + handler.typeName);
+            }
+            const std::string normalizedType = normalizeName(handler.typeName);
+            if (seenHandlers.contains(normalizedType)) {
+                throw SemanticError("duplicate exception handler: " + handler.typeName);
+            }
+            if (catchesAll) {
+                throw SemanticError("unreachable exception handler after On Exception: " + handler.typeName);
+            }
+            for (const std::string& precedingType : precedingHandlerTypes) {
+                if (exceptions::isSubtypeOf(handler.typeName, precedingType)) {
+                    throw SemanticError(
+                        "unreachable exception handler: " + handler.typeName +
+                        " is already matched by earlier On " + precedingType);
+                }
+            }
+            seenHandlers.emplace(normalizedType, true);
+            precedingHandlerTypes.push_back(handler.typeName);
+            catchesAll = exceptions::isSubtypeOf("Exception", handler.typeName);
+
+            symbols_.pushScope();
+            if (!handler.bindingName.empty()) {
+                declareOrThrow(handler.bindingName, SymbolKind::Variable, handler.typeName, false);
+            }
+            ++exceptionHandlerDepth_;
+            ++retryHandlerDepth_;
+            analyzeStatements(handler.body, false);
+            --retryHandlerDepth_;
+            --exceptionHandlerDepth_;
+            symbols_.popScope();
+        }
+
+        if (!tryStatement.elseBody().empty()) {
+            if (catchesAll) {
+                throw SemanticError("unreachable Else after On Exception");
+            }
+            ++exceptionHandlerDepth_;
+            ++retryHandlerDepth_;
+            analyzeStatements(tryStatement.elseBody(), true);
+            --retryHandlerDepth_;
+            --exceptionHandlerDepth_;
+        }
+
+        if (tryStatement.hasFinally()) {
+            ++finallyDepth_;
+            analyzeStatements(tryStatement.finallyBody(), true);
+            --finallyDepth_;
+        }
         break;
     }
     case ast::AstNodeKind::RaiseStatement: {
         const auto& raiseStatement = static_cast<const ast::RaiseStatement&>(statement);
-        if (raiseStatement.expression() != nullptr) {
-            analyzeExpression(*raiseStatement.expression());
+        if (raiseStatement.expression() == nullptr) {
+            if (exceptionHandlerDepth_ == 0) {
+                throw SemanticError("bare Raise is only allowed inside an exception handler");
+            }
+            break;
+        }
+
+        const ast::Expression& expression = *raiseStatement.expression();
+        if (expression.kind() != ast::AstNodeKind::IdentifierExpression) {
+            throw SemanticError("Raise currently requires an exception type name");
+        }
+        const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
+        if (!isExceptionType(identifier.name())) {
+            throw SemanticError("Raise requires an exception type: " + identifier.name());
+        }
+        break;
+    }
+    case ast::AstNodeKind::RetryStatement: {
+        const auto& retryStatement = static_cast<const ast::RetryStatement&>(statement);
+        if (retryHandlerDepth_ == 0 || finallyDepth_ != 0) {
+            throw SemanticError("Retry is only allowed inside an active On/Else exception handler");
+        }
+        const std::string countType = analyzeExpression(retryStatement.count());
+        if (!isIntegerType(countType)) {
+            throw SemanticError("Retry count must be an Integer expression");
+        }
+        if (retryStatement.count().kind() == ast::AstNodeKind::UnaryExpression) {
+            const auto& unary = static_cast<const ast::UnaryExpression&>(retryStatement.count());
+            if (unary.op() == ast::UnaryOperator::Minus &&
+                unary.operand().kind() == ast::AstNodeKind::LiteralExpression) {
+                const auto& literal = static_cast<const ast::LiteralExpression&>(unary.operand());
+                if (literal.literalKind() == ast::LiteralKind::Integer) {
+                    throw SemanticError("Retry count cannot be negative");
+                }
+            }
         }
         break;
     }
@@ -901,10 +1118,339 @@ void SemanticAnalyzer::analyzeVarBlock(const ast::VarBlockStatement& statement)
     }
 }
 
+namespace {
+
+constexpr std::int64_t kInt64Max = std::numeric_limits<std::int64_t>::max();
+constexpr std::int64_t kInt64Min = std::numeric_limits<std::int64_t>::min();
+constexpr std::uint64_t kInt64MagnitudeOfMin = static_cast<std::uint64_t>(1) << 63;
+
+// Parses an Inox integer literal (decimal, `0x...` or `$...`). Returns false if
+// the magnitude does not fit in 64 bits or the text is malformed. Portable:
+// no compiler-specific wide integer types are used.
+bool parseIntegerLiteralMagnitude(std::string_view text, std::uint64_t& value)
+{
+    std::uint64_t base = 10;
+    if (!text.empty() && text.front() == '$') {
+        base = 16;
+        text.remove_prefix(1);
+    } else if (text.size() > 2 && text[0] == '0' && (text[1] == 'x' || text[1] == 'X')) {
+        base = 16;
+        text.remove_prefix(2);
+    }
+    if (text.empty()) {
+        return false;
+    }
+    value = 0;
+    for (const char ch : text) {
+        std::uint64_t digit = 0;
+        if (ch >= '0' && ch <= '9') {
+            digit = static_cast<std::uint64_t>(ch - '0');
+        } else if (base == 16 && ch >= 'a' && ch <= 'f') {
+            digit = static_cast<std::uint64_t>(ch - 'a') + 10U;
+        } else if (base == 16 && ch >= 'A' && ch <= 'F') {
+            digit = static_cast<std::uint64_t>(ch - 'A') + 10U;
+        } else {
+            return false;
+        }
+        if (value > (std::numeric_limits<std::uint64_t>::max() - digit) / base) {
+            return false;
+        }
+        value = value * base + digit;
+    }
+    return true;
+}
+
+bool checkedAdd(std::int64_t a, std::int64_t b, std::int64_t& out)
+{
+    if ((b > 0 && a > kInt64Max - b) || (b < 0 && a < kInt64Min - b)) {
+        return false;
+    }
+    out = a + b;
+    return true;
+}
+
+bool checkedSub(std::int64_t a, std::int64_t b, std::int64_t& out)
+{
+    if ((b < 0 && a > kInt64Max + b) || (b > 0 && a < kInt64Min + b)) {
+        return false;
+    }
+    out = a - b;
+    return true;
+}
+
+bool checkedMul(std::int64_t a, std::int64_t b, std::int64_t& out)
+{
+    if (a == 0 || b == 0) {
+        out = 0;
+        return true;
+    }
+    if ((a == -1 && b == kInt64Min) || (b == -1 && a == kInt64Min)) {
+        return false;
+    }
+    if (a > 0) {
+        if (b > 0 ? a > kInt64Max / b : b < kInt64Min / a) {
+            return false;
+        }
+    } else {
+        if (b > 0 ? a < kInt64Min / b : a < kInt64Max / b) {
+            return false;
+        }
+    }
+    out = a * b;
+    return true;
+}
+
+[[noreturn]] void throwConstantOverflow(const char* what)
+{
+    throw SemanticError(std::string("constant integer overflow in ") + what +
+                        ": result does not fit in Int64 (integer overflow is never wraparound)");
+}
+
+} // namespace
+
+bool SemanticAnalyzer::constantIntegerValue(const ast::Expression& expression, std::int64_t& value) const
+{
+    const auto found = constants_.find(&expression);
+    if (found == constants_.end()) {
+        return false;
+    }
+    value = found->second;
+    return true;
+}
+
+void SemanticAnalyzer::rejectInvalidConstantRightOperand(ast::BinaryOperator op, std::int64_t value)
+{
+    switch (op) {
+    case ast::BinaryOperator::IntegerDivide:
+        if (value == 0) {
+            throw SemanticError("constant division by zero in 'div'");
+        }
+        return;
+    case ast::BinaryOperator::Modulo:
+        if (value == 0) {
+            throw SemanticError("constant division by zero in 'mod'");
+        }
+        return;
+    case ast::BinaryOperator::ShiftLeft:
+    case ast::BinaryOperator::ShiftRight:
+        if (value < 0 || value > 63) {
+            throw SemanticError("constant shift count out of range: must be between 0 and 63");
+        }
+        return;
+    case ast::BinaryOperator::Power:
+        if (value < 0) {
+            throw SemanticError("constant exponent must not be negative");
+        }
+        return;
+    default:
+        return;
+    }
+}
+
+// A module Const whose value is a single Integer or Bool literal is resolved
+// here, once. Other forms stay unresolved; the backend then reports them as
+// "not yet implemented" instead of guessing (docs/BACKEND_GAPS.md).
+void SemanticAnalyzer::recordConstantValue(std::string_view name, std::string_view valueToken)
+{
+    const Symbol* symbol = symbols_.currentScope().resolve(name);
+    if (symbol == nullptr || symbol->kind != SymbolKind::Constant) {
+        return;
+    }
+    ConstantValue value;
+    if (equalsIgnoreCase(valueToken, "true") || equalsIgnoreCase(valueToken, "false")) {
+        value.kind = ConstantValue::Kind::Boolean;
+        value.boolean = equalsIgnoreCase(valueToken, "true");
+        result_.setConstantValue(*symbol, value);
+        return;
+    }
+    const bool looksInteger = !valueToken.empty() &&
+        (valueToken.front() == '$' || std::isdigit(static_cast<unsigned char>(valueToken.front())) != 0) &&
+        valueToken.find('.') == std::string_view::npos;
+    if (!looksInteger) {
+        return;
+    }
+    std::uint64_t magnitude = 0;
+    if (!parseIntegerLiteralMagnitude(valueToken, magnitude) || magnitude >= kInt64MagnitudeOfMin) {
+        throw SemanticError("integer literal does not fit in Int64 in Const " + std::string(name) +
+                            ": " + std::string(valueToken));
+    }
+    value.kind = ConstantValue::Kind::Integer;
+    value.integer = static_cast<std::int64_t>(magnitude);
+    result_.setConstantValue(*symbol, value);
+}
+
+void SemanticAnalyzer::foldConstantExpression(const ast::Expression& expression)
+{
+    switch (expression.kind()) {
+    case ast::AstNodeKind::IdentifierExpression: {
+        // A named Integer constant is a constant expression (CANON-19): overflow
+        // or a zero divisor involving it is a compile-time error.
+        const Symbol* symbol = result_.symbolOf(static_cast<const ast::IdentifierExpression&>(expression));
+        if (symbol == nullptr || symbol->kind != SymbolKind::Constant) {
+            return;
+        }
+        const ConstantValue* value = result_.constantValueOf(*symbol);
+        if (value != nullptr && value->kind == ConstantValue::Kind::Integer) {
+            constants_[&expression] = value->integer;
+        }
+        return;
+    }
+    case ast::AstNodeKind::LiteralExpression: {
+        const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
+        if (literal.literalKind() != ast::LiteralKind::Integer) {
+            return;
+        }
+        std::uint64_t magnitude = 0;
+        if (parseIntegerLiteralMagnitude(literal.value(), magnitude) && magnitude < kInt64MagnitudeOfMin) {
+            constants_[&expression] = static_cast<std::int64_t>(magnitude);
+        }
+        return;
+    }
+    case ast::AstNodeKind::UnaryExpression: {
+        const auto& unary = static_cast<const ast::UnaryExpression&>(expression);
+        std::int64_t operand = 0;
+        if (!constantIntegerValue(unary.operand(), operand)) {
+            return;
+        }
+        switch (unary.op()) {
+        case ast::UnaryOperator::Plus:
+            constants_[&expression] = operand;
+            return;
+        case ast::UnaryOperator::Minus:
+            if (operand == kInt64Min) {
+                throwConstantOverflow("negation");
+            }
+            constants_[&expression] = -operand;
+            return;
+        case ast::UnaryOperator::BitNot:
+            constants_[&expression] = ~operand;
+            return;
+        default:
+            return;
+        }
+    }
+    case ast::AstNodeKind::BinaryExpression: {
+        const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
+        std::int64_t a = 0;
+        std::int64_t b = 0;
+        // CANON-8: a CONSTANT divisor of zero is a compile-time error even when the
+        // dividend is only known at run time (`A div 0`). The same holds for a
+        // constant shift count outside 0..63 and a constant negative exponent:
+        // such an operation can never succeed.
+        if (constantIntegerValue(binary.right(), b)) {
+            rejectInvalidConstantRightOperand(binary.op(), b);
+        }
+        if (!constantIntegerValue(binary.left(), a) || !constantIntegerValue(binary.right(), b)) {
+            return;
+        }
+        std::int64_t out = 0;
+        switch (binary.op()) {
+        case ast::BinaryOperator::Add:
+            if (!checkedAdd(a, b, out)) throwConstantOverflow("addition");
+            constants_[&expression] = out;
+            return;
+        case ast::BinaryOperator::Subtract:
+            if (!checkedSub(a, b, out)) throwConstantOverflow("subtraction");
+            constants_[&expression] = out;
+            return;
+        case ast::BinaryOperator::Multiply:
+            if (!checkedMul(a, b, out)) throwConstantOverflow("multiplication");
+            constants_[&expression] = out;
+            return;
+        case ast::BinaryOperator::IntegerDivide:
+            if (b == 0) {
+                throw SemanticError("constant division by zero in 'div'");
+            }
+            if (a == kInt64Min && b == -1) {
+                throwConstantOverflow("division");
+            }
+            constants_[&expression] = a / b;
+            return;
+        case ast::BinaryOperator::Modulo:
+            if (b == 0) {
+                throw SemanticError("constant division by zero in 'mod'");
+            }
+            constants_[&expression] = (b == -1) ? 0 : a % b;
+            return;
+        case ast::BinaryOperator::ShiftLeft:
+        case ast::BinaryOperator::ShiftRight:
+            if (b < 0 || b > 63) {
+                throw SemanticError("constant shift count out of range: must be between 0 and 63");
+            }
+            if (binary.op() == ast::BinaryOperator::ShiftLeft) {
+                constants_[&expression] =
+                    static_cast<std::int64_t>(static_cast<std::uint64_t>(a) << static_cast<unsigned>(b));
+            } else {
+                constants_[&expression] = a >> static_cast<unsigned>(b);
+            }
+            return;
+        case ast::BinaryOperator::BitAnd:
+            constants_[&expression] = a & b;
+            return;
+        case ast::BinaryOperator::BitOr:
+            constants_[&expression] = a | b;
+            return;
+        case ast::BinaryOperator::BitXor:
+            constants_[&expression] = a ^ b;
+            return;
+        case ast::BinaryOperator::Power: {
+            if (b < 0) {
+                throw SemanticError("constant exponent must not be negative");
+            }
+            std::int64_t result = 1;
+            std::int64_t base = a;
+            std::int64_t exponent = b;
+            while (exponent > 0) {
+                if ((exponent & 1) != 0 && !checkedMul(result, base, result)) {
+                    throwConstantOverflow("exponentiation");
+                }
+                exponent >>= 1;
+                if (exponent > 0 && !checkedMul(base, base, base)) {
+                    throwConstantOverflow("exponentiation");
+                }
+            }
+            constants_[&expression] = result;
+            return;
+        }
+        default:
+            return;
+        }
+    }
+    default:
+        return;
+    }
+}
+
+void SemanticAnalyzer::requireStatementExpression(const ast::Expression& expression)
+{
+    switch (expression.kind()) {
+    case ast::AstNodeKind::IdentifierExpression: {
+        const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
+        if (equalsIgnoreCase(identifier.name(), "Get") || equalsIgnoreCase(identifier.name(), "GetLn") ||
+            resolveFunctionSignature(identifier.name()) != nullptr) {
+            return;
+        }
+        throw SemanticError("'" + identifier.name() +
+                            "' is not a subroutine and cannot be used as a statement");
+    }
+    case ast::AstNodeKind::LiteralExpression:
+    case ast::AstNodeKind::UnaryExpression:
+        throw SemanticError("expression is not a statement: only assignments and calls may be used as statements");
+    case ast::AstNodeKind::BinaryExpression:
+        if (static_cast<const ast::BinaryExpression&>(expression).op() != ast::BinaryOperator::Assign) {
+            throw SemanticError("expression is not a statement: only assignments and calls may be used as statements");
+        }
+        return;
+    default:
+        return;
+    }
+}
+
 std::string SemanticAnalyzer::analyzeExpression(const ast::Expression& expression)
 {
     std::string typeName = inferExpressionType(expression);
     result_.setExpressionType(expression, resolvedType(typeName));
+    foldConstantExpression(expression);
     return typeName;
 }
 
@@ -914,8 +1460,16 @@ std::string SemanticAnalyzer::inferExpressionType(const ast::Expression& express
     case ast::AstNodeKind::LiteralExpression: {
         const auto literalKind = static_cast<const ast::LiteralExpression&>(expression).literalKind();
         switch (literalKind) {
-        case ast::LiteralKind::Integer:
+        case ast::LiteralKind::Integer: {
+            std::uint64_t magnitude = 0;
+            const auto& integerLiteral = static_cast<const ast::LiteralExpression&>(expression);
+            if (!parseIntegerLiteralMagnitude(integerLiteral.value(), magnitude) ||
+                magnitude >= kInt64MagnitudeOfMin) {
+                throw SemanticError("integer literal out of range for Int64: " +
+                                    std::string(integerLiteral.value()));
+            }
             return "Int64";
+        }
         case ast::LiteralKind::Float:
             return "Float64";
         case ast::LiteralKind::String:
@@ -1370,6 +1924,20 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
 
 std::string SemanticAnalyzer::analyzeUnaryExpression(const ast::UnaryExpression& expression)
 {
+    // `-9223372036854775808` is the one literal whose magnitude only fits when
+    // it is directly negated.
+    if (expression.op() == ast::UnaryOperator::Minus &&
+        expression.operand().kind() == ast::AstNodeKind::LiteralExpression) {
+        const auto& literal = static_cast<const ast::LiteralExpression&>(expression.operand());
+        std::uint64_t magnitude = 0;
+        if (literal.literalKind() == ast::LiteralKind::Integer &&
+            parseIntegerLiteralMagnitude(literal.value(), magnitude) &&
+            magnitude == kInt64MagnitudeOfMin) {
+            result_.setExpressionType(literal, resolvedType("Int64"));
+            constants_[&expression] = kInt64Min;
+            return "Int64";
+        }
+    }
     const std::string operandType = analyzeExpression(expression.operand());
 
     switch (expression.op()) {
@@ -1482,6 +2050,12 @@ bool SemanticAnalyzer::isPreludeCall(std::string_view name)
     }
     return false;
 }
+
+bool SemanticAnalyzer::isExceptionType(std::string_view name)
+{
+    return exceptions::isExceptionType(name);
+}
+
 
 std::string SemanticAnalyzer::normalizeName(std::string_view name)
 {

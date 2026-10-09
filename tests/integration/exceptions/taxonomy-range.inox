@@ -1,0 +1,11 @@
+Module Integration.ExceptionsTaxonomyRange
+
+Main :
+    try
+        Raise IndexError
+    except
+        On RangeError
+            PutLn("range-family")
+        ;
+    ;
+;

@@ -1,0 +1,11 @@
+Module Semantic.ExceptionTaxonomy
+
+Main :
+    try
+        Raise FileNotFound
+    except
+        On Error IOError
+            PutLn("io family")
+        ;
+    ;
+;

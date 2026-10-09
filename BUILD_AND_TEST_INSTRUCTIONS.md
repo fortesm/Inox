@@ -24,11 +24,7 @@ cmake --build build\windows-clang-msvc --config Debug
 pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1 -InoxExe .\build\windows-clang-msvc\Debug\inox.exe
 ```
 
-Expected current regression result:
-
-```text
-Summary: 154 passed, 0 failed, 154 total
-```
+The cross-platform regression script now contains the same 305 checks as the Linux suite. Full native exception execution is currently validated on Linux; exception-enabled Windows binaries still require the documented Windows EH funclet lowering before a complete 305/305 Windows claim can be made.
 
 Debug compiler path:
 
@@ -74,10 +70,10 @@ cmake --build build/linux-clang-debug
 bash scripts/run-tests.sh build/linux-clang-debug/inox
 ```
 
-Expected current regression result:
+Expected current Linux regression result:
 
 ```text
-Summary: 154 passed, 0 failed, 154 total
+Summary: 305 passed, 0 failed, 305 total
 ```
 
 ## Linux release build
@@ -134,6 +130,39 @@ S=42
 before
 after
 ```
+
+## Extra verification tools (any OS)
+
+A green regression suite alone never proves the absence of regressions
+(CANON E19, verification principle). These tools answer different questions;
+run them after any compiler change and say in the report which ran.
+
+```
+python tools/backend_gaps.py <path-to-inox>              # sema-accepts / backend-rejects inventory
+python tools/backend_gaps.py <path-to-inox> --markdown   # table for docs/BACKEND_GAPS.md
+python tools/mutation_fuzz.py <path-to-inox> --count 4000 --seed 1   # best on an ASan+UBSan build
+python tools/calc_differential_test.py --inox <path-to-inox> --count 300
+```
+
+Sanitizer build (Linux/macOS with Clang):
+
+```
+cmake -S . -B build/asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++ -DINOX_ENABLE_ASAN=ON -DINOX_ENABLE_UBSAN=ON
+cmake --build build/asan
+bash scripts/run-tests.sh build/asan/inox
+```
+
+Runtime faults (CANON-19): a program that overflows, divides by zero, etc.
+prints `Inox runtime error: <category>` on stderr and exits with status 70. The
+`tests/runtime/*.trap` files hold the expected diagnostic.
+
+`backend_gaps.py` exits with status 1 if any probe is a BUG (a crash, a timeout
+or a codegen failure not reported as "not yet implemented in the LLVM backend").
+
+The nesting limits in `src/compiler/parser/Parser.h` were measured with a 1 MiB
+stack (the Windows main-thread default). On Linux, `ulimit -s 1024` before
+running the compiler reproduces that environment; re-measure before raising a
+limit (see CANON-19 "Compiler implementation limits").
 
 ## Git policy
 

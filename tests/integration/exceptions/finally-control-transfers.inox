@@ -1,0 +1,48 @@
+Module Integration.ExceptionsFinallyControlTransfers
+
+Value Integer :
+    try
+        try
+            Return 7
+        finally
+            PutLn("return-inner")
+        ;
+    finally
+        PutLn("return-outer")
+    ;
+    Return 0
+;
+
+Main :
+    V := Value
+    PutLn("value=", V)
+
+    while true
+        try
+            try
+                break
+            finally
+                PutLn("break-inner")
+            ;
+        finally
+            PutLn("break-outer")
+        ;
+    ;
+
+    for I in 1..2
+        try
+            PutLn("continue-body ", I)
+            continue
+        finally
+            PutLn("continue-cleanup")
+        ;
+    ;
+
+    PutLn("before-exit")
+    try
+        Exit
+    finally
+        PutLn("exit-cleanup")
+    ;
+    PutLn("unreachable")
+;

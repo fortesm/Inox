@@ -37,6 +37,7 @@ enum class AstNodeKind {
     CaseStatement,
     TryStatement,
     RaiseStatement,
+    RetryStatement,
     ReturnStatement,
     ExitStatement,
     BreakStatement,
@@ -110,6 +111,14 @@ class Expression : public AstNode {
 public:
     explicit Expression(AstNodeKind kind);
     ~Expression() override = default;
+
+    // Height of the expression tree rooted here (a leaf is 1). The parser uses
+    // it to enforce the documented implementation nesting limit (CANON-19, checked arithmetic and limits) so
+    // that later recursive passes can never exhaust the native stack.
+    std::size_t depth() const { return depth_; }
+
+protected:
+    std::size_t depth_ = 1;
 };
 
 class Statement : public AstNode {
@@ -128,6 +137,12 @@ struct ElseIfClause {
 
 struct CaseArm {
     std::vector<ExpressionPtr> choices;
+    std::vector<StatementPtr> body;
+};
+
+struct ExceptionHandler {
+    std::string bindingName;
+    std::string typeName;
     std::vector<StatementPtr> body;
 };
 
@@ -416,16 +431,32 @@ private:
 class TryStatement final : public Statement {
 public:
     TryStatement(std::vector<StatementPtr> body,
+                 bool hasExcept,
+                 bool plainExcept,
                  std::vector<StatementPtr> exceptBody,
+                 std::vector<ExceptionHandler> handlers,
+                 std::vector<StatementPtr> elseBody,
+                 bool hasFinally,
                  std::vector<StatementPtr> finallyBody);
 
     const std::vector<StatementPtr>& body() const;
+    bool hasExcept() const;
+    bool hasPlainExcept() const;
     const std::vector<StatementPtr>& exceptBody() const;
+    const std::vector<ExceptionHandler>& handlers() const;
+    const std::vector<StatementPtr>& elseBody() const;
+    bool hasFinally() const;
     const std::vector<StatementPtr>& finallyBody() const;
+    bool hasTypedHandlers() const;
 
 private:
     std::vector<StatementPtr> body_;
+    bool hasExcept_ = false;
+    bool plainExcept_ = false;
     std::vector<StatementPtr> exceptBody_;
+    std::vector<ExceptionHandler> handlers_;
+    std::vector<StatementPtr> elseBody_;
+    bool hasFinally_ = false;
     std::vector<StatementPtr> finallyBody_;
 };
 
@@ -438,6 +469,17 @@ public:
 
 private:
     ExpressionPtr expression_;
+};
+
+class RetryStatement final : public Statement {
+public:
+    explicit RetryStatement(ExpressionPtr count);
+
+    const Expression& count() const;
+    ExpressionPtr takeCount();
+
+private:
+    ExpressionPtr count_;
 };
 
 class ReturnStatement final : public Statement {

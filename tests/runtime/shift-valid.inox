@@ -1,0 +1,19 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+Module Runtime.ShiftValid
+
+Main :
+    A Integer := 1
+    B Integer := 62
+    PutLn(A shl B)
+    C Integer := -16
+    D Integer := 2
+    PutLn(C shr D)
+    E Integer := 63
+    PutLn(A shl E)
+;

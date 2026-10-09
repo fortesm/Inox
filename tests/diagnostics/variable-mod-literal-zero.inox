@@ -1,0 +1,15 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-8: the divisor is the constant 0, so this is a compile-time error even
+== though the dividend is only known at run time. (Accepted before v3.18.)
+Module Diagnostics.VariableModLiteralZero
+
+Main :
+    A Integer := 10
+    PutLn(A mod 0)
+;

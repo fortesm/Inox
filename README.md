@@ -35,7 +35,7 @@ Inox is aimed at systems where correctness and predictability matter:
 
 ## Implementation
 
-The reference compiler is written in portable C++20 and targets LLVM. It currently builds and is validated on Windows and Linux. The language core does not rely on a tracing garbage collector; future memory management work favors explicit ownership, moves, arenas, and deterministic resource control.
+The reference compiler is written in portable C++20 and targets LLVM. Windows and Linux are the primary validation targets, with platform support claims distinguished from cross-build-only evidence. Native exception lowering is currently validated on Unix-like Itanium-ABI hosts; Windows funclet lowering remains an explicit open gap (EH-v3.16a). The language core does not rely on a tracing garbage collector; future memory management work favors explicit ownership, moves, arenas, and deterministic resource control.
 
 Inox remains under active development. The current focus is a coherent, well-specified 0.1 foundation with a complete compiler pipeline (lexer → parser → semantic analysis → LLVM IR → executable) and a growing standard library surface.
 

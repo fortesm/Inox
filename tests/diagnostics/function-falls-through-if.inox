@@ -1,0 +1,22 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-12: functions must not fall through without returning a value.
+== The if has no else, so Sign(0) would reach the end of the function.
+Module Diagnostics.FunctionFallsThroughIf
+
+Sign(A Integer) Integer :
+    if A > 0
+        Return 1
+    elif A < 0
+        Return -1
+    ;
+;
+
+Main :
+    PutLn(Sign(0))
+;

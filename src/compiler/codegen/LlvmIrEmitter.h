@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include "../semantic/SemanticResult.h"
 #include "../ast/Ast.h"
 
 #include <stdexcept>
@@ -14,14 +15,31 @@
 
 namespace inox::compiler::codegen {
 
-class CodegenError final : public std::runtime_error {
+class CodegenError : public std::runtime_error {
 public:
     explicit CodegenError(std::string message);
 };
 
+// A construct the semantic analyzer accepts but the LLVM backend does not
+// implement yet. It is a separate type so the driver can tell the user that
+// the program is legal Inox and the gap is in the compiler, not in the code.
+// The known gaps are listed in docs/BACKEND_GAPS.md.
+class CodegenUnsupported final : public CodegenError {
+public:
+    explicit CodegenUnsupported(std::string message);
+};
+
+// Exit status of a program stopped by a runtime fault (CANON-19): overflow,
+// division by zero, invalid shift count, invalid for step, negative exponent,
+// invalid integer input. Status 70 is Inox-defined; its numeric value
+// intentionally coincides with BSD EX_SOFTWARE where that convention exists.
+inline constexpr int kRuntimeFaultExitStatus = 70;
+
 class LlvmIrEmitter {
 public:
-    std::string emit(const ast::ModuleNode& module) const;
+    // The backend consumes the semantic result instead of re-deriving what
+    // semantic analysis already resolved (CANON E11, decision P-C).
+    std::string emit(const ast::ModuleNode& module, const semantic::SemanticResult& semantics) const;
 };
 
 } // namespace inox::compiler::codegen

@@ -1,0 +1,11 @@
+Module Semantic.RetryNegative
+
+Main :
+    try
+        Raise IOError
+    except
+        On IOError
+            Retry(-1)
+        ;
+    ;
+;

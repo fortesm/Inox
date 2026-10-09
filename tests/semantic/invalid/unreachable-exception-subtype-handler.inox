@@ -1,0 +1,14 @@
+Module Semantic.UnreachableExceptionSubtypeHandler
+
+Main :
+    try
+        Raise FileNotFound
+    except
+        On IOError
+            PutLn("all io")
+        ;
+        On FileNotFound
+            PutLn("unreachable")
+        ;
+    ;
+;

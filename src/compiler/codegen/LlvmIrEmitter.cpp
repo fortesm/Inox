@@ -6,13 +6,18 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include "LlvmIrEmitter.h"
+#include "../support/Platform.h"
+#include "../exceptions/ExceptionTypes.h"
 
 #include <cctype>
+#include <cstdint>
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <optional>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -45,6 +50,129 @@ std::string normalize(std::string_view name)
             std::tolower(static_cast<unsigned char>(ch))));
     }
     return normalized;
+}
+
+std::uint64_t exceptionTypeId(std::string_view name)
+{
+    const auto* info = exceptions::findExceptionType(name);
+    if (info == nullptr) {
+        throw CodegenUnsupported("unknown exception type for LLVM emission: " + std::string(name));
+    }
+    return info->typeId;
+}
+
+bool statementContainsTry(const ast::Statement& statement);
+
+bool statementsContainTry(const std::vector<ast::StatementPtr>& statements)
+{
+    for (const auto& statement : statements) {
+        if (statementContainsTry(*statement)) return true;
+    }
+    return false;
+}
+
+bool statementContainsTry(const ast::Statement& statement)
+{
+    switch (statement.kind()) {
+    case ast::AstNodeKind::TryStatement:
+        return true;
+    case ast::AstNodeKind::BlockStatement:
+        return statementsContainTry(static_cast<const ast::BlockStatement&>(statement).statements());
+    case ast::AstNodeKind::IfStatement: {
+        const auto& node = static_cast<const ast::IfStatement&>(statement);
+        if (statementsContainTry(node.thenBody()) || statementsContainTry(node.elseBody())) return true;
+        for (const auto& clause : node.elseIfClauses()) if (statementsContainTry(clause.body)) return true;
+        return false;
+    }
+    case ast::AstNodeKind::UnlessStatement:
+        return statementsContainTry(static_cast<const ast::UnlessStatement&>(statement).body());
+    case ast::AstNodeKind::WhileStatement:
+        return statementsContainTry(static_cast<const ast::WhileStatement&>(statement).body());
+    case ast::AstNodeKind::RepeatStatement:
+        return statementsContainTry(static_cast<const ast::RepeatStatement&>(statement).body());
+    case ast::AstNodeKind::ForInStatement:
+        return statementsContainTry(static_cast<const ast::ForInStatement&>(statement).body());
+    case ast::AstNodeKind::CaseStatement: {
+        const auto& node = static_cast<const ast::CaseStatement&>(statement);
+        for (const auto& arm : node.arms()) if (statementsContainTry(arm.body)) return true;
+        return statementsContainTry(node.otherwiseBody());
+    }
+    case ast::AstNodeKind::WithStatement:
+        return statementsContainTry(static_cast<const ast::WithStatement&>(statement).body());
+    default:
+        return false;
+    }
+}
+
+bool functionContainsTry(const ast::FunctionDeclaration& function)
+{
+    return statementsContainTry(function.body());
+}
+
+bool statementUsesExceptions(const ast::Statement& statement)
+{
+    if (statement.kind() == ast::AstNodeKind::TryStatement ||
+        statement.kind() == ast::AstNodeKind::RaiseStatement ||
+        statement.kind() == ast::AstNodeKind::RetryStatement) return true;
+    switch (statement.kind()) {
+    case ast::AstNodeKind::BlockStatement:
+        for (const auto& s : static_cast<const ast::BlockStatement&>(statement).statements()) if (statementUsesExceptions(*s)) return true;
+        break;
+    case ast::AstNodeKind::IfStatement: {
+        const auto& n = static_cast<const ast::IfStatement&>(statement);
+        for (const auto& s : n.thenBody()) if (statementUsesExceptions(*s)) return true;
+        for (const auto& c : n.elseIfClauses()) for (const auto& s : c.body) if (statementUsesExceptions(*s)) return true;
+        for (const auto& s : n.elseBody()) if (statementUsesExceptions(*s)) return true;
+        break;
+    }
+    case ast::AstNodeKind::UnlessStatement:
+        for (const auto& s : static_cast<const ast::UnlessStatement&>(statement).body()) if (statementUsesExceptions(*s)) return true;
+        break;
+    case ast::AstNodeKind::WhileStatement:
+        for (const auto& s : static_cast<const ast::WhileStatement&>(statement).body()) if (statementUsesExceptions(*s)) return true;
+        break;
+    case ast::AstNodeKind::RepeatStatement:
+        for (const auto& s : static_cast<const ast::RepeatStatement&>(statement).body()) if (statementUsesExceptions(*s)) return true;
+        break;
+    case ast::AstNodeKind::ForInStatement:
+        for (const auto& s : static_cast<const ast::ForInStatement&>(statement).body()) if (statementUsesExceptions(*s)) return true;
+        break;
+    case ast::AstNodeKind::CaseStatement: {
+        const auto& n = static_cast<const ast::CaseStatement&>(statement);
+        for (const auto& a : n.arms()) for (const auto& s : a.body) if (statementUsesExceptions(*s)) return true;
+        for (const auto& s : n.otherwiseBody()) if (statementUsesExceptions(*s)) return true;
+        break;
+    }
+    case ast::AstNodeKind::WithStatement:
+        for (const auto& s : static_cast<const ast::WithStatement&>(statement).body()) if (statementUsesExceptions(*s)) return true;
+        break;
+    default: break;
+    }
+    return false;
+}
+
+bool moduleUsesExceptions(const ast::ModuleNode& module)
+{
+    for (const auto& item : module.items()) {
+        if (item->kind() != ast::AstNodeKind::FunctionDeclaration) continue;
+        const auto& fn = static_cast<const ast::FunctionDeclaration&>(*item);
+        for (const auto& st : fn.body()) if (statementUsesExceptions(*st)) return true;
+    }
+    return false;
+}
+
+// LLVM shares one namespace between local values and basic-block labels, and the
+// emitter's own temporaries (`%tmpN`) and labels (`thenN`, `forcondN`, ...) always
+// end in a digit. A user identifier must therefore never be emitted verbatim when
+// it could collide with one of those names.
+std::string safeLlvmName(const std::string& name)
+{
+    if (name.empty()) {
+        return name;
+    }
+    const bool endsWithDigit = std::isdigit(static_cast<unsigned char>(name.back())) != 0;
+    const bool reserved = name == "entry" || (name.size() >= 2 && name[0] == '_' && name[1] == '_');
+    return (endsWithDigit || reserved) ? name + ".v" : name;
 }
 
 std::string llvmIntegerLiteral(std::string_view value)
@@ -310,7 +438,7 @@ void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefi
             const std::string fieldType = tokens[index++];
             const std::string llvmFieldType = llvmTypeForScalar(fieldType);
             if (llvmFieldType.empty()) {
-                throw CodegenError(
+                throw CodegenUnsupported(
                     "LLVM emission currently supports only Integer and Bool struct fields");
             }
 
@@ -368,7 +496,7 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
                 parameterType = receiverType;
             } else {
                 if (index >= tokens.size() || tokens[index] == "," || tokens[index] == ")") {
-                    throw CodegenError("unsupported function signature: " + function.name());
+                    throw CodegenUnsupported("unsupported function signature: " + function.name());
                 }
                 parameterType = tokens[index++];
             }
@@ -377,7 +505,7 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
             if (llvmParameterType.empty()) {
                 const StructDefinition* structType = findStruct(structs, parameterType);
                 if (structType == nullptr) {
-                    throw CodegenError(
+                    throw CodegenUnsupported(
                         "LLVM emission currently supports only scalar and struct parameters");
                 }
                 llvmParameterType = isReceiver ? "ptr" : structType->llvmName;
@@ -385,18 +513,18 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
 
             parameters.push_back(FunctionParameter{
                 parameterName,
-                normalize(parameterName),
+                safeLlvmName(normalize(parameterName)),
                 parameterType,
                 llvmParameterType});
             if (index < tokens.size() && tokens[index] == ",") {
                 ++index;
             } else if (index >= tokens.size() || tokens[index] != ")") {
-                throw CodegenError("unsupported function signature: " + function.name());
+                throw CodegenUnsupported("unsupported function signature: " + function.name());
             }
         }
 
         if (index >= tokens.size() || tokens[index] != ")") {
-            throw CodegenError("unsupported function signature: " + function.name());
+            throw CodegenUnsupported("unsupported function signature: " + function.name());
         }
         ++index;
     }
@@ -405,14 +533,14 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
     if (index == tokens.size()) {
         llvmReturnType = "void";
     } else if (index + 1 != tokens.size()) {
-        throw CodegenError(
+        throw CodegenUnsupported(
             "LLVM emission currently supports scalar, struct return types, or subroutines without return type");
     } else if (const std::string scalarReturnType = llvmTypeForScalar(tokens[index]); !scalarReturnType.empty()) {
         llvmReturnType = scalarReturnType;
     } else if (const StructDefinition* structType = findStruct(structs, tokens[index])) {
         llvmReturnType = structType->llvmName;
     } else {
-        throw CodegenError(
+        throw CodegenUnsupported(
             "LLVM emission currently supports scalar, struct return types, or subroutines without return type");
     }
 
@@ -430,8 +558,10 @@ public:
                     const FunctionSignatures& signatures,
                     const StructDefinitions& structs,
                     std::vector<std::string>& stringGlobals,
-                    std::size_t& nextStringLiteral)
-        : output_(output),
+                    std::size_t& nextStringLiteral,
+                    const semantic::SemanticResult& semantics)
+        : semantics_(semantics),
+          output_(output),
           function_(function),
           signature_(signature),
           signatures_(signatures),
@@ -459,6 +589,11 @@ public:
                 parameterTypes_.emplace(normalize(parameter.inoxName), parameter.llvmType);
             }
         }
+
+        if (signature_.llvmReturnType != "void" && signature_.llvmReturnType != "i32") {
+            returnValueSlot_ = "%__inox.return.value";
+            output_ << "  " << returnValueSlot_ << " = alloca " << signature_.llvmReturnType << "\n";
+        }
     }
 
     void emit()
@@ -484,7 +619,7 @@ public:
 
         if (function_.body().empty() ||
             function_.body().back()->kind() != ast::AstNodeKind::ReturnStatement) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently requires a final Return expression");
         }
 
@@ -499,9 +634,28 @@ public:
     }
 
 private:
+    const semantic::SemanticResult& semantics_;
     struct LoopTargets {
         std::string continueTarget;
         std::string breakTarget;
+    };
+
+    struct RetryContext {
+        std::string counterSlot;
+        std::string actionSlot;
+        std::string cleanupTarget;
+        std::string rethrowRequestTarget;
+    };
+
+    struct CleanupContext {
+        std::string actionSlot;
+        std::string returnRequestTarget;
+        std::string exitRequestTarget;
+        std::string breakRequestTarget;
+        std::string continueRequestTarget;
+        std::size_t loopDepthAtEntry = 0;
+        std::string breakDestination;
+        std::string continueDestination;
     };
 
     struct LocalInfo {
@@ -518,24 +672,24 @@ private:
     void emitIfReturn(const ast::IfStatement& statement)
     {
         if (signature_.llvmReturnType != "i64") {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently supports if/else only in Integer functions");
         }
         if (statement.elseBody().empty()) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently requires else for direct-return if chains");
         }
         if (statement.thenBody().size() != 1 ||
             statement.thenBody().front()->kind() != ast::AstNodeKind::ReturnStatement ||
             statement.elseBody().size() != 1 ||
             statement.elseBody().front()->kind() != ast::AstNodeKind::ReturnStatement) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently requires a single Return in each if branch");
         }
         for (const auto& clause : statement.elseIfClauses()) {
             if (clause.body.size() != 1 ||
                 clause.body.front()->kind() != ast::AstNodeKind::ReturnStatement) {
-                throw CodegenError(
+                throw CodegenUnsupported(
                     "LLVM emission currently requires a single Return in each elif branch");
             }
         }
@@ -578,13 +732,83 @@ private:
     void emitReturn(const ast::ReturnStatement& statement)
     {
         const std::string value = emitExpression(statement.expression());
+        if (!cleanupContexts_.empty()) {
+            if (returnValueSlot_.empty()) {
+                throw CodegenError("internal error: Return cleanup requires a return-value slot");
+            }
+            output_ << "  store " << signature_.llvmReturnType << ' ' << value
+                    << ", ptr " << returnValueSlot_ << "\n";
+            output_ << "  br label %" << cleanupContexts_.back().returnRequestTarget << "\n";
+            const std::string dead = newDeadLabel("eh.after.return");
+            output_ << "\n" << dead << ":\n";
+            return;
+        }
         output_ << "  ret " << signature_.llvmReturnType << ' ' << value << '\n';
+    }
+
+    void emitExit()
+    {
+        if (!cleanupContexts_.empty()) {
+            output_ << "  br label %" << cleanupContexts_.back().exitRequestTarget << "\n";
+            const std::string dead = newDeadLabel("eh.after.exit");
+            output_ << "\n" << dead << ":\n";
+            return;
+        }
+        if (signature_.llvmReturnType == "i32") {
+            output_ << "  ret i32 0\n";
+        } else if (signature_.llvmReturnType == "void") {
+            output_ << "  ret void\n";
+        } else {
+            throw CodegenError("Exit is not valid in a value-returning function");
+        }
+    }
+
+    const CleanupContext* cleanupForLoopTransfer() const
+    {
+        if (loopTargets_.empty()) {
+            return nullptr;
+        }
+        const std::size_t targetDepth = loopTargets_.size();
+        for (auto it = cleanupContexts_.rbegin(); it != cleanupContexts_.rend(); ++it) {
+            if (it->loopDepthAtEntry >= targetDepth) {
+                return &*it;
+            }
+        }
+        return nullptr;
+    }
+
+    void emitBreakTransfer()
+    {
+        if (loopTargets_.empty()) {
+            throw CodegenError("break outside loop");
+        }
+        if (const CleanupContext* cleanup = cleanupForLoopTransfer()) {
+            output_ << "  br label %" << cleanup->breakRequestTarget << "\n";
+        } else {
+            output_ << "  br label %" << currentLoopTargets().breakTarget << "\n";
+        }
+        const std::string dead = newDeadLabel("eh.after.break");
+        output_ << "\n" << dead << ":\n";
+    }
+
+    void emitContinueTransfer()
+    {
+        if (loopTargets_.empty()) {
+            throw CodegenError("continue outside loop");
+        }
+        if (const CleanupContext* cleanup = cleanupForLoopTransfer()) {
+            output_ << "  br label %" << cleanup->continueRequestTarget << "\n";
+        } else {
+            output_ << "  br label %" << currentLoopTargets().continueTarget << "\n";
+        }
+        const std::string dead = newDeadLabel("eh.after.continue");
+        output_ << "\n" << dead << ":\n";
     }
 
     void emitIfMerge(const ast::IfStatement& statement)
     {
         if (!statement.elseIfClauses().empty()) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently supports if without elif");
         }
 
@@ -662,20 +886,22 @@ private:
     void emitForIn(const ast::ForInStatement& statement)
     {
         if (statement.iterable().kind() != ast::AstNodeKind::BinaryExpression) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently supports only range expressions in for loops");
         }
 
         const auto& range = static_cast<const ast::BinaryExpression&>(statement.iterable());
         if (range.op() != ast::BinaryOperator::Range) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently supports only Start..End for ranges");
         }
 
         const std::string iteratorName = normalize(statement.iterator());
-        if (locals_.find(iteratorName) != locals_.end()) {
-            throw CodegenError(
-                "LLVM emission does not support for iterator shadowing local variables");
+        // Semantic analysis already rejected iterators that conflict with a visible
+        // symbol; an entry left in `locals_` here belongs to a finished sibling scope.
+        std::optional<LocalInfo> shadowedLocal;
+        if (const auto existing = locals_.find(iteratorName); existing != locals_.end()) {
+            shadowedLocal = existing->second;
         }
 
         const std::size_t label = nextLabel_++;
@@ -683,22 +909,40 @@ private:
         const std::string bodyTarget = "forbody" + std::to_string(label);
         const std::string stepTarget = "forstep" + std::to_string(label);
         const std::string endTarget = "forend" + std::to_string(label);
-        const std::string slot = "%" + iteratorName;
+        const std::string slot = newSlot(iteratorName);
 
+        auto temporary = [this]() { return "%tmp" + std::to_string(nextTemporary_++); };
+
+        // CANON-11 `for in range`: both endpoints and the step are evaluated ONCE,
+        // before the first iteration (start, end, step order). The direction comes
+        // from the endpoints: A<B ascending, A>B descending, A=B runs once. The step
+        // is a positive magnitude; a step <= 0 traps before the loop starts.
         output_ << "  " << slot << " = alloca i64\n";
         const std::string startValue = emitExpression(range.left());
+        const std::string endValue = emitExpression(range.right());
+        std::string increment = "1";
+        if (statement.step() != nullptr) {
+            const std::string rawStep = emitExpression(*statement.step());
+            increment = temporary();
+            output_ << "  " << increment << " = call i64 @__inox_for_step_i64(i64 " << rawStep << ")\n";
+        }
+        const std::string descending = temporary();
+        output_ << "  " << descending << " = icmp sgt i64 " << startValue << ", " << endValue << '\n';
         output_ << "  store i64 " << startValue << ", ptr " << slot << '\n';
-        locals_.emplace(iteratorName, LocalInfo{slot, "Integer", "i64"});
+        locals_.insert_or_assign(iteratorName, LocalInfo{slot, "Integer", "i64"});
 
         output_ << "  br label %" << conditionTarget << "\n\n";
 
         output_ << conditionTarget << ":\n";
-        const std::string iteratorValue = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string iteratorValue = temporary();
+        const std::string ascendingCondition = temporary();
+        const std::string descendingCondition = temporary();
+        const std::string condition = temporary();
         output_ << "  " << iteratorValue << " = load i64, ptr " << slot << '\n';
-        const std::string endValue = emitExpression(range.right());
-        const std::string condition = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << condition << " = icmp sle i64 "
-                << iteratorValue << ", " << endValue << '\n';
+        output_ << "  " << ascendingCondition << " = icmp sle i64 " << iteratorValue << ", " << endValue << '\n';
+        output_ << "  " << descendingCondition << " = icmp sge i64 " << iteratorValue << ", " << endValue << '\n';
+        output_ << "  " << condition << " = select i1 " << descending << ", i1 " << descendingCondition
+                << ", i1 " << ascendingCondition << '\n';
         output_ << "  br i1 " << condition
                 << ", label %" << bodyTarget
                 << ", label %" << endTarget << "\n\n";
@@ -712,20 +956,42 @@ private:
         }
         output_ << '\n';
 
+        // The next iterator value is computed with overflow detection: if it does
+        // not fit in Int64 the range is exhausted, so the loop ends instead of
+        // wrapping around (a range ending at Int64.Max or Int64.Min must terminate).
         output_ << stepTarget << ":\n";
-        const std::string stepValue = "%tmp" + std::to_string(nextTemporary_++);
-        const std::string incrementedValue = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << stepValue << " = load i64, ptr " << slot << '\n';
-        const std::string increment = statement.step() != nullptr
-            ? emitExpression(*statement.step())
-            : "1";
-        output_ << "  " << incrementedValue << " = add i64 "
-                << stepValue << ", " << increment << "\n";
-        output_ << "  store i64 " << incrementedValue << ", ptr " << slot << '\n';
-        output_ << "  br label %" << conditionTarget << "\n\n";
+        const std::string current = temporary();
+        const std::string addPair = temporary();
+        const std::string addValue = temporary();
+        const std::string addOverflow = temporary();
+        const std::string subPair = temporary();
+        const std::string subValue = temporary();
+        const std::string subOverflow = temporary();
+        const std::string nextValue = temporary();
+        const std::string nextOverflow = temporary();
+        output_ << "  " << current << " = load i64, ptr " << slot << '\n';
+        output_ << "  " << addPair << " = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 "
+                << current << ", i64 " << increment << ")\n";
+        output_ << "  " << addValue << " = extractvalue { i64, i1 } " << addPair << ", 0\n";
+        output_ << "  " << addOverflow << " = extractvalue { i64, i1 } " << addPair << ", 1\n";
+        output_ << "  " << subPair << " = call { i64, i1 } @llvm.ssub.with.overflow.i64(i64 "
+                << current << ", i64 " << increment << ")\n";
+        output_ << "  " << subValue << " = extractvalue { i64, i1 } " << subPair << ", 0\n";
+        output_ << "  " << subOverflow << " = extractvalue { i64, i1 } " << subPair << ", 1\n";
+        output_ << "  " << nextValue << " = select i1 " << descending << ", i64 " << subValue
+                << ", i64 " << addValue << '\n';
+        output_ << "  " << nextOverflow << " = select i1 " << descending << ", i1 " << subOverflow
+                << ", i1 " << addOverflow << '\n';
+        output_ << "  store i64 " << nextValue << ", ptr " << slot << '\n';
+        output_ << "  br i1 " << nextOverflow << ", label %" << endTarget
+                << ", label %" << conditionTarget << "\n\n";
 
         output_ << endTarget << ":\n";
-        locals_.erase(iteratorName);
+        if (shadowedLocal.has_value()) {
+            locals_.insert_or_assign(iteratorName, *shadowedLocal);
+        } else {
+            locals_.erase(iteratorName);
+        }
     }
 
     bool emitRepeatStatements(const std::vector<ast::StatementPtr>& statements,
@@ -737,7 +1003,7 @@ private:
         bool terminated = false;
         for (std::size_t index = 0; index < statements.size(); ++index) {
             if (terminated) {
-                throw CodegenError(
+                throw CodegenUnsupported(
                     "LLVM emission does not support statements after terminating repeat branch");
             }
 
@@ -749,6 +1015,10 @@ private:
             }
             if (statement.kind() == ast::AstNodeKind::IfStatement) {
                 emitLoopIf(static_cast<const ast::IfStatement&>(statement));
+                continue;
+            }
+            if (statement.kind() == ast::AstNodeKind::TryStatement) {
+                emitTry(static_cast<const ast::TryStatement&>(statement));
                 continue;
             }
             if (statement.kind() == ast::AstNodeKind::BreakStatement) {
@@ -781,7 +1051,7 @@ private:
                 continue;
             }
 
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently supports only assignments, if, break, continue, and until in repeat bodies");
         }
 
@@ -793,7 +1063,7 @@ private:
         bool terminated = false;
         for (const auto& statement : statements) {
             if (terminated) {
-                throw CodegenError(
+                throw CodegenUnsupported(
                     "LLVM emission does not support statements after break or continue");
             }
             terminated = emitLoopStatement(*statement);
@@ -812,6 +1082,10 @@ private:
             emitLoopIf(static_cast<const ast::IfStatement&>(statement));
             return false;
         }
+        if (statement.kind() == ast::AstNodeKind::TryStatement) {
+            emitTry(static_cast<const ast::TryStatement&>(statement));
+            return false;
+        }
         if (statement.kind() == ast::AstNodeKind::BreakStatement) {
             output_ << "  br label %" << currentLoopTargets().breakTarget << '\n';
             return true;
@@ -821,14 +1095,14 @@ private:
             return true;
         }
 
-        throw CodegenError(
+        throw CodegenUnsupported(
             "LLVM emission currently supports only assignments, if, break, and continue in loop bodies");
     }
 
     void emitLoopIf(const ast::IfStatement& statement)
     {
         if (!statement.elseIfClauses().empty() || !statement.elseBody().empty()) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently supports loop if without elif or else");
         }
 
@@ -858,7 +1132,7 @@ private:
     {
         // The target must be an identifier naming an already-declared local.
         if (statement.target().kind() != ast::AstNodeKind::IdentifierExpression) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently supports only local variable targets for 'with'");
         }
 
@@ -872,7 +1146,7 @@ private:
         }
 
         // Register the synthetic binding as an alias to the same slot/type.
-        locals_.emplace(normalize(statement.bindingName()), targetIt->second);
+        locals_.insert_or_assign(normalize(statement.bindingName()), targetIt->second);
 
         // Emit body statements; dot-prefixed members were already expanded by
         // the parser to __member(__with_N, Field), which resolves via the alias.
@@ -881,13 +1155,457 @@ private:
         }
     }
 
+    std::string emitExceptionTypeMatch(std::string_view actualTypeValue,
+                                       std::string_view expectedTypeName)
+    {
+        const auto ids = exceptions::matchingTypeIds(expectedTypeName);
+        if (ids.empty()) {
+            throw CodegenUnsupported(
+                "unknown exception type for handler matching: " +
+                std::string(expectedTypeName));
+        }
+
+        std::string combined;
+        for (const std::uint64_t id : ids) {
+            const std::string cmp = "%eh.match" + std::to_string(nextTemporary_++);
+            output_ << "  " << cmp << " = icmp eq i64 " << actualTypeValue
+                    << ", " << id << "\n";
+            if (combined.empty()) {
+                combined = cmp;
+            } else {
+                const std::string joined = "%eh.match.any" + std::to_string(nextTemporary_++);
+                output_ << "  " << joined << " = or i1 " << combined << ", " << cmp << "\n";
+                combined = joined;
+            }
+        }
+        return combined;
+    }
+
+    void emitRetry(const ast::RetryStatement& statement)
+    {
+        if (retryContexts_.empty()) {
+            throw CodegenError("Retry requires an active On/Else exception handler");
+        }
+
+        const RetryContext& context = retryContexts_.back();
+        const std::string limit = emitExpression(statement.count());
+        const std::string current = "%eh.retry.count" + std::to_string(nextTemporary_++);
+        const std::string allowed = "%eh.retry.allowed" + std::to_string(nextTemporary_++);
+        const std::string allowedLabel = "eh.retry.allow" + std::to_string(nextLabel_++);
+        const std::string exhaustedLabel = "eh.retry.exhausted" + std::to_string(nextLabel_++);
+        const std::string deadLabel = newDeadLabel("eh.after.retry");
+
+        output_ << "  " << current << " = load i64, ptr " << context.counterSlot << "\n";
+        // Signed comparison intentionally makes a dynamic negative N behave as
+        // an exhausted budget. Semantic analysis rejects literal negatives.
+        output_ << "  " << allowed << " = icmp slt i64 " << current << ", " << limit << "\n";
+        output_ << "  br i1 " << allowed << ", label %" << allowedLabel
+                << ", label %" << exhaustedLabel << "\n\n";
+
+        output_ << allowedLabel << ":\n";
+        const std::string next = "%eh.retry.next" + std::to_string(nextTemporary_++);
+        output_ << "  " << next << " = add i64 " << current << ", 1\n";
+        output_ << "  store i64 " << next << ", ptr " << context.counterSlot << "\n";
+        output_ << "  store i32 2, ptr " << context.actionSlot << "\n";
+        output_ << "  br label %" << context.cleanupTarget << "\n\n";
+
+        output_ << exhaustedLabel << ":\n";
+        output_ << "  br label %" << context.rethrowRequestTarget << "\n\n";
+
+        output_ << deadLabel << ":\n";
+    }
+
+    const std::string& currentUnwindTarget() const
+    {
+        if (unwindTargets_.empty()) {
+            throw CodegenError("internal error: no active exception unwind target");
+        }
+        return unwindTargets_.back();
+    }
+
+    std::string newDeadLabel(std::string_view prefix)
+    {
+        return std::string(prefix) + std::to_string(nextLabel_++);
+    }
+
+    void emitExceptionCapture(std::string_view landingPadLabel,
+                              std::string_view stateSlot,
+                              std::string_view nextLabel,
+                              bool replaceExisting = false)
+    {
+        output_ << landingPadLabel << ":\n";
+        const std::string landing = "%eh.lp" + std::to_string(nextTemporary_++);
+        const std::string raw = "%eh.raw" + std::to_string(nextTemporary_++);
+        const std::string state = "%eh.state" + std::to_string(nextTemporary_++);
+        output_ << "  " << landing << " = landingpad { ptr, i32 } catch ptr null\n";
+        output_ << "  " << raw << " = extractvalue { ptr, i32 } " << landing << ", 0\n";
+        output_ << "  " << state << " = call ptr @__inox_exception_capture(ptr " << raw << ")\n";
+        if (replaceExisting) {
+            const std::string old = "%eh.old" + std::to_string(nextTemporary_++);
+            const std::string hasOld = "%eh.hasold" + std::to_string(nextTemporary_++);
+            const std::string releaseLabel = "eh.release.old" + std::to_string(nextLabel_++);
+            const std::string storeLabel = "eh.store.new" + std::to_string(nextLabel_++);
+            output_ << "  " << old << " = load ptr, ptr " << stateSlot << "\n";
+            output_ << "  " << hasOld << " = icmp ne ptr " << old << ", null\n";
+            output_ << "  br i1 " << hasOld << ", label %" << releaseLabel << ", label %" << storeLabel << "\n\n";
+            output_ << releaseLabel << ":\n";
+            output_ << "  call void @__inox_exception_release(ptr " << old << ")\n";
+            output_ << "  br label %" << storeLabel << "\n\n";
+            output_ << storeLabel << ":\n";
+        }
+        output_ << "  store ptr " << state << ", ptr " << stateSlot << "\n";
+        output_ << "  br label %" << nextLabel << "\n\n";
+    }
+
+    void emitReleaseExceptionState(std::string_view stateSlot)
+    {
+        const std::string state = "%eh.release" + std::to_string(nextTemporary_++);
+        output_ << "  " << state << " = load ptr, ptr " << stateSlot << "\n";
+        output_ << "  call void @__inox_exception_release(ptr " << state << ")\n";
+        output_ << "  store ptr null, ptr " << stateSlot << "\n";
+    }
+
+    void emitRethrowState(std::string_view stateSlot)
+    {
+        const std::string state = "%eh.rethrow.state" + std::to_string(nextTemporary_++);
+        output_ << "  " << state << " = load ptr, ptr " << stateSlot << "\n";
+        if (!unwindTargets_.empty()) {
+            const std::string impossible = newDeadLabel("eh.rethrow.unreachable");
+            output_ << "  invoke void @__inox_exception_rethrow(ptr " << state << ") to label %"
+                    << impossible << " unwind label %" << currentUnwindTarget() << "\n\n";
+            output_ << impossible << ":\n  unreachable\n";
+        } else {
+            output_ << "  call void @__inox_exception_rethrow(ptr " << state << ")\n";
+            output_ << "  unreachable\n";
+        }
+    }
+
+    void emitRaise(const ast::RaiseStatement& statement)
+    {
+        if (statement.expression() == nullptr) {
+            if (caughtExceptionStates_.empty() || bareRethrowTargets_.empty()) {
+                throw CodegenError("bare Raise requires an active exception handler");
+            }
+            const std::string dead = newDeadLabel("eh.after.rethrow");
+            output_ << "  br label %" << bareRethrowTargets_.back() << "\n\n";
+            output_ << dead << ":\n";
+            return;
+        }
+
+        if (statement.expression()->kind() != ast::AstNodeKind::IdentifierExpression) {
+            throw CodegenUnsupported("Raise currently requires an exception type name");
+        }
+        const auto& identifier = static_cast<const ast::IdentifierExpression&>(*statement.expression());
+        const std::uint64_t typeId = exceptionTypeId(identifier.name());
+        if (!unwindTargets_.empty()) {
+            const std::string impossible = newDeadLabel("eh.raise.unreachable");
+            const std::string dead = newDeadLabel("eh.after.raise");
+            output_ << "  invoke void @__inox_raise(i64 " << typeId << ") to label %" << impossible
+                    << " unwind label %" << currentUnwindTarget() << "\n\n";
+            output_ << impossible << ":\n  unreachable\n\n";
+            output_ << dead << ":\n";
+        } else {
+            const std::string dead = newDeadLabel("eh.after.raise");
+            output_ << "  call void @__inox_raise(i64 " << typeId << ")\n";
+            output_ << "  unreachable\n\n" << dead << ":\n";
+        }
+    }
+
+    void emitTry(const ast::TryStatement& statement)
+    {
+        const std::size_t id = nextLabel_++;
+        const std::string stateSlot = "%eh.state.slot" + std::to_string(id);
+        const std::string retryCounterSlot = "%eh.retry.slot" + std::to_string(id);
+        const std::string actionSlot = "%eh.action.slot" + std::to_string(id);
+        const std::string bodyLabel = "eh.try.body" + std::to_string(id);
+        const std::string landing = "eh.lpad" + std::to_string(id);
+        const std::string dispatch = "eh.dispatch" + std::to_string(id);
+        const std::string handlerUnwind = "eh.handler.lpad" + std::to_string(id);
+        const std::string handlerUnwindCaptured = "eh.handler.captured" + std::to_string(id);
+        const std::string finallyLabel = "eh.finally" + std::to_string(id);
+        const std::string finallyUnwind = "eh.finally.lpad" + std::to_string(id);
+        const std::string finallyUnwindCaptured = "eh.finally.captured" + std::to_string(id);
+        const std::string afterFinally = "eh.after.finally" + std::to_string(id);
+        const std::string retryPerform = "eh.retry.perform" + std::to_string(id);
+        const std::string rethrowRequest = "eh.rethrow.request" + std::to_string(id);
+        const std::string returnRequest = "eh.return.request" + std::to_string(id);
+        const std::string exitRequest = "eh.exit.request" + std::to_string(id);
+        const std::string breakRequest = "eh.break.request" + std::to_string(id);
+        const std::string continueRequest = "eh.loop.continue.request" + std::to_string(id);
+        const std::string returnPerform = "eh.return.perform" + std::to_string(id);
+        const std::string exitPerform = "eh.exit.perform" + std::to_string(id);
+        const std::string breakPerform = "eh.break.perform" + std::to_string(id);
+        const std::string continuePerform = "eh.loop.continue.perform" + std::to_string(id);
+        const std::string continueLabel = "eh.continue" + std::to_string(id);
+        const std::string rethrowLabel = "eh.rethrow" + std::to_string(id);
+        const std::string handledLabel = statement.hasFinally() ? finallyLabel : continueLabel;
+        const std::string cleanupForRetry = statement.hasFinally() ? finallyLabel : retryPerform;
+
+        const std::size_t loopDepthAtEntry = loopTargets_.size();
+        const std::string breakDestination = loopTargets_.empty() ? std::string{} : loopTargets_.back().breakTarget;
+        const std::string continueDestination = loopTargets_.empty() ? std::string{} : loopTargets_.back().continueTarget;
+        const std::string outerReturnRequest = cleanupContexts_.empty()
+            ? std::string{} : cleanupContexts_.back().returnRequestTarget;
+        const std::string outerExitRequest = cleanupContexts_.empty()
+            ? std::string{} : cleanupContexts_.back().exitRequestTarget;
+
+        std::string outerBreakRequest;
+        std::string outerContinueRequest;
+        if (loopDepthAtEntry != 0) {
+            for (auto it = cleanupContexts_.rbegin(); it != cleanupContexts_.rend(); ++it) {
+                if (it->loopDepthAtEntry >= loopDepthAtEntry) {
+                    outerBreakRequest = it->breakRequestTarget;
+                    outerContinueRequest = it->continueRequestTarget;
+                    break;
+                }
+            }
+        }
+
+        const CleanupContext cleanupContext{
+            actionSlot,
+            returnRequest,
+            exitRequest,
+            breakRequest,
+            continueRequest,
+            loopDepthAtEntry,
+            breakDestination,
+            continueDestination};
+
+        output_ << "  " << stateSlot << " = alloca ptr\n";
+        output_ << "  " << retryCounterSlot << " = alloca i64\n";
+        output_ << "  " << actionSlot << " = alloca i32\n";
+        output_ << "  store ptr null, ptr " << stateSlot << "\n";
+        output_ << "  store i64 0, ptr " << retryCounterSlot << "\n";
+        output_ << "  store i32 0, ptr " << actionSlot << "\n";
+        output_ << "  br label %" << bodyLabel << "\n\n";
+
+        if (statement.hasFinally()) {
+            cleanupContexts_.push_back(cleanupContext);
+        }
+
+        output_ << bodyLabel << ":\n";
+        unwindTargets_.push_back(landing);
+        for (const auto& bodyStatement : statement.body()) {
+            emitLocalDeclaration(*bodyStatement);
+        }
+        unwindTargets_.pop_back();
+        output_ << "  store i32 0, ptr " << actionSlot << "\n";
+        output_ << "  br label %" << handledLabel << "\n\n";
+
+        emitExceptionCapture(landing, stateSlot, dispatch);
+
+        output_ << dispatch << ":\n";
+        if (!statement.hasExcept()) {
+            output_ << "  br label %" << rethrowRequest << "\n\n";
+        } else if (statement.hasPlainExcept()) {
+            const std::string catchAll = "eh.catchall" + std::to_string(id);
+            output_ << "  br label %" << catchAll << "\n\n";
+            output_ << catchAll << ":\n";
+            caughtExceptionStates_.push_back(stateSlot);
+            bareRethrowTargets_.push_back(rethrowRequest);
+            unwindTargets_.push_back(handlerUnwind);
+            for (const auto& st : statement.exceptBody()) emitLocalDeclaration(*st);
+            unwindTargets_.pop_back();
+            bareRethrowTargets_.pop_back();
+            caughtExceptionStates_.pop_back();
+            emitReleaseExceptionState(stateSlot);
+            output_ << "  store i32 0, ptr " << actionSlot << "\n";
+            output_ << "  br label %" << handledLabel << "\n\n";
+        } else {
+            const std::string state = "%eh.dispatch.state" + std::to_string(nextTemporary_++);
+            const std::string type = "%eh.type" + std::to_string(nextTemporary_++);
+            output_ << "  " << state << " = load ptr, ptr " << stateSlot << "\n";
+            output_ << "  " << type << " = call i64 @__inox_exception_type(ptr " << state << ")\n";
+
+            std::vector<std::string> labels;
+            labels.reserve(statement.handlers().size());
+            for (std::size_t index = 0; index < statement.handlers().size(); ++index) {
+                labels.push_back("eh.handler" + std::to_string(id) + "_" + std::to_string(index));
+            }
+            const std::string elseLabel = !statement.elseBody().empty()
+                ? "eh.else" + std::to_string(id) : rethrowRequest;
+
+            std::string nextCheck = "eh.check" + std::to_string(id) + "_0";
+            if (statement.handlers().empty()) {
+                output_ << "  br label %" << elseLabel << "\n\n";
+            } else {
+                output_ << "  br label %" << nextCheck << "\n\n";
+                for (std::size_t index = 0; index < statement.handlers().size(); ++index) {
+                    const auto& handler = statement.handlers()[index];
+                    output_ << nextCheck << ":\n";
+                    const std::string matched = emitExceptionTypeMatch(type, handler.typeName);
+                    const bool last = index + 1 == statement.handlers().size();
+                    const std::string noMatch = last ? elseLabel
+                        : "eh.check" + std::to_string(id) + "_" + std::to_string(index + 1);
+                    output_ << "  br i1 " << matched << ", label %" << labels[index]
+                            << ", label %" << noMatch << "\n\n";
+                    nextCheck = noMatch;
+                }
+            }
+
+            const RetryContext retryContext{
+                retryCounterSlot, actionSlot, cleanupForRetry, rethrowRequest};
+
+            for (std::size_t index = 0; index < statement.handlers().size(); ++index) {
+                const auto& handler = statement.handlers()[index];
+                output_ << labels[index] << ":\n";
+                caughtExceptionStates_.push_back(stateSlot);
+                bareRethrowTargets_.push_back(rethrowRequest);
+                retryContexts_.push_back(retryContext);
+                if (!handler.bindingName.empty()) {
+                    exceptionBindings_.emplace(normalize(handler.bindingName), stateSlot);
+                }
+                unwindTargets_.push_back(handlerUnwind);
+                for (const auto& st : handler.body) emitLocalDeclaration(*st);
+                unwindTargets_.pop_back();
+                if (!handler.bindingName.empty()) {
+                    exceptionBindings_.erase(normalize(handler.bindingName));
+                }
+                retryContexts_.pop_back();
+                bareRethrowTargets_.pop_back();
+                caughtExceptionStates_.pop_back();
+                emitReleaseExceptionState(stateSlot);
+                output_ << "  store i32 0, ptr " << actionSlot << "\n";
+                output_ << "  br label %" << handledLabel << "\n\n";
+            }
+
+            if (!statement.elseBody().empty()) {
+                output_ << elseLabel << ":\n";
+                caughtExceptionStates_.push_back(stateSlot);
+                bareRethrowTargets_.push_back(rethrowRequest);
+                retryContexts_.push_back(retryContext);
+                unwindTargets_.push_back(handlerUnwind);
+                for (const auto& st : statement.elseBody()) emitLocalDeclaration(*st);
+                unwindTargets_.pop_back();
+                retryContexts_.pop_back();
+                bareRethrowTargets_.pop_back();
+                caughtExceptionStates_.pop_back();
+                emitReleaseExceptionState(stateSlot);
+                output_ << "  store i32 0, ptr " << actionSlot << "\n";
+                output_ << "  br label %" << handledLabel << "\n\n";
+            }
+        }
+
+        if (statement.hasExcept()) {
+            emitExceptionCapture(handlerUnwind, stateSlot, handlerUnwindCaptured, true);
+            output_ << handlerUnwindCaptured << ":\n";
+            output_ << "  br label %" << rethrowRequest << "\n\n";
+        }
+
+        output_ << rethrowRequest << ":\n";
+        output_ << "  store i32 1, ptr " << actionSlot << "\n";
+        output_ << "  br label %" << (statement.hasFinally() ? finallyLabel : rethrowLabel) << "\n\n";
+
+        if (statement.hasFinally()) {
+            output_ << returnRequest << ":\n";
+            output_ << "  store i32 3, ptr " << actionSlot << "\n";
+            output_ << "  br label %" << finallyLabel << "\n\n";
+
+            output_ << exitRequest << ":\n";
+            output_ << "  store i32 4, ptr " << actionSlot << "\n";
+            output_ << "  br label %" << finallyLabel << "\n\n";
+
+            if (loopDepthAtEntry != 0) {
+                output_ << breakRequest << ":\n";
+                output_ << "  store i32 5, ptr " << actionSlot << "\n";
+                output_ << "  br label %" << finallyLabel << "\n\n";
+
+                output_ << continueRequest << ":\n";
+                output_ << "  store i32 6, ptr " << actionSlot << "\n";
+                output_ << "  br label %" << finallyLabel << "\n\n";
+            }
+
+            cleanupContexts_.pop_back();
+
+            output_ << finallyLabel << ":\n";
+            unwindTargets_.push_back(finallyUnwind);
+            for (const auto& st : statement.finallyBody()) emitLocalDeclaration(*st);
+            unwindTargets_.pop_back();
+            output_ << "  br label %" << afterFinally << "\n\n";
+
+            emitExceptionCapture(finallyUnwind, stateSlot, finallyUnwindCaptured, true);
+            output_ << finallyUnwindCaptured << ":\n";
+            output_ << "  br label %" << rethrowLabel << "\n\n";
+
+            output_ << afterFinally << ":\n";
+            const std::string action = "%eh.action" + std::to_string(nextTemporary_++);
+            output_ << "  " << action << " = load i32, ptr " << actionSlot << "\n";
+            output_ << "  switch i32 " << action << ", label %" << continueLabel << " [\n";
+            output_ << "    i32 1, label %" << rethrowLabel << "\n";
+            output_ << "    i32 2, label %" << retryPerform << "\n";
+            if (!returnValueSlot_.empty()) {
+                output_ << "    i32 3, label %" << returnPerform << "\n";
+            }
+            if (signature_.llvmReturnType == "i32" || signature_.llvmReturnType == "void") {
+                output_ << "    i32 4, label %" << exitPerform << "\n";
+            }
+            if (loopDepthAtEntry != 0) {
+                output_ << "    i32 5, label %" << breakPerform << "\n";
+                output_ << "    i32 6, label %" << continuePerform << "\n";
+            }
+            output_ << "  ]\n\n";
+
+            if (!returnValueSlot_.empty()) {
+                output_ << returnPerform << ":\n";
+                if (!outerReturnRequest.empty()) {
+                    output_ << "  br label %" << outerReturnRequest << "\n\n";
+                } else {
+                    const std::string returnValue = "%eh.return.value" + std::to_string(nextTemporary_++);
+                    output_ << "  " << returnValue << " = load " << signature_.llvmReturnType
+                            << ", ptr " << returnValueSlot_ << "\n";
+                    output_ << "  ret " << signature_.llvmReturnType << " " << returnValue << "\n\n";
+                }
+            }
+
+            if (signature_.llvmReturnType == "i32" || signature_.llvmReturnType == "void") {
+                output_ << exitPerform << ":\n";
+                if (!outerExitRequest.empty()) {
+                    output_ << "  br label %" << outerExitRequest << "\n\n";
+                } else if (signature_.llvmReturnType == "i32") {
+                    output_ << "  ret i32 0\n\n";
+                } else {
+                    output_ << "  ret void\n\n";
+                }
+            }
+
+            if (loopDepthAtEntry != 0) {
+                output_ << breakPerform << ":\n";
+                if (!outerBreakRequest.empty()) {
+                    output_ << "  br label %" << outerBreakRequest << "\n\n";
+                } else {
+                    output_ << "  br label %" << breakDestination << "\n\n";
+                }
+
+                output_ << continuePerform << ":\n";
+                if (!outerContinueRequest.empty()) {
+                    output_ << "  br label %" << outerContinueRequest << "\n\n";
+                } else {
+                    output_ << "  br label %" << continueDestination << "\n\n";
+                }
+            }
+        }
+
+        output_ << retryPerform << ":\n";
+        emitReleaseExceptionState(stateSlot);
+        output_ << "  store i32 0, ptr " << actionSlot << "\n";
+        output_ << "  br label %" << bodyLabel << "\n\n";
+
+        output_ << rethrowLabel << ":\n";
+        emitRethrowState(stateSlot);
+        const std::string dead = newDeadLabel("eh.after.unhandled");
+        output_ << "\n" << dead << ":\n";
+        output_ << "  br label %" << continueLabel << "\n\n";
+
+        output_ << continueLabel << ":\n";
+    }
+
     void emitLocalDeclaration(const ast::Statement& statement)
     {
         if (statement.kind() == ast::AstNodeKind::VarStatement) {
             const auto& variable = static_cast<const ast::VarStatement&>(statement);
             if (variable.initializer() == nullptr) {
                 if (variable.typeName().empty()) {
-                    throw CodegenError(
+                    throw CodegenUnsupported(
                         "LLVM emission currently requires local variable initialization");
                 }
                 emitTypedLocalVariable(variable.name(), variable.typeName());
@@ -938,12 +1656,47 @@ private:
             return;
         }
 
+        if (statement.kind() == ast::AstNodeKind::TryStatement) {
+            emitTry(static_cast<const ast::TryStatement&>(statement));
+            return;
+        }
+
+        if (statement.kind() == ast::AstNodeKind::RaiseStatement) {
+            emitRaise(static_cast<const ast::RaiseStatement&>(statement));
+            return;
+        }
+
+        if (statement.kind() == ast::AstNodeKind::RetryStatement) {
+            emitRetry(static_cast<const ast::RetryStatement&>(statement));
+            return;
+        }
+
+        if (statement.kind() == ast::AstNodeKind::ReturnStatement) {
+            emitReturn(static_cast<const ast::ReturnStatement&>(statement));
+            return;
+        }
+
+        if (statement.kind() == ast::AstNodeKind::ExitStatement) {
+            emitExit();
+            return;
+        }
+
+        if (statement.kind() == ast::AstNodeKind::BreakStatement) {
+            emitBreakTransfer();
+            return;
+        }
+
+        if (statement.kind() == ast::AstNodeKind::ContinueStatement) {
+            emitContinueTransfer();
+            return;
+        }
+
         if (statement.kind() == ast::AstNodeKind::WithStatement) {
             emitWith(static_cast<const ast::WithStatement&>(statement));
             return;
         }
 
-        throw CodegenError(
+        throw CodegenUnsupported(
             "LLVM emission currently supports only local variables, assignments, if, while, repeat, for, and with before Return");
     }
 
@@ -962,21 +1715,21 @@ private:
         }
 
         if (statement.kind() != ast::AstNodeKind::ExpressionStatement) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "unsupported local variable declaration in Integer function");
         }
 
         const auto& expression =
             static_cast<const ast::ExpressionStatement&>(statement).expression();
         if (expression.kind() != ast::AstNodeKind::BinaryExpression) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "unsupported local variable declaration in Integer function");
         }
 
         const auto& assignment = static_cast<const ast::BinaryExpression&>(expression);
         if (assignment.op() != ast::BinaryOperator::Assign ||
             assignment.left().kind() != ast::AstNodeKind::IdentifierExpression) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "unsupported local variable declaration in Integer function");
         }
 
@@ -985,33 +1738,46 @@ private:
         emitLocalVariable(identifier.name(), assignment.right());
     }
 
+    // Returns a slot name that is unique inside the current function, so sibling
+    // scopes (two `for` loops over the same iterator, the same local in two `if`
+    // bodies, ...) never produce a duplicate LLVM definition.
+    std::string newSlot(const std::string& normalizedName)
+    {
+        const std::string base = "%" + safeLlvmName(normalizedName);
+        std::string candidate = base;
+        while (!usedSlots_.insert(candidate).second) {
+            candidate = base + "." + std::to_string(slotCounter_++);
+        }
+        return candidate;
+    }
+
     void emitLocalVariable(std::string_view name, const ast::Expression& initializer)
     {
         const std::string normalizedName = normalize(name);
         const std::string llvmType = expressionLlvmType(initializer);
         const std::string inoxType = llvmType == "double" ? "Float64" :
                                     llvmType == "i1" ? "Bool" : "Integer";
-        const std::string slot = "%" + normalizedName;
+        const std::string slot = newSlot(normalizedName);
         output_ << "  " << slot << " = alloca " << llvmType << "\n";
         const std::string value = emitExpression(initializer);
         output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
-        locals_.emplace(normalizedName, LocalInfo{slot, inoxType, llvmType});
+        locals_.insert_or_assign(normalizedName, LocalInfo{slot, inoxType, llvmType});
     }
 
     void emitTypedLocalVariable(std::string_view name, std::string_view typeName, const ast::Expression* initializer = nullptr)
     {
         const std::string llvmType = llvmTypeForInoxType(typeName, structs_);
         if (llvmType.empty()) {
-            throw CodegenError("unsupported local variable type for LLVM emission");
+            throw CodegenUnsupported("unsupported local variable type for LLVM emission");
         }
 
         const std::string normalizedName = normalize(name);
-        const std::string slot = "%" + normalizedName;
+        const std::string slot = newSlot(normalizedName);
         output_ << "  " << slot << " = alloca " << llvmType << "\n";
 
         if (const StructDefinition* structType = findStruct(structs_, typeName)) {
             if (initializer != nullptr) {
-                throw CodegenError("LLVM emission does not support struct initializers yet");
+                throw CodegenUnsupported("LLVM emission does not support struct initializers yet");
             }
             output_ << "  store " << structType->llvmName
                     << " zeroinitializer, ptr " << slot << '\n';
@@ -1027,14 +1793,14 @@ private:
                         << llvmDefaultLiteral(field.defaultValue, field.llvmType)
                         << ", ptr " << fieldPointer << '\n';
             }
-            locals_.emplace(normalizedName,
-                            LocalInfo{slot, std::string(typeName), structType->llvmName});
+            locals_.insert_or_assign(normalizedName,
+                                     LocalInfo{slot, std::string(typeName), structType->llvmName});
             return;
         }
 
         const std::string value = initializer != nullptr ? emitExpression(*initializer) : "0";
         output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
-        locals_.emplace(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
+        locals_.insert_or_assign(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
     }
 
     static bool isAssignmentExpression(const ast::Expression& expression)
@@ -1073,7 +1839,7 @@ private:
         }
 
         if (expression.kind() != ast::AstNodeKind::CallExpression) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently supports only assignments and calls as statements");
         }
 
@@ -1087,7 +1853,7 @@ private:
             return;
         }
         if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently supports only direct calls or method calls as statements");
         }
 
@@ -1110,11 +1876,49 @@ private:
         emitSubroutineCall(call, callee.name());
     }
 
+    std::string emitUserCall(const FunctionSignature& signature,
+                             const std::vector<std::string>& arguments,
+                             bool requireValue)
+    {
+        if (arguments.size() != signature.parameters.size()) {
+            throw CodegenError("internal error: LLVM user-call argument count mismatch");
+        }
+        if (requireValue && signature.llvmReturnType == "void") {
+            throw CodegenError("void function call cannot be used as an expression");
+        }
+
+        std::string result;
+        if (signature.llvmReturnType != "void") {
+            result = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << result << " = ";
+        } else {
+            output_ << "  ";
+        }
+
+        output_ << (unwindTargets_.empty() ? "call " : "invoke ")
+                << signature.llvmReturnType << " @" << signature.llvmName << '(';
+        for (std::size_t index = 0; index < arguments.size(); ++index) {
+            if (index != 0) output_ << ", ";
+            output_ << signature.parameters[index].llvmType << ' ' << arguments[index];
+        }
+        output_ << ')';
+
+        if (unwindTargets_.empty()) {
+            output_ << "\n";
+        } else {
+            const std::string continuation = "eh.invoke.cont" + std::to_string(nextLabel_++);
+            output_ << " to label %" << continuation
+                    << " unwind label %" << currentUnwindTarget() << "\n\n";
+            output_ << continuation << ":\n";
+        }
+        return result;
+    }
+
     void emitNoArgumentSubroutineCall(std::string_view calleeName)
     {
         const auto signature = signatures_.find(normalize(calleeName));
         if (signature == signatures_.end()) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission could not resolve zero-argument subroutine call: " + std::string(calleeName));
         }
         if (!signature->second.parameters.empty()) {
@@ -1125,22 +1929,22 @@ private:
             throw CodegenError(
                 "function result cannot be ignored in zero-argument call: " + std::string(calleeName));
         }
-        output_ << "  call void @" << signature->second.llvmName << "()\n";
+        emitUserCall(signature->second, {}, false);
     }
 
     void emitSubroutineCall(const ast::CallExpression& call, std::string_view calleeName)
     {
         const auto signature = signatures_.find(normalize(calleeName));
         if (signature == signatures_.end()) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently supports only Put/PutLn and user subroutine calls as statements");
         }
         if (signature->second.llvmReturnType != "void") {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently supports only subroutine calls as expression statements");
         }
         if (call.arguments().size() != signature->second.parameters.size()) {
-            throw CodegenError("unsupported subroutine argument count: " + function_.name());
+            throw CodegenUnsupported("unsupported subroutine argument count: " + function_.name());
         }
 
         std::vector<std::string> arguments;
@@ -1149,14 +1953,7 @@ private:
             arguments.push_back(emitExpression(*argument));
         }
 
-        output_ << "  call void @" << signature->second.llvmName << '(';
-        for (std::size_t index = 0; index < arguments.size(); ++index) {
-            if (index != 0) {
-                output_ << ", ";
-            }
-            output_ << signature->second.parameters[index].llvmType << ' ' << arguments[index];
-        }
-        output_ << ")\n";
+        emitUserCall(signature->second, arguments, false);
     }
 
     void emitInputCallSequence(const std::vector<ast::ExpressionPtr>& arguments, bool consumeRestOfLine)
@@ -1177,16 +1974,16 @@ private:
     void emitInputReadInteger(const ast::Expression& argument)
     {
         if (argument.kind() != ast::AstNodeKind::IdentifierExpression) {
-            throw CodegenError("Get/GetLn LLVM emission requires assignable local variables");
+            throw CodegenUnsupported("Get/GetLn LLVM emission requires assignable local variables");
         }
 
         const auto& identifier = static_cast<const ast::IdentifierExpression&>(argument);
         const auto local = locals_.find(normalize(identifier.name()));
         if (local == locals_.end()) {
-            throw CodegenError("Get/GetLn LLVM emission currently supports only local variables");
+            throw CodegenUnsupported("Get/GetLn LLVM emission currently supports only local variables");
         }
         if (local->second.llvmType != "i64") {
-            throw CodegenError("Get/GetLn LLVM emission currently supports only Integer/Int64 variables");
+            throw CodegenUnsupported("Get/GetLn LLVM emission currently supports only Integer/Int64 variables");
         }
 
         output_ << "  call void @__inox_read_i64(ptr " << local->second.slot << ")\n";
@@ -1289,7 +2086,7 @@ private:
         if (call.arguments().size() != 2 ||
             call.arguments()[0]->kind() != ast::AstNodeKind::IdentifierExpression ||
             call.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
-            throw CodegenError("LLVM emission currently supports only simple local field access");
+            throw CodegenUnsupported("LLVM emission currently supports only simple local field access");
         }
 
         const auto& base = static_cast<const ast::IdentifierExpression&>(*call.arguments()[0]);
@@ -1301,11 +2098,11 @@ private:
 
         const StructDefinition* structType = findStruct(structs_, local->second.inoxType);
         if (structType == nullptr) {
-            throw CodegenError("LLVM emission field access target is not a struct");
+            throw CodegenUnsupported("LLVM emission field access target is not a struct");
         }
         const StructFieldInfo* field = findStructField(*structType, fieldName.name());
         if (field == nullptr) {
-            throw CodegenError("unknown struct field for LLVM emission");
+            throw CodegenUnsupported("unknown struct field for LLVM emission");
         }
 
         const std::string pointer = "%tmp" + std::to_string(nextTemporary_++);
@@ -1343,7 +2140,7 @@ private:
         if (member.arguments().size() != 2 ||
             member.arguments()[0]->kind() != ast::AstNodeKind::IdentifierExpression ||
             member.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
-            throw CodegenError("LLVM emission currently supports only local method calls");
+            throw CodegenUnsupported("LLVM emission currently supports only local method calls");
         }
 
         const auto& receiver =
@@ -1355,20 +2152,20 @@ private:
             throw CodegenError("LLVM emission supports method calls only on local struct variables");
         }
         if (findStruct(structs_, local->second.inoxType) == nullptr) {
-            throw CodegenError("LLVM emission method receiver is not a struct");
+            throw CodegenUnsupported("LLVM emission method receiver is not a struct");
         }
 
         const std::string qualifiedName = local->second.inoxType + "." + method.name();
         const auto signature = signatures_.find(normalize(qualifiedName));
         if (signature == signatures_.end()) {
-            throw CodegenError("unknown method for LLVM emission: " + qualifiedName);
+            throw CodegenUnsupported("unknown method for LLVM emission: " + qualifiedName);
         }
         if (signature->second.parameters.empty() ||
             signature->second.parameters.front().llvmType != "ptr") {
-            throw CodegenError("LLVM method emission requires an explicit struct receiver parameter");
+            throw CodegenUnsupported("LLVM method emission requires an explicit struct receiver parameter");
         }
         if (call.arguments().size() + 1 != signature->second.parameters.size()) {
-            throw CodegenError("unsupported method argument count: " + qualifiedName);
+            throw CodegenUnsupported("unsupported method argument count: " + qualifiedName);
         }
 
         return MethodCallTarget{&signature->second, local->second.slot};
@@ -1382,7 +2179,7 @@ private:
         if (member.arguments().size() != 2 ||
             member.arguments()[0]->kind() != ast::AstNodeKind::IdentifierExpression ||
             member.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
-            throw CodegenError("LLVM emission currently supports only local zero-argument method calls");
+            throw CodegenUnsupported("LLVM emission currently supports only local zero-argument method calls");
         }
 
         const auto& receiver =
@@ -1394,17 +2191,17 @@ private:
             throw CodegenError("LLVM emission supports method calls only on local struct variables");
         }
         if (findStruct(structs_, local->second.inoxType) == nullptr) {
-            throw CodegenError("LLVM emission method receiver is not a struct");
+            throw CodegenUnsupported("LLVM emission method receiver is not a struct");
         }
 
         const std::string qualifiedName = local->second.inoxType + "." + method.name();
         const auto signature = signatures_.find(normalize(qualifiedName));
         if (signature == signatures_.end()) {
-            throw CodegenError("unknown field or zero-argument method for LLVM emission: " + qualifiedName);
+            throw CodegenUnsupported("unknown field or zero-argument method for LLVM emission: " + qualifiedName);
         }
         if (signature->second.parameters.size() != 1 ||
             signature->second.parameters.front().llvmType != "ptr") {
-            throw CodegenError("LLVM zero-argument method emission requires only an explicit struct receiver parameter");
+            throw CodegenUnsupported("LLVM zero-argument method emission requires only an explicit struct receiver parameter");
         }
         return MethodCallTarget{&signature->second, local->second.slot};
     }
@@ -1414,23 +2211,7 @@ private:
         const MethodCallTarget target = resolveNoArgumentMethodAccess(member);
         const FunctionSignature& signature = *target.signature;
 
-        if (signature.llvmReturnType == "void") {
-            output_ << "  call void @" << signature.llvmName
-                    << "(" << signature.parameters.front().llvmType << ' ' << target.receiverPointer << ")\n";
-            if (requireValue) {
-                throw CodegenError("void method call cannot be used as an expression");
-            }
-            return {};
-        }
-
-        const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << result << " = call " << signature.llvmReturnType
-                << " @" << signature.llvmName
-                << "(" << signature.parameters.front().llvmType << ' ' << target.receiverPointer << ")\n";
-        if (requireValue) {
-            return result;
-        }
-        return {};
+        return emitUserCall(signature, {target.receiverPointer}, requireValue);
     }
 
     std::string emitMethodCall(const ast::CallExpression& call, bool requireValue)
@@ -1445,48 +2226,19 @@ private:
             arguments.push_back(emitExpression(*argument));
         }
 
-        if (signature.llvmReturnType == "void") {
-            output_ << "  call void @" << signature.llvmName << '(';
-        } else {
-            const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-            output_ << "  " << result << " = call " << signature.llvmReturnType
-                    << " @" << signature.llvmName << '(';
-            for (std::size_t index = 0; index < arguments.size(); ++index) {
-                if (index != 0) {
-                    output_ << ", ";
-                }
-                output_ << signature.parameters[index].llvmType << ' ' << arguments[index];
-            }
-            output_ << ")\n";
-            if (requireValue) {
-                return result;
-            }
-            return {};
-        }
-
-        for (std::size_t index = 0; index < arguments.size(); ++index) {
-            if (index != 0) {
-                output_ << ", ";
-            }
-            output_ << signature.parameters[index].llvmType << ' ' << arguments[index];
-        }
-        output_ << ")\n";
-        if (requireValue) {
-            throw CodegenError("void method call cannot be used as an expression");
-        }
-        return {};
+        return emitUserCall(signature, arguments, requireValue);
     }
 
     void emitLocalAssignment(const ast::Expression& expression)
     {
         if (expression.kind() != ast::AstNodeKind::BinaryExpression) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently supports only simple local assignments");
         }
 
         const auto& assignment = static_cast<const ast::BinaryExpression&>(expression);
         if (assignment.op() != ast::BinaryOperator::Assign) {
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "LLVM emission currently supports only simple local assignments");
         }
 
@@ -1518,8 +2270,19 @@ private:
             return;
         }
 
-        throw CodegenError(
+        throw CodegenUnsupported(
             "LLVM emission currently supports only local variable or field assignments");
+    }
+
+    // P-C stage 1: a module Const is read from the semantic result, already
+    // resolved, never re-parsed here.
+    const semantic::ConstantValue* resolvedConstant(const ast::IdentifierExpression& identifier) const
+    {
+        const semantic::Symbol* symbol = semantics_.symbolOf(identifier);
+        if (symbol == nullptr || symbol->kind != semantic::SymbolKind::Constant) {
+            return nullptr;
+        }
+        return semantics_.constantValueOf(*symbol);
     }
 
     std::string expressionLlvmType(const ast::Expression& expression) const
@@ -1555,6 +2318,9 @@ private:
             const auto signature = signatures_.find(normalizedName);
             if (signature != signatures_.end()) {
                 return signature->second.llvmReturnType;
+            }
+            if (const semantic::ConstantValue* constant = resolvedConstant(identifier)) {
+                return constant->kind == semantic::ConstantValue::Kind::Boolean ? "i1" : "i64";
             }
             break;
         }
@@ -1682,6 +2448,12 @@ private:
                         << " @" << signature->second.llvmName << "()\n";
                 return result;
             }
+            if (const semantic::ConstantValue* constant = resolvedConstant(identifier)) {
+                if (constant->kind == semantic::ConstantValue::Kind::Boolean) {
+                    return constant->boolean ? "1" : "0";
+                }
+                return std::to_string(constant->integer);
+            }
             break;
         }
         case ast::AstNodeKind::BinaryExpression: {
@@ -1719,6 +2491,9 @@ private:
             } else if (binary.op() == ast::BinaryOperator::Power) {
                 output_ << "  " << result << " = call i64 @__inox_ipow_i64(i64 "
                         << left << ", i64 " << right << ")\n";
+            } else if (const std::string helper = checkedIntegerHelper(binary.op()); !helper.empty()) {
+                output_ << "  " << result << " = call i64 @" << helper << "(i64 "
+                        << left << ", i64 " << right << ")\n";
             } else {
                 output_ << "  " << result << " = " << llvmOperation(binary.op()) << " i64 "
                         << left << ", " << right << '\n';
@@ -1752,7 +2527,7 @@ private:
                 if (isFloatLlvmType(operandType)) {
                     output_ << "  " << result << " = fsub " << operandType << " -0.0, " << operand << '\n';
                 } else {
-                    output_ << "  " << result << " = sub i64 0, " << operand << '\n';
+                    output_ << "  " << result << " = call i64 @__inox_neg_i64(i64 " << operand << ")\n";
                 }
                 return result;
             }
@@ -1783,13 +2558,8 @@ private:
             if (equalsIgnoreCase(callee.name(), "Abs") && call.arguments().size() == 1 &&
                 expressionLlvmType(*call.arguments().front()) == "i64") {
                 const std::string value = emitExpression(*call.arguments().front());
-                const std::string isNegative = "%tmp" + std::to_string(nextTemporary_++);
-                const std::string negated = "%tmp" + std::to_string(nextTemporary_++);
                 const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-                output_ << "  " << isNegative << " = icmp slt i64 " << value << ", 0\n";
-                output_ << "  " << negated << " = sub i64 0, " << value << '\n';
-                output_ << "  " << result << " = select i1 " << isNegative
-                        << ", i64 " << negated << ", i64 " << value << '\n';
+                output_ << "  " << result << " = call i64 @__inox_abs_i64(i64 " << value << ")\n";
                 return result;
             }
 
@@ -1805,7 +2575,7 @@ private:
                 throw CodegenError("void function call cannot be used as an expression");
             }
             if (call.arguments().size() != signature->second.parameters.size()) {
-                throw CodegenError("unsupported call argument count in function: " + function_.name());
+                throw CodegenUnsupported("unsupported call argument count in function: " + function_.name());
             }
 
             std::vector<std::string> arguments;
@@ -1814,23 +2584,13 @@ private:
                 arguments.push_back(emitExpression(*argument));
             }
 
-            const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-            output_ << "  " << result << " = call " << signature->second.llvmReturnType
-                    << " @" << signature->second.llvmName << '(';
-            for (std::size_t index = 0; index < arguments.size(); ++index) {
-                if (index != 0) {
-                    output_ << ", ";
-                }
-                output_ << signature->second.parameters[index].llvmType << ' ' << arguments[index];
-            }
-            output_ << ")\n";
-            return result;
+            return emitUserCall(signature->second, arguments, true);
         }
         default:
             break;
         }
 
-        throw CodegenError("unsupported expression in function: " + function_.name());
+        throw CodegenUnsupported("unsupported expression in function: " + function_.name());
     }
 
     std::string emitMathBuiltinCall(std::string_view name, const std::vector<ast::ExpressionPtr>& arguments)
@@ -1874,7 +2634,7 @@ private:
         } else if (const std::string libm = mathLibmName(name); !libm.empty()) {
             output_ << "  " << result << " = call double @" << libm << "(";
         } else {
-            throw CodegenError("unsupported math builtin: " + std::string(name));
+            throw CodegenUnsupported("unsupported math builtin: " + std::string(name));
         }
         for (std::size_t index = 0; index < values.size(); ++index) {
             if (index != 0) output_ << ", ";
@@ -1896,28 +2656,39 @@ private:
         case ast::BinaryOperator::Divide:
             return "fdiv";
         default:
-            throw CodegenError("unsupported Float operator for LLVM emission");
+            throw CodegenUnsupported("unsupported Float operator for LLVM emission");
+        }
+    }
+
+    // Integer arithmetic is checked (CANON-19, checked arithmetic and limits): overflow, division by zero and an
+    // out-of-range shift count trap instead of wrapping or being undefined.
+    // These operators lower to always-inlined runtime helpers.
+    static std::string checkedIntegerHelper(ast::BinaryOperator op)
+    {
+        switch (op) {
+        case ast::BinaryOperator::Add:
+            return "__inox_add_i64";
+        case ast::BinaryOperator::Subtract:
+            return "__inox_sub_i64";
+        case ast::BinaryOperator::Multiply:
+            return "__inox_mul_i64";
+        case ast::BinaryOperator::Divide:
+        case ast::BinaryOperator::IntegerDivide:
+            return "__inox_div_i64";
+        case ast::BinaryOperator::Modulo:
+            return "__inox_mod_i64";
+        case ast::BinaryOperator::ShiftLeft:
+            return "__inox_shl_i64";
+        case ast::BinaryOperator::ShiftRight:
+            return "__inox_shr_i64";
+        default:
+            return {};
         }
     }
 
     static std::string llvmOperation(ast::BinaryOperator op)
     {
         switch (op) {
-        case ast::BinaryOperator::Add:
-            return "add";
-        case ast::BinaryOperator::Subtract:
-            return "sub";
-        case ast::BinaryOperator::Multiply:
-            return "mul";
-        case ast::BinaryOperator::Divide:
-        case ast::BinaryOperator::IntegerDivide:
-            return "sdiv";
-        case ast::BinaryOperator::Modulo:
-            return "srem";
-        case ast::BinaryOperator::ShiftLeft:
-            return "shl";
-        case ast::BinaryOperator::ShiftRight:
-            return "ashr";
         case ast::BinaryOperator::BitAnd:
             return "and";
         case ast::BinaryOperator::BitOr:
@@ -1925,7 +2696,7 @@ private:
         case ast::BinaryOperator::BitXor:
             return "xor";
         default:
-            throw CodegenError(
+            throw CodegenUnsupported(
                 "unsupported Integer operator for LLVM emission");
         }
     }
@@ -1974,7 +2745,16 @@ private:
     std::unordered_map<std::string, std::string> parameters_;
     std::unordered_map<std::string, std::string> parameterTypes_;
     std::unordered_map<std::string, LocalInfo> locals_;
+    std::unordered_set<std::string> usedSlots_;
+    std::size_t slotCounter_ = 0;
     std::vector<LoopTargets> loopTargets_;
+    std::vector<std::string> unwindTargets_;
+    std::vector<std::string> caughtExceptionStates_;
+    std::vector<std::string> bareRethrowTargets_;
+    std::vector<RetryContext> retryContexts_;
+    std::vector<CleanupContext> cleanupContexts_;
+    std::unordered_map<std::string, std::string> exceptionBindings_;
+    std::string returnValueSlot_;
     std::size_t nextTemporary_ = 0;
     std::size_t nextLabel_ = 0;
 };
@@ -1985,7 +2765,8 @@ void emitFunction(std::ostringstream& output,
                   const FunctionSignatures& signatures,
                   const StructDefinitions& structs,
                   std::vector<std::string>& stringGlobals,
-                  std::size_t& nextStringLiteral)
+                  std::size_t& nextStringLiteral,
+                  const semantic::SemanticResult& semantics)
 {
     output << "define " << signature.llvmReturnType << " @" << signature.llvmName << '(';
     for (std::size_t index = 0; index < signature.parameters.size(); ++index) {
@@ -1994,9 +2775,26 @@ void emitFunction(std::ostringstream& output,
         }
         output << signature.parameters[index].llvmType << " %" << signature.parameters[index].llvmName;
     }
-    output << ") {\n"
+    output << ')';
+    if (functionContainsTry(function)) {
+        output << " personality ptr @__gxx_personality_v0";
+    }
+    output << " {\n"
            << "entry:\n";
-    FunctionEmitter(output, function, signature, signatures, structs, stringGlobals, nextStringLiteral).emit();
+
+    std::ostringstream body;
+    FunctionEmitter(body, function, signature, signatures, structs, stringGlobals, nextStringLiteral, semantics).emit();
+
+    // Static allocas belong in the entry block: an alloca inside a loop would grow
+    // the stack on every iteration.
+    std::istringstream bodyLines(body.str());
+    std::string hoisted;
+    std::string remaining;
+    for (std::string line; std::getline(bodyLines, line);) {
+        const bool isAlloca = line.rfind("  %", 0) == 0 && line.find(" = alloca ") != std::string::npos;
+        (isAlloca ? hoisted : remaining) += line + "\n";
+    }
+    output << hoisted << remaining;
     output << "}\n\n";
 }
 
@@ -2004,6 +2802,11 @@ void emitFunction(std::ostringstream& output,
 
 CodegenError::CodegenError(std::string message)
     : std::runtime_error(std::move(message))
+{
+}
+
+CodegenUnsupported::CodegenUnsupported(std::string message)
+    : CodegenError(std::move(message))
 {
 }
 
@@ -2071,71 +2874,356 @@ entry:
   br label %skip_ws
 
 skip_ws:
-  %ch0 = call i32 @getchar()
-  %is_eof0 = icmp eq i32 %ch0, -1
-  %is_space0 = icmp eq i32 %ch0, 32
-  %is_tab0 = icmp eq i32 %ch0, 9
-  %is_lf0 = icmp eq i32 %ch0, 10
-  %is_cr0 = icmp eq i32 %ch0, 13
-  %ws_a0 = or i1 %is_space0, %is_tab0
-  %ws_b0 = or i1 %is_lf0, %is_cr0
-  %is_ws0 = or i1 %ws_a0, %ws_b0
-  br i1 %is_eof0, label %store_zero, label %after_eof
+  %c0 = call i32 @getchar()
+  %eof0 = icmp eq i32 %c0, -1
+  br i1 %eof0, label %trap, label %ws_check
 
-after_eof:
-  br i1 %is_ws0, label %skip_ws, label %sign_check
+ws_check:
+  %is_sp = icmp eq i32 %c0, 32
+  %is_tb = icmp eq i32 %c0, 9
+  %is_lf = icmp eq i32 %c0, 10
+  %is_cr = icmp eq i32 %c0, 13
+  %ws_a = or i1 %is_sp, %is_tb
+  %ws_b = or i1 %is_lf, %is_cr
+  %is_ws = or i1 %ws_a, %ws_b
+  br i1 %is_ws, label %skip_ws, label %sign_check
 
 sign_check:
-  %is_minus = icmp eq i32 %ch0, 45
-  br i1 %is_minus, label %minus, label %digits_entry
+  %is_minus = icmp eq i32 %c0, 45
+  br i1 %is_minus, label %minus, label %first_digit
 
 minus:
-  %ch_after_minus = call i32 @getchar()
-  br label %digits_entry
+  %cm = call i32 @getchar()
+  br label %first_digit
 
-digits_entry:
-  %sign = phi i64 [ -1, %minus ], [ 1, %sign_check ]
-  %first_ch = phi i32 [ %ch_after_minus, %minus ], [ %ch0, %sign_check ]
-  br label %digits
+first_digit:
+  %neg = phi i1 [ true, %minus ], [ false, %sign_check ]
+  %cf = phi i32 [ %cm, %minus ], [ %c0, %sign_check ]
+  %fge = icmp sge i32 %cf, 48
+  %fle = icmp sle i32 %cf, 57
+  %fis = and i1 %fge, %fle
+  br i1 %fis, label %digits, label %trap
 
 digits:
-  %ch = phi i32 [ %first_ch, %digits_entry ], [ %next_ch, %digit_body ]
-  %acc = phi i64 [ 0, %digits_entry ], [ %next_acc, %digit_body ]
-  %ge_zero = icmp sge i32 %ch, 48
-  %le_nine = icmp sle i32 %ch, 57
-  %is_digit = and i1 %ge_zero, %le_nine
-  br i1 %is_digit, label %digit_body, label %finish
+  %ch = phi i32 [ %cf, %first_digit ], [ %next_ch, %digit_ok ]
+  %acc = phi i64 [ 0, %first_digit ], [ %sub_v, %digit_ok ]
+  %dge = icmp sge i32 %ch, 48
+  %dle = icmp sle i32 %ch, 57
+  %dis = and i1 %dge, %dle
+  br i1 %dis, label %digit_body, label %finish
 
 digit_body:
-  %digit_i32 = sub i32 %ch, 48
-  %digit_i64 = sext i32 %digit_i32 to i64
-  %mul = mul i64 %acc, 10
-  %next_acc = add i64 %mul, %digit_i64
+  %d32 = sub i32 %ch, 48
+  %d64 = sext i32 %d32 to i64
+  %mul_p = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %acc, i64 10)
+  %mul_v = extractvalue { i64, i1 } %mul_p, 0
+  %mul_o = extractvalue { i64, i1 } %mul_p, 1
+  %sub_p = call { i64, i1 } @llvm.ssub.with.overflow.i64(i64 %mul_v, i64 %d64)
+  %sub_v = extractvalue { i64, i1 } %sub_p, 0
+  %sub_o = extractvalue { i64, i1 } %sub_p, 1
+  %ovf = or i1 %mul_o, %sub_o
+  br i1 %ovf, label %trap, label %digit_ok
+
+digit_ok:
   %next_ch = call i32 @getchar()
   br label %digits
 
 finish:
-  %signed = mul i64 %acc, %sign
-  store i64 %signed, ptr %out
+  %e_eof = icmp eq i32 %ch, -1
+  %e_sp = icmp eq i32 %ch, 32
+  %e_tb = icmp eq i32 %ch, 9
+  %e_lf = icmp eq i32 %ch, 10
+  %e_cr = icmp eq i32 %ch, 13
+  %e_a = or i1 %e_eof, %e_sp
+  %e_b = or i1 %e_tb, %e_lf
+  %e_c = or i1 %e_a, %e_b
+  %e_ok = or i1 %e_c, %e_cr
+  br i1 %e_ok, label %sign_fix, label %trap
+
+sign_fix:
+  br i1 %neg, label %store_neg, label %store_pos
+
+store_neg:
+  store i64 %acc, ptr %out
   ret void
 
-store_zero:
-  store i64 0, ptr %out
+store_pos:
+  %is_min = icmp eq i64 %acc, -9223372036854775808
+  br i1 %is_min, label %trap, label %store_pos_ok
+
+store_pos_ok:
+  %pos = sub i64 0, %acc
+  store i64 %pos, ptr %out
   ret void
+
+trap:
+  call void @__inox_arith_fault(i32 6)
+  unreachable
 }
 
 )llvm";
 }
 
+struct RuntimeFaultKind {
+    int code;
+    const char* message;
+};
+
+// CANON-19: a runtime arithmetic fault is a deterministic Inox trap. The
+// program flushes its output, prints "Inox runtime error: <category>" on
+// standard error and terminates with kRuntimeFaultExitStatus. There is no
+// unwinding: try/except/finally cannot intercept it.
+constexpr RuntimeFaultKind kRuntimeFaultKinds[] = {
+    {1, "integer overflow"},
+    {2, "division by zero"},
+    {3, "invalid shift count"},
+    {4, "for-loop step must be positive"},
+    {5, "negative exponent"},
+    {6, "invalid integer input"},
+};
+
+std::string llvmByteString(const std::string& text)
+{
+    std::string encoded;
+    for (const unsigned char ch : text) {
+        if (ch == '\n') {
+            encoded += "\\0A";
+        } else if (ch == '"' || ch == '\\' || ch < 0x20 || ch >= 0x7f) {
+            constexpr char hex[] = "0123456789ABCDEF";
+            encoded += '\\';
+            encoded += hex[ch >> 4];
+            encoded += hex[ch & 0x0f];
+        } else {
+            encoded += static_cast<char>(ch);
+        }
+    }
+    return encoded;
+}
+
+std::string runtimeFaultSeam()
+{
+    const support::NativeErrorWriter writer = support::nativeErrorWriter();
+    const std::string lengthType = "i" + std::to_string(writer.lengthBits);
+    const std::string resultType = "i" + std::to_string(writer.resultBits);
+
+    std::ostringstream ir;
+    ir << "; Every deterministic runtime fault goes through this one function (CANON-19).\n"
+       << "; It flushes the program's output, prints \"Inox runtime error: <category>\" on\n"
+       << "; standard error (file descriptor 2) and terminates with status "
+       << kRuntimeFaultExitStatus << " without\n"
+       << "; unwinding, so try/except/finally cannot intercept it. Kinds: 1 integer\n"
+       << "; overflow, 2 division or modulo by zero, 3 shift count outside 0..63, 4 for\n"
+       << "; step <= 0, 5 negative exponent, 6 invalid integer input.\n";
+    for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
+        const std::string text = std::string("Inox runtime error: ") + kind.message + "\n";
+        ir << "@.inox.fault." << kind.code << " = private unnamed_addr constant ["
+           << text.size() << " x i8] c\"" << llvmByteString(text) << "\"\n";
+    }
+    ir << "declare i32 @fflush(ptr)\n"
+       << "declare " << resultType << " @" << writer.symbol << "(i32, ptr, " << lengthType << ")\n"
+       << "declare void @_exit(i32) noreturn nounwind\n\n"
+       << "define internal void @__inox_arith_fault(i32 %kind) noreturn nounwind cold noinline {\n"
+       << "entry:\n"
+       << "  %flushed = call i32 @fflush(ptr null)\n"
+       << "  switch i32 %kind, label %report [\n";
+    for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
+        ir << "    i32 " << kind.code << ", label %kind" << kind.code << "\n";
+    }
+    ir << "  ]\n\n";
+    for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
+        ir << "kind" << kind.code << ":\n  br label %report\n\n";
+    }
+    const RuntimeFaultKind& fallback = kRuntimeFaultKinds[0];
+    ir << "report:\n  %message = phi ptr [ @.inox.fault." << fallback.code << ", %entry ]";
+    for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
+        ir << ", [ @.inox.fault." << kind.code << ", %kind" << kind.code << " ]";
+    }
+    const std::size_t fallbackLength = std::string("Inox runtime error: ").size() +
+                                       std::string(fallback.message).size() + 1;
+    ir << "\n  %length = phi " << lengthType << " [ " << fallbackLength << ", %entry ]";
+    for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
+        const std::size_t length = std::string("Inox runtime error: ").size() +
+                                   std::string(kind.message).size() + 1;
+        ir << ", [ " << length << ", %kind" << kind.code << " ]";
+    }
+    ir << "\n  %written = call " << resultType << " @" << writer.symbol << "(i32 2, ptr %message, "
+       << lengthType << " %length)\n"
+       << "  call void @_exit(i32 " << kRuntimeFaultExitStatus << ")\n"
+       << "  unreachable\n"
+       << "}\n";
+    return ir.str();
+}
+
 std::string mathRuntimeHelpers()
 {
     return R"llvm(declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64)
-declare void @llvm.trap()
+
+)llvm" + runtimeFaultSeam() + R"llvm(
+declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64)
+declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64)
+
+define internal i64 @__inox_add_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %p = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %a, i64 %b)
+  %v = extractvalue { i64, i1 } %p, 0
+  %o = extractvalue { i64, i1 } %p, 1
+  br i1 %o, label %trap, label %ok
+
+ok:
+  ret i64 %v
+
+trap:
+  call void @__inox_arith_fault(i32 1)
+  unreachable
+}
+
+define internal i64 @__inox_sub_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %p = call { i64, i1 } @llvm.ssub.with.overflow.i64(i64 %a, i64 %b)
+  %v = extractvalue { i64, i1 } %p, 0
+  %o = extractvalue { i64, i1 } %p, 1
+  br i1 %o, label %trap, label %ok
+
+ok:
+  ret i64 %v
+
+trap:
+  call void @__inox_arith_fault(i32 1)
+  unreachable
+}
+
+define internal i64 @__inox_mul_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %p = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %a, i64 %b)
+  %v = extractvalue { i64, i1 } %p, 0
+  %o = extractvalue { i64, i1 } %p, 1
+  br i1 %o, label %trap, label %ok
+
+ok:
+  ret i64 %v
+
+trap:
+  call void @__inox_arith_fault(i32 1)
+  unreachable
+}
+
+define internal i64 @__inox_neg_i64(i64 %a) alwaysinline nounwind {
+entry:
+  %o = icmp eq i64 %a, -9223372036854775808
+  br i1 %o, label %trap, label %ok
+
+ok:
+  %r = sub i64 0, %a
+  ret i64 %r
+
+trap:
+  call void @__inox_arith_fault(i32 1)
+  unreachable
+}
+
+define internal i64 @__inox_abs_i64(i64 %a) alwaysinline nounwind {
+entry:
+  %o = icmp eq i64 %a, -9223372036854775808
+  br i1 %o, label %trap, label %ok
+
+ok:
+  %n = icmp slt i64 %a, 0
+  %m = sub i64 0, %a
+  %r = select i1 %n, i64 %m, i64 %a
+  ret i64 %r
+
+trap:
+  call void @__inox_arith_fault(i32 1)
+  unreachable
+}
+
+define internal i64 @__inox_div_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %z = icmp eq i64 %b, 0
+  br i1 %z, label %zero, label %check
+
+check:
+  %m1 = icmp eq i64 %b, -1
+  %mn = icmp eq i64 %a, -9223372036854775808
+  %ov = and i1 %m1, %mn
+  br i1 %ov, label %overflow, label %ok
+
+ok:
+  %r = sdiv i64 %a, %b
+  ret i64 %r
+
+zero:
+  call void @__inox_arith_fault(i32 2)
+  unreachable
+
+overflow:
+  call void @__inox_arith_fault(i32 1)
+  unreachable
+}
+
+define internal i64 @__inox_mod_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %z = icmp eq i64 %b, 0
+  br i1 %z, label %trap, label %ok
+
+ok:
+  %m1 = icmp eq i64 %b, -1
+  %d = select i1 %m1, i64 1, i64 %b
+  %q = srem i64 %a, %d
+  %r = select i1 %m1, i64 0, i64 %q
+  ret i64 %r
+
+trap:
+  call void @__inox_arith_fault(i32 2)
+  unreachable
+}
+
+define internal i64 @__inox_shl_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %bad = icmp ugt i64 %b, 63
+  br i1 %bad, label %trap, label %ok
+
+ok:
+  %r = shl i64 %a, %b
+  ret i64 %r
+
+trap:
+  call void @__inox_arith_fault(i32 3)
+  unreachable
+}
+
+define internal i64 @__inox_shr_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %bad = icmp ugt i64 %b, 63
+  br i1 %bad, label %trap, label %ok
+
+ok:
+  %r = ashr i64 %a, %b
+  ret i64 %r
+
+trap:
+  call void @__inox_arith_fault(i32 3)
+  unreachable
+}
+
+define internal i64 @__inox_for_step_i64(i64 %s) alwaysinline nounwind {
+entry:
+  %bad = icmp sle i64 %s, 0
+  br i1 %bad, label %trap, label %ok
+
+ok:
+  ret i64 %s
+
+trap:
+  call void @__inox_arith_fault(i32 4)
+  unreachable
+}
+
 
 define internal i64 @__inox_ipow_i64(i64 %base, i64 %exponent) {
 entry:
   %negative = icmp slt i64 %exponent, 0
-  br i1 %negative, label %trap, label %loop
+  br i1 %negative, label %negexp, label %loop
 
 loop:
   %result.cur = phi i64 [ 1, %entry ], [ %result.next, %continue ]
@@ -2153,7 +3241,7 @@ mul_result:
   %mul.result.pair = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %result.cur, i64 %base.cur)
   %mul.result = extractvalue { i64, i1 } %mul.result.pair, 0
   %mul.result.overflow = extractvalue { i64, i1 } %mul.result.pair, 1
-  br i1 %mul.result.overflow, label %trap, label %after_mul_result
+  br i1 %mul.result.overflow, label %overflow, label %after_mul_result
 
 after_mul_result:
   %result.after = phi i64 [ %mul.result, %mul_result ], [ %result.cur, %body ]
@@ -2165,7 +3253,7 @@ square_base:
   %square.pair = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %base.cur, i64 %base.cur)
   %square = extractvalue { i64, i1 } %square.pair, 0
   %square.overflow = extractvalue { i64, i1 } %square.pair, 1
-  br i1 %square.overflow, label %trap, label %continue
+  br i1 %square.overflow, label %overflow, label %continue
 
 continue:
   %result.next = phi i64 [ %result.after, %after_mul_result ], [ %result.after, %square_base ]
@@ -2175,15 +3263,19 @@ continue:
 exit:
   ret i64 %result.cur
 
-trap:
-  call void @llvm.trap()
+negexp:
+  call void @__inox_arith_fault(i32 5)
+  unreachable
+
+overflow:
+  call void @__inox_arith_fault(i32 1)
   unreachable
 }
 
 )llvm";
 }
 
-std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
+std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::SemanticResult& semantics) const
 {
     const ast::FunctionDeclaration* mainFunction = nullptr;
     FunctionSignatures signatures;
@@ -2192,6 +3284,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
     std::ostringstream output;
     std::vector<std::string> stringGlobals;
     std::size_t nextStringLiteral = 0;
+    const bool usesExceptions = moduleUsesExceptions(module);
 
     for (const auto& item : module.items()) {
         if (item->kind() == ast::AstNodeKind::SectionDeclaration) {
@@ -2221,7 +3314,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
         const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
         if (!equalsIgnoreCase(function.name(), "Main")) {
             const auto signature = signatures.find(normalize(function.name()));
-            emitFunction(functionOutput, function, signature->second, signatures, structs, stringGlobals, nextStringLiteral);
+            emitFunction(functionOutput, function, signature->second, signatures, structs, stringGlobals, nextStringLiteral, semantics);
         }
     }
 
@@ -2229,7 +3322,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
         throw CodegenError("LLVM emission requires Main");
     }
     const FunctionSignature mainSignature{"main", "i32", {}};
-    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, structs, stringGlobals, nextStringLiteral);
+    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, structs, stringGlobals, nextStringLiteral, semantics);
 
     for (const auto& [_, structType] : structs) {
         output << structType.llvmName << " = type { ";
@@ -2280,7 +3373,16 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module) const
     output << "declare double @tanh(double)\n";
     output << "declare double @log1p(double)\n";
     output << "declare double @fmod(double, double)\n";
-    output << "declare double @hypot(double, double)\n\n";
+    output << "declare double @hypot(double, double)\n";
+    if (usesExceptions) {
+        output << "declare i32 @__gxx_personality_v0(...)\n";
+        output << "declare void @__inox_raise(i64)\n";
+        output << "declare ptr @__inox_exception_capture(ptr)\n";
+        output << "declare i64 @__inox_exception_type(ptr)\n";
+        output << "declare void @__inox_exception_release(ptr)\n";
+        output << "declare void @__inox_exception_rethrow(ptr)\n";
+    }
+    output << '\n';
     output << inputRuntimeHelpers();
     output << mathRuntimeHelpers();
     output << functionOutput.str();

@@ -10,6 +10,7 @@
 #include "Symbol.h"
 #include "../ast/Ast.h"
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -21,6 +22,16 @@ struct ResolvedType {
     const TypeSymbol* symbol = nullptr;
 };
 
+// Compile-time value of a module `Const`, resolved by semantic analysis.
+// Later phases read it from here instead of re-parsing the Const section
+// (CANON E11, decision P-C stage 1).
+struct ConstantValue {
+    enum class Kind { Integer, Boolean };
+    Kind kind = Kind::Integer;
+    std::int64_t integer = 0;
+    bool boolean = false;
+};
+
 class SemanticResult {
 public:
     void clear()
@@ -28,6 +39,18 @@ public:
         expressionTypes_.clear();
         identifierSymbols_.clear();
         callSymbols_.clear();
+        constantValues_.clear();
+    }
+
+    void setConstantValue(const Symbol& symbol, ConstantValue value)
+    {
+        constantValues_.insert_or_assign(&symbol, value);
+    }
+
+    const ConstantValue* constantValueOf(const Symbol& symbol) const
+    {
+        const auto iterator = constantValues_.find(&symbol);
+        return iterator != constantValues_.end() ? &iterator->second : nullptr;
     }
 
     void setExpressionType(const ast::Expression& expression, ResolvedType type)
@@ -67,6 +90,7 @@ private:
     std::unordered_map<const ast::Expression*, ResolvedType> expressionTypes_;
     std::unordered_map<const ast::IdentifierExpression*, const Symbol*> identifierSymbols_;
     std::unordered_map<const ast::CallExpression*, const Symbol*> callSymbols_;
+    std::unordered_map<const Symbol*, ConstantValue> constantValues_;
 };
 
 } // namespace inox::compiler::semantic

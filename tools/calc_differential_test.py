@@ -171,7 +171,7 @@ def main():
     ap.add_argument("--inox", required=True, help="path to the inox executable")
     ap.add_argument("--stdlib", default=None, help="path to the stdlib directory")
     ap.add_argument("--count", type=int, default=300, help="number of distinct expressions")
-    ap.add_argument("--tol", type=float, default=1e-5, help="float comparison tolerance (Inox prints 6 decimals via printf %f, so ~1e-6 absolute; 1e-5 is safe)")
+    ap.add_argument("--tol", type=float, default=1e-5, help="float comparison tolerance (Inox prints 6 decimals via printf %%f, so ~1e-6 absolute; 1e-5 is safe)")
     ap.add_argument("--seed", type=int, default=None, help="random seed (for reproducibility)")
     ap.add_argument("--max-show", type=int, default=20, help="max failing cases to print")
     args = ap.parse_args()

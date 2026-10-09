@@ -1,0 +1,26 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== P-C stage 1: module Const values are resolved by semantic analysis and
+== read by the backend from the semantic result.
+Module Runtime.ConstValues
+
+Const Limit := 10
+Const Mask Integer := $FF
+Const Enabled := true
+
+Main :
+    PutLn(Limit + 1)
+    PutLn(Mask)
+    if Enabled
+        PutLn("enabled")
+    ;
+    for I in 1..Limit (Limit div 2)
+        Put(I, " ")
+    ;
+    PutLn("")
+;

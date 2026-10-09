@@ -203,11 +203,26 @@ private:
             const auto& tryStatement = static_cast<const ast::TryStatement&>(statement);
             line(depth, "Try");
             dumpStatements(tryStatement.body(), depth + 1);
-            if (!tryStatement.exceptBody().empty()) {
+            if (tryStatement.hasExcept()) {
                 line(depth, "Except");
-                dumpStatements(tryStatement.exceptBody(), depth + 1);
+                if (!tryStatement.exceptBody().empty()) {
+                    dumpStatements(tryStatement.exceptBody(), depth + 1);
+                }
+                for (const auto& handler : tryStatement.handlers()) {
+                    std::string label = "On ";
+                    if (!handler.bindingName.empty()) {
+                        label += handler.bindingName + " ";
+                    }
+                    label += handler.typeName;
+                    line(depth + 1, label);
+                    dumpStatements(handler.body, depth + 2);
+                }
+                if (!tryStatement.elseBody().empty()) {
+                    line(depth + 1, "Else");
+                    dumpStatements(tryStatement.elseBody(), depth + 2);
+                }
             }
-            if (!tryStatement.finallyBody().empty()) {
+            if (tryStatement.hasFinally()) {
                 line(depth, "Finally");
                 dumpStatements(tryStatement.finallyBody(), depth + 1);
             }
@@ -219,6 +234,12 @@ private:
             if (raiseStatement.expression() != nullptr) {
                 dumpExpression(*raiseStatement.expression(), depth + 1);
             }
+            break;
+        }
+        case ast::AstNodeKind::RetryStatement: {
+            const auto& retryStatement = static_cast<const ast::RetryStatement&>(statement);
+            line(depth, "Retry");
+            dumpExpression(retryStatement.count(), depth + 1);
             break;
         }
         case ast::AstNodeKind::ReturnStatement:

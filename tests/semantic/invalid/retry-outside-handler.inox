@@ -1,0 +1,5 @@
+Module Semantic.RetryOutsideHandler
+
+Main :
+    Retry(3)
+;

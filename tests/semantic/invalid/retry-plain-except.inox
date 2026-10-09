@@ -1,0 +1,9 @@
+Module Semantic.RetryPlainExcept
+
+Main :
+    try
+        Raise IOError
+    except
+        Retry(3)
+    ;
+;

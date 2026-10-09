@@ -1,0 +1,39 @@
+Module Integration.ExceptionsRetryNested
+
+Main :
+    OuterAttempts := 0
+    InnerAttempts := 0
+
+    try
+        try
+            OuterAttempts := OuterAttempts + 1
+            PutLn("outer ", OuterAttempts)
+            Raise IOError
+        except
+            On IOError
+                InnerAttempts := 0
+                try
+                    InnerAttempts := InnerAttempts + 1
+                    PutLn("inner ", InnerAttempts)
+                    if InnerAttempts < 2
+                        Raise RangeError
+                    ;
+                except
+                    On RangeError
+                        Retry(1)
+                    ;
+                finally
+                    PutLn("inner-finally")
+                ;
+                PutLn("inner-done")
+                Retry(1)
+            ;
+        finally
+            PutLn("outer-finally")
+        ;
+    except
+        On Exception
+            PutLn("outer-exhausted")
+        ;
+    ;
+;

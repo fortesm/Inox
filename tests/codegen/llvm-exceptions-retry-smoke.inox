@@ -1,0 +1,15 @@
+Module Codegen.ExceptionsRetrySmoke
+
+Main :
+    Attempts := 0
+    try
+        Attempts := Attempts + 1
+        Raise FileNotFound
+    except
+        On FileNotFound
+            Retry(2)
+        ;
+    finally
+        PutLn("cleanup")
+    ;
+;

@@ -10,6 +10,7 @@
 #include "SemanticResult.h"
 #include "../ast/Ast.h"
 
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -68,6 +69,8 @@ private:
     const FunctionSignature* resolveFunctionSignature(std::string_view name) const;
     void analyzeModuleItem(const ast::AstNode& item);
     void declareSectionSymbols(const ast::SectionDeclaration& section);
+    void recordConstantValue(std::string_view name, std::string_view valueToken);
+    static void rejectInvalidConstantRightOperand(ast::BinaryOperator op, std::int64_t value);
     void registerTypeSectionSymbols(const ast::SectionDeclaration& section);
     void registerStructDeclaration(const std::vector<std::string>& tokens, std::size_t& index);
     void validateSectionTypes(const ast::SectionDeclaration& section) const;
@@ -75,6 +78,10 @@ private:
     void analyzeFunction(const ast::FunctionDeclaration& function);
 
     void analyzeStatements(const std::vector<ast::StatementPtr>& statements, bool createScope);
+    // CANON-12: "Functions must not fall through without returning a value."
+    // Conservative: true only when control provably cannot reach the end.
+    static bool cannotFallThrough(const std::vector<ast::StatementPtr>& statements);
+    static bool cannotFallThrough(const ast::Statement& statement);
     void analyzeStatement(const ast::Statement& statement);
     void analyzeVarBlock(const ast::VarBlockStatement& statement);
     std::string analyzeExpression(const ast::Expression& expression);
@@ -101,12 +108,19 @@ private:
     static bool isNumericType(std::string_view typeName);
     static bool isIntegerType(std::string_view typeName);
     static bool isPreludeCall(std::string_view name);
+    static bool isExceptionType(std::string_view name);
     static bool isMemberCall(const ast::CallExpression& expression);
     static std::string normalizeName(std::string_view name);
     static bool canAssign(std::string_view targetType, std::string_view valueType);
     static bool typesMatch(std::string_view left, std::string_view right);
 
     ResolvedType resolvedType(std::string typeName) const;
+
+    // CANON-19: constant integer expressions are evaluated at compile time and
+    // any overflow, division by zero or out-of-range shift is a compile error.
+    void foldConstantExpression(const ast::Expression& expression);
+    bool constantIntegerValue(const ast::Expression& expression, std::int64_t& value) const;
+    void requireStatementExpression(const ast::Expression& expression);
 
     SymbolTable symbols_;
     TypeTable types_;
@@ -117,7 +131,11 @@ private:
     bool currentFunctionSawReturn_ = false;
     std::size_t loopDepth_ = 0;
     std::size_t repeatDepth_ = 0;
+    std::size_t exceptionHandlerDepth_ = 0;
+    std::size_t retryHandlerDepth_ = 0;
+    std::size_t finallyDepth_ = 0;
     bool hasMain_ = false;
+    std::unordered_map<const ast::Expression*, std::int64_t> constants_;
 };
 
 } // namespace inox::compiler::semantic

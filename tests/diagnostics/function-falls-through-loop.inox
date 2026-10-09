@@ -1,0 +1,26 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-12: the Return is inside a loop that may run zero times or exit by
+== break, so control can reach the end of the function. Found by fuzzing:
+== previously only the LLVM backend noticed ("requires a final Return").
+Module Diagnostics.FunctionFallsThroughLoop
+
+FindFirstBelow(A Integer) Integer :
+    I := A
+    while I > 0
+        I := I - 1
+        if I = 1
+            break
+        ;
+        Return I
+    ;
+;
+
+Main :
+    PutLn(FindFirstBelow(5))
+;

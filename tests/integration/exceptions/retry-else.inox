@@ -1,0 +1,27 @@
+Module Integration.ExceptionsRetryElse
+
+Main :
+    Attempts := 0
+
+    try
+        try
+            Attempts := Attempts + 1
+            PutLn("attempt ", Attempts)
+            Raise FileNotFound
+        except
+            On RangeError
+                PutLn("unexpected-range")
+            ;
+            Else
+                PutLn("else-handler")
+                Retry(1)
+            ;
+        finally
+            PutLn("inner-finally")
+        ;
+    except
+        On IOError
+            PutLn("outer-io")
+        ;
+    ;
+;

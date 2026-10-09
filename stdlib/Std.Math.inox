@@ -116,10 +116,9 @@ Lcm(A Integer, B Integer) Integer :
 == Float convenience functions implemented in Inox source over backend math
 == intrinsics. They deliberately use Float/Float64, not Currency/Crypto.
 ==
-== KNOWN BACKLOG (see INOX_CANONICAL conformance gaps):
-==  - Lcm/Sqr/Cube can overflow Int64 for large inputs. Per ADR-0006 overflow
-==    must trap, but checking-mode arithmetic traps are not implemented yet, so
-==    today these wrap silently. Audit them when checking mode lands.
+== STATUS NOTES (see INOX_CANONICAL conformance gaps):
+==  - Lcm/Sqr/Cube inherit checked integer arithmetic. Overflow deterministically
+==    traps under DECISION P-A; v3.19 verification confirmed all three paths.
 ==  - Pi/Tau/E are written as zero-argument functions (not Const) because the
 ==    backend does not yet lower a Float `Const` to IR. Revisit as `Const` once
 ==    Float constant lowering exists. The literals are given to Float64's honest

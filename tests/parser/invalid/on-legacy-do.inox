@@ -1,0 +1,11 @@
+Module Parser.LegacyOnDo
+
+Main :
+    try
+        Raise IOError
+    except
+        On IOError Do
+            PutLn("legacy syntax")
+        ;
+    ;
+;

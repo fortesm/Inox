@@ -1,0 +1,11 @@
+Module Semantic.UnknownExceptionHandler
+
+Main :
+    try
+        Raise IOError
+    except
+        On NotAnException
+            PutLn("bad")
+        ;
+    ;
+;

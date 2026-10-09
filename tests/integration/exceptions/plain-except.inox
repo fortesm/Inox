@@ -1,0 +1,14 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright (c) 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+
+Module ExceptionPlainExcept
+
+Main :
+    try
+        Raise RangeError
+    except
+        PutLn("caught-all")
+    ;
+
+    PutLn("after")
+;

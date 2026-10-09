@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.15 (`with` statement implemented — CANON-11 / B-GAP #2 closed)
-# Last updated: 2026-06-21
+# Version: v3.19 (canonical consistency pass over v3.18; no language/compiler behavior change)
+# Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
 #          "Secondary Licenses" notice.
@@ -254,6 +254,23 @@ A later phase must not silently repair correctness omitted by an earlier phase.
 The parser does not type-check; semantic analysis does not emit LLVM; codegen
 does not invent missing symbols; the driver does not hide frontend failures.
 
+DECISION P-C (approved by Marcelo Fortes, 2026-10-09). After semantic analysis,
+later phases must not rediscover or reinterpret semantic information already
+resolved by earlier phases; the backend consumes semantically resolved
+information (which symbol, which type, which overload, which conversion, whether
+`Self` is mutable, which concrete operation). The law is stated about phases,
+not about C++ classes. During 0.x a construct may legitimately be "valid Inox
+but not yet implemented in the LLVM backend" (reported as such and measured by
+`tools/backend_gaps.py`); it is not legitimate for the backend to discover that
+it does not know what an accepted construct means.
+Migration is incremental, never a big-bang rewrite:
+  1. AST + semantic result -> LLVM emitter (DONE in v3.18: the emitter takes
+     the `SemanticResult`; module `Const` values are its first consumer);
+  2. the semantic result records more resolved decisions;
+  3. typed/semantic nodes where information is duplicated;
+  4. the LLVM emitter progressively stops reinterpreting the raw AST;
+  5. eventually a dedicated lowered IR.
+
 ### E12. Platform-specific code is isolated
 
 Platform macros and platform-specific APIs may appear only in the portability
@@ -261,9 +278,14 @@ layer, CMake/toolchain files, and platform-specific scripts. They must not be
 scattered through lexer, parser, AST, semantic analysis, diagnostics, or normal
 backend logic.
 
-Current real validation targets are Windows and Linux. Other platform entries
-may remain honest stubs marked STUB/EXPERIMENTAL/UNSUPPORTED until built and
-tested on the actual operating system.
+Windows and Linux are the primary validation targets. Validation reports must
+distinguish actual execution from cross-build/link evidence and must state
+feature-specific exceptions. In the v3.18 hardening environment the full suite
+executed on Linux, while Windows artifacts were cross-built and linked but not
+executed. Native Windows exception lowering remains explicitly open as
+EH-v3.16a. Other platform entries may remain honest stubs marked
+STUB/EXPERIMENTAL/UNSUPPORTED until built and tested on the actual operating
+system.
 
 ### E13. No silent failure or valid-looking fallback
 
@@ -337,6 +359,22 @@ The project must progressively enforce:
 
 A gate may begin as reporting before becoming blocking, but known failures must
 not be hidden or mislabeled as success.
+
+Verification principle (approved by Marcelo Fortes, 2026-10-09): a green
+regression suite ("N/N passed") alone is NEVER sufficient to declare the absence
+of regressions. The checks below answer different questions and a change to the
+compiler is verified by all of those that apply:
+- `scripts/run-tests.sh` and `scripts/run-tests.ps1`: specified behavior; the
+  two runners must report the same number of checks;
+- `tools/backend_gaps.py`: semantic acceptance vs. backend lowering, 0 BUG;
+- the suite on a build with AddressSanitizer + UndefinedBehaviorSanitizer:
+  memory and undefined-behavior errors the suite cannot see;
+- the suite with a 1 MiB stack (`ulimit -s 1024`; the Windows default): the
+  implementation limits of CANON-19 and the `limits-boundary-ok` tests;
+- `tools/mutation_fuzz.py` on the sanitizer build: no CRASH, TIMEOUT or CGERR
+  (inputs nobody wrote a test for);
+- `tools/calc_differential_test.py`: arithmetic against an independent oracle.
+A report states which of these ran and which did not.
 
 ### E20. Refactoring policy
 
@@ -427,9 +465,11 @@ structs; composition instead of inheritance; future contracts/protocols/
 behaviors for static capability checks; strong nominal typing.
 
 ### Performance model
-LLVM is the backend. The compiler itself must remain portable C++20 and build on
-Windows/MSVC and Linux/GCC or Clang. Future portability should account for
-FreeBSD, Solaris, AIX, HP-UX, UnixWare, and other Unix systems where realistic.
+LLVM is the backend. The compiler itself must remain portable C++20. Windows and
+Linux are the primary validated build targets; the platform architecture already
+models macOS, FreeBSD, NetBSD, OpenBSD, DragonFlyBSD, Illumos, Solaris, AIX,
+HP-UX, UnixWare, Android, and other targets explicitly. Those entries are not
+support claims until validated on real or representative systems.
 Inox should not rely on a tracing GC for the language core. Future memory work
 should prefer explicit ownership, moves, arenas, deterministic resource
 management, and controlled borrowing.
@@ -446,6 +486,143 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.19 — 2026-10-09 — canonical consistency pass over v3.18; no language/compiler behavior change
+#   - Reconciled all ACTIVE references to the former “checking mode” wording with
+#     DECISION P-A: runtime arithmetic faults are deterministic Inox traps in every
+#     conforming build. Historical changelog text remains append-only. Locked ADR
+#     wording remains unchanged and is annotated by a supersession note instead.
+#   - Closed conformance gap #20 after direct runtime verification that `Sqr`,
+#     `Cube`, and `Lcm` inherit v3.18 checked arithmetic and trap on Int64 overflow;
+#     no Std.Math implementation change was required.
+#   - Clarified exit status 70 as the Inox-defined `kRuntimeFaultExitStatus`; its
+#     numeric value intentionally coincides with BSD `EX_SOFTWARE` where that
+#     convention exists, but Inox does not depend on `sysexits`.
+#   - Clarified portability status: Windows and Linux remain the primary validation
+#     targets; the v3.18 hardening pass executed the full suite on Linux and only
+#     cross-built/linked Windows artifacts in that environment. EH-v3.16a remains
+#     the explicit Windows exception-lowering gap.
+#
+# v3.18 — 2026-10-09 — review + hardening pass; decisions P-A, P-B, P-C and the
+#         verification principle approved by Marcelo Fortes on 2026-10-09
+#   - DECISION P-A: a run-time arithmetic fault is a deterministic Inox trap with
+#     the diagnostic "Inox runtime error: <category>" on stderr and exit status
+#     70; no unwinding, not catchable by try/except, finally does not run
+#     (CANON-19). Previously the program died with `llvm.trap` and no message.
+#   - DECISION P-B: `for` start, end and step are evaluated exactly once, before
+#     the first iteration, in textual order (CANON-12).
+#   - DECISION P-C: later phases consume semantically resolved information
+#     (E11). Stage 1 done: `LlvmIrEmitter::emit(module, semanticResult)`; module
+#     `Const` values are resolved once by semantic analysis and read from there.
+#   - Verification principle (E19): a green suite alone never proves the absence
+#     of regressions; `tools/mutation_fuzz.py` added for that purpose.
+#   - CANON-12 "Exit is FORBIDDEN in functions" is now enforced by semantic
+#     analysis (only the backend rejected it; found by mutation fuzzing).
+#   - CANON-8 is now enforced for a constant divisor with a non-constant dividend
+#     (`A div 0`, `A mod 0` were accepted and trapped at run time); likewise a
+#     constant shift count outside 0..63 and a constant negative exponent.
+#   - Checked integer arithmetic (backlog item 13) is implemented. See CANON-19
+#     "Checked integer arithmetic (v3.18)". `+ - *`, unary `-`, `Abs`, `div`,
+#     `mod`, `shl`, `shr`, `^` and the `for` step trap instead of wrapping or
+#     being undefined behavior; constant overflow is a compile-time error.
+#   - Integer literals must fit Int64. `$FFFFFFFFFFFFFFFF` is no longer silently
+#     reinterpreted; it is a compile-time error.
+#   - `for` loops: a constant step <= 0 is a compile error, a runtime step <= 0
+#     traps, and a range whose end is Int64.Max terminates (no wraparound).
+#   - `Get`/`GetLn` Integer input is strict: EOF before a token, a malformed token,
+#     trailing non-whitespace characters, or a value outside Int64 trap. Previously
+#     overflow wrapped and EOF/invalid input silently produced 0.
+#   - CANON-4 is now enforced: a simple statement must end at a line break (or at
+#     `;`/end of input) and `;` must be followed by a line break. `A := 1 B := 2`,
+#     `PutLn(1) PutLn(2)` and `X := 1 ; Y := 2` are parse errors. A bare name or
+#     literal is not a statement.
+#   - Documented implementation limits (expression depth, statement nesting) turn
+#     stack exhaustion into ordinary diagnostics ("maximum expression nesting
+#     depth exceeded"). The values are MEASURED: the largest nesting each pass
+#     survives on a 1 MiB stack (Windows main thread) in a Debug+ASan build,
+#     divided by ~2. A large `Type` section is parsed in linear time (it was
+#     quadratic).
+#   - `for I in A..B(S)`: A > B now iterates downward as CANON-12 already stated
+#     (the backend ran a descending range zero times) and the loop never computes
+#     a value past Int64.Min/Max. The backend evaluated A, B and S again on every
+#     iteration; it now evaluates them once (DECISION P-B above).
+#   - Every runtime fault goes through one IR function, `__inox_arith_fault(kind)`
+#     (DECISION P-A above); the policy lives in that one place.
+#   - A construct the semantic analyzer accepts but the backend cannot lower is
+#     now reported as "not yet implemented in the LLVM backend" (CANON E15), not
+#     as a program error. The gaps are measured by `tools/backend_gaps.py` and
+#     listed in `docs/BACKEND_GAPS.md`.
+#   - Codegen: allocas are hoisted to the function entry block (a local declared in
+#     a loop no longer grows the stack on every iteration); sibling scopes may
+#     reuse a local or `for` iterator name; user identifiers can no longer collide
+#     with compiler temporaries/labels (`tmp0`, `then0`, `entry`).
+#   - `inox --run` reports "program stopped by an Inox runtime error (exit code
+#     70)" after a runtime fault and "program terminated abnormally (exit code N)"
+#     for any other non-zero exit; `inox --help` prints usage and exits 0.
+#   - Tests: new `tests/runtime` (execution + expected trap) and `tests/diagnostics`
+#     (rejection with an expected message) layers; the seven `get-integer-*` tests
+#     that no runner executed are now run; the missing `tests/invalid/invalid-028`
+#     fixture was added. A `.trap` file now names the expected runtime
+#     diagnostic; an optional `.out` beside it pins the complete output. Both
+#     runners contain the same 305 checks.
+#   - Semantic analysis now enforces CANON-12 "functions must not fall through
+#     without returning a value" (it only checked that some Return existed; the
+#     backend caught some cases with a misleading message). Found by fuzzing.
+#   - Duplicate struct field detection is linear (a 40 000-field struct took 7 s
+#     in semantic analysis, now 0.12 s). Found by fuzzing.
+#   - Verification for this version (E19 principle): Debug, Release, GCC and
+#     Debug+ASan+UBSan builds pass 305/305 checks, ASan+UBSan also with a 1 MiB
+#     stack; `run-tests.ps1` passes 305/305 under PowerShell 7 on Linux;
+#     `tools/backend_gaps.py`: 0 BUG, 11 GAP; `tools/mutation_fuzz.py` on the
+#     ASan+UBSan build, 16 000 mutants (seeds 31, 34, 35, 36) after the last fix:
+#     no CRASH, TIMEOUT or CGERR; `tools/calc_differential_test.py` agrees on 300
+#     expressions; the compiler cross-builds for Windows with MinGW-w64 + UCRT
+#     (warning-free, links as a PE executable) and the IR in its Windows variant
+#     links against both msvcrt and UCRT (`_write`, `_exit`, `fflush`). Not
+#     verified here: running on Windows (no working Windows runtime in the
+#     review environment) and the MSVC preset.
+#
+# v3.17 — 2026-10-08 — approved by Marcelo Fortes
+#   - Typed exception handlers now follow native Inox block style: `On Type` or
+#     `On Name Type`, newline opens the handler body, and that handler closes
+#     with its own `;`. The former `Do` and `Name: Type` forms are invalid.
+#   - Added canonical `Retry(N)`: valid only while an explicit `On`/`Else`
+#     handler is active. `N` is the number of ADDITIONAL attempts, so Retry(3)
+#     permits at most four executions including the original try body.
+#   - Retry restarts the complete associated try body. A `finally` block executes
+#     before every new attempt. Exhausting the budget is equivalent to bare
+#     rethrow of the currently handled exception.
+#   - Standard exception identifiers are genuine nominal TYPES, not enum values.
+#     Canonical taxonomy now includes Exception; IOError -> FileNotFound,
+#     PermissionDenied, AlreadyExists, DiskFull; ArithmeticError ->
+#     DivisionByZero, OverflowError, DomainError; RangeError -> IndexError.
+#     Handler matching includes descendants (e.g. On IOError catches
+#     FileNotFound). This taxonomy is not classical OO inheritance.
+#   - Standard exception types belong to the prelude/standard-library surface;
+#     libinoxrt remains a generic native transport mechanism over opaque type ids.
+#   - Backend cleanup lowering now routes Return, Exit, and loop break/continue
+#     across active finally blocks, including nested finally regions.
+#
+# v3.16 — 2026-10-07 — approved by Marcelo Fortes
+#   - Exception handling promoted from aspirational/parser-only status to CANON-15
+#     and implemented across Lexer -> Parser -> AST -> Semantic -> LLVM lowering.
+#   - Canonical form: `try` with `except`, `finally`, or both; typed handlers use
+#     `On [Name:] ExceptionType Do`; `Else` is the typed-handler catch-all; plain
+#     `except` is a catch-all; `Raise X` throws and bare `Raise` rethrows only
+#     from an active handler. `finally` is cleanup and runs on normal and
+#     exceptional departure. No `:` is used by these control-flow blocks; one
+#     final `;` closes the complete try construct.
+#   - Initial runtime matching is nominal through stable RuntimeTypeId values for
+#     the standard exceptions: Exception, RangeError, IndexError,
+#     DivisionByZero, OverflowError, IOError. This is deliberately not a Delphi/
+#     C++/Java inheritance tree and does not require general RTTI. User-defined
+#     throwable payloads and any future compositional/capability matching remain
+#     deferred design work.
+#   - Added bootstrap `libinoxrt`: generated Inox calls a small stable Inox ABI;
+#     the current Unix-like implementation uses the platform C++/Itanium unwinder
+#     underneath. The frontend does not call `__cxa_*` directly. Added parser,
+#     semantic, LLVM smoke, execution/rethrow regression tests and executable
+#     examples.
 #
 # v3.15a — 2026-06-21 — approved by Marcelo Fortes
 #   - Fixed two bugs in the v3.15 `with` implementation found by running the
@@ -807,8 +984,8 @@ full module export/visibility system; variant structs and metadata tags.
 Known implementation conformance gaps (spec may be ahead of the compiler): full
 `case` lowering and enum exhaustiveness; module exports/visibility/package search
 beyond the minimum local driver; arrays/enum/range/set implementation; vector
-implementation; checking-mode overflow traps; final runtime ABI; canonical
-trap/abort before `Std.Debug.Assert`.
+implementation; final runtime ABI; canonical trap/abort before
+`Std.Debug.Assert`.
 
 When closing a gap, update code, tests, this document (Layer B), HTML manual, and
 ADRs together.
@@ -852,7 +1029,7 @@ ADRs together.
 # #     True at the date below; may go stale as code advances. An AI MAY     #
 # #     update this layer. NEVER treat Layer B as law.                       #
 # ############################################################################
-# Layer B last verified against source: 2026-06-14
+# Layer B last verified against source: 2026-10-07
 
 
 
@@ -913,6 +1090,11 @@ Consequence: agents must update AGENTS.md, canonical docs, grammar, examples,
 tests on any change; must not drift toward ObjectPascal/Java/Go/Rust/Python/C++
 defaults unless explicitly accepted.
 
+Historical portability note (v3.19; ADR-0005 wording above is unchanged): the
+platform architecture now explicitly models Windows, Linux, macOS, the BSDs,
+Illumos/Solaris, AIX, HP-UX, UnixWare, Android, and related targets. Support is
+claimed only after validation; see E12, SECTION 29, and EH-v3.16a.
+
 ## ADR-0006 — Inox 0.1 Language Constitution  (Status: Accepted)
 Context: records foundational decisions so humans, ChatGPT, Codex, and future
 agents do not re-open settled matters or import other languages' defaults.
@@ -954,6 +1136,12 @@ lags spec, document the gap rather than changing the language silently.
 Deferred 0.2+: borrowing, arenas, unsafe boundaries, contracts, Chapel-style
 parallelism, vector runtime, string/Unicode runtime, module export, variant
 structs, metadata tags, full package/build tooling.
+
+Historical supersession note (v3.19; the locked ADR-0006 text above is unchanged):
+ADR-0006 decision 4 used the phrase “Runtime overflow should trap in checking
+mode.” That policy is superseded by DECISION P-A, approved 2026-10-09: runtime
+arithmetic faults are deterministic Inox traps in every conforming build. This
+note records the later approved decision without rewriting the locked ADR.
 
 
 # ============================================================================
@@ -1286,9 +1474,9 @@ compile-time error, exactly as in the in-context case.
 - Integer division: `A div B`, `A mod B`. Integer `/` is a COMPILE-TIME ERROR
   with a message directing to `div`. Future `Float` `/` lowers to LLVM `fdiv`.
 - Integer overflow is INVALID behavior — not wraparound, not saturation. Constant
-  overflow is always a compile-time error. Debug/checking mode should trap at
-  runtime. Do NOT emit LLVM `nsw`/`nuw` until checks and optimization policy are
-  mature.
+  overflow is always a compile-time error. Runtime integer overflow deterministically
+  traps in every conforming build (DECISION P-A). Do NOT emit LLVM `nsw`/`nuw`
+  until checks and optimization policy are mature.
 - Division by zero for `div`/`mod`:
   - CONSTANT divisor zero (`X := 5 div 0`) is a COMPILE-TIME ERROR (like constant
     overflow). Rejected, as in Ada/SPARK/Delphi.
@@ -1407,6 +1595,167 @@ NONE of these use `:` (CANON-4). All close with `;`.
 No `then`; no `:`; one final `;` closes the whole structure; no `;` between
 branches.
 
+## CANON-15. EXCEPTION HANDLING
+
+**LANGUAGE STATUS: CANONICAL. IMPLEMENTATION STATUS: IMPLEMENTED CORE (v3.17).**
+
+Exception handling is structured control flow. It does not introduce classical
+OO inheritance and does not require general RTTI. Exception identifiers are
+nominal exception TYPES with a dedicated exception-taxonomy relationship.
+
+Canonical forms:
+
+    try
+        RiskyOperation
+    except
+        On RangeError
+            RecoverRange
+        ;
+        On E IOError
+            RecoverIO
+        ;
+        Else
+            RecoverUnknown
+        ;
+    finally
+        Cleanup
+    ;
+
+    try
+        AcquireAndUse
+    finally
+        Release
+    ;
+
+    try
+        RiskyOperation
+    except
+        RecoverAll
+    ;
+
+    try
+        Operation
+    except
+        On FileNotFound
+            Log("retrying")
+            Retry(3)
+        ;
+    finally
+        CleanupAttempt
+    ;
+
+Rules:
+
+1. `try`, `except`, `On`, `Else`, `finally`, `Raise`, and `Retry` are
+   case-insensitive reserved words where applicable. Exception control-flow
+   headers use NO `:` and typed handlers use NO `Do`.
+2. Every `try` MUST contain `except`, `finally`, or both. A bare `try ... ;`
+   is invalid.
+3. A PLAIN `except` body is a catch-all handler for Inox exceptions reaching
+   that protected region. Its final `;` is the `try` terminator when no
+   `finally` follows.
+4. A TYPED `except` contains one or more explicitly closed handlers:
+
+       On ExceptionType
+           Statements
+       ;
+
+       On Name ExceptionType
+           Statements
+       ;
+
+   The optional `Name` binds the caught exception value in that handler only;
+   the binding is immutable. `Name: ExceptionType` and `Do` are invalid syntax.
+   Each `On` handler has its own closing `;`. An `Else` handler also has its own
+   closing `;`. A separate final `;` closes the complete `try` construct.
+5. Typed handlers are tested in SOURCE ORDER and the FIRST matching handler is
+   selected. Duplicate handlers are invalid. A handler is also invalid when an
+   earlier handler already covers its type through exception-taxonomy matching
+   (for example, `On IOError` before `On FileNotFound`).
+6. `Else` is valid only after a typed `On` list and handles an exception not
+   matched by any preceding `On`. If there is no matching `On` and no `Else`,
+   the exception propagates outward automatically.
+7. `Exception` is the standard generic Inox exception type and matches every
+   standard Inox exception. It must therefore be the last typed handler; an
+   `Else` after `On Exception` is unreachable.
+8. `Raise ExceptionExpression` throws a new exception value. Bare `Raise` is
+   valid only while executing an exception handler and rethrows the exception
+   currently being handled, preserving its identity/type.
+9. `Retry(N)` is valid only while an explicit `On` or `Else` handler is active.
+   It requests up to `N` ADDITIONAL executions of the complete body of the
+   associated `try`; the original execution does not count against N. Thus
+   `Retry(3)` allows at most four executions of that try body. The retry counter
+   belongs to that try activation and survives across its retries.
+10. `Retry` does not retry only the failed instruction and does not restart the
+    entire function. External state established before the `try` remains; code
+    and locals inside the try body are re-entered according to normal lexical
+    semantics.
+11. If a `finally` exists, it executes before each new retry. Only after cleanup
+    completes does execution return to the beginning of the protected try body.
+    If the retry budget is exhausted, `Retry(N)` behaves as a bare rethrow of the
+    current exception; it never silently continues after the handler.
+12. `Retry` itself provides no delay/backoff policy. A handler may execute normal
+    Inox statements such as logging, sleeping, reconnecting, or state updates
+    before requesting `Retry(N)`.
+13. In nested exception handling, Retry always refers to the try whose currently
+    active explicit `On`/`Else` handler requested it. A nested handler shadows an
+    outer retry context while that nested handler is executing.
+14. `Retry` is not valid in a normal function body, in an unhandled protected
+    region, in a plain `except` body, or inside `finally`.
+15. `finally` is CLEANUP, not a handler. It executes exactly once whenever
+    control leaves the protected construct normally or exceptionally, including
+    handled exceptions, unmatched/propagating exceptions, explicit `Raise`,
+    `Retry`, `Return`, `Exit`, and loop exit/continue transfers that cross the
+    protected region. If code executed by `finally` raises a new exception, that
+    new exception becomes the propagating exception.
+16. Inox deliberately permits the combined form `try ... except ... finally ... ;`.
+17. Standard exception types currently defined by the prelude/standard-library
+    surface are:
+
+       Exception
+           IOError
+               FileNotFound
+               PermissionDenied
+               AlreadyExists
+               DiskFull
+           ArithmeticError
+               DivisionByZero
+               OverflowError
+               DomainError
+           RangeError
+               IndexError
+
+    These are TYPES and categories in a dedicated nominal exception taxonomy.
+    They are NOT enum constants and this relationship does NOT grant struct/class
+    inheritance, inherited fields, virtual methods, or general polymorphism.
+18. A handler matches its exact type and all descendant exception types. Thus
+    `On IOError` matches `IOError`, `FileNotFound`, `PermissionDenied`,
+    `AlreadyExists`, and `DiskFull`; `On RangeError` matches `RangeError` and
+    `IndexError`.
+19. The standard exception taxonomy is part of the prelude/standard-library
+    contract. The native runtime (`libinoxrt`) transports opaque exception
+    identities and does not define the source-language taxonomy.
+20. User-defined exception declaration syntax, exception payload field layout,
+    payload reflection/access, and future compositional/capability matching are
+    still DEFERRED. They must not be inferred from another language without an
+    approved Inox design decision.
+21. Exceptions represent exceptional control flow. A future Result/Error value
+    model complements exceptions for expected/domain failures; it does not erase
+    `Raise`/exception semantics. Contract violations (`Pre`/`Pos`/`Invariant`)
+    remain conceptually distinct even if a future runtime chooses an exception
+    as one reporting mechanism.
+
+### Current v3.17 lowering note (Layer B, not language law)
+
+The bootstrap implementation assigns stable RuntimeTypeId values to standard
+exception types and transports them through `libinoxrt`. The compiler owns the
+name/taxonomy table and lowers category matching to nominal RuntimeTypeId tests;
+`libinoxrt` remains generic and transports only opaque ids through the native
+exception mechanism. On Unix-like Itanium-ABI targets, LLVM `invoke`/`landingpad`
+plus the platform unwinder are used. `Retry(N)` lowers to a hidden per-try retry
+counter and action dispatcher. `finally` cleanup edges cover rethrow, retry,
+Return, Exit, break and continue in the currently supported LLVM subset.
+
 ## CANON-11. `with` STATEMENT (CHANGE LOG v2.2 — Visual Basic dot-prefix model)
 
 **IMPLEMENTATION STATUS: IMPLEMENTED (v3.15)**
@@ -1474,7 +1823,16 @@ at the beginning, middle, or end, and MORE THAN ONCE. `repeat` closes with `;`.
   body, and must not conflict with any already visible symbol;
 - two SEQUENTIAL `for` loops may reuse the same iterator name after the first
   ends; a NESTED `for` must not reuse an outer loop's iterator name;
-- enum ranges are valid in `for`.
+- enum ranges are valid in `for`;
+- DECISION P-B (approved by Marcelo Fortes, 2026-10-09): the expressions that
+  determine the start bound, the end bound and the step of a `for` are evaluated
+  exactly once, before the first iteration, in textual order (start, end, then
+  the step if one is written), and their values do not change while that loop
+  runs. `for I in Start()..Finish()` calls `Start` once and `Finish` once.
+  Assigning inside the body to a variable used in a bound does not change the
+  range. Without an explicit step the direction comes from the bounds
+  (Start <= End: +1; Start > End: -1). The iterator never takes a value outside
+  `A..B` and the loop never computes a value past Int64.Min/Max.
 
 ### case
     case Suit
@@ -1803,15 +2161,25 @@ The current implementation lowers `Put`/`PutLn` through C runtime `printf` and l
 
 ## CANON-19. RUNTIME MODEL (was canonical/runtime.md)
 
+### Bootstrap exception runtime (v3.17)
+`libinoxrt` now provides the compiler-facing exception transport ABI:
+`__inox_raise`, exception capture/type query/release, and rethrow. Generated Inox
+code targets these Inox-owned entry points rather than scattering C++ ABI calls
+through the frontend. The Unix-like bootstrap implementation currently uses the
+C++/Itanium unwinder underneath; that is an implementation detail and not part of
+the source-language contract. A full Inox RTTI system is NOT required for this
+mechanism: standard exceptions use compact nominal RuntimeTypeId values.
+
 Three different things must NOT be confused:
   1. The Inox compiler executable (`inox.exe` / `inox`) — currently a native C++
      program. On Windows a Release build may require the MSVC Redistributable. It
      does not require LLVM dynamic libraries merely to start.
   2. The Inox standard library (`stdlib/Std.*.inox`) — beginning of the stdlib,
      not yet a complete runtime library.
-  3. The future Inox language runtime (`libinoxrt`, `inoxrt.lib`, or equivalent)
-     — future work; may define ABI, startup, traps, allocation, strings, Unicode,
-     arrays, vectors, I/O, platform services.
+  3. The Inox language runtime (`libinoxrt`, `inoxrt.lib`, or equivalent) — a
+     minimal bootstrap now exists for exception transport. Its broader future
+     scope may define startup, traps, allocation, strings, Unicode, arrays,
+     vectors, I/O, and platform services.
 
 Standard-library discovery order (supports source tree AND prebuilt ZIP):
   1. `INOX_STDLIB`, when set.
@@ -1822,15 +2190,113 @@ Standard-library discovery order (supports source tree AND prebuilt ZIP):
 
 Build artifact directory: `build/inox-artifacts/`. `INOX_OUTPUT_DIR` overrides.
 This is generated output and must NOT be versioned.
-Runtime traps/errors include division by zero, bounds errors, range errors, and
-future overflow checks in checking mode.
+Runtime traps/errors include division by zero, checked integer overflow, invalid
+shift counts, invalid `for` steps, negative integer exponents, bounds errors, range
+errors, and invalid integer input. Arithmetic faults follow DECISION P-A.
 Out of scope for the 0.1 safe core: raw `Pointer[T]`; `unsafe` blocks; direct C
 interop; final ABI; complete standalone runtime library; arenas; borrow checker;
 deterministic destructors/finalizers; full concurrency runtime.
 
+### Checked integer arithmetic (v3.18)
+Integer overflow is never wraparound and never undefined behavior (ADR-0006).
+Compile time:
+- an integer literal must fit Int64; `-9223372036854775808` is the only form that
+  uses the magnitude 2^63; a hexadecimal literal above Int64.Max is an error;
+- constant integer expressions are folded; overflow in `+ - *`, unary `-`, `div`,
+  `^`, a zero divisor in `div`/`mod`, a shift count outside 0..63, a negative
+  exponent and a constant `for` step <= 0 are compile-time errors;
+- a module `Const` with an Integer value is a constant in these rules, so
+  `Max + 1` with `Const Max := 9223372036854775807` is a compile-time error;
+- a CONSTANT right operand that can never be valid is a compile-time error even
+  when the left operand is only known at run time: `A div 0`, `A mod 0`,
+  `A shl 64`, `A ^ (-1)` (CANON-8: "constant divisor zero is a compile-time
+  error");
+- “constant” in these rules means a constant expression under the canonical
+  constant-expression rules. Flow-sensitive knowledge about an ordinary local
+  does NOT turn a run-time expression into a compile-time error; for example,
+  `X := 0` followed by `A div X` remains a run-time checked operation;
+- the valid shift-count range follows the semantic bit width of the left operand.
+  For the current `Integer` (= Int64) this is 0..63; fixed-width integer types use
+  their own width when their arithmetic lowering is implemented.
+Run time (these operations trap):
+- `+ - *`, unary `-` and `Abs` on overflow (`Abs(Int64.Min)`, `-Int64.Min`);
+- `div`/`mod` with a zero divisor; `Int64.Min div -1` (`Int64.Min mod -1` is 0);
+- `shl`/`shr` with a count outside 0..63 (`shl` discards high bits; that is a bit
+  operation, not an overflow);
+- `^` on overflow or a negative exponent; a `for` step <= 0.
+`for I in A..B(S)` ends when the next value of `I` does not fit in Int64, so a
+range ending at Int64.Max terminates.
+
+#### Runtime arithmetic faults are deterministic Inox traps
+DECISION P-A (approved by Marcelo Fortes, 2026-10-09). Language law:
+- An arithmetic fault detected at run time terminates the program immediately and
+  deterministically, with a diagnostic that identifies the category of the fault
+  and a non-zero exit status.
+- A trap is NOT an exception. There is no unwinding: `try`/`except` (typed
+  handlers, `Else` and plain `except`) cannot catch it and `finally` blocks do not
+  run.
+- "Trap" does not mean "let the CPU fail": the compiler emits an explicit check
+  before every operation that can fault and never relies on a hardware exception.
+- Two distinct categories, tested separately:
+    compile-time arithmetic fault  -> compiler diagnostic (rules above)
+    run-time arithmetic fault      -> deterministic Inox trap (this section)
+- `DivisionByZero`, `OverflowError` and `ArithmeticError` stay in the CANON-15
+  taxonomy for APIs that may raise them in the future. Primitive arithmetic does
+  not raise them.
+
+Diagnostic text (the category names are part of the contract and are checked by
+`tests/runtime/*.trap`):
+    Inox runtime error: integer overflow
+    Inox runtime error: division by zero
+    Inox runtime error: invalid shift count
+    Inox runtime error: for-loop step must be positive
+    Inox runtime error: negative exponent
+    Inox runtime error: invalid integer input        (Get/GetLn, see CANON-17)
+
+Lowering note (Layer B, not language law): every check calls one internal IR
+function, `__inox_arith_fault(i32 kind)`, `noreturn nounwind cold`. It calls
+`fflush(NULL)` so that output already written by the program is not lost, writes
+the diagnostic to file descriptor 2 with `write` (`_write` on Windows; chosen by
+the portability layer, `support::nativeErrorWriter`) and ends the process with
+`_exit(70)` (`codegen::kRuntimeFaultExitStatus`). Status 70 is reserved by Inox
+for deterministic runtime faults; its numeric value intentionally coincides with
+BSD `EX_SOFTWARE` on platforms that define `sysexits`, but the Inox contract does
+not depend on that convention. The emitted
+IR therefore links against the C library alone, with no Inox runtime library.
+`inox --run` adds "inox: program stopped by an Inox runtime error (exit code 70)".
+Turning faults into exceptions later would be a change to this one function plus
+`invoke` at call sites inside `try`; it would also make every program depend on
+the exception runtime (see B-GAPS EH-v3.16a), which is why it was not chosen.
+
+### Compiler implementation limits (v3.18)
+The compiler rejects, with the diagnostic "maximum expression nesting depth
+exceeded" / "maximum statement nesting depth exceeded", programs nested deeper
+than:
+- 128 levels of expression tree (`kMaxExpressionDepth`; for example a chain of
+  127 additions, or 126 prefix `not`, inside a call),
+- 256 nested expression-parser calls (`kMaxExpressionNesting`; one level of
+  parentheses costs three calls, so about 83 nested parentheses),
+- 64 levels of nested statements (`kMaxStatementNesting`).
+The values are measured, not estimated. With a 1 MiB stack (the Windows main
+thread default) and the largest stack frames we build (Debug + AddressSanitizer),
+the compiler crashed at about 176 nested parentheses and 244 levels of operator
+chains before these limits existed; each limit is about half of the measured
+crash point. Plain Debug survives about 280/340. `tests/diagnostics/limit-*`
+check one level past each limit and `tests/*/limits-boundary-ok` check the
+deepest accepted program; both are generated at the exact boundary. Type
+declarations are parsed iteratively and need no separate depth limit today.
+If a pass becomes more recursive, re-measure (`ulimit -s 1024` on Unix) before
+raising a limit.
+
 ## Temporary console I/O ABI
 
-In the current implementation, `Put`/`PutLn` are lowered through the C runtime `printf`, and `Get`/`GetLn` Integer input is lowered through internal LLVM helper functions based on `getchar` (`__inox_read_i64`, `__inox_discard_token`, `__inox_discard_line`). This is a temporary ABI, not the final Inox runtime design. String input, EOF, encoding, and `Result[T,E]` remain deferred.
+In the current implementation, `Put`/`PutLn` are lowered through the C runtime `printf`, and `Get`/`GetLn` Integer input is lowered through internal LLVM helper functions based on `getchar` (`__inox_read_i64`, `__inox_discard_token`, `__inox_discard_line`). This is a temporary ABI, not the final Inox runtime design. String input, EOF modeling, encoding, and `Result[T,E]` remain deferred.
+
+In v3.18 Integer `Get`/`GetLn` is strict: leading whitespace (space, tab, CR, LF) is
+skipped; an optional `-` is followed by at least one decimal digit; the token must
+end at whitespace or end of input. EOF before a token, a malformed token, trailing
+non-whitespace characters (`42abc`, `+5`) or a value outside Int64 trap with
+"Inox runtime error: invalid integer input" (CANON-19 trap model).
 
 
 # ============================================================================
@@ -1854,22 +2320,24 @@ integer/bool ops, local variables, selected control flow, simple structs,
 associated methods, field defaults, struct values, subroutines, temporary
 `printf`-based output.
 Temporary native driver: `inox --build file.inox` emits textual IR under
-`build/inox-artifacts/` and invokes external `clang` to create a native exe;
-`inox --run file.inox` builds and executes. `INOX_OUTPUT_DIR` overrides. The
+`build/inox-artifacts/` and invokes external `clang` to create a native exe.
+Exception-enabled modules currently use `clang++` plus the bootstrap static
+`libinoxrt`; ordinary modules retain the existing `clang` path. `inox --run
+file.inox` builds and executes. `INOX_OUTPUT_DIR` overrides. The
 driver loads local `Use` dependencies recursively (checks `A.B.inox` then
 `A/B.inox` relative to entry dir and stdlib path), rejects cycles, emits the 0.1
 subset as one textual LLVM module — a minimum module model, not a package manager
 or final linker. A prebuilt compiler can parse/type-check/emit-IR without LLVM or
 Clang installed.
 Future backend work: final runtime ABI; richer module linking/exports/visibility/
-package search; arrays/enums/ranges/sets/char/strings beyond literals;
-checking-mode traps; final toolchain discovery; optional migration from textual
-IR to the LLVM C++ API where justified.
+package search; arrays/enums/ranges/sets/char/strings beyond literals; remaining
+runtime-fault infrastructure; final toolchain discovery; optional migration from
+textual IR to the LLVM C++ API where justified.
 
 ## Current backend support status
 
 ## B-WORKS. WHAT WORKS TODAY (verified in source audit)
-Lexer: 43 keywords, case-insensitive normalization, `$XX` hex, `==` comments.
+Lexer: 46 keywords, case-insensitive normalization, `$XX` hex, `==` comments.
 Parser: recursive descent, 2-token lookahead for typed local declarations.
 Semantic: scoped symbol table, forward signature pass, inference (empty type +
   initializer -> initializer type), prelude calls (Put/PutLn/Clamp/Min/Max),
@@ -1880,20 +2348,38 @@ Codegen (textual LLVM IR): integer/bool/Float64 scalars, locals
   through a backend helper, if/elif/else, while, repeat/until, for-range (+step),
   break/continue, functions, subroutines, structs, field defaults, struct
   values, associated methods, Put/PutLn via printf including Float64; Get/GetLn
-  Integer input via internal getchar-based LLVM helpers. Elementary Float64 math
+  Integer input via internal getchar-based LLVM helpers; core exception lowering
+  (`try`/plain-or-typed `except`/`Else`/`finally`/`Raise`/`Retry`) via `libinoxrt`. Elementary Float64 math
   functions are temporarily lowered through LLVM intrinsics and libm/CRT symbols.
 Driver: --parse-only, --dump-tokens, --dump-types, --emit-llvm, --build, --run.
-Types registered (19): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
+Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   Currency, Crypto, Char, String + aliases Integer->Int64, UInteger->UInt64,
-  Float->Float64.
+  Float->Float64 + 12 standard nominal exception types.
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
 - `case`/`otherwise` (AST present; LLVM lowering incomplete; exhaustiveness off).
 - `unless` (parsed; not lowered).
-- `try`/`except`/`finally`/`raise` (parsed; lowering incomplete).
 - Enum short/block forms (parsed; not lowered; strict-init not enforced).
 
 ## B-GAPS. CONFORMANCE GAPS (Layer A says it should exist; code doesn't yet)
+- BE-v3.18: constructs accepted by semantic analysis but not lowered by the
+  LLVM backend are reported as "not yet implemented in the LLVM backend" and
+  are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
+  nested loops, local declarations and `if` with `elif`/`else` inside a loop
+  body, `case`, `unless`, module `State` in expressions, `String` locals, and a
+  module `Const` whose value is not a single Integer or Bool literal. Any other
+  codegen failure after semantic acceptance is a BUG.
+- EH-v3.16a: the current native exception lowering is validated on Unix-like
+  Itanium-ABI hosts. Windows/MSVC-style LLVM funclet (`catchswitch`/`catchpad`/
+  `cleanuppad`) lowering remains to be implemented before exception-enabled
+  Windows binaries can be claimed supported. This does not affect parsing,
+  semantic checking, or non-exception Windows programs.
+- EH-v3.17b: `finally` cleanup edges now cover the currently supported nonlocal
+  transfers `Return`, `Exit`, `break`, and `continue`, including nested finally
+  regions, in addition to exceptional flow and Retry.
+- EH-v3.17c: the optional `On Name Type` binding is scoped/type-checked, but
+  runtime payload fields/reflection and user-defined exception declaration
+  syntax remain deferred.
 1. v2 variable model: code still has the Var block path (parseVarStatement,
    VarBlockStatement, SectionKind::Var). MUST be removed; `Var` must become a
    rejected reserved keyword. (Blocks CANON-4/CANON-5.)
@@ -1908,21 +2394,23 @@ Types registered (19): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 10. case LLVM lowering + enum exhaustiveness.
 11. Array[Low..High] — not parsed or lowered.
 12. Range/Enum/Set full implementation.
-13. Checking-mode integer overflow traps.
+13. Checked integer arithmetic traps. — IMPLEMENTED (v3.18); see CANON-19.
 14. Explicit type conversions `TypeName(x)`.
 15. String indexing/concatenation/Unicode runtime.
 16. Module exports/visibility.
 17. Vector runtime (move semantics, Clone).
 18. Final I/O ABI (replace printf/getchar helpers); String input and ReadLn.
 19. Std.Debug.Assert (needs canonical trap/abort).
-20. Std.Math integer helpers `Lcm`, `Sqr`, `Cube` can overflow Int64 for large
-    inputs; per ADR-0006 this must trap, but until checking-mode arithmetic
-    traps (#13) exist they wrap silently. Audit these when #13 lands.
+20. Std.Math integer helpers `Lcm`, `Sqr`, `Cube` overflow handling — CLOSED
+    (v3.19 status audit). They are implemented in Inox source over checked integer
+    arithmetic and therefore inherit DECISION P-A. Direct runtime verification with
+    overflowing inputs confirmed deterministic `integer overflow` traps; no Std.Math
+    implementation correction was required.
 21. Float `Const` lowering: a `Const` of Float type passes semantic analysis but
     fails codegen ("unsupported expression"). Because of this, Std.Math exposes
     `Pi`/`Tau`/`E` as zero-argument functions rather than constants. Revisit them
     as `Const` once Float constant lowering is implemented.
-20. Std.Math is still incomplete beyond the initial serious layer: arrays/vectors
+22. Std.Math is still incomplete beyond the initial serious layer: arrays/vectors
     are required for statistics; Currency/BigCurrency are required for serious
     finance; final IEEE NaN/Infinity/rounding/exception policy remains open;
     many Float functions currently depend on LLVM/libm rather than Inox kernels.
@@ -1973,6 +2461,11 @@ Layers:
   mutability, flow constraints.
 - `tests/codegen/*.inox` — LLVM IR emission; each file registered in both runners
   with explicit required IR fragments.
+- `tests/runtime/*.inox` — execution tests: `NAME.out` (exit 0 + exact output),
+  `NAME.trap` (must compile, run and trap), optional `NAME.in` (stdin). Pins the
+  checked-arithmetic rules.
+- `tests/diagnostics/*.inox` — must be rejected; `NAME.err` holds a substring the
+  error output must contain, so the *reason* is tested, not just the rejection.
 - `tests/integration/` — end-to-end with expected stdout; when `clang` is
   available, emit IR, link, execute, compare; else report `[SKIP]` without
   failing the frontend suite. Also verifies `Use Std.Math` resolves through the
@@ -2122,9 +2615,15 @@ package backend/linker tools with Inox or replace this path.
 
 Inox must be engineered as a modern cross-platform C++ compiler, not as a codebase with ad-hoc platform branches scattered across the frontend and backend. Platform-specific code belongs in dedicated support modules, CMake configuration, and scripts.
 
-Validated current targets:
+Primary validation targets:
 - Windows x64, Clang with MSVC ABI (`x86_64-pc-windows-msvc`).
 - Linux x64, Clang.
+
+Qualification: support claims must distinguish build/link from actual execution.
+For the v3.18 hardening pass, Linux was built and executed with the complete suite;
+Windows was cross-built and linked only in that environment. EH-v3.16a remains: native
+Windows exception-enabled binaries are not yet claimed supported until LLVM funclet
+lowering is implemented and validated on Windows.
 
 Planned / stub targets, not yet advertised as supported:
 - macOS.
@@ -2166,7 +2665,7 @@ Targets must not be claimed as supported until tested on real or representative 
 This section is volatile implementation status. It may be updated to match the code. It must not override constitutional language rules above.
 
 ## B-WORKS. WHAT WORKS TODAY (verified in source audit)
-Lexer: 43 keywords, case-insensitive normalization, `$XX` hex, `==` comments.
+Lexer: 46 keywords, case-insensitive normalization, `$XX` hex, `==` comments.
 Parser: recursive descent, 2-token lookahead for typed local declarations.
 Semantic: scoped symbol table, forward signature pass, inference (empty type +
   initializer -> initializer type), prelude calls (Put/PutLn/Clamp/Min/Max),
@@ -2175,19 +2674,37 @@ Semantic: scoped symbol table, forward signature pass, inference (empty type +
 Codegen (textual LLVM IR): integer/bool scalars, locals (alloca/store/load),
   if/elif/else, while, repeat/until, for-range (+step), break/continue, functions,
   subroutines, structs, field defaults, struct values, associated methods,
-  Put/PutLn via printf; Get/GetLn Integer input via internal getchar-based LLVM helpers.
+  Put/PutLn via printf; Get/GetLn Integer input via internal getchar-based LLVM
+  helpers; core exception lowering through `libinoxrt`.
 Driver: --parse-only, --dump-tokens, --dump-types, --emit-llvm, --build, --run.
-Types registered (19): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
+Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   Currency, Crypto, Char, String + aliases Integer->Int64, UInteger->UInt64,
-  Float->Float64.
+  Float->Float64 + 12 standard nominal exception types.
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
 - `case`/`otherwise` (AST present; LLVM lowering incomplete; exhaustiveness off).
 - `unless` (parsed; not lowered).
-- `try`/`except`/`finally`/`raise` (parsed; lowering incomplete).
 - Enum short/block forms (parsed; not lowered; strict-init not enforced).
 
 ## B-GAPS. CONFORMANCE GAPS (Layer A says it should exist; code doesn't yet)
+- BE-v3.18: constructs accepted by semantic analysis but not lowered by the
+  LLVM backend are reported as "not yet implemented in the LLVM backend" and
+  are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
+  nested loops, local declarations and `if` with `elif`/`else` inside a loop
+  body, `case`, `unless`, module `State` in expressions, `String` locals, and a
+  module `Const` whose value is not a single Integer or Bool literal. Any other
+  codegen failure after semantic acceptance is a BUG.
+- EH-v3.16a: the current native exception lowering is validated on Unix-like
+  Itanium-ABI hosts. Windows/MSVC-style LLVM funclet (`catchswitch`/`catchpad`/
+  `cleanuppad`) lowering remains to be implemented before exception-enabled
+  Windows binaries can be claimed supported. This does not affect parsing,
+  semantic checking, or non-exception Windows programs.
+- EH-v3.17b: `finally` cleanup edges now cover the currently supported nonlocal
+  transfers `Return`, `Exit`, `break`, and `continue`, including nested finally
+  regions, in addition to exceptional flow and Retry.
+- EH-v3.17c: the optional `On Name Type` binding is scoped/type-checked, but
+  runtime payload fields/reflection and user-defined exception declaration
+  syntax remain deferred.
 1. v2 variable model: code still has the Var block path (parseVarStatement,
    VarBlockStatement, SectionKind::Var). MUST be removed; `Var` must become a
    rejected reserved keyword. (Blocks CANON-4/CANON-5.)
@@ -2202,20 +2719,26 @@ Types registered (19): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 10. case LLVM lowering + enum exhaustiveness.
 11. Array[Low..High] — not parsed or lowered.
 12. Range/Enum/Set full implementation.
-13. Checking-mode integer overflow traps.
+13. Checked integer arithmetic traps. — IMPLEMENTED (v3.18); see CANON-19.
 14. Explicit type conversions `TypeName(x)`.
 15. String indexing/concatenation/Unicode runtime.
 16. Module exports/visibility.
 17. Vector runtime (move semantics, Clone).
 18. Final I/O ABI (replace printf/getchar helpers); String input and ReadLn.
 19. Std.Debug.Assert (needs canonical trap/abort).
-20. Std.Math integer helpers `Lcm`, `Sqr`, `Cube` can overflow Int64 for large
-    inputs; per ADR-0006 this must trap, but until checking-mode arithmetic
-    traps (#13) exist they wrap silently. Audit these when #13 lands.
+20. Std.Math integer helpers `Lcm`, `Sqr`, `Cube` overflow handling — CLOSED
+    (v3.19 status audit). They are implemented in Inox source over checked integer
+    arithmetic and therefore inherit DECISION P-A. Direct runtime verification with
+    overflowing inputs confirmed deterministic `integer overflow` traps; no Std.Math
+    implementation correction was required.
 21. Float `Const` lowering: a `Const` of Float type passes semantic analysis but
     fails codegen ("unsupported expression"). Because of this, Std.Math exposes
     `Pi`/`Tau`/`E` as zero-argument functions rather than constants. Revisit them
     as `Const` once Float constant lowering is implemented.
+22. Std.Math is still incomplete beyond the initial serious layer: arrays/vectors
+    are required for statistics; Currency/BigCurrency are required for serious
+    finance; final IEEE NaN/Infinity/rounding/exception policy remains open;
+    many Float functions currently depend on LLVM/libm rather than Inox kernels.
 
 ## B-CONFLICTS. KNOWN DOC/CODE CONFLICTS TO RESOLVE
 - Var block still in code (B-GAPS #1).
@@ -2233,7 +2756,11 @@ Interactive examples using `Get`/`GetLn` must be tested through controlled stdin
 Aspirational / frontend-only examples using unimplemented features must be clearly marked and must not be shipped as runnable release examples until backend/runtime support exists.
 
 ## B-PROPOSALS. AI-SUGGESTED DESIGN CHANGES (NOT law; await approval)
-(empty — AIs append PROPOSAL entries here, dated, never inline in Layer A.)
+(AIs append PROPOSAL entries here, dated, never inline in Layer A.)
+
+(P-2026-10-09-A, -B and -C were APPROVED by Marcelo Fortes on 2026-10-09 and
+are now law: CANON-19 "Runtime arithmetic faults are deterministic Inox traps",
+CANON-12 `for` in range, and E11. See CHANGE LOG v3.18.)
 
 
 # ============================================================================
@@ -2277,7 +2804,7 @@ Currency/Crypto semantics; safe-inference messages; scalar-requires-initializer.
 0.4.x   standard library/runtime baseline
 0.5.x   portability hardening
 0.6.x   quality gates and CI maturity
-0.7.x   safety/checking mode maturity
+0.7.x   safety/runtime-fault maturity
 0.8.x   advanced composition/protocol direction
 0.9.x   beta/freeze
 1.0.0   stable core language, reproducible releases, coherent docs and examples
@@ -2308,8 +2835,9 @@ The external `clang` driver is a BUILD-TIME dependency, NOT technical debt.
 ```text
 0.1.x   keep clang as external driver; stabilize language, tests, examples,
         minimal I/O, current textual-IR backend.
-0.2.x   create libinoxrt; formalize traps (incl. arithmetic overflow traps in
-        checking mode), I/O, strings, minimal runtime. KEEP clang.
+0.2.x   expand the bootstrap libinoxrt introduced by v3.16; mature remaining
+        runtime-fault support, I/O, strings, and the minimal general runtime.
+        Checked arithmetic already follows DECISION P-A. KEEP clang.
         (This stage is intentionally LONG: full language + runtime maturation.)
 0.3.x   emit object files in a controlled way; introduce lld / linker
         integration; begin reducing clang's role. Separate "emit .o" from "link".

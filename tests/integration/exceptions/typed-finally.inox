@@ -1,0 +1,26 @@
+Module Integration.ExceptionsTypedFinally
+
+Fail :
+    Raise OverflowError
+;
+
+Main :
+    try
+        PutLn("before")
+        Fail
+        PutLn("unreachable")
+    except
+        On RangeError
+            PutLn("range")
+        ;
+        On OverflowError
+            PutLn("overflow")
+        ;
+        Else
+            PutLn("other")
+        ;
+    finally
+        PutLn("cleanup")
+    ;
+    PutLn("after")
+;

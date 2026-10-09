@@ -1,0 +1,5 @@
+Module Semantic.RaiseOutsideHandler
+
+Main :
+    Raise
+;

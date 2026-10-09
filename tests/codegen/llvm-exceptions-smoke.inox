@@ -1,0 +1,17 @@
+Module Codegen.ExceptionsSmoke
+
+Fail :
+    Raise IOError
+;
+
+Main :
+    try
+        Fail
+    except
+        On IOError
+            PutLn("caught")
+        ;
+    finally
+        PutLn("cleanup")
+    ;
+;

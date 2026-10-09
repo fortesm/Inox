@@ -1,0 +1,22 @@
+Module Integration.ExceptionsRethrow
+
+Main :
+    try
+        try
+            Raise RangeError
+        except
+            On RangeError
+                PutLn("inner")
+                Raise
+            ;
+        finally
+            PutLn("inner cleanup")
+        ;
+    except
+        On RangeError
+            PutLn("outer")
+        ;
+    finally
+        PutLn("outer cleanup")
+    ;
+;

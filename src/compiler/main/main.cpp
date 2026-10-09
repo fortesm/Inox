@@ -285,12 +285,45 @@ bool clangExists()
     return inox::compiler::support::commandExists("clang");
 }
 
+bool clangxxExists()
+{
+    return inox::compiler::support::commandExists("clang++");
+}
+
+fs::path findExceptionRuntimeLibrary(const fs::path& executableDir)
+{
+    const fs::path configured = pathFromEnvironment("INOX_RUNTIME_LIB");
+    if (!configured.empty() && fs::is_regular_file(configured)) {
+        return configured;
+    }
+
+#if defined(_WIN32)
+    constexpr const char* runtimeName = "inoxrt.lib";
+#else
+    constexpr const char* runtimeName = "libinoxrt.a";
+#endif
+
+    const std::vector<fs::path> candidates{
+        executableDir / runtimeName,
+        executableDir.parent_path() / "lib" / runtimeName,
+        fs::current_path() / "build" / "linux-clang-debug" / runtimeName
+    };
+    for (const auto& candidate : candidates) {
+        if (fs::is_regular_file(candidate)) {
+            return candidate;
+        }
+    }
+    return {};
+}
+
 struct BuildArtifacts {
     fs::path llvmIr;
     fs::path executable;
 };
 
-BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module)
+BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module,
+                            const inox::compiler::semantic::SemanticResult& semantics,
+                            const fs::path& executableDir)
 {
     if (!clangExists()) {
         throw std::runtime_error(
@@ -306,13 +339,28 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
     const BuildArtifacts artifacts{
         outputDirectory / (stem + ".ll"),
         outputDirectory / (stem + std::string(inox::compiler::support::executableSuffix()))};
-    writeFile(artifacts.llvmIr, inox::compiler::codegen::LlvmIrEmitter().emit(module));
+    const std::string llvmIr = inox::compiler::codegen::LlvmIrEmitter().emit(module, semantics);
+    writeFile(artifacts.llvmIr, llvmIr);
+
+    const bool usesExceptionRuntime = llvmIr.find("declare void @__inox_raise(i64)") != std::string::npos;
+    if (usesExceptionRuntime && !clangxxExists()) {
+        throw std::runtime_error(
+            "clang++ was not found; exception-enabled Inox programs currently require the C++ ABI runtime");
+    }
 
     std::vector<std::string> clangArgs{
-         "clang",
+         usesExceptionRuntime ? "clang++" : "clang",
          artifacts.llvmIr.string(),
          "-o",
          artifacts.executable.string() };
+    if (usesExceptionRuntime) {
+        const fs::path runtimeLibrary = findExceptionRuntimeLibrary(executableDir);
+        if (runtimeLibrary.empty()) {
+            throw std::runtime_error(
+                "libinoxrt was not found; set INOX_RUNTIME_LIB or keep the runtime library beside the Inox compiler");
+        }
+        clangArgs.push_back(runtimeLibrary.string());
+    }
     if (inox::compiler::support::hostOperatingSystem() != inox::compiler::support::OperatingSystem::Windows) {
         clangArgs.push_back("-lm");
     }
@@ -332,6 +380,10 @@ int main(int argc, char** argv)
     const bool emitLlvm = argc == 3 && std::string(argv[1]) == "--emit-llvm";
     const bool build = argc == 3 && std::string(argv[1]) == "--build";
     const bool run = argc == 3 && std::string(argv[1]) == "--run";
+    if (argc == 2 && (std::string(argv[1]) == "--help" || std::string(argv[1]) == "-h")) {
+        std::cout << "usage: inox [--dump-tokens|--parse-only|--dump-types|--emit-llvm|--build|--run] <source.inox>\n";
+        return 0;
+    }
     const fs::path executableDir = inox::compiler::support::executableDirectory(argc > 0 ? argv[0] : nullptr);
     const bool hasMode = dumpTypes || dumpTokensMode || parseOnly || emitLlvm || build || run;
     if ((!hasMode && argc != 2) || (hasMode && argc != 3)) {
@@ -373,14 +425,26 @@ int main(int argc, char** argv)
         const auto& semanticResult = semanticAnalyzer.analyze(*module);
 
         if (emitLlvm) {
-            std::cout << inox::compiler::codegen::LlvmIrEmitter().emit(*module);
+            std::cout << inox::compiler::codegen::LlvmIrEmitter().emit(*module, semanticResult);
         } else if (build || run) {
-            const BuildArtifacts artifacts = buildProgram(fs::path(sourcePath), *module);
+            const BuildArtifacts artifacts = buildProgram(fs::path(sourcePath), *module, semanticResult, executableDir);
             if (run) {
-                return inox::compiler::support::runProcess(
-                    { artifacts.executable.string() }, false) == 0
-                    ? 0
-                    : 1;
+                const int programExit = inox::compiler::support::runProcess(
+                    { artifacts.executable.string() }, false);
+                if (programExit == inox::compiler::codegen::kRuntimeFaultExitStatus) {
+                    // The program already printed "Inox runtime error: <category>".
+                    std::cerr << "inox: program stopped by an Inox runtime error (exit code "
+                              << programExit << ")\n";
+                    return 1;
+                }
+                if (programExit != 0) {
+                    // Distinguish "the program failed at run time" (crash, abort, non-zero
+                    // exit) from a compile error, which also exits with 1.
+                    std::cerr << "inox: program terminated abnormally (exit code "
+                              << programExit << ")\n";
+                    return 1;
+                }
+                return 0;
             }
             std::cout << artifacts.executable.string() << '\n';
         } else {
@@ -398,6 +462,15 @@ int main(int argc, char** argv)
         return 1;
     } catch (const inox::compiler::semantic::SemanticError& error) {
         std::cerr << "semantic error: " << error.what() << '\n';
+        return 1;
+    } catch (const inox::compiler::codegen::CodegenUnsupported& error) {
+        // The program passed the semantic analyzer: the construct is legal
+        // Inox and the limitation is in this backend. Say so explicitly
+        // instead of letting it look like a program error.
+        std::cerr << "codegen error: not yet implemented in the LLVM backend: "
+                  << error.what() << '\n';
+        std::cerr << "note: this program is valid Inox; the gap is in code "
+                     "generation (see docs/BACKEND_GAPS.md)\n";
         return 1;
     } catch (const inox::compiler::codegen::CodegenError& error) {
         std::cerr << "codegen error: " << error.what() << '\n';

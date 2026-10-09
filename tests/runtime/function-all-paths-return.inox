@@ -1,0 +1,26 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-12: every path of Classify ends in Return or Raise, so it is accepted
+== even though it has no final top-level Return.
+Module Runtime.FunctionAllPathsReturn
+
+Classify(A Integer) Integer :
+    if A > 0
+        Return 1
+    elif A = 0
+        Return 0
+    else
+        Return -1
+    ;
+;
+
+Main :
+    Put(Classify(5), " ")
+    Put(Classify(0), " ")
+    PutLn(Classify(-5))
+;

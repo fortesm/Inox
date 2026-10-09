@@ -1,0 +1,23 @@
+Module Integration.ExceptionsRetryExhausted
+
+Main :
+    Attempts := 0
+
+    try
+        try
+            Attempts := Attempts + 1
+            PutLn("attempt ", Attempts)
+            Raise FileNotFound
+        except
+            On FileNotFound
+                Retry(2)
+            ;
+        finally
+            PutLn("inner-finally")
+        ;
+    except
+        On IOError
+            PutLn("outer-io")
+        ;
+    ;
+;

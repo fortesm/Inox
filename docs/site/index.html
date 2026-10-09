@@ -36,7 +36,7 @@ th{background:#eef3fb}
 <header>
 <h1>Inox Language Tutorial and Reference</h1>
 <p>Current 0.1 pre-alpha tutorial for users, compiler contributors, and release testers.</p>
-<p>Updated for block-closing semicolons, no empty parentheses, variadic output, local scope, no shadowing, implicit read-only for iterators, release packages, <code>INOX_STDLIB</code>, and <code>INOX_OUTPUT_DIR</code>.</p>
+<p>Updated for block-closing semicolons, no empty parentheses, variadic output, local scope, no shadowing, implicit read-only for iterators, native exception handling, release packages, <code>INOX_STDLIB</code>, and <code>INOX_OUTPUT_DIR</code>.</p>
 </header>
 <main>
 <nav><strong>Contents</strong><ol><li><a href="#overview">Overview</a></li>
@@ -289,6 +289,29 @@ for I in 10..1 (2)
     PutLn(I)
 ;</code></pre>
 <p>Sequential loops may reuse the same iterator name because their scopes do not overlap.</p>
+<h3>Exceptions</h3>
+<p>Inox provides structured exception handling with <code>try</code>, <code>except</code>, typed <code>On</code> handlers, optional <code>Else</code>, <code>finally</code>, <code>Raise</code>, and bounded <code>Retry(N)</code>. Typed handlers are tested in source order; <code>Else</code> is the catch-all after them. A plain <code>except</code> is itself a catch-all.</p>
+<pre><code>try
+    RiskyOperation
+except
+    On RangeError
+        PutLn(&quot;range failure&quot;)
+    ;
+
+    On E IOError
+        PutLn(&quot;I/O failure&quot;)
+        Retry(3)
+    ;
+
+    Else
+        PutLn(&quot;other exception&quot;)
+    ;
+finally
+    Cleanup
+;</code></pre>
+<p><code>Raise ExceptionType</code> raises a new exception. A bare <code>Raise</code> inside a handler rethrows the exception currently being handled. <code>Retry(N)</code> is valid only in an explicit <code>On</code>/<code>Else</code> handler and permits at most <code>N</code> additional executions of the associated <code>try</code> body. If the budget is exhausted, the current exception is rethrown. When a <code>finally</code> is present, it runs before each retry.</p>
+<p><code>finally</code> executes on normal and exceptional departure, including supported nonlocal control transfers such as <code>Return</code>, <code>Exit</code>, and loop control crossing the construct. A <code>try</code> must contain at least <code>except</code> or <code>finally</code>.</p>
+<p>The v3.17 implementation models the standard exception taxonomy as nominal exception types (for example <code>FileNotFound</code> is a subtype-category match of <code>IOError</code>) while the minimal <code>libinoxrt</code> remains a generic transport/unwind runtime using opaque type identifiers. User-defined exception declaration syntax and payload reflection remain deferred; the canonical language rules are defined in <code>INOX_CANONICAL.md</code>.</p>
 </section>
 <section id="output"><h2>Std.IO and variadic output</h2>
 <p><code>Put</code> and <code>PutLn</code> accept one or more arguments. Arguments are emitted sequentially; this is not string concatenation and does not allocate a combined intermediate string. <code>PutLn</code> appends exactly one newline after the final argument.</p>
@@ -309,8 +332,8 @@ PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
 <p>Some of these features are language direction rather than complete current compiler implementation.</p>
 </section>
 <section id="runtime-status"><h2>Runtime and implementation status</h2>
-<p>Inox does not yet provide a complete standalone language runtime. The <code>stdlib/Std.*.inox</code> files are early standard-library modules and documentation anchors, not a complete native runtime such as <code>libinoxrt.a</code>, <code>inoxrt.lib</code>, or <code>inox_runtime.dll</code>.</p>
-<p>The current compiler executable is a native C++ program. The current native build/run path emits textual LLVM IR and delegates final executable generation to external Clang.</p>
+<p>Inox does not yet provide a complete standalone language runtime. The <code>stdlib/Std.*.inox</code> files remain early standard-library modules and documentation anchors. Version 3.17 uses the minimal static <code>libinoxrt</code> bootstrap component for generic exception transport and unwinding; it is not yet a general-purpose language runtime or RTTI system.</p>
+<p>The current compiler executable is a native C++ program. The native build/run path emits textual LLVM IR and delegates final executable generation to external Clang. Modules that use exception handling are linked through <code>clang++</code> together with <code>libinoxrt</code>; ordinary modules retain the existing Clang path.</p>
 </section>
 <section id="design-stance"><h2>Design stance</h2>
 <p>Inox rejects unsafe defaults:</p>
@@ -336,7 +359,7 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1</code></pre>
 cmake --build build
 bash scripts/run-tests.sh</code></pre>
 <p>Expected test result:</p>
-<pre><code>Summary: 142 passed, 0 failed, 142 total</code></pre>
+<pre><code>Summary: 305 passed, 0 failed, 305 total</code></pre>
 </section>
 </article>
 </main>

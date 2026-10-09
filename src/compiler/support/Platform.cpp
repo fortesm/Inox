@@ -7,6 +7,8 @@
 
 #include "Platform.h"
 
+#include <cstddef>
+
 namespace inox::compiler::support {
 
 OperatingSystem hostOperatingSystem()
@@ -40,6 +42,17 @@ OperatingSystem hostOperatingSystem()
 #else
     return OperatingSystem::Unknown;
 #endif
+}
+
+NativeErrorWriter nativeErrorWriter()
+{
+    if (hostOperatingSystem() == OperatingSystem::Windows) {
+        // UCRT and MSVCRT: int _write(int fd, const void* buffer, unsigned int count)
+        return NativeErrorWriter{"_write", 32, 32};
+    }
+    // POSIX: ssize_t write(int fd, const void* buffer, size_t count)
+    constexpr unsigned sizeBits = static_cast<unsigned>(sizeof(std::size_t) * 8);
+    return NativeErrorWriter{"write", sizeBits, sizeBits};
 }
 
 std::string_view operatingSystemName(OperatingSystem os)

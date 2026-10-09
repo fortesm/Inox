@@ -7,14 +7,14 @@
 
 Module Std.Debug
 
-== Inox 0.1 debug/checking facade.
+== Inox 0.1 debug facade.
 ==
 == Canonical future API:
 ==
 ==   Assert(Condition Bool)
 ==   Assert(Condition Bool, Message String)
 ==
-== Assert(false) must trap/abort in debug/checking mode with a clear diagnostic.
+== Assert(false) must trap/abort with a clear diagnostic once Assert is implemented.
 == It is intentionally not implemented as a non-fatal PutLn wrapper. A fake
 == Assert that merely prints and returns would violate Inox's mission-critical
 == semantics.

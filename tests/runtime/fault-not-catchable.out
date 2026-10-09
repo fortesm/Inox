@@ -1,0 +1,3 @@
+before
+Inox runtime error: division by zero
+inox: program stopped by an Inox runtime error (exit code 70)

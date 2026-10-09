@@ -1,0 +1,35 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+Module Std.Errors
+
+== Standard exception types are part of the Inox prelude and are documented
+== here as the standard-library error surface. They are NOMINAL TYPES, not enum
+== values and not classical OO classes.
+==
+== Exception
+==   IOError
+==     FileNotFound
+==     PermissionDenied
+==     AlreadyExists
+==     DiskFull
+==   ArithmeticError
+==     DivisionByZero
+==     OverflowError
+==     DomainError
+==   RangeError
+==     IndexError
+==
+== A typed handler matches the named type and its exception subtypes. Example:
+== `On IOError` also handles FileNotFound, PermissionDenied, AlreadyExists and
+== DiskFull. The relationship is exception taxonomy only; it does not introduce
+== struct/class inheritance, virtual dispatch or general RTTI.
+==
+== The bootstrap compiler owns these prelude type identities and emits compact
+== RuntimeTypeId values. libinoxrt transports those opaque identities without
+== knowing the public type names/taxonomy. User-defined exception declaration
+== syntax and payload/reflection remain deferred until separately specified.

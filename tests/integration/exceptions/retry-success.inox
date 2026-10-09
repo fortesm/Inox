@@ -1,0 +1,23 @@
+Module Integration.ExceptionsRetrySuccess
+
+Main :
+    Attempts := 0
+
+    try
+        Attempts := Attempts + 1
+        PutLn("attempt ", Attempts)
+
+        if Attempts < 3
+            Raise FileNotFound
+        ;
+
+        PutLn("success")
+    except
+        On Error FileNotFound
+            PutLn("retry")
+            Retry(3)
+        ;
+    finally
+        PutLn("cleanup")
+    ;
+;

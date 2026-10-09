@@ -1,0 +1,11 @@
+Module Parser.LegacyOnColon
+
+Main :
+    try
+        Raise IOError
+    except
+        On E: IOError
+            PutLn("legacy binding syntax")
+        ;
+    ;
+;

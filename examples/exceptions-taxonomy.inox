@@ -1,0 +1,15 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright (c) 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+
+Module ExceptionsTaxonomy
+
+Main :
+    try
+        Raise FileNotFound
+    except
+        == FileNotFound belongs to the IOError exception family.
+        On IOError
+            PutLn("caught as IOError")
+        ;
+    ;
+;

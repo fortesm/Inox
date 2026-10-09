@@ -1,0 +1,15 @@
+outer 1
+inner 1
+inner-finally
+inner 2
+inner-finally
+inner-done
+outer-finally
+outer 2
+inner 1
+inner-finally
+inner 2
+inner-finally
+inner-done
+outer-finally
+outer-exhausted

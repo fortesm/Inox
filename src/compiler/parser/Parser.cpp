@@ -72,8 +72,45 @@ ast::ExpressionPtr Parser::parseExpression()
     return expression;
 }
 
+Parser::DepthGuard::DepthGuard(const Parser& owner, std::size_t& counter,
+                               std::size_t limit, const char* what)
+    : counter_(counter)
+{
+    if (++counter_ > limit) {
+        --counter_;
+        owner.errorAtCurrent("maximum " + std::string(what) + " nesting depth exceeded (implementation limit: " +
+                             std::to_string(limit) + " levels)");
+    }
+}
+
+Parser::DepthGuard::~DepthGuard()
+{
+    --counter_;
+}
+
+void Parser::checkExpressionDepth(const ast::Expression& expression) const
+{
+    if (expression.depth() > kMaxExpressionDepth) {
+        errorAtCurrent("maximum expression nesting depth exceeded (implementation limit: " +
+                       std::to_string(kMaxExpressionDepth) +
+                       " levels); split it into smaller expressions");
+    }
+}
+
+// CANON-4: newlines terminate statements. A simple statement must therefore be
+// followed by a line break, the end of the block, or the end of the input.
+ast::StatementPtr Parser::endSimpleStatement(ast::StatementPtr statement)
+{
+    if (!isAtEnd() && !check(TokenKind::Semicolon) &&
+        peek().location.line == previous().location.line) {
+        errorAtCurrent("expected line break after statement; newlines terminate statements in Inox");
+    }
+    return statement;
+}
+
 ast::StatementPtr Parser::parseStatement()
 {
+    DepthGuard guard(*this, statementNesting_, kMaxStatementNesting, "statement");
     if (match(TokenKind::Colon)) {
         auto body = parseBlockBody();
         consumeBlockClose();
@@ -85,7 +122,7 @@ ast::StatementPtr Parser::parseStatement()
         if (previous().normalized != "var") {
             errorAt(previous(), "expected 'var' after 'mut'");
         }
-        return parseVarStatement(true);
+        return endSimpleStatement(parseVarStatement(true));
     }
 
     if (matchKeyword("var")) {
@@ -98,7 +135,7 @@ ast::StatementPtr Parser::parseStatement()
             consumeBlockClose();
             return std::make_unique<ast::VarBlockStatement>(std::move(declarations));
         }
-        return parseVarStatement(false);
+        return endSimpleStatement(parseVarStatement(false));
     }
 
     if (matchKeyword("if")) {
@@ -117,7 +154,7 @@ ast::StatementPtr Parser::parseStatement()
         return parseRepeatStatement();
     }
     if (matchKeyword("until")) {
-        return parseUntilStatement();
+        return endSimpleStatement(parseUntilStatement());
     }
     if (matchKeyword("for")) {
         return parseForInStatement();
@@ -129,26 +166,29 @@ ast::StatementPtr Parser::parseStatement()
         return parseTryStatement();
     }
     if (matchKeyword("raise")) {
-        return parseRaiseStatement();
+        return endSimpleStatement(parseRaiseStatement());
+    }
+    if (matchKeyword("retry")) {
+        return endSimpleStatement(parseRetryStatement());
     }
     if (matchKeyword("return")) {
-        return parseReturnStatement();
+        return endSimpleStatement(parseReturnStatement());
     }
     if (matchKeyword("exit")) {
-        return std::make_unique<ast::ExitStatement>();
+        return endSimpleStatement(std::make_unique<ast::ExitStatement>());
     }
     if (matchKeyword("break")) {
-        return std::make_unique<ast::BreakStatement>();
+        return endSimpleStatement(std::make_unique<ast::BreakStatement>());
     }
     if (matchKeyword("continue")) {
-        return std::make_unique<ast::ContinueStatement>();
+        return endSimpleStatement(std::make_unique<ast::ContinueStatement>());
     }
 
     if (atTypedLocalStatementStart()) {
-        return parseTypedLocalStatement();
+        return endSimpleStatement(parseTypedLocalStatement());
     }
 
-    return parseExpressionStatement();
+    return endSimpleStatement(parseExpressionStatement());
 }
 
 std::vector<ast::StatementPtr> Parser::parseStatements()
@@ -178,12 +218,13 @@ std::vector<ast::StatementPtr> Parser::parseHeaderDelimitedBlock()
 
 ast::ExpressionPtr Parser::parseAssignment()
 {
+    DepthGuard guard(*this, expressionNesting_, kMaxExpressionNesting, "expression");
     auto left = parseOr();
 
     if (match(TokenKind::ColonEqual)) {
         const lexer::Token& op = previous();
         auto right = parseAssignment();
-        return std::make_unique<ast::BinaryExpression>(
+        return makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(left), std::move(right));
     }
 
@@ -285,7 +326,7 @@ ast::ExpressionPtr Parser::parseOr()
         requireNoLogicalMix(expression.get(), "or", op);
         auto right = parseXor();
         requireNoLogicalMix(right.get(), "or", op);
-        expression = std::make_unique<ast::BinaryExpression>(
+        expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
 
@@ -301,7 +342,7 @@ ast::ExpressionPtr Parser::parseXor()
         requireNoLogicalMix(expression.get(), "xor", op);
         auto right = parseAnd();
         requireNoLogicalMix(right.get(), "xor", op);
-        expression = std::make_unique<ast::BinaryExpression>(
+        expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
 
@@ -317,7 +358,7 @@ ast::ExpressionPtr Parser::parseAnd()
         requireNoLogicalMix(expression.get(), "and", op);
         auto right = parseRelational();
         requireNoLogicalMix(right.get(), "and", op);
-        expression = std::make_unique<ast::BinaryExpression>(
+        expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
 
@@ -333,7 +374,7 @@ ast::ExpressionPtr Parser::parseRelational()
            check(TokenKind::LessEqual) || check(TokenKind::GreaterEqual)) {
         const lexer::Token& op = advance();
         auto right = parseMembership();
-        expression = std::make_unique<ast::BinaryExpression>(
+        expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
 
@@ -347,7 +388,7 @@ ast::ExpressionPtr Parser::parseMembership()
     if (matchKeyword("in")) {
         const lexer::Token& op = previous();
         auto right = parseRange();
-        expression = std::make_unique<ast::BinaryExpression>(
+        expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
 
@@ -361,7 +402,7 @@ ast::ExpressionPtr Parser::parseRange()
     if (match(TokenKind::DotDot)) {
         const lexer::Token& op = previous();
         auto right = parseBitOr();
-        expression = std::make_unique<ast::BinaryExpression>(
+        expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
 
@@ -377,7 +418,7 @@ ast::ExpressionPtr Parser::parseBitOr()
         requireNoBitwiseMix(expression.get(), "bitor", op);
         auto right = parseBitXor();
         requireNoBitwiseMix(right.get(), "bitor", op);
-        expression = std::make_unique<ast::BinaryExpression>(
+        expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
 
@@ -393,7 +434,7 @@ ast::ExpressionPtr Parser::parseBitXor()
         requireNoBitwiseMix(expression.get(), "bitxor", op);
         auto right = parseBitAnd();
         requireNoBitwiseMix(right.get(), "bitxor", op);
-        expression = std::make_unique<ast::BinaryExpression>(
+        expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
 
@@ -409,7 +450,7 @@ ast::ExpressionPtr Parser::parseBitAnd()
         requireNoBitwiseMix(expression.get(), "bitand", op);
         auto right = parseShift();
         requireNoBitwiseMix(right.get(), "bitand", op);
-        expression = std::make_unique<ast::BinaryExpression>(
+        expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
 
@@ -423,7 +464,7 @@ ast::ExpressionPtr Parser::parseShift()
     while (checkKeyword("shl") || checkKeyword("shr")) {
         const lexer::Token& op = advance();
         auto right = parseAdditive();
-        expression = std::make_unique<ast::BinaryExpression>(
+        expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
 
@@ -437,7 +478,7 @@ ast::ExpressionPtr Parser::parseAdditive()
     while (check(TokenKind::Plus) || check(TokenKind::Minus)) {
         const lexer::Token& op = advance();
         auto right = parseMultiplicative();
-        expression = std::make_unique<ast::BinaryExpression>(
+        expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
 
@@ -452,7 +493,7 @@ ast::ExpressionPtr Parser::parseMultiplicative()
            checkKeyword("div") || checkKeyword("mod")) {
         const lexer::Token& op = advance();
         auto right = parseUnary();
-        expression = std::make_unique<ast::BinaryExpression>(
+        expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
 
@@ -461,11 +502,12 @@ ast::ExpressionPtr Parser::parseMultiplicative()
 
 ast::ExpressionPtr Parser::parseUnary()
 {
+    DepthGuard guard(*this, expressionNesting_, kMaxExpressionNesting, "expression");
     if (check(TokenKind::Plus) || check(TokenKind::Minus) ||
         checkKeyword("not") || checkKeyword("bitnot")) {
         const lexer::Token& op = advance();
         auto operand = parseUnary();
-        return std::make_unique<ast::UnaryExpression>(
+        return makeExpr<ast::UnaryExpression>(
             unaryOperatorFor(op), std::move(operand));
     }
 
@@ -474,12 +516,13 @@ ast::ExpressionPtr Parser::parseUnary()
 
 ast::ExpressionPtr Parser::parsePower()
 {
+    DepthGuard guard(*this, expressionNesting_, kMaxExpressionNesting, "expression");
     auto expression = parsePostfix();
 
     if (match(TokenKind::Caret)) {
         const lexer::Token& op = previous();
         auto right = parsePower();
-        expression = std::make_unique<ast::BinaryExpression>(
+        expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
     }
 
@@ -497,7 +540,7 @@ ast::ExpressionPtr Parser::parsePostfix()
             }
             auto arguments = parseArgumentList();
             consume(TokenKind::RightParen, "expected ')' after argument list");
-            expression = std::make_unique<ast::CallExpression>(
+            expression = makeExpr<ast::CallExpression>(
                 std::move(expression), std::move(arguments));
             continue;
         }
@@ -509,7 +552,7 @@ ast::ExpressionPtr Parser::parsePostfix()
             std::vector<ast::ExpressionPtr> arguments;
             arguments.push_back(std::move(expression));
             arguments.push_back(std::move(index));
-            expression = std::make_unique<ast::CallExpression>(
+            expression = makeExpr<ast::CallExpression>(
                 makeSyntheticIdentifier("__index"), std::move(arguments));
             continue;
         }
@@ -544,7 +587,7 @@ ast::ExpressionPtr Parser::parsePostfix()
             std::vector<ast::ExpressionPtr> arguments;
             arguments.push_back(std::move(expression));
             arguments.push_back(std::make_unique<ast::IdentifierExpression>(name.lexeme));
-            expression = std::make_unique<ast::CallExpression>(
+            expression = makeExpr<ast::CallExpression>(
                 makeSyntheticIdentifier("__member"), std::move(arguments));
             continue;
         }
@@ -605,7 +648,7 @@ ast::ExpressionPtr Parser::parsePrimary()
             std::make_unique<ast::IdentifierExpression>(withTargetStack_.back()));
         arguments.push_back(
             std::make_unique<ast::IdentifierExpression>(memberName.lexeme));
-        return std::make_unique<ast::CallExpression>(
+        return makeExpr<ast::CallExpression>(
             makeSyntheticIdentifier("__member"), std::move(arguments));
     }
 
@@ -621,7 +664,7 @@ ast::ExpressionPtr Parser::parseForIterable()
 
     const lexer::Token& op = previous();
     auto upper = parsePrimary();
-    return std::make_unique<ast::BinaryExpression>(
+    return makeExpr<ast::BinaryExpression>(
         binaryOperatorFor(op), std::move(lower), std::move(upper));
 }
 
@@ -899,24 +942,88 @@ ast::StatementPtr Parser::parseTryStatement()
     requireHeaderLineBreak();
     auto body = parseDelimitedBody({"except", "finally"});
 
+    bool hasExcept = false;
+    bool plainExcept = false;
     std::vector<ast::StatementPtr> exceptBody;
+    std::vector<ast::ExceptionHandler> handlers;
+    std::vector<ast::StatementPtr> elseBody;
+
     if (matchKeyword("except")) {
+        hasExcept = true;
         requireHeaderLineBreak();
-        exceptBody = parseDelimitedBody({"finally"});
+
+        if (checkKeyword("on")) {
+            while (matchKeyword("on")) {
+                handlers.push_back(parseExceptionHandler());
+            }
+
+            if (matchKeyword("else")) {
+                requireHeaderLineBreak();
+                elseBody = parseBlockBody();
+                consumeBlockClose();
+            }
+        } else {
+            plainExcept = true;
+            exceptBody = parseDelimitedBody({"finally"});
+        }
     }
 
+    bool hasFinally = false;
     std::vector<ast::StatementPtr> finallyBody;
     if (matchKeyword("finally")) {
+        hasFinally = true;
         requireHeaderLineBreak();
         finallyBody = parseDelimitedBody({});
+    }
+
+    if (!hasExcept && !hasFinally) {
+        errorAtCurrent("try requires 'except' or 'finally'");
     }
 
     consumeBlockClose();
 
     return std::make_unique<ast::TryStatement>(
         std::move(body),
+        hasExcept,
+        plainExcept,
         std::move(exceptBody),
+        std::move(handlers),
+        std::move(elseBody),
+        hasFinally,
         std::move(finallyBody));
+}
+
+ast::ExceptionHandler Parser::parseExceptionHandler()
+{
+    std::string bindingName;
+    std::string typeName;
+
+    const lexer::Token& first = consumeIdentifierLike(
+        "expected exception type or handler name after 'On'");
+
+    if (check(TokenKind::Colon)) {
+        errorAtCurrent("exception handlers no longer use ':'; write 'On Name ExceptionType'");
+    }
+
+    if (checkIdentifierLike() && peek().location.line == first.location.line) {
+        bindingName = first.lexeme;
+        typeName = consumeIdentifierLike("expected exception type after handler binding").lexeme;
+    } else {
+        typeName = first.lexeme;
+    }
+
+    if (checkKeyword("do")) {
+        errorAtCurrent("exception handlers do not use 'Do'; start the handler body on the next line");
+    }
+
+    requireHeaderLineBreak();
+    auto body = parseBlockBody();
+    consumeBlockClose();
+
+    return ast::ExceptionHandler{
+        std::move(bindingName),
+        std::move(typeName),
+        std::move(body)};
 }
 
 ast::StatementPtr Parser::parseRaiseStatement()
@@ -926,6 +1033,17 @@ ast::StatementPtr Parser::parseRaiseStatement()
         expression = parseAssignment();
     }
     return std::make_unique<ast::RaiseStatement>(std::move(expression));
+}
+
+ast::StatementPtr Parser::parseRetryStatement()
+{
+    consume(TokenKind::LeftParen, "expected '(' after 'Retry'");
+    if (check(TokenKind::RightParen)) {
+        errorAtCurrent("Retry requires a retry-count expression");
+    }
+    auto count = parseAssignment();
+    consume(TokenKind::RightParen, "expected ')' after Retry count");
+    return std::make_unique<ast::RetryStatement>(std::move(count));
 }
 
 ast::StatementPtr Parser::parseReturnStatement()
@@ -1119,6 +1237,7 @@ bool Parser::atStatementBoundary() const
            checkKeyword("elif") ||
            checkKeyword("else") ||
            checkKeyword("except") ||
+           checkKeyword("on") ||
            checkKeyword("finally") ||
            checkKeyword("until") ||
            checkKeyword("otherwise");
@@ -1139,9 +1258,14 @@ bool Parser::atTypeSectionBoundary() const
         return false;
     }
 
+    // A declaration header (`Name ... :`) lives on a single source line, so the
+    // look-ahead never leaves the current line. This keeps large Type sections
+    // linear instead of quadratic.
+    const std::size_t headerLine = tokens_[current_].location.line;
     for (std::size_t index = current_ + 1; index < tokens_.size(); ++index) {
         if (tokens_[index].kind == TokenKind::Semicolon ||
-            tokens_[index].kind == TokenKind::EndOfFile) {
+            tokens_[index].kind == TokenKind::EndOfFile ||
+            tokens_[index].location.line != headerLine) {
             return false;
         }
         if (tokens_[index].kind == TokenKind::Colon) {
@@ -1211,6 +1335,11 @@ void Parser::requireHeaderLineBreak()
 void Parser::consumeBlockClose()
 {
     if (match(TokenKind::Semicolon)) {
+        // `;` closes a block; whatever follows it must start on a new line.
+        if (!isAtEnd() && !check(TokenKind::Semicolon) &&
+            peek().location.line == previous().location.line) {
+            errorAtCurrent("expected line break after block close ';'");
+        }
         return;
     }
     errorAtCurrent("expected block close ';'");

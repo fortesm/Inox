@@ -1,0 +1,29 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright (c) 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== Retry(N) means N additional executions of this try body. The finally block
+== runs before every new attempt and also before propagation on exhaustion.
+
+Module ExceptionsRetry
+
+Main :
+    Attempts := 0
+
+    try
+        Attempts := Attempts + 1
+        PutLn("attempt ", Attempts)
+
+        if Attempts < 3
+            Raise FileNotFound
+        ;
+
+        PutLn("operation completed")
+    except
+        On Error FileNotFound
+            PutLn("file not ready")
+            Retry(3)
+        ;
+    finally
+        PutLn("cleanup")
+    ;
+;

@@ -1,0 +1,9 @@
+attempt 1
+retry
+cleanup
+attempt 2
+retry
+cleanup
+attempt 3
+success
+cleanup
