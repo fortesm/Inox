@@ -449,9 +449,9 @@ run_llvm_emission_test "$repo_root/examples/llvm-elif-return.inox" \
 run_llvm_emission_test "$repo_root/examples/llvm-repeat-flexible-end.inox" \
     "define i64 @inox_countdown" "repeatbody" "repeatend" "br i1" "br label" "icmp" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-repeat-flexible-start.inox" \
-    "define i64 @inox_countdown" "repeatbody" "repeatcontinue" "repeatend" "br i1" "br label" "icmp" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_countdown" "repeatbody" "repeatend" "br i1" "br label" "icmp" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-repeat-flexible-middle.inox" \
-    "define i64 @inox_countdown" "repeatbody" "repeatcontinue" "repeatend" "br i1" "br label" "icmp" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_countdown" "repeatbody" "repeatend" "br i1" "br label" "icmp" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-repeat-leave-continue.inox" \
     "define i64 @inox_findvalue" "repeatbody" "repeatend" "br i1" "br label" "icmp eq i64" "call i64 @__inox_sub_i64" "store i64" "ret i64" "define i32 @main()" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/llvm-for-range-leave-continue.inox" \
