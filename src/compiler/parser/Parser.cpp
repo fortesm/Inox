@@ -22,9 +22,48 @@ constexpr const char* kVarRemovedMessage =
     "the 'Var' block and 'var'/'mut var' declarations were removed (CANON-5); "
     "declare locals inline: 'Name := Value', 'Name Type := Value', or 'Name TStruct'";
 
+constexpr const char* kAssignmentInExpressionMessage =
+    "':=' is a statement, not an expression (CANON-5): an assignment cannot "
+    "appear inside an expression, a condition or an initializer";
+
 ast::ExpressionPtr makeSyntheticIdentifier(std::string name)
 {
     return std::make_unique<ast::IdentifierExpression>(std::move(name));
+}
+
+// A chained-assignment target is a variable or a field path (`P.X`, `.X` in a
+// `with` body). Index targets are excluded: re-reading `V[I]` after `I`
+// changed would read a different element.
+bool isChainTarget(const ast::Expression& expression)
+{
+    if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
+        return true;
+    }
+    if (expression.kind() != ast::AstNodeKind::CallExpression) {
+        return false;
+    }
+    const auto& call = static_cast<const ast::CallExpression&>(expression);
+    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression ||
+        static_cast<const ast::IdentifierExpression&>(call.callee()).name() != "__member" ||
+        call.arguments().size() != 2 ||
+        call.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
+        return false;
+    }
+    return isChainTarget(*call.arguments()[0]);
+}
+
+ast::ExpressionPtr cloneChainTarget(const ast::Expression& expression)
+{
+    if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
+        return makeSyntheticIdentifier(
+            static_cast<const ast::IdentifierExpression&>(expression).name());
+    }
+    const auto& call = static_cast<const ast::CallExpression&>(expression);
+    std::vector<ast::ExpressionPtr> arguments;
+    arguments.push_back(cloneChainTarget(*call.arguments()[0]));
+    arguments.push_back(cloneChainTarget(*call.arguments()[1]));
+    return std::make_unique<ast::CallExpression>(
+        makeSyntheticIdentifier("__member"), std::move(arguments));
 }
 
 } // namespace
@@ -69,7 +108,7 @@ std::unique_ptr<ast::ModuleNode> Parser::parseModule()
 
 ast::ExpressionPtr Parser::parseExpression()
 {
-    auto expression = parseAssignment();
+    auto expression = parseValue();
     if (!isAtEnd()) {
         errorAtCurrent("unexpected token after expression");
     }
@@ -183,11 +222,20 @@ ast::StatementPtr Parser::parseStatement()
     return endSimpleStatement(parseExpressionStatement());
 }
 
+void Parser::appendStatement(std::vector<ast::StatementPtr>& statements)
+{
+    statements.push_back(parseStatement());
+    for (auto& pending : pendingStatements_) {
+        statements.push_back(std::move(pending));
+    }
+    pendingStatements_.clear();
+}
+
 std::vector<ast::StatementPtr> Parser::parseStatements()
 {
     std::vector<ast::StatementPtr> statements;
     while (!isAtEnd()) {
-        statements.push_back(parseStatement());
+        appendStatement(statements);
     }
     return statements;
 }
@@ -208,19 +256,33 @@ std::vector<ast::StatementPtr> Parser::parseHeaderDelimitedBlock()
     return body;
 }
 
-ast::ExpressionPtr Parser::parseAssignment()
+// A value expression: everything except assignment. `:=` is a statement in
+// Inox (CANON-5, v3.27), so it may not appear inside an expression.
+ast::ExpressionPtr Parser::parseValue()
 {
     DepthGuard guard(*this, expressionNesting_, kMaxExpressionNesting, "expression");
-    auto left = parseOr();
-
-    if (match(TokenKind::ColonEqual)) {
-        const lexer::Token& op = previous();
-        auto right = parseAssignment();
-        return makeExpr<ast::BinaryExpression>(
-            binaryOperatorFor(op), std::move(left), std::move(right));
+    auto expression = parseOr();
+    if (check(TokenKind::ColonEqual)) {
+        errorAtCurrent(kAssignmentInExpressionMessage);
     }
+    return expression;
+}
 
-    return left;
+// A call argument: a value, or `Field := Value` for named struct construction
+// (CANON-9). The named form takes exactly one `:=`.
+ast::ExpressionPtr Parser::parseArgument()
+{
+    if (check(TokenKind::Identifier) && current_ + 1 < tokens_.size() &&
+        tokens_[current_ + 1].kind == TokenKind::ColonEqual) {
+        const lexer::Token& field = advance();
+        const lexer::Token& op = advance();
+        auto value = parseValue();
+        return makeExpr<ast::BinaryExpression>(
+            binaryOperatorFor(op),
+            std::make_unique<ast::IdentifierExpression>(field.lexeme),
+            std::move(value));
+    }
+    return parseValue();
 }
 
 void Parser::markParenthesized(const ast::Expression* node)
@@ -553,7 +615,7 @@ ast::ExpressionPtr Parser::parsePostfix()
         }
 
         if (match(TokenKind::LeftBracket)) {
-            auto index = parseAssignment();
+            auto index = parseValue();
             consume(TokenKind::RightBracket, "expected ']' after index expression");
 
             std::vector<ast::ExpressionPtr> arguments;
@@ -639,7 +701,7 @@ ast::ExpressionPtr Parser::parsePrimary()
     }
 
     if (match(TokenKind::LeftParen)) {
-        auto expression = parseAssignment();
+        auto expression = parseValue();
         consume(TokenKind::RightParen, "expected ')' after expression");
         markParenthesized(expression.get());
         return expression;
@@ -684,7 +746,7 @@ std::vector<ast::ExpressionPtr> Parser::parseArgumentList()
     }
 
     do {
-        arguments.push_back(parseAssignment());
+        arguments.push_back(parseArgument());
     } while (match(TokenKind::Comma));
 
     return arguments;
@@ -707,7 +769,7 @@ ast::StatementPtr Parser::parseTypedLocalStatement()
         // CANON-5 grouped declaration (v3.26): `A, B T := X` evaluates X exactly
         // once. The first name receives X; every later name is initialized from
         // the first, so side effects in X happen once.
-        ast::ExpressionPtr initializer = parseAssignment();
+        ast::ExpressionPtr initializer = parseValue();
         declarations.push_back(std::make_unique<ast::VarStatement>(
             false, names.front(), std::move(initializer), type.lexeme));
         for (std::size_t i = 1; i < names.size(); ++i) {
@@ -731,13 +793,13 @@ ast::StatementPtr Parser::parseTypedLocalStatement()
 
 ast::StatementPtr Parser::parseIfStatement()
 {
-    auto condition = parseAssignment();
+    auto condition = parseValue();
     requireHeaderLineBreak();
     auto thenBody = parseDelimitedBody({"elif", "else"});
 
     std::vector<ast::ElseIfClause> elseIfClauses;
     while (matchKeyword("elif")) {
-        auto elseIfCondition = parseAssignment();
+        auto elseIfCondition = parseValue();
         requireHeaderLineBreak();
         elseIfClauses.push_back(ast::ElseIfClause{
             std::move(elseIfCondition),
@@ -761,7 +823,7 @@ ast::StatementPtr Parser::parseIfStatement()
 
 ast::StatementPtr Parser::parseUnlessStatement()
 {
-    auto condition = parseAssignment();
+    auto condition = parseValue();
     auto body = parseHeaderDelimitedBlock();
     return std::make_unique<ast::UnlessStatement>(
         std::move(condition), std::move(body));
@@ -769,7 +831,7 @@ ast::StatementPtr Parser::parseUnlessStatement()
 
 ast::StatementPtr Parser::parseWithStatement()
 {
-    auto target = parseAssignment();
+    auto target = parseValue();
     requireHeaderLineBreak();
 
     const std::string bindingName = "__with_" + std::to_string(withCounter_++);
@@ -786,7 +848,7 @@ ast::StatementPtr Parser::parseWithStatement()
 
 ast::StatementPtr Parser::parseWhileStatement()
 {
-    auto condition = parseAssignment();
+    auto condition = parseValue();
     auto body = parseHeaderDelimitedBlock();
     return std::make_unique<ast::WhileStatement>(
         std::move(condition), std::move(body));
@@ -804,7 +866,7 @@ ast::StatementPtr Parser::parseUntilStatement()
     if (atStatementBoundary()) {
         errorAtCurrent("expected condition after 'until'");
     }
-    return std::make_unique<ast::UntilStatement>(parseAssignment());
+    return std::make_unique<ast::UntilStatement>(parseValue());
 }
 
 ast::StatementPtr Parser::parseForInStatement()
@@ -817,7 +879,7 @@ ast::StatementPtr Parser::parseForInStatement()
     auto iterable = parseForIterable();
     ast::ExpressionPtr step;
     if (match(TokenKind::LeftParen)) {
-        step = parseAssignment();
+        step = parseValue();
         consume(TokenKind::RightParen, "expected ')' after loop step");
     }
 
@@ -831,7 +893,7 @@ ast::StatementPtr Parser::parseForInStatement()
 
 ast::StatementPtr Parser::parseCaseStatement()
 {
-    auto expression = parseAssignment();
+    auto expression = parseValue();
     requireHeaderLineBreak();
 
     std::vector<ast::CaseArm> arms;
@@ -848,9 +910,9 @@ ast::StatementPtr Parser::parseCaseStatement()
         std::vector<ast::ExpressionPtr> choices;
         const std::size_t armLine = peek().location.line;
         const std::size_t armColumn = peek().location.column;
-        choices.push_back(parseAssignment());
+        choices.push_back(parseValue());
         while (match(TokenKind::Comma)) {
-            choices.push_back(parseAssignment());
+            choices.push_back(parseValue());
         }
 
         auto body = parseCaseArmBody(armLine, armColumn);
@@ -869,7 +931,7 @@ std::vector<ast::StatementPtr> Parser::parseCaseArmBody(std::size_t armLine, std
     std::vector<ast::StatementPtr> statements;
 
     if (!isAtEnd() && !check(TokenKind::Semicolon) && peek().location.line == armLine) {
-        statements.push_back(parseStatement());
+        appendStatement(statements);
         return statements;
     }
 
@@ -877,7 +939,7 @@ std::vector<ast::StatementPtr> Parser::parseCaseArmBody(std::size_t armLine, std
         if (!statements.empty() && peek().location.column <= armColumn) {
             break;
         }
-        statements.push_back(parseStatement());
+        appendStatement(statements);
     }
 
     return statements;
@@ -976,7 +1038,7 @@ ast::StatementPtr Parser::parseRaiseStatement()
 {
     ast::ExpressionPtr expression;
     if (!atStatementBoundary()) {
-        expression = parseAssignment();
+        expression = parseValue();
     }
     return std::make_unique<ast::RaiseStatement>(std::move(expression));
 }
@@ -987,7 +1049,7 @@ ast::StatementPtr Parser::parseRetryStatement()
     if (check(TokenKind::RightParen)) {
         errorAtCurrent("Retry requires a retry-count expression");
     }
-    auto count = parseAssignment();
+    auto count = parseValue();
     consume(TokenKind::RightParen, "expected ')' after Retry count");
     return std::make_unique<ast::RetryStatement>(std::move(count));
 }
@@ -997,12 +1059,61 @@ ast::StatementPtr Parser::parseReturnStatement()
     if (atStatementBoundary()) {
         errorAtCurrent("expected expression after 'return'");
     }
-    return std::make_unique<ast::ReturnStatement>(parseAssignment());
+    return std::make_unique<ast::ReturnStatement>(parseValue());
 }
 
+// An expression statement is a call or an assignment. Assignment may be
+// chained (CANON-5, v3.27): `A := B := C := X` evaluates X once and stores it
+// in C, then B, then A. The chain is desugared here into
+// `C := X`, `B := C`, `A := B`; the extra statements go to pendingStatements_.
 ast::StatementPtr Parser::parseExpressionStatement()
 {
-    return std::make_unique<ast::ExpressionStatement>(parseAssignment());
+    DepthGuard guard(*this, expressionNesting_, kMaxExpressionNesting, "expression");
+    std::vector<ast::ExpressionPtr> parts;
+    std::vector<lexer::Token> operators;
+    parts.push_back(parseOr());
+    while (match(TokenKind::ColonEqual)) {
+        operators.push_back(previous());
+        parts.push_back(parseOr());
+    }
+
+    if (parts.size() == 1) {
+        return std::make_unique<ast::ExpressionStatement>(std::move(parts.front()));
+    }
+    if (parts.size() == 2) {
+        return std::make_unique<ast::ExpressionStatement>(makeExpr<ast::BinaryExpression>(
+            binaryOperatorFor(operators.front()), std::move(parts[0]), std::move(parts[1])));
+    }
+
+    for (std::size_t i = 0; i + 1 < parts.size(); ++i) {
+        if (!isChainTarget(*parts[i])) {
+            throw ParseError(
+                "a chained assignment target must be a variable or a field "
+                "(CANON-5)",
+                operators[i].location);
+        }
+    }
+
+    // Copies of the targets are taken first: target i + 1 is the source of
+    // target i.
+    const std::size_t last = parts.size() - 1;
+    std::vector<ast::ExpressionPtr> sources(last);
+    sources[last - 1] = std::move(parts[last]);
+    for (std::size_t i = 0; i + 1 < last; ++i) {
+        sources[i] = cloneChainTarget(*parts[i + 1]);
+    }
+
+    std::vector<ast::StatementPtr> chain;
+    for (std::size_t i = last; i-- > 0;) {
+        chain.push_back(std::make_unique<ast::ExpressionStatement>(
+            makeExpr<ast::BinaryExpression>(
+                binaryOperatorFor(operators[i]), std::move(parts[i]), std::move(sources[i]))));
+    }
+    ast::StatementPtr first = std::move(chain.front());
+    for (std::size_t i = 1; i < chain.size(); ++i) {
+        pendingStatements_.push_back(std::move(chain[i]));
+    }
+    return first;
 }
 
 ast::AstNodePtr Parser::parseModuleItem()
@@ -1151,7 +1262,7 @@ std::vector<ast::StatementPtr> Parser::parseBlockBody()
 {
     std::vector<ast::StatementPtr> statements;
     while (!isAtEnd() && !check(TokenKind::Semicolon)) {
-        statements.push_back(parseStatement());
+        appendStatement(statements);
     }
     return statements;
 }
@@ -1161,7 +1272,7 @@ std::vector<ast::StatementPtr> Parser::parseDelimitedBody(std::initializer_list<
     std::vector<ast::StatementPtr> statements;
     while (!isAtEnd() && !check(TokenKind::Semicolon) &&
            !atAnyKeyword(stopKeywords)) {
-        statements.push_back(parseStatement());
+        appendStatement(statements);
     }
     return statements;
 }

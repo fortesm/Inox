@@ -1,0 +1,16 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-5 (v3.27): the initializer of a typed declaration is an expression;
+== a chain must be written as its own statement.
+Module Diagnostics.AssignmentInInitializer
+
+Main :
+    B := 1
+    A Integer := B := 3
+    PutLn(A)
+;

@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.26 (Layer A: grouped declarations `A, B T := X` are canonical; X
-#          is evaluated exactly once)
+# Version: v3.27 (Layer A: chained assignment `A := B := C := X`, ADR-0009;
+#          `:=` is a statement and never an expression)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,38 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.27 — 2026-10-09 — ADR-0009: chained assignment; `:=` is a statement (Layer
+#         A, decided by Marcelo Fortes on 2026-10-09: "Inox deve suportar
+#         A := B := C := D := E := 4").
+#   - CANON-5 gains "Assignment is a statement; chained assignment".
+#     `A := B := C := X` evaluates X once and stores it in C, then B, then A.
+#     Each target follows rule 1 (first appearance declares, FORM 1). Targets
+#     are variables or field paths (`P.X`, `.X` inside `with`). The operational
+#     semantics (one evaluation, right-to-left stores, statement level only)
+#     came from ChatGPT's review.
+#   - `:=` never appears inside an expression, a condition or an initializer:
+#     "':=' is a statement, not an expression (CANON-5)". CANON-20 level 16
+#     already said "statement level"; the note there now says that its right
+#     associativity exists only inside the assignment statement.
+#   - Layer B: the parser used to accept `:=` anywhere an expression was
+#     parsed, so `X := 2 + (A := 3)`, `if (A := 3) = 3` and `PutLn(A := 3)`
+#     passed semantic analysis, and a chain was a nested expression the
+#     backend did not lower. The chain is now desugared in the parser into one
+#     statement per target; the emitter is unchanged.
+#   - Layer B, CANON-9: an argument `Field := Value` was analyzed as an
+#     assignment, so `TPoint(X := 1)` declared a local variable X. Named
+#     arguments are now accepted only by struct construction, where the left
+#     side is checked as a field: unknown field, duplicate field, positional
+#     arguments, a type mismatch, and an omitted scalar field without default
+#     are compile errors, as CANON-9 already required. Any other call rejects a
+#     named argument.
+#   - Tests: runtime `chained-assignment`; semantic-valid `named-construction`;
+#     diagnostics `assignment-in-expression`, `assignment-in-condition`,
+#     `assignment-in-initializer`, `chained-assignment-call-target`,
+#     `named-argument-outside-construction`, `construction-unknown-field`,
+#     `construction-duplicate-field`, `construction-positional`,
+#     `construction-omitted-scalar`. Probe `chained-assignment` (OK).
 #
 # v3.26 — 2026-10-09 — grouped declarations (Layer A, decided by Marcelo Fortes
 #         on 2026-10-09: "Duas variáveis na mesma linha: A, B Integer := 2 é
@@ -1353,6 +1385,22 @@ mode.” That policy is superseded by DECISION P-A, approved 2026-10-09: runtime
 arithmetic faults are deterministic Inox traps in every conforming build. This
 note records the later approved decision without rewriting the locked ADR.
 
+## ADR-0009 — Chained assignment  (Status: Accepted, 2026-10-09)
+Decision (approved by Marcelo Fortes, 2026-10-09): `A := B := C := X` is valid
+Inox. X is evaluated exactly once; the value is stored in C, then B, then A.
+Each target is a variable or a field path, and each follows CANON-5 rule 1
+(the first appearance of a name declares it, with the inferred type). The chain
+is a STATEMENT form: `:=` is never an expression, so `X + (A := 3)`,
+`if (A := 3) = 3` and `A Integer := B := 3` are compile errors.
+Rationale: the chain is a common, readable way to give several variables one
+value, and keeping it at statement level avoids the C hazard of assignment
+inside conditions (`if (A = B)` typed for `if (A == B)`).
+Index targets (`V[I]`) are excluded: storing right to left means the next
+target reads the previous one back, and an index expression could change in
+between.
+Consequence: the parser desugars the chain into one assignment per target
+(`C := X`, `B := C`, `A := B`); no new AST node and no lowering change.
+
 ## ADR-0008 — Precedence of `..` and `in`  (Status: Accepted, 2026-10-09)
 Decision (approved by Marcelo Fortes, 2026-10-09): CANON-20 places range
 construction `..` at level 10 and membership `in` at level 11, between `bitor`
@@ -1611,6 +1659,26 @@ FORM 2 and FORM 3 may declare several names of the same type on one line:
 - Rules 2–8 apply to every name. `A, B Integer` (scalar, no `:=`) is a compile
   error, like `A Integer`.
 - Move-only types (`Vector[T]`, future) are left to the Vector ADR.
+
+### Assignment is a statement; chained assignment (v3.27, ADR-0009)
+`:=` forms a statement. It never appears inside an expression, a condition or
+an initializer ("':=' is a statement, not an expression"). The one exception
+in an argument list is named struct construction, `TPoint(FX := 10)`
+(CANON-9), where the left side names a field, not a variable.
+
+An assignment statement may be chained:
+
+    A := B := C := Next(10)   == Next runs ONCE; stored in C, then B, then A
+    P.X := P.Y := 0           == field targets are allowed
+    with P
+        .X := .Y := 2         == so are `.Field` targets inside `with`
+    ;
+
+- The value is evaluated exactly once and stored right to left.
+- Each target follows rule 1: a new name is declared (FORM 1, inferred type);
+  an existing one is assigned and must accept the value's type.
+- Targets are variables or field paths. A call or an index (`V[I]`) is not a
+  chain target.
 
 HARD RULES:
 1. First appearance of a name is a DECLARATION; later appearances are ASSIGNMENT.
@@ -2275,6 +2343,8 @@ Level  Operators                              Associativity
 15     or                                     left
 16     :=  (assignment, statement level)      right
 ```
+(Level 16: `:=` is not an expression operator. Its right associativity exists
+only inside the assignment statement, where `A := B := X` is a chain, ADR-0009.)
 (Levels 10 and 11 were added by ADR-0008, v3.24; the levels below them were
 renumbered without changing their relative order.)
 Notes:

@@ -64,9 +64,10 @@ analysis but not lowered yet.)
 | `try-in-for` | try/except inside a loop body | **OK** |  |
 | `grouped-decl-scalar` | grouped declaration A, B, C T := X (X evaluated once) | **OK** |  |
 | `grouped-decl-struct` | grouped struct declaration P, Q TPoint := Base | **GAP** | LLVM emission does not support struct initializers yet |
+| `chained-assignment` | chained assignment A := B := C := X | **OK** |  |
 | `state-global` | State section variable | **GAP** | unsupported expression in function: Main |
 
-Summary: GAP=6, OK=19
+Summary: GAP=6, OK=20
 
 ## Reading the table
 

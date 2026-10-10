@@ -261,6 +261,12 @@ Main :
     PutLn(P.X + Q.X)
 ;
 """),
+    ("chained-assignment", "chained assignment A := B := C := X", """Main :
+    A := B := C := 4
+    B := C := A + 1
+    PutLn(A + B + C)
+;
+"""),
     ("state-global", "State section variable", """State :
     Counter Integer := 0
 ;

@@ -1536,8 +1536,42 @@ std::string SemanticAnalyzer::inferExpressionType(const ast::Expression& express
     return {};
 }
 
+namespace {
+
+const ast::BinaryExpression* namedArgument(const ast::Expression& argument)
+{
+    if (argument.kind() != ast::AstNodeKind::BinaryExpression) {
+        return nullptr;
+    }
+    const auto& binary = static_cast<const ast::BinaryExpression&>(argument);
+    if (binary.op() != ast::BinaryOperator::Assign ||
+        binary.left().kind() != ast::AstNodeKind::IdentifierExpression) {
+        return nullptr;
+    }
+    return &binary;
+}
+
+} // namespace
+
 std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
 {
+    // `Name := Value` inside an argument list is named struct construction
+    // (CANON-9). It is not an assignment, and only a struct constructor takes it.
+    const bool calleeIsType =
+        call.callee().kind() == ast::AstNodeKind::IdentifierExpression &&
+        types_.resolve(static_cast<const ast::IdentifierExpression&>(call.callee()).name()) != nullptr;
+    if (!calleeIsType) {
+        for (const auto& argument : call.arguments()) {
+            if (const ast::BinaryExpression* named = namedArgument(*argument)) {
+                throw SemanticError(
+                    "named argument '" +
+                    static_cast<const ast::IdentifierExpression&>(named->left()).name() +
+                    " := ...' is only allowed in struct construction (CANON-9); "
+                    "':=' is a statement, not an expression");
+            }
+        }
+    }
+
     if (call.callee().kind() == ast::AstNodeKind::CallExpression &&
         isMemberCall(static_cast<const ast::CallExpression&>(call.callee()))) {
         return analyzeMethodCallExpression(call);
@@ -1553,8 +1587,63 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
             result_.bind(callee, symbol);
             result_.bind(call, symbol);
             result_.setExpressionType(callee, resolvedType(canonicalTypeName(type->name)));
+            const StructType* structType = resolveStruct(type->name);
+            if (structType == nullptr) {
+                // A conversion such as `Float32(0.0)` or `Currency(19.99)`.
+                for (const auto& argument : call.arguments()) {
+                    if (const ast::BinaryExpression* named = namedArgument(*argument)) {
+                        throw SemanticError(
+                            "named argument '" +
+                            static_cast<const ast::IdentifierExpression&>(named->left()).name() +
+                            " := ...' is only allowed in struct construction (CANON-9)");
+                    }
+                    analyzeExpression(*argument);
+                }
+                return canonicalTypeName(type->name);
+            }
+
+            // Named struct construction (CANON-9): every argument is
+            // `Field := Value`. The left side names a field, never a variable;
+            // nothing is declared or assigned.
+            std::vector<std::string> namedFields;
             for (const auto& argument : call.arguments()) {
-                analyzeExpression(*argument);
+                const ast::BinaryExpression* named = namedArgument(*argument);
+                if (named == nullptr) {
+                    throw SemanticError(
+                        "positional construction is not canonical (CANON-9): write " +
+                        type->name + "(Field := Value, ...)");
+                }
+                const std::string& fieldName =
+                    static_cast<const ast::IdentifierExpression&>(named->left()).name();
+                const StructField* field = resolveStructField(type->name, fieldName);
+                if (field == nullptr) {
+                    throw SemanticError("unknown field in construction: " +
+                                        type->name + "." + fieldName);
+                }
+                for (const std::string& seen : namedFields) {
+                    if (equalsIgnoreCase(seen, fieldName)) {
+                        throw SemanticError("duplicate field in construction: " +
+                                            type->name + "." + fieldName);
+                    }
+                }
+                namedFields.push_back(fieldName);
+                const std::string valueType = analyzeExpression(named->right());
+                if (!canAssign(field->typeName, valueType)) {
+                    throw SemanticError("field " + type->name + "." + fieldName +
+                                        " expects " + field->typeName);
+                }
+                result_.setExpressionType(*named, resolvedType(field->typeName));
+            }
+            for (const StructField& field : structType->fields) {
+                bool named = false;
+                for (const std::string& seen : namedFields) {
+                    named = named || equalsIgnoreCase(seen, field.name);
+                }
+                if (!named && !field.hasDefault && resolveStruct(field.typeName) == nullptr) {
+                    throw SemanticError(
+                        "construction omits scalar field without default (CANON-9): " +
+                        type->name + "." + field.name);
+                }
             }
             return canonicalTypeName(type->name);
         }

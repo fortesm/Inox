@@ -41,6 +41,7 @@ public:
     std::unique_ptr<ast::ModuleNode> parseModule();
     ast::ExpressionPtr parseExpression();
     ast::StatementPtr parseStatement();
+    void appendStatement(std::vector<ast::StatementPtr>& statements);
     std::vector<ast::StatementPtr> parseStatements();
     std::unique_ptr<ast::BlockStatement> parseBlockStatement();
     std::vector<ast::StatementPtr> parseHeaderDelimitedBlock();
@@ -48,7 +49,8 @@ public:
 private:
     using TokenKind = lexer::TokenKind;
 
-    ast::ExpressionPtr parseAssignment();
+    ast::ExpressionPtr parseValue();
+    ast::ExpressionPtr parseArgument();
     ast::ExpressionPtr parseOr();
     ast::ExpressionPtr parseXor();
     ast::ExpressionPtr parseAnd();
@@ -174,6 +176,9 @@ private:
     std::vector<lexer::Token> tokens_;
     std::size_t current_ = 0;
     std::unordered_set<const ast::Expression*> parenthesized_;
+    // Statements produced by desugaring one source statement into several
+    // (chained assignment). appendStatement() drains them in order.
+    std::vector<ast::StatementPtr> pendingStatements_;
     std::vector<std::string> withTargetStack_;
     std::size_t withCounter_ = 0;
 };

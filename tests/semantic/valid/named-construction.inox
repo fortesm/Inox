@@ -1,0 +1,24 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-9: named construction. Order is free, a field with a default may be
+== omitted, and the field names are not variables: `X := 5` afterwards declares a
+== new local X instead of assigning a field name.
+Module NamedConstruction
+
+Type
+    TPoint Struct
+        X Integer
+        Y Integer := 7
+    ;
+
+Main :
+    P := TPoint(Y := 2, X := 1)
+    Q := TPoint(X := 3)
+    X := 5
+    PutLn(P.X + Q.Y + X)
+;

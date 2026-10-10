@@ -213,6 +213,10 @@ Account.Print()</code></pre>
 P, Q TPoint                   == both get the struct defaults</code></pre>
 <p>An assignment updates an existing symbol:</p>
 <pre><code>X := 20</code></pre>
+<p>Assignment is a statement, not an expression. It can be chained: the value is computed once and stored from right to left.</p>
+<pre><code>A := B := C := Next(10)   == Next is called once
+P.X := P.Y := 0</code></pre>
+<p><code>:=</code> cannot appear inside an expression or a condition: <code>X := 2 + (A := 3)</code> and <code>if (A := 3) = 3</code> are errors. Inside an argument list, <code>Field := Value</code> is only valid in named struct construction, such as <code>TPoint(FX := 10, FY := 20)</code>.</p>
 <p>These are different operations. A declaration cannot hide an already visible symbol. Shadowing is forbidden.</p>
 <p>Invalid:</p>
 <pre><code>Main :
