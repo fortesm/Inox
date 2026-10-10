@@ -123,6 +123,12 @@ PROBES = [
     ;
 ;
 """),
+    ("float32-conversion", "Float32 local initialized by explicit conversion", """Main :
+    F Float32 := Float32(0.0)
+    G Float32 := F
+    PutLn(1)
+;
+"""),
     ("nested-if", "if inside if (straight-line code)", """Main :
     X Integer := 1
     if X = 1
