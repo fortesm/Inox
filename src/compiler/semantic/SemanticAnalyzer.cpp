@@ -1764,10 +1764,7 @@ bool caseDomainFor(std::string_view type, CaseDomain& domain)
     if (type == "UInt8") { domain = {0, 255}; return true; }
     if (type == "UInt16") { domain = {0, 65535}; return true; }
     if (type == "UInt32") { domain = {0, 4294967295LL}; return true; }
-    // Natural is UInt64 with floor 0 (CANON-8); like UInt64 its upper half does
-    // not fit in the Int64 constants the checker uses, so coverage is never
-    // provable and `otherwise` is required.
-    // CANON-8 (v3.39): Natural is 0..Int64.Max, so its coverage is provable.
+    // ADR-0014 (v3.39): Natural is 0..Int64.Max, so its coverage is provable.
     if (type == "Natural") { domain = {0, kMax}; return true; }
     if (type == "UInt64" || type == "UInteger") {
         domain = {0, kMax, false};
