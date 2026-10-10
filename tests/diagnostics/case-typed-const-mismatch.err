@@ -1,1 +1,1 @@
-case choice type UInt16 does not match selector type UInt8
+case choice type Int64 does not match selector type UInt8

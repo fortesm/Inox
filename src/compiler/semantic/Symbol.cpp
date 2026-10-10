@@ -29,6 +29,14 @@ const Symbol* Scope::declare(std::string name, SymbolKind kind, std::string type
     return inserted ? &iterator->second : nullptr;
 }
 
+void Scope::inferTypeName(std::string_view name, std::string typeName)
+{
+    auto iterator = symbols_.find(normalize(name));
+    if (iterator != symbols_.end() && iterator->second.typeName.empty()) {
+        iterator->second.typeName = std::move(typeName);
+    }
+}
+
 const Symbol* Scope::resolve(std::string_view name) const
 {
     const std::string normalized = normalize(name);

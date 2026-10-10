@@ -88,6 +88,7 @@ private:
     bool staticBoolValue(const ast::Expression& expression, bool& value) const;
     bool staticCharValue(const ast::Expression& expression, std::int64_t& value) const;
     const Symbol* resolveConstant(const ast::Expression& expression) const;
+    void recordConstantExpression(const std::string& name, const ast::Expression& value);
     void analyzeVarBlock(const ast::VarBlockStatement& statement);
     std::string analyzeExpression(const ast::Expression& expression);
     std::string inferExpressionType(const ast::Expression& expression);

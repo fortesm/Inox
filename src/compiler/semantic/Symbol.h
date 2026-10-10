@@ -48,6 +48,10 @@ public:
     Scope* parent() const;
     const Symbol* declare(std::string name, SymbolKind kind, std::string typeName = {}, bool isMutable = false);
     const Symbol* resolve(std::string_view name) const;
+    // Gives a symbol of this scope its inferred type once it is known (a
+    // module Const whose initializer is an expression). No effect when the
+    // symbol already has a type.
+    void inferTypeName(std::string_view name, std::string typeName);
     bool containsLocal(std::string_view name) const;
     bool containsInAncestors(std::string_view name) const;
 

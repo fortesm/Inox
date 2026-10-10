@@ -505,11 +505,21 @@ specification, ADRs, manual HTML, and tests.
 #     (UInt64 with floor 0) cannot be proven with Int64 constants and always
 #     need `otherwise`. A case accepted without `otherwise` is total, so the
 #     return-path analysis no longer requires an `otherwise` arm.
-#   - Static choices: literals, Consts (Integer, Bool and Char) and constant
-#     expressions (`not False`, `(1 > 2)`, `2 + 3 * 10`). A choice has the
-#     selector's type: a typed Const keeps its type (`Const K UInt16` is not a
-#     UInt8 choice); a literal-only expression is read in the selector's type
-#     and range-checked.
+#   - Static choices: literals, Consts (Integer, Bool and Char, including
+#     Consts whose value is a constant expression, `Const K := 2 + 3`) and
+#     constant expressions (`not False`, `(1 > 2)`, `2 + 3 * 10`). A choice has
+#     the selector's type: a Const keeps its inferred type (`Const K := 5` is
+#     Integer, not a UInt8 choice); a literal-only expression is read in the
+#     selector's type and range-checked.
+#   - Const values: the analyzer folds a Const whose initializer is a constant
+#     expression and records its value and inferred type; the backend lowers
+#     it (`Const K := 5 + 1` prints 6; runtime test `const-expression`).
+#     Sections are analyzed before routines, so a Const may follow the routine
+#     that uses it.
+#   - OPEN-5 recorded: the parser accepts a typed Const (`Const Mask Integer
+#     := $FF`, used by `tests/runtime/const-values.inox`), which CANON-5 does
+#     not define (`Const Name := Expr`). Layer B over-acceptance until the
+#     maintainer decides.
 #   - Layer B status: `Byte` is canonical (CANON-8: Byte -> UInt8) but not
 #     registered yet, so a `case` on Byte waits for the Byte implementation.
 #   - The selector and each choice end at their line: an arm that starts with
@@ -532,7 +542,9 @@ specification, ADRs, manual HTML, and tests.
 #     `case-choice-type-mismatch`, `call-paren-on-next-line`,
 #     `case-natural-needs-otherwise`, `case-typed-const-mismatch`,
 #     `case-literal-out-of-range`; semantic-valid `case-exhaustive-returns`,
-#     `case-static-expressions`. The review fixes (Natural, return paths,
+#     `case-static-expressions`, `case-const-expression-choice`; runtime
+#     `const-expression` (replaces the diagnostic
+#     `backend-gap-const-expression`). The review fixes (Natural, return paths,
 #     static Bool/Char expressions, typed Consts, Byte status) came from
 #     ChatGPT. Probe
 #     `case-ada-choices` (GAP until lowering).
@@ -1275,6 +1287,12 @@ OPEN-4 — OPEN (raised in v3.27 by ChatGPT's review of ADR-0009). CANON-5 rule 
   separates a new name from a typo. The compiler implements rule 1. The
   maintainer decides how rule 7 is reconciled; until then neither rule is
   edited.
+
+OPEN-5 — OPEN (raised in v3.29 by ChatGPT's review of ADR-0011). CANON-5 defines
+  `Const Name := Expr` (inferred type). The parser also accepts a typed form,
+  `Const Mask Integer := $FF`, used by one test. It is Layer B over-acceptance,
+  not canonical syntax, until the maintainer decides whether Inox has typed
+  Consts.
 
 (Reference for the decided items: C# requires the `m` suffix and forbids implicit
 float<->decimal conversion; Ada reads decimal literals by context and rejects
@@ -2357,7 +2375,7 @@ Single-line arms allowed: `Club PutLn("club")`.
   2026-10-09). For `Enum` this means every literal; for `Bool`, both values;
   for an Integer type, its whole range; UInt64 and Natural always need
   `otherwise`;
-- a choice has the selector's type: a typed Const keeps its type, while a
+- a choice has the selector's type: a Const keeps its inferred type, while a
   literal-only expression is read in the selector's type and must fit it;
 - `case` as an expression is reserved for a future version.
 

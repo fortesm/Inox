@@ -177,8 +177,17 @@ const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
         throw SemanticError("module must declare Main");
     }
 
+    // Sections first: Const values must be known before any routine uses one
+    // as a static value (ADR-0011), wherever the Const appears in the file.
     for (const auto& item : module.items()) {
-        analyzeModuleItem(*item);
+        if (item->kind() == ast::AstNodeKind::SectionDeclaration) {
+            analyzeModuleItem(*item);
+        }
+    }
+    for (const auto& item : module.items()) {
+        if (item->kind() != ast::AstNodeKind::SectionDeclaration) {
+            analyzeModuleItem(*item);
+        }
     }
 
     return result_;
@@ -415,6 +424,12 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
         for (const ast::SectionInitializer& initializer : section.initializers()) {
             const std::string valueType =
                 canonicalTypeName(analyzeExpression(*initializer.value));
+            if (initializer.typeName.empty() && !valueType.empty()) {
+                symbols_.currentScope().inferTypeName(initializer.name, valueType);
+            }
+            if (section.sectionKind() == ast::SectionKind::Const) {
+                recordConstantExpression(initializer.name, *initializer.value);
+            }
             if (!initializer.typeName.empty()) {
                 const std::string declared = canonicalTypeName(initializer.typeName);
                 if (!valueType.empty() && !canAssign(declared, valueType)) {
@@ -1722,6 +1737,34 @@ bool isLiteralOnly(const ast::Expression& expression)
 }
 
 } // namespace
+
+// A Const whose initializer is a constant expression (`Const K := 2 + 3`,
+// `Const Ready := not False`) gets its value here, after the initializer was
+// analyzed and folded. Single-token values were already recorded by the
+// section scanner; this covers the rest (ADR-0011 static choices; the
+// backend reads the same value).
+void SemanticAnalyzer::recordConstantExpression(const std::string& name,
+                                                const ast::Expression& value)
+{
+    const Symbol* symbol = symbols_.currentScope().resolve(name);
+    if (symbol == nullptr || symbol->kind != SymbolKind::Constant ||
+        result_.constantValueOf(*symbol) != nullptr ||
+        charConstants_.contains(normalizeName(name))) {
+        return;
+    }
+    ConstantValue constant;
+    std::int64_t integer = 0;
+    bool boolean = false;
+    if (constantIntegerValue(value, integer)) {
+        constant.kind = ConstantValue::Kind::Integer;
+        constant.integer = integer;
+        result_.setConstantValue(*symbol, constant);
+    } else if (staticBoolValue(value, boolean)) {
+        constant.kind = ConstantValue::Kind::Boolean;
+        constant.boolean = boolean;
+        result_.setConstantValue(*symbol, constant);
+    }
+}
 
 const Symbol* SemanticAnalyzer::resolveConstant(const ast::Expression& expression) const
 {

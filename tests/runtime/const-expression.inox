@@ -1,0 +1,24 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== A Const whose value is a constant expression is folded by semantic analysis
+== and lowered with that value. Before v3.27 the section scanner recorded only
+== the first token, so `K` silently became 5 instead of 6. A Const may be
+== declared after the routine that uses it.
+Module Runtime.ConstExpression
+
+Main :
+    PutLn(K)
+    PutLn(Double)
+    if Ready
+        PutLn("ready")
+    ;
+;
+
+Const K := 5 + 1
+Const Double := K * 2
+Const Ready := not False

@@ -5,17 +5,18 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== ADR-0011: a choice has the selector type. A Const keeps its inferred type
-== (`Const K := 5` is Integer); only a literal-only expression is read in the
-== selector type and range-checked.
-Module Diagnostics.CaseTypedConstMismatch
-
-Const K := 5
+== ADR-0011: a Const whose value is a constant expression is a static choice,
+== also when the Const is declared after the routine.
+Module CaseConstExpressionChoice
 
 Main :
-    V UInt8 := UInt8(5)
-    case V
+    X := 5
+    case X
         K PutLn(1)
+        Twice | Twice + 1 PutLn(2)
         otherwise
     ;
 ;
+
+Const K := 2 + 3
+Const Twice := K * 2
