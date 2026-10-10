@@ -1,0 +1,19 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-20 / ADR-0008: `in` (level 11) binds tighter than the relational
+== operators (level 12), so `X in 1..9 = Flag` means `(X in 1..9) = Flag`. The
+== test is shape-discriminating: the wrong grouping `X in 1..(9 = Flag)` would
+== compare the Integer 9 with a Bool and fail semantic analysis.
+Module PrecedenceInRelational
+
+Main :
+    X Integer := 4
+    Flag Bool := True
+    B Bool := X in 1..9 = Flag
+    PutLn(B)
+;
