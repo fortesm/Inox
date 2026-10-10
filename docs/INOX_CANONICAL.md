@@ -501,8 +501,17 @@ specification, ADRs, manual HTML, and tests.
 #     and is the last arm. No fall-through.
 #   - Coverage: without `otherwise` the choices must cover every value of the
 #     selector type, or the case is rejected with the first missing value. The
-#     rule generalizes the former enum-only exhaustiveness. UInt64 cannot be
-#     proven with Int64 constants and always needs `otherwise`.
+#     rule generalizes the former enum-only exhaustiveness. UInt64 and Natural
+#     (UInt64 with floor 0) cannot be proven with Int64 constants and always
+#     need `otherwise`. A case accepted without `otherwise` is total, so the
+#     return-path analysis no longer requires an `otherwise` arm.
+#   - Static choices: literals, Consts (Integer, Bool and Char) and constant
+#     expressions (`not False`, `(1 > 2)`, `2 + 3 * 10`). A choice has the
+#     selector's type: a typed Const keeps its type (`Const K UInt16` is not a
+#     UInt8 choice); a literal-only expression is read in the selector's type
+#     and range-checked.
+#   - Layer B status: `Byte` is canonical (CANON-8: Byte -> UInt8) but not
+#     registered yet, so a `case` on Byte waits for the Byte implementation.
 #   - The selector and each choice end at their line: an arm that starts with
 #     `-` or `(` is not read as `X - 1` or `X(1)`.
 #   - CANON-4 consistency (Layer B): a `(` or `[` that begins a new line no
@@ -520,7 +529,12 @@ specification, ADRs, manual HTML, and tests.
 #     `case-integer-incomplete`, `case-bool-incomplete`, `case-comma-separator`,
 #     `case-nonstatic-choice`, `case-string-selector`, `case-otherwise-not-last`,
 #     `case-two-otherwise`, `case-uint64-needs-otherwise`,
-#     `case-choice-type-mismatch`, `call-paren-on-next-line`. Probe
+#     `case-choice-type-mismatch`, `call-paren-on-next-line`,
+#     `case-natural-needs-otherwise`, `case-typed-const-mismatch`,
+#     `case-literal-out-of-range`; semantic-valid `case-exhaustive-returns`,
+#     `case-static-expressions`. The review fixes (Natural, return paths,
+#     static Bool/Char expressions, typed Consts, Byte status) came from
+#     ChatGPT. Probe
 #     `case-ada-choices` (GAP until lowering).
 #
 # v3.28 — 2026-10-09 — ADR-0010: `for I in A..B step S` (Layer A, decided by
@@ -1511,7 +1525,7 @@ Decision (approved by Marcelo Fortes, 2026-10-09):
 - `otherwise` appears at most once and is the last arm. It is REQUIRED unless
   the compiler proves that the choices cover every value of the selector type
   (Bool, Enum and finite ranges directly; Integer types by the union of their
-  choices). UInt64 is never provable with Int64 constants.
+  choices). UInt64 and Natural are never provable with Int64 constants.
 - Arms keep the Inox block rules: no `of`, `when`, `=>`, `:` or `do`; a
   single-line arm is allowed.
 Rationale: Ada and SPARK make a case total. A case on an error code that
@@ -2341,7 +2355,10 @@ Single-line arms allowed: `Club PutLn("club")`.
 - `otherwise` is at most one and is the last arm. It is REQUIRED unless the
   choices provably cover every value of the selector type (Marcelo Fortes,
   2026-10-09). For `Enum` this means every literal; for `Bool`, both values;
-  for an Integer type, its whole range; UInt64 always needs `otherwise`;
+  for an Integer type, its whole range; UInt64 and Natural always need
+  `otherwise`;
+- a choice has the selector's type: a typed Const keeps its type, while a
+  literal-only expression is read in the selector's type and must fit it;
 - `case` as an expression is reserved for a future version.
 
 ### unless
@@ -2866,7 +2883,8 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
 - `case`/`otherwise` (parsed and checked per ADR-0011, including coverage; LLVM
-  lowering pending; enum coverage pending with Enum).
+  lowering pending; enum coverage pending with Enum; Byte selectors pending
+  with Byte).
 - `unless` (parsed; not lowered).
 - Enum short/block forms (parsed; not lowered; strict-init not enforced).
 
@@ -3197,7 +3215,8 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
 - `case`/`otherwise` (parsed and checked per ADR-0011, including coverage; LLVM
-  lowering pending; enum coverage pending with Enum).
+  lowering pending; enum coverage pending with Enum; Byte selectors pending
+  with Byte).
 - `unless` (parsed; not lowered).
 - Enum short/block forms (parsed; not lowered; strict-init not enforced).
 
