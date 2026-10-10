@@ -291,12 +291,9 @@ to fix in the parser or the semantic analyzer, not a change to the language.
 3. Open language questions awaiting a maintainer decision: OPEN-4 (CANON-5
    rules 1 and 7 for FORM 1; the parser follows rule 1) and OPEN-5 (the parser
    accepts a typed `Const Name Type := Expr`, which CANON-5 does not define).
-4. Lexical: the digit separator `_` (`1_000_000`, `$FF_FF`, `3.141_592`) is
-   canonical (CANON-2, v3.3) but the lexer does not accept it.
-5. Lexical over-acceptance: the lexer and analyzer accept `0x` hexadecimal
-   literals, which the canon does not define (it writes hex as `$FF`), and the
-   backend emits invalid IR for them (`0xFF` reaches clang as a float
-   constant).
+
+Closed in v3.31: the digit separator `_` is lexed; `0x` literals are rejected
+(they were lowered to invalid IR).
 
 Closed since the first version of this file (v3.23–v3.29): `Var` and `mut var`
 rejected; scalar without initializer rejected; bare `:` block rejected; grouped

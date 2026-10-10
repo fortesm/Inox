@@ -35,6 +35,7 @@ private:
 
     Token identifierOrKeyword(SourceLocation start, std::size_t startOffset);
     Token number(SourceLocation start, std::size_t startOffset);
+    bool digitRun(bool hex);
     Token dollarHexNumber(SourceLocation start, std::size_t startOffset);
     Token stringLiteral(SourceLocation start, std::size_t startOffset);
     Token charLiteral(SourceLocation start, std::size_t startOffset);

@@ -688,12 +688,12 @@ ast::ExpressionPtr Parser::parsePrimary()
 {
     if (match(TokenKind::IntegerLiteral)) {
         return std::make_unique<ast::LiteralExpression>(
-            ast::LiteralKind::Integer, previous().lexeme);
+            ast::LiteralKind::Integer, tokenText(previous()));
     }
 
     if (match(TokenKind::FloatLiteral)) {
         return std::make_unique<ast::LiteralExpression>(
-            ast::LiteralKind::Float, previous().lexeme);
+            ast::LiteralKind::Float, tokenText(previous()));
     }
 
     if (match(TokenKind::StringLiteral)) {
@@ -1765,6 +1765,17 @@ ast::UnaryOperator Parser::unaryOperatorFor(const lexer::Token& token)
 
 std::string Parser::tokenText(const lexer::Token& token)
 {
+    // A numeric literal's value drops its digit separators (CANON-2): later
+    // phases see `1000000` for `1_000_000`.
+    if (token.kind == TokenKind::IntegerLiteral || token.kind == TokenKind::FloatLiteral) {
+        std::string digits;
+        for (const char ch : token.lexeme) {
+            if (ch != '_') {
+                digits += ch;
+            }
+        }
+        return digits;
+    }
     if (!token.lexeme.empty()) {
         return token.lexeme;
     }

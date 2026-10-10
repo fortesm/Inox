@@ -296,6 +296,13 @@ Main :
     ;
 ;
 """),
+    ("digit-separators", "numeric literals with the digit separator _", """Main :
+    X := 1_000 + $F_F
+    F := 2.5_0
+    PutLn(X)
+    PutLn(F > 2.0)
+;
+"""),
     ("state-global", "State section variable", """State :
     Counter Integer := 0
 ;
