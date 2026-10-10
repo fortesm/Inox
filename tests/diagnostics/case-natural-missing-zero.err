@@ -1,0 +1,1 @@
+case does not cover every value of Natural (first missing: 0); add 'otherwise' (ADR-0011)

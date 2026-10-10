@@ -5,13 +5,11 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== ADR-0011: Natural is UInt64 with floor 0 (CANON-8). Its upper half does not
-== fit in the Int64 constants the compiler checks, so `otherwise` is required.
-Module Diagnostics.CaseNaturalNeedsOtherwise
+== CANON-8: -N leaves the Natural subtype; the result is Integer.
+Module Diagnostics.NaturalNegationIsInteger
 
 Main :
-    N Natural := Natural(1)
-    case N
-        0..9223372036854775807 PutLn(1)
-    ;
+    N Natural := 4
+    M Natural := -N
+    PutLn(M)
 ;

@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.38 (Layer A: OPEN-5 closed; a Const has no written type)
+# Version: v3.39 (Layer A: ADR-0014 Natural is the non-negative subtype of Integer)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -486,6 +486,36 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.39 — 2026-10-10 — ADR-0014: Natural, Byte and the closed numeric set
+#         (Layer A, decided by Marcelo Fortes on 2026-10-10: "se vocês chegaram
+#         a um consenso semelhante ao Ada2005 sem negativo ... acato registre no
+#         canônico"; "sem double! Deixe float"; "Não existem variant nem
+#         olevariant em inox").
+#   - Natural is the non-negative subtype of Integer, 0..Int64.Max, with the
+#     Int64 (i64) representation; it is no longer described as UInt64 with
+#     floor 0. UInt64 stays a distinct type. The CANON-8 table row changes.
+#   - Natural -> Integer is implicit. Integer -> Natural is written
+#     `Natural(X)`, checked at run time (fault "value out of range for
+#     Natural", CANON-19); a constant >= 0 needs no conversion and a negative
+#     constant is a compile-time error. Arithmetic on Natural is done in the
+#     Integer family and yields Integer, as do `-N` and `bitnot N`.
+#   - Because the domain is 0..Int64.Max, a case on Natural is provable with
+#     Int64 constants: 0..9223372036854775807 is total (ADR-0011 coverage).
+#   - No `Double` (Float/Float64 is the 64-bit real) and no `Variant` or
+#     `OleVariant`: the numeric set is closed by CANON-8.
+#   - Layer B: `Byte` is registered as UInt8. Integer conversions check a
+#     constant argument against the target range (`Byte(300)`, `Int8(-129)`
+#     are compile errors). Fixed-width integers other than Int64 are not yet
+#     lowered by the LLVM backend (BACKEND_GAPS: fixed-width locals).
+#   - Tests: runtime `natural-values`, trap `natural-conversion-negative`;
+#     diagnostics `natural-negative-constant`,
+#     `natural-conversion-negative-constant`, `natural-from-integer`,
+#     `natural-arithmetic-is-integer`, `natural-negation-is-integer`,
+#     `case-natural-missing-zero`, `byte-conversion-out-of-range`,
+#     `int8-conversion-out-of-range`; semantic-valid `case-natural-total`,
+#     `byte-is-uint8`. Diagnostic `case-natural-needs-otherwise` is removed:
+#     its premise (Natural = UInt64) is superseded.
 #
 # v3.38 — 2026-10-10 — OPEN-5 closed (Layer A, decided by Marcelo Fortes on
 #         2026-10-10: "Acatado aceitar só Const Nome := Valor e usar
@@ -1678,6 +1708,34 @@ mode.” That policy is superseded by DECISION P-A, approved 2026-10-09: runtime
 arithmetic faults are deterministic Inox traps in every conforming build. This
 note records the later approved decision without rewriting the locked ADR.
 
+## ADR-0014 — Natural, Byte and the closed numeric set  (Status: Accepted, 2026-10-10)
+Decision (Marcelo Fortes, 2026-10-10, accepting the Claude/ChatGPT consensus
+"like Ada 2005, without negatives"):
+1. `Natural` is the non-negative subtype of `Integer`: range
+   0..Int64.Max, representation i64, the same as Integer. It is not UInt64;
+   `UInt64` remains a separate type.
+2. A Natural is usable wherever an Integer is (implicit Natural -> Integer).
+3. An Integer becomes a Natural only through `Natural(X)`, which checks
+   X >= 0. A negative value at run time is a deterministic runtime fault
+   (CANON-19, "value out of range for Natural"); a constant >= 0 needs no
+   conversion, and a negative constant is a compile-time error.
+4. Arithmetic involving Natural is done in the Integer family and yields
+   Integer; storing the result in a Natural needs `Natural(...)`. Negation and
+   `bitnot` of a Natural yield Integer.
+5. `Byte` is the friendly name of `UInt8` (0..255), the same type.
+6. Every integer conversion `T(X)` checks the range of T; a constant outside
+   it is a compile-time error.
+7. The numeric set is the CANON-8 table: no `Double` (use `Float`, which is
+   Float64) and no `Variant`/`OleVariant`.
+Rationale: Ada's `Natural` is a subtype, not a new unsigned type, so mixing it
+with Integer needs no casts in the safe direction and a negative value is
+caught where it enters. Keeping the Int64 representation makes the subtype
+free at run time and keeps case coverage provable with Int64 constants.
+Consequence: `N += 1` on a Natural is `N := N + 1`, an Integer result, so it
+is written `N := Natural(N + 1)`. The ADR-0011 sentence "UInt64 and Natural
+are never provable" is superseded for Natural (UInt64 is unchanged); the
+locked ADR-0011 text is not edited.
+
 ## ADR-0013 — Conditional expression  (Status: Accepted, 2026-10-10)
 Decision (Marcelo Fortes, design chat with ChatGPT):
 
@@ -2142,7 +2200,8 @@ per width (no Delphi Cardinal/LongWord duplication).
     Bool        -> i1      True/False. (`Boolean` is NOT canonical.)
   INTEGER — friendly aliases
     Integer     -> Int64   (i64)  default integer; target of integer inference
-    Natural     -> UInt64  (i64)  floor 0; negatives are a RANGE ERROR (Ada semantics)
+    Natural     -> Integer subtype (i64)  0..Int64.Max; negatives are a RANGE ERROR
+                 (Ada semantics; ADR-0014: not UInt64, `Natural(X)` checks)
     Byte        -> UInt8   (i8)   0..255
   INTEGER — explicit fixed widths
     Int8(i8) Int16(i16) Int32(i32) Int64(i64)
@@ -2151,6 +2210,8 @@ per width (no Delphi Cardinal/LongWord duplication).
     Float       -> Float64 (double)  default real; target of real inference
     Float32 (float)   Float64 (double)
     [80-bit Extended EXCLUDED — x86-only, non-portable.]
+    [`Double` EXCLUDED — `Float` is Float64 (ADR-0014).]
+  NOT IN INOX: `Variant`, `OleVariant` (ADR-0014). No dynamically typed value.
   EXACT DECIMAL (fixed-point, exact, NO binary rounding) — TO BE IMPLEMENTED in 0.1
     Currency    i64  scaled 10^6   6 decimals   global money
     Crypto      i128 scaled 10^18  18 decimals  crypto assets
@@ -2606,8 +2667,8 @@ Single-line arms allowed: `Club PutLn("club")`.
 - `otherwise` is at most one and is the last arm. It is REQUIRED unless the
   choices provably cover every value of the selector type (Marcelo Fortes,
   2026-10-09). For `Enum` this means every literal; for `Bool`, both values;
-  for an Integer type, its whole range; UInt64 and Natural always need
-  `otherwise`;
+  for an Integer type, its whole range; UInt64 always needs `otherwise`;
+  Natural's range is 0..Int64.Max (ADR-0014), so it is provable;
 - a choice has the selector's type: a Const keeps its inferred type, while a
   literal-only expression is read in the selector's type and must fit it;
 - `case` as an expression is reserved for a future version.
@@ -3029,6 +3090,7 @@ Diagnostic text (the category names are part of the contract and are checked by
     Inox runtime error: for-loop step must be positive
     Inox runtime error: negative exponent
     Inox runtime error: invalid integer input        (Get/GetLn, see CANON-17)
+    Inox runtime error: value out of range for Natural   (Natural(X), ADR-0014)
 
 Lowering note (Layer B, not language law): every check calls one internal IR
 function, `__inox_arith_fault(i32 kind)`, `noreturn nounwind cold`. It calls
@@ -3131,7 +3193,7 @@ Codegen (textual LLVM IR): integer/bool/Float64 scalars, locals
 Driver: --parse-only, --dump-tokens, --dump-types, --emit-llvm, --build, --run.
 Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   Currency, Crypto, Char, String + aliases Integer->Int64, UInteger->UInt64,
-  Float->Float64 + 12 standard nominal exception types.
+  Byte->UInt8, Float->Float64 + 12 standard nominal exception types.
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
 - `case`/`otherwise` (parsed and checked per ADR-0011, including coverage; LLVM
@@ -3170,8 +3232,11 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
    for locals and `State` declarations: "scalar declaration requires
    initializer: Name"; structs may omit `:=`.
 4. Enum strict init (CANON-5 rule 5) — not enforced.
-5. `Byte`->UInt8 alias not yet registered (CANON-8).
-6. Natural range semantics (floor 0, negative=error) — name registered, check missing.
+5. `Byte`->UInt8 alias: CLOSED (v3.39, ADR-0014).
+6. Natural range semantics: CLOSED (v3.39, ADR-0014) — 0..Int64.Max, i64,
+   `Natural(X)` checked at run time (fault kind 7). Fixed-width integers other
+   than Int64 (Byte/UInt8, Int32, ...) are checked by the semantic analyzer but
+   not yet lowered by the LLVM backend.
 7. Currency arithmetic (i64 x10^6) — name registered, behavior missing.
 8. Crypto arithmetic (i128 x10^18) — name registered, behavior missing, needs tests.
 9. BigCurrency — not present; needs big-integer runtime (0.2+).
@@ -3463,7 +3528,7 @@ Codegen (textual LLVM IR): integer/bool scalars, locals (alloca/store/load),
 Driver: --parse-only, --dump-tokens, --dump-types, --emit-llvm, --build, --run.
 Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   Currency, Crypto, Char, String + aliases Integer->Int64, UInteger->UInt64,
-  Float->Float64 + 12 standard nominal exception types.
+  Byte->UInt8, Float->Float64 + 12 standard nominal exception types.
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
 - `case`/`otherwise` (parsed and checked per ADR-0011, including coverage; LLVM
@@ -3502,8 +3567,11 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
    for locals and `State` declarations: "scalar declaration requires
    initializer: Name"; structs may omit `:=`.
 4. Enum strict init (CANON-5 rule 5) — not enforced.
-5. `Byte`->UInt8 alias not yet registered (CANON-8).
-6. Natural range semantics (floor 0, negative=error) — name registered, check missing.
+5. `Byte`->UInt8 alias: CLOSED (v3.39, ADR-0014).
+6. Natural range semantics: CLOSED (v3.39, ADR-0014) — 0..Int64.Max, i64,
+   `Natural(X)` checked at run time (fault kind 7). Fixed-width integers other
+   than Int64 (Byte/UInt8, Int32, ...) are checked by the semantic analyzer but
+   not yet lowered by the LLVM backend.
 7. Currency arithmetic (i64 x10^6) — name registered, behavior missing.
 8. Crypto arithmetic (i128 x10^18) — name registered, behavior missing, needs tests.
 9. BigCurrency — not present; needs big-integer runtime (0.2+).

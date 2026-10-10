@@ -67,14 +67,16 @@ analysis but not lowered yet.)
 | `chained-assignment` | chained assignment A := B := C := X | **OK** |  |
 | `named-struct-construction` | named struct construction TPoint(X := 1, Y := 2) | **GAP** | unsupported expression in function: Main |
 | `for-step-expression-bounds` | for I in 1..N + 1 step N div 2 | **OK** |  |
-| `case-ada-choices` | case with \| alternatives and a static range | **GAP** | LLVM emission does not lower case statements yet |
+| `case-ada-choices` | case with | alternatives and a static range | **GAP** | LLVM emission does not lower case statements yet |
 | `digit-separators` | numeric literals with the digit separator _ | **OK** |  |
 | `compound-assignment` | compound assignment += -= *= /= ^= | **OK** |  |
 | `hex-0x` | hexadecimal literal written 0xFF | **OK** |  |
 | `conditional-expression` | conditional expression if C then A else B | **OK** |  |
 | `state-global` | State section variable | **GAP** | unsupported expression in function: Main |
+| `natural-conversion` | Natural local and checked Natural(X) (ADR-0014) | **OK** |  |
+| `byte-local` | Byte (UInt8) local initialized by conversion | **GAP** | unsupported local variable type for LLVM emission |
 
-Summary: GAP=8, OK=25
+Summary: GAP=9, OK=26
 
 ## Reading the table
 
@@ -95,6 +97,11 @@ Summary: GAP=8, OK=25
   emitter does not yet receive their storage. `const-use` was in the same
   situation and was closed by P-C stage 1 (below).
 * `case` and `unless` are also listed in CANON B-PARSED.
+* `byte-local` (v3.39): `Byte` is registered as UInt8 and its conversions are
+  range-checked, but no integer type other than Integer/Int64/Natural is
+  lowered yet (Int8..Int32, UInt8..UInt64). `natural-conversion` is OK:
+  Natural shares the i64 representation and `Natural(X)` lowers to a range
+  check (runtime fault kind 7).
 * `grouped-decl-struct` (v3.26): the grouped form itself lowers; the GAP is the
   older one, a struct local initialized from another struct value
   (`P TPoint := Base`). It closes with struct initializers.

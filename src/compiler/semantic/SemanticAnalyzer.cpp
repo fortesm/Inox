@@ -308,6 +308,42 @@ void SemanticAnalyzer::declareBuiltins()
     }
 }
 
+namespace {
+
+// The range of an integer type, clipped to the Int64 constants the compiler
+// folds. UInt64 and Natural share the upper bound Int64.Max for constants.
+bool integerTypeRange(std::string_view type, std::int64_t& low, std::int64_t& high)
+{
+    struct Range {
+        std::string_view name;
+        std::int64_t low;
+        std::int64_t high;
+    };
+    constexpr std::int64_t max64 = std::numeric_limits<std::int64_t>::max();
+    constexpr std::int64_t min64 = std::numeric_limits<std::int64_t>::min();
+    constexpr Range ranges[] = {
+        {"Int8", -128, 127},
+        {"Int16", -32768, 32767},
+        {"Int32", -2147483648LL, 2147483647LL},
+        {"Int64", min64, max64},
+        {"UInt8", 0, 255},
+        {"UInt16", 0, 65535},
+        {"UInt32", 0, 4294967295LL},
+        {"UInt64", 0, max64},
+        {"Natural", 0, max64},
+    };
+    for (const Range& range : ranges) {
+        if (type == range.name) {
+            low = range.low;
+            high = range.high;
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace
+
 void SemanticAnalyzer::declareBuiltinTypes()
 {
     constexpr std::array<std::string_view, 16> builtinTypes = {
@@ -325,6 +361,8 @@ void SemanticAnalyzer::declareBuiltinTypes()
 
     declareTypeOrThrow("Integer", true, "Int64");
     declareTypeOrThrow("UInteger", true, "UInt64");
+    // CANON-8: Byte is the friendly name of UInt8.
+    declareTypeOrThrow("Byte", true, "UInt8");
     declareTypeOrThrow("Float", true, "Float64");
 
     // Exception identifiers are genuine nominal TYPES, not enum constants or
@@ -467,7 +505,7 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
             }
             if (!initializer.typeName.empty()) {
                 const std::string declared = canonicalTypeName(initializer.typeName);
-                if (!valueType.empty() && !canAssign(declared, valueType)) {
+                if (!valueType.empty() && !canAssignValue(declared, valueType, *initializer.value)) {
                     throw SemanticError("initializer of " + initializer.name + " has type " +
                                         valueType + ", expected " + declared);
                 }
@@ -975,7 +1013,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             const std::string initializerType = analyzeExpression(*var.initializer());
             if (typeName.empty()) {
                 typeName = initializerType;
-            } else if (!canAssign(typeName, initializerType)) {
+            } else if (!canAssignValue(typeName, initializerType, *var.initializer())) {
                 throw SemanticError("cannot initialize " + typeName + " with " + initializerType);
             }
         }
@@ -1198,12 +1236,13 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
     }
     case ast::AstNodeKind::ReturnStatement: {
         currentFunctionSawReturn_ = true;
-        const std::string typeName =
-            analyzeExpression(static_cast<const ast::ReturnStatement&>(statement).expression());
+        const ast::Expression& returned =
+            static_cast<const ast::ReturnStatement&>(statement).expression();
+        const std::string typeName = analyzeExpression(returned);
         if (currentFunctionReturnType_.empty()) {
             throw SemanticError("subroutine without return type cannot return a value");
         }
-        if (!canAssign(currentFunctionReturnType_, typeName)) {
+        if (!canAssignValue(currentFunctionReturnType_, typeName, returned)) {
             throw SemanticError(
                 "cannot return " + typeName + " from function returning " +
                 currentFunctionReturnType_);
@@ -1728,7 +1767,9 @@ bool caseDomainFor(std::string_view type, CaseDomain& domain)
     // Natural is UInt64 with floor 0 (CANON-8); like UInt64 its upper half does
     // not fit in the Int64 constants the checker uses, so coverage is never
     // provable and `otherwise` is required.
-    if (type == "Natural" || type == "UInt64" || type == "UInteger") {
+    // CANON-8 (v3.39): Natural is 0..Int64.Max, so its coverage is provable.
+    if (type == "Natural") { domain = {0, kMax}; return true; }
+    if (type == "UInt64" || type == "UInteger") {
         domain = {0, kMax, false};
         return true;
     }
@@ -2147,6 +2188,20 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
                     }
                     analyzeExpression(*argument);
                 }
+                // CANON-8 (v3.39): an integer conversion checks the range of
+                // its target. A constant argument outside it, such as
+                // Natural(-1) or Byte(300), is a compile-time error.
+                if (call.arguments().size() == 1) {
+                    std::int64_t constant = 0;
+                    std::int64_t low = 0;
+                    std::int64_t high = 0;
+                    if (integerTypeRange(canonicalTypeName(type->name), low, high) &&
+                        constantIntegerValue(*call.arguments()[0], constant) &&
+                        (constant < low || constant > high)) {
+                        throw SemanticError("value out of range for " + callee.name() + ": " +
+                                            std::to_string(constant));
+                    }
+                }
                 return canonicalTypeName(type->name);
             }
 
@@ -2176,7 +2231,7 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
                 }
                 namedFields.push_back(fieldName);
                 const std::string valueType = analyzeExpression(named->right());
-                if (!canAssign(field->typeName, valueType)) {
+                if (!canAssignValue(field->typeName, valueType, named->right())) {
                     throw SemanticError("field " + type->name + "." + fieldName +
                                         " expects " + field->typeName);
                 }
@@ -2313,7 +2368,7 @@ std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpress
     for (std::size_t index = 0; index < call.arguments().size(); ++index) {
         const std::string argumentType = analyzeExpression(*call.arguments()[index]);
         const FunctionParameter& parameter = signature->parameters[index + 1];
-        if (!canAssign(parameter.typeName, argumentType)) {
+        if (!canAssignValue(parameter.typeName, argumentType, *call.arguments()[index])) {
             throw SemanticError(
                 "argument " + std::to_string(index + 1) + " of " + signature->name +
                 " expects " + parameter.typeName + ", got " + argumentType);
@@ -2337,7 +2392,7 @@ std::string SemanticAnalyzer::analyzeUserFunctionCall(
     for (std::size_t index = 0; index < arguments.size(); ++index) {
         const std::string argumentType = analyzeExpression(*arguments[index]);
         const FunctionParameter& parameter = signature.parameters[index];
-        if (!canAssign(parameter.typeName, argumentType)) {
+        if (!canAssignValue(parameter.typeName, argumentType, *arguments[index])) {
             throw SemanticError(
                 "argument " + std::to_string(index + 1) + " of " + signature.name +
                 " expects " + parameter.typeName + ", got " + argumentType);
@@ -2517,14 +2572,19 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
         }
 
         const std::string rightType = analyzeExpression(expression.right());
-        if (!canAssign(targetType, rightType)) {
+        if (!canAssignValue(targetType, rightType, expression.right())) {
             throw SemanticError("cannot assign " + rightType + " to " + targetType);
         }
         return targetType;
     }
 
-    const std::string leftType = analyzeExpression(expression.left());
-    const std::string rightType = analyzeExpression(expression.right());
+    // CANON-8 (v3.39): Natural is a subtype of Integer; arithmetic and
+    // comparisons on it belong to the Integer family (`A - B` may be negative).
+    const auto integerFamily = [](std::string type) {
+        return type == "Natural" ? std::string("Int64") : type;
+    };
+    const std::string leftType = integerFamily(analyzeExpression(expression.left()));
+    const std::string rightType = integerFamily(analyzeExpression(expression.right()));
 
     const auto requireMatchingTypes = [&] {
         if (!typesMatch(leftType, rightType)) {
@@ -2629,6 +2689,10 @@ std::string SemanticAnalyzer::analyzeUnaryExpression(const ast::UnaryExpression&
         if (!operandType.empty() && !isNumericType(operandType)) {
             throw SemanticError("unary arithmetic operator requires a numeric operand");
         }
+        // CANON-8: negating a Natural leaves the subtype; the result is Integer.
+        if (expression.op() == ast::UnaryOperator::Minus && operandType == "Natural") {
+            return "Int64";
+        }
         return operandType;
     case ast::UnaryOperator::Not:
         if (!operandType.empty() && operandType != "Bool") {
@@ -2638,6 +2702,9 @@ std::string SemanticAnalyzer::analyzeUnaryExpression(const ast::UnaryExpression&
     case ast::UnaryOperator::BitNot:
         if (!operandType.empty() && !isIntegerType(operandType)) {
             throw SemanticError("operator 'bitnot' requires an integer operand");
+        }
+        if (operandType == "Natural") {
+            return "Int64";
         }
         return operandType;
     }
@@ -2753,7 +2820,36 @@ std::string SemanticAnalyzer::normalizeName(std::string_view name)
 
 bool SemanticAnalyzer::canAssign(std::string_view targetType, std::string_view valueType)
 {
+    // CANON-8 (v3.39): Natural is the non-negative subtype of Integer; a
+    // Natural value is always a valid Integer.
+    if (targetType == "Int64" && valueType == "Natural") {
+        return true;
+    }
     return targetType.empty() || (!valueType.empty() && targetType == valueType);
+}
+
+// CANON-8 (v3.39): an Integer value enters Natural through `Natural(X)`, unless
+// it is a constant expression whose value is >= 0 (statically in range). A
+// negative constant is a compile-time range error.
+bool SemanticAnalyzer::canAssignValue(std::string_view targetType, std::string_view valueType,
+                                      const ast::Expression& value) const
+{
+    if (canAssign(targetType, valueType)) {
+        return true;
+    }
+    if (targetType == "Natural" && valueType == "Int64") {
+        std::int64_t constant = 0;
+        if (constantIntegerValue(value, constant)) {
+            if (constant < 0) {
+                throw SemanticError("value out of range for Natural: " + std::to_string(constant));
+            }
+            return true;
+        }
+        throw SemanticError(
+            "an Integer becomes a Natural only through Natural(X), which checks the range "
+            "(CANON-8)");
+    }
+    return false;
 }
 
 bool SemanticAnalyzer::typesMatch(std::string_view left, std::string_view right)

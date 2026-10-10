@@ -262,7 +262,10 @@ P.X := P.Y := 0</code></pre>
 <p>Current and planned canonical scalar types include <code>Integer</code>, <code>Float</code>, <code>Bool</code>, <code>String</code>, <code>Char</code>, <code>Natural</code>, <code>Currency</code>, and future domain-oriented numeric types.</p>
 <ul>
 <li><code>Integer</code> is intended as Int64.</li>
-<li><code>Float</code> is intended as Float64.</li>
+<li><code>Float</code> is intended as Float64. There is no <code>Double</code>.</li>
+<li><code>Natural</code> is the non-negative subtype of <code>Integer</code>: 0..Int64.Max, same representation. A Natural can be used wherever an Integer is. An Integer becomes a Natural only through <code>Natural(X)</code>, which stops the program with a runtime error if X is negative; a constant such as <code>N Natural := 5</code> needs no conversion, and <code>N Natural := -1</code> is a compile error. Arithmetic on a Natural gives an Integer, so <code>N := Natural(N + 1)</code>.</li>
+<li><code>Byte</code> is the same type as <code>UInt8</code> (0..255). A conversion checks the range: <code>Byte(300)</code> is a compile error.</li>
+<li>There is no <code>Variant</code> or <code>OleVariant</code>: every value has one static type.</li>
 <li><code>String</code> is a non-null UTF-8 value type direction; the empty string is the base/default value, not absence.</li>
 <li><code>Char</code> is a Unicode scalar value.</li>
 </ul>
