@@ -17,7 +17,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - `for I in A..B step S` (ADR-0010).
 - Ada/SPARK-style `case` with `|`, static ranges, and `otherwise` required unless coverage is proven (ADR-0011).
 - Compound assignment `+=` `-=` `*=` `/=` `^=` (ADR-0012).
-- Conditional expression `if C then A else B` (ADR-0013); parsed and checked, LLVM lowering pending.
+- Conditional expression `if C then A else B` (ADR-0013); only the chosen branch is evaluated.
 - Digit separator `_` in numeric literals; hexadecimal as `$FF` or `0xFF`.
 - A local variable that is never read is a compile error (OPEN-4).
 - `grammar/grammar.ebnf` rebuilt from the canon, checked by `tools/grammar_consistency.py`.
@@ -31,7 +31,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 
 ### Known limitations
 - Exceptions on Windows (MSVC ABI) wait for the EH bridge.
-- Not lowered yet: `case`, `unless`, `State`, `String` locals, struct construction and initializers, the conditional expression, Float32 conversion.
+- Not lowered yet: `case`, `unless`, `State`, `String` locals, struct construction and initializers, Float32 conversion.
 - Arrays, vectors, sets, enums and ranges are not implemented.
 - The compiler is not yet aligned with the canonical `<T>` generic syntax; its existing generic syntax still uses `[T]`.
 

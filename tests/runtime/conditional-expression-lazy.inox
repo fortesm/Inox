@@ -1,0 +1,24 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0013 property 3: only the chosen branch is evaluated. `Danger(0)` would
+== trap with a division by zero; it is never called. Also Float, Bool and a
+== chained conditional (suggested by ChatGPT).
+Module Runtime.ConditionalExpressionLazy
+
+Danger(D Integer) Integer :
+    Return 100 div D
+;
+
+Main :
+    A := if False then Danger(0) else 7
+    B := if True then 9 else Danger(0)
+    F := if A < B then 1.5 else 2.5
+    G := if A < B then A < 8 else False
+    N := if A > 100 then 1 else if A > 5 then 2 else 3
+    PutLn(A, " ", B, " ", F, " ", G, " ", N)
+;

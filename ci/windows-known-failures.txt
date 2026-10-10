@@ -19,3 +19,4 @@ tests/integration/exceptions/taxonomy-range.inox
 tests/integration/exceptions/ensure-control-transfers.inox
 tests/integration/exceptions/nested-loop-retry-raise.inox
 tests/integration/exceptions/until-crossing-ensure.inox
+tests/runtime/conditional-expression-in-try.inox
