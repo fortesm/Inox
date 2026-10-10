@@ -70,6 +70,8 @@ private:
     ast::ExpressionPtr parsePostfix();
     ast::ExpressionPtr parsePrimary();
     void rejectOldForStep() const;
+    ast::ExpressionPtr parseCaseChoice();
+    bool atLineBreakInHeader() const;
 
     std::vector<ast::ExpressionPtr> parseArgumentList();
 
@@ -181,6 +183,7 @@ private:
     // Statements produced by desugaring one source statement into several
     // (chained assignment). appendStatement() drains them in order.
     std::vector<ast::StatementPtr> pendingStatements_;
+    bool headerExpression_ = false;
     std::vector<std::string> withTargetStack_;
     std::size_t withCounter_ = 0;
 };

@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.28 (Layer A: ADR-0010, the for-loop step is written
-#          `for I in A..B step S`; the `(S)` form is removed)
+# Version: v3.29 (Layer A: ADR-0011, Ada/SPARK-style `case` with `|`, static
+#          ranges, and `otherwise` required unless coverage is proven)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,41 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.29 — 2026-10-09 — ADR-0011: `case` in the Ada/SPARK style, adapted to Inox
+#         (Layer A, decided by Marcelo Fortes on 2026-10-09: "Uma sintaxe
+#         semelhante a Ada2005, Spark/Ada ... adaptado às regras e Sintaxe de
+#         inox"; "otherwise deve ser obrigatório sempre que os braços não
+#         cobrirem todos os valores possíveis").
+#   - Choices: a static value or a static range `A..B`; `|` separates the
+#     alternatives of an arm (a new token, punctuation only; bitwise or stays
+#     `bitor`). The comma is a migration error. Overlap anywhere in the case,
+#     an empty range (`9..3`), a non-static choice, a choice of another type
+#     and a non-discrete selector are compile errors. `otherwise` is at most one
+#     and is the last arm. No fall-through.
+#   - Coverage: without `otherwise` the choices must cover every value of the
+#     selector type, or the case is rejected with the first missing value. The
+#     rule generalizes the former enum-only exhaustiveness. UInt64 cannot be
+#     proven with Int64 constants and always needs `otherwise`.
+#   - The selector and each choice end at their line: an arm that starts with
+#     `-` or `(` is not read as `X - 1` or `X(1)`.
+#   - CANON-4 consistency (Layer B): a `(` or `[` that begins a new line no
+#     longer continues the previous line as a call or index, the rule the
+#     parser already applied to a leading `.`.
+#   - The syntax and rules were agreed between Claude and ChatGPT; the minimum
+#     test list is ChatGPT's. Pending with lowering (Phase 2): the selector is
+#     evaluated once at run time. Pending with Enum: exhaustive and incomplete
+#     enum cases. The AST records `hasOtherwise` so an empty `otherwise` arm
+#     still counts.
+#   - Tests: semantic-valid `case-ada-choices`,
+#     `case-exhaustive-without-otherwise`, `case-char-choices`,
+#     `case-arm-on-next-line`; diagnostics `case-overlap-range`,
+#     `case-duplicate-across-arms`, `case-inverted-range`,
+#     `case-integer-incomplete`, `case-bool-incomplete`, `case-comma-separator`,
+#     `case-nonstatic-choice`, `case-string-selector`, `case-otherwise-not-last`,
+#     `case-two-otherwise`, `case-uint64-needs-otherwise`,
+#     `case-choice-type-mismatch`, `call-paren-on-next-line`. Probe
+#     `case-ada-choices` (GAP until lowering).
 #
 # v3.28 — 2026-10-09 — ADR-0010: `for I in A..B step S` (Layer A, decided by
 #         Marcelo Fortes on 2026-10-09: "Para o for use o step como kotlin").
@@ -1453,6 +1488,39 @@ mode.” That policy is superseded by DECISION P-A, approved 2026-10-09: runtime
 arithmetic faults are deterministic Inox traps in every conforming build. This
 note records the later approved decision without rewriting the locked ADR.
 
+## ADR-0011 — `case` in the Ada/SPARK style  (Status: Accepted, 2026-10-09)
+Decision (approved by Marcelo Fortes, 2026-10-09):
+
+    case Value
+        1 | 2
+            PutLn("small")
+        3..9
+            PutLn("medium")
+        10 | 20..29 | 40 PutLn("mixed")
+        otherwise
+            PutLn("other")
+    ;
+
+- The selector is discrete: the Integer family, Char, Bool, Enum, Range. It is
+  evaluated once.
+- A choice is a static value (literal, Const, constant expression) or a static
+  inclusive range `A..B` with A <= B, of the selector's type. `|` separates the
+  alternatives of an arm; it is punctuation, not an operator.
+- Overlap between any two choices, in one arm or in different arms, is a
+  compile error. There is no fall-through.
+- `otherwise` appears at most once and is the last arm. It is REQUIRED unless
+  the compiler proves that the choices cover every value of the selector type
+  (Bool, Enum and finite ranges directly; Integer types by the union of their
+  choices). UInt64 is never provable with Int64 constants.
+- Arms keep the Inox block rules: no `of`, `when`, `=>`, `:` or `do`; a
+  single-line arm is allowed.
+Rationale: Ada and SPARK make a case total. A case on an error code that
+handles 404 and silently does nothing for 500 is the bug this rule prevents
+(ChatGPT's example). Static, non-overlapping choices make the arm that runs
+unambiguous and let the compiler check coverage.
+Consequence: `|` becomes a token; the comma form is rejected with a migration
+message. Lowering is unchanged by this ADR (the case lowering is Phase 2).
+
 ## ADR-0010 — `step` in the for header  (Status: Accepted, 2026-10-09)
 Decision (approved by Marcelo Fortes, 2026-10-09): the step of a counted loop is
 written with the reserved word `step`, as in Kotlin:
@@ -2253,21 +2321,28 @@ at the beginning, middle, or end, and MORE THAN ONCE. `repeat` closes with `;`.
   (Start <= End: +1; Start > End: -1). The iterator never takes a value outside
   `A..B` and the loop never computes a value past Int64.Min/Max.
 
-### case
-    case Suit
-        Club
-            PutLn("club")
-        Diamond
-            PutLn("diamond")
+### case (ADR-0011, v3.29)
+    case Value
+        1 | 2
+            PutLn("small")
+        3..9
+            PutLn("medium")
+        10 | 20..29 | 40 PutLn("mixed")
         otherwise
             PutLn("other")
     ;
 Single-line arms allowed: `Club PutLn("club")`.
 - no `of`, `when`, `=>`, `:`, or `do`;
-- no fall-through; `otherwise` is optional;
-- for `Enum`, a `case` without `otherwise` must be EXHAUSTIVE;
-- ranges per arm, multi-values with `|`, and `case` as expression are reserved
-  for future versions.
+- the selector is discrete (Integer family, Char, Bool, Enum, Range) and is
+  evaluated once; it ends at the header line;
+- a choice is a static value or a static range `A..B` (A <= B) of the
+  selector's type; `|` separates alternatives (the comma is an error);
+- overlapping choices are a compile error; no fall-through;
+- `otherwise` is at most one and is the last arm. It is REQUIRED unless the
+  choices provably cover every value of the selector type (Marcelo Fortes,
+  2026-10-09). For `Enum` this means every literal; for `Bool`, both values;
+  for an Integer type, its whole range; UInt64 always needs `otherwise`;
+- `case` as an expression is reserved for a future version.
 
 ### unless
 Negated single-condition guard (parsed; lowering incremental).
@@ -2790,7 +2865,8 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   Float->Float64 + 12 standard nominal exception types.
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
-- `case`/`otherwise` (AST present; LLVM lowering incomplete; exhaustiveness off).
+- `case`/`otherwise` (parsed and checked per ADR-0011, including coverage; LLVM
+  lowering pending; enum coverage pending with Enum).
 - `unless` (parsed; not lowered).
 - Enum short/block forms (parsed; not lowered; strict-init not enforced).
 
@@ -3120,7 +3196,8 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   Float->Float64 + 12 standard nominal exception types.
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
-- `case`/`otherwise` (AST present; LLVM lowering incomplete; exhaustiveness off).
+- `case`/`otherwise` (parsed and checked per ADR-0011, including coverage; LLVM
+  lowering pending; enum coverage pending with Enum).
 - `unless` (parsed; not lowered).
 - Enum short/block forms (parsed; not lowered; strict-init not enforced).
 

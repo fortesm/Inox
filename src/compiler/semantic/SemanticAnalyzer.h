@@ -83,6 +83,8 @@ private:
     static bool cannotFallThrough(const std::vector<ast::StatementPtr>& statements);
     static bool cannotFallThrough(const ast::Statement& statement);
     void analyzeStatement(const ast::Statement& statement);
+    void analyzeCaseStatement(const ast::CaseStatement& statement);
+    std::int64_t caseChoiceValue(const ast::Expression& choice, const std::string& selectorType);
     void analyzeVarBlock(const ast::VarBlockStatement& statement);
     std::string analyzeExpression(const ast::Expression& expression);
     std::string inferExpressionType(const ast::Expression& expression);

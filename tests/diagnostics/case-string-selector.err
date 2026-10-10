@@ -1,0 +1,1 @@
+case selector must be discrete (Integer family, Char, Bool, Enum or Range), got String

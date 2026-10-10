@@ -48,7 +48,9 @@ for_stmt        ::= "for" identifier "in" range_expr ("step" expression)? NEWLIN
                   (* iterator is implicit, read-only, loop-scoped, and may not shadow *)
 
 case_stmt       ::= "case" expression NEWLINE case_arm* otherwise_arm? ";"
-case_arm        ::= expression NEWLINE statement* | expression statement
+case_arm        ::= choice_list NEWLINE statement* | choice_list statement
+choice_list     ::= choice ("|" choice)*          (* ADR-0011; "," is rejected *)
+choice          ::= static_value (".." static_value)?
 otherwise_arm   ::= "otherwise" NEWLINE statement* | "otherwise" statement
 
 try_stmt        ::= "try" NEWLINE statement*

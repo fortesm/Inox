@@ -67,9 +67,10 @@ analysis but not lowered yet.)
 | `chained-assignment` | chained assignment A := B := C := X | **OK** |  |
 | `named-struct-construction` | named struct construction TPoint(X := 1, Y := 2) | **GAP** | unsupported expression in function: Main |
 | `for-step-expression-bounds` | for I in 1..N + 1 step N div 2 | **OK** |  |
+| `case-ada-choices` | case with \| alternatives and a static range | **GAP** | LLVM emission does not lower case statements yet |
 | `state-global` | State section variable | **GAP** | unsupported expression in function: Main |
 
-Summary: GAP=7, OK=21
+Summary: GAP=8, OK=21
 
 ## Reading the table
 

@@ -1,0 +1,18 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0011: choices are static: literals, Consts or constant expressions.
+Module Diagnostics.CaseNonstaticChoice
+
+Main :
+    X := 4
+    Y := 2
+    case X
+        Y PutLn(1)
+        otherwise PutLn(2)
+    ;
+;

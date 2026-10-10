@@ -64,6 +64,10 @@ Token Lexer::nextToken()
         return makeToken(TokenKind::Equal, start, startOffset);
     case '#':
         return makeToken(TokenKind::Hash, start, startOffset);
+    case '|':
+        // ADR-0011: separates the alternatives of a case arm. It is not an
+        // operator; bitwise or is spelled `bitor`.
+        return makeToken(TokenKind::Pipe, start, startOffset);
     case '<':
         if (match('=')) {
             return makeToken(TokenKind::LessEqual, start, startOffset);
@@ -373,6 +377,8 @@ std::string tokenKindName(TokenKind kind)
         return "Equal";
     case TokenKind::Hash:
         return "Hash";
+    case TokenKind::Pipe:
+        return "Pipe";
     case TokenKind::Less:
         return "Less";
     case TokenKind::Greater:

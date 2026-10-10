@@ -1007,18 +1007,9 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         symbols_.popScope();
         break;
     }
-    case ast::AstNodeKind::CaseStatement: {
-        const auto& caseStatement = static_cast<const ast::CaseStatement&>(statement);
-        analyzeExpression(caseStatement.expression());
-        for (const auto& arm : caseStatement.arms()) {
-            for (const auto& choice : arm.choices) {
-                analyzeExpression(*choice);
-            }
-            analyzeStatements(arm.body, true);
-        }
-        analyzeStatements(caseStatement.otherwiseBody(), true);
+    case ast::AstNodeKind::CaseStatement:
+        analyzeCaseStatement(static_cast<const ast::CaseStatement&>(statement));
         break;
-    }
     case ast::AstNodeKind::TryStatement: {
         const auto& tryStatement = static_cast<const ast::TryStatement&>(statement);
 
@@ -1597,6 +1588,79 @@ std::string SemanticAnalyzer::inferExpressionType(const ast::Expression& express
 
 namespace {
 
+// ADR-0011: the value domain of a case selector. Values are compared as Int64:
+// Bool is 0/1 and Char is its Unicode scalar value. `provable` is false when the
+// domain does not fit in Int64 (UInt64), so coverage cannot be shown and
+// `otherwise` is required.
+struct CaseDomain {
+    std::int64_t low = 0;
+    std::int64_t high = 0;
+    bool provable = true;
+    bool isBool = false;
+    bool isChar = false;
+};
+
+bool caseDomainFor(std::string_view type, CaseDomain& domain)
+{
+    constexpr std::int64_t kMax = std::numeric_limits<std::int64_t>::max();
+    constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
+    if (type == "Bool") { domain = {0, 1, true, true, false}; return true; }
+    if (type == "Char") { domain = {0, 0x10FFFF, true, false, true}; return true; }
+    if (type == "Int8") { domain = {-128, 127}; return true; }
+    if (type == "Int16") { domain = {-32768, 32767}; return true; }
+    if (type == "Int32") { domain = {-2147483648LL, 2147483647LL}; return true; }
+    if (type == "Int64" || type == "Integer") { domain = {kMin, kMax}; return true; }
+    if (type == "UInt8") { domain = {0, 255}; return true; }
+    if (type == "UInt16") { domain = {0, 65535}; return true; }
+    if (type == "UInt32") { domain = {0, 4294967295LL}; return true; }
+    if (type == "Natural") { domain = {0, kMax}; return true; }
+    if (type == "UInt64" || type == "UInteger") { domain = {0, kMax, false}; return true; }
+    return false;
+}
+
+std::string caseValueText(std::int64_t value, const CaseDomain& domain)
+{
+    if (domain.isBool) {
+        return value != 0 ? "True" : "False";
+    }
+    if (domain.isChar) {
+        char buffer[16];
+        std::snprintf(buffer, sizeof buffer, "U+%04llX", static_cast<unsigned long long>(value));
+        return buffer;
+    }
+    return std::to_string(value);
+}
+
+// Decodes a char literal token ('A', 'é'): exactly one UTF-8 encoded scalar.
+bool decodeCharLiteral(std::string_view text, std::int64_t& value)
+{
+    if (text.size() >= 2 && text.front() == '\'' && text.back() == '\'') {
+        text = text.substr(1, text.size() - 2);
+    }
+    if (text.empty()) {
+        return false;
+    }
+    const auto byte = [&](std::size_t i) { return static_cast<unsigned char>(text[i]); };
+    std::size_t length = 0;
+    std::int64_t code = 0;
+    if (byte(0) < 0x80) { length = 1; code = byte(0); }
+    else if ((byte(0) & 0xE0) == 0xC0) { length = 2; code = byte(0) & 0x1F; }
+    else if ((byte(0) & 0xF0) == 0xE0) { length = 3; code = byte(0) & 0x0F; }
+    else if ((byte(0) & 0xF8) == 0xF0) { length = 4; code = byte(0) & 0x07; }
+    else { return false; }
+    if (text.size() != length) {
+        return false;
+    }
+    for (std::size_t i = 1; i < length; ++i) {
+        if ((byte(i) & 0xC0) != 0x80) {
+            return false;
+        }
+        code = (code << 6) | (byte(i) & 0x3F);
+    }
+    value = code;
+    return true;
+}
+
 const ast::BinaryExpression* namedArgument(const ast::Expression& argument)
 {
     if (argument.kind() != ast::AstNodeKind::BinaryExpression) {
@@ -1611,6 +1675,153 @@ const ast::BinaryExpression* namedArgument(const ast::Expression& argument)
 }
 
 } // namespace
+
+// ADR-0011 — Ada/SPARK-style case adapted to Inox.
+std::int64_t SemanticAnalyzer::caseChoiceValue(const ast::Expression& choice,
+                                               const std::string& selectorType)
+{
+    CaseDomain domain;
+    caseDomainFor(selectorType, domain);
+    const std::string choiceType = canonicalTypeName(analyzeExpression(choice));
+    const char* kStatic =
+        "a case choice must be a static value: a literal, a Const, or a constant "
+        "expression (ADR-0011)";
+
+    if (domain.isBool) {
+        if (choiceType != "Bool") {
+            throw SemanticError("case choice type " + choiceType + " does not match selector type Bool");
+        }
+        if (choice.kind() == ast::AstNodeKind::LiteralExpression) {
+            return equalsIgnoreCase(static_cast<const ast::LiteralExpression&>(choice).value(), "true") ? 1 : 0;
+        }
+        if (choice.kind() == ast::AstNodeKind::IdentifierExpression) {
+            const Symbol* symbol = symbols_.currentScope().resolve(
+                static_cast<const ast::IdentifierExpression&>(choice).name());
+            if (symbol != nullptr && symbol->kind == SymbolKind::Constant) {
+                if (const ConstantValue* value = result_.constantValueOf(*symbol);
+                    value != nullptr && value->kind == ConstantValue::Kind::Boolean) {
+                    return value->boolean ? 1 : 0;
+                }
+            }
+        }
+        throw SemanticError(kStatic);
+    }
+
+    if (domain.isChar) {
+        if (choiceType != "Char") {
+            throw SemanticError("case choice type " + choiceType + " does not match selector type Char");
+        }
+        std::int64_t code = 0;
+        if (choice.kind() == ast::AstNodeKind::LiteralExpression &&
+            decodeCharLiteral(static_cast<const ast::LiteralExpression&>(choice).value(), code)) {
+            return code;
+        }
+        throw SemanticError(kStatic);
+    }
+
+    if (!isIntegerType(choiceType)) {
+        throw SemanticError("case choice type " + choiceType + " does not match selector type " +
+                            selectorType);
+    }
+    std::int64_t value = 0;
+    if (!constantIntegerValue(choice, value)) {
+        throw SemanticError(kStatic);
+    }
+    return value;
+}
+
+void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
+{
+    const std::string selectorType =
+        canonicalTypeName(analyzeExpression(statement.expression()));
+    CaseDomain domain;
+    if (!caseDomainFor(selectorType, domain)) {
+        throw SemanticError(
+            "case selector must be discrete (Integer family, Char, Bool, Enum or Range), got " +
+            (selectorType.empty() ? std::string("<unknown>") : selectorType) + " (ADR-0011)");
+    }
+
+    struct Interval {
+        std::int64_t low;
+        std::int64_t high;
+    };
+    std::vector<Interval> covered;
+
+    for (const ast::CaseArm& arm : statement.arms()) {
+        for (const auto& choice : arm.choices) {
+            Interval interval{};
+            const bool isRange =
+                choice->kind() == ast::AstNodeKind::BinaryExpression &&
+                static_cast<const ast::BinaryExpression&>(*choice).op() == ast::BinaryOperator::Range;
+            if (isRange) {
+                const auto& range = static_cast<const ast::BinaryExpression&>(*choice);
+                interval.low = caseChoiceValue(range.left(), selectorType);
+                interval.high = caseChoiceValue(range.right(), selectorType);
+                if (interval.low > interval.high) {
+                    throw SemanticError("empty range in case choice: " +
+                                        caseValueText(interval.low, domain) + ".." +
+                                        caseValueText(interval.high, domain) +
+                                        " (the first bound must not exceed the second)");
+                }
+            } else {
+                interval.low = caseChoiceValue(*choice, selectorType);
+                interval.high = interval.low;
+            }
+            if (interval.low < domain.low || interval.high > domain.high) {
+                throw SemanticError("case choice out of range for " + selectorType + ": " +
+                                    caseValueText(interval.low < domain.low ? interval.low : interval.high, domain));
+            }
+            for (const Interval& seen : covered) {
+                if (interval.low <= seen.high && seen.low <= interval.high) {
+                    const std::int64_t shared = std::max(interval.low, seen.low);
+                    throw SemanticError("overlapping case choices: " +
+                                        caseValueText(shared, domain) +
+                                        " is covered more than once (ADR-0011)");
+                }
+            }
+            covered.push_back(interval);
+        }
+        analyzeStatements(arm.body, true);
+    }
+
+    if (statement.hasOtherwise()) {
+        analyzeStatements(statement.otherwiseBody(), true);
+        return;
+    }
+
+    // Without `otherwise` the choices must cover every value of the selector
+    // type (Marcelo Fortes, 2026-10-09: "otherwise deve ser obrigatório sempre
+    // que os braços não cobrirem todos os valores possíveis").
+    if (!domain.provable) {
+        throw SemanticError("case on " + selectorType +
+                            " cannot be proven to cover every value; add 'otherwise' (ADR-0011)");
+    }
+    std::sort(covered.begin(), covered.end(),
+              [](const Interval& a, const Interval& b) { return a.low < b.low; });
+    std::int64_t next = domain.low;
+    bool done = false;
+    for (const Interval& interval : covered) {
+        if (domain.isChar && next >= 0xD800 && next <= 0xDFFF) {
+            next = 0xE000;  // surrogates are not Unicode scalar values
+        }
+        if (interval.low > next) {
+            break;
+        }
+        if (interval.high >= domain.high) {
+            done = true;
+            break;
+        }
+        next = std::max(next, interval.high + 1);
+    }
+    if (!done && domain.isChar && next >= 0xD800 && next <= 0xDFFF) {
+        next = 0xE000;
+    }
+    if (!done) {
+        throw SemanticError("case does not cover every value of " + selectorType +
+                            " (first missing: " + caseValueText(next, domain) +
+                            "); add 'otherwise' (ADR-0011)");
+    }
+}
 
 std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
 {

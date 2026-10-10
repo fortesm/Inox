@@ -30,6 +30,20 @@ constexpr const char* kOldForStepMessage =
     "the for-loop step is written 'step S' (ADR-0010): write "
     "'for I in A..B step S' instead of 'for I in A..B (S)'";
 
+// Sets a parser flag for the lifetime of a scope and restores it afterwards,
+// also when a ParseError propagates.
+class FlagScope {
+public:
+    explicit FlagScope(bool& flag) : flag_(flag), saved_(flag) { flag_ = true; }
+    ~FlagScope() { flag_ = saved_; }
+    FlagScope(const FlagScope&) = delete;
+    FlagScope& operator=(const FlagScope&) = delete;
+
+private:
+    bool& flag_;
+    bool saved_;
+};
+
 ast::ExpressionPtr makeSyntheticIdentifier(std::string name)
 {
     return std::make_unique<ast::IdentifierExpression>(std::move(name));
@@ -540,7 +554,7 @@ ast::ExpressionPtr Parser::parseAdditive()
 {
     auto expression = parseMultiplicative();
 
-    while (check(TokenKind::Plus) || check(TokenKind::Minus)) {
+    while ((check(TokenKind::Plus) || check(TokenKind::Minus)) && !atLineBreakInHeader()) {
         const lexer::Token& op = advance();
         auto right = parseMultiplicative();
         expression = makeExpr<ast::BinaryExpression>(
@@ -599,6 +613,13 @@ ast::ExpressionPtr Parser::parsePostfix()
     auto expression = parsePrimary();
 
     for (;;) {
+        // CANON-4: newlines terminate statements. A `(` or `[` that begins a
+        // new line never continues the expression of the previous line as a
+        // call or an index (the same rule as for a leading `.` below).
+        if ((check(TokenKind::LeftParen) || check(TokenKind::LeftBracket)) &&
+            current_ > 0 && peek().location.line > previous().location.line) {
+            break;
+        }
         if (match(TokenKind::LeftParen)) {
             if (check(TokenKind::RightParen)) {
                 errorAtCurrent("empty parentheses are not allowed in calls; omit parentheses when there are no arguments");
@@ -947,28 +968,83 @@ ast::StatementPtr Parser::parseForInStatement()
         std::move(body));
 }
 
+// ADR-0011 (Ada/SPARK-style case, adapted to Inox):
+//   case Selector
+//       1 | 2          body
+//       3..9           body
+//       otherwise      body
+//   ;
+// `|` separates the alternatives of an arm; a choice is a static value or a
+// static range `A..B`. `otherwise` is at most one and is the last arm.
+ast::ExpressionPtr Parser::parseCaseChoice()
+{
+    // A choice ends at its line: the arm body on the next line never extends it.
+    FlagScope scope(headerExpression_);
+    auto choice = parseBitOr();
+    if (match(TokenKind::DotDot)) {
+        const lexer::Token& op = previous();
+        auto upper = parseBitOr();
+        choice = makeExpr<ast::BinaryExpression>(
+            binaryOperatorFor(op), std::move(choice), std::move(upper));
+        if (check(TokenKind::DotDot)) {
+            throw ParseError(
+                "'..' is non-associative (CANON-20): a range has exactly two "
+                "bounds, so 'A..B..C' has no meaning",
+                peek().location);
+        }
+    }
+    return choice;
+}
+
+// While a header expression is parsed (the case selector), a token on a later
+// line does not continue it: `case X` followed by an arm `-1 ...` or `(A) ...`
+// must not read as `X - 1` or `X(A)`.
+bool Parser::atLineBreakInHeader() const
+{
+    return headerExpression_ && current_ > 0 &&
+           peek().location.line > previous().location.line;
+}
+
 ast::StatementPtr Parser::parseCaseStatement()
 {
-    auto expression = parseValue();
+    ast::ExpressionPtr expression;
+    {
+        FlagScope scope(headerExpression_);
+        expression = parseValue();
+    }
     requireHeaderLineBreak();
 
     std::vector<ast::CaseArm> arms;
     std::vector<ast::StatementPtr> otherwiseBody;
+    bool hasOtherwise = false;
 
     while (!isAtEnd() && !check(TokenKind::Semicolon)) {
-        if (matchKeyword("otherwise")) {
+        if (checkKeyword("otherwise")) {
+            if (hasOtherwise) {
+                errorAtCurrent("a case has at most one 'otherwise' (ADR-0011)");
+            }
+            advance();
             const std::size_t armLine = previous().location.line;
             const std::size_t armColumn = previous().location.column;
             otherwiseBody = parseCaseArmBody(armLine, armColumn);
-            break;
+            hasOtherwise = true;
+            continue;
+        }
+        if (hasOtherwise) {
+            errorAtCurrent("'otherwise' must be the last arm of a case (ADR-0011)");
         }
 
         std::vector<ast::ExpressionPtr> choices;
         const std::size_t armLine = peek().location.line;
         const std::size_t armColumn = peek().location.column;
-        choices.push_back(parseValue());
-        while (match(TokenKind::Comma)) {
-            choices.push_back(parseValue());
+        choices.push_back(parseCaseChoice());
+        while (match(TokenKind::Pipe)) {
+            choices.push_back(parseCaseChoice());
+        }
+        if (check(TokenKind::Comma)) {
+            errorAtCurrent(
+                "case alternatives are separated by '|' (ADR-0011): write "
+                "'1 | 2', not '1, 2'");
         }
 
         auto body = parseCaseArmBody(armLine, armColumn);
@@ -979,7 +1055,8 @@ ast::StatementPtr Parser::parseCaseStatement()
     return std::make_unique<ast::CaseStatement>(
         std::move(expression),
         std::move(arms),
-        std::move(otherwiseBody));
+        std::move(otherwiseBody),
+        hasOtherwise);
 }
 
 std::vector<ast::StatementPtr> Parser::parseCaseArmBody(std::size_t armLine, std::size_t armColumn)
