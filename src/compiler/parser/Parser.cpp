@@ -704,18 +704,17 @@ ast::StatementPtr Parser::parseTypedLocalStatement()
 
     std::vector<ast::StatementPtr> declarations;
     if (match(TokenKind::ColonEqual)) {
-        const std::size_t initializerStart = current_;
-        std::size_t initializerEnd = initializerStart;
-        for (const std::string& declarationName : names) {
-            current_ = initializerStart;
-            ast::ExpressionPtr initializer = parseAssignment();
-            if (initializerEnd == initializerStart) {
-                initializerEnd = current_;
-            }
+        // CANON-5 grouped declaration (v3.26): `A, B T := X` evaluates X exactly
+        // once. The first name receives X; every later name is initialized from
+        // the first, so side effects in X happen once.
+        ast::ExpressionPtr initializer = parseAssignment();
+        declarations.push_back(std::make_unique<ast::VarStatement>(
+            false, names.front(), std::move(initializer), type.lexeme));
+        for (std::size_t i = 1; i < names.size(); ++i) {
             declarations.push_back(std::make_unique<ast::VarStatement>(
-                false, declarationName, std::move(initializer), type.lexeme));
+                false, names[i], makeSyntheticIdentifier(names.front()),
+                type.lexeme));
         }
-        current_ = initializerEnd;
     } else {
         for (const std::string& declarationName : names) {
             declarations.push_back(std::make_unique<ast::VarStatement>(

@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.25 (Layer A clarification: a bare `:` block inside a routine is
-#          illegal, CANON-4; the parser rejects it)
+# Version: v3.26 (Layer A: grouped declarations `A, B T := X` are canonical; X
+#          is evaluated exactly once)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,26 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.26 — 2026-10-09 — grouped declarations (Layer A, decided by Marcelo Fortes
+#         on 2026-10-09: "Duas variáveis na mesma linha: A, B Integer := 2 é
+#         perfeitamente legal!").
+#   - CANON-5 gains "Grouped declarations": `A, B, C T := X` declares every name
+#     with type T. X is evaluated EXACTLY ONCE; the first name receives the
+#     value and each later name is initialized from the first, in order, with
+#     the type's copy semantics. `P, Q TPoint` (struct, no `:=`) gives each name
+#     the type defaults. A scalar group still requires an initializer
+#     (rule 3 names the first name).
+#   - Layer B bug fixed: the parser re-parsed the initializer once per name, so
+#     `A, B Integer := Next(1)` called `Next` twice and the names could hold
+#     different values. Measured on 80fd713 before the fix.
+#   - Open for the future Vector ADR: move-only types (`Vector[T]`) cannot be
+#     initialized from the first name without moving it; the grouped form with
+#     an initializer is to be decided there. ChatGPT raised the copy/move point.
+#   - Tests: runtime `grouped-declaration-once` (the initializer prints once;
+#     the names are independent afterwards); diagnostic
+#     `grouped-scalar-without-initializer`. Probes: `grouped-decl-scalar` (OK),
+#     `grouped-decl-struct` (GAP, the older struct-initializer gap).
 #
 # v3.25 — 2026-10-09 — a bare `:` block inside a routine is illegal (Layer A
 #         clarification of CANON-4, decided by Marcelo Fortes on 2026-10-09:
@@ -1578,6 +1598,19 @@ its own.
 
 Declarations appear INLINE, anywhere in a block, mixed freely with statements.
 The OLD `Var ... ;` block is gone.
+
+### Grouped declarations (v3.26, decided by Marcelo Fortes)
+FORM 2 and FORM 3 may declare several names of the same type on one line:
+
+    A, B, C Integer := Next(10)   == Next runs ONCE; A, B and C hold its value
+    P, Q TPoint                   == both get the type defaults (rule 4)
+
+- The initializer is evaluated EXACTLY ONCE. The first name receives the value;
+  each later name is initialized from the first, in order, with the type's copy
+  semantics. Afterwards the names are independent variables.
+- Rules 2–8 apply to every name. `A, B Integer` (scalar, no `:=`) is a compile
+  error, like `A Integer`.
+- Move-only types (`Vector[T]`, future) are left to the Vector ADR.
 
 HARD RULES:
 1. First appearance of a name is a DECLARATION; later appearances are ASSIGNMENT.

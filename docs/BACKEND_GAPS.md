@@ -62,9 +62,11 @@ analysis but not lowered yet.)
 | `struct-local` | struct local with field assignment | **OK** |  |
 | `with` | with statement on a struct local | **OK** |  |
 | `try-in-for` | try/except inside a loop body | **OK** |  |
+| `grouped-decl-scalar` | grouped declaration A, B, C T := X (X evaluated once) | **OK** |  |
+| `grouped-decl-struct` | grouped struct declaration P, Q TPoint := Base | **GAP** | LLVM emission does not support struct initializers yet |
 | `state-global` | State section variable | **GAP** | unsupported expression in function: Main |
 
-Summary: GAP=5, OK=18
+Summary: GAP=6, OK=19
 
 ## Reading the table
 
@@ -85,6 +87,9 @@ Summary: GAP=5, OK=18
   emitter does not yet receive their storage. `const-use` was in the same
   situation and was closed by P-C stage 1 (below).
 * `case` and `unless` are also listed in CANON B-PARSED.
+* `grouped-decl-struct` (v3.26): the grouped form itself lowers; the GAP is the
+  older one, a struct local initialized from another struct value
+  (`P TPoint := Base`). It closes with struct initializers.
 
 ## Direction (DECISION P-C, approved 2026-10-09)
 
