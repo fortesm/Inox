@@ -267,6 +267,17 @@ Main :
     PutLn(A + B + C)
 ;
 """),
+    ("named-struct-construction", "named struct construction TPoint(X := 1, Y := 2)", """Type
+    TPoint Struct
+        X Integer
+        Y Integer
+    ;
+
+Main :
+    P := TPoint(Y := 2, X := 1)
+    PutLn(P.X + P.Y)
+;
+"""),
     ("state-global", "State section variable", """State :
     Counter Integer := 0
 ;

@@ -40,12 +40,15 @@ public:
 
     std::unique_ptr<ast::ModuleNode> parseModule();
     ast::ExpressionPtr parseExpression();
-    ast::StatementPtr parseStatement();
-    void appendStatement(std::vector<ast::StatementPtr>& statements);
     std::vector<ast::StatementPtr> parseStatements();
     std::vector<ast::StatementPtr> parseHeaderDelimitedBlock();
 
 private:
+    // One source statement may produce several (a chained assignment is
+    // desugared, ADR-0009), so statement lists are built with appendStatement,
+    // which drains pendingStatements_. Both stay private for that reason.
+    ast::StatementPtr parseStatement();
+    void appendStatement(std::vector<ast::StatementPtr>& statements);
     using TokenKind = lexer::TokenKind;
 
     ast::ExpressionPtr parseValue();

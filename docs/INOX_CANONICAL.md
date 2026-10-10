@@ -513,12 +513,23 @@ specification, ADRs, manual HTML, and tests.
 #     arguments, a type mismatch, and an omitted scalar field without default
 #     are compile errors, as CANON-9 already required. Any other call rejects a
 #     named argument.
+#   - Const, State and Type sections are kept as token lists; the parser
+#     rejects a second `:=` on one declaration line there, so
+#     `Const A := B := 3` is the same error (found by ChatGPT's review).
+#   - `parseStatement`/`appendStatement` are private: a chain yields several
+#     statements, so only whole statement lists are public parser API.
+#   - OPEN-4 recorded: CANON-5 rules 1 and 7 contradict each other for FORM 1;
+#     the maintainer decides. Neither rule is edited here.
 #   - Tests: runtime `chained-assignment`; semantic-valid `named-construction`;
 #     diagnostics `assignment-in-expression`, `assignment-in-condition`,
-#     `assignment-in-initializer`, `chained-assignment-call-target`,
-#     `named-argument-outside-construction`, `construction-unknown-field`,
+#     `assignment-in-initializer`, `assignment-in-const-initializer`,
+#     `assignment-in-state-initializer`, `chained-assignment-call-target`,
+#     `chained-assignment-index-target`, `named-argument-outside-construction`,
+#     `conversion-named-argument`, `construction-unknown-field`,
 #     `construction-duplicate-field`, `construction-positional`,
-#     `construction-omitted-scalar`. Probe `chained-assignment` (OK).
+#     `construction-omitted-scalar`, `construction-type-mismatch`. Probes
+#     `chained-assignment` (OK) and `named-struct-construction` (GAP: struct
+#     construction is not lowered yet).
 #
 # v3.26 — 2026-10-09 — grouped declarations (Layer A, decided by Marcelo Fortes
 #         on 2026-10-09: "Duas variáveis na mesma linha: A, B Integer := 2 é
@@ -1159,6 +1170,14 @@ OPEN-3 — CLOSED (v3.13). Operator precedence and associativity are now canonic
   mixed; bitwise mixed with shift), with a parse error rather than a silent
   guess. The parser implements this and CANON-20 lists the verifying tests.
 
+OPEN-4 — OPEN (raised in v3.27 by ChatGPT's review of ADR-0009). CANON-5 rule 1
+  ("first appearance of a name is a DECLARATION") and rule 7 ("ASSIGNMENT TO A
+  NON-EXISTENT NAME is an ERROR. A typo stays a bug.") contradict each other for
+  FORM 1: in `Counter := 1` / `Coutner := Counter + 1`, nothing in the syntax
+  separates a new name from a typo. The compiler implements rule 1. The
+  maintainer decides how rule 7 is reconciled; until then neither rule is
+  edited.
+
 (Reference for the decided items: C# requires the `m` suffix and forbids implicit
 float<->decimal conversion; Ada reads decimal literals by context and rejects
 excess precision at compile time; Inox follows the Ada model in-context.)
@@ -1692,6 +1711,7 @@ HARD RULES:
 6. A BARE IDENTIFIER is NEVER a declaration. `apple` alone is an ERROR. Inox is
    strongly typed (Object Pascal / Ada 2005), NOT Python/JS.
 7. ASSIGNMENT TO A NON-EXISTENT NAME is an ERROR. A typo stays a bug.
+   (Conflicts with rule 1 for FORM 1; see OPEN-4. The compiler follows rule 1.)
 8. SHADOWING is FORBIDDEN (current or any outer scope; case-insensitive). `:=` to
    a name visible in an OUTER scope is assignment to that outer variable.
 

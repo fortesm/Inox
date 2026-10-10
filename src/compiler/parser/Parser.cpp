@@ -1156,6 +1156,21 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
 {
     std::vector<std::string> tokens;
 
+    // Section contents stay token lists, so the rule that `:=` is a statement
+    // and never part of an initializer (ADR-0009) is checked here: one
+    // declaration per line, at most one `:=` on it.
+    std::size_t assignLine = 0;
+    const auto take = [&]() {
+        const lexer::Token& token = advance();
+        if (token.kind == TokenKind::ColonEqual) {
+            if (assignLine == token.location.line) {
+                throw ParseError(kAssignmentInExpressionMessage, token.location);
+            }
+            assignLine = token.location.line;
+        }
+        tokens.push_back(tokenText(token));
+    };
+
     // Type is always a section/declarator without ':'.
     // Const supports the canonical single-line form `Const Name := Expr` (CANON-5),
     // which has no ':'. When a ':' is present, Const falls through to the block form.
@@ -1170,11 +1185,11 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
             const std::size_t line = isAtEnd() ? 0 : peek().location.line;
             while (!isAtEnd() && peek().location.line == line &&
                    !check(TokenKind::Semicolon)) {
-                tokens.push_back(tokenText(advance()));
+                take();
             }
         } else {
             while (!isAtEnd() && !atTypeSectionBoundary()) {
-                tokens.push_back(tokenText(advance()));
+                take();
             }
         }
         return std::make_unique<ast::SectionDeclaration>(
@@ -1184,7 +1199,7 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
     consume(TokenKind::Colon, "expected ':' after section header");
 
     while (!isAtEnd() && !check(TokenKind::Semicolon)) {
-        tokens.push_back(tokenText(advance()));
+        take();
     }
 
     consumeBlockClose();
