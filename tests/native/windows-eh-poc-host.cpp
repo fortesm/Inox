@@ -10,6 +10,12 @@
 extern "C" void inox_poc_foreign_else();
 extern "C" void inox_poc_foreign_rethrow();
 extern "C" void inox_poc_seh();
+extern "C" void inox_poc_inox_typed();
+
+extern "C" void inox_poc_report_type(unsigned long long type) noexcept
+{
+    std::printf("inox-type-%llu\n", type);
+}
 
 extern "C" [[noreturn]] void inox_poc_throw_foreign()
 {
@@ -60,6 +66,11 @@ int main(int argc, char** argv)
 
         std::fputs("foreign exception was swallowed\n", stderr);
         return 67;
+    }
+
+    if (std::strcmp(argv[1], "inox-typed") == 0) {
+        inox_poc_inox_typed();
+        return 0;
     }
 
     if (std::strcmp(argv[1], "seh") == 0) {

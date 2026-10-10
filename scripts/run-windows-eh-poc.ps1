@@ -103,6 +103,15 @@ try {
     }
     Write-Host "[PASS] (iii) foreign C++ exception: Else catches; otherwise object is preserved"
 
+    # Criterion (v): an Inox exception keeps its type id across the bridge.
+    $inoxTyped = & $probeExe "inox-typed" 2>&1 | Out-String
+    $inoxTypedCode = $LASTEXITCODE
+    if ($inoxTypedCode -ne 0 -or
+        (Normalize-Output $inoxTyped) -cne "inox-type-42") {
+        throw "Inox typed probe failed: exit=$inoxTypedCode output=$inoxTyped"
+    }
+    Write-Host "[PASS] (v) Inox exception classified with its type id after catchret"
+
     # Criterion (ii): synchronous C++ catch-all must NOT intercept arbitrary SEH.
     # Success here is process termination by RaiseException. The bridge marker
     # and the post-call marker must both remain absent.
