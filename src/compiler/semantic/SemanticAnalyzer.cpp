@@ -470,6 +470,9 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
                 }
                 index += 4;  // Name Type := value
             } else {
+                if (kind == SymbolKind::State) {
+                    stateDeclarationsWithoutInitializer_.emplace_back(tokens[index], next);
+                }
                 index += 2;  // Name Type
             }
             continue;
@@ -676,10 +679,19 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
         return;
     }
 
-    if (section.sectionKind() != ast::SectionKind::Var &&
-        section.sectionKind() != ast::SectionKind::Const &&
+    if (section.sectionKind() != ast::SectionKind::Const &&
         section.sectionKind() != ast::SectionKind::State) {
         return;
+    }
+
+    // CANON-5: "State scalars still require initializers"; like locals, only
+    // structs may use the type-default form `Name TStruct`.
+    if (section.sectionKind() == ast::SectionKind::State) {
+        for (const auto& [name, typeName] : stateDeclarationsWithoutInitializer_) {
+            if (resolveStruct(typeName) == nullptr) {
+                throw SemanticError("scalar declaration requires initializer: " + name);
+            }
+        }
     }
 
     for (std::size_t index = 0; index + 2 < tokens.size(); ++index) {
