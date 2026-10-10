@@ -27,7 +27,10 @@ module            ::= "Module" qualified_name use_decl* module_item* EOF
                       (* no ";" after Module; EOF closes the module *)
 use_decl          ::= "Use" qualified_name
 module_item       ::= type_section | const_decl | state_section | routine_decl
-qualified_name    ::= identifier ( "." identifier )*
+qualified_name    ::= identifier_like ( "." identifier_like )*
+identifier_like   ::= identifier | "Main"
+                      (* "Main" is reserved (the entry routine) but may name a
+                         module or a routine: "Module Main", "Main :" *)
 
 (* ---------- Declarations (SECTION 11 / CANON-5, CANON-9, CANON-13) ---------- *)
 
@@ -47,14 +50,16 @@ state_section     ::= "State" ":" NEWLINE state_field* ";"
 state_field       ::= identifier type_ref? ":=" expression NEWLINE
                     | identifier type_ref NEWLINE
                       (* State scalars require an initializer (the second form is
-                         for structs only); "mut" is forbidden; one ":=" per line *)
+                         for structs only); "mut" is forbidden. The initializer
+                         is an expression: one top-level ":=" declares, and a
+                         ":=" inside it can only be a named argument *)
 
 (* ---------- Routines (SECTION 15 / CANON-6, CANON-7, CANON-9) ---------- *)
 
 routine_decl      ::= routine_name parameter_part? type_ref? ":" NEWLINE block_body ";"
                       (* ":" declares the routine and opens its body (CANON-4);
                          with type_ref it is a function, without it a subroutine *)
-routine_name      ::= identifier ( "." identifier )?
+routine_name      ::= identifier_like ( "." identifier )?
                       (* "TPoint.Move" declares an associated method of TPoint *)
 parameter_part    ::= "(" parameter_list ")"
                       (* never empty: zero parameters means no parentheses at all,
@@ -142,7 +147,9 @@ until_stmt        ::= "until" expression
                       (* an internal conditional exit, valid only inside a repeat
                          body (at any depth, any number of times); it exits the
                          nearest enclosing repeat; it is not the terminator *)
-for_stmt          ::= "for" identifier "in" range_expr for_step? NEWLINE block_body ";"
+for_stmt          ::= "for" identifier "in" for_range for_step? NEWLINE block_body ";"
+for_range         ::= bitor_expr ".." bitor_expr
+                      (* the range is required, with or without a step *)
 for_step          ::= "step" expression
                       (* ADR-0010: "for I in 1..N + 1 step 2"; the old "(S)" step
                          is rejected with a migration message; "step" requires a
@@ -281,8 +288,15 @@ to fix in the parser or the semantic analyzer, not a change to the language.
 2. Not structurally parsed yet: `Type`, `Const` and `State` sections and routine
    signatures are kept as token lists by the parser and interpreted later by the
    semantic analyzer.
-3. Open language question OPEN-4 (CANON-5 rules 1 and 7 for FORM 1) awaits a
-   maintainer decision; the parser follows rule 1.
+3. Open language questions awaiting a maintainer decision: OPEN-4 (CANON-5
+   rules 1 and 7 for FORM 1; the parser follows rule 1) and OPEN-5 (the parser
+   accepts a typed `Const Name Type := Expr`, which CANON-5 does not define).
+4. Lexical: the digit separator `_` (`1_000_000`, `$FF_FF`, `3.141_592`) is
+   canonical (CANON-2, v3.3) but the lexer does not accept it.
+5. Lexical over-acceptance: the lexer and analyzer accept `0x` hexadecimal
+   literals, which the canon does not define (it writes hex as `$FF`), and the
+   backend emits invalid IR for them (`0xFF` reaches clang as a float
+   constant).
 
 Closed since the first version of this file (v3.23–v3.29): `Var` and `mut var`
 rejected; scalar without initializer rejected; bare `:` block rejected; grouped

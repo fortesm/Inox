@@ -495,8 +495,12 @@ specification, ADRs, manual HTML, and tests.
 #     v3.29: CANON-20 levels 1–16 with `..`/`in` non-associative, `:=` at
 #     statement level only (chains, named arguments), grouped declarations,
 #     `for ... step`, the ADR-0011 `case`, the line-break rule for `(`, `[` and
-#     `.`. Its "Conformance gaps" list now holds only the open items (array and
-#     generic types in declarations; sections kept as token lists; OPEN-4).
+#     `.`. `Main` names a module or a routine through `identifier_like`, and
+#     `for_range` makes `..` mandatory. Its "Conformance gaps" list holds the
+#     open items: array and generic types in declarations; sections kept as
+#     token lists; OPEN-4 and OPEN-5; the digit separator `_` not lexed; `0x`
+#     hex accepted (and lowered to invalid IR). The last four came from
+#     ChatGPT's review.
 #   - `tools/grammar_consistency.py` checks: every production defined once and
 #     reachable; word terminals against the lexer's keywords (both directions,
 #     and the kKeywords size); no forbidden terminal (`end`, `break`,

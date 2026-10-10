@@ -39,7 +39,7 @@ CONTEXTUAL_WORDS = {"self", "range", "array"}
 
 # Reserved by the lexer but not part of any production (reserved for the
 # future or kept reserved to reject old syntax with a diagnostic).
-RESERVED_ONLY = {"main", "do", "var"}
+RESERVED_ONLY = {"do", "var"}
 
 FORBIDDEN_TERMINALS = {"end", "break", "finally", "then", "of", "when", "=>", "var", "elsif"}
 
