@@ -1,0 +1,1 @@
+case on Natural cannot be proven to cover every value; add 'otherwise' (ADR-0011)

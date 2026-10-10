@@ -1,0 +1,31 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0011: static choices include constant expressions: `not False`, a
+== parenthesized comparison of constants, a Char Const, and literal-only Integer
+== expressions read in the selector type.
+Module CaseStaticExpressions
+
+Const Letter := 'A'
+
+Main :
+    B := True
+    case B
+        not False PutLn(1)
+        (1 > 2) PutLn(0)
+    ;
+    C := 'A'
+    case C
+        Letter PutLn(1)
+        otherwise
+    ;
+    V UInt8 := UInt8(5)
+    case V
+        5 | 2 + 3 * 10 PutLn(1)
+        otherwise
+    ;
+;

@@ -1,0 +1,20 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0011: a choice has the selector type. A typed Const keeps its type; only
+== a literal-only expression is read in the selector type (and range-checked).
+Module Diagnostics.CaseTypedConstMismatch
+
+Const K UInt16 := 5
+
+Main :
+    V UInt8 := UInt8(5)
+    case V
+        K PutLn(1)
+        otherwise
+    ;
+;

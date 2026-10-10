@@ -807,8 +807,15 @@ bool SemanticAnalyzer::cannotFallThrough(const ast::Statement& statement)
     }
     case ast::AstNodeKind::CaseStatement: {
         const auto& caseStatement = static_cast<const ast::CaseStatement&>(statement);
-        if (caseStatement.otherwiseBody().empty() ||
-            !cannotFallThrough(caseStatement.otherwiseBody())) {
+        // ADR-0011: a case accepted without `otherwise` covers every value of
+        // its selector, so only the explicit arms decide. With `otherwise`
+        // (even an empty one) that arm must not fall through either.
+        if (caseStatement.hasOtherwise() &&
+            (caseStatement.otherwiseBody().empty() ||
+             !cannotFallThrough(caseStatement.otherwiseBody()))) {
+            return false;
+        }
+        if (caseStatement.arms().empty()) {
             return false;
         }
         for (const ast::CaseArm& arm : caseStatement.arms()) {
@@ -1322,6 +1329,10 @@ void SemanticAnalyzer::rejectInvalidConstantRightOperand(ast::BinaryOperator op,
 // A module Const whose value is a single Integer or Bool literal is resolved
 // here, once. Other forms stay unresolved; the backend then reports them as
 // "not yet implemented" instead of guessing (docs/BACKEND_GAPS.md).
+namespace {
+bool decodeCharLiteral(std::string_view text, std::int64_t& value);
+} // namespace
+
 void SemanticAnalyzer::recordConstantValue(std::string_view name, std::string_view valueToken)
 {
     const Symbol* symbol = symbols_.currentScope().resolve(name);
@@ -1329,6 +1340,13 @@ void SemanticAnalyzer::recordConstantValue(std::string_view name, std::string_vi
         return;
     }
     ConstantValue value;
+    if (!valueToken.empty() && valueToken.front() == '\'') {
+        std::int64_t code = 0;
+        if (decodeCharLiteral(valueToken, code)) {
+            charConstants_[normalizeName(name)] = code;
+        }
+        return;
+    }
     if (equalsIgnoreCase(valueToken, "true") || equalsIgnoreCase(valueToken, "false")) {
         value.kind = ConstantValue::Kind::Boolean;
         value.boolean = equalsIgnoreCase(valueToken, "true");
@@ -1613,8 +1631,13 @@ bool caseDomainFor(std::string_view type, CaseDomain& domain)
     if (type == "UInt8") { domain = {0, 255}; return true; }
     if (type == "UInt16") { domain = {0, 65535}; return true; }
     if (type == "UInt32") { domain = {0, 4294967295LL}; return true; }
-    if (type == "Natural") { domain = {0, kMax}; return true; }
-    if (type == "UInt64" || type == "UInteger") { domain = {0, kMax, false}; return true; }
+    // Natural is UInt64 with floor 0 (CANON-8); like UInt64 its upper half does
+    // not fit in the Int64 constants the checker uses, so coverage is never
+    // provable and `otherwise` is required.
+    if (type == "Natural" || type == "UInt64" || type == "UInteger") {
+        domain = {0, kMax, false};
+        return true;
+    }
     return false;
 }
 
@@ -1677,6 +1700,139 @@ const ast::BinaryExpression* namedArgument(const ast::Expression& argument)
 } // namespace
 
 // ADR-0011 — Ada/SPARK-style case adapted to Inox.
+namespace {
+
+// An expression built only from literals and operators. Its type is the
+// universal literal type, so it may be read in the selector's type (and is
+// then range-checked); anything that names a Const keeps that Const's type.
+bool isLiteralOnly(const ast::Expression& expression)
+{
+    switch (expression.kind()) {
+    case ast::AstNodeKind::LiteralExpression:
+        return true;
+    case ast::AstNodeKind::UnaryExpression:
+        return isLiteralOnly(static_cast<const ast::UnaryExpression&>(expression).operand());
+    case ast::AstNodeKind::BinaryExpression: {
+        const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
+        return isLiteralOnly(binary.left()) && isLiteralOnly(binary.right());
+    }
+    default:
+        return false;
+    }
+}
+
+} // namespace
+
+const Symbol* SemanticAnalyzer::resolveConstant(const ast::Expression& expression) const
+{
+    if (expression.kind() != ast::AstNodeKind::IdentifierExpression) {
+        return nullptr;
+    }
+    const Symbol* symbol = symbols_.currentScope().resolve(
+        static_cast<const ast::IdentifierExpression&>(expression).name());
+    return symbol != nullptr && symbol->kind == SymbolKind::Constant ? symbol : nullptr;
+}
+
+bool SemanticAnalyzer::staticBoolValue(const ast::Expression& expression, bool& value) const
+{
+    switch (expression.kind()) {
+    case ast::AstNodeKind::LiteralExpression: {
+        const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
+        if (literal.literalKind() != ast::LiteralKind::Boolean) {
+            return false;
+        }
+        value = equalsIgnoreCase(literal.value(), "true");
+        return true;
+    }
+    case ast::AstNodeKind::IdentifierExpression: {
+        const Symbol* symbol = resolveConstant(expression);
+        if (symbol == nullptr) {
+            return false;
+        }
+        const ConstantValue* constant = result_.constantValueOf(*symbol);
+        if (constant == nullptr || constant->kind != ConstantValue::Kind::Boolean) {
+            return false;
+        }
+        value = constant->boolean;
+        return true;
+    }
+    case ast::AstNodeKind::UnaryExpression: {
+        const auto& unary = static_cast<const ast::UnaryExpression&>(expression);
+        bool operand = false;
+        if (unary.op() != ast::UnaryOperator::Not || !staticBoolValue(unary.operand(), operand)) {
+            return false;
+        }
+        value = !operand;
+        return true;
+    }
+    case ast::AstNodeKind::BinaryExpression: {
+        const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
+        bool left = false;
+        bool right = false;
+        switch (binary.op()) {
+        case ast::BinaryOperator::And:
+        case ast::BinaryOperator::Or:
+        case ast::BinaryOperator::Xor:
+            if (!staticBoolValue(binary.left(), left) || !staticBoolValue(binary.right(), right)) {
+                return false;
+            }
+            value = binary.op() == ast::BinaryOperator::And ? (left && right)
+                  : binary.op() == ast::BinaryOperator::Or  ? (left || right)
+                                                            : (left != right);
+            return true;
+        case ast::BinaryOperator::Equal:
+        case ast::BinaryOperator::NotEqual:
+        case ast::BinaryOperator::Less:
+        case ast::BinaryOperator::Greater:
+        case ast::BinaryOperator::LessEqual:
+        case ast::BinaryOperator::GreaterEqual: {
+            std::int64_t a = 0;
+            std::int64_t b = 0;
+            if (constantIntegerValue(binary.left(), a) && constantIntegerValue(binary.right(), b)) {
+                switch (binary.op()) {
+                case ast::BinaryOperator::Equal: value = a == b; break;
+                case ast::BinaryOperator::NotEqual: value = a != b; break;
+                case ast::BinaryOperator::Less: value = a < b; break;
+                case ast::BinaryOperator::Greater: value = a > b; break;
+                case ast::BinaryOperator::LessEqual: value = a <= b; break;
+                default: value = a >= b; break;
+                }
+                return true;
+            }
+            if ((binary.op() == ast::BinaryOperator::Equal ||
+                 binary.op() == ast::BinaryOperator::NotEqual) &&
+                staticBoolValue(binary.left(), left) && staticBoolValue(binary.right(), right)) {
+                value = (left == right) == (binary.op() == ast::BinaryOperator::Equal);
+                return true;
+            }
+            return false;
+        }
+        default:
+            return false;
+        }
+    }
+    default:
+        return false;
+    }
+}
+
+bool SemanticAnalyzer::staticCharValue(const ast::Expression& expression, std::int64_t& value) const
+{
+    if (expression.kind() == ast::AstNodeKind::LiteralExpression) {
+        const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
+        return literal.literalKind() == ast::LiteralKind::Char &&
+               decodeCharLiteral(literal.value(), value);
+    }
+    if (const Symbol* symbol = resolveConstant(expression)) {
+        const auto found = charConstants_.find(normalizeName(symbol->name));
+        if (found != charConstants_.end()) {
+            value = found->second;
+            return true;
+        }
+    }
+    return false;
+}
+
 std::int64_t SemanticAnalyzer::caseChoiceValue(const ast::Expression& choice,
                                                const std::string& selectorType)
 {
@@ -1686,42 +1842,42 @@ std::int64_t SemanticAnalyzer::caseChoiceValue(const ast::Expression& choice,
     const char* kStatic =
         "a case choice must be a static value: a literal, a Const, or a constant "
         "expression (ADR-0011)";
+    const auto mismatch = [&]() {
+        return SemanticError("case choice type " + choiceType +
+                             " does not match selector type " + selectorType);
+    };
 
     if (domain.isBool) {
         if (choiceType != "Bool") {
-            throw SemanticError("case choice type " + choiceType + " does not match selector type Bool");
+            throw mismatch();
         }
-        if (choice.kind() == ast::AstNodeKind::LiteralExpression) {
-            return equalsIgnoreCase(static_cast<const ast::LiteralExpression&>(choice).value(), "true") ? 1 : 0;
+        bool value = false;
+        if (!staticBoolValue(choice, value)) {
+            throw SemanticError(kStatic);
         }
-        if (choice.kind() == ast::AstNodeKind::IdentifierExpression) {
-            const Symbol* symbol = symbols_.currentScope().resolve(
-                static_cast<const ast::IdentifierExpression&>(choice).name());
-            if (symbol != nullptr && symbol->kind == SymbolKind::Constant) {
-                if (const ConstantValue* value = result_.constantValueOf(*symbol);
-                    value != nullptr && value->kind == ConstantValue::Kind::Boolean) {
-                    return value->boolean ? 1 : 0;
-                }
-            }
-        }
-        throw SemanticError(kStatic);
+        return value ? 1 : 0;
     }
 
     if (domain.isChar) {
         if (choiceType != "Char") {
-            throw SemanticError("case choice type " + choiceType + " does not match selector type Char");
+            throw mismatch();
         }
         std::int64_t code = 0;
-        if (choice.kind() == ast::AstNodeKind::LiteralExpression &&
-            decodeCharLiteral(static_cast<const ast::LiteralExpression&>(choice).value(), code)) {
-            return code;
+        if (!staticCharValue(choice, code)) {
+            throw SemanticError(kStatic);
         }
-        throw SemanticError(kStatic);
+        return code;
     }
 
     if (!isIntegerType(choiceType)) {
-        throw SemanticError("case choice type " + choiceType + " does not match selector type " +
-                            selectorType);
+        throw mismatch();
+    }
+    // A typed value (a Const, or an expression that names one) keeps its
+    // type: it must be the selector's type. A literal-only expression is
+    // universal and only has to fit the selector's range (checked by the
+    // caller).
+    if (!isLiteralOnly(choice) && choiceType != selectorType) {
+        throw mismatch();
     }
     std::int64_t value = 0;
     if (!constantIntegerValue(choice, value)) {
