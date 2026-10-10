@@ -100,6 +100,11 @@ local_decl        ::= name_list type_ref ( ":=" expression )?
                          name: the first appearance of a name declares it. *)
 name_list         ::= identifier ( "," identifier )*
 assignment_stmt   ::= target ( ":=" target )* ":=" expression
+                    | target compound_op expression
+compound_op       ::= "+=" | "-=" | "*=" | "/=" | "^="
+                      (* ADR-0012: L op= R is L := L op R with L evaluated once;
+                         not chainable; "/=" never on Integer; target is an
+                         existing variable or field path *)
                       (* ADR-0009: ":=" is a statement, never an expression.
                          "A := B := C := X" evaluates X once and stores it in C,
                          then B, then A. In a chain every target is a variable or

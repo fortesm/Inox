@@ -12,8 +12,8 @@ CountDown(N Integer) Integer :
     Total := 0
     repeat
         until I = 0
-        Total := Total + I
-        I := I - 1
+        Total += I
+        I -= 1
     ;
     Return Total
 ;

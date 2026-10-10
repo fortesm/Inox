@@ -78,16 +78,17 @@ Token Lexer::nextToken()
             return makeToken(TokenKind::GreaterEqual, start, startOffset);
         }
         return makeToken(TokenKind::Greater, start, startOffset);
+    // ADR-0012: compound assignment `+=` `-=` `*=` `/=` `^=`.
     case '+':
-        return makeToken(TokenKind::Plus, start, startOffset);
+        return makeToken(match('=') ? TokenKind::PlusEqual : TokenKind::Plus, start, startOffset);
     case '-':
-        return makeToken(TokenKind::Minus, start, startOffset);
+        return makeToken(match('=') ? TokenKind::MinusEqual : TokenKind::Minus, start, startOffset);
     case '*':
-        return makeToken(TokenKind::Star, start, startOffset);
+        return makeToken(match('=') ? TokenKind::StarEqual : TokenKind::Star, start, startOffset);
     case '/':
-        return makeToken(TokenKind::Slash, start, startOffset);
+        return makeToken(match('=') ? TokenKind::SlashEqual : TokenKind::Slash, start, startOffset);
     case '^':
-        return makeToken(TokenKind::Caret, start, startOffset);
+        return makeToken(match('=') ? TokenKind::CaretEqual : TokenKind::Caret, start, startOffset);
     case '$':
         return dollarHexNumber(start, startOffset);
     case '.':
@@ -401,6 +402,16 @@ std::string tokenKindName(TokenKind kind)
         return "Equal";
     case TokenKind::Hash:
         return "Hash";
+    case TokenKind::PlusEqual:
+        return "PlusEqual";
+    case TokenKind::MinusEqual:
+        return "MinusEqual";
+    case TokenKind::StarEqual:
+        return "StarEqual";
+    case TokenKind::SlashEqual:
+        return "SlashEqual";
+    case TokenKind::CaretEqual:
+        return "CaretEqual";
     case TokenKind::Pipe:
         return "Pipe";
     case TokenKind::Less:

@@ -11,8 +11,8 @@ SumTo(N Integer) Integer :
     I := N
     Total := 0
     while I > 0
-        Total := Total + I
-        I := I - 1
+        Total += I
+        I -= 1
     ;
     Return Total
 ;

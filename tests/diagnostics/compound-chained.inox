@@ -5,23 +5,12 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module RepeatLeaveContinue
-
-FindValue(N Integer) Integer :
-    I := N
-    repeat
-        I -= 1
-        if I = 3
-            continue
-        ;
-        if I = 1
-            leave
-        ;
-        until I = 0
-    ;
-    Return I
-;
+== ADR-0012: a compound assignment cannot be chained.
+Module Diagnostics.CompoundChained
 
 Main :
-    PutLn(FindValue(5))
+    A := 1
+    B := 2
+    A += B += 1
+    PutLn(A)
 ;

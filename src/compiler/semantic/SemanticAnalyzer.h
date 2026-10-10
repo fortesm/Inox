@@ -159,6 +159,9 @@ private:
     };
     std::vector<TrackedLocal> localsToRead_;
     std::unordered_set<const Symbol*> readSymbols_;
+    // ADR-0012: the copy of the target inside a desugared `X += R`; analyzing
+    // it is not a read of X.
+    std::unordered_set<const ast::IdentifierExpression*> updateOnlyReads_;
 };
 
 } // namespace inox::compiler::semantic

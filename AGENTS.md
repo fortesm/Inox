@@ -63,6 +63,8 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 
 - `Name Type := Expression` is a declaration.
 - `Name := Expression` is assignment to an existing mutable symbol.
+- Compound assignment `+=` `-=` `*=` `/=` `^=` (ADR-0012) is a statement on an
+  existing variable or field; not chainable; `/=` never on Integer; `^=` is power.
 - Shadowing is forbidden in same and nested scopes.
 - Case-only differences are not distinct names.
 - Use before declaration is invalid.

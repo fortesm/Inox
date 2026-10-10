@@ -218,6 +218,7 @@ P, Q TPoint                   == both get the struct defaults</code></pre>
 Coutner := Counter + 1   == error: local variable never read: Coutner
 PutLn(Counter)</code></pre>
 <p>Parameters, <code>for</code> iterators, exception bindings, <code>State</code> and <code>Const</code> are exempt.</p>
+<p>Compound assignment updates a variable or field in place: <code>Total += I</code> means <code>Total := Total + I</code>. The forms are <code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code> (only where <code>/</code> is valid, so never for <code>Integer</code>) and <code>^=</code> (power). They cannot be chained, and updating a variable does not count as reading it.</p>
 <p>Assignment is a statement, not an expression. It can be chained: the value is computed once and stored from right to left.</p>
 <pre><code>A := B := C := Next(10)   == Next is called once
 P.X := P.Y := 0</code></pre>

@@ -5,23 +5,11 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module RepeatLeaveContinue
-
-FindValue(N Integer) Integer :
-    I := N
-    repeat
-        I -= 1
-        if I = 3
-            continue
-        ;
-        if I = 1
-            leave
-        ;
-        until I = 0
-    ;
-    Return I
-;
+== ADR-0012: a compound assignment updates an existing variable; it does not
+== declare one.
+Module Diagnostics.CompoundNewVariable
 
 Main :
-    PutLn(FindValue(5))
+    Y += 1
+    PutLn(Y)
 ;

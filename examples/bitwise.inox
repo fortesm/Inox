@@ -25,7 +25,7 @@ Main :
     ;
 
     while R > 0
-        R := R - 1
+        R -= 1
         if R = 2
             continue
         ;

@@ -303,6 +303,18 @@ Main :
     PutLn(F > 2.0)
 ;
 """),
+    ("compound-assignment", "compound assignment += -= *= /= ^=", """Main :
+    I := 10
+    I += 5
+    I *= 2
+    I -= 1
+    F := 9.0
+    F /= 3.0
+    F ^= 2.0
+    PutLn(I)
+    PutLn(F)
+;
+"""),
     ("state-global", "State section variable", """State :
     Counter Integer := 0
 ;

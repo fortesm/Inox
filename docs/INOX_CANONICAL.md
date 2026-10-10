@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.32 (Layer A: OPEN-4 closed; a local variable that is never read
-#          is a compile error)
+# Version: v3.33 (Layer A: ADR-0012, compound assignment `+=` `-=` `*=` `/=`
+#          `^=`)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,29 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.33 — 2026-10-10 — ADR-0012: compound assignment (Layer A, decided by
+#         Marcelo Fortes in the ChatGPT design chat: "Quero dar suporte à +=
+#         -= *= /= ^= ... i := i + 1 continua valendo, mas quero adicionar esta
+#         convivência e inclusive atualizar os exemplos"; the semantics are the
+#         ones ChatGPT proposed there).
+#   - `L += R`, `L -= R`, `L *= R`, `L /= R`, `L ^= R` mean `L := L op R` with L
+#     evaluated once. `/=` is valid only where `/` is (never for Integer:
+#     `div`/`mod` stay the integer division); `^=` is power (XOR is `xor`).
+#     `div=`/`mod=` are not part of this decision.
+#   - Statement level only, like `:=` (ADR-0009): no chain (`A += B += 1`),
+#     no compound operator inside an expression. The target is an existing
+#     variable or a field path (`P.X`, `.X` in `with`); an index target waits
+#     for arrays, whose lowering must evaluate the element once.
+#   - With OPEN-4: updating a variable is not reading it, so `Total += I`
+#     alone does not make `Total` read.
+#   - The parser stores `L := L op R` (exact for side-effect-free targets);
+#     lowering is unchanged. 13 examples now use the compound forms;
+#     `llvm-local-assignment.inox` keeps the long form.
+#   - Tests: runtime `compound-assignment`; diagnostics
+#     `compound-integer-divide`, `compound-new-variable`, `compound-chained`,
+#     `compound-index-target`, `compound-update-only-unread`. Probe
+#     `compound-assignment`.
 #
 # v3.32 — 2026-10-10 — OPEN-4 closed: unread locals are errors (Layer A,
 #         decided by Marcelo Fortes on 2026-10-10: "seguirmos como Go e dar erro
@@ -1580,6 +1603,20 @@ mode.” That policy is superseded by DECISION P-A, approved 2026-10-09: runtime
 arithmetic faults are deterministic Inox traps in every conforming build. This
 note records the later approved decision without rewriting the locked ADR.
 
+## ADR-0012 — Compound assignment  (Status: Accepted, 2026-10-10)
+Decision (Marcelo Fortes, in the design chat with ChatGPT): Inox adds `+=`,
+`-=`, `*=`, `/=` and `^=` next to the plain form `I := I + 1`, which stays
+valid. `L op= R` means `L := L op R` with L evaluated exactly once.
+- `/=` is valid only where `/` is valid: `I /= 2` with an Integer is an error,
+  because Inox has no integer `/` (use `div`). `^=` is power.
+- Statement level only and not chainable (ADR-0009). The target is an existing
+  variable or field path; index targets come with arrays.
+- Updating a variable is not reading it (CANON-5 rule 7, OPEN-4).
+Rationale: a concise, widely known convenience that keeps Inox meaning: `^` is
+power, not XOR, and integer division keeps its own spelling.
+Consequence: five new tokens; no new lowering (the parser stores the long form,
+exact because the allowed targets have no side effects).
+
 ## ADR-0011 — `case` in the Ada/SPARK style  (Status: Accepted, 2026-10-09)
 Decision (approved by Marcelo Fortes, 2026-10-09):
 
@@ -1899,6 +1936,16 @@ FORM 2 and FORM 3 may declare several names of the same type on one line:
 - Rules 2–8 apply to every name. `A, B Integer` (scalar, no `:=`) is a compile
   error, like `A Integer`.
 - Move-only types (`Vector[T]`, future) are left to the Vector ADR.
+
+### Compound assignment (v3.33, ADR-0012)
+    Total += I          == Total := Total + I
+    Count -= 1
+    Scale *= 2
+    Ratio /= 4.0        == only where `/` is valid: never for Integer
+    Area ^= 2           == power
+`L op= R` is `L := L op R` with L evaluated once. It is a statement, cannot be
+chained, needs an existing variable or field, and is not a read of L
+(rule 7).
 
 ### Assignment is a statement; chained assignment (v3.27, ADR-0009)
 `:=` forms a statement. It never appears inside an expression, a condition or
@@ -2604,7 +2651,8 @@ Level  Operators                              Associativity
 15     or                                     left
 16     :=  (assignment, statement level)      right
 ```
-(Level 16: `:=` is not an expression operator. Its right associativity exists
+(Level 16 also holds the compound forms `+=` `-=` `*=` `/=` `^=`, ADR-0012.
+Level 16: `:=` is not an expression operator. Its right associativity exists
 only inside the assignment statement, where `A := B := X` is a chain, ADR-0009.)
 (Levels 10 and 11 were added by ADR-0008, v3.24; the levels below them were
 renumbered without changing their relative order.)

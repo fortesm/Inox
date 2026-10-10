@@ -16,7 +16,7 @@ SumRange(N Integer) Integer :
         if I = 8
             leave
         ;
-        Total := Total + I
+        Total += I
     ;
     Return Total
 ;
