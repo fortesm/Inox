@@ -10,7 +10,7 @@
 Module Runtime.ConstValues
 
 Const Limit := 10
-Const Mask Integer := $FF
+Const Mask := $FF
 Const Enabled := true
 
 Main :

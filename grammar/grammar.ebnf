@@ -45,7 +45,8 @@ enum_short_decl   ::= identifier "(" identifier ( "," identifier )* ")"
 enum_block_decl   ::= identifier "Enum" NEWLINE ( identifier NEWLINE )+ ";"
 
 const_decl        ::= "Const" identifier ":=" expression
-                      (* single line; immutable; inferred type; one ":=" only *)
+                      (* single line; immutable; the type is the value's (no
+                         written type, v3.38); one ":=" only *)
 state_section     ::= "State" ":" NEWLINE state_field* ";"
 state_field       ::= identifier type_ref? ":=" expression NEWLINE
                     | identifier type_ref NEWLINE
@@ -303,9 +304,7 @@ to fix in the parser or the semantic analyzer, not a change to the language.
 2. Not structurally parsed yet: `Type`, `Const` and `State` sections and routine
    signatures are kept as token lists by the parser and interpreted later by the
    semantic analyzer.
-3. Open language questions awaiting a maintainer decision: OPEN-4 (CANON-5
-   rules 1 and 7 for FORM 1; the parser follows rule 1) and OPEN-5 (the parser
-   accepts a typed `Const Name Type := Expr`, which CANON-5 does not define).
+3. OPEN-4 and OPEN-5 are closed (v3.32, v3.38).
 
 Closed in v3.31: the digit separator `_` is lexed. In v3.34 `0x` literals
 became canonical next to `$` (before, they were lowered to invalid IR).

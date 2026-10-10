@@ -1,0 +1,17 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== OPEN-5: a Const takes the type of its value; `UInt8($FF)` makes Mask a
+== UInt8 Const, usable where a UInt8 is expected.
+Module ConstConversion
+
+Const Mask := UInt8($FF)
+
+Main :
+    V UInt8 := Mask
+    PutLn(V = Mask)
+;

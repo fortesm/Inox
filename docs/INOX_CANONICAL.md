@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.37 (Layer B: the conditional expression is lowered to LLVM)
+# Version: v3.38 (Layer A: OPEN-5 closed; a Const has no written type)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -486,6 +486,17 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.38 — 2026-10-10 — OPEN-5 closed (Layer A, decided by Marcelo Fortes on
+#         2026-10-10: "Acatado aceitar só Const Nome := Valor e usar
+#         UInt8($FF)").
+#   - A Const is written `Const Name := Value` only. Its type is the type of
+#     the value; a conversion chooses another type: `Const Mask := UInt8($FF)`.
+#   - Layer B: the parser rejected nothing before; `Const Mask UInt8 := $FF` is
+#     now an error whose message shows the conversion form.
+#     `tests/runtime/const-values.inox` drops its typed Const.
+#   - Tests: diagnostic `const-typed-rejected`; semantic-valid
+#     `const-conversion`.
 #
 # v3.37 — 2026-10-10 — conditional expression lowered (Layer B; ADR-0013 is
 #         unchanged).
@@ -1430,7 +1441,9 @@ OPEN-4 — CLOSED (v3.32): Marcelo Fortes chose the Go rule; an unread local is
   maintainer decides how rule 7 is reconciled; until then neither rule is
   edited.
 
-OPEN-5 — OPEN (raised in v3.29 by ChatGPT's review of ADR-0011). CANON-5 defines
+OPEN-5 — CLOSED (v3.38): Marcelo Fortes chose `Const Name := Value` only; a
+  conversion gives another type (`Const Mask := UInt8($FF)`). History follows.
+  Raised in v3.29 by ChatGPT's review of ADR-0011. CANON-5 defines
   `Const Name := Expr` (inferred type). The parser also accepts a typed form,
   `Const Mask Integer := $FF`, used by one test. It is Layer B over-acceptance,
   not canonical syntax, until the maintainer decides whether Inox has typed
@@ -2108,6 +2121,8 @@ ensure/with do not escape that block. Use before declaration is an error.
 
 ### Const and State
 `Const Name := Expr` declares an immutable constant (single line, inferred type).
+A Const has no written type (v3.38): `Const Mask UInt8 := $FF` is an error;
+write `Const Mask := UInt8($FF)` to choose the type.
 Mutable global state must be explicit via `State :` ... `;`. Global mutable state
 should be rare and visible. State scalars still require initializers; `mut` inside
 State is forbidden.

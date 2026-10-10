@@ -1396,6 +1396,16 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
         }
         ast::SectionInitializer initializer;
         initializer.name = tokens[declarationStart];
+        if (head == 2 && sectionKind == ast::SectionKind::Const) {
+            // OPEN-5 (closed v3.38, Marcelo Fortes): a Const has no written
+            // type; its type is the value's. A conversion gives another type.
+            throw ParseError(
+                "a Const is written 'Const " + tokens[declarationStart] +
+                    " := Value' (CANON-5): to choose its type, convert the value, "
+                    "e.g. 'Const " + tokens[declarationStart] + " := " +
+                    tokens[declarationStart + 1] + "(Value)'",
+                token.location);
+        }
         if (head == 2) {
             initializer.typeName = tokens[declarationStart + 1];
         } else if (head == 3 && tokens[declarationStart + 1] == ":") {

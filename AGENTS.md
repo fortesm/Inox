@@ -77,6 +77,8 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - A local variable that is never read is a compile error (OPEN-4, v3.32);
   assigning is not reading. Parameters, `for` iterators, exception bindings,
   State and Const are exempt. Tests and examples must read what they declare.
+- A `Const` never has a written type: `Const Name := Value`; use a conversion
+  (`Const Mask := UInt8($FF)`) to choose another type (OPEN-5, v3.38).
 - A local symbol dies at the end of its block.
 - `for` iterators are implicit, read-only, loop-scoped, and cannot conflict with visible symbols.
 - Sequential `for` loops may reuse an iterator name after the previous loop scope is closed; nested loops may not reuse an outer iterator name.
