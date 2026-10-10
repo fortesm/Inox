@@ -1,0 +1,36 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-5 (v3.27): chained assignment. `A := B := C := X` evaluates X once
+== and stores it in C, then B, then A. New names are declared (FORM 1); targets
+== may be variables or fields, including `.Field` inside `with`.
+Module Runtime.ChainedAssignment
+
+Type
+    TPoint Struct
+        X Integer
+        Y Integer
+    ;
+
+Next(N Integer) Integer :
+    PutLn("call")
+    Return N + 1
+;
+
+Main :
+    A := B := C := D := E := 4
+    PutLn(A, B, C, D, E)
+    A := B := Next(10)
+    PutLn(A, " ", B)
+    P TPoint
+    P.X := P.Y := C := 7
+    PutLn(P.X, " ", P.Y, " ", C)
+    with P
+        .X := .Y := 2
+    ;
+    PutLn(P.X, " ", P.Y)
+;

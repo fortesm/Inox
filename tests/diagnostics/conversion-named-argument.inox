@@ -1,0 +1,15 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-9: named arguments belong to struct construction only; a conversion
+== such as Float32(...) rejects them.
+Module Diagnostics.ConversionNamedArgument
+
+Main :
+    F := Float32(X := 0.0)
+    PutLn(1)
+;

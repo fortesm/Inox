@@ -1,0 +1,16 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0009: an index is not a chain target. In `V[I] := I := 4` the element
+== would depend on whether V[I] is located before or after I changes; Inox does
+== not pick one silently.
+Module Diagnostics.ChainedAssignmentIndexTarget
+
+Main :
+    I := 1
+    V[I] := I := 4
+;

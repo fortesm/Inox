@@ -408,7 +408,21 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
     if (item.kind() == ast::AstNodeKind::FunctionDeclaration) {
         analyzeFunction(static_cast<const ast::FunctionDeclaration&>(item));
     } else if (item.kind() == ast::AstNodeKind::SectionDeclaration) {
-        validateSectionTypes(static_cast<const ast::SectionDeclaration&>(item));
+        const auto& section = static_cast<const ast::SectionDeclaration&>(item);
+        validateSectionTypes(section);
+        // Const and State initializers are expressions: they are analyzed like
+        // any other (CANON-9 named construction, types), not skipped.
+        for (const ast::SectionInitializer& initializer : section.initializers()) {
+            const std::string valueType =
+                canonicalTypeName(analyzeExpression(*initializer.value));
+            if (!initializer.typeName.empty()) {
+                const std::string declared = canonicalTypeName(initializer.typeName);
+                if (!valueType.empty() && !canAssign(declared, valueType)) {
+                    throw SemanticError("initializer of " + initializer.name + " has type " +
+                                        valueType + ", expected " + declared);
+                }
+            }
+        }
     }
 }
 
@@ -427,7 +441,27 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
     }
 
     const auto& tokens = section.tokens();
+    const auto& lines = section.tokenLines();
     const bool isMutable = kind == SymbolKind::Variable || kind == SymbolKind::State;
+    // An initializer runs to the end of its line (one declaration per line).
+    // Skipping it as a unit keeps tokens inside it, such as the field names of
+    // `TPoint(X := 1, Y := 2)`, from being read as new declarations.
+    const auto endOfInitializer = [&](std::size_t valueIndex, std::size_t fallback) {
+        if (lines.size() != tokens.size() || valueIndex >= tokens.size()) {
+            return fallback;
+        }
+        std::size_t end = valueIndex;
+        while (end < tokens.size() && lines[end] == lines[valueIndex]) {
+            ++end;
+        }
+        return end;
+    };
+    // A Const value is recorded only when it is a single token; other
+    // initializers stay unresolved (the backend reports them as a GAP).
+    const auto singleTokenValue = [&](std::size_t valueIndex) {
+        return valueIndex < tokens.size() &&
+               endOfInitializer(valueIndex, valueIndex + 1) == valueIndex + 1;
+    };
     for (std::size_t index = 0; index + 1 < tokens.size();) {
         if (!looksLikeIdentifier(tokens[index])) {
             ++index;
@@ -445,10 +479,10 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
             // Name := Expr  -> inferred-type declaration
             declareOrThrow(tokens[index], kind,
                            inferSectionDeclarationType(tokens, index), isMutable);
-            if (kind == SymbolKind::Constant && index + 2 < tokens.size()) {
+            if (kind == SymbolKind::Constant && singleTokenValue(index + 2)) {
                 recordConstantValue(tokens[index], tokens[index + 2]);
             }
-            index += 3;  // Name := value
+            index = endOfInitializer(index + 2, index + 3);  // Name := value
             continue;
         }
 
@@ -460,7 +494,8 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
             if (kind == SymbolKind::State && !hasInitializer && index + 2 < tokens.size()) {
                 stateDeclarationsWithoutInitializer_.emplace_back(tokens[index], tokens[index + 2]);
             }
-            index += 3;  // Name : Type
+            index = hasInitializer ? endOfInitializer(index + 4, index + 3)
+                                   : index + 3;  // Name : Type [:= value]
             continue;
         }
 
@@ -469,10 +504,10 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
             // The TYPE token must NOT be declared as a symbol (it is a type name).
             declareOrThrow(tokens[index], kind, canonicalTypeName(next), isMutable);
             if (index + 2 < tokens.size() && tokens[index + 2] == ":=") {
-                if (kind == SymbolKind::Constant && index + 3 < tokens.size()) {
+                if (kind == SymbolKind::Constant && singleTokenValue(index + 3)) {
                     recordConstantValue(tokens[index], tokens[index + 3]);
                 }
-                index += 4;  // Name Type := value
+                index = endOfInitializer(index + 3, index + 4);  // Name Type := value
             } else {
                 if (kind == SymbolKind::State) {
                     stateDeclarationsWithoutInitializer_.emplace_back(tokens[index], next);
@@ -1536,8 +1571,42 @@ std::string SemanticAnalyzer::inferExpressionType(const ast::Expression& express
     return {};
 }
 
+namespace {
+
+const ast::BinaryExpression* namedArgument(const ast::Expression& argument)
+{
+    if (argument.kind() != ast::AstNodeKind::BinaryExpression) {
+        return nullptr;
+    }
+    const auto& binary = static_cast<const ast::BinaryExpression&>(argument);
+    if (binary.op() != ast::BinaryOperator::Assign ||
+        binary.left().kind() != ast::AstNodeKind::IdentifierExpression) {
+        return nullptr;
+    }
+    return &binary;
+}
+
+} // namespace
+
 std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
 {
+    // `Name := Value` inside an argument list is named struct construction
+    // (CANON-9). It is not an assignment, and only a struct constructor takes it.
+    const bool calleeIsType =
+        call.callee().kind() == ast::AstNodeKind::IdentifierExpression &&
+        types_.resolve(static_cast<const ast::IdentifierExpression&>(call.callee()).name()) != nullptr;
+    if (!calleeIsType) {
+        for (const auto& argument : call.arguments()) {
+            if (const ast::BinaryExpression* named = namedArgument(*argument)) {
+                throw SemanticError(
+                    "named argument '" +
+                    static_cast<const ast::IdentifierExpression&>(named->left()).name() +
+                    " := ...' is only allowed in struct construction (CANON-9); "
+                    "':=' is a statement, not an expression");
+            }
+        }
+    }
+
     if (call.callee().kind() == ast::AstNodeKind::CallExpression &&
         isMemberCall(static_cast<const ast::CallExpression&>(call.callee()))) {
         return analyzeMethodCallExpression(call);
@@ -1553,8 +1622,63 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
             result_.bind(callee, symbol);
             result_.bind(call, symbol);
             result_.setExpressionType(callee, resolvedType(canonicalTypeName(type->name)));
+            const StructType* structType = resolveStruct(type->name);
+            if (structType == nullptr) {
+                // A conversion such as `Float32(0.0)` or `Currency(19.99)`.
+                for (const auto& argument : call.arguments()) {
+                    if (const ast::BinaryExpression* named = namedArgument(*argument)) {
+                        throw SemanticError(
+                            "named argument '" +
+                            static_cast<const ast::IdentifierExpression&>(named->left()).name() +
+                            " := ...' is only allowed in struct construction (CANON-9)");
+                    }
+                    analyzeExpression(*argument);
+                }
+                return canonicalTypeName(type->name);
+            }
+
+            // Named struct construction (CANON-9): every argument is
+            // `Field := Value`. The left side names a field, never a variable;
+            // nothing is declared or assigned.
+            std::vector<std::string> namedFields;
             for (const auto& argument : call.arguments()) {
-                analyzeExpression(*argument);
+                const ast::BinaryExpression* named = namedArgument(*argument);
+                if (named == nullptr) {
+                    throw SemanticError(
+                        "positional construction is not canonical (CANON-9): write " +
+                        type->name + "(Field := Value, ...)");
+                }
+                const std::string& fieldName =
+                    static_cast<const ast::IdentifierExpression&>(named->left()).name();
+                const StructField* field = resolveStructField(type->name, fieldName);
+                if (field == nullptr) {
+                    throw SemanticError("unknown field in construction: " +
+                                        type->name + "." + fieldName);
+                }
+                for (const std::string& seen : namedFields) {
+                    if (equalsIgnoreCase(seen, fieldName)) {
+                        throw SemanticError("duplicate field in construction: " +
+                                            type->name + "." + fieldName);
+                    }
+                }
+                namedFields.push_back(fieldName);
+                const std::string valueType = analyzeExpression(named->right());
+                if (!canAssign(field->typeName, valueType)) {
+                    throw SemanticError("field " + type->name + "." + fieldName +
+                                        " expects " + field->typeName);
+                }
+                result_.setExpressionType(*named, resolvedType(field->typeName));
+            }
+            for (const StructField& field : structType->fields) {
+                bool named = false;
+                for (const std::string& seen : namedFields) {
+                    named = named || equalsIgnoreCase(seen, field.name);
+                }
+                if (!named && !field.hasDefault && resolveStruct(field.typeName) == nullptr) {
+                    throw SemanticError(
+                        "construction omits scalar field without default (CANON-9): " +
+                        type->name + "." + field.name);
+                }
             }
             return canonicalTypeName(type->name);
         }
