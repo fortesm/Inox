@@ -5,11 +5,20 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module Runtime.ForStepZeroEmptyRange
+== ADR-0010: `for I in A..B step S` with expression bounds (no parentheses
+== needed) and an expression step; descending with a step.
+Module Runtime.ForStepKeyword
+
+Twice(N Integer) Integer :
+    Return N * 2
+;
 
 Main :
-    Z Integer := 0
-    for I in 3..1 step Z
+    N := 4
+    for I in 1..N + 1 step 2
         PutLn(I)
+    ;
+    for J in Twice(N)..N - 2 step N div 2
+        PutLn(J)
     ;
 ;

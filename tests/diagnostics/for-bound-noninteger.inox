@@ -5,11 +5,11 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module Runtime.ForStepZeroEmptyRange
+== The bounds of a counted loop are Integer expressions (`..` requires them).
+Module Diagnostics.ForBoundNoninteger
 
 Main :
-    Z Integer := 0
-    for I in 3..1 step Z
+    for I in 1..2.5
         PutLn(I)
     ;
 ;

@@ -5,11 +5,20 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module Runtime.ForStepZeroEmptyRange
+== ADR-0010: an identifier followed by `(` is a call, with or without a space,
+== also as the upper bound of a for header: `1..Twice (N)` is `1..Twice(N)`.
+Module Runtime.ForCallBoundSpaced
+
+Twice(N Integer) Integer :
+    Return N * 2
+;
 
 Main :
-    Z Integer := 0
-    for I in 3..1 step Z
+    N := 2
+    for I in 1..Twice (N)
         PutLn(I)
+    ;
+    for J in 1..Twice(N) step 3
+        PutLn(J)
     ;
 ;

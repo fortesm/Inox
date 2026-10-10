@@ -33,7 +33,8 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - `Range` declarations do not use `;`.
 - `if`/`elif`/`else` use no `then` and no `:`.
 - `case Expression` uses no `of`, `when`, `=>`, `:`, or `do`.
-- `for I in A..B (S)` uses no `do` and no `:`.
+- `for I in A..B step S` uses no `do` and no `:`; the old `(S)` step form is
+  rejected (ADR-0010). `step` is a reserved word.
 - `repeat` closes with `;`; `until` is an internal statement.
 - Loop exit is `leave` and the try cleanup clause is `ensure` (v3.20, ADR-0007).
   `break` and `finally` are NOT keywords; never emit them as Inox syntax.

@@ -278,6 +278,15 @@ Main :
     PutLn(P.X + P.Y)
 ;
 """),
+    ("for-step-expression-bounds", "for I in 1..N + 1 step N div 2", """Main :
+    N := 4
+    T := 0
+    for I in 1..N + 1 step N div 2
+        T := T + I
+    ;
+    PutLn(T)
+;
+"""),
     ("state-global", "State section variable", """State :
     Counter Integer := 0
 ;

@@ -5,11 +5,11 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module Runtime.ForStepZeroEmptyRange
+== Only functions and subroutines can be called; a variable is a value.
+Module Diagnostics.CallAValue
 
 Main :
-    Z Integer := 0
-    for I in 3..1 step Z
-        PutLn(I)
-    ;
+    N := 3
+    X := N(2)
+    PutLn(X)
 ;

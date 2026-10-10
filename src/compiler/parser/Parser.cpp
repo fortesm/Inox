@@ -26,6 +26,10 @@ constexpr const char* kAssignmentInExpressionMessage =
     "':=' is a statement, not an expression (CANON-5): an assignment cannot "
     "appear inside an expression, a condition or an initializer";
 
+constexpr const char* kOldForStepMessage =
+    "the for-loop step is written 'step S' (ADR-0010): write "
+    "'for I in A..B step S' instead of 'for I in A..B (S)'";
+
 ast::ExpressionPtr makeSyntheticIdentifier(std::string name)
 {
     return std::make_unique<ast::IdentifierExpression>(std::move(name));
@@ -716,17 +720,68 @@ ast::ExpressionPtr Parser::parsePrimary()
     errorAtCurrent("expected expression");
 }
 
-ast::ExpressionPtr Parser::parseForIterable()
+// ADR-0010: the old step form `for I in A..B (S)` / `A..B(S)` is gone. It is
+// recognized here, before the header is parsed, so the programmer gets a
+// migration message instead of "not a function". The form is a parenthesized
+// group that ends the header line, follows `..` at depth 0, and follows a
+// literal or `)`, which cannot be called. After an identifier (`1..F(2)`,
+// `1..F (2)`) it is a call and is left to the analyzer.
+void Parser::rejectOldForStep() const
 {
-    auto lower = parseAdditive();
-    if (!match(TokenKind::DotDot)) {
-        return lower;
+    const std::size_t line = tokens_[current_].location.line;
+    std::size_t end = current_;
+    while (end < tokens_.size() && tokens_[end].kind != TokenKind::EndOfFile &&
+           tokens_[end].location.line == line) {
+        ++end;
     }
-
-    const lexer::Token& op = previous();
-    auto upper = parsePrimary();
-    return makeExpr<ast::BinaryExpression>(
-        binaryOperatorFor(op), std::move(lower), std::move(upper));
+    if (end == current_ || tokens_[end - 1].kind != TokenKind::RightParen) {
+        return;
+    }
+    // Find the `(` matching the final `)`.
+    std::size_t depth = 0;
+    std::size_t open = end - 1;
+    for (std::size_t i = end; i-- > current_;) {
+        if (tokens_[i].kind == TokenKind::RightParen) {
+            ++depth;
+        } else if (tokens_[i].kind == TokenKind::LeftParen && --depth == 0) {
+            open = i;
+            break;
+        }
+    }
+    if (open == current_ || tokens_[open].kind != TokenKind::LeftParen) {
+        return;
+    }
+    bool rangeBefore = false;
+    std::size_t level = 0;
+    for (std::size_t i = current_; i < open; ++i) {
+        if (tokens_[i].kind == TokenKind::LeftParen) {
+            ++level;
+        } else if (tokens_[i].kind == TokenKind::RightParen && level > 0) {
+            --level;
+        } else if (tokens_[i].kind == TokenKind::DotDot && level == 0) {
+            rangeBefore = true;
+        }
+    }
+    if (!rangeBefore) {
+        return;
+    }
+    // The group is a step only when it follows a complete operand: a literal,
+    // an identifier or a `)`. After an operator or `..` it is a parenthesized
+    // bound, e.g. `A..(B - 1)`.
+    const lexer::Token& before = tokens_[open - 1];
+    const bool literal = before.kind == TokenKind::IntegerLiteral ||
+                         before.kind == TokenKind::FloatLiteral;
+    const bool operandEnd = literal || before.kind == TokenKind::Identifier ||
+                            before.kind == TokenKind::RightParen;
+    if (!operandEnd) {
+        return;
+    }
+    // After an identifier the group is a call, with or without a space before
+    // it (`Twice(N)` and `Twice (N)` mean the same); the analyzer explains the
+    // step syntax when the identifier names a value.
+    if (before.kind != TokenKind::Identifier) {
+        throw ParseError(kOldForStepMessage, tokens_[open].location);
+    }
 }
 
 std::vector<ast::ExpressionPtr> Parser::parseArgumentList()
@@ -868,11 +923,20 @@ ast::StatementPtr Parser::parseForInStatement()
         errorAtCurrent("expected 'in' after loop iterator");
     }
 
-    auto iterable = parseForIterable();
+    // ADR-0010: `for I in A..B step S`. The bounds are full range-level
+    // expressions (CANON-20 level 10); `step` is a reserved word of the header.
+    rejectOldForStep();
+    const lexer::SourceLocation iterableLocation = peek().location;
+    auto iterable = parseRange();
+    const bool isRange =
+        iterable->kind() == ast::AstNodeKind::BinaryExpression &&
+        static_cast<const ast::BinaryExpression&>(*iterable).op() == ast::BinaryOperator::Range;
+    if (!isRange) {
+        throw ParseError("a for loop iterates over a range 'A..B' (ADR-0010)", iterableLocation);
+    }
     ast::ExpressionPtr step;
-    if (match(TokenKind::LeftParen)) {
+    if (matchKeyword("step")) {
         step = parseValue();
-        consume(TokenKind::RightParen, "expected ')' after loop step");
     }
 
     auto body = parseHeaderDelimitedBlock();

@@ -9,7 +9,7 @@ Module Runtime.ForDescendingStepPassesMin
 
 Main :
     S Integer := 0
-    for I in ((-9223372036854775807 - 1) + 1)..(-9223372036854775807 - 1)(5)
+    for I in ((-9223372036854775807 - 1) + 1)..(-9223372036854775807 - 1) step 5
         S := S + 1
     ;
     PutLn(S)

@@ -9,7 +9,7 @@ Module ForRangeStep
 
 SumEvenUntil(N Integer) Integer :
     Total := 0
-    for I in 2..N(2)
+    for I in 2..N step 2
         if I = 4
             continue
         ;

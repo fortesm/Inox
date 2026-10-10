@@ -5,11 +5,13 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module Runtime.ForStepZeroEmptyRange
+== ADR-0010: `1..N(2)` is now a call of N. N is a value, so the analyzer
+== explains how the step is written.
+Module Diagnostics.ForOldStepGluedValue
 
 Main :
-    Z Integer := 0
-    for I in 3..1 step Z
+    N := 10
+    for I in 1..N(2)
         PutLn(I)
     ;
 ;
