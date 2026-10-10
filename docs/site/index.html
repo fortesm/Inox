@@ -254,6 +254,7 @@ P.X := P.Y := 0</code></pre>
 <p><code>Exit</code> is reserved for early return from subroutines without a value. Functions with a return type must use <code>Return Expression</code>.</p>
 </section>
 <section id="types"><h2>Types and numeric semantics</h2>
+<p>Hexadecimal literals are written <code>$FF</code> or <code>0xFF</code>; both mean the same value. An underscore may separate digits: <code>1_000_000</code>, <code>$FF_FF</code>. A leading zero never means octal: <code>017</code> is seventeen.</p>
 <p>Current and planned canonical scalar types include <code>Integer</code>, <code>Float</code>, <code>Bool</code>, <code>String</code>, <code>Char</code>, <code>Natural</code>, <code>Currency</code>, and future domain-oriented numeric types.</p>
 <ul>
 <li><code>Integer</code> is intended as Int64.</li>

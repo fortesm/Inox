@@ -1,0 +1,21 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-2 (v3.34, decided by Marcelo Fortes): hexadecimal literals may be
+== written `$FF` or `0xFF` (`0X` too), with the digit separator `_`. A leading
+== zero never means octal: `017` is seventeen.
+Module Runtime.HexLiterals
+
+Const Mask := 0xFF_FF
+
+Main :
+    X := 0xff + 0X10
+    PutLn(X)
+    PutLn(Mask)
+    PutLn(0xFF = $FF)
+    PutLn(017)
+;

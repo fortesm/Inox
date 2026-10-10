@@ -1811,7 +1811,13 @@ std::string Parser::tokenText(const lexer::Token& token)
     // phases see `1000000` for `1_000_000`.
     if (token.kind == TokenKind::IntegerLiteral || token.kind == TokenKind::FloatLiteral) {
         std::string digits;
-        for (const char ch : token.lexeme) {
+        std::string_view text = token.lexeme;
+        // `0xFF` and `$FF` are the same literal (CANON-2, v3.34).
+        if (text.size() > 2 && text[0] == '0' && (text[1] == 'x' || text[1] == 'X')) {
+            digits = "$";
+            text.remove_prefix(2);
+        }
+        for (const char ch : text) {
             if (ch != '_') {
                 digits += ch;
             }

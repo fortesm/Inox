@@ -5,11 +5,10 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== CANON-2: hexadecimal literals are written `$FF`. `0x` is not Inox syntax;
-== before v3.31 it was accepted and lowered to invalid LLVM IR.
-Module Diagnostics.Hex0xRejected
+== CANON-2: `0x` needs at least one hexadecimal digit.
+Module Diagnostics.Hex0xMissingDigit
 
 Main :
-    X := 0xFF
+    X := 0x
     PutLn(X)
 ;

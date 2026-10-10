@@ -235,15 +235,18 @@ bool Lexer::digitRun(bool hex)
 Token Lexer::number(SourceLocation start, std::size_t startOffset)
 {
     if (source_[startOffset] == '0' && (peek() == 'x' || peek() == 'X')) {
-        // The canon writes hexadecimal literals as `$FF` (CANON-2); `0x` is not
-        // Inox syntax.
+        // CANON-2 (v3.34, decided by Marcelo Fortes): `0xFF` is accepted next
+        // to `$FF` as a convenience for programmers coming from C. Same digits
+        // and separator rules; later phases see it as `$FF`.
         advance();
-        while (isHexDigit(peek()) || peek() == '_') {
-            advance();
+        if (!isHexDigit(peek())) {
+            return invalidToken(start, startOffset, "expected hexadecimal digit after '0x'");
         }
-        return invalidToken(start, startOffset,
-                            "hexadecimal literals are written with '$' (CANON-2): "
-                            "write '$FF', not '0xFF'");
+        if (!digitRun(true)) {
+            return invalidToken(start, startOffset,
+                                "'_' may only separate two digits in a number (CANON-2): write '0xFF_FF'");
+        }
+        return makeToken(TokenKind::IntegerLiteral, start, startOffset);
     }
 
     const char* kSeparator =
