@@ -243,7 +243,9 @@ primary           ::= literal | identifier | "(" expression ")" | with_member
 literal           ::= integer_literal | real_literal | string_literal
                     | char_literal | bool_literal
 bool_literal      ::= "true" | "false"
-integer_literal   ::= decimal_digits | "$" hex_digits
+integer_literal   ::= decimal_digits | "$" hex_digits | ( "0x" | "0X" ) hex_digits
+                      (* v3.34: "$FF" and "0xFF" are the same literal; a leading
+                         zero never means octal *)
 real_literal      ::= decimal_digits "." decimal_digits
 decimal_digits    ::= digit ( "_"? digit )*
 hex_digits        ::= hex_digit ( "_"? hex_digit )*
@@ -297,8 +299,8 @@ to fix in the parser or the semantic analyzer, not a change to the language.
    rules 1 and 7 for FORM 1; the parser follows rule 1) and OPEN-5 (the parser
    accepts a typed `Const Name Type := Expr`, which CANON-5 does not define).
 
-Closed in v3.31: the digit separator `_` is lexed; `0x` literals are rejected
-(they were lowered to invalid IR).
+Closed in v3.31: the digit separator `_` is lexed. In v3.34 `0x` literals
+became canonical next to `$` (before, they were lowered to invalid IR).
 
 Closed since the first version of this file (v3.23–v3.29): `Var` and `mut var`
 rejected; scalar without initializer rejected; bare `:` block rejected; grouped

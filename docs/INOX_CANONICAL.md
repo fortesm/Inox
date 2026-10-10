@@ -9,8 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.33 (Layer A: ADR-0012, compound assignment `+=` `-=` `*=` `/=`
-#          `^=`)
+# Version: v3.34 (Layer A: hexadecimal literals may be written `$FF` or `0xFF`)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +486,19 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.34 — 2026-10-10 — `0xFF` next to `$FF` (Layer A, decided by Marcelo Fortes
+#         on 2026-10-10: "$FF e 0xFF juntos. Facilita para quem vem de C ...
+#         uma das poucas comodidades pragmáticas do Inox que viola ter uma forma
+#         só", like `i += 1` next to `i := i + 1`).
+#   - CANON-2: a hexadecimal literal is `$` or `0x`/`0X` followed by hex digits,
+#     with the digit separator `_` between digits. `0xFF` and `$FF` are the
+#     same literal; later phases see `$FF`. A leading zero never means octal:
+#     `017` is seventeen (the C trap is not imported).
+#   - Supersedes the v3.31 rejection of `0x` (which existed because `0x`
+#     reached clang as invalid IR; that path is now a normalized literal).
+#   - Tests: runtime `hex-literals` (replaces the diagnostic `hex-0x-rejected`);
+#     diagnostic `hex-0x-missing-digit`. Probe `hex-0x`.
 #
 # v3.33 — 2026-10-10 — ADR-0012: compound assignment (Layer A, decided by
 #         Marcelo Fortes in the ChatGPT design chat: "Quero dar suporte à +=
@@ -1778,6 +1790,8 @@ The detailed module/import rules are in SECTION 09. Lexical/comment rules are in
 - String literals use double quotes `"..."`. Character literals use single
   quotes `'a'`, `'é'`, `'😀'`.
 - Integer literal `42`; hex `$2A`, `$FF`. Real literal `3.14`, `0.0`.
+- HEXADECIMAL literals are written `$FF` or `0xFF` (`0X` too; v3.34). Both are
+  the same literal. A leading zero never makes a literal octal: `017` is 17.
 - DIGIT SEPARATOR `_` (CHANGE LOG v3.3): an underscore may separate digits in any
   numeric literal for readability and is purely cosmetic (the lexer ignores it
   when forming the value). `10_000_000` == `10000000`. Applies to all numeric

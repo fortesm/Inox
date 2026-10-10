@@ -315,6 +315,11 @@ Main :
     PutLn(F)
 ;
 """),
+    ("hex-0x", "hexadecimal literal written 0xFF", """Main :
+    X := 0xFF + 0X1_0
+    PutLn(X)
+;
+"""),
     ("state-global", "State section variable", """State :
     Counter Integer := 0
 ;
