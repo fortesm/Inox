@@ -1,0 +1,25 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-5 rule 4: a struct in State may omit `:=` (type-default
+== initialization); scalars in the same section keep their initializers.
+Module SemanticStateStructDefault
+
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+State :
+    Origin TPoint
+    Count Integer := 0
+;
+
+Main :
+    PutLn(1)
+;

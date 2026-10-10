@@ -453,9 +453,13 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
         }
 
         if (next == ":") {
-            // legacy Name : Type
+            // legacy Name : Type (tolerated); CANON-5 still applies to State.
             declareOrThrow(tokens[index], kind,
                            inferSectionDeclarationType(tokens, index), isMutable);
+            const bool hasInitializer = index + 3 < tokens.size() && tokens[index + 3] == ":=";
+            if (kind == SymbolKind::State && !hasInitializer && index + 2 < tokens.size()) {
+                stateDeclarationsWithoutInitializer_.emplace_back(tokens[index], tokens[index + 2]);
+            }
             index += 3;  // Name : Type
             continue;
         }

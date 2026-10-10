@@ -518,7 +518,10 @@ specification, ADRs, manual HTML, and tests.
 #     tests about `Var` itself, `var-colon` and `invalid-031`, now exercise the
 #     removal). New diagnostics: `scalar-without-initializer`,
 #     `float-without-initializer`, `state-scalar-without-initializer`,
-#     `var-block-removed`, `mut-var-removed`, `module-var-removed`. AGENTS.md no
+#     `state-legacy-scalar-without-initializer` (the tolerated legacy
+#     `Name : Type` form in State does not bypass the rule), `var-block-removed`,
+#     `mut-var-removed`, `module-var-removed`; semantic-valid
+#     `state-struct-default` (a struct in State may omit `:=`). AGENTS.md no
 #     longer describes `Var` blocks. The State rule, the
 #     `SectionKind::Var` removal and the Float32 probe came from ChatGPT's review.
 #   - Note on the v3.22 entry: the "invalid-IR bug fixed in v3.21" it mentions
