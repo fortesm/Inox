@@ -5,18 +5,11 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== Mixed bitwise families are allowed WHEN explicitly parenthesized.
-
-Module PrecedenceBitwiseGrouped
+== OPEN-4: assigning a variable is not reading it.
+Module Diagnostics.UnreadAssignedOnly
 
 Main :
-    A := 12
-    B := 10
-    C := 6
-    R1 := (A bitand B) bitor C
-    R2 := A bitand B bitand C
-    R3 := (A bitand B) shl C
-    PutLn(R1)
-    PutLn(R2)
-    PutLn(R3)
+    X := 5
+    X := 6
+    PutLn(1)
 ;

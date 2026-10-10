@@ -15,6 +15,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace inox::compiler::semantic {
@@ -84,6 +85,8 @@ private:
     static bool cannotFallThrough(const ast::Statement& statement);
     void analyzeStatement(const ast::Statement& statement);
     void analyzeCaseStatement(const ast::CaseStatement& statement);
+    void trackLocal(std::string_view name);
+    void leaveScope();
     std::int64_t caseChoiceValue(const ast::Expression& choice, const std::string& selectorType);
     bool staticBoolValue(const ast::Expression& expression, bool& value) const;
     bool staticCharValue(const ast::Expression& expression, std::int64_t& value) const;
@@ -148,6 +151,14 @@ private:
     // Char Consts (`Const Letter := 'A'`) by normalized name, as Unicode scalar
     // values; used for static case choices (ADR-0011).
     std::unordered_map<std::string, std::int64_t> charConstants_;
+    // OPEN-4: locals declared in open scopes, in declaration order, and the
+    // symbols read so far.
+    struct TrackedLocal {
+        const Symbol* symbol;
+        const Scope* scope;
+    };
+    std::vector<TrackedLocal> localsToRead_;
+    std::unordered_set<const Symbol*> readSymbols_;
 };
 
 } // namespace inox::compiler::semantic

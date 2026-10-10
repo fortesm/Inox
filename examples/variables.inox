@@ -22,6 +22,7 @@ Main :
 
     Count := 1
     Total := Count + MaxCount
+    PutLn(Total)
     
     PutLn(Greeting)
     PutLn(Name)

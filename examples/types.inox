@@ -18,6 +18,7 @@ Const Limit := 10
 
 Main :
     Flag := True
+    PutLn(Flag)
     Count := Integer(42)
     Money := Currency("12.34")
     Coin := Crypto("0.00000001")
@@ -25,4 +26,8 @@ Main :
     Text := "Hello, Inox"
 
     PutLn(Text)
+    PutLn(Count)
+    PutLn(Money = Money)
+    PutLn(Coin = Coin)
+    PutLn(Letter)
 ;

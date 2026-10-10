@@ -66,6 +66,9 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - Shadowing is forbidden in same and nested scopes.
 - Case-only differences are not distinct names.
 - Use before declaration is invalid.
+- A local variable that is never read is a compile error (OPEN-4, v3.32);
+  assigning is not reading. Parameters, `for` iterators, exception bindings,
+  State and Const are exempt. Tests and examples must read what they declare.
 - A local symbol dies at the end of its block.
 - `for` iterators are implicit, read-only, loop-scoped, and cannot conflict with visible symbols.
 - Sequential `for` loops may reuse an iterator name after the previous loop scope is closed; nested loops may not reuse an outer iterator name.

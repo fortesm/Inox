@@ -5,18 +5,18 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== Mixed bitwise families are allowed WHEN explicitly parenthesized.
+== OPEN-4: writing fields of a struct is not reading it. A struct whose fields
+== are only assigned is never read.
+Module Diagnostics.UnreadFieldWriteOnly
 
-Module PrecedenceBitwiseGrouped
+Type
+    TPoint Struct
+        X Integer
+        Y Integer
+    ;
 
 Main :
-    A := 12
-    B := 10
-    C := 6
-    R1 := (A bitand B) bitor C
-    R2 := A bitand B bitand C
-    R3 := (A bitand B) shl C
-    PutLn(R1)
-    PutLn(R2)
-    PutLn(R3)
+    P TPoint
+    P.X := 10
+    P.Y := 20
 ;

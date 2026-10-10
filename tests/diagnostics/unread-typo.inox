@@ -5,18 +5,13 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== Mixed bitwise families are allowed WHEN explicitly parenthesized.
-
-Module PrecedenceBitwiseGrouped
+== OPEN-4 (Marcelo Fortes, 2026-10-10): a local that is never read is an error.
+== The misspelled name declares a new variable that nothing reads, so the typo
+== is caught.
+Module Diagnostics.UnreadTypo
 
 Main :
-    A := 12
-    B := 10
-    C := 6
-    R1 := (A bitand B) bitor C
-    R2 := A bitand B bitand C
-    R3 := (A bitand B) shl C
-    PutLn(R1)
-    PutLn(R2)
-    PutLn(R3)
+    Counter := 1
+    Coutner := Counter + 1
+    PutLn(Counter)
 ;

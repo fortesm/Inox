@@ -18,4 +18,7 @@ Main :
     R3 := A and B and C
     R4 := A or B or C
     PutLn(R1)
+    PutLn(R2)
+    PutLn(R3)
+    PutLn(R4)
 ;

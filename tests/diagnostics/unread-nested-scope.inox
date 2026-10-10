@@ -5,18 +5,13 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== Mixed bitwise families are allowed WHEN explicitly parenthesized.
-
-Module PrecedenceBitwiseGrouped
+== OPEN-4 applies in every block; the error is reported when the block ends.
+Module Diagnostics.UnreadNestedScope
 
 Main :
-    A := 12
-    B := 10
-    C := 6
-    R1 := (A bitand B) bitor C
-    R2 := A bitand B bitand C
-    R3 := (A bitand B) shl C
-    PutLn(R1)
-    PutLn(R2)
-    PutLn(R3)
+    N := 3
+    if N > 0
+        Half := N div 2
+        PutLn(N)
+    ;
 ;
