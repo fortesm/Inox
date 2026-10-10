@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.35 (Layer A: ADR-0013, the conditional expression
-#          `if C then A else B`)
+# Version: v3.36 (decisions recorded from the ChatGPT design chat: `do` for
+#          concurrency, `<T>` for generics; compiler CHANGELOG.md)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,21 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.36 — 2026-10-10 — maintainer decisions recorded from the design chat with
+#         ChatGPT that were missing here (documentation only; no compiler
+#         change). Found by reading the whole chat on Marcelo's request.
+#   - FUTURE-1: the concurrency construct is spelled `do`, not `go` ("tome
+#     nota em Inox não é go e sim do"). `do` is already reserved.
+#   - Generics: `<T>` replaces `[T]` ("uso de <T> para Generics em vez de [T],
+#     a questão é pragmática ... [T] pode gerar ambiguidade e problemas com
+#     Arrays X[i]"). Recorded as decided; the compiler change is its own PR.
+#     Open detail for that PR (raised by ChatGPT): `<` and `>` are comparison
+#     operators, so `<T>` is accepted only in type position.
+#   - The compiler has its own `CHANGELOG.md` (Added / Changed / Known
+#     limitations), separate from this document's versions ("Inox
+#     language/compiler release: 0.2.0; INOX_CANONICAL document revision:
+#     3.16, 3.17, ...").
 #
 # v3.35 — 2026-10-10 — ADR-0013: conditional expression (Layer A, decided by
 #         Marcelo Fortes in the design chat with ChatGPT: "Ok ficaremos com algo
@@ -1416,6 +1431,9 @@ excess precision at compile time; Inox follows the Ada model in-context.)
 Direction: Chapel-style structured parallelism and Go-inspired concurrency,
 WITHOUT unsafe shared mutable defaults. Data-race safety; non-mutable concurrent
 data defaults. Requires ADR before implementation.
+Decided (Marcelo Fortes, design chat): the construct that starts concurrent
+work is spelled `do`, not `go` ("em Inox não é go e sim do"). `do` is reserved.
+Its semantics (and the `| |` capture-clause idea, NOT decided) wait for the ADR.
 
 ## FUTURE-2. CONTRACTS (was future/contracts.md [EMPTY])
 Direction: design-by-contract (Eiffel/Sather lineage) as future static capability
@@ -2125,8 +2143,13 @@ consensus bug). BigCurrency = BigInteger x 10^6 for values exceeding Int64
 decimals: value types; overflow is ERROR; no implicit conversion to/from float;
 explicit conversion only.
 
-### Generics use square brackets
+### Generics use square brackets (to become `<T>`)
     Vector[Integer]   Set[TCardSuit]   Array[1..10] Integer
+Decided (Marcelo Fortes, design chat): generics move to `<T>`
+(`Vector<Integer>`, `Set<TCardSuit>`) because `[T]` collides with indexing
+`X[i]`. Until the compiler change lands, `[T]` is what the compiler accepts.
+Open detail for that change: `<`/`>` are comparisons, so `<T>` is accepted only
+in type position. `Array[1..10] Integer` keeps its bounds in brackets.
 
 ### Conversions
 Implicit conversions allowed ONLY for safe widening explicitly defined by Inox.
