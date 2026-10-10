@@ -27,7 +27,7 @@ module            ::= "Module" qualified_name use_decl* module_item* EOF
                       (* no ";" after Module; EOF closes the module *)
 use_decl          ::= "Use" qualified_name
 module_item       ::= type_section | const_decl | state_section | routine_decl
-qualified_name    ::= identifier_like ( "." identifier_like )*
+qualified_name    ::= identifier_like ( "." identifier )*
 identifier_like   ::= identifier | "Main"
                       (* "Main" is reserved (the entry routine) but may name a
                          module or a routine: "Module Main", "Main :" *)
