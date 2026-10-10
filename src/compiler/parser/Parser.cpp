@@ -723,9 +723,9 @@ ast::ExpressionPtr Parser::parsePrimary()
 // ADR-0010: the old step form `for I in A..B (S)` / `A..B(S)` is gone. It is
 // recognized here, before the header is parsed, so the programmer gets a
 // migration message instead of "not a function". The form is a parenthesized
-// group that ends the header line, follows `..` at depth 0, and either is
-// separated from the previous token by whitespace or follows a literal or `)`.
-// `1..F(2)` (identifier glued to `(`) is a call and is left to the analyzer.
+// group that ends the header line, follows `..` at depth 0, and follows a
+// literal or `)`, which cannot be called. After an identifier (`1..F(2)`,
+// `1..F (2)`) it is a call and is left to the analyzer.
 void Parser::rejectOldForStep() const
 {
     const std::size_t line = tokens_[current_].location.line;
@@ -776,9 +776,10 @@ void Parser::rejectOldForStep() const
     if (!operandEnd) {
         return;
     }
-    const bool spaced =
-        before.location.column + before.lexeme.size() < tokens_[open].location.column;
-    if (spaced || before.kind != TokenKind::Identifier) {
+    // After an identifier the group is a call, with or without a space before
+    // it (`Twice(N)` and `Twice (N)` mean the same); the analyzer explains the
+    // step syntax when the identifier names a value.
+    if (before.kind != TokenKind::Identifier) {
         throw ParseError(kOldForStepMessage, tokens_[open].location);
     }
 }

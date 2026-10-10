@@ -494,9 +494,14 @@ specification, ADRs, manual HTML, and tests.
 #     header are full range-level expressions (CANON-20 level 10):
 #     `for I in 1..N + 1 step 2` runs from 1 to N + 1.
 #   - The old form `for I in A..B (S)` / `A..B(S)` is removed. The parser
-#     recognizes it and answers with a migration message ("the for-loop step
-#     is written 'step S' (ADR-0010)"). `A..N(2)` with N a value is reported by
-#     the analyzer with the same hint, because `N(2)` is now a call.
+#     recognizes it after a literal or `)` and answers with a migration message
+#     ("the for-loop step is written 'step S' (ADR-0010)"). After an
+#     identifier the group is a call, with or without a space (`1..Twice (N)`
+#     = `1..Twice(N)`; whitespace has no meaning); when the identifier is a
+#     value, the analyzer gives the same hint.
+#   - The step must be an Integer expression ("for-loop step must be an
+#     Integer expression"); before, `step 1.5` passed semantic analysis
+#     although the lowering uses Int64 (found by ChatGPT's review).
 #   - Layer B: calling a value (`N(2)` with N a variable, iterator, constant or
 #     State name) used to pass semantic analysis and fail in the backend; it is
 #     now a semantic error ("'N' is a value, not a function").
@@ -509,8 +514,10 @@ specification, ADRs, manual HTML, and tests.
 #     `examples/llvm-for-range-step.inox`, the manual and AGENTS.md. The text of
 #     the locked ADR-0006 keeps its historical `(S)` wording.
 #   - New tests: runtime `for-step-keyword` (expression bounds with a step);
-#     diagnostics `for-old-step-spaced`, `for-old-step-glued-literal`,
-#     `for-old-step-glued-value`, `for-step-without-range`, `call-a-value`;
+#     runtime `for-call-bound-spaced`; diagnostics `for-old-step-spaced`,
+#     `for-old-step-glued-literal`, `for-old-step-glued-value`,
+#     `for-step-without-range`, `for-step-noninteger`, `for-bound-noninteger`,
+#     `call-a-value`;
 #     parser-valid `for-parenthesized-bound` (a bound in parentheses is not a
 #     step). Probe `for-step-expression-bounds`.
 #

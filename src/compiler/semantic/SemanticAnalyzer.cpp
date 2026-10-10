@@ -983,7 +983,11 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         }
         analyzeExpression(forStatement.iterable());
         if (forStatement.step() != nullptr) {
-            analyzeExpression(*forStatement.step());
+            const std::string stepType = canonicalTypeName(analyzeExpression(*forStatement.step()));
+            if (!isIntegerType(stepType)) {
+                throw SemanticError("for-loop step must be an Integer expression, got " +
+                                    (stepType.empty() ? std::string("<unknown>") : stepType));
+            }
             std::int64_t constantStep = 0;
             if (constantIntegerValue(*forStatement.step(), constantStep) && constantStep <= 0) {
                 throw SemanticError("for-loop step must be a positive integer");
