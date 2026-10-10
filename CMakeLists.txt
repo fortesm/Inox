@@ -40,6 +40,19 @@ add_library(inoxrt STATIC
 inox_apply_compiler_options(inoxrt)
 inox_apply_warnings(inoxrt)
 
+# MSVC ABI: an Inox program is linked by `clang++ program.ll inoxrt.lib`, which
+# uses the static release CRT (libcmt/libvcruntime). The runtime must use the
+# same CRT, whatever the compiler's build configuration: with two C++ runtimes
+# in one process, the exception caught by the program's catchpad is not the
+# "current exception" seen by inoxrt, so std::current_exception() is empty
+# (typed handlers see every Inox exception as foreign, rethrow terminates).
+if(CMAKE_CXX_COMPILER_TARGET MATCHES "msvc" OR MSVC OR CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC" OR
+   (WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+    set_property(TARGET inoxrt PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+    target_compile_options(inoxrt PRIVATE -U_DEBUG)
+    target_compile_definitions(inoxrt PRIVATE _ITERATOR_DEBUG_LEVEL=0)
+endif()
+
 add_executable(inox ${INOX_COMPILER_SOURCES})
 
 inox_apply_compiler_options(inox)

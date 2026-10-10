@@ -64,6 +64,23 @@ jobs:
         run: |
           pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-tests.ps1 -InoxExe build/windows-clang-msvc/Debug/inox.exe *>&1 | Tee-Object -FilePath test-output.txt
           python tools/ci_known_failures.py test-output.txt ci/windows-known-failures.txt
+      - name: Failure details as an annotation
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path test-output.txt) {
+            $blocks = Select-String -Path test-output.txt -Pattern '\[FAIL\]' -Context 0,12 |
+              ForEach-Object { (@($_.Line) + $_.Context.PostContext) -join ' | ' }
+            if ($blocks) {
+              $text = ($blocks -join '%0A') -replace '\r', ''
+              if ($text.Length -gt 60000) { $text = $text.Substring(0, 60000) }
+              Write-Host "::warning title=Windows test failures::$text"
+            }
+          }
+      - name: MSVC EH bridge acceptance criteria (i)-(v)
+        if: always()
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-windows-eh-poc.ps1 -InoxExe build/windows-clang-msvc/Debug/inox.exe
       - name: Backend gaps (0 BUG)
         run: python tools/backend_gaps.py build/windows-clang-msvc/Debug/inox.exe
       - name: Upload test log

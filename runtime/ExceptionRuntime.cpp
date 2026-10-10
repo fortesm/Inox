@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <exception>
 #include <memory>
+#include <new>
+#include <type_traits>
 
 #if !defined(_WIN32)
 #include <cxxabi.h>
@@ -18,6 +20,9 @@ namespace {
 struct InoxExceptionCarrier final {
     std::uint64_t typeId;
 };
+
+static_assert(std::is_trivially_copyable_v<InoxExceptionCarrier>);
+static_assert(std::is_nothrow_copy_constructible_v<InoxExceptionCarrier>);
 
 struct InoxExceptionState final {
     std::exception_ptr exception;
@@ -48,7 +53,7 @@ extern "C" [[noreturn]] void __inox_raise(std::uint64_t typeId)
     throw InoxExceptionCarrier{typeId};
 }
 
-extern "C" InoxExceptionState* __inox_exception_capture(void* rawException)
+extern "C" InoxExceptionState* __inox_exception_capture(void* rawException) noexcept
 {
 #if !defined(_WIN32)
     // A landingpad gives us the platform exception object. Establish a C++
@@ -63,7 +68,11 @@ extern "C" InoxExceptionState* __inox_exception_capture(void* rawException)
     std::exception_ptr exception = std::current_exception();
 #endif
 
-    return new InoxExceptionState{exception, classify(exception)};
+    auto* state = new (std::nothrow) InoxExceptionState{exception, classify(exception)};
+    if (state == nullptr) {
+        std::terminate();
+    }
+    return state;
 }
 
 extern "C" std::uint64_t __inox_exception_type(const InoxExceptionState* state) noexcept
