@@ -183,6 +183,12 @@ Use Std.Math</code></pre>
     ;
 ;</code></pre>
 <p>Named subroutine/function blocks use <code>:</code>. Control structures such as <code>if</code>, <code>while</code>, <code>repeat</code>, and <code>for</code> do not use <code>:</code> or <code>do</code>.</p>
+<p>The <code>:</code> only declares a routine. A bare <code>:</code> block inside a routine body is a compile error, at any depth. Inox has no anonymous nested blocks:</p>
+<pre><code>Main :
+    :            == error: a bare ':' block is illegal (CANON-4)
+        PutLn(1)
+    ;
+;</code></pre>
 </section>
 <section id="no-empty-parens"><h2>No empty parentheses</h2>
 <p>Empty parentheses are forbidden for no-argument declarations and no-argument calls.</p>

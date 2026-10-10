@@ -1,0 +1,20 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-4: a bare `:` block is illegal at any depth, including inside a
+== control structure.
+Module Diagnostics.ColonBlockInLoop
+
+Main :
+    I Integer := 0
+    while I < 3
+        :
+            I := I + 1
+        ;
+    ;
+    PutLn(I)
+;

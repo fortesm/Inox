@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.24 (Layer A: ADR-0008 places `..` and `in` in the CANON-20
-#          precedence table; both are non-associative)
+# Version: v3.25 (Layer A clarification: a bare `:` block inside a routine is
+#          illegal, CANON-4; the parser rejects it)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,19 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.25 — 2026-10-09 — a bare `:` block inside a routine is illegal (Layer A
+#         clarification of CANON-4, decided by Marcelo Fortes on 2026-10-09:
+#         "Esse bloco Main : / : / PutLn(1) / ; / ; É completamente ilegal!!
+#         Deve ser registrado no canônico e corrigido no compilador!").
+#   - CANON-4 already gave `:` one meaning (it declares a function or
+#     subroutine and opens its body). It now states the consequence: a `:` that
+#     opens a block anywhere inside a routine body, at any depth, is illegal.
+#   - Layer B: the parser used to accept `:` ... `;` as an anonymous nested
+#     block. It now rejects it: "a bare ':' block is illegal (CANON-4)". No test,
+#     example or stdlib file used the form.
+#   - Tests: diagnostics `colon-block-in-routine` (directly in `Main`) and
+#     `colon-block-in-loop` (inside a `while` body).
 #
 # v3.24 — 2026-10-09 — ADR-0008: `..` and `in` in the precedence table (Layer A
 #         change approved by Marcelo Fortes on 2026-10-09: "Aprovo a precedência
@@ -1486,6 +1499,17 @@ those words — the `:` IS that word.
 
 NO CONTROL STRUCTURE USES `:`. Control structures open their body with the
 newline after the header (Ruby style) and close with `;` (Ruby's `end` == Inox `;`).
+
+A BARE `:` BLOCK IS ILLEGAL (v3.25, decided by Marcelo Fortes). Because `:` only
+declares a routine, a `:` that opens an anonymous block inside a routine body,
+at any depth, is a compile error. Inox has no anonymous nested blocks; write
+the statements directly in the enclosing body.
+
+    Main :                             == ERROR: "a bare ':' block is illegal
+        :                              ==  (CANON-4)"
+            PutLn(1)
+        ;
+    ;
 
 CORRECT (Inox):                    WRONG (the Python/C vice that breaks AIs):
     if Condition                       if Condition :      == ERROR: stray `:`
