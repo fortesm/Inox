@@ -9,7 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.34 (Layer A: hexadecimal literals may be written `$FF` or `0xFF`)
+# Version: v3.35 (Layer A: ADR-0013, the conditional expression
+#          `if C then A else B`)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -486,6 +487,24 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.35 — 2026-10-10 — ADR-0013: conditional expression (Layer A, decided by
+#         Marcelo Fortes in the design chat with ChatGPT: "Ok ficaremos com algo
+#         abrangente como em Result := if X < 0 then -X else if X > Limit then
+#         Limit else X"; the five properties are the ones ChatGPT fixed there).
+#   - `if C then A else B` is an expression that selects a value. `then` and
+#     `else` are mandatory; each branch is an expression, never a block; only
+#     the chosen branch is evaluated; the condition is Bool and the branches
+#     have compatible types; it chains through `else if`. It may span lines.
+#   - `then` becomes a reserved word (49 keywords) and exists only in this
+#     expression: the if statement still has no `then`, and `if C then` as a
+#     statement is rejected with a message pointing to the expression form.
+#   - Layer B: parsed and checked; LLVM lowering pending (branch + phi, lazy
+#     branches), so the probe `conditional-expression` is an honest GAP.
+#   - Tests: semantic-valid `conditional-expression`; diagnostics
+#     `conditional-missing-else`, `conditional-branch-types`,
+#     `conditional-condition-bool`, `if-statement-then`,
+#     `conditional-as-statement`.
 #
 # v3.34 — 2026-10-10 — `0xFF` next to `$FF` (Layer A, decided by Marcelo Fortes
 #         on 2026-10-10: "$FF e 0xFF juntos. Facilita para quem vem de C ...
@@ -1615,6 +1634,32 @@ mode.” That policy is superseded by DECISION P-A, approved 2026-10-09: runtime
 arithmetic faults are deterministic Inox traps in every conforming build. This
 note records the later approved decision without rewriting the locked ADR.
 
+## ADR-0013 — Conditional expression  (Status: Accepted, 2026-10-10)
+Decision (Marcelo Fortes, design chat with ChatGPT):
+
+    Result :=
+        if X < 0
+        then -X
+        else if X > Limit
+             then Limit
+             else X
+
+1. The conditional expression is a language construct, not a function (unlike
+   Delphi `IfThen`/`IIF`, whose arguments are all evaluated).
+2. `then` and `else` are mandatory.
+3. Only the chosen branch is evaluated (`if X # 0 then 100 div X else 0` is
+   safe).
+4. The condition is Bool; both branches have compatible types, which is the
+   type of the expression.
+5. Each branch is an expression, never a block: Inox does not make blocks
+   produce values. Choosing behavior is the if statement; choosing a value is
+   the expression.
+Rationale: `?:` and `->` would reuse `:` (which declares routines) or spend a
+symbol; `if ... then ... else` reads as English and keeps statement and
+expression forms visibly apart (the statement has no `then`).
+Consequence: `then` is reserved; the backend lowers it with a branch and a
+phi (pending).
+
 ## ADR-0012 — Compound assignment  (Status: Accepted, 2026-10-10)
 Decision (Marcelo Fortes, in the design chat with ChatGPT): Inox adds `+=`,
 `-=`, `*=`, `/=` and `^=` next to the plain form `I := I + 1`, which stays
@@ -2480,6 +2525,15 @@ at the beginning, middle, or end, and MORE THAN ONCE. `repeat` closes with `;`.
   (Start <= End: +1; Start > End: -1). The iterator never takes a value outside
   `A..B` and the loop never computes a value past Int64.Min/Max.
 
+### Conditional expression (ADR-0013, v3.35)
+    Max := if A > B then A else B
+    Return if X < 0 then -X else X
+    Level := if Score >= 90 then 3 else if Score >= 70 then 2 else 1
+`if C then A else B` selects a value: `then` and `else` are mandatory, each
+branch is an expression (never a block), only the chosen branch is evaluated,
+the condition is Bool and the branches have compatible types. The if
+statement keeps its form without `then`.
+
 ### case (ADR-0011, v3.29)
     case Value
         1 | 2
@@ -3008,7 +3062,7 @@ textual IR to the LLVM C++ API where justified.
 ## Current backend support status
 
 ## B-WORKS. WHAT WORKS TODAY (verified in source audit)
-Lexer: 48 keywords (`step` added by ADR-0010), case-insensitive normalization, `$XX` hex, `==` comments.
+Lexer: 49 keywords (`step` added by ADR-0010, `then` by ADR-0013), case-insensitive normalization, `$XX` hex, `==` comments.
 Parser: recursive descent, 2-token lookahead for typed local declarations.
 Semantic: scoped symbol table, forward signature pass, inference (empty type +
   initializer -> initializer type), prelude calls (Put/PutLn/Clamp/Min/Max),
@@ -3343,7 +3397,7 @@ Targets must not be claimed as supported until tested on real or representative 
 This section is volatile implementation status. It may be updated to match the code. It must not override constitutional language rules above.
 
 ## B-WORKS. WHAT WORKS TODAY (verified in source audit)
-Lexer: 48 keywords (`step` added by ADR-0010), case-insensitive normalization, `$XX` hex, `==` comments.
+Lexer: 49 keywords (`step` added by ADR-0010, `then` by ADR-0013), case-insensitive normalization, `$XX` hex, `==` comments.
 Parser: recursive descent, 2-token lookahead for typed local declarations.
 Semantic: scoped symbol table, forward signature pass, inference (empty type +
   initializer -> initializer type), prelude calls (Put/PutLn/Clamp/Min/Max),

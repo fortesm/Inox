@@ -41,7 +41,15 @@ CONTEXTUAL_WORDS = {"self", "range", "array"}
 # future or kept reserved to reject old syntax with a diagnostic).
 RESERVED_ONLY = {"do", "var"}
 
-FORBIDDEN_TERMINALS = {"end", "break", "finally", "then", "of", "when", "=>", "var", "elsif"}
+FORBIDDEN_TERMINALS = {"end", "break", "finally", "of", "when", "=>", "var", "elsif"}
+
+# Terminals allowed in the grammar but never in the named productions: `then`
+# belongs to the conditional expression only (ADR-0013); control structures
+# never use it.
+FORBIDDEN_IN = {
+    "then": {"if_stmt", "elif_clause", "else_clause", "unless_stmt", "while_stmt",
+             "for_stmt", "case_stmt", "case_arm"},
+}
 
 # Lexical productions that are not reached from `module` through other rules.
 LEXICAL_ROOTS = {"comment"}
@@ -218,6 +226,11 @@ def check_forbidden(rules, block):
         terminals.update(t.lower() for t in found)
     for word in sorted(terminals & FORBIDDEN_TERMINALS):
         problems.append(f"forbidden terminal in the grammar: {word}")
+    for word, productions_ in FORBIDDEN_IN.items():
+        for name in sorted(productions_):
+            found, _ = rhs_symbols(" ".join(rules.get(name, [])))
+            if word in (t.lower() for t in found):
+                problems.append(f'"{word}" must not appear in {name}')
     if re.search(r'"\("\s*"\)"', strip_comments(block)):
         problems.append('empty parentheses "(" ")" appear in a production (CANON-7)')
     return problems

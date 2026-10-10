@@ -1,0 +1,27 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0013 (Marcelo Fortes, design chat with ChatGPT): `if C then A else B`
+== selects a value. Each branch is an expression; `else` is mandatory; it chains
+== through `else if`; only the chosen branch is evaluated. It may span lines.
+Module ConditionalExpression
+
+Clamp(X Integer, Limit Integer) Integer :
+    Return if X < 0 then -X else if X > Limit then Limit else X
+;
+
+Main :
+    Limit := 10
+    Result :=
+        if Limit < 0
+        then -Limit
+        else if Limit > 5
+             then 5
+             else Limit
+    Level := if Result >= 5 then "high" else "low"
+    PutLn(Result, " ", Level, " ", Clamp(-3, 10), " ", Clamp(42, 10))
+;

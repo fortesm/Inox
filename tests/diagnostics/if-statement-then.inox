@@ -1,0 +1,16 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-4: the if statement has no `then`; `then` belongs to the conditional
+== expression (ADR-0013).
+Module Diagnostics.IfStatementThen
+
+Main :
+    if True then
+        PutLn(1)
+    ;
+;

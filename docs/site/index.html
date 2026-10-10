@@ -368,6 +368,16 @@ for I in 1..N + 1 step 3
     ;
 ;</code></pre>
 <p>Constructs the semantic analyzer accepts but the LLVM backend does not lower yet are reported as &ldquo;not yet implemented in the LLVM backend&rdquo; and are measured in <code>docs/BACKEND_GAPS.md</code>.</p>
+<h3>Conditional expression</h3>
+<p><code>if ... then ... else</code> selects a value. Each branch is an expression, never a block. <code>else</code> is required, and only the chosen branch is evaluated:</p>
+<pre><code>Max := if A &gt; B then A else B
+Result :=
+    if X &lt; 0
+    then -X
+    else if X &gt; Limit
+         then Limit
+         else X</code></pre>
+<p>The <code>if</code> statement keeps its own form, without <code>then</code>.</p>
 <h3>case</h3>
 <p><code>case</code> follows Ada/SPARK, adapted to Inox. Alternatives are separated by <code>|</code>. A choice is a constant value or a constant range <code>A..B</code>. Choices may not overlap, and there is no fall-through:</p>
 <pre><code>case Value

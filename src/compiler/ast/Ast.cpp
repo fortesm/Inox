@@ -7,6 +7,7 @@
 
 #include "Ast.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace inox::compiler::ast {
@@ -196,6 +197,31 @@ ExpressionPtr BinaryExpression::takeLeft()
 ExpressionPtr BinaryExpression::takeRight()
 {
     return std::move(right_);
+}
+
+ConditionalExpression::ConditionalExpression(ExpressionPtr condition, ExpressionPtr thenValue,
+                                             ExpressionPtr elseValue)
+    : Expression(AstNodeKind::ConditionalExpression),
+      condition_(std::move(condition)),
+      thenValue_(std::move(thenValue)),
+      elseValue_(std::move(elseValue))
+{
+    depth_ = 1 + std::max({condition_->depth(), thenValue_->depth(), elseValue_->depth()});
+}
+
+const Expression& ConditionalExpression::condition() const
+{
+    return *condition_;
+}
+
+const Expression& ConditionalExpression::thenValue() const
+{
+    return *thenValue_;
+}
+
+const Expression& ConditionalExpression::elseValue() const
+{
+    return *elseValue_;
 }
 
 UnaryExpression::UnaryExpression(UnaryOperator op, ExpressionPtr operand)

@@ -31,7 +31,8 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - `Var` blocks and `var`/`mut var` declarations were removed (CANON-5); `Var` and `mut` stay reserved and the parser rejects them with a migration diagnostic. Declare locals inline.
 - `Struct` syntax is `TName Struct ... ;`.
 - `Range` declarations do not use `;`.
-- `if`/`elif`/`else` use no `then` and no `:`.
+- `if`/`elif`/`else` use no `then` and no `:`. `then` exists only in the
+  conditional expression `if C then A else B` (ADR-0013).
 - `case Expression` uses no `of`, `when`, `=>`, `:`, or `do`.
 - `for I in A..B step S` uses no `do` and no `:`; the old `(S)` step form is
   rejected (ADR-0010). `step` is a reserved word.
