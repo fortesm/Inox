@@ -926,16 +926,16 @@ ast::StatementPtr Parser::parseForInStatement()
     // ADR-0010: `for I in A..B step S`. The bounds are full range-level
     // expressions (CANON-20 level 10); `step` is a reserved word of the header.
     rejectOldForStep();
+    const lexer::SourceLocation iterableLocation = peek().location;
     auto iterable = parseRange();
+    const bool isRange =
+        iterable->kind() == ast::AstNodeKind::BinaryExpression &&
+        static_cast<const ast::BinaryExpression&>(*iterable).op() == ast::BinaryOperator::Range;
+    if (!isRange) {
+        throw ParseError("a for loop iterates over a range 'A..B' (ADR-0010)", iterableLocation);
+    }
     ast::ExpressionPtr step;
     if (matchKeyword("step")) {
-        const bool isRange =
-            iterable->kind() == ast::AstNodeKind::BinaryExpression &&
-            static_cast<const ast::BinaryExpression&>(*iterable).op() ==
-                ast::BinaryOperator::Range;
-        if (!isRange) {
-            throw ParseError("'step' requires a range 'A..B' (ADR-0010)", previous().location);
-        }
         step = parseValue();
     }
 

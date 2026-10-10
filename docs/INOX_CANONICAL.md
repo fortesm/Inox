@@ -502,6 +502,8 @@ specification, ADRs, manual HTML, and tests.
 #   - The step must be an Integer expression ("for-loop step must be an
 #     Integer expression"); before, `step 1.5` passed semantic analysis
 #     although the lowering uses Int64 (found by ChatGPT's review).
+#   - The header must be a range `A..B`, with or without `step`: `for I in N`
+#     reached the backend before ("a for loop iterates over a range 'A..B'").
 #   - Layer B: calling a value (`N(2)` with N a variable, iterator, constant or
 #     State name) used to pass semantic analysis and fail in the backend; it is
 #     now a semantic error ("'N' is a value, not a function").
@@ -516,7 +518,8 @@ specification, ADRs, manual HTML, and tests.
 #   - New tests: runtime `for-step-keyword` (expression bounds with a step);
 #     runtime `for-call-bound-spaced`; diagnostics `for-old-step-spaced`,
 #     `for-old-step-glued-literal`, `for-old-step-glued-value`,
-#     `for-step-without-range`, `for-step-noninteger`, `for-bound-noninteger`,
+#     `for-step-without-range`, `for-without-range`, `for-step-noninteger`,
+#     `for-bound-noninteger`,
 #     `call-a-value`;
 #     parser-valid `for-parenthesized-bound` (a bound in parentheses is not a
 #     step). Probe `for-step-expression-bounds`.
