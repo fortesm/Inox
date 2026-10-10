@@ -361,6 +361,18 @@ for I in 1..N + 1 step 3
     ;
 ;</code></pre>
 <p>Constructs the semantic analyzer accepts but the LLVM backend does not lower yet are reported as &ldquo;not yet implemented in the LLVM backend&rdquo; and are measured in <code>docs/BACKEND_GAPS.md</code>.</p>
+<h3>case</h3>
+<p><code>case</code> follows Ada/SPARK, adapted to Inox. Alternatives are separated by <code>|</code>. A choice is a constant value or a constant range <code>A..B</code>. Choices may not overlap, and there is no fall-through:</p>
+<pre><code>case Value
+    1 | 2
+        PutLn(&quot;small&quot;)
+    3..9
+        PutLn(&quot;medium&quot;)
+    10 | 20..29 | 40 PutLn(&quot;mixed&quot;)
+    otherwise
+        PutLn(&quot;other&quot;)
+;</code></pre>
+<p><code>otherwise</code> is required unless the choices cover every value of the selector type. A <code>Bool</code> case that handles <code>True</code> and <code>False</code> needs no <code>otherwise</code>. A case on an <code>Integer</code> code that handles only 404 is rejected. The selector must be discrete: an integer type, <code>Char</code>, <code>Bool</code>, an enum or a range.</p>
 <h3>Exceptions</h3>
 <p>Inox provides structured exception handling with <code>try</code>, <code>except</code>, typed <code>On</code> handlers, optional <code>Else</code>, <code>ensure</code>, <code>Raise</code>, and bounded <code>Retry(N)</code>. Typed handlers are tested in source order; <code>Else</code> is the catch-all after them. A plain <code>except</code> is itself a catch-all.</p>
 <pre><code>try

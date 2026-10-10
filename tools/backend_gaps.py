@@ -287,6 +287,15 @@ Main :
     PutLn(T)
 ;
 """),
+    ("case-ada-choices", "case with | alternatives and a static range", """Main :
+    X := 4
+    case X
+        1 | 2 PutLn(1)
+        3..9 PutLn(2)
+        otherwise PutLn(0)
+    ;
+;
+"""),
     ("state-global", "State section variable", """State :
     Counter Integer := 0
 ;

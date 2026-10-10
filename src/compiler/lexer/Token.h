@@ -23,6 +23,7 @@ enum class TokenKind {
     ColonEqual,
     Equal,
     Hash,
+    Pipe,
     Less,
     Greater,
     LessEqual,

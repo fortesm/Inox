@@ -1,0 +1,27 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0011: Ada/SPARK-style case. `|` separates alternatives, `A..B` is a
+== static range (Const bounds are static), single-line arms are allowed, and
+== `otherwise` covers the rest.
+Module CaseAdaChoices
+
+Const Low := 3
+Const High := 9
+
+Main :
+    X := 4
+    case X
+        1 | 2
+            PutLn("small")
+        Low..High
+            PutLn("medium")
+        10 | 20..29 | 40 PutLn("mixed")
+        otherwise
+            PutLn("other")
+    ;
+;

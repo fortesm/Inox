@@ -1,0 +1,20 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-4: newlines terminate statements, so a `(` that begins a new line does
+== not continue the previous line as a call. `(1)` is a separate (invalid)
+== statement here, not an argument list for `Report`.
+Module Diagnostics.CallParenOnNextLine
+
+Report :
+    PutLn(1)
+;
+
+Main :
+    Report
+    (1)
+;

@@ -83,6 +83,12 @@ private:
     static bool cannotFallThrough(const std::vector<ast::StatementPtr>& statements);
     static bool cannotFallThrough(const ast::Statement& statement);
     void analyzeStatement(const ast::Statement& statement);
+    void analyzeCaseStatement(const ast::CaseStatement& statement);
+    std::int64_t caseChoiceValue(const ast::Expression& choice, const std::string& selectorType);
+    bool staticBoolValue(const ast::Expression& expression, bool& value) const;
+    bool staticCharValue(const ast::Expression& expression, std::int64_t& value) const;
+    const Symbol* resolveConstant(const ast::Expression& expression) const;
+    void recordConstantExpression(const std::string& name, const ast::Expression& value);
     void analyzeVarBlock(const ast::VarBlockStatement& statement);
     std::string analyzeExpression(const ast::Expression& expression);
     std::string inferExpressionType(const ast::Expression& expression);
@@ -139,6 +145,9 @@ private:
     std::size_t ensureDepth_ = 0;
     bool hasMain_ = false;
     std::unordered_map<const ast::Expression*, std::int64_t> constants_;
+    // Char Consts (`Const Letter := 'A'`) by normalized name, as Unicode scalar
+    // values; used for static case choices (ADR-0011).
+    std::unordered_map<std::string, std::int64_t> charConstants_;
 };
 
 } // namespace inox::compiler::semantic

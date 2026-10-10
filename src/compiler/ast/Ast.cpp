@@ -459,11 +459,13 @@ const std::vector<StatementPtr>& ForInStatement::body() const
 
 CaseStatement::CaseStatement(ExpressionPtr expression,
                              std::vector<CaseArm> arms,
-                             std::vector<StatementPtr> otherwiseBody)
+                             std::vector<StatementPtr> otherwiseBody,
+                             bool hasOtherwise)
     : Statement(AstNodeKind::CaseStatement),
       expression_(std::move(expression)),
       arms_(std::move(arms)),
-      otherwiseBody_(std::move(otherwiseBody))
+      otherwiseBody_(std::move(otherwiseBody)),
+      hasOtherwise_(hasOtherwise)
 {
 }
 
@@ -480,6 +482,11 @@ const std::vector<CaseArm>& CaseStatement::arms() const
 const std::vector<StatementPtr>& CaseStatement::otherwiseBody() const
 {
     return otherwiseBody_;
+}
+
+bool CaseStatement::hasOtherwise() const
+{
+    return hasOtherwise_;
 }
 
 TryStatement::TryStatement(std::vector<StatementPtr> body,
