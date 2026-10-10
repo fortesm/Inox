@@ -64,6 +64,9 @@ jobs:
         run: |
           pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-tests.ps1 -InoxExe build/windows-clang-msvc/Debug/inox.exe *>&1 | Tee-Object -FilePath test-output.txt
           python tools/ci_known_failures.py test-output.txt ci/windows-known-failures.txt
+      - name: MSVC EH bridge acceptance criteria (i)-(iv)
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-windows-eh-poc.ps1 -InoxExe build/windows-clang-msvc/Debug/inox.exe
       - name: Backend gaps (0 BUG)
         run: python tools/backend_gaps.py build/windows-clang-msvc/Debug/inox.exe
       - name: Upload test log
