@@ -514,8 +514,17 @@ specification, ADRs, manual HTML, and tests.
 #     are compile errors, as CANON-9 already required. Any other call rejects a
 #     named argument.
 #   - Const, State and Type sections are kept as token lists; the parser
-#     rejects a second `:=` on one declaration line there, so
-#     `Const A := B := 3` is the same error (found by ChatGPT's review).
+#     rejects a second `:=` outside parentheses on one declaration line there,
+#     so `Const A := B := 3` is the same error, while
+#     `Origin TPoint := TPoint(X := 1, Y := 2)` stays valid (found by
+#     ChatGPT's review). Sections now carry the line of each token, and the
+#     analyzer skips an initializer as a unit up to the end of its line: the
+#     field names inside it are no longer read as phantom State or Const
+#     declarations.
+#   - Bug fixed on the way: `Const K := 5 + 1` recorded only the first token,
+#     so K was silently 5. A Const value is now recorded only for a
+#     single-token initializer; other forms stay unresolved and the backend
+#     reports the gap (`backend-gap-const-expression`).
 #   - `parseStatement`/`appendStatement` are private: a chain yields several
 #     statements, so only whole statement lists are public parser API.
 #   - OPEN-4 recorded: CANON-5 rules 1 and 7 contradict each other for FORM 1;
@@ -527,7 +536,9 @@ specification, ADRs, manual HTML, and tests.
 #     `chained-assignment-index-target`, `named-argument-outside-construction`,
 #     `conversion-named-argument`, `construction-unknown-field`,
 #     `construction-duplicate-field`, `construction-positional`,
-#     `construction-omitted-scalar`, `construction-type-mismatch`. Probes
+#     `construction-omitted-scalar`, `construction-type-mismatch`,
+#     `backend-gap-const-expression`; semantic-valid
+#     `state-named-construction-initializer`. Probes
 #     `chained-assignment` (OK) and `named-struct-construction` (GAP: struct
 #     construction is not lowered yet).
 #

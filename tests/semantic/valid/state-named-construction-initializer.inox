@@ -1,0 +1,28 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== A State initializer is skipped as a unit: the field names of a named
+== construction (`X := 1, Y := 2`) are not State declarations (CANON-9). With
+== the old token scanner, `Y` became a phantom State symbol and the explicit
+== local declaration of `Y` below failed as shadowing.
+Module StateNamedConstructionInitializer
+
+Type
+    TPoint Struct
+        X Integer
+        Y Integer
+    ;
+
+State :
+    Origin TPoint := TPoint(X := 1, Y := 2)
+    Count Integer := 0
+;
+
+Main :
+    Y Integer := 3
+    PutLn(Y)
+;

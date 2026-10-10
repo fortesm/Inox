@@ -173,14 +173,19 @@ private:
 
 class SectionDeclaration final : public AstNode {
 public:
-    SectionDeclaration(SectionKind sectionKind, std::vector<std::string> tokens);
+    SectionDeclaration(SectionKind sectionKind, std::vector<std::string> tokens,
+                       std::vector<std::size_t> tokenLines = {});
 
     SectionKind sectionKind() const;
     const std::vector<std::string>& tokens() const;
+    // Source line of each token (same length as tokens(), or empty). A section
+    // holds one declaration per line, so the line bounds an initializer.
+    const std::vector<std::size_t>& tokenLines() const;
 
 private:
     SectionKind sectionKind_;
     std::vector<std::string> tokens_;
+    std::vector<std::size_t> tokenLines_;
 };
 
 class RawDeclaration final : public AstNode {

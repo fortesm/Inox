@@ -427,7 +427,27 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
     }
 
     const auto& tokens = section.tokens();
+    const auto& lines = section.tokenLines();
     const bool isMutable = kind == SymbolKind::Variable || kind == SymbolKind::State;
+    // An initializer runs to the end of its line (one declaration per line).
+    // Skipping it as a unit keeps tokens inside it, such as the field names of
+    // `TPoint(X := 1, Y := 2)`, from being read as new declarations.
+    const auto endOfInitializer = [&](std::size_t valueIndex, std::size_t fallback) {
+        if (lines.size() != tokens.size() || valueIndex >= tokens.size()) {
+            return fallback;
+        }
+        std::size_t end = valueIndex;
+        while (end < tokens.size() && lines[end] == lines[valueIndex]) {
+            ++end;
+        }
+        return end;
+    };
+    // A Const value is recorded only when it is a single token; other
+    // initializers stay unresolved (the backend reports them as a GAP).
+    const auto singleTokenValue = [&](std::size_t valueIndex) {
+        return valueIndex < tokens.size() &&
+               endOfInitializer(valueIndex, valueIndex + 1) == valueIndex + 1;
+    };
     for (std::size_t index = 0; index + 1 < tokens.size();) {
         if (!looksLikeIdentifier(tokens[index])) {
             ++index;
@@ -445,10 +465,10 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
             // Name := Expr  -> inferred-type declaration
             declareOrThrow(tokens[index], kind,
                            inferSectionDeclarationType(tokens, index), isMutable);
-            if (kind == SymbolKind::Constant && index + 2 < tokens.size()) {
+            if (kind == SymbolKind::Constant && singleTokenValue(index + 2)) {
                 recordConstantValue(tokens[index], tokens[index + 2]);
             }
-            index += 3;  // Name := value
+            index = endOfInitializer(index + 2, index + 3);  // Name := value
             continue;
         }
 
@@ -460,7 +480,8 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
             if (kind == SymbolKind::State && !hasInitializer && index + 2 < tokens.size()) {
                 stateDeclarationsWithoutInitializer_.emplace_back(tokens[index], tokens[index + 2]);
             }
-            index += 3;  // Name : Type
+            index = hasInitializer ? endOfInitializer(index + 4, index + 3)
+                                   : index + 3;  // Name : Type [:= value]
             continue;
         }
 
@@ -469,10 +490,10 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
             // The TYPE token must NOT be declared as a symbol (it is a type name).
             declareOrThrow(tokens[index], kind, canonicalTypeName(next), isMutable);
             if (index + 2 < tokens.size() && tokens[index + 2] == ":=") {
-                if (kind == SymbolKind::Constant && index + 3 < tokens.size()) {
+                if (kind == SymbolKind::Constant && singleTokenValue(index + 3)) {
                     recordConstantValue(tokens[index], tokens[index + 3]);
                 }
-                index += 4;  // Name Type := value
+                index = endOfInitializer(index + 3, index + 4);  // Name Type := value
             } else {
                 if (kind == SymbolKind::State) {
                     stateDeclarationsWithoutInitializer_.emplace_back(tokens[index], next);

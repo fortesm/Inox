@@ -62,10 +62,12 @@ const std::vector<std::string>& UseDeclaration::path() const
     return path_;
 }
 
-SectionDeclaration::SectionDeclaration(SectionKind sectionKind, std::vector<std::string> tokens)
+SectionDeclaration::SectionDeclaration(SectionKind sectionKind, std::vector<std::string> tokens,
+                                       std::vector<std::size_t> tokenLines)
     : AstNode(AstNodeKind::SectionDeclaration),
       sectionKind_(sectionKind),
-      tokens_(std::move(tokens))
+      tokens_(std::move(tokens)),
+      tokenLines_(std::move(tokenLines))
 {
 }
 
@@ -77,6 +79,11 @@ SectionKind SectionDeclaration::sectionKind() const
 const std::vector<std::string>& SectionDeclaration::tokens() const
 {
     return tokens_;
+}
+
+const std::vector<std::size_t>& SectionDeclaration::tokenLines() const
+{
+    return tokenLines_;
 }
 
 RawDeclaration::RawDeclaration(std::string head, std::vector<std::string> tokens)

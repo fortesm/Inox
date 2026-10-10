@@ -1155,20 +1155,29 @@ ast::AstNodePtr Parser::parseUseDeclaration()
 ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
 {
     std::vector<std::string> tokens;
+    std::vector<std::size_t> lines;
 
     // Section contents stay token lists, so the rule that `:=` is a statement
     // and never part of an initializer (ADR-0009) is checked here: one
-    // declaration per line, at most one `:=` on it.
+    // declaration per line, at most one `:=` outside parentheses on it. A
+    // `:=` inside parentheses is a named argument (`TPoint(X := 1)`, CANON-9).
     std::size_t assignLine = 0;
+    std::size_t depth = 0;
     const auto take = [&]() {
         const lexer::Token& token = advance();
-        if (token.kind == TokenKind::ColonEqual) {
+        if (token.kind == TokenKind::LeftParen || token.kind == TokenKind::LeftBracket) {
+            ++depth;
+        } else if ((token.kind == TokenKind::RightParen ||
+                    token.kind == TokenKind::RightBracket) && depth > 0) {
+            --depth;
+        } else if (token.kind == TokenKind::ColonEqual && depth == 0) {
             if (assignLine == token.location.line) {
                 throw ParseError(kAssignmentInExpressionMessage, token.location);
             }
             assignLine = token.location.line;
         }
         tokens.push_back(tokenText(token));
+        lines.push_back(token.location.line);
     };
 
     // Type is always a section/declarator without ':'.
@@ -1193,7 +1202,7 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
             }
         }
         return std::make_unique<ast::SectionDeclaration>(
-            sectionKind, std::move(tokens));
+            sectionKind, std::move(tokens), std::move(lines));
     }
 
     consume(TokenKind::Colon, "expected ':' after section header");
@@ -1204,7 +1213,7 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
 
     consumeBlockClose();
     return std::make_unique<ast::SectionDeclaration>(
-        sectionKind, std::move(tokens));
+        sectionKind, std::move(tokens), std::move(lines));
 }
 
 ast::AstNodePtr Parser::parseRawDeclaration()
