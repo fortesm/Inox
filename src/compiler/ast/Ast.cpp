@@ -63,12 +63,19 @@ const std::vector<std::string>& UseDeclaration::path() const
 }
 
 SectionDeclaration::SectionDeclaration(SectionKind sectionKind, std::vector<std::string> tokens,
-                                       std::vector<std::size_t> tokenLines)
+                                       std::vector<std::size_t> tokenLines,
+                                       std::vector<SectionInitializer> initializers)
     : AstNode(AstNodeKind::SectionDeclaration),
       sectionKind_(sectionKind),
       tokens_(std::move(tokens)),
-      tokenLines_(std::move(tokenLines))
+      tokenLines_(std::move(tokenLines)),
+      initializers_(std::move(initializers))
 {
+}
+
+const std::vector<SectionInitializer>& SectionDeclaration::initializers() const
+{
+    return initializers_;
 }
 
 SectionKind SectionDeclaration::sectionKind() const

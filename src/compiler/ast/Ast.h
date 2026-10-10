@@ -171,21 +171,33 @@ private:
     std::vector<std::string> path_;
 };
 
+// The initializer of one Const or State declaration, parsed as an expression
+// so that semantic analysis checks it like any other expression (ADR-0009,
+// CANON-9). `typeName` is empty for the inferred form `Name := Expr`.
+struct SectionInitializer {
+    std::string name;
+    std::string typeName;
+    ExpressionPtr value;
+};
+
 class SectionDeclaration final : public AstNode {
 public:
     SectionDeclaration(SectionKind sectionKind, std::vector<std::string> tokens,
-                       std::vector<std::size_t> tokenLines = {});
+                       std::vector<std::size_t> tokenLines = {},
+                       std::vector<SectionInitializer> initializers = {});
 
     SectionKind sectionKind() const;
     const std::vector<std::string>& tokens() const;
     // Source line of each token (same length as tokens(), or empty). A section
     // holds one declaration per line, so the line bounds an initializer.
     const std::vector<std::size_t>& tokenLines() const;
+    const std::vector<SectionInitializer>& initializers() const;
 
 private:
     SectionKind sectionKind_;
     std::vector<std::string> tokens_;
     std::vector<std::size_t> tokenLines_;
+    std::vector<SectionInitializer> initializers_;
 };
 
 class RawDeclaration final : public AstNode {

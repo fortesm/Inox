@@ -1157,27 +1157,54 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
     std::vector<std::string> tokens;
     std::vector<std::size_t> lines;
 
-    // Section contents stay token lists, so the rule that `:=` is a statement
-    // and never part of an initializer (ADR-0009) is checked here: one
-    // declaration per line, at most one `:=` outside parentheses on it. A
-    // `:=` inside parentheses is a named argument (`TPoint(X := 1)`, CANON-9).
-    std::size_t assignLine = 0;
-    std::size_t depth = 0;
+    std::vector<ast::SectionInitializer> initializers;
+
+    // Section contents stay token lists for the declaration shapes, but the
+    // initializer of a Const or State declaration is parsed as a real
+    // expression (ADR-0009: `:=` never appears in it; CANON-9: named
+    // construction is checked by semantic analysis). Its tokens are still
+    // recorded so the token-based consumers see the same list as before.
+    const bool parseInitializers = sectionKind != ast::SectionKind::Type;
+    std::size_t declarationStart = 0;
+    std::size_t declarationLine = 0;
     const auto take = [&]() {
         const lexer::Token& token = advance();
-        if (token.kind == TokenKind::LeftParen || token.kind == TokenKind::LeftBracket) {
-            ++depth;
-        } else if ((token.kind == TokenKind::RightParen ||
-                    token.kind == TokenKind::RightBracket) && depth > 0) {
-            --depth;
-        } else if (token.kind == TokenKind::ColonEqual && depth == 0) {
-            if (assignLine == token.location.line) {
-                throw ParseError(kAssignmentInExpressionMessage, token.location);
-            }
-            assignLine = token.location.line;
+        if (token.location.line != declarationLine) {
+            declarationLine = token.location.line;
+            declarationStart = tokens.size();
         }
         tokens.push_back(tokenText(token));
         lines.push_back(token.location.line);
+        if (!parseInitializers || token.kind != TokenKind::ColonEqual) {
+            return;
+        }
+        // Name := Expr | Name Type := Expr | legacy Name : Type := Expr
+        const std::size_t head = tokens.size() - 1 - declarationStart;
+        if (head == 0) {
+            throw ParseError("expected a name before ':='", token.location);
+        }
+        ast::SectionInitializer initializer;
+        initializer.name = tokens[declarationStart];
+        if (head == 2) {
+            initializer.typeName = tokens[declarationStart + 1];
+        } else if (head == 3 && tokens[declarationStart + 1] == ":") {
+            initializer.typeName = tokens[declarationStart + 2];
+        } else if (head != 1) {
+            throw ParseError(kAssignmentInExpressionMessage, token.location);
+        }
+        const std::size_t valueStart = current_;
+        initializer.value = parseValue();
+        if (!isAtEnd() && !check(TokenKind::Semicolon) &&
+            peek().location.line == previous().location.line) {
+            errorAtCurrent("expected line break after a section declaration");
+        }
+        // The whole initializer is recorded on the declaration's line, even
+        // when it spans lines, so the token scanners skip it as one unit.
+        for (std::size_t i = valueStart; i < current_; ++i) {
+            tokens.push_back(tokenText(tokens_[i]));
+            lines.push_back(token.location.line);
+        }
+        initializers.push_back(std::move(initializer));
     };
 
     // Type is always a section/declarator without ':'.
@@ -1202,7 +1229,7 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
             }
         }
         return std::make_unique<ast::SectionDeclaration>(
-            sectionKind, std::move(tokens), std::move(lines));
+            sectionKind, std::move(tokens), std::move(lines), std::move(initializers));
     }
 
     consume(TokenKind::Colon, "expected ':' after section header");
@@ -1213,7 +1240,7 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
 
     consumeBlockClose();
     return std::make_unique<ast::SectionDeclaration>(
-        sectionKind, std::move(tokens), std::move(lines));
+        sectionKind, std::move(tokens), std::move(lines), std::move(initializers));
 }
 
 ast::AstNodePtr Parser::parseRawDeclaration()

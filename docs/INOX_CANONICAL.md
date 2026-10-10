@@ -513,14 +513,14 @@ specification, ADRs, manual HTML, and tests.
 #     arguments, a type mismatch, and an omitted scalar field without default
 #     are compile errors, as CANON-9 already required. Any other call rejects a
 #     named argument.
-#   - Const, State and Type sections are kept as token lists; the parser
-#     rejects a second `:=` outside parentheses on one declaration line there,
-#     so `Const A := B := 3` is the same error, while
-#     `Origin TPoint := TPoint(X := 1, Y := 2)` stays valid (found by
-#     ChatGPT's review). Sections now carry the line of each token, and the
-#     analyzer skips an initializer as a unit up to the end of its line: the
-#     field names inside it are no longer read as phantom State or Const
-#     declarations.
+#   - Const and State initializers are now parsed as expressions (stored in
+#     the section next to its token list) and analyzed like any other
+#     expression: `Const A := B := 3` and `A Integer := (B := 3)` are the
+#     ADR-0009 error, `TPoint(Z := 1)` in State is the CANON-9 unknown-field
+#     error, and the value must match a declared type. `Origin TPoint :=
+#     TPoint(X := 1, Y := 2)` stays valid. The token scanners skip an
+#     initializer as one unit, so the field names inside it are no longer read
+#     as phantom State or Const declarations. Found by ChatGPT's reviews.
 #   - Bug fixed on the way: `Const K := 5 + 1` recorded only the first token,
 #     so K was silently 5. A Const value is now recorded only for a
 #     single-token initializer; other forms stay unresolved and the backend
@@ -537,8 +537,10 @@ specification, ADRs, manual HTML, and tests.
 #     `conversion-named-argument`, `construction-unknown-field`,
 #     `construction-duplicate-field`, `construction-positional`,
 #     `construction-omitted-scalar`, `construction-type-mismatch`,
-#     `backend-gap-const-expression`; semantic-valid
-#     `state-named-construction-initializer`. Probes
+#     `backend-gap-const-expression`,
+#     `assignment-in-state-initializer-parenthesized`,
+#     `state-construction-unknown-field`, `state-initializer-type-mismatch`;
+#     semantic-valid `state-named-construction-initializer`. Probes
 #     `chained-assignment` (OK) and `named-struct-construction` (GAP: struct
 #     construction is not lowered yet).
 #

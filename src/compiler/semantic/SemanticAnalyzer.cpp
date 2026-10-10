@@ -408,7 +408,21 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
     if (item.kind() == ast::AstNodeKind::FunctionDeclaration) {
         analyzeFunction(static_cast<const ast::FunctionDeclaration&>(item));
     } else if (item.kind() == ast::AstNodeKind::SectionDeclaration) {
-        validateSectionTypes(static_cast<const ast::SectionDeclaration&>(item));
+        const auto& section = static_cast<const ast::SectionDeclaration&>(item);
+        validateSectionTypes(section);
+        // Const and State initializers are expressions: they are analyzed like
+        // any other (CANON-9 named construction, types), not skipped.
+        for (const ast::SectionInitializer& initializer : section.initializers()) {
+            const std::string valueType =
+                canonicalTypeName(analyzeExpression(*initializer.value));
+            if (!initializer.typeName.empty()) {
+                const std::string declared = canonicalTypeName(initializer.typeName);
+                if (!valueType.empty() && !canAssign(declared, valueType)) {
+                    throw SemanticError("initializer of " + initializer.name + " has type " +
+                                        valueType + ", expected " + declared);
+                }
+            }
+        }
     }
 }
 
