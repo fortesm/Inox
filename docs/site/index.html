@@ -427,6 +427,7 @@ PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
 <ul>
 <li>Fixed arrays use explicit ranges: <code>Array[Low..High] Type</code>.</li>
 <li>Vectors are planned as dynamic, 0-based, bounds-checked collections.</li>
+<li>Generic types are written with angle brackets: <code>Vector&lt;Integer&gt;</code>, <code>Set&lt;TCardSuit&gt;</code>. Square brackets stay for indexing and bounds: <code>Values[I]</code>, <code>Array[1..10] Integer</code>. The compiler still uses the older <code>[T]</code> spelling until it is updated.</li>
 <li>Ranges are finite ordinal declarations.</li>
 <li>Enums are nominal and ordinal, with no implicit conversion to/from <code>Integer</code>.</li>
 <li>Sets are planned as finite sets over ordinal base types, inspired by Pascal and Ada discipline.</li>
