@@ -2451,8 +2451,26 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
             targetType = target.typeName;
         } else if (expression.left().kind() == ast::AstNodeKind::CallExpression &&
                    isMemberCall(static_cast<const ast::CallExpression&>(expression.left()))) {
+            // OPEN-4: writing a field (`P.X := 10`) is not reading P. The
+            // target is analyzed as usual, then the read it recorded for the
+            // root variable is withdrawn unless P had been read before.
+            const ast::Expression* root = &expression.left();
+            while (root->kind() == ast::AstNodeKind::CallExpression &&
+                   isMemberCall(static_cast<const ast::CallExpression&>(*root))) {
+                root = static_cast<const ast::CallExpression&>(*root).arguments()[0].get();
+            }
+            const Symbol* rootSymbol = nullptr;
+            bool rootWasRead = false;
+            if (root->kind() == ast::AstNodeKind::IdentifierExpression) {
+                rootSymbol = symbols_.currentScope().resolve(
+                    static_cast<const ast::IdentifierExpression&>(*root).name());
+                rootWasRead = rootSymbol != nullptr && readSymbols_.contains(rootSymbol);
+            }
             targetType = analyzeMemberExpression(
                 static_cast<const ast::CallExpression&>(expression.left()));
+            if (rootSymbol != nullptr && !rootWasRead) {
+                readSymbols_.erase(rootSymbol);
+            }
         } else {
             throw SemanticError("assignment target must be an identifier or field");
         }

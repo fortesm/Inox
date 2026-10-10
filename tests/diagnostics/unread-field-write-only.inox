@@ -5,19 +5,18 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module ParserCanonical
+== OPEN-4: writing fields of a struct is not reading it. A struct whose fields
+== are only assigned is never read.
+Module Diagnostics.UnreadFieldWriteOnly
 
 Type
     TPoint Struct
-        FX Integer
-        FY Integer
+        X Integer
+        Y Integer
     ;
 
 Main :
     P TPoint
-    X Integer := 10
-
-    P.FX := X
-    P.FY := 20
-    PutLn(P.FX + P.FY)
+    P.X := 10
+    P.Y := 20
 ;

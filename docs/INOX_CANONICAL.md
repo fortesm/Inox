@@ -11,7 +11,7 @@
 # Maintainer / sole design authority: Marcelo Fortes
 # Version: v3.32 (Layer A: OPEN-4 closed; a local variable that is never read
 #          is a compile error)
-# Last updated: 2026-10-09
+# Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
 #          "Secondary Licenses" notice.
@@ -497,13 +497,17 @@ specification, ADRs, manual HTML, and tests.
 #     "local variable never read: Coutner". Rules 1 and 7 no longer conflict.
 #   - A local declared in a routine (any form: `X := 1`, `X T := 1`, `P TStruct`,
 #     grouped) must be read before its block ends; assigning it is not reading
-#     it. Parameters, `for` iterators, exception bindings, `State` and `Const`
-#     are not covered. Every unread local of a block is listed in declaration
+#     it, and writing a field (`P.X := 10`) is not reading P. Parameters, `for`
+#     iterators, exception bindings, `State` and `Const` are not covered (the
+#     exception-binding exemption is pending a maintainer decision: an
+#     exception value has no readable member yet, so a tracked binding could
+#     never be used). Every unread local of a block is listed in declaration
 #     order.
 #   - Six examples and tests declared locals they never read; they now print
 #     them. The `float32-conversion` probe reads its variable.
 #   - Tests: diagnostics `unread-typo`, `unread-assigned-only`,
-#     `unread-nested-scope`, `unread-several`; semantic-valid
+#     `unread-nested-scope`, `unread-several`, `unread-field-write-only`;
+#     semantic-valid
 #     `unread-exemptions`.
 #
 # v3.31 — 2026-10-10 — numeric literals follow CANON-2 (Layer B; no language
@@ -1930,7 +1934,7 @@ HARD RULES:
 7. A TYPO STAYS A BUG. By rule 1 a misspelled name declares a new variable, and
    a local variable that is never read is a COMPILE ERROR ("local variable
    never read: Name"), so `Coutner := Counter + 1` is rejected. Assigning a
-   variable is not reading it. Parameters, `for` iterators, exception
+   variable, or one of its fields, is not reading it. Parameters, `for` iterators, exception
    bindings, State and Const are exempt. (v3.32, OPEN-4 decided by Marcelo
    Fortes, Go-style, with no `_` placeholder.)
 8. SHADOWING is FORBIDDEN (current or any outer scope; case-insensitive). `:=` to

@@ -44,6 +44,7 @@ Structs :
     P1, P2 TPoint
     P1.FX := 1
     P2.FY := P1.FX
+    PutLn(P2.FY)
 ;
 
 Main :
