@@ -33,6 +33,11 @@ enum class TokenKind {
     Star,
     Slash,
     Caret,
+    PlusEqual,
+    MinusEqual,
+    StarEqual,
+    SlashEqual,
+    CaretEqual,
     DotDot,
 
     LeftParen,

@@ -12,10 +12,11 @@ Main :
     Total := 0
 
     repeat
-        Total := Total + I
-        I := I - 1
+        Total += I
+        I -= 1
         until I = 0
     ;
+    PutLn(Total)
 
     repeat
         until I = 0
@@ -23,9 +24,9 @@ Main :
     ;
 
     repeat
-        I := I + 1
+        I += 1
         until I = 1
-        I := I - 1
+        I -= 1
         leave
     ;
 

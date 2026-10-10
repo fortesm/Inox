@@ -25,11 +25,11 @@ Main :
     ;
 
     while I < 3
-        I := I + 1
+        I += 1
     ;
 
     repeat
-        I := I - 1
+        I -= 1
     until I = 0
     ;
 

@@ -933,9 +933,29 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         break;
     }
     case ast::AstNodeKind::ExpressionStatement: {
-        const ast::Expression& statementExpression =
-            static_cast<const ast::ExpressionStatement&>(statement).expression();
+        const auto& expressionStatement = static_cast<const ast::ExpressionStatement&>(statement);
+        const ast::Expression& statementExpression = expressionStatement.expression();
         requireStatementExpression(statementExpression);
+        // ADR-0012 / OPEN-4: `X += R` is stored as `X := X + R`. The copy of
+        // X on the right only serves the update, so it is not a read of X
+        // (assigning is not reading); a read of X inside R still counts.
+        if (expressionStatement.isCompoundAssignment()) {
+            const auto& assignment = static_cast<const ast::BinaryExpression&>(statementExpression);
+            const ast::Expression* root =
+                &static_cast<const ast::BinaryExpression&>(assignment.right()).left();
+            while (root->kind() == ast::AstNodeKind::CallExpression &&
+                   isMemberCall(static_cast<const ast::CallExpression&>(*root))) {
+                root = static_cast<const ast::CallExpression&>(*root).arguments()[0].get();
+            }
+            if (root->kind() == ast::AstNodeKind::IdentifierExpression) {
+                const auto& identifier = static_cast<const ast::IdentifierExpression&>(*root);
+                if (symbols_.currentScope().resolve(identifier.name()) == nullptr) {
+                    throw SemanticError("compound assignment needs an existing variable: " +
+                                        identifier.name() + " (ADR-0012)");
+                }
+                updateOnlyReads_.insert(&identifier);
+            }
+        }
         analyzeExpression(statementExpression);
         if (statementExpression.kind() == ast::AstNodeKind::CallExpression) {
             const auto& call = static_cast<const ast::CallExpression&>(statementExpression);
@@ -1641,7 +1661,9 @@ std::string SemanticAnalyzer::inferExpressionType(const ast::Expression& express
         }
         const Symbol& symbol = resolveOrThrow(identifier.name());
         result_.bind(identifier, symbol);
-        readSymbols_.insert(&symbol);
+        if (!updateOnlyReads_.contains(&identifier)) {
+            readSymbols_.insert(&symbol);
+        }
         return symbol.typeName;
     }
     case ast::AstNodeKind::BinaryExpression:

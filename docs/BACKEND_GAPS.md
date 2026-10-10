@@ -69,9 +69,10 @@ analysis but not lowered yet.)
 | `for-step-expression-bounds` | for I in 1..N + 1 step N div 2 | **OK** |  |
 | `case-ada-choices` | case with \| alternatives and a static range | **GAP** | LLVM emission does not lower case statements yet |
 | `digit-separators` | numeric literals with the digit separator _ | **OK** |  |
+| `compound-assignment` | compound assignment += -= *= /= ^= | **OK** |  |
 | `state-global` | State section variable | **GAP** | unsupported expression in function: Main |
 
-Summary: GAP=8, OK=22
+Summary: GAP=8, OK=23
 
 ## Reading the table
 

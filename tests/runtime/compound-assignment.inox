@@ -1,0 +1,35 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0012: compound assignment `+=` `-=` `*=` `/=` `^=` on variables and
+== fields (also `.Field` inside `with`). `L op= R` is `L := L op R`.
+Module Runtime.CompoundAssignment
+
+Type
+    TPoint Struct
+        X Integer
+        Y Integer
+    ;
+
+Main :
+    I := 10
+    I += 5
+    I -= 3
+    I *= 2
+    I ^= 2
+    F := 2.0
+    F /= 4.0
+    F ^= 2.0
+    P TPoint
+    P.X += 7
+    with P
+        .Y += .X * 2
+    ;
+    PutLn(I)
+    PutLn(F)
+    PutLn(P.X, " ", P.Y)
+;

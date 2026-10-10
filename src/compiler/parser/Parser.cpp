@@ -999,6 +999,13 @@ ast::ExpressionPtr Parser::parseCaseChoice()
 // While a header expression is parsed (the case selector), a token on a later
 // line does not continue it: `case X` followed by an arm `-1 ...` or `(A) ...`
 // must not read as `X - 1` or `X(A)`.
+bool Parser::atCompoundAssignment() const
+{
+    return check(TokenKind::PlusEqual) || check(TokenKind::MinusEqual) ||
+           check(TokenKind::StarEqual) || check(TokenKind::SlashEqual) ||
+           check(TokenKind::CaretEqual);
+}
+
 bool Parser::atLineBreakInHeader() const
 {
     return headerExpression_ && current_ > 0 &&
@@ -1205,9 +1212,44 @@ ast::StatementPtr Parser::parseExpressionStatement()
     std::vector<ast::ExpressionPtr> parts;
     std::vector<lexer::Token> operators;
     parts.push_back(parseOr());
+
+    // ADR-0012: `L op= R` is `L := L op R` with L evaluated once. L is a
+    // variable or a field path, which has no side effects, so storing the
+    // desugared form is exact. Index targets wait for arrays (their lvalue
+    // must be evaluated once by the lowering, not duplicated here).
+    if (atCompoundAssignment()) {
+        const lexer::Token& op = advance();
+        if (!isChainTarget(*parts.front())) {
+            throw ParseError(
+                "a compound assignment target must be a variable or a field (ADR-0012)",
+                op.location);
+        }
+        auto value = parseValue();
+        if (atCompoundAssignment() || check(TokenKind::ColonEqual)) {
+            errorAtCurrent("a compound assignment cannot be chained (ADR-0012)");
+        }
+        ast::BinaryOperator binary = ast::BinaryOperator::Add;
+        switch (op.kind) {
+        case TokenKind::MinusEqual: binary = ast::BinaryOperator::Subtract; break;
+        case TokenKind::StarEqual: binary = ast::BinaryOperator::Multiply; break;
+        case TokenKind::SlashEqual: binary = ast::BinaryOperator::Divide; break;
+        case TokenKind::CaretEqual: binary = ast::BinaryOperator::Power; break;
+        default: break;
+        }
+        auto current = cloneChainTarget(*parts.front());
+        auto combined = makeExpr<ast::BinaryExpression>(binary, std::move(current), std::move(value));
+        return std::make_unique<ast::ExpressionStatement>(
+            makeExpr<ast::BinaryExpression>(
+                ast::BinaryOperator::Assign, std::move(parts.front()), std::move(combined)),
+            true);
+    }
+
     while (match(TokenKind::ColonEqual)) {
         operators.push_back(previous());
         parts.push_back(parseOr());
+    }
+    if (atCompoundAssignment()) {
+        errorAtCurrent("a compound assignment cannot be chained (ADR-0012)");
     }
 
     if (parts.size() == 1) {

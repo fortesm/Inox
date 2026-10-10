@@ -72,6 +72,7 @@ private:
     void rejectOldForStep() const;
     ast::ExpressionPtr parseCaseChoice();
     bool atLineBreakInHeader() const;
+    bool atCompoundAssignment() const;
 
     std::vector<ast::ExpressionPtr> parseArgumentList();
 

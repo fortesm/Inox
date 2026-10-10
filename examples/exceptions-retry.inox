@@ -10,7 +10,7 @@ Main :
     Attempts := 0
 
     try
-        Attempts := Attempts + 1
+        Attempts += 1
         PutLn("attempt ", Attempts)
 
         if Attempts < 3
