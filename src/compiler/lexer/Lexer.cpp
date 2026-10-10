@@ -211,27 +211,50 @@ Token Lexer::identifierOrKeyword(SourceLocation start, std::size_t startOffset)
     return token;
 }
 
+// CANON-2 (v3.3): `_` may separate digits in any numeric literal, but only
+// BETWEEN two digits: never leading, trailing, doubled, or next to `.`.
+// Consumes the remaining digits of a run whose first digit was already read.
+bool Lexer::digitRun(bool hex)
+{
+    const auto isRunDigit = [&](char ch) { return hex ? isHexDigit(ch) : isDigit(ch); };
+    for (;;) {
+        while (isRunDigit(peek())) {
+            advance();
+        }
+        if (peek() != '_') {
+            return true;
+        }
+        advance();  // '_'
+        if (!isRunDigit(peek())) {
+            return false;  // trailing, doubled, or before '.'
+        }
+    }
+}
+
 Token Lexer::number(SourceLocation start, std::size_t startOffset)
 {
     if (source_[startOffset] == '0' && (peek() == 'x' || peek() == 'X')) {
+        // The canon writes hexadecimal literals as `$FF` (CANON-2); `0x` is not
+        // Inox syntax.
         advance();
-        if (!isHexDigit(peek())) {
-            return invalidToken(start, startOffset, "expected hexadecimal digit after 0x");
-        }
-        while (isHexDigit(peek())) {
+        while (isHexDigit(peek()) || peek() == '_') {
             advance();
         }
-        return makeToken(TokenKind::IntegerLiteral, start, startOffset);
+        return invalidToken(start, startOffset,
+                            "hexadecimal literals are written with '$' (CANON-2): "
+                            "write '$FF', not '0xFF'");
     }
 
-    while (isDigit(peek())) {
-        advance();
+    const char* kSeparator =
+        "'_' may only separate two digits in a number (CANON-2): write '1_000'";
+    if (!digitRun(false)) {
+        return invalidToken(start, startOffset, kSeparator);
     }
 
     if (peek() == '.' && isDigit(peekNext())) {
         advance();
-        while (isDigit(peek())) {
-            advance();
+        if (!digitRun(false)) {
+            return invalidToken(start, startOffset, kSeparator);
         }
         return makeToken(TokenKind::FloatLiteral, start, startOffset);
     }
@@ -245,8 +268,9 @@ Token Lexer::dollarHexNumber(SourceLocation start, std::size_t startOffset)
         return invalidToken(start, startOffset, "expected hexadecimal digit after '$'");
     }
 
-    while (isHexDigit(peek())) {
-        advance();
+    if (!digitRun(true)) {
+        return invalidToken(start, startOffset,
+                            "'_' may only separate two digits in a number (CANON-2): write '$FF_FF'");
     }
 
     return makeToken(TokenKind::IntegerLiteral, start, startOffset);

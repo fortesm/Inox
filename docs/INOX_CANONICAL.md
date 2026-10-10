@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.30 (Layer B: grammar/grammar.ebnf rebuilt from this document and
-#          checked by tools/grammar_consistency.py in both test runners)
+# Version: v3.31 (Layer B: the lexer accepts the digit separator `_` and
+#          rejects `0x` hexadecimal literals, as CANON-2 already required)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,20 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.31 — 2026-10-10 — numeric literals follow CANON-2 (Layer B; no language
+#         change). Both gaps were found by ChatGPT's review of the grammar.
+#   - The digit separator `_` (canonical since v3.3) is lexed in integer, real
+#     and `$` hexadecimal literals, only between two digits; `1__0`, `1_` and
+#     `1_.5` are errors. Later phases see the value without separators.
+#   - `0xFF` was accepted by the lexer and the analyzer and reached clang as
+#     invalid IR (`store i64 0xFF`), a backend BUG by CANON E15. The canon writes
+#     hexadecimal as `$FF`, so `0x` is now a lexical error with that hint. If
+#     the maintainer wants `0x` as an alternative spelling, that is a Layer A
+#     decision and the lexer change is one line.
+#   - Tests: runtime `digit-separators`; diagnostics `hex-0x-rejected`,
+#     `digit-separator-doubled`, `digit-separator-trailing`. Probe
+#     `digit-separators`.
 #
 # v3.30 — 2026-10-10 — grammar mirror rebuilt and checked (Layer B; no language
 #         change). Requested by Marcelo Fortes: "acho que o arquivo grammar.ebnf
