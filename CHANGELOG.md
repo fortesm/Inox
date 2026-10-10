@@ -28,6 +28,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - `:=` is a statement, never an expression; named arguments only in struct construction (CANON-9).
 - The `for` step form `(S)` is removed with a migration message.
 - `Const` values that are constant expressions are folded (`Const K := 5 + 1` was silently 5).
+- A `Const` has no written type: `Const Mask UInt8 := $FF` is rejected; write `Const Mask := UInt8($FF)` (OPEN-5).
 
 ### Known limitations
 - Exceptions on Windows (MSVC ABI) wait for the EH bridge.
