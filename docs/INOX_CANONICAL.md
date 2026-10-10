@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.29 (Layer A: ADR-0011, Ada/SPARK-style `case` with `|`, static
-#          ranges, and `otherwise` required unless coverage is proven)
+# Version: v3.30 (Layer B: grammar/grammar.ebnf rebuilt from this document and
+#          checked by tools/grammar_consistency.py in both test runners)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,24 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.30 — 2026-10-10 — grammar mirror rebuilt and checked (Layer B; no language
+#         change). Requested by Marcelo Fortes: "acho que o arquivo grammar.ebnf
+#         está completamente errado e desatualizado".
+#   - `grammar/grammar.ebnf` is rewritten from this document and covers v3.24 to
+#     v3.29: CANON-20 levels 1–16 with `..`/`in` non-associative, `:=` at
+#     statement level only (chains, named arguments), grouped declarations,
+#     `for ... step`, the ADR-0011 `case`, the line-break rule for `(`, `[` and
+#     `.`. Its "Conformance gaps" list now holds only the open items (array and
+#     generic types in declarations; sections kept as token lists; OPEN-4).
+#   - `tools/grammar_consistency.py` checks: every production defined once and
+#     reachable; word terminals against the lexer's keywords (both directions,
+#     and the kKeywords size); no forbidden terminal (`end`, `break`,
+#     `finally`, `then`, `of`, `when`, `=>`, `var`) and no empty parentheses;
+#     the grammar's level annotations against the CANON-20 table of this
+#     document; a parser-function→production map, including the call order of
+#     the expression functions. `run-tests.sh` and `run-tests.ps1` run it as one
+#     check ("[SKIP]" when Python 3 is missing).
 #
 # v3.29 — 2026-10-09 — ADR-0011: `case` in the Ada/SPARK style, adapted to Inox
 #         (Layer A, decided by Marcelo Fortes on 2026-10-09: "Uma sintaxe

@@ -546,6 +546,31 @@ run_runtime_tree "$repo_root/tests/runtime"
 run_diagnostic_tree "$repo_root/tests/diagnostics"
 run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 
+# grammar/grammar.ebnf must agree with the canon, the lexer and the parser.
+run_grammar_consistency() {
+    local python_exe=""
+    if command -v python3 >/dev/null 2>&1; then
+        python_exe="python3"
+    elif command -v python >/dev/null 2>&1; then
+        python_exe="python"
+    else
+        echo "[SKIP] grammar/grammar.ebnf consistency (Python 3 not found)"
+        return
+    fi
+    local output
+    output="$("$python_exe" "$repo_root/tools/grammar_consistency.py" "$repo_root" 2>&1)"
+    if [[ $? -eq 0 ]]; then
+        record_pass "grammar/grammar.ebnf consistency"
+    else
+        local details=()
+        while IFS= read -r line; do
+            [[ "$line" == *FAIL* || "$line" == "       "* ]] && details+=("$line")
+        done <<< "$output"
+        record_fail "grammar/grammar.ebnf consistency" "${details[@]}"
+    fi
+}
+run_grammar_consistency
+
 total=$((passed + failed))
 echo ""
 echo "Summary: $passed passed, $failed failed, $total total"
