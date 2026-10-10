@@ -453,9 +453,13 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
         }
 
         if (next == ":") {
-            // legacy Name : Type
+            // legacy Name : Type (tolerated); CANON-5 still applies to State.
             declareOrThrow(tokens[index], kind,
                            inferSectionDeclarationType(tokens, index), isMutable);
+            const bool hasInitializer = index + 3 < tokens.size() && tokens[index + 3] == ":=";
+            if (kind == SymbolKind::State && !hasInitializer && index + 2 < tokens.size()) {
+                stateDeclarationsWithoutInitializer_.emplace_back(tokens[index], tokens[index + 2]);
+            }
             index += 3;  // Name : Type
             continue;
         }
@@ -470,6 +474,9 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
                 }
                 index += 4;  // Name Type := value
             } else {
+                if (kind == SymbolKind::State) {
+                    stateDeclarationsWithoutInitializer_.emplace_back(tokens[index], next);
+                }
                 index += 2;  // Name Type
             }
             continue;
@@ -676,10 +683,19 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
         return;
     }
 
-    if (section.sectionKind() != ast::SectionKind::Var &&
-        section.sectionKind() != ast::SectionKind::Const &&
+    if (section.sectionKind() != ast::SectionKind::Const &&
         section.sectionKind() != ast::SectionKind::State) {
         return;
+    }
+
+    // CANON-5: "State scalars still require initializers"; like locals, only
+    // structs may use the type-default form `Name TStruct`.
+    if (section.sectionKind() == ast::SectionKind::State) {
+        for (const auto& [name, typeName] : stateDeclarationsWithoutInitializer_) {
+            if (resolveStruct(typeName) == nullptr) {
+                throw SemanticError("scalar declaration requires initializer: " + name);
+            }
+        }
     }
 
     for (std::size_t index = 0; index + 2 < tokens.size(); ++index) {
@@ -853,6 +869,12 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         }
         if (typeName.empty()) {
             throw SemanticError("variable requires a type or initializer: " + var.name());
+        }
+        // CANON-5 rule 3/4: every variable is born with a value. Only structs and
+        // aggregates may omit ":=" (type-default initialization); scalars must be
+        // initialized explicitly.
+        if (var.initializer() == nullptr && resolveStruct(typeName) == nullptr) {
+            throw SemanticError("scalar declaration requires initializer: " + var.name());
         }
         declareOrThrow(var.name(), SymbolKind::Variable, std::move(typeName), true);
         break;

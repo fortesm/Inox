@@ -18,6 +18,10 @@ namespace inox::compiler::parser {
 
 namespace {
 
+constexpr const char* kVarRemovedMessage =
+    "the 'Var' block and 'var'/'mut var' declarations were removed (CANON-5); "
+    "declare locals inline: 'Name := Value', 'Name Type := Value', or 'Name TStruct'";
+
 ast::ExpressionPtr makeSyntheticIdentifier(std::string name)
 {
     return std::make_unique<ast::IdentifierExpression>(std::move(name));
@@ -117,25 +121,10 @@ ast::StatementPtr Parser::parseStatement()
         return std::make_unique<ast::BlockStatement>(std::move(body));
     }
 
-    if (matchKeyword("mut")) {
-        consume(TokenKind::Keyword, "expected 'var' after 'mut'");
-        if (previous().normalized != "var") {
-            errorAt(previous(), "expected 'var' after 'mut'");
-        }
-        return endSimpleStatement(parseVarStatement(true));
-    }
-
-    if (matchKeyword("var")) {
-        const lexer::Token& varToken = previous();
-        if (match(TokenKind::Colon)) {
-            errorAt(previous(), "Var blocks do not use ':'; use 'Var' followed by declarations and close with ';'");
-        }
-        if (!isAtEnd() && peek().location.line > varToken.location.line) {
-            auto declarations = parseVarBlockDeclarations();
-            consumeBlockClose();
-            return std::make_unique<ast::VarBlockStatement>(std::move(declarations));
-        }
-        return endSimpleStatement(parseVarStatement(false));
+    // CANON-5: the old `Var ... ;` block and `var`/`mut var` declarations were
+    // removed. `Var` and `mut` stay reserved; reject them with a migration hint.
+    if (checkKeyword("var") || checkKeyword("mut")) {
+        errorAtCurrent(kVarRemovedMessage);
     }
 
     if (matchKeyword("if")) {
@@ -683,36 +672,6 @@ std::vector<ast::ExpressionPtr> Parser::parseArgumentList()
     return arguments;
 }
 
-ast::StatementPtr Parser::parseVarStatement(bool isMutable)
-{
-    const lexer::Token& name = consume(TokenKind::Identifier, "expected variable name");
-    ast::ExpressionPtr initializer;
-    std::string typeName;
-
-    if (!isAtEnd() && check(TokenKind::Identifier) &&
-        peek().location.line == name.location.line) {
-        const lexer::Token& candidateType = peek();
-        const bool followedByInitializer =
-            current_ + 1 < tokens_.size() &&
-            tokens_[current_ + 1].kind == TokenKind::ColonEqual;
-        const bool followedByStatementBoundary =
-            current_ + 1 >= tokens_.size() ||
-            tokens_[current_ + 1].kind == TokenKind::Semicolon ||
-            tokens_[current_ + 1].kind == TokenKind::EndOfFile ||
-            tokens_[current_ + 1].location.line > candidateType.location.line;
-        if (followedByInitializer || followedByStatementBoundary) {
-            typeName = advance().lexeme;
-        }
-    }
-
-    if (match(TokenKind::ColonEqual)) {
-        initializer = parseAssignment();
-    }
-
-    return std::make_unique<ast::VarStatement>(
-        isMutable, name.lexeme, std::move(initializer), std::move(typeName));
-}
-
 ast::StatementPtr Parser::parseTypedLocalStatement()
 {
     std::vector<std::string> names;
@@ -751,36 +710,6 @@ ast::StatementPtr Parser::parseTypedLocalStatement()
     }
 
     return std::make_unique<ast::VarBlockStatement>(std::move(declarations));
-}
-
-std::vector<ast::StatementPtr> Parser::parseVarBlockDeclarations()
-{
-    std::vector<ast::StatementPtr> declarations;
-
-    while (!isAtEnd() && !check(TokenKind::Semicolon)) {
-        const lexer::Token& name = consume(TokenKind::Identifier, "expected variable name");
-        const std::size_t line = name.location.line;
-
-        std::string typeName;
-        ast::ExpressionPtr initializer;
-
-        if (!isAtEnd() && peek().location.line == line &&
-            (peek().kind == TokenKind::Identifier || peek().kind == TokenKind::Keyword) &&
-            !checkKeyword("if") && !checkKeyword("while") && !checkKeyword("repeat") &&
-            !checkKeyword("for") && !checkKeyword("return") && !checkKeyword("leave") &&
-            !checkKeyword("continue") && !checkKeyword("until")) {
-            typeName = tokenText(advance());
-        }
-
-        if (match(TokenKind::ColonEqual)) {
-            initializer = parseAssignment();
-        }
-
-        declarations.push_back(std::make_unique<ast::VarStatement>(
-            false, name.lexeme, std::move(initializer), std::move(typeName)));
-    }
-
-    return declarations;
 }
 
 ast::StatementPtr Parser::parseIfStatement()
@@ -1077,8 +1006,8 @@ ast::AstNodePtr Parser::parseModuleItem()
         return parseSectionDeclaration(ast::SectionKind::State);
     }
 
-    if (matchKeyword("var")) {
-        return parseSectionDeclaration(ast::SectionKind::Var);
+    if (checkKeyword("var")) {
+        errorAtCurrent(kVarRemovedMessage);
     }
 
     if (checkIdentifierLike() || checkKeyword("main")) {

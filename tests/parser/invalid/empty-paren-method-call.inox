@@ -16,9 +16,7 @@ TAccount.Print(Self) :
 ;
 
 Main :
-    Var
-        Account TAccount
-    ;
+    Account TAccount
 
     Account.Print()
 ;

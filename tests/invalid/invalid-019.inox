@@ -8,5 +8,5 @@
 Module Invalid019
 
 Main :
-    var X := bitnot "abc"
+    X := bitnot "abc"
 ;

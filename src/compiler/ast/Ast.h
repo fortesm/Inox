@@ -90,8 +90,7 @@ enum class UnaryOperator {
 enum class SectionKind {
     Type,
     Const,
-    State,
-    Var
+    State
 };
 
 class AstNode {

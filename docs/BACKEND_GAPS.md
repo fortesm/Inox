@@ -29,9 +29,12 @@ Re-measure with (any OS):
 
 The tool exits with status 1 if any probe is a BUG (a crash, a timeout, a
 codegen failure not marked as unsupported, or — when `clang` is on `PATH` —
-emitted LLVM IR that clang rejects). The IR check was added in v3.21: it found
-that a `Float` local declared without an initializer emitted `store double 0`,
-which is invalid IR (fixed in v3.21; probe `float-uninit`).
+emitted LLVM IR that clang rejects). The IR check was added in v3.21. (Its
+first finding, invalid IR for a `Float` local without an initializer, turned out
+to be a program CANON-5 forbids; since v3.23 semantic analysis rejects it and the
+`float-uninit` probes were removed. Float32 keeps coverage through the valid
+`float32-conversion` probe, an honest GAP: `Float32(0.0)` is accepted by semantic
+analysis but not lowered yet.)
 
 ## Current measurement
 
@@ -46,7 +49,7 @@ which is invalid IR (fixed in v3.21; probe `float-uninit`).
 | `loop-local-var` | local declaration inside a loop body | **OK** |  |
 | `until-in-if` | until inside if within repeat | **OK** |  |
 | `until-across-loop` | until with a loop between it and its repeat | **OK** |  |
-| `float-uninit` | Float local declared without initializer | **OK** |  |
+| `float32-conversion` | Float32 local initialized by explicit conversion | **GAP** | unsupported expression in function: Main |
 | `nested-if` | if inside if (straight-line code) | **OK** |  |
 | `const-use` | module Const used in an expression | **OK** |  |
 | `case` | case statement | **GAP** | LLVM emission does not lower case statements yet |
@@ -61,7 +64,7 @@ which is invalid IR (fixed in v3.21; probe `float-uninit`).
 | `try-in-for` | try/except inside a loop body | **OK** |  |
 | `state-global` | State section variable | **GAP** | unsupported expression in function: Main |
 
-Summary: GAP=4, OK=19
+Summary: GAP=5, OK=18
 
 ## Reading the table
 

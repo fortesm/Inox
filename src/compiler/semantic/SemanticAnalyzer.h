@@ -127,6 +127,9 @@ private:
     SemanticResult result_;
     std::unordered_map<std::string, FunctionSignature> functions_;
     std::unordered_map<std::string, StructType> structs_;
+    // State declarations written `Name Type` without ":=", checked once all
+    // types are known: only structs may omit the initializer (CANON-5).
+    std::vector<std::pair<std::string, std::string>> stateDeclarationsWithoutInitializer_;
     std::string currentFunctionReturnType_;
     bool currentFunctionSawReturn_ = false;
     std::size_t loopDepth_ = 0;

@@ -8,5 +8,5 @@
 Module Invalid018
 
 Main :
-    var X := 10 bitor "abc"
+    X := 10 bitor "abc"
 ;

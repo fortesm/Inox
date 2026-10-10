@@ -21,9 +21,7 @@ Read(C TCounter) Integer :
 ;
 
 Main :
-    Var
-        C TCounter
-    ;
+    C TCounter
 
     C.Add(5)
     PutLn(Read(C))

@@ -14,10 +14,8 @@ Type
     ;
 
 Main :
-    Var
-        P TPoint
-        X Integer := 10
-    ;
+    P TPoint
+    X Integer := 10
 
     P.FX := X
     P.FY := 20

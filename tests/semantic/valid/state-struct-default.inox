@@ -5,9 +5,9 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== CANON-11: nested 'with' — '.Member' always binds the innermost 'with' target.
-
-Module ParserValidWithNested
+== CANON-5 rule 4: a struct in State may omit `:=` (type-default
+== initialization); scalars in the same section keep their initializers.
+Module SemanticStateStructDefault
 
 Type
     TPoint Struct
@@ -15,16 +15,11 @@ Type
         FY Integer
     ;
 
-Main :
-    A TPoint
-    B TPoint
+State :
+    Origin TPoint
+    Count Integer := 0
+;
 
-    with A
-        .FX := 1
-        with B
-            .FX := 10
-            .FY := 20
-        ;
-        .FY := 2
-    ;
+Main :
+    PutLn(1)
 ;

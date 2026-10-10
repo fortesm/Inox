@@ -8,7 +8,5 @@
 Module InvalidIntegerSlash
 
 Main :
-    Var
-        X := 10 / 2
-    ;
+    X := 10 / 2
 ;

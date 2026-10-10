@@ -8,6 +8,6 @@
 Module Invalid010
 
 Main :
-    var X := "abc"
+    X := "abc"
     X := 10
 ;

@@ -16,10 +16,8 @@ Type
     ;
 
 Main :
-    Var
-        R TRect
-        Scale Integer := 3
-    ;
+    R TRect
+    Scale Integer := 3
 
     with R
         .Width := Scale * 2

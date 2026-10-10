@@ -123,14 +123,10 @@ PROBES = [
     ;
 ;
 """),
-    ("float-uninit", "Float local declared without initializer", """Main :
-    F Float
-    F := F + 1.5
-;
-"""),
-    ("float32-uninit", "Float32 local declared without initializer", """Main :
-    F Float32
+    ("float32-conversion", "Float32 local initialized by explicit conversion", """Main :
+    F Float32 := Float32(0.0)
     G Float32 := F
+    PutLn(1)
 ;
 """),
     ("nested-if", "if inside if (straight-line code)", """Main :
@@ -223,9 +219,7 @@ Main :
     ;
 
 Main :
-    Var
-        R TRect
-    ;
+    R TRect
     with R
         .Width := 2
         .Height := 3
