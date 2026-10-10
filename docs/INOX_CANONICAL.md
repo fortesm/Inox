@@ -1934,9 +1934,11 @@ HARD RULES:
 7. A TYPO STAYS A BUG. By rule 1 a misspelled name declares a new variable, and
    a local variable that is never read is a COMPILE ERROR ("local variable
    never read: Name"), so `Coutner := Counter + 1` is rejected. Assigning a
-   variable, or one of its fields, is not reading it. Parameters, `for` iterators, exception
-   bindings, State and Const are exempt. (v3.32, OPEN-4 decided by Marcelo
-   Fortes, Go-style, with no `_` placeholder.)
+   variable, or one of its fields, is not reading it. Parameters, `for`
+   iterators, State and Const are exempt. Exception bindings (`On E T`) are
+   TEMPORARILY exempt, pending a readable exception value (`E.Message`, ...);
+   the maintainer decides then. (v3.32, OPEN-4 decided by Marcelo Fortes,
+   Go-style, with no `_` placeholder.)
 8. SHADOWING is FORBIDDEN (current or any outer scope; case-insensitive). `:=` to
    a name visible in an OUTER scope is assignment to that outer variable.
 
