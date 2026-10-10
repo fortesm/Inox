@@ -1597,6 +1597,7 @@ void SemanticAnalyzer::requireStatementExpression(const ast::Expression& express
     }
     case ast::AstNodeKind::LiteralExpression:
     case ast::AstNodeKind::UnaryExpression:
+    case ast::AstNodeKind::ConditionalExpression:
         throw SemanticError("expression is not a statement: only assignments and calls may be used as statements");
     case ast::AstNodeKind::BinaryExpression:
         if (static_cast<const ast::BinaryExpression&>(expression).op() != ast::BinaryOperator::Assign) {
@@ -1672,6 +1673,24 @@ std::string SemanticAnalyzer::inferExpressionType(const ast::Expression& express
         return analyzeUnaryExpression(static_cast<const ast::UnaryExpression&>(expression));
     case ast::AstNodeKind::CallExpression:
         return analyzeCallExpression(static_cast<const ast::CallExpression&>(expression));
+    case ast::AstNodeKind::ConditionalExpression: {
+        // ADR-0013: the condition is Bool; both branches have compatible
+        // types, which is the type of the expression.
+        const auto& conditional = static_cast<const ast::ConditionalExpression&>(expression);
+        const std::string conditionType =
+            canonicalTypeName(analyzeExpression(conditional.condition()));
+        if (conditionType != "Bool") {
+            throw SemanticError("the condition of a conditional expression must be Bool, got " +
+                                (conditionType.empty() ? std::string("<unknown>") : conditionType));
+        }
+        const std::string thenType = analyzeExpression(conditional.thenValue());
+        const std::string elseType = analyzeExpression(conditional.elseValue());
+        if (!typesMatch(thenType, elseType)) {
+            throw SemanticError("the branches of a conditional expression have different types: " +
+                                thenType + " and " + elseType + " (ADR-0013)");
+        }
+        return thenType;
+    }
     default:
         break;
     }

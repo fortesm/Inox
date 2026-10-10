@@ -320,6 +320,12 @@ Main :
     PutLn(X)
 ;
 """),
+    ("conditional-expression", "conditional expression if C then A else B", """Main :
+    X := 4
+    Y := if X > 3 then X * 2 else 0
+    PutLn(Y)
+;
+"""),
     ("state-global", "State section variable", """State :
     Counter Integer := 0
 ;

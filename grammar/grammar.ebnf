@@ -237,6 +237,13 @@ argument          ::= expression | identifier ":=" expression
 index_suffix      ::= "[" expression ( "," expression )* "]"
 member_suffix     ::= "." identifier
 primary           ::= literal | identifier | "(" expression ")" | with_member
+                    | conditional_expr
+conditional_expr  ::= "if" expression "then" expression "else" expression
+                      (* ADR-0013: selects a value; each branch is an expression,
+                         never a block; "else" is mandatory and chains through
+                         "else if ... then ... else ..."; only the chosen branch
+                         is evaluated; the branches have compatible types. The
+                         if statement has no "then". *)
 
 (* ---------- Lexical elements (SECTION 08 / CANON-2) ---------- *)
 

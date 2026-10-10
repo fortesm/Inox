@@ -686,6 +686,26 @@ ast::ExpressionPtr Parser::parsePostfix()
 
 ast::ExpressionPtr Parser::parsePrimary()
 {
+    // ADR-0013: the conditional expression `if C then A else B`. Each branch
+    // is an expression (never a block); `else` is mandatory; a nested
+    // conditional chains through `else if ... then ... else ...`.
+    if (checkKeyword("if")) {
+        advance();
+        auto condition = parseValue();
+        if (!matchKeyword("then")) {
+            errorAtCurrent("expected 'then' in a conditional expression "
+                           "'if Condition then A else B' (ADR-0013)");
+        }
+        auto thenValue = parseValue();
+        if (!matchKeyword("else")) {
+            errorAtCurrent("a conditional expression needs 'else' (ADR-0013): "
+                           "'if Condition then A else B'");
+        }
+        auto elseValue = parseValue();
+        return makeExpr<ast::ConditionalExpression>(
+            std::move(condition), std::move(thenValue), std::move(elseValue));
+    }
+
     if (match(TokenKind::IntegerLiteral)) {
         return std::make_unique<ast::LiteralExpression>(
             ast::LiteralKind::Integer, tokenText(previous()));
@@ -862,12 +882,20 @@ ast::StatementPtr Parser::parseTypedLocalStatement()
 ast::StatementPtr Parser::parseIfStatement()
 {
     auto condition = parseValue();
+    if (checkKeyword("then")) {
+        errorAtCurrent("the if statement has no 'then' (CANON-4); "
+                       "'if Condition then A else B' is an expression and needs a target, "
+                       "e.g. 'Result := if Condition then A else B' (ADR-0013)");
+    }
     requireHeaderLineBreak();
     auto thenBody = parseDelimitedBody({"elif", "else"});
 
     std::vector<ast::ElseIfClause> elseIfClauses;
     while (matchKeyword("elif")) {
         auto elseIfCondition = parseValue();
+        if (checkKeyword("then")) {
+            errorAtCurrent("the if statement has no 'then' (CANON-4)");
+        }
         requireHeaderLineBreak();
         elseIfClauses.push_back(ast::ElseIfClause{
             std::move(elseIfCondition),

@@ -24,6 +24,7 @@ enum class AstNodeKind {
     BinaryExpression,
     UnaryExpression,
     CallExpression,
+    ConditionalExpression,
     BlockStatement,
     ExpressionStatement,
     VarStatement,
@@ -291,6 +292,22 @@ public:
 private:
     ExpressionPtr callee_;
     std::vector<ExpressionPtr> arguments_;
+};
+
+// ADR-0013: `if Condition then A else B`, an expression that selects a value.
+// Only the chosen branch is evaluated; `else` is mandatory.
+class ConditionalExpression final : public Expression {
+public:
+    ConditionalExpression(ExpressionPtr condition, ExpressionPtr thenValue, ExpressionPtr elseValue);
+
+    const Expression& condition() const;
+    const Expression& thenValue() const;
+    const Expression& elseValue() const;
+
+private:
+    ExpressionPtr condition_;
+    ExpressionPtr thenValue_;
+    ExpressionPtr elseValue_;
 };
 
 class BlockStatement final : public Statement {
