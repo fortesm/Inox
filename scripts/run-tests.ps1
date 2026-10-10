@@ -625,9 +625,20 @@ Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-struct-value-smoke.inox")) `
     -RequiredFragments @("%tpair = type { i64, i64 }", "define %tpair @inox_makepair", "define i64 @inox_sumpair", "call %tpair @inox_makepair", "call i64 @inox_sumpair", "ret i32 0")
 
+$exceptionSmokeFragments = if ($IsWindows) {
+    @("personality ptr @__CxxFrameHandler3", "catchswitch within none",
+      "catchpad within", "[ptr null, i32 64, ptr null]",
+      "call ptr @__inox_exception_capture(ptr null)",
+      "call i64 @__inox_exception_type", "call void @__inox_exception_release",
+      "call void @__inox_exception_rethrow")
+} else {
+    @("personality ptr @__gxx_personality_v0", "invoke void @inox_fail()",
+      "landingpad { ptr, i32 } catch ptr null", "call i64 @__inox_exception_type",
+      "call void @__inox_exception_release", "call void @__inox_exception_rethrow")
+}
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-exceptions-smoke.inox")) `
-    -RequiredFragments @("personality ptr @__gxx_personality_v0", "invoke void @inox_fail()", "landingpad { ptr, i32 } catch ptr null", "call i64 @__inox_exception_type", "call void @__inox_exception_release", "call void @__inox_exception_rethrow")
+    -RequiredFragments $exceptionSmokeFragments
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-exceptions-retry-smoke.inox")) `

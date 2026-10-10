@@ -161,6 +161,15 @@ bool moduleUsesExceptions(const ast::ModuleNode& module)
     return false;
 }
 
+bool usesMsvcExceptionAbi()
+{
+    // PoC selector. Marcelo's Windows policy is MSVC ABI only. This is
+    // intentionally host-based for the PoC; the explicit target descriptor
+    // will replace it before cross-target code generation is generalized.
+    return support::hostOperatingSystem() ==
+           support::OperatingSystem::Windows;
+}
+
 // LLVM shares one namespace between local values and basic-block labels, and the
 // emitter's own temporaries (`%tmpN`) and labels (`thenN`, `forcondN`, ...) always
 // end in a digit. A user identifier must therefore never be emitted verbatim when
@@ -1200,6 +1209,55 @@ private:
                               std::string_view nextLabel,
                               bool replaceExisting = false)
     {
+        if (usesMsvcExceptionAbi()) {
+            // MSVC EH funclets are only an ABI bridge. No Inox user statement
+            // is emitted inside the catchpad. Capture the active C++ exception,
+            // carry the opaque state in SSA, and return to the parent CFG with catchret.
+            const std::string catchSwitch =
+                "%eh.cs" + std::to_string(nextTemporary_++);
+            const std::string catchPad =
+                "%eh.cp" + std::to_string(nextTemporary_++);
+            const std::string state =
+                "%eh.state" + std::to_string(nextTemporary_++);
+            const std::string catchPadLabel =
+                std::string(landingPadLabel) + ".catch";
+            const std::string parentLabel =
+                std::string(landingPadLabel) + ".parent";
+
+            output_ << landingPadLabel << ":\n";
+            output_ << "  " << catchSwitch
+                    << " = catchswitch within none [label %" << catchPadLabel
+                    << "] unwind to caller\n\n";
+            output_ << catchPadLabel << ":\n";
+            output_ << "  " << catchPad
+                    << " = catchpad within " << catchSwitch
+                    << " [ptr null, i32 64, ptr null]\n";
+            output_ << "  " << state
+                    << " = call ptr @__inox_exception_capture(ptr null)"
+                    << " [ \"funclet\"(token " << catchPad << ") ]\n";
+            output_ << "  catchret from " << catchPad
+                    << " to label %" << parentLabel << "\n\n";
+            output_ << parentLabel << ":\n";
+
+            if (replaceExisting) {
+                const std::string old = "%eh.old" + std::to_string(nextTemporary_++);
+                const std::string hasOld = "%eh.hasold" + std::to_string(nextTemporary_++);
+                const std::string releaseLabel = "eh.release.old" + std::to_string(nextLabel_++);
+                const std::string storeLabel = "eh.store.new" + std::to_string(nextLabel_++);
+                output_ << "  " << old << " = load ptr, ptr " << stateSlot << "\n";
+                output_ << "  " << hasOld << " = icmp ne ptr " << old << ", null\n";
+                output_ << "  br i1 " << hasOld << ", label %" << releaseLabel
+                        << ", label %" << storeLabel << "\n\n";
+                output_ << releaseLabel << ":\n";
+                output_ << "  call void @__inox_exception_release(ptr " << old << ")\n";
+                output_ << "  br label %" << storeLabel << "\n\n";
+                output_ << storeLabel << ":\n";
+            }
+            output_ << "  store ptr " << state << ", ptr " << stateSlot << "\n";
+            output_ << "  br label %" << nextLabel << "\n\n";
+            return;
+        }
+
         output_ << landingPadLabel << ":\n";
         const std::string landing = "%eh.lp" + std::to_string(nextTemporary_++);
         const std::string raw = "%eh.raw" + std::to_string(nextTemporary_++);
@@ -2808,7 +2866,9 @@ void emitFunction(std::ostringstream& output,
     }
     output << ')';
     if (functionContainsTry(function)) {
-        output << " personality ptr @__gxx_personality_v0";
+        output << " personality ptr @"
+               << (usesMsvcExceptionAbi()
+                       ? "__CxxFrameHandler3" : "__gxx_personality_v0");
     }
     output << " {\n"
            << "entry:\n";
@@ -3406,12 +3466,16 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
     output << "declare double @fmod(double, double)\n";
     output << "declare double @hypot(double, double)\n";
     if (usesExceptions) {
-        output << "declare i32 @__gxx_personality_v0(...)\n";
-        output << "declare void @__inox_raise(i64)\n";
-        output << "declare ptr @__inox_exception_capture(ptr)\n";
-        output << "declare i64 @__inox_exception_type(ptr)\n";
-        output << "declare void @__inox_exception_release(ptr)\n";
-        output << "declare void @__inox_exception_rethrow(ptr)\n";
+        if (usesMsvcExceptionAbi()) {
+            output << "declare i32 @__CxxFrameHandler3(...)\n";
+        } else {
+            output << "declare i32 @__gxx_personality_v0(...)\n";
+        }
+        output << "declare void @__inox_raise(i64) noreturn\n";
+        output << "declare ptr @__inox_exception_capture(ptr) nounwind\n";
+        output << "declare i64 @__inox_exception_type(ptr) nounwind\n";
+        output << "declare void @__inox_exception_release(ptr) nounwind\n";
+        output << "declare void @__inox_exception_rethrow(ptr) noreturn\n";
     }
     output << '\n';
     output << inputRuntimeHelpers();
