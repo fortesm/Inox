@@ -352,6 +352,41 @@ void SemanticAnalyzer::declareOrThrow(
     scope.declare(std::string(name), kind, std::move(typeName), isMutable);
 }
 
+// OPEN-4 (decided by Marcelo Fortes, 2026-10-10): a local variable that is
+// never read is a compile error, as in Go. A misspelled name in FORM 1
+// (`Coutner := Counter + 1`) declares a new variable that nothing reads, so
+// the typo is caught. Parameters, `for` iterators, exception bindings, State
+// and Const are not tracked; assigning to a variable is not reading it.
+void SemanticAnalyzer::trackLocal(std::string_view name)
+{
+    if (const Symbol* symbol = symbols_.currentScope().resolve(name)) {
+        localsToRead_.push_back({symbol, &symbols_.currentScope()});
+    }
+}
+
+void SemanticAnalyzer::leaveScope()
+{
+    const Scope* scope = &symbols_.currentScope();
+    std::string unread;
+    for (auto it = localsToRead_.begin(); it != localsToRead_.end();) {
+        if (it->scope != scope) {
+            ++it;
+            continue;
+        }
+        if (!readSymbols_.contains(it->symbol)) {
+            unread += (unread.empty() ? "" : ", ") + it->symbol->name;
+        }
+        it = localsToRead_.erase(it);
+    }
+    symbols_.popScope();
+    if (!unread.empty()) {
+        throw SemanticError(
+            std::string(unread.find(',') == std::string::npos ? "local variable never read: "
+                                                               : "local variables never read: ") +
+            unread + " (OPEN-4: read it or remove it; a misspelled name declares a new variable)");
+    }
+}
+
 void SemanticAnalyzer::declareTypeOrThrow(std::string_view name, bool isBuiltin, std::string aliasOf)
 {
     if (types_.contains(name)) {
@@ -770,7 +805,7 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
         }
     }
     analyzeStatements(function.body(), false);
-    symbols_.popScope();
+    leaveScope();
     if (!currentFunctionReturnType_.empty() && !currentFunctionSawReturn_) {
         throw SemanticError("function " + function.name() + " must return a value");
     }
@@ -877,7 +912,7 @@ void SemanticAnalyzer::analyzeStatements(const std::vector<ast::StatementPtr>& s
     }
 
     if (createScope) {
-        symbols_.popScope();
+        leaveScope();
     }
 }
 
@@ -934,6 +969,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             throw SemanticError("scalar declaration requires initializer: " + var.name());
         }
         declareOrThrow(var.name(), SymbolKind::Variable, std::move(typeName), true);
+        trackLocal(var.name());
         break;
     }
     case ast::AstNodeKind::VarBlockStatement:
@@ -1018,7 +1054,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         symbols_.pushScope();
         if (symbols_.currentScope().containsLocal(forStatement.iterator()) ||
             symbols_.currentScope().containsInAncestors(forStatement.iterator())) {
-            symbols_.popScope();
+            leaveScope();
             throw SemanticError(
                 "loop iterator conflicts with existing symbol: " + forStatement.iterator());
         }
@@ -1026,7 +1062,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         ++loopDepth_;
         analyzeStatements(forStatement.body(), false);
         --loopDepth_;
-        symbols_.popScope();
+        leaveScope();
         break;
     }
     case ast::AstNodeKind::CaseStatement:
@@ -1079,7 +1115,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             analyzeStatements(handler.body, false);
             --retryHandlerDepth_;
             --exceptionHandlerDepth_;
-            symbols_.popScope();
+            leaveScope();
         }
 
         if (!tryStatement.elseBody().empty()) {
@@ -1173,7 +1209,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         symbols_.currentScope().declare(
             withStatement.bindingName(), SymbolKind::Variable, targetType, true);
         analyzeStatements(withStatement.body(), false);
-        symbols_.popScope();
+        leaveScope();
         break;
     }
     default:
@@ -1199,6 +1235,7 @@ void SemanticAnalyzer::analyzeVarBlock(const ast::VarBlockStatement& statement)
                     const auto& identifier = static_cast<const ast::IdentifierExpression&>(binary.left());
                     const std::string typeName = analyzeExpression(binary.right());
                     declareOrThrow(identifier.name(), SymbolKind::Variable, typeName, true);
+                    trackLocal(identifier.name());
                     const Symbol& symbol = resolveOrThrow(identifier.name());
                     result_.bind(identifier, symbol);
                     result_.setExpressionType(identifier, resolvedType(typeName));
@@ -1604,6 +1641,7 @@ std::string SemanticAnalyzer::inferExpressionType(const ast::Expression& express
         }
         const Symbol& symbol = resolveOrThrow(identifier.name());
         result_.bind(identifier, symbol);
+        readSymbols_.insert(&symbol);
         return symbol.typeName;
     }
     case ast::AstNodeKind::BinaryExpression:
@@ -2393,6 +2431,7 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
                     SymbolKind::Variable,
                     inferredType,
                     true);
+                trackLocal(identifier.name());
                 const Symbol& declared = resolveOrThrow(identifier.name());
                 result_.bind(identifier, declared);
                 result_.setExpressionType(identifier, resolvedType(declared.typeName));

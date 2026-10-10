@@ -21,6 +21,7 @@ Main :
     I := J
     Flag := False
     Text := "language"
+    PutLn(Text)
     Letter := 'X'
 
     Sum := I + J
@@ -50,4 +51,24 @@ Main :
     Right := I shr 1
 
     PutLn(Sum)
+    PutLn(Letter = Letter)
+    PutLn(Difference)
+    PutLn(Product)
+    PutLn(Quotient)
+    PutLn(IntegerQuotient)
+    PutLn(Remainder)
+    PutLn(Less)
+    PutLn(Greater)
+    PutLn(AtMost)
+    PutLn(AtLeast)
+    PutLn(Both)
+    PutLn(Either)
+    PutLn(One)
+    PutLn(Inverse)
+    PutLn(Mask)
+    PutLn(Combined)
+    PutLn(Toggled)
+    PutLn(Complement)
+    PutLn(Left)
+    PutLn(Right)
 ;

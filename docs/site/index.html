@@ -213,6 +213,11 @@ Account.Print()</code></pre>
 P, Q TPoint                   == both get the struct defaults</code></pre>
 <p>An assignment updates an existing symbol:</p>
 <pre><code>X := 20</code></pre>
+<p>A local variable that is never read is a compile error. A misspelled name creates a new variable, so the compiler catches the typo. Assigning a variable does not count as reading it:</p>
+<pre><code>Counter := 1
+Coutner := Counter + 1   == error: local variable never read: Coutner
+PutLn(Counter)</code></pre>
+<p>Parameters, <code>for</code> iterators, exception bindings, <code>State</code> and <code>Const</code> are exempt.</p>
 <p>Assignment is a statement, not an expression. It can be chained: the value is computed once and stored from right to left.</p>
 <pre><code>A := B := C := Next(10)   == Next is called once
 P.X := P.Y := 0</code></pre>

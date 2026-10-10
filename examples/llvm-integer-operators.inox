@@ -9,8 +9,10 @@ Module IntegerOperators
 
 Compute(A Integer, B Integer) Integer :
     Q := A div B
+    PutLn(Q)
     X := A div B
     Y := A mod B
+    PutLn(Y)
     Z := X shl 2
     W := Z shr 1
     M := W bitand $FF

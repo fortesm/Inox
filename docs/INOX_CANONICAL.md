@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.31 (Layer B: the lexer accepts the digit separator `_` and
-#          rejects `0x` hexadecimal literals, as CANON-2 already required)
+# Version: v3.32 (Layer A: OPEN-4 closed; a local variable that is never read
+#          is a compile error)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,24 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.32 — 2026-10-10 — OPEN-4 closed: unread locals are errors (Layer A,
+#         decided by Marcelo Fortes on 2026-10-10: "seguirmos como Go e dar erro
+#         quando uma variável é criada e nunca usada ... só dar o erro resolva a
+#         situação para todos os casos", without a `_` placeholder syntax).
+#   - CANON-5 rule 7 is restated: a misspelled name in FORM 1 declares a new
+#     variable (rule 1), and since nothing reads it the compiler rejects it:
+#     "local variable never read: Coutner". Rules 1 and 7 no longer conflict.
+#   - A local declared in a routine (any form: `X := 1`, `X T := 1`, `P TStruct`,
+#     grouped) must be read before its block ends; assigning it is not reading
+#     it. Parameters, `for` iterators, exception bindings, `State` and `Const`
+#     are not covered. Every unread local of a block is listed in declaration
+#     order.
+#   - Six examples and tests declared locals they never read; they now print
+#     them. The `float32-conversion` probe reads its variable.
+#   - Tests: diagnostics `unread-typo`, `unread-assigned-only`,
+#     `unread-nested-scope`, `unread-several`; semantic-valid
+#     `unread-exemptions`.
 #
 # v3.31 — 2026-10-10 — numeric literals follow CANON-2 (Layer B; no language
 #         change). Both gaps were found by ChatGPT's review of the grammar.
@@ -1316,7 +1334,9 @@ OPEN-3 — CLOSED (v3.13). Operator precedence and associativity are now canonic
   mixed; bitwise mixed with shift), with a parse error rather than a silent
   guess. The parser implements this and CANON-20 lists the verifying tests.
 
-OPEN-4 — OPEN (raised in v3.27 by ChatGPT's review of ADR-0009). CANON-5 rule 1
+OPEN-4 — CLOSED (v3.32): Marcelo Fortes chose the Go rule; an unread local is
+  a compile error, which catches the typo (CANON-5 rule 7). History follows.
+  Raised in v3.27 by ChatGPT's review of ADR-0009. CANON-5 rule 1
   ("first appearance of a name is a DECLARATION") and rule 7 ("ASSIGNMENT TO A
   NON-EXISTENT NAME is an ERROR. A typo stays a bug.") contradict each other for
   FORM 1: in `Counter := 1` / `Coutner := Counter + 1`, nothing in the syntax
@@ -1907,8 +1927,12 @@ HARD RULES:
    initializer. `Suit TCardSuit` is an ERROR; `Suit TCardSuit := Club` is valid.
 6. A BARE IDENTIFIER is NEVER a declaration. `apple` alone is an ERROR. Inox is
    strongly typed (Object Pascal / Ada 2005), NOT Python/JS.
-7. ASSIGNMENT TO A NON-EXISTENT NAME is an ERROR. A typo stays a bug.
-   (Conflicts with rule 1 for FORM 1; see OPEN-4. The compiler follows rule 1.)
+7. A TYPO STAYS A BUG. By rule 1 a misspelled name declares a new variable, and
+   a local variable that is never read is a COMPILE ERROR ("local variable
+   never read: Name"), so `Coutner := Counter + 1` is rejected. Assigning a
+   variable is not reading it. Parameters, `for` iterators, exception
+   bindings, State and Const are exempt. (v3.32, OPEN-4 decided by Marcelo
+   Fortes, Go-style, with no `_` placeholder.)
 8. SHADOWING is FORBIDDEN (current or any outer scope; case-insensitive). `:=` to
    a name visible in an OUTER scope is assignment to that outer variable.
 
