@@ -240,14 +240,6 @@ std::vector<ast::StatementPtr> Parser::parseStatements()
     return statements;
 }
 
-std::unique_ptr<ast::BlockStatement> Parser::parseBlockStatement()
-{
-    consume(TokenKind::Colon, "expected ':' to open block");
-    auto body = parseBlockBody();
-    consumeBlockClose();
-    return std::make_unique<ast::BlockStatement>(std::move(body));
-}
-
 std::vector<ast::StatementPtr> Parser::parseHeaderDelimitedBlock()
 {
     requireHeaderLineBreak();

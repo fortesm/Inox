@@ -43,7 +43,6 @@ public:
     ast::StatementPtr parseStatement();
     void appendStatement(std::vector<ast::StatementPtr>& statements);
     std::vector<ast::StatementPtr> parseStatements();
-    std::unique_ptr<ast::BlockStatement> parseBlockStatement();
     std::vector<ast::StatementPtr> parseHeaderDelimitedBlock();
 
 private:
