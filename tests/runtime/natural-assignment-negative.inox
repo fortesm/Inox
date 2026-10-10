@@ -1,0 +1,17 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0015: an assignment that would make a Natural negative stops the
+== program with a runtime error; it never wraps.
+Module Runtime.NaturalAssignmentNegative
+
+Main :
+    N Natural := 3
+    PutLn("before")
+    N := N - 5
+    PutLn(N)
+;

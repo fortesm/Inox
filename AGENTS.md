@@ -79,6 +79,11 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
   State and Const are exempt. Tests and examples must read what they declare.
 - A `Const` never has a written type: `Const Name := Value`; use a conversion
   (`Const Mask := UInt8($FF)`) to choose another type (OPEN-5, v3.38).
+- `Natural` is the non-negative subtype of `Integer` (0..Int64.Max, i64; ADR-0014),
+  not UInt64. Storing an Integer into a Natural is range-checked implicitly,
+  as in Ada (ADR-0015); never require `Natural(X)`. A negative constant is a
+  compile error; arithmetic on Natural yields Integer. `Byte` is `UInt8`.
+  There is no `Double` and no `Variant`/`OleVariant`.
 - A local symbol dies at the end of its block.
 - `for` iterators are implicit, read-only, loop-scoped, and cannot conflict with visible symbols.
 - Sequential `for` loops may reuse an iterator name after the previous loop scope is closed; nested loops may not reuse an outer iterator name.

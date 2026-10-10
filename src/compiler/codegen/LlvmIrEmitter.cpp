@@ -296,7 +296,10 @@ std::string llvmStructName(std::string_view inoxName)
 
 std::string llvmTypeForScalar(std::string_view inoxType)
 {
-    if (equalsIgnoreCase(inoxType, "Integer") || equalsIgnoreCase(inoxType, "Int64")) {
+    // CANON-8: Natural is the non-negative subtype of Integer and shares its
+    // i64 representation; the range is checked where a value becomes Natural.
+    if (equalsIgnoreCase(inoxType, "Integer") || equalsIgnoreCase(inoxType, "Int64") ||
+        equalsIgnoreCase(inoxType, "Natural")) {
         return "i64";
     }
     if (equalsIgnoreCase(inoxType, "Bool")) {
@@ -2378,6 +2381,9 @@ private:
                 if (isMathBuiltin(callee.name())) {
                     return "double";
                 }
+                if (isNaturalConversion(call)) {
+                    return "i64";
+                }
                 const auto signature = signatures_.find(normalize(callee.name()));
                 if (signature != signatures_.end()) {
                     return signature->second.llvmReturnType;
@@ -2402,6 +2408,20 @@ private:
             break;
         }
         return "i64";
+    }
+
+    // Natural(X), Integer(X) or Int64(X) applied to one i64 value.
+    bool isNaturalConversion(const ast::CallExpression& call) const
+    {
+        if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().size() != 1) {
+            return false;
+        }
+        const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
+        if (!equalsIgnoreCase(callee.name(), "Natural") && !equalsIgnoreCase(callee.name(), "Integer") &&
+            !equalsIgnoreCase(callee.name(), "Int64")) {
+            return false;
+        }
+        return expressionLlvmType(*call.arguments().front()) == "i64";
     }
 
     std::string expressionInoxType(const ast::Expression& expression) const
@@ -2462,7 +2482,20 @@ private:
         return result;
     }
 
+    // ADR-0015: an Integer expression stored into a Natural carries an
+    // implicit range check, recorded by semantic analysis.
     std::string emitExpression(const ast::Expression& expression)
+    {
+        const std::string value = emitExpressionValue(expression);
+        if (!semantics_.needsNaturalCheck(expression)) {
+            return value;
+        }
+        const std::string checked = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << checked << " = call i64 @__inox_natural_i64(i64 " << value << ")\n";
+        return checked;
+    }
+
+    std::string emitExpressionValue(const ast::Expression& expression)
     {
         switch (expression.kind()) {
         case ast::AstNodeKind::LiteralExpression: {
@@ -2627,6 +2660,19 @@ private:
 
             if (isMathBuiltin(callee.name())) {
                 return emitMathBuiltinCall(callee.name(), call.arguments());
+            }
+
+            // CANON-8: Natural(X) checks X >= 0 at run time (fault kind 7);
+            // Integer(X) and Int64(X) of an integer value are the identity,
+            // because Natural shares Integer's i64 representation.
+            if (isNaturalConversion(call)) {
+                const std::string value = emitExpression(*call.arguments().front());
+                if (!equalsIgnoreCase(callee.name(), "Natural")) {
+                    return value;
+                }
+                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << result << " = call i64 @__inox_natural_i64(i64 " << value << ")\n";
+                return result;
             }
 
             const auto signature = signatures_.find(normalize(callee.name()));
@@ -3050,6 +3096,7 @@ constexpr RuntimeFaultKind kRuntimeFaultKinds[] = {
     {4, "for-loop step must be positive"},
     {5, "negative exponent"},
     {6, "invalid integer input"},
+    {7, "value out of range for Natural"},
 };
 
 std::string llvmByteString(const std::string& text)
@@ -3083,7 +3130,8 @@ std::string runtimeFaultSeam()
        << kRuntimeFaultExitStatus << " without\n"
        << "; unwinding, so try/except/ensure cannot intercept it. Kinds: 1 integer\n"
        << "; overflow, 2 division or modulo by zero, 3 shift count outside 0..63, 4 for\n"
-       << "; step <= 0, 5 negative exponent, 6 invalid integer input.\n";
+       << "; step <= 0, 5 negative exponent, 6 invalid integer input, 7 negative value\n"
+       << "; converted to Natural.\n";
     for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
         const std::string text = std::string("Inox runtime error: ") + kind.message + "\n";
         ir << "@.inox.fault." << kind.code << " = private unnamed_addr constant ["
@@ -3286,6 +3334,19 @@ ok:
 
 trap:
   call void @__inox_arith_fault(i32 4)
+  unreachable
+}
+
+define internal i64 @__inox_natural_i64(i64 %v) alwaysinline nounwind {
+entry:
+  %bad = icmp slt i64 %v, 0
+  br i1 %bad, label %trap, label %ok
+
+ok:
+  ret i64 %v
+
+trap:
+  call void @__inox_arith_fault(i32 7)
   unreachable
 }
 

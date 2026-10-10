@@ -1,0 +1,27 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-8: Natural is the non-negative subtype of Integer (0..Int64.Max).
+== It shares the i64 representation; Natural -> Integer is implicit, and an
+== Integer stored into a Natural is range-checked (ADR-0015).
+Module Runtime.NaturalValues
+
+Twice(N Natural) Natural :
+    Return N * 2
+;
+
+Main :
+    N Natural := 5
+    Z Natural := 0
+    X Integer := -3
+    M Natural := Natural(X + 10)
+    I Integer := N + X
+    PutLn(N, " ", Z, " ", M, " ", I, " ", Twice(M))
+    PutLn(Integer(M) - 20, " ", -N, " ", Abs(X))
+    Big Natural := 9223372036854775807
+    PutLn(Big)
+;

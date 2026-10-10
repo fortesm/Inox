@@ -335,6 +335,17 @@ Main :
     PutLn(Counter)
 ;
 """),
+    ("natural-conversion", "Natural local and checked Natural(X) (ADR-0014)", """Main :
+    X Integer := 3
+    N Natural := Natural(X + 1)
+    PutLn(N + 1)
+;
+"""),
+    ("byte-local", "Byte (UInt8) local initialized by conversion", """Main :
+    B Byte := Byte($FF)
+    PutLn(B)
+;
+"""),
 ]
 
 
