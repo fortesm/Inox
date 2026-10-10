@@ -115,10 +115,13 @@ ast::StatementPtr Parser::endSimpleStatement(ast::StatementPtr statement)
 ast::StatementPtr Parser::parseStatement()
 {
     DepthGuard guard(*this, statementNesting_, kMaxStatementNesting, "statement");
-    if (match(TokenKind::Colon)) {
-        auto body = parseBlockBody();
-        consumeBlockClose();
-        return std::make_unique<ast::BlockStatement>(std::move(body));
+    // CANON-4: `:` has one meaning, it declares a function or subroutine and
+    // opens its body. A bare `:` ... `;` block inside a routine is illegal.
+    if (check(TokenKind::Colon)) {
+        errorAtCurrent(
+            "a bare ':' block is illegal (CANON-4): ':' only declares a "
+            "function or subroutine; write the statements directly in the "
+            "enclosing body");
     }
 
     // CANON-5: the old `Var ... ;` block and `var`/`mut var` declarations were
