@@ -9,8 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.36 (decisions recorded from the ChatGPT design chat: `do` for
-#          concurrency, `<T>` for generics; compiler CHANGELOG.md)
+# Version: v3.37 (Layer B: the conditional expression is lowered to LLVM)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +486,18 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.37 — 2026-10-10 — conditional expression lowered (Layer B; ADR-0013 is
+#         unchanged).
+#   - `if C then A else B` is lowered as control flow, never as an LLVM
+#     `select` (which would evaluate both branches, against property 3). Each
+#     branch jumps to its own tail block and the phi names the tails, so a
+#     branch that ends in an `invoke` continuation (inside `try`) or in a
+#     nested conditional's merge stays valid. Design proposed by ChatGPT, who
+#     handed this emitter change to Claude outside the EH-bridge paths.
+#   - Tests: runtime `conditional-expression-lazy` (the branch not chosen would
+#     trap with a division by zero and never runs; Float, Bool, chained) and
+#     `conditional-expression-in-try`. Probe `conditional-expression` is OK.
 #
 # v3.36 — 2026-10-10 — maintainer decisions recorded from the design chat with
 #         ChatGPT that were missing here (documentation only; no compiler

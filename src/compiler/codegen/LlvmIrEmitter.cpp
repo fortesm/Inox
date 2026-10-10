@@ -2364,6 +2364,10 @@ private:
             }
             return expressionLlvmType(binary.left());
         }
+        case ast::AstNodeKind::ConditionalExpression:
+            // ADR-0013: semantic analysis guarantees compatible branch types.
+            return expressionLlvmType(
+                static_cast<const ast::ConditionalExpression&>(expression).thenValue());
         case ast::AstNodeKind::CallExpression: {
             const auto& call = static_cast<const ast::CallExpression&>(expression);
             if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
@@ -2423,6 +2427,39 @@ private:
             break;
         }
         return {};
+    }
+
+    // ADR-0013: `if C then A else B`. Only the chosen branch is evaluated, so
+    // this is control flow, never an LLVM `select`. A branch may end in a block
+    // other than the one it started in (an `invoke` continuation, a nested
+    // conditional's merge), so each branch jumps to its own tail block and the
+    // phi names the tails, whose predecessors are known.
+    std::string emitConditional(const ast::ConditionalExpression& expression)
+    {
+        const std::string label = std::to_string(nextLabel_++);
+        const std::string type = expressionLlvmType(expression);
+        const std::string condition = emitExpression(expression.condition());
+        output_ << "  br i1 " << condition << ", label %condthen" << label
+                << ", label %condelse" << label << "\n\n";
+
+        output_ << "condthen" << label << ":\n";
+        const std::string thenValue = emitExpression(expression.thenValue());
+        output_ << "  br label %condthentail" << label << "\n\n";
+        output_ << "condthentail" << label << ":\n";
+        output_ << "  br label %condend" << label << "\n\n";
+
+        output_ << "condelse" << label << ":\n";
+        const std::string elseValue = emitExpression(expression.elseValue());
+        output_ << "  br label %condelsetail" << label << "\n\n";
+        output_ << "condelsetail" << label << ":\n";
+        output_ << "  br label %condend" << label << "\n\n";
+
+        output_ << "condend" << label << ":\n";
+        const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << result << " = phi " << type << " [ " << thenValue
+                << ", %condthentail" << label << " ], [ " << elseValue
+                << ", %condelsetail" << label << " ]\n";
+        return result;
     }
 
     std::string emitExpression(const ast::Expression& expression)
@@ -2556,6 +2593,8 @@ private:
             }
             break;
         }
+        case ast::AstNodeKind::ConditionalExpression:
+            return emitConditional(static_cast<const ast::ConditionalExpression&>(expression));
         case ast::AstNodeKind::CallExpression: {
             const auto& call = static_cast<const ast::CallExpression&>(expression);
             if (isMemberAccessCall(call.callee())) {

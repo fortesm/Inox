@@ -1,0 +1,25 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0013 inside try: a branch that calls a routine ends in an invoke
+== continuation block; the phi names the branch tail blocks, so the lowering
+== stays valid (ChatGPT's design).
+Module Runtime.ConditionalExpressionInTry
+
+Twice(N Integer) Integer :
+    Return N * 2
+;
+
+Main :
+    X := 2
+    try
+        Y := if X > 1 then Twice(X) else if X > 0 then Twice(Twice(X)) else 0
+        PutLn(Y)
+    except
+        PutLn("error")
+    ;
+;

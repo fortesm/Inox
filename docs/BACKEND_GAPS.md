@@ -71,10 +71,10 @@ analysis but not lowered yet.)
 | `digit-separators` | numeric literals with the digit separator _ | **OK** |  |
 | `compound-assignment` | compound assignment += -= *= /= ^= | **OK** |  |
 | `hex-0x` | hexadecimal literal written 0xFF | **OK** |  |
-| `conditional-expression` | conditional expression if C then A else B | **GAP** | unsupported expression in function: Main |
+| `conditional-expression` | conditional expression if C then A else B | **OK** |  |
 | `state-global` | State section variable | **GAP** | unsupported expression in function: Main |
 
-Summary: GAP=9, OK=24
+Summary: GAP=8, OK=25
 
 ## Reading the table
 
