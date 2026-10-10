@@ -715,6 +715,24 @@ Invoke-ModeExitTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\cycles\Cycle.A.inox")) `
     -ExpectSuccess $false
 
+# grammar/grammar.ebnf must agree with the canon, the lexer and the parser.
+$pythonExe = @("python3", "python") | Where-Object {
+    $null -ne (Get-Command $_ -ErrorAction SilentlyContinue)
+} | Select-Object -First 1
+if ($null -eq $pythonExe) {
+    Write-Host "[SKIP] grammar/grammar.ebnf consistency (Python 3 not found)"
+} else {
+    $grammarOutput = & $pythonExe (Join-Path $repoRoot "tools\grammar_consistency.py") $repoRoot 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        $passed++
+        Write-Host "[PASS] grammar/grammar.ebnf consistency"
+    } else {
+        $failed++
+        Write-Host "[FAIL] grammar/grammar.ebnf consistency"
+        $grammarOutput | Where-Object { "$_" -match "FAIL|^       " } | ForEach-Object { Write-Host "       $_" }
+    }
+}
+
 $total = $passed + $failed
 Write-Host ""
 Write-Host "Summary: $passed passed, $failed failed, $total total"

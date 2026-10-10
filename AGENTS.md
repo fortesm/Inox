@@ -74,6 +74,8 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 
 - Keep the compiler portable C++20.
 - Validate Linux with `cmake --build build` and `bash scripts/run-tests.sh`.
+- Both runners include `tools/grammar_consistency.py`: a change to syntax, the
+  lexer keywords or CANON-20 must update `grammar/grammar.ebnf` in the same PR.
 - Validate Windows with `cmake --build build --config Debug` and `pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1`.
 - Do not use `git add .`; add only task-scoped paths.
 - Every language change must update code, tests, docs, `docs/site/index.html`, and ADRs when applicable.
