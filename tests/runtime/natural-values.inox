@@ -6,12 +6,12 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-8: Natural is the non-negative subtype of Integer (0..Int64.Max).
-== It shares the i64 representation; Natural -> Integer is implicit, and
-== Integer -> Natural goes through Natural(X), which checks the range.
+== It shares the i64 representation; Natural -> Integer is implicit, and an
+== Integer stored into a Natural is range-checked (ADR-0015).
 Module Runtime.NaturalValues
 
 Twice(N Natural) Natural :
-    Return Natural(N * 2)
+    Return N * 2
 ;
 
 Main :

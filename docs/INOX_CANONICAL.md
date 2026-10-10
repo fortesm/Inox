@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.39 (Layer A: ADR-0014 Natural is the non-negative subtype of Integer)
+# Version: v3.40 (Layer A: ADR-0015 storing into a Natural checks the range implicitly)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -486,6 +486,25 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.40 — 2026-10-10 — ADR-0015: storing into a Natural checks the range
+#         implicitly, as in Ada (Layer A, decided by Marcelo Fortes on
+#         2026-10-10: "Façamos como Ada, a atribuição faria essa checagem
+#         sozinha, sem conversão escrita").
+#   - Supersedes ADR-0014 points 3 and 4 where they require `Natural(X)`:
+#     initialization, assignment, compound assignment, argument passing,
+#     return and field initialization of a Natural from an Integer value are
+#     range-checked at run time with no conversion written. `N += 1` is valid.
+#   - A negative constant stored into a Natural stays a compile-time error.
+#   - An explicit conversion written as a cast is not a Natural feature: it
+#     is only recorded as a possible future form (it may become unnecessary
+#     with generics). The general `T(X)` conversion of CANON-8 is unchanged.
+#   - Layer B: semantic analysis marks each checked expression; the backend
+#     wraps it in the range check (fault kind 7).
+#   - Tests: runtime `natural-implicit-check`, trap
+#     `natural-assignment-negative`. The diagnostics `natural-from-integer`,
+#     `natural-arithmetic-is-integer` and `natural-negation-is-integer` are
+#     removed: those programs are valid now.
 #
 # v3.39 — 2026-10-10 — ADR-0014: Natural, Byte and the closed numeric set
 #         (Layer A, decided by Marcelo Fortes on 2026-10-10: "se vocês chegaram
@@ -1708,6 +1727,24 @@ mode.” That policy is superseded by DECISION P-A, approved 2026-10-09: runtime
 arithmetic faults are deterministic Inox traps in every conforming build. This
 note records the later approved decision without rewriting the locked ADR.
 
+## ADR-0015 — Storing into a Natural checks the range implicitly  (Status: Accepted, 2026-10-10)
+Decision (Marcelo Fortes, 2026-10-10): "Façamos como Ada, a atribuição faria
+essa checagem sozinha, sem conversão escrita".
+1. When an Integer value is stored into a Natural — initialization,
+   assignment, compound assignment, argument, return, field — the range
+   0..Int64.Max is checked at run time. No conversion is written:
+       N Natural := 3
+       N += 1          == checked
+       N := N - 5      == runtime error: value out of range for Natural
+2. A constant outside the range is a compile-time error (`N Natural := -1`).
+3. Arithmetic on Natural still yields Integer (ADR-0014 point 4); the check
+   happens where the value is stored.
+4. A cast-like explicit form for this purpose is not part of the language;
+   it is recorded only as a possible future form, which generics may make
+   unnecessary.
+This supersedes ADR-0014 points 3 and 4 where they require `Natural(X)`;
+the locked ADR-0014 text is not edited.
+
 ## ADR-0014 — Natural, Byte and the closed numeric set  (Status: Accepted, 2026-10-10)
 Decision (Marcelo Fortes, 2026-10-10, accepting the Claude/ChatGPT consensus
 "like Ada 2005, without negatives"):
@@ -2201,7 +2238,8 @@ per width (no Delphi Cardinal/LongWord duplication).
   INTEGER — friendly aliases
     Integer     -> Int64   (i64)  default integer; target of integer inference
     Natural     -> Integer subtype (i64)  0..Int64.Max; negatives are a RANGE ERROR
-                 (Ada semantics; ADR-0014: not UInt64, `Natural(X)` checks)
+                 (Ada semantics; ADR-0014: not UInt64; ADR-0015: storing an
+                 Integer into a Natural is checked implicitly)
     Byte        -> UInt8   (i8)   0..255
   INTEGER — explicit fixed widths
     Int8(i8) Int16(i16) Int32(i32) Int64(i64)
@@ -3090,7 +3128,7 @@ Diagnostic text (the category names are part of the contract and are checked by
     Inox runtime error: for-loop step must be positive
     Inox runtime error: negative exponent
     Inox runtime error: invalid integer input        (Get/GetLn, see CANON-17)
-    Inox runtime error: value out of range for Natural   (Natural(X), ADR-0014)
+    Inox runtime error: value out of range for Natural   (ADR-0014/0015)
 
 Lowering note (Layer B, not language law): every check calls one internal IR
 function, `__inox_arith_fault(i32 kind)`, `noreturn nounwind cold`. It calls
@@ -3233,8 +3271,8 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
    initializer: Name"; structs may omit `:=`.
 4. Enum strict init (CANON-5 rule 5) — not enforced.
 5. `Byte`->UInt8 alias: CLOSED (v3.39, ADR-0014).
-6. Natural range semantics: CLOSED (v3.39, ADR-0014) — 0..Int64.Max, i64,
-   `Natural(X)` checked at run time (fault kind 7). Fixed-width integers other
+6. Natural range semantics: CLOSED (v3.39/v3.40, ADR-0014/0015) — 0..Int64.Max,
+   i64; storing an Integer into a Natural is checked at run time (fault kind 7). Fixed-width integers other
    than Int64 (Byte/UInt8, Int32, ...) are checked by the semantic analyzer but
    not yet lowered by the LLVM backend.
 7. Currency arithmetic (i64 x10^6) — name registered, behavior missing.
@@ -3568,8 +3606,8 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
    initializer: Name"; structs may omit `:=`.
 4. Enum strict init (CANON-5 rule 5) — not enforced.
 5. `Byte`->UInt8 alias: CLOSED (v3.39, ADR-0014).
-6. Natural range semantics: CLOSED (v3.39, ADR-0014) — 0..Int64.Max, i64,
-   `Natural(X)` checked at run time (fault kind 7). Fixed-width integers other
+6. Natural range semantics: CLOSED (v3.39/v3.40, ADR-0014/0015) — 0..Int64.Max,
+   i64; storing an Integer into a Natural is checked at run time (fault kind 7). Fixed-width integers other
    than Int64 (Byte/UInt8, Int32, ...) are checked by the semantic analyzer but
    not yet lowered by the LLVM backend.
 7. Currency arithmetic (i64 x10^6) — name registered, behavior missing.

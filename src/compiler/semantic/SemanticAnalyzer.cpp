@@ -2829,7 +2829,7 @@ bool SemanticAnalyzer::canAssign(std::string_view targetType, std::string_view v
 // it is a constant expression whose value is >= 0 (statically in range). A
 // negative constant is a compile-time range error.
 bool SemanticAnalyzer::canAssignValue(std::string_view targetType, std::string_view valueType,
-                                      const ast::Expression& value) const
+                                      const ast::Expression& value)
 {
     if (canAssign(targetType, valueType)) {
         return true;
@@ -2842,9 +2842,10 @@ bool SemanticAnalyzer::canAssignValue(std::string_view targetType, std::string_v
             }
             return true;
         }
-        throw SemanticError(
-            "an Integer becomes a Natural only through Natural(X), which checks the range "
-            "(CANON-8)");
+        // ADR-0015 (Ada): storing an Integer into a Natural checks the range
+        // at run time, with no conversion written.
+        result_.requireNaturalCheck(value);
+        return true;
     }
     return false;
 }

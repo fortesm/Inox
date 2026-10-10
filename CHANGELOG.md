@@ -20,7 +20,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - Conditional expression `if C then A else B` (ADR-0013); only the chosen branch is evaluated.
 - Digit separator `_` in numeric literals; hexadecimal as `$FF` or `0xFF`.
 - A local variable that is never read is a compile error (OPEN-4).
-- `Natural` is the non-negative subtype of `Integer` (0..Int64.Max, ADR-0014): `Natural(X)` checks the range at run time; a negative constant is a compile error.
+- `Natural` is the non-negative subtype of `Integer` (0..Int64.Max, ADR-0014). As in Ada, storing an Integer into a Natural checks the range at run time with no conversion written (ADR-0015); a negative constant is a compile error.
 - `Byte` is registered as `UInt8`; integer conversions such as `Byte(300)` or `Int8(-129)` with an out-of-range constant are compile errors.
 - `grammar/grammar.ebnf` rebuilt from the canon, checked by `tools/grammar_consistency.py`.
 

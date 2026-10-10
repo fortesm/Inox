@@ -2482,7 +2482,20 @@ private:
         return result;
     }
 
+    // ADR-0015: an Integer expression stored into a Natural carries an
+    // implicit range check, recorded by semantic analysis.
     std::string emitExpression(const ast::Expression& expression)
+    {
+        const std::string value = emitExpressionValue(expression);
+        if (!semantics_.needsNaturalCheck(expression)) {
+            return value;
+        }
+        const std::string checked = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << checked << " = call i64 @__inox_natural_i64(i64 " << value << ")\n";
+        return checked;
+    }
+
+    std::string emitExpressionValue(const ast::Expression& expression)
     {
         switch (expression.kind()) {
         case ast::AstNodeKind::LiteralExpression: {

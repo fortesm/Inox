@@ -123,7 +123,7 @@ private:
     static bool canAssign(std::string_view targetType, std::string_view valueType);
     static bool typesMatch(std::string_view left, std::string_view right);
     bool canAssignValue(std::string_view targetType, std::string_view valueType,
-                        const ast::Expression& value) const;
+                        const ast::Expression& value);
 
     ResolvedType resolvedType(std::string typeName) const;
 

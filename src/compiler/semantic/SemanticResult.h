@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace inox::compiler::semantic {
@@ -40,6 +41,7 @@ public:
         identifierSymbols_.clear();
         callSymbols_.clear();
         constantValues_.clear();
+        naturalChecks_.clear();
     }
 
     void setConstantValue(const Symbol& symbol, ConstantValue value)
@@ -86,7 +88,21 @@ public:
         return iterator != callSymbols_.end() ? iterator->second : nullptr;
     }
 
+    // ADR-0015: an Integer value stored into a Natural is range-checked at run
+    // time, implicitly (Ada subtype semantics). The emitter wraps every marked
+    // expression in the check.
+    void requireNaturalCheck(const ast::Expression& expression)
+    {
+        naturalChecks_.insert(&expression);
+    }
+
+    bool needsNaturalCheck(const ast::Expression& expression) const
+    {
+        return naturalChecks_.count(&expression) != 0;
+    }
+
 private:
+    std::unordered_set<const ast::Expression*> naturalChecks_;
     std::unordered_map<const ast::Expression*, ResolvedType> expressionTypes_;
     std::unordered_map<const ast::IdentifierExpression*, const Symbol*> identifierSymbols_;
     std::unordered_map<const ast::CallExpression*, const Symbol*> callSymbols_;

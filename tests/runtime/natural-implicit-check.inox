@@ -1,0 +1,23 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0015 (Ada): storing an Integer into a Natural checks the range at run
+== time, with no conversion written: initialization, assignment, compound
+== assignment, argument and return.
+Module Runtime.NaturalImplicitCheck
+
+Half(N Natural) Natural :
+    Return N div 2
+;
+
+Main :
+    X Integer := 7
+    N Natural := X
+    N += 1
+    M Natural := N * 3
+    PutLn(N, " ", M, " ", Half(X), " ", Half(M - 4))
+;
