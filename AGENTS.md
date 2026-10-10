@@ -56,8 +56,13 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - `Exit` is not allowed in functions with return values.
 - `Return Expression` is not allowed in subroutines without return types.
 - Structs are nominal value types.
-- `Vector[T]` future semantics are ownership/move, not reference aliasing.
-- `Set[T]` requires finite ordinal base, not arbitrary `Integer`/`String`.
+- `Vector<T>` future semantics are ownership/move, not reference aliasing.
+- `Set<T>` requires finite ordinal base, not arbitrary `Integer`/`String`.
+- Generics use `<T>`, not `[T]`; `<...>` is generic syntax only in type
+  position. `[...]` remains for indexing, slicing and array/range bounds. (The
+  compiler still accepts `[T]` until its conformance PR.)
+- Future concurrency starts with `do`, never `go`; its semantics wait for an
+  ADR. The `|...|` capture-clause idea is not a language decision.
 
 
 ## Local scope and shadowing rules

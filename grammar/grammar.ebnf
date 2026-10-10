@@ -75,10 +75,10 @@ parameter         ::= identifier type_ref
 type_ref          ::= array_type | generic_type | identifier
 array_type        ::= "Array" "[" array_bounds ( "," array_bounds )* "]" type_ref
 array_bounds      ::= expression ".." expression
-generic_type      ::= identifier "[" type_ref ( "," type_ref )* "]"
-                      (* current canonical spelling: Vector[Integer], Set[TCardSuit].
-                         The approved future direction Vector<T> is not active syntax
-                         until the canonical document records it. *)
+generic_type      ::= identifier "<" type_ref ( "," type_ref )* ">"
+                      (* Vector<Integer>, Set<TCardSuit>: "<...>" is generic syntax
+                         only in type position; "[...]" stays for indexing and
+                         bounds. The compiler still uses "[T]" (conformance gap). *)
 
 (* ---------- Statements and blocks (SECTION 10 / CANON-4) ---------- *)
 
@@ -297,8 +297,9 @@ Measured against the parser on 2026-10-10. Each item is an implementation gap
 to fix in the parser or the semantic analyzer, not a change to the language.
 
 1. Canonical but not parsed: array and generic types in declarations
-   (`Values Array[1..10] Integer`, `Items Vector[Integer]`,
-   `Suits Set[TCardSuit]`): a local declaration takes a single type name.
+   (`Values Array[1..10] Integer`, `Items Vector<Integer>`,
+   `Suits Set<TCardSuit>`): a local declaration takes a single type name. The
+   compiler's existing generic spelling is `[T]`, not the canonical `<T>`.
 2. Not structurally parsed yet: `Type`, `Const` and `State` sections and routine
    signatures are kept as token lists by the parser and interpreted later by the
    semantic analyzer.

@@ -33,7 +33,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - Exceptions on Windows (MSVC ABI) wait for the EH bridge.
 - Not lowered yet: `case`, `unless`, `State`, `String` locals, struct construction and initializers, the conditional expression, Float32 conversion.
 - Arrays, vectors, sets, enums and ranges are not implemented.
-- Generics are still written `[T]`; the move to `<T>` is decided.
+- The compiler is not yet aligned with the canonical `<T>` generic syntax; its existing generic syntax still uses `[T]`.
 
 ## V0.4 — 2026-10-09
 - Compositional lowering of nested statements (v3.21), toolchain diagnostics, CI on Linux and Windows (clang, MSVC ABI).

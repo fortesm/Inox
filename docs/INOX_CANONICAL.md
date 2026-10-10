@@ -449,7 +449,7 @@ aliasing, nondeterministic latency.
 - no integer `/`; use explicit `div` and `mod`;
 - no unchecked array bounds;
 - no implicit narrowing conversions;
-- no implicit aliasing for future `Vector[T]`;
+- no implicit aliasing for future `Vector<T>`;
 - parameters are immutable by default;
 - mutating methods require `Self mut`;
 - structs are data, not classes;
@@ -495,9 +495,11 @@ specification, ADRs, manual HTML, and tests.
 #     nota em Inox não é go e sim do"). `do` is already reserved.
 #   - Generics: `<T>` replaces `[T]` ("uso de <T> para Generics em vez de [T],
 #     a questão é pragmática ... [T] pode gerar ambiguidade e problemas com
-#     Arrays X[i]"). Recorded as decided; the compiler change is its own PR.
-#     Open detail for that PR (raised by ChatGPT): `<` and `>` are comparison
-#     operators, so `<T>` is accepted only in type position.
+#     Arrays X[i]"). Layer A now writes `Vector<T>`/`Set<T>` everywhere it is
+#     normative (the locked ADR-0006 text and old changelog entries keep their
+#     historical spelling); `<...>` is generic syntax only in type position
+#     (ChatGPT's point). Layer B: the compiler still spells generics `[T]`, a
+#     conformance gap; the change is its own PR.
 #   - The compiler has its own `CHANGELOG.md` (Added / Changed / Known
 #     limitations), separate from this document's versions ("Inox
 #     language/compiler release: 0.2.0; INOX_CANONICAL document revision:
@@ -1447,7 +1449,7 @@ declarations must not duplicate method signatures. Static capability checks, not
 Rust traits copied verbatim. Requires ADR.
 
 ## FUTURE-4. ADVANCED GENERICS (was future/generics-advanced.md [EMPTY])
-Direction: generics beyond the current `Vector[T]`/`Set[T]`/`Array[..]` bracket
+Direction: generics beyond the current `Vector<T>`/`Set<T>`/`Array[..]`
 forms — constraints/bounds tied to contracts/protocols. Requires ADR.
 
 ## FUTURE-5. PACKAGE MANAGER (was future/package-manager.md [EMPTY])
@@ -2012,7 +2014,7 @@ FORM 2 and FORM 3 may declare several names of the same type on one line:
   semantics. Afterwards the names are independent variables.
 - Rules 2–8 apply to every name. `A, B Integer` (scalar, no `:=`) is a compile
   error, like `A Integer`.
-- Move-only types (`Vector[T]`, future) are left to the Vector ADR.
+- Move-only types (`Vector<T>`, future) are left to the Vector ADR.
 
 ### Compound assignment (v3.33, ADR-0012)
     Total += I          == Total := Total + I
@@ -2143,13 +2145,14 @@ consensus bug). BigCurrency = BigInteger x 10^6 for values exceeding Int64
 decimals: value types; overflow is ERROR; no implicit conversion to/from float;
 explicit conversion only.
 
-### Generics use square brackets (to become `<T>`)
-    Vector[Integer]   Set[TCardSuit]   Array[1..10] Integer
-Decided (Marcelo Fortes, design chat): generics move to `<T>`
-(`Vector<Integer>`, `Set<TCardSuit>`) because `[T]` collides with indexing
-`X[i]`. Until the compiler change lands, `[T]` is what the compiler accepts.
-Open detail for that change: `<`/`>` are comparisons, so `<T>` is accepted only
-in type position. `Array[1..10] Integer` keeps its bounds in brackets.
+### Generics use angle brackets
+    Vector<Integer>   Set<TCardSuit>   Array[1..10] Integer
+Decided by Marcelo Fortes (design chat): generic arguments are written `<T>`
+because `[T]` collides with indexing `X[i]`. `<...>` is generic syntax only in
+type position (`<` and `>` stay comparison operators in expressions). `[...]`
+remains for indexing, slicing and array/range bounds (`Array[1..10] Integer`).
+Layer B: the compiler is not yet aligned with `<T>`; its existing generic
+spelling `[T]` is a conformance gap, not canonical syntax.
 
 ### Conversions
 Implicit conversions allowed ONLY for safe widening explicitly defined by Inox.
@@ -2809,8 +2812,8 @@ compile-time constants for fixed arrays. Low/High are part of the type. Array
 literals are reserved for later.
 
 ### Vector (future)
-    Items Vector[Integer]
-`Vector[T]` is dynamic, 0-based, heap/runtime-managed, bounds-checked, distinct
+    Items Vector<Integer>
+`Vector<T>` is dynamic, 0-based, heap/runtime-managed, bounds-checked, distinct
 from `Array`. Semantic direction is OWNERSHIP/MOVE: assignment and by-value
 passing move the vector O(1) and invalidate the source. Deep copy requires
 `Clone`. No implicit aliasing.
@@ -2836,9 +2839,9 @@ explicitly with bounds check/trap. Enum ranges are valid in `for`. Enum variable
 declarations follow STRICT ADA init (require explicit initializer; see CANON-5).
 
 ### Set
-    Suits Set[TCardSuit]
-`Set[T]` is a finite mathematical set over a nominal ordinal base. `T` must be an
-`Enum` or finite `Range`. `Set[Integer]`, `Set[Float]`, `Set[String]` are
+    Suits Set<TCardSuit>
+`Set<T>` is a finite mathematical set over a nominal ordinal base. `T` must be an
+`Enum` or finite `Range`. `Set<Integer>`, `Set<Float>`, `Set<String>` are
 INVALID. Sets are value types. Default is empty. Membership uses `in`. Equality
 uses `=` and `#`. Subset/superset may use `<=` and `>=`. Canonical operations:
 `Union`, `Intersection`, `Difference`, `SymmetricDifference`, `With`, `Without`.
@@ -3542,7 +3545,7 @@ CANON-12 `for` in range, and E11. See CHANGE LOG v3.18.)
 6. Implement arrays with `Array[Low..High] T`, indexing, bounds checks, `Low`,
    `High`, `Length`.
 7. Implement `Enum`, `Range`, `Ord`, enum-range `for`.
-8. Implement `Set[TEnum]`/`Set[TRange]` if time allows.
+8. Implement `Set<TEnum>`/`Set<TRange>` if time allows.
 9. Extend portable `stdlib/` without GC/unsafe/C-interop; define canonical
    trap/abort before implementing `Std.Debug.Assert`.
 (Plus v2.0/v2.2 items: remove Var block; implement `with`; Byte alias; Natural/
