@@ -80,7 +80,12 @@ jobs:
       - name: MSVC EH bridge acceptance criteria (i)-(v)
         if: always()
         shell: pwsh
-        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-windows-eh-poc.ps1 -InoxExe build/windows-clang-msvc/Debug/inox.exe
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-windows-eh-poc.ps1 -InoxExe build/windows-clang-msvc/Debug/inox.exe *>&1 | Tee-Object -FilePath eh-poc-output.txt
+          $code = $LASTEXITCODE
+          $text = ((Get-Content eh-poc-output.txt -Raw) -replace "`r", "") -replace "`n", "%0A"
+          Write-Host "::warning title=MSVC EH PoC output::$text"
+          exit $code
       - name: Backend gaps (0 BUG)
         run: python tools/backend_gaps.py build/windows-clang-msvc/Debug/inox.exe
       - name: Upload test log
