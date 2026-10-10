@@ -66,9 +66,10 @@ analysis but not lowered yet.)
 | `grouped-decl-struct` | grouped struct declaration P, Q TPoint := Base | **GAP** | LLVM emission does not support struct initializers yet |
 | `chained-assignment` | chained assignment A := B := C := X | **OK** |  |
 | `named-struct-construction` | named struct construction TPoint(X := 1, Y := 2) | **GAP** | unsupported expression in function: Main |
+| `for-step-expression-bounds` | for I in 1..N + 1 step N div 2 | **OK** |  |
 | `state-global` | State section variable | **GAP** | unsupported expression in function: Main |
 
-Summary: GAP=7, OK=20
+Summary: GAP=7, OK=21
 
 ## Reading the table
 

@@ -69,7 +69,7 @@ private:
     ast::ExpressionPtr parsePower();
     ast::ExpressionPtr parsePostfix();
     ast::ExpressionPtr parsePrimary();
-    ast::ExpressionPtr parseForIterable();
+    void rejectOldForStep() const;
 
     std::vector<ast::ExpressionPtr> parseArgumentList();
 

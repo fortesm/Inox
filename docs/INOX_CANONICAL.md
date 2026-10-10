@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.27 (Layer A: chained assignment `A := B := C := X`, ADR-0009;
-#          `:=` is a statement and never an expression)
+# Version: v3.28 (Layer A: ADR-0010, the for-loop step is written
+#          `for I in A..B step S`; the `(S)` form is removed)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,32 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.28 — 2026-10-09 — ADR-0010: `for I in A..B step S` (Layer A, decided by
+#         Marcelo Fortes on 2026-10-09: "Para o for use o step como kotlin").
+#   - `step` is a reserved word (the lexer has 48 keywords). The bounds of the
+#     header are full range-level expressions (CANON-20 level 10):
+#     `for I in 1..N + 1 step 2` runs from 1 to N + 1.
+#   - The old form `for I in A..B (S)` / `A..B(S)` is removed. The parser
+#     recognizes it and answers with a migration message ("the for-loop step
+#     is written 'step S' (ADR-0010)"). `A..N(2)` with N a value is reported by
+#     the analyzer with the same hint, because `N(2)` is now a call.
+#   - Layer B: calling a value (`N(2)` with N a variable, iterator, constant or
+#     State name) used to pass semantic analysis and fail in the backend; it is
+#     now a semantic error ("'N' is a value, not a function").
+#   - Before, the upper bound was parsed as a primary expression only, so
+#     `for I in 1..N + 1` was a parse error; the restriction existed only to
+#     tell the step group apart from a call.
+#   - Fixed in the canon text: `for I in Start()..Finish()` used empty
+#     parentheses, which CANON-7 forbids; it now reads `Start..Finish`.
+#   - Migrated to `step`: 9 tests, `examples/control-flow.inox`,
+#     `examples/llvm-for-range-step.inox`, the manual and AGENTS.md. The text of
+#     the locked ADR-0006 keeps its historical `(S)` wording.
+#   - New tests: runtime `for-step-keyword` (expression bounds with a step);
+#     diagnostics `for-old-step-spaced`, `for-old-step-glued-literal`,
+#     `for-old-step-glued-value`, `for-step-without-range`, `call-a-value`;
+#     parser-valid `for-parenthesized-bound` (a bound in parentheses is not a
+#     step). Probe `for-step-expression-bounds`.
 #
 # v3.27 — 2026-10-09 — ADR-0009: chained assignment; `:=` is a statement (Layer
 #         A, decided by Marcelo Fortes on 2026-10-09: "Inox deve suportar
@@ -1417,6 +1443,18 @@ mode.” That policy is superseded by DECISION P-A, approved 2026-10-09: runtime
 arithmetic faults are deterministic Inox traps in every conforming build. This
 note records the later approved decision without rewriting the locked ADR.
 
+## ADR-0010 — `step` in the for header  (Status: Accepted, 2026-10-09)
+Decision (approved by Marcelo Fortes, 2026-10-09): the step of a counted loop is
+written with the reserved word `step`, as in Kotlin:
+`for I in A..B step S`. The form `for I in A..B (S)` is removed, with a
+migration diagnostic. The bounds are range-level expressions (CANON-20).
+Rationale: the parenthesized step could not be told apart from a call
+(`A..F(2)`), so the old grammar limited the upper bound to a primary
+expression; `1..N + 1` needed parentheses. A keyword removes the ambiguity and
+reads as English. Direction, inclusivity, the positive-step rule and the
+evaluate-once rule (DECISION P-B) are unchanged.
+Consequence: `step` is reserved. Lowering is unchanged.
+
 ## ADR-0009 — Chained assignment  (Status: Accepted, 2026-10-09)
 Decision (approved by Marcelo Fortes, 2026-10-09): `A := B := C := X` is valid
 Inox. X is evaluated exactly once; the value is stored in C, then B, then A.
@@ -2178,9 +2216,13 @@ at the beginning, middle, or end, and MORE THAN ONCE. `repeat` closes with `;`.
     for I in A..B
         ...
     ;
-    for I in A..B (S)
+    for I in A..B step S
         ...
     ;
+- the header bounds are range-level expressions (CANON-20 level 10), so
+  `for I in 1..N + 1 step 2` needs no parentheses; `step` is a reserved word
+  (ADR-0010). The old form `for I in A..B (S)` is a compile error with a
+  migration message;
 - range endpoints are inclusive; direction comes from `A..B` (A<B ascending,
   A>B descending, A=B executes once);
 - step is always positive; step zero/negative is an error if constant, or a
@@ -2195,7 +2237,7 @@ at the beginning, middle, or end, and MORE THAN ONCE. `repeat` closes with `;`.
   determine the start bound, the end bound and the step of a `for` are evaluated
   exactly once, before the first iteration, in textual order (start, end, then
   the step if one is written), and their values do not change while that loop
-  runs. `for I in Start()..Finish()` calls `Start` once and `Finish` once.
+  runs. `for I in Start..Finish` calls `Start` once and `Finish` once.
   Assigning inside the body to a variable used in a bound does not change the
   range. Without an explicit step the direction comes from the bounds
   (Start <= End: +1; Start > End: -1). The iterator never takes a value outside
@@ -2605,7 +2647,7 @@ Run time (these operations trap):
 - `shl`/`shr` with a count outside 0..63 (`shl` discards high bits; that is a bit
   operation, not an overflow);
 - `^` on overflow or a negative exponent; a `for` step <= 0.
-`for I in A..B(S)` ends when the next value of `I` does not fit in Int64, so a
+`for I in A..B step S` ends when the next value of `I` does not fit in Int64, so a
 range ending at Int64.Max terminates.
 
 #### Runtime arithmetic faults are deterministic Inox traps
@@ -2718,7 +2760,7 @@ textual IR to the LLVM C++ API where justified.
 ## Current backend support status
 
 ## B-WORKS. WHAT WORKS TODAY (verified in source audit)
-Lexer: 47 keywords, case-insensitive normalization, `$XX` hex, `==` comments.
+Lexer: 48 keywords (`step` added by ADR-0010), case-insensitive normalization, `$XX` hex, `==` comments.
 Parser: recursive descent, 2-token lookahead for typed local declarations.
 Semantic: scoped symbol table, forward signature pass, inference (empty type +
   initializer -> initializer type), prelude calls (Put/PutLn/Clamp/Min/Max),
@@ -3051,7 +3093,7 @@ Targets must not be claimed as supported until tested on real or representative 
 This section is volatile implementation status. It may be updated to match the code. It must not override constitutional language rules above.
 
 ## B-WORKS. WHAT WORKS TODAY (verified in source audit)
-Lexer: 47 keywords, case-insensitive normalization, `$XX` hex, `==` comments.
+Lexer: 48 keywords (`step` added by ADR-0010), case-insensitive normalization, `$XX` hex, `==` comments.
 Parser: recursive descent, 2-token lookahead for typed local declarations.
 Semantic: scoped symbol table, forward signature pass, inference (empty type +
   initializer -> initializer type), prelude calls (Put/PutLn/Clamp/Min/Max),

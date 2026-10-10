@@ -5,11 +5,16 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module Runtime.ForStepZeroEmptyRange
+== ADR-0010: the bounds of a for header are range-level expressions, and a
+== bound in parentheses is a bound, not a step.
+Module ForParenthesizedBound
 
 Main :
-    Z Integer := 0
-    for I in 3..1 step Z
+    N := 4
+    for I in 1..(N - 1)
         PutLn(I)
+    ;
+    for J in (N - 3)..N step 2
+        PutLn(J)
     ;
 ;

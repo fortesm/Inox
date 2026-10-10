@@ -961,6 +961,26 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
     }
     case ast::AstNodeKind::ForInStatement: {
         const auto& forStatement = static_cast<const ast::ForInStatement&>(statement);
+        // ADR-0010: `for I in A..N(2)` was the old step form. Now `N(2)` is a
+        // call; when N is a value, say how the step is written.
+        if (forStatement.iterable().kind() == ast::AstNodeKind::BinaryExpression) {
+            const auto& range = static_cast<const ast::BinaryExpression&>(forStatement.iterable());
+            if (range.op() == ast::BinaryOperator::Range &&
+                range.right().kind() == ast::AstNodeKind::CallExpression) {
+                const auto& call = static_cast<const ast::CallExpression&>(range.right());
+                if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
+                    const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
+                    const Symbol* symbol = symbols_.currentScope().resolve(callee.name());
+                    if (symbol != nullptr && symbol->kind != SymbolKind::Function &&
+                        symbol->kind != SymbolKind::Builtin && symbol->kind != SymbolKind::Type) {
+                        throw SemanticError(
+                            "'" + callee.name() + "(...)' calls a value: the for-loop step "
+                            "is written 'step S' (ADR-0010), e.g. 'for I in A.." +
+                            callee.name() + " step S'");
+                    }
+                }
+            }
+        }
         analyzeExpression(forStatement.iterable());
         if (forStatement.step() != nullptr) {
             analyzeExpression(*forStatement.step());
@@ -1709,7 +1729,12 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
     analyzeExpression(call.callee());
     if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
         const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
-        result_.bind(call, resolveOrThrow(callee.name()));
+        const Symbol& symbol = resolveOrThrow(callee.name());
+        if (symbol.kind == SymbolKind::Variable || symbol.kind == SymbolKind::LoopIterator ||
+            symbol.kind == SymbolKind::Constant || symbol.kind == SymbolKind::State) {
+            throw SemanticError("'" + callee.name() + "' is a value, not a function; it cannot be called");
+        }
+        result_.bind(call, symbol);
     }
     for (const auto& argument : call.arguments()) {
         analyzeExpression(*argument);
