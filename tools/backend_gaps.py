@@ -237,6 +237,30 @@ Main :
     ;
 ;
 """),
+    ("grouped-decl-scalar", "grouped declaration A, B, C T := X (X evaluated once)", """Next(N Integer) Integer :
+    PutLn(N)
+    Return N + 1
+;
+
+Main :
+    A, B, C Integer := Next(10)
+    PutLn(A + B + C)
+;
+"""),
+    ("grouped-decl-struct", "grouped struct declaration P, Q TPoint := Base", """Type
+    TPoint Struct
+        X Integer
+        Y Integer
+    ;
+
+Main :
+    Base TPoint
+    Base.X := 5
+    P, Q TPoint := Base
+    Q.X := 9
+    PutLn(P.X + Q.X)
+;
+"""),
     ("state-global", "State section variable", """State :
     Counter Integer := 0
 ;

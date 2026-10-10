@@ -208,6 +208,9 @@ Account.Print()</code></pre>
 <section id="declarations"><h2>Declarations, assignment, and local scope</h2>
 <p>A typed local declaration introduces a new local symbol:</p>
 <pre><code>X Integer := 10</code></pre>
+<p>Several names of the same type can be declared on one line. The initializer runs once, and every name starts with that value:</p>
+<pre><code>A, B, C Integer := Next(10)   == Next is called once
+P, Q TPoint                   == both get the struct defaults</code></pre>
 <p>An assignment updates an existing symbol:</p>
 <pre><code>X := 20</code></pre>
 <p>These are different operations. A declaration cannot hide an already visible symbol. Shadowing is forbidden.</p>
