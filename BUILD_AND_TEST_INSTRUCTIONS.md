@@ -175,3 +175,11 @@ dist/
 ```
 
 Upload release ZIP files as GitHub Release assets instead.
+
+## When the native build fails
+
+`--build` and `--run` call clang (and, through it, the system linker). If that
+step fails, the error shows which tool failed, its exit code and the first lines
+of its own diagnostics, and names the full log
+`<output dir>/<name>.toolchain.log` (the output directory is `INOX_OUTPUT_DIR`,
+or `build/inox-artifacts`). The log is removed when the build succeeds.

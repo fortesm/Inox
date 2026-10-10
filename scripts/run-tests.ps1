@@ -237,6 +237,46 @@ function Invoke-BuildDriverTest {
     }
 }
 
+# The driver must show the toolchain's own diagnostics when clang fails. The
+# failure is provoked portably: a directory occupies the executable path, so the
+# link step cannot write its output.
+function Invoke-ToolchainFailureTest {
+    param(
+        [System.IO.FileInfo]$TestFile
+    )
+
+    $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
+    $clang = Get-Command clang -ErrorAction SilentlyContinue
+    if ($null -eq $clang) {
+        Write-Host "[SKIP] $relativePath --build (toolchain diagnostics; clang not found)"
+        return
+    }
+
+    $stem = [System.IO.Path]::GetFileNameWithoutExtension($TestFile.Name)
+    $outDir = Join-Path ([System.IO.Path]::GetTempPath()) ("inox-toolchain-" + [System.Guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path (Join-Path $outDir $stem) -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $outDir ($stem + ".exe")) -Force | Out-Null
+    $previousOutputDir = $env:INOX_OUTPUT_DIR
+    $env:INOX_OUTPUT_DIR = $outDir
+    try {
+        $actual = (& $InoxExe "--build" $TestFile.FullName 2>&1 | Out-String)
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $env:INOX_OUTPUT_DIR = $previousOutputDir
+        Remove-Item -LiteralPath $outDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if ($exitCode -ne 0 -and $actual.Contains("failed while building") -and
+        $actual.Contains("linker command failed") -and $actual.Contains("full toolchain output")) {
+        $script:passed++
+        Write-Host "[PASS] $relativePath --build (toolchain diagnostics)"
+    } else {
+        $script:failed++
+        Write-Host "[FAIL] $relativePath --build (toolchain diagnostics)"
+        Write-Host "       exit code: $exitCode"
+        Write-Host "       actual error: $actual"
+    }
+}
+
 function Invoke-RunDriverTest {
     param(
         [System.IO.FileInfo]$TestFile,
@@ -598,6 +638,8 @@ Invoke-LinkedExecutionTest `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output-basic.out"))
 
 Invoke-BuildDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.inox"))
+Invoke-ToolchainFailureTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.inox"))
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.inox")) `

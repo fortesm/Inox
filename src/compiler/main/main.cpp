@@ -26,6 +26,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_set>
+#include <vector>
 #include <utility>
 #include <vector>
 
@@ -316,6 +317,43 @@ fs::path findExceptionRuntimeLibrary(const fs::path& executableDir)
     return {};
 }
 
+// Build the error for a failed clang/clang++ invocation: what was being built,
+// the exit status, and the toolchain's own output (bounded, so a flood of
+// diagnostics stays readable). The full output stays in `logPath`.
+std::string toolchainFailureMessage(const std::string& tool, const fs::path& sourcePath, int exitCode,
+                                    const fs::path& logPath)
+{
+    constexpr std::size_t kMaxLines = 40;
+    std::string message = tool + " failed while building: " + sourcePath.string();
+    message += exitCode < 0 ? std::string(" (could not be started)")
+                            : " (exit code " + std::to_string(exitCode) + ")";
+    std::ifstream log(logPath, std::ios::binary);
+    std::vector<std::string> lines;
+    for (std::string line; std::getline(log, line);) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        lines.push_back(line);
+    }
+    while (!lines.empty() && lines.back().empty()) {
+        lines.pop_back();
+    }
+    if (lines.empty()) {
+        message += "\nnote: " + tool + " printed no diagnostics";
+        return message;
+    }
+    message += "\n" + tool + " output:";
+    const std::size_t shown = lines.size() < kMaxLines ? lines.size() : kMaxLines;
+    for (std::size_t index = 0; index < shown; ++index) {
+        message += "\n  " + lines[index];
+    }
+    if (lines.size() > shown) {
+        message += "\n  ... (" + std::to_string(lines.size() - shown) + " more lines)";
+    }
+    message += "\nnote: full toolchain output: " + logPath.string();
+    return message;
+}
+
 struct BuildArtifacts {
     fs::path llvmIr;
     fs::path executable;
@@ -364,9 +402,15 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
     if (inox::compiler::support::hostOperatingSystem() != inox::compiler::support::OperatingSystem::Windows) {
         clangArgs.push_back("-lm");
     }
-    if (inox::compiler::support::runProcess(clangArgs, true) != 0) {
-        throw std::runtime_error("clang failed while building: " + sourcePath.string());
+    // The toolchain's own diagnostics are kept: when clang (or the linker it
+    // drives) fails, the user sees what it said instead of only "clang failed".
+    const fs::path toolchainLog = outputDirectory / (stem + ".toolchain.log");
+    const int clangExit = inox::compiler::support::runProcessCapturingOutput(clangArgs, toolchainLog.string());
+    if (clangExit != 0) {
+        throw std::runtime_error(toolchainFailureMessage(clangArgs.front(), sourcePath, clangExit, toolchainLog));
     }
+    std::error_code ignored;
+    fs::remove(toolchainLog, ignored);
     return artifacts;
 }
 
