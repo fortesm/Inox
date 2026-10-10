@@ -379,6 +379,13 @@ ast::ExpressionPtr Parser::parseMembership()
         auto right = parseRange();
         expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
+        // CANON-20 (ADR-0008): 'in' is non-associative.
+        if (checkKeyword("in")) {
+            throw ParseError(
+                "'in' is non-associative (CANON-20): 'X in A in B' has no "
+                "meaning; parenthesize the intended grouping",
+                peek().location);
+        }
     }
 
     return expression;
@@ -393,6 +400,14 @@ ast::ExpressionPtr Parser::parseRange()
         auto right = parseBitOr();
         expression = makeExpr<ast::BinaryExpression>(
             binaryOperatorFor(op), std::move(expression), std::move(right));
+        // CANON-20 (ADR-0008): '..' is non-associative; a range has exactly
+        // two bounds.
+        if (check(TokenKind::DotDot)) {
+            throw ParseError(
+                "'..' is non-associative (CANON-20): a range has exactly two "
+                "bounds, so 'A..B..C' has no meaning",
+                peek().location);
+        }
     }
 
     return expression;

@@ -1,0 +1,19 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-20 / ADR-0008: `..` (level 10) binds weaker than `+` (level 5), so
+== `X in 1..N + 1` means `X in (1..(N + 1))`. The test is shape-discriminating:
+== the wrong grouping `(X in 1..N) + 1` would add an Integer to a Bool and
+== fail semantic analysis.
+Module PrecedenceInRangeAdditive
+
+Main :
+    N Integer := 3
+    X Integer := 4
+    B Bool := X in 1..N + 1
+    PutLn(B)
+;

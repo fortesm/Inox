@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.23 (Layer B: the compiler enforces CANON-5: scalar declarations
-#          require an initializer; `Var` is rejected with a migration hint)
+# Version: v3.24 (Layer A: ADR-0008 places `..` and `in` in the CANON-20
+#          precedence table; both are non-associative)
 # Last updated: 2026-10-09
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -487,6 +487,29 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.24 — 2026-10-09 — ADR-0008: `..` and `in` in the precedence table (Layer A
+#         change approved by Marcelo Fortes on 2026-10-09: "Aprovo a precedência
+#         que tomaram! Para .. e in").
+#   - CANON-20 gains two levels between `bitor` and the relational operators:
+#     `..` (range construction, level 10) and `in` (membership, level 11). The
+#     levels below are renumbered as integers: relational 12, `and` 13, `xor`
+#     14, `or` 15, `:=` 16. The relative order of every pre-existing level is
+#     unchanged.
+#   - `..` and `in` are NON-associative: `A..B..C` and `X in A in B` are parse
+#     errors ("'..' is non-associative (CANON-20)" / "'in' is non-associative
+#     (CANON-20)"). Before, both failed with a generic "expected line break"
+#     message.
+#   - The parser already used this order (parseRelational > parseMembership >
+#     parseRange > parseBitOr); this entry makes it law and adds the
+#     non-associativity diagnostics. The `for` header keeps its own iterable
+#     rule until the `step` ADR replaces the `(S)` form.
+#   - Tests: diagnostics `range-non-associative`, `in-non-associative`;
+#     semantic-valid `precedence-in-range-additive` (`X in 1..N + 1` is
+#     `X in (1..(N + 1))`) and `precedence-in-relational` (`X in 1..9 = Flag` is
+#     `(X in 1..9) = Flag`). Both valid tests are shape-discriminating: the
+#     wrong grouping fails semantic analysis. The proposal and the levels were
+#     agreed between Claude and ChatGPT before Marcelo approved them.
 #
 # v3.23 — 2026-10-09 — CANON-5 enforcement (Layer B: the implementation now
 #         follows existing Layer A law; no language change). Requested by Marcelo
@@ -1296,6 +1319,24 @@ ADR-0006 decision 4 used the phrase “Runtime overflow should trap in checking
 mode.” That policy is superseded by DECISION P-A, approved 2026-10-09: runtime
 arithmetic faults are deterministic Inox traps in every conforming build. This
 note records the later approved decision without rewriting the locked ADR.
+
+## ADR-0008 — Precedence of `..` and `in`  (Status: Accepted, 2026-10-09)
+Decision (approved by Marcelo Fortes, 2026-10-09): CANON-20 places range
+construction `..` at level 10 and membership `in` at level 11, between `bitor`
+(9) and the relational operators (12). Both are non-associative. The table is
+renumbered with integer levels; the relative order of the older levels does not
+change.
+Rationale: the operands of a range are arithmetic, so arithmetic and bitwise
+operators must resolve first (`1..N + 1` is `1..(N + 1)`). Membership tests a
+value against a range or set, so the range must be complete before `in` applies
+(`X in 1..N + 1` is `X in (1..(N + 1))`). Membership yields a Bool that is
+compared or combined like any relational result, so `in` binds tighter than the
+relational and logical operators (`X in S = Flag` is `(X in S) = Flag`;
+`X in S and Y in T` needs no parentheses). Chaining has no meaning for either
+operator (a range has exactly two bounds; `X in A in B` would test a Bool for
+membership), so Inox rejects the chain instead of picking a grouping
+(CANON-20 refuses to guess).
+Consequence: two parse diagnostics for the chains. No change to lowering.
 
 ## ADR-0007 — Loop exit and try cleanup keywords  (Status: Accepted, 2026-10-09)
 Decision (approved by Marcelo Fortes, 2026-10-09): the loop exit statement is
@@ -2169,18 +2210,26 @@ Level  Operators                              Associativity
  7     bitand                                 left
  8     bitxor                                 left
  9     bitor                                  left
-10     = # < <= > >=  (relational)            left
-11     and                                    left
-12     xor                                    left
-13     or                                     left
-14     :=  (assignment, statement level)      right
+10     ..  (range construction)               NON-associative
+11     in  (membership)                       NON-associative
+12     = # < <= > >=  (relational)            left
+13     and                                    left
+14     xor                                    left
+15     or                                     left
+16     :=  (assignment, statement level)      right
 ```
+(Levels 10 and 11 were added by ADR-0008, v3.24; the levels below them were
+renumbered without changing their relative order.)
 Notes:
 - `^` is RIGHT-associative: `2 ^ 3 ^ 2` = `2 ^ (3 ^ 2)`. It binds tighter than
   unary minus on its left operand per parsing, e.g. `2 * 3 ^ 2` = `2 * (3 ^ 2)`.
-- All relational operators share one level (10).
-- Among logical operators the order is `and` (11) > `xor` (12) > `or` (13),
+- All relational operators share one level (12).
+- Among logical operators the order is `and` (13) > `xor` (14) > `or` (15),
   matching formal boolean algebra (conjunction binds tighter than disjunction).
+- `..` (10) and `in` (11) are NON-associative: `A..B..C` and `X in A in B` are
+  parse errors. A range has exactly two bounds, and membership yields a Bool.
+  Their operands resolve first: `X in 1..N + 1` = `X in (1..(N + 1))`, and the
+  result compares like any relational: `X in S = Flag` = `(X in S) = Flag`.
 
 ### MANDATORY-PARENTHESES RULE (Ada/SPARK safety on the ambiguous cases)
 Precedence above is fully defined, but where the relative order of two operator
@@ -2211,6 +2260,10 @@ Parentheses are NOT required (the math is clear) when:
 - tests/parser/invalid/precedence-mix-and-xor.inox       (mix -> error)
 - tests/parser/invalid/precedence-mix-bitand-bitor.inox  (mix -> error)
 - tests/parser/invalid/precedence-mix-bitand-shl.inox    (mix -> error)
+- tests/diagnostics/range-non-associative.inox           (`A..B..C` -> error)
+- tests/diagnostics/in-non-associative.inox              (`X in A in B` -> error)
+- tests/semantic/valid/precedence-in-range-additive.inox (`X in 1..N + 1`)
+- tests/semantic/valid/precedence-in-relational.inox     (`X in S = Flag`)
 - examples/operator-precedence.inox                      (worked demonstration)
 
 
