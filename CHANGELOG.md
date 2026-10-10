@@ -25,6 +25,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - `grammar/grammar.ebnf` rebuilt from the canon, checked by `tools/grammar_consistency.py`.
 
 ### Changed
+- Windows (MSVC ABI): exceptions are lowered with LLVM funclets (`__CxxFrameHandler3`); every exception test passes natively on the CI runner (EH-v3.16a closed).
 - `Var` blocks and scalars without an initializer are rejected (CANON-5).
 - A bare `:` block inside a routine is rejected (CANON-4).
 - `:=` is a statement, never an expression; named arguments only in struct construction (CANON-9).
@@ -33,7 +34,6 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - A `Const` has no written type: `Const Mask UInt8 := $FF` is rejected; write `Const Mask := UInt8($FF)` (OPEN-5).
 
 ### Known limitations
-- Exceptions on Windows (MSVC ABI) wait for the EH bridge.
 - Integer types other than `Integer`/`Int64`/`Natural` (Byte, Int32, ...) are checked but not lowered yet.
 - Not lowered yet: `case`, `unless`, `State`, `String` locals, struct construction and initializers, Float32 conversion.
 - Arrays, vectors, sets, enums and ranges are not implemented.

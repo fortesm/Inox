@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.40 (Layer A: ADR-0015 storing into a Natural checks the range implicitly)
+# Version: v3.41 (Layer B: EH-v3.16a closed, MSVC exception bridge validated on Windows)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -486,6 +486,12 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.41 — 2026-10-10 — EH-v3.16a closed (Layer B only).
+#   - The MSVC exception bridge (ChatGPT's patch, PR #21) is on main. On the
+#     windows-2022 runner every exception test passes, so
+#     `ci/windows-known-failures.txt` is empty, and the PoC criteria (i)-(v)
+#     pass. The Windows job now runs the PoC script after the suite.
 #
 # v3.40 — 2026-10-10 — ADR-0015: storing into a Natural checks the range
 #         implicitly, as in Ada (Layer A, decided by Marcelo Fortes on
@@ -3248,11 +3254,15 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
-- EH-v3.16a: the current native exception lowering is validated on Unix-like
-  Itanium-ABI hosts. Windows/MSVC-style LLVM funclet (`catchswitch`/`catchpad`/
-  `cleanuppad`) lowering remains to be implemented before exception-enabled
-  Windows binaries can be claimed supported. This does not affect parsing,
-  semantic checking, or non-exception Windows programs.
+- EH-v3.16a: CLOSED in v3.41. On Windows (MSVC ABI) the backend lowers each
+  try to the `__CxxFrameHandler3` funclet form (`catchswitch` with one
+  catch(...) `catchpad` that only captures the exception and `catchret`s to
+  the parent CFG); Unix-like hosts keep the Itanium `landingpad` lowering.
+  Validated natively on the windows-2022 CI runner (clang 19.1.5): the whole
+  suite passes with an empty `ci/windows-known-failures.txt`, and
+  `scripts/run-windows-eh-poc.ps1` passes its criteria (i)-(v) (plain except,
+  SEH not intercepted, foreign C++ exception preserved, arithmetic traps not
+  catchable, Inox type id kept). The target is still chosen by host OS.
 - EH-v3.17b: `ensure` cleanup edges now cover the currently supported nonlocal
   transfers `Return`, `Exit`, `leave`, and `continue`, including nested ensure
   regions, in addition to exceptional flow and Retry.
@@ -3508,9 +3518,8 @@ Primary validation targets:
 
 Qualification: support claims must distinguish build/link from actual execution.
 For the v3.18 hardening pass, Linux was built and executed with the complete suite;
-Windows was cross-built and linked only in that environment. EH-v3.16a remains: native
-Windows exception-enabled binaries are not yet claimed supported until LLVM funclet
-lowering is implemented and validated on Windows.
+Windows was cross-built and linked only in that environment. EH-v3.16a was closed in
+v3.41: exception-enabled Windows binaries are validated natively on the CI runner.
 
 Planned / stub targets, not yet advertised as supported:
 - macOS.
@@ -3583,11 +3592,15 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
-- EH-v3.16a: the current native exception lowering is validated on Unix-like
-  Itanium-ABI hosts. Windows/MSVC-style LLVM funclet (`catchswitch`/`catchpad`/
-  `cleanuppad`) lowering remains to be implemented before exception-enabled
-  Windows binaries can be claimed supported. This does not affect parsing,
-  semantic checking, or non-exception Windows programs.
+- EH-v3.16a: CLOSED in v3.41. On Windows (MSVC ABI) the backend lowers each
+  try to the `__CxxFrameHandler3` funclet form (`catchswitch` with one
+  catch(...) `catchpad` that only captures the exception and `catchret`s to
+  the parent CFG); Unix-like hosts keep the Itanium `landingpad` lowering.
+  Validated natively on the windows-2022 CI runner (clang 19.1.5): the whole
+  suite passes with an empty `ci/windows-known-failures.txt`, and
+  `scripts/run-windows-eh-poc.ps1` passes its criteria (i)-(v) (plain except,
+  SEH not intercepted, foreign C++ exception preserved, arithmetic traps not
+  catchable, Inox type id kept). The target is still chosen by host OS.
 - EH-v3.17b: `ensure` cleanup edges now cover the currently supported nonlocal
   transfers `Return`, `Exit`, `leave`, and `continue`, including nested ensure
   regions, in addition to exceptional flow and Retry.
