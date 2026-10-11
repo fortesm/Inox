@@ -562,6 +562,21 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
         std::move(parameters)};
 }
 
+// A module `State` variable (CANON-5): a module-level LLVM global, zero at
+// load time and initialized in source order at the start of `main`.
+struct StateGlobal {
+    std::string name;
+    std::string inoxType;
+    std::string llvmType;
+    const ast::Expression* initializer = nullptr;
+};
+using StateGlobals = std::vector<StateGlobal>;
+
+std::string stateGlobalSymbol(std::string_view name)
+{
+    return "@inox.state." + normalize(name);
+}
+
 class FunctionEmitter {
 public:
     FunctionEmitter(std::ostringstream& output,
@@ -571,8 +586,10 @@ public:
                     const StructDefinitions& structs,
                     std::vector<std::string>& stringGlobals,
                     std::size_t& nextStringLiteral,
-                    const semantic::SemanticResult& semantics)
+                    const semantic::SemanticResult& semantics,
+                    const StateGlobals& stateGlobals)
         : semantics_(semantics),
+          stateGlobals_(stateGlobals),
           output_(output),
           function_(function),
           signature_(signature),
@@ -581,6 +598,11 @@ public:
           stringGlobals_(stringGlobals),
           nextStringLiteral_(nextStringLiteral)
     {
+        // State variables are addressed like locals whose slot is a global.
+        for (const StateGlobal& state : stateGlobals_) {
+            locals_.emplace(normalize(state.name),
+                            LocalInfo{stateGlobalSymbol(state.name), state.inoxType, state.llvmType});
+        }
         for (const FunctionParameter& parameter : signature.parameters) {
             if (const StructDefinition* structType = findStruct(structs_, parameter.inoxType)) {
                 if (parameter.llvmType == "ptr") {
@@ -610,6 +632,13 @@ public:
 
     void emit()
     {
+        if (signature_.llvmName == "main") {
+            for (const StateGlobal& state : stateGlobals_) {
+                const std::string value = emitExpression(*state.initializer);
+                output_ << "  store " << state.llvmType << ' ' << value << ", ptr "
+                        << stateGlobalSymbol(state.name) << '\n';
+            }
+        }
         if (signature_.llvmReturnType == "i32" || signature_.llvmReturnType == "void") {
             for (const auto& statement : function_.body()) {
                 emitStatement(*statement);
@@ -655,6 +684,7 @@ public:
 
 private:
     const semantic::SemanticResult& semantics_;
+    const StateGlobals& stateGlobals_;
     struct LoopTargets {
         std::string continueTarget;
         std::string leaveTarget;
@@ -3038,7 +3068,8 @@ void emitFunction(std::ostringstream& output,
                   const StructDefinitions& structs,
                   std::vector<std::string>& stringGlobals,
                   std::size_t& nextStringLiteral,
-                  const semantic::SemanticResult& semantics)
+                  const semantic::SemanticResult& semantics,
+                  const StateGlobals& stateGlobals)
 {
     output << "define " << signature.llvmReturnType << " @" << signature.llvmName << '(';
     for (std::size_t index = 0; index < signature.parameters.size(); ++index) {
@@ -3057,7 +3088,8 @@ void emitFunction(std::ostringstream& output,
            << "entry:\n";
 
     std::ostringstream body;
-    FunctionEmitter(body, function, signature, signatures, structs, stringGlobals, nextStringLiteral, semantics).emit();
+    FunctionEmitter(body, function, signature, signatures, structs, stringGlobals, nextStringLiteral, semantics,
+                    stateGlobals).emit();
 
     // Static allocas belong in the entry block: an alloca inside a loop would grow
     // the stack on every iteration.
@@ -3581,6 +3613,30 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
         }
     }
 
+    StateGlobals stateGlobals;
+    for (const auto& item : module.items()) {
+        if (item->kind() != ast::AstNodeKind::SectionDeclaration) {
+            continue;
+        }
+        const auto& section = static_cast<const ast::SectionDeclaration&>(*item);
+        if (section.sectionKind() != ast::SectionKind::State) {
+            continue;
+        }
+        for (const ast::SectionInitializer& initializer : section.initializers()) {
+            std::string inoxType = initializer.typeName;
+            if (inoxType.empty()) {
+                if (const semantic::ResolvedType* resolved = semantics.typeOf(*initializer.value)) {
+                    inoxType = resolved->name;
+                }
+            }
+            const std::string llvmType = llvmTypeForScalar(inoxType);
+            if (llvmType.empty()) {
+                throw CodegenUnsupported("State variables of type " + inoxType + " are not lowered yet");
+            }
+            stateGlobals.push_back(StateGlobal{initializer.name, inoxType, llvmType, initializer.value.get()});
+        }
+    }
+
     for (const auto& item : module.items()) {
         if (item->kind() != ast::AstNodeKind::FunctionDeclaration) {
             continue;
@@ -3603,7 +3659,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
         const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
         if (!equalsIgnoreCase(function.name(), "Main")) {
             const auto signature = signatures.find(normalize(function.name()));
-            emitFunction(functionOutput, function, signature->second, signatures, structs, stringGlobals, nextStringLiteral, semantics);
+            emitFunction(functionOutput, function, signature->second, signatures, structs, stringGlobals, nextStringLiteral, semantics, stateGlobals);
         }
     }
 
@@ -3611,7 +3667,15 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
         throw CodegenError("LLVM emission requires Main");
     }
     const FunctionSignature mainSignature{"main", "i32", {}};
-    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, structs, stringGlobals, nextStringLiteral, semantics);
+    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, structs, stringGlobals, nextStringLiteral, semantics, stateGlobals);
+
+    for (const StateGlobal& state : stateGlobals) {
+        output << stateGlobalSymbol(state.name) << " = internal global " << state.llvmType
+               << " zeroinitializer\n";
+    }
+    if (!stateGlobals.empty()) {
+        output << '\n';
+    }
 
     for (const auto& [_, structType] : structs) {
         output << structType.llvmName << " = type { ";

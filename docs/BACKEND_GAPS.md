@@ -72,11 +72,11 @@ analysis but not lowered yet.)
 | `compound-assignment` | compound assignment += -= *= /= ^= | **OK** |  |
 | `hex-0x` | hexadecimal literal written 0xFF | **OK** |  |
 | `conditional-expression` | conditional expression if C then A else B | **OK** |  |
-| `state-global` | State section variable | **GAP** | unsupported expression in function: Main |
+| `state-global` | State section variable | **OK** |  |
 | `natural-conversion` | Natural local and checked Natural(X) (ADR-0014) | **OK** |  |
 | `byte-local` | Byte (UInt8) local initialized by conversion | **GAP** | unsupported local variable type for LLVM emission |
 
-Summary: GAP=6, OK=29
+Summary: GAP=5, OK=30
 
 ## Reading the table
 
@@ -93,9 +93,9 @@ Summary: GAP=6, OK=29
   (`until-in-if`, `until-across-loop`): it may appear anywhere in the repeat
   body, including inside `if`, `try` and loops nested in the repeat, and it runs
   every `ensure` between it and the repeat, innermost first.
-* `state-global`: semantic analysis resolves module `State` names, but the
-  emitter does not yet receive their storage. `const-use` was in the same
-  situation and was closed by P-C stage 1 (below).
+* `state-global`: closed in v3.43; scalar State variables are LLVM globals
+  initialized at the start of `main`. State of struct, String or fixed-width
+  type is still a gap.
 * `case` and `unless` are lowered since v3.42 (probes `case`, `case-ada-choices`, `unless`).
 * `byte-local` (v3.39): `Byte` is registered as UInt8 and its conversions are
   range-checked, but no integer type other than Integer/Int64/Natural is

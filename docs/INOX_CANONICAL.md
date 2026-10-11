@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.42 (Layer B: case and unless lowered)
+# Version: v3.43 (Layer B: module State lowered)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -486,6 +486,16 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.43 — 2026-10-11 — module `State` lowered (Layer B; CANON-5 unchanged).
+#   - Each State variable of type Integer/Int64, Natural, Bool or Float is an
+#     internal LLVM global (`@inox.state.<name>`), zero at load time and
+#     initialized in source order at the start of `main`, so an initializer
+#     may call a function or read an earlier State. Routines read and write it
+#     like a local; a Natural State keeps the ADR-0015 range check.
+#   - Still a gap: State of struct, String or fixed-width type ("State
+#     variables of type T are not lowered yet").
+#   - Tests: runtime `state-lowering`, trap `state-natural-range`.
 #
 # v3.42 — 2026-10-11 — `case` and `unless` lowered (Layer B; ADR-0011 is
 #         unchanged).
@@ -3265,7 +3275,7 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  module `State` in expressions, `String` locals, and a
+  `State` variables of struct, String or fixed-width type, `String` locals, and a
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
@@ -3602,7 +3612,7 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  module `State` in expressions, `String` locals, and a
+  `State` variables of struct, String or fixed-width type, `String` locals, and a
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
