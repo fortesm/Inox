@@ -77,6 +77,7 @@ private:
     std::vector<ast::ExpressionPtr> parseArgumentList();
 
     ast::StatementPtr parseTypedLocalStatement();
+    std::string parseTypeName(const char* message);
     ast::StatementPtr parseIfStatement();
     ast::StatementPtr parseUnlessStatement();
     ast::StatementPtr parseWhileStatement();

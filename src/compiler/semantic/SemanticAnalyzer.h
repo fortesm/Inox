@@ -63,6 +63,10 @@ private:
     void declareTypeOrThrow(std::string_view name, bool isBuiltin, std::string aliasOf = {});
     void resolveTypeOrThrow(std::string_view name) const;
     std::string canonicalTypeName(std::string_view name) const;
+    std::string canonicalArrayTypeName(std::string_view name) const;
+    std::string analyzeIndexExpression(const ast::CallExpression& call);
+    static bool isIndexTarget(const ast::Expression& expression);
+    bool isSideEffectFree(const ast::Expression& expression) const;
 
     void declareModuleItem(const ast::AstNode& item);
     void registerFunctionSignatures(const ast::ModuleNode& module);

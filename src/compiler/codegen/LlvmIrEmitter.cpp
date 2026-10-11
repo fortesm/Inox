@@ -7,6 +7,7 @@
 
 #include "LlvmIrEmitter.h"
 #include "../support/Platform.h"
+#include "../support/ArrayType.h"
 #include "../exceptions/ExceptionTypes.h"
 
 #include <cctype>
@@ -430,16 +431,70 @@ bool isMathBuiltin(std::string_view inoxName)
            equalsIgnoreCase(inoxName, "CycleToRad");
 }
 
+// CANON-13: a canonical fixed array type (numeric bounds, see
+// support/ArrayType.h) and the LLVM storage of its elements. Narrow integers
+// are stored in their own width and widened to i64 when read.
+struct ArrayLayout {
+    std::int64_t low = 0;
+    std::int64_t high = 0;
+    std::string elementType;      // Inox element type (may be an array)
+    std::string elementStorage;   // LLVM storage type of one element
+    std::string llvmType;         // [N x elementStorage]
+};
+
+std::optional<ArrayLayout> arrayLayout(std::string_view canonicalType);
+
 std::string llvmTypeForInoxType(std::string_view inoxType, const StructDefinitions& structs)
 {
     if (const std::string scalar = llvmTypeForScalar(inoxType); !scalar.empty()) {
         return scalar;
+    }
+    if (const auto layout = arrayLayout(inoxType)) {
+        return layout->llvmType;
     }
     const auto structType = structs.find(normalize(inoxType));
     if (structType != structs.end()) {
         return structType->second.llvmName;
     }
     return {};
+}
+
+
+std::string scalarStorageType(std::string_view inoxType)
+{
+    if (const auto range = narrowIntegerRange(inoxType)) {
+        if (range->high <= 255) {
+            return "i8";
+        }
+        if (range->high <= 65535) {
+            return "i16";
+        }
+        return "i32";
+    }
+    return llvmTypeForScalar(inoxType);
+}
+
+std::optional<ArrayLayout> arrayLayout(std::string_view canonicalType)
+{
+    const auto parts = support::splitArrayTypeName(canonicalType);
+    if (!parts) {
+        return std::nullopt;
+    }
+    ArrayLayout layout;
+    layout.low = std::stoll(parts->low);
+    layout.high = std::stoll(parts->high);
+    layout.elementType = parts->element;
+    if (const auto inner = arrayLayout(parts->element)) {
+        layout.elementStorage = inner->llvmType;
+    } else {
+        layout.elementStorage = scalarStorageType(parts->element);
+    }
+    if (layout.elementStorage.empty()) {
+        return std::nullopt;
+    }
+    layout.llvmType = "[" + std::to_string(layout.high - layout.low + 1) + " x " +
+                      layout.elementStorage + "]";
+    return layout;
 }
 
 const StructDefinition* findStruct(const StructDefinitions& structs, std::string_view inoxName)
@@ -515,7 +570,8 @@ void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefi
 
 
 FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& function,
-                                         const StructDefinitions& structs)
+                                         const StructDefinitions& structs,
+                                         const semantic::SemanticResult& semantics)
 {
     const auto& tokens = function.signatureTokens();
 
@@ -547,9 +603,15 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
                 }
                 parameterType = tokens[index++];
             }
+            if (support::isArrayTypeName(parameterType)) {
+                parameterType = semantics.canonicalTypeName(parameterType);
+            }
 
             std::string llvmParameterType = llvmTypeForScalar(parameterType);
-            if (llvmParameterType.empty()) {
+            if (const auto layout = arrayLayout(parameterType)) {
+                // CANON-13: an array is a value; a by-value parameter is a copy.
+                llvmParameterType = layout->llvmType;
+            } else if (llvmParameterType.empty()) {
                 const StructDefinition* structType = findStruct(structs, parameterType);
                 if (structType == nullptr) {
                     throw CodegenUnsupported(
@@ -584,6 +646,8 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
             "LLVM emission currently supports scalar, struct return types, or subroutines without return type");
     } else if (const std::string scalarReturnType = llvmTypeForScalar(tokens[index]); !scalarReturnType.empty()) {
         llvmReturnType = scalarReturnType;
+    } else if (const auto layout = arrayLayout(semantics.canonicalTypeName(tokens[index]))) {
+        llvmReturnType = layout->llvmType;
     } else if (const StructDefinition* structType = findStruct(structs, tokens[index])) {
         llvmReturnType = structType->llvmName;
     } else {
@@ -639,6 +703,15 @@ public:
                             LocalInfo{stateGlobalSymbol(state.name), state.inoxType, state.llvmType});
         }
         for (const FunctionParameter& parameter : signature.parameters) {
+            if (const auto layout = arrayLayout(parameter.inoxType)) {
+                const std::string slot = "%" + parameter.llvmName + ".addr";
+                output_ << "  " << slot << " = alloca " << layout->llvmType << "\n";
+                output_ << "  store " << layout->llvmType << " %" << parameter.llvmName
+                        << ", ptr " << slot << '\n';
+                locals_.emplace(normalize(parameter.inoxName),
+                                LocalInfo{slot, parameter.inoxType, layout->llvmType});
+                continue;
+            }
             if (const StructDefinition* structType = findStruct(structs_, parameter.inoxType)) {
                 if (parameter.llvmType == "ptr") {
                     locals_.emplace(
@@ -2007,8 +2080,11 @@ private:
         locals_.insert_or_assign(normalizedName, LocalInfo{slot, inoxType, llvmType});
     }
 
-    void emitTypedLocalVariable(std::string_view name, std::string_view typeName, const ast::Expression* initializer = nullptr)
+    void emitTypedLocalVariable(std::string_view name, std::string_view writtenTypeName, const ast::Expression* initializer = nullptr)
     {
+        const std::string canonicalArray = semantics_.canonicalTypeName(std::string(writtenTypeName));
+        const std::string_view typeName =
+            support::isArrayTypeName(writtenTypeName) ? std::string_view(canonicalArray) : writtenTypeName;
         const std::string llvmType = llvmTypeForInoxType(typeName, structs_);
         if (llvmType.empty()) {
             throw CodegenUnsupported("unsupported local variable type for LLVM emission");
@@ -2038,6 +2114,15 @@ private:
             }
             locals_.insert_or_assign(normalizedName,
                                      LocalInfo{slot, std::string(typeName), structType->llvmName});
+            return;
+        }
+
+        if (support::isArrayTypeName(typeName)) {
+            // CANON-13: an array is a value; without an initializer every
+            // element is its type's zero.
+            const std::string value = initializer != nullptr ? emitExpression(*initializer) : "zeroinitializer";
+            output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
+            locals_.insert_or_assign(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
             return;
         }
 
@@ -2514,6 +2599,15 @@ private:
             return;
         }
 
+        if (isIndexCall(assignment.left())) {
+            const ElementAddress element = emitElementAddress(
+                static_cast<const ast::CallExpression&>(assignment.left()));
+            const std::string value = emitExpression(assignment.right());
+            const std::string stored = narrowForStorage(value, element);
+            output_ << "  store " << element.storage << ' ' << stored << ", ptr " << element.pointer << '\n';
+            return;
+        }
+
         if (isMemberAccessCall(assignment.left())) {
             const FieldAddress field = emitMemberAddress(
                 static_cast<const ast::CallExpression&>(assignment.left()));
@@ -2609,6 +2703,12 @@ private:
                     return "double";
                 }
                 if (isNaturalConversion(call)) {
+                    return "i64";
+                }
+                if (callee.name() == "__index") {
+                    return valueLlvmType(semanticTypeName(expression));
+                }
+                if (arrayBoundCall(call)) {
                     return "i64";
                 }
                 const auto signature = signatures_.find(normalize(callee.name()));
@@ -2711,6 +2811,120 @@ private:
 
     // ADR-0015: an Integer expression stored into a Natural carries an
     // implicit range check, recorded by semantic analysis.
+    static bool isIndexCall(const ast::Expression& expression)
+    {
+        if (expression.kind() != ast::AstNodeKind::CallExpression) {
+            return false;
+        }
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        return call.callee().kind() == ast::AstNodeKind::IdentifierExpression &&
+               static_cast<const ast::IdentifierExpression&>(call.callee()).name() == "__index" &&
+               call.arguments().size() == 2;
+    }
+
+    // The LLVM type of a value of an Inox type in SSA form: arrays are
+    // aggregates; every integer is i64.
+    std::string valueLlvmType(const std::string& inoxType) const
+    {
+        if (const auto layout = arrayLayout(inoxType)) {
+            return layout->llvmType;
+        }
+        const std::string scalar = llvmTypeForScalar(inoxType);
+        return scalar.empty() ? std::string("i64") : scalar;
+    }
+
+    // Low(A), High(A) and Length(A) of a fixed array are constants (CANON-13).
+    std::optional<std::int64_t> arrayBoundCall(const ast::CallExpression& call) const
+    {
+        if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().size() != 1) {
+            return std::nullopt;
+        }
+        const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
+        const bool low = equalsIgnoreCase(callee.name(), "Low");
+        const bool high = equalsIgnoreCase(callee.name(), "High");
+        if (!low && !high && !equalsIgnoreCase(callee.name(), "Length")) {
+            return std::nullopt;
+        }
+        const auto layout = arrayLayout(semanticTypeName(*call.arguments()[0]));
+        if (!layout) {
+            return std::nullopt;
+        }
+        return low ? layout->low : high ? layout->high : layout->high - layout->low + 1;
+    }
+
+    struct ElementAddress {
+        std::string pointer;
+        std::string storage;      // LLVM storage type of the element
+        std::string elementType;  // Inox element type
+    };
+
+    // The address of an array value: a local's slot, an element of an outer
+    // array, or a temporary holding any other array value.
+    std::string emitArrayBaseAddress(const ast::Expression& base, const ArrayLayout& layout)
+    {
+        if (base.kind() == ast::AstNodeKind::IdentifierExpression) {
+            const auto local = locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(base).name()));
+            if (local != locals_.end()) {
+                return local->second.slot;
+            }
+        }
+        if (isIndexCall(base)) {
+            return emitElementAddress(static_cast<const ast::CallExpression&>(base)).pointer;
+        }
+        const std::string value = emitExpression(base);
+        const std::string slot = "%arraytmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << slot << " = alloca " << layout.llvmType << '\n';
+        output_ << "  store " << layout.llvmType << ' ' << value << ", ptr " << slot << '\n';
+        return slot;
+    }
+
+    // CANON-13: every index is checked against Low..High (fault kind 9).
+    ElementAddress emitElementAddress(const ast::CallExpression& call)
+    {
+        const ast::Expression& base = *call.arguments()[0];
+        const auto layout = arrayLayout(semanticTypeName(base));
+        if (!layout) {
+            throw CodegenUnsupported("indexing of this value is not lowered yet");
+        }
+        const std::string basePointer = emitArrayBaseAddress(base, *layout);
+        const std::string index = emitExpression(*call.arguments()[1]);
+        const std::string checked = emitRangeCheck(index, IntegerRange{layout->low, layout->high}, 9);
+        std::string offset = checked;
+        if (layout->low != 0) {
+            offset = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << offset << " = sub i64 " << checked << ", " << layout->low << '\n';
+        }
+        const std::string pointer = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << pointer << " = getelementptr inbounds " << layout->llvmType << ", ptr "
+                << basePointer << ", i64 0, i64 " << offset << '\n';
+        return ElementAddress{pointer, layout->elementStorage, layout->elementType};
+    }
+
+    std::string loadElement(const ElementAddress& element)
+    {
+        const std::string loaded = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << loaded << " = load " << element.storage << ", ptr " << element.pointer << '\n';
+        const auto range = narrowIntegerRange(element.elementType);
+        if (!range) {
+            return loaded;
+        }
+        const std::string widened = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << widened << " = " << (range->low < 0 ? "sext " : "zext ") << element.storage
+                << ' ' << loaded << " to i64\n";
+        return widened;
+    }
+
+    // A narrow integer is already in range; storing it keeps its low bits.
+    std::string narrowForStorage(const std::string& value, const ElementAddress& element)
+    {
+        if (!narrowIntegerRange(element.elementType)) {
+            return value;
+        }
+        const std::string truncated = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << truncated << " = trunc i64 " << value << " to " << element.storage << '\n';
+        return truncated;
+    }
+
     // The semantic type name of an expression, or empty.
     std::string semanticTypeName(const ast::Expression& expression) const
     {
@@ -2941,6 +3155,13 @@ private:
             }
 
             const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
+            if (callee.name() == "__index") {
+                const ElementAddress element = emitElementAddress(call);
+                return loadElement(element);
+            }
+            if (const auto bound = arrayBoundCall(call)) {
+                return std::to_string(*bound);
+            }
             if (equalsIgnoreCase(callee.name(), "__member")) {
                 try {
                     const FieldAddress field = emitMemberAddress(call);
@@ -3408,6 +3629,7 @@ constexpr RuntimeFaultKind kRuntimeFaultKinds[] = {
     {6, "invalid integer input"},
     {7, "value out of range for Natural"},
     {8, "integer conversion out of range"},
+    {9, "array index out of bounds"},
 };
 
 std::string llvmByteString(const std::string& text)
@@ -3442,7 +3664,8 @@ std::string runtimeFaultSeam()
        << "; unwinding, so try/except/ensure cannot intercept it. Kinds: 1 integer\n"
        << "; overflow, 2 division or modulo by zero, 3 shift count outside 0..63, 4 for\n"
        << "; step <= 0, 5 negative exponent, 6 invalid integer input, 7 negative value\n"
-       << "; converted to Natural, 8 integer conversion outside the target range.\n";
+       << "; converted to Natural, 8 integer conversion outside the target range, 9 array\n"
+       << "; index outside Low..High.\n";
     for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
         const std::string text = std::string("Inox runtime error: ") + kind.message + "\n";
         ir << "@.inox.fault." << kind.code << " = private unnamed_addr constant ["
@@ -3783,7 +4006,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
             mainFunction = &function;
         } else {
             const std::string normalizedName = normalize(function.name());
-            signatures.emplace(normalizedName, parseFunctionSignature(function, structs));
+            signatures.emplace(normalizedName, parseFunctionSignature(function, structs, semantics));
         }
     }
 

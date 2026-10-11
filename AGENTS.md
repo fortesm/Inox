@@ -118,7 +118,8 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 
 - enum exhaustiveness checks for `case` (case itself is lowered since v3.42);
 - module exports, visibility, and package search beyond local `Module`/`Use`;
-- arrays/ranges/enums/sets implementation;
+- ranges/enums/sets; arrays in struct fields and State, String/struct array
+  elements (fixed arrays otherwise work since v3.45);
 - vector runtime;
 - final runtime-fault infrastructure beyond the checked arithmetic already implemented;
 - final runtime ABI beyond the temporary Clang-backed `--build`/`--run` driver.

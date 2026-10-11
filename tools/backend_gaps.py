@@ -358,6 +358,15 @@ Main :
     PutLn(bitnot X, bitnot B)
 ;
 """),
+    ("array-local", "fixed array with indexing, Low/High and += on an element", """Main :
+    A Array[1..3] Integer
+    for I in Low(A)..High(A)
+        A[I] := I
+    ;
+    A[2] += 10
+    PutLn(A[2])
+;
+"""),
     ("uint64-local", "UInt64 local", """Main :
     U UInt64 := UInt64(5)
     PutLn(U)

@@ -11,6 +11,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 ## Unreleased
 
 ### Added
+- Fixed arrays `Array[Low..High] T` with checked indexing, multi-dimensional `M[I, J]`, `Low`/`High`/`Length`, value copy, array parameters and results; `A[I] += 1`.
 - Fixed-width integers Int8, Int16, Int32, Byte/UInt8, UInt16, UInt32 are compiled with overflow and conversion range checks; a constant such as `B Byte := 200` or `B + 1` is read in the fixed-width type.
 - `bitnot` is compiled.
 - Module `State` variables (Integer, Natural, Bool, Float) are compiled; they are initialized in source order before `Main` runs.
@@ -41,7 +42,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 ### Known limitations
 - `UInt64`/`UInteger` values are not lowered yet.
 - Not lowered yet: `State` of struct/String type, `String` locals, struct construction and initializers, Float32 conversion.
-- Arrays, vectors, sets, enums and ranges are not implemented.
+- Vectors, sets, enums and ranges are not implemented; arrays are not yet allowed in struct fields or State.
 - The compiler is not yet aligned with the canonical `<T>` generic syntax; its existing generic syntax still uses `[T]`.
 
 ## V0.4 — 2026-10-09

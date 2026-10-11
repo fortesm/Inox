@@ -432,7 +432,30 @@ PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
 <section id="arrays-sets-future"><h2>Arrays, vectors, ranges, enums, and sets</h2>
 <p>The 0.1 direction defines or reserves several Pascal/Ada-inspired aggregate concepts:</p>
 <ul>
-<li>Fixed arrays use explicit ranges: <code>Array[Low..High] Type</code>.</li>
+<li>Fixed arrays use explicit ranges: <code>Array[Low..High] Type</code>. They work today:</li>
+</ul>
+<pre><code>Const Size := 5
+
+Sum(V Array[1..Size] Integer) Integer :
+    Total Integer := 0
+    for I in Low(V)..High(V)
+        Total += V[I]
+    ;
+    Return Total
+;
+
+Main :
+    A Array[1..Size] Integer
+    for I in 1..Size
+        A[I] := I * I
+    ;
+    A[2] += 100
+    PutLn(Sum(A))
+    M Array[1..2, -1..1] Byte
+    M[1, 0] := 200
+;</code></pre>
+<p>An array is a value: assigning it (<code>B Array[1..Size] Integer := A</code>) or passing it to a routine copies it. Every index is checked: <code>A[I]</code> with <code>I</code> outside <code>Low(A)..High(A)</code> stops the program with "array index out of bounds", and a constant index outside the bounds is a compile error. <code>Low</code>, <code>High</code> and <code>Length</code> are constants. A multi-dimensional array is an array of arrays (<code>M[I, J]</code> is <code>M[I][J]</code>). Bounds are integer literals or Consts; elements are integers, <code>Float</code> or <code>Bool</code> for now.</p>
+<ul>
 <li>Vectors are planned as dynamic, 0-based, bounds-checked collections.</li>
 <li>Generic types are written with angle brackets: <code>Vector&lt;Integer&gt;</code>, <code>Set&lt;TCardSuit&gt;</code>. Square brackets stay for indexing and bounds: <code>Values[I]</code>, <code>Array[1..10] Integer</code>. The compiler still uses the older <code>[T]</code> spelling until it is updated.</li>
 <li>Ranges are finite ordinal declarations.</li>

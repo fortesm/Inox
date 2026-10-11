@@ -1,1 +1,1 @@
-a compound assignment target must be a variable or a field (ADR-0012)
+a compound assignment target must be a variable, a field or an array element whose indices have no side effects (ADR-0012)

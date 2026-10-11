@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.44 (fixed-width integers lowered; constant-literal clarification)
+# Version: v3.45 (Layer B: fixed arrays lowered)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -486,6 +486,35 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.45 — 2026-10-11 — fixed arrays `Array[Low..High] T` implemented (Layer B;
+#         CANON-13 unchanged).
+#   - Parser: `A Array[1..10] Integer`; a bound is an integer literal
+#     (optionally negative) or a Const name; `Array[1..3, 1..4] T` is an array
+#     of arrays and `M[I, J]` is `M[I][J]`. In a routine signature an array
+#     type is one type token.
+#   - Semantics: Const bounds are resolved (`Array[1..Size] T` equals
+#     `Array[1..5] T` when Size is 5); Low > High is an error; an index is an
+#     integer, and a constant index outside Low..High is a compile error.
+#     `Low(A)`, `High(A)`, `Length(A)` are constants. Arrays are not compared.
+#     `A[I] := X` needs a mutable array variable (parameters are immutable).
+#   - ADR-0012 extension of the target rule: `A[I] += 1` is accepted when the
+#     indices have no side effects (literals, variables, operators, field and
+#     index reads), so reading and writing the element through the same
+#     indices is exact; `A[Next] += 1` with a call stays an error.
+#   - Lowering: an array is an LLVM `[N x T]` value (value type: assignment and
+#     by-value parameters copy); narrow integer elements are stored in their
+#     own width (Byte in i8) and widened when read. Every index is checked
+#     (new fault kind 9, "array index out of bounds"). Arrays are allowed as
+#     parameters and results.
+#   - Still to come: arrays in struct fields and State, String/struct
+#     elements, array literals, `ref` parameters (next).
+#   - Tests: runtime `arrays`, trap `array-index-out-of-bounds`; diagnostics
+#     `array-constant-index-out-of-bounds`, `array-compare`,
+#     `array-empty-bounds`, `array-index-not-integer`,
+#     `array-parameter-immutable`, `index-non-array`,
+#     `array-element-type-unsupported`; `compound-index-target` now checks a
+#     call in the index.
 #
 # v3.44 — 2026-10-11 — fixed-width integers lowered (Layer B) and a CANON-8
 #         clarification of constant literals (Layer A text added under
@@ -3192,6 +3221,7 @@ Diagnostic text (the category names are part of the contract and are checked by
     Inox runtime error: invalid integer input        (Get/GetLn, see CANON-17)
     Inox runtime error: value out of range for Natural   (ADR-0014/0015)
     Inox runtime error: integer conversion out of range  (T(X) to a fixed-width type)
+    Inox runtime error: array index out of bounds        (CANON-13)
 
 Lowering note (Layer B, not language law): every check calls one internal IR
 function, `__inox_arith_fault(i32 kind)`, `noreturn nounwind cold`. It calls
@@ -3345,7 +3375,9 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 8. Crypto arithmetic (i128 x10^18) — name registered, behavior missing, needs tests.
 9. BigCurrency — not present; needs big-integer runtime (0.2+).
 10. case LLVM lowering: CLOSED (v3.42). Enum exhaustiveness waits for Enum.
-11. Array[Low..High] — not parsed or lowered.
+11. Array[Low..High]: parsed, checked and lowered since v3.45 in locals,
+    routine parameters and results; not yet in struct fields or `State`;
+    elements are integer, Float or Bool (not String or struct yet).
 12. Range/Enum/Set full implementation.
 13. Checked integer arithmetic traps. — IMPLEMENTED (v3.18); see CANON-19.
 14. Explicit type conversions `TypeName(x)`.
@@ -3682,7 +3714,9 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 8. Crypto arithmetic (i128 x10^18) — name registered, behavior missing, needs tests.
 9. BigCurrency — not present; needs big-integer runtime (0.2+).
 10. case LLVM lowering: CLOSED (v3.42). Enum exhaustiveness waits for Enum.
-11. Array[Low..High] — not parsed or lowered.
+11. Array[Low..High]: parsed, checked and lowered since v3.45 in locals,
+    routine parameters and results; not yet in struct fields or `State`;
+    elements are integer, Float or Bool (not String or struct yet).
 12. Range/Enum/Set full implementation.
 13. Checked integer arithmetic traps. — IMPLEMENTED (v3.18); see CANON-19.
 14. Explicit type conversions `TypeName(x)`.
