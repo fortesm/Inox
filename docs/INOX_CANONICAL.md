@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.46 (Layer A: ADR-0016 ref and ref mut parameters)
+# Version: v3.47 (Layer A: ADR-0017 read-only slices)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -486,6 +486,19 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.47 — 2026-10-11 — ADR-0017: read-only slices (Layer A, approved by Marcelo
+#         Fortes on 2026-10-11 with the order "Array, ref, Slice").
+#   - `A[L..H]`, `A[..H]`, `A[L..]`, `A[..]`; type `Slice<T>`, the first generic
+#     type the compiler accepts; indices kept; never empty; read-only; never
+#     outlives its array (named base only, bound once, not returned).
+#   - Layer B: a slice is `{ ptr, i64, i64 }` (data at element L, L, H); new
+#     fault kind 10 "slice bounds out of range"; indices checked against the
+#     slice bounds (kind 9).
+#   - Tests: runtime `slices`, traps `slice-bounds-runtime`,
+#     `slice-index-out-of-bounds`; diagnostics `slice-readonly`,
+#     `slice-reassign`, `slice-return`, `slice-of-temporary`,
+#     `slice-constant-bounds`, `slice-empty`, `slice-by-ref`.
 #
 # v3.46 — 2026-10-11 — ADR-0016: `ref X T` and `ref mut X T` parameters
 #         (Layer A, approved by Marcelo Fortes on 2026-10-11 as part of the
@@ -1824,6 +1837,32 @@ ADR-0006 decision 4 used the phrase “Runtime overflow should trap in checking
 mode.” That policy is superseded by DECISION P-A, approved 2026-10-09: runtime
 arithmetic faults are deterministic Inox traps in every conforming build. This
 note records the later approved decision without rewriting the locked ADR.
+
+## ADR-0017 — Read-only slices  (Status: Accepted, 2026-10-11)
+Decision (Marcelo Fortes, 2026-10-11, approving the order "Array, then ref,
+then a read-only Slice (A[5..10])": "Ok Faça logo tudo na sua ordem!"). The
+idea comes from the design discussion with ChatGPT on Go slices, adapted to
+Inox safety: a slice is a bounded view, read-only, that never outlives its
+array.
+1. `A[L..H]`, `A[..H]`, `A[L..]` and `A[..]` give a view of elements L..H
+   of the array (or slice) A, without copying. An omitted bound is A's own
+   Low or High. The type is `Slice<T>` (generic arguments use `<...>`).
+2. A slice keeps the indices of its array (as in Ada): `A[3..6]` is indexed
+   3..6; `Low`, `High` and `Length` give its bounds at run time.
+3. Bounds: Low(A) <= L <= H <= High(A); a slice is never empty, like an
+   array (so `for I in Low(S)..High(S)` never runs backwards). Constant
+   bounds are checked at compile time, the others at run time ("slice bounds
+   out of range"). Every index is checked against the slice's bounds.
+4. Read-only: an element of a slice cannot be assigned.
+5. Lifetime: only a named array, parameter or a field/element of one is
+   sliced (never a temporary); a slice variable is bound once (no
+   reassignment); a slice cannot be returned, and slice fields and State do
+   not exist. So a slice never outlives its array.
+6. A slice is passed by value (it is already a view); `ref` on a slice is an
+   error. Arrays and slices are not compared.
+Rationale: a slice is "a reference plus a length": the read-only half of
+safe array views without pointer arithmetic. A writable view (`Slice mut`),
+concatenation and Vector come later with ownership.
 
 ## ADR-0016 — `ref` and `ref mut` parameters  (Status: Accepted, 2026-10-11)
 Decision (Marcelo Fortes, 2026-10-11, approving the order "Array, then ref T /
@@ -3268,6 +3307,7 @@ Diagnostic text (the category names are part of the contract and are checked by
     Inox runtime error: value out of range for Natural   (ADR-0014/0015)
     Inox runtime error: integer conversion out of range  (T(X) to a fixed-width type)
     Inox runtime error: array index out of bounds        (CANON-13)
+    Inox runtime error: slice bounds out of range        (ADR-0017)
 
 Lowering note (Layer B, not language law): every check calls one internal IR
 function, `__inox_arith_fault(i32 kind)`, `noreturn nounwind cold`. It calls

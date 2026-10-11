@@ -15,6 +15,7 @@
 #include <cctype>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -260,13 +261,17 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
                     throw SemanticError("mutable parameters are reserved for a future Inox version: use a local variable or return a new value");
                 }
                 if (index >= tokens.size() ||
-                    (!looksLikeIdentifier(tokens[index]) && !support::isArrayTypeName(tokens[index]))) {
+                    (!looksLikeIdentifier(tokens[index]) && !support::isArrayTypeName(tokens[index]) &&
+                     !support::isSliceTypeName(tokens[index]))) {
                     throw SemanticError("expected type for parameter: " + parameterName);
                 }
                 resolveTypeOrThrow(tokens[index]);
                 parameterType = canonicalTypeName(tokens[index]);
-                if (support::isArrayTypeName(tokens[index])) {
+                if (support::isArrayTypeName(tokens[index]) || support::isSliceTypeName(tokens[index])) {
                     result_.setCanonicalTypeName(tokens[index], parameterType);
+                }
+                if (mode != PassMode::Value && support::isSliceTypeName(parameterType)) {
+                    throw SemanticError("a slice is already a view: pass it without ref (ADR-0017)");
                 }
                 ++index;
             }
@@ -293,11 +298,15 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
 
     if (index < tokens.size()) {
         if (index + 1 != tokens.size() ||
-            (!looksLikeIdentifier(tokens[index]) && !support::isArrayTypeName(tokens[index]))) {
+            (!looksLikeIdentifier(tokens[index]) && !support::isArrayTypeName(tokens[index]) &&
+             !support::isSliceTypeName(tokens[index]))) {
             throw SemanticError("invalid return type in function: " + function.name());
         }
         resolveTypeOrThrow(tokens[index]);
         signature.returnType = canonicalTypeName(tokens[index]);
+        if (support::isSliceTypeName(signature.returnType)) {
+            throw SemanticError("a slice cannot be returned: it would outlive its array (ADR-0017)");
+        }
         if (support::isArrayTypeName(tokens[index])) {
             result_.setCanonicalTypeName(tokens[index], signature.returnType);
         }
@@ -467,8 +476,8 @@ void SemanticAnalyzer::declareTypeOrThrow(std::string_view name, bool isBuiltin,
 
 void SemanticAnalyzer::resolveTypeOrThrow(std::string_view name) const
 {
-    if (support::isArrayTypeName(name)) {
-        (void)canonicalArrayTypeName(name);
+    if (support::isArrayTypeName(name) || support::isSliceTypeName(name)) {
+        (void)canonicalTypeName(name);
         return;
     }
     if (types_.resolve(name) == nullptr) {
@@ -493,6 +502,16 @@ std::string SemanticAnalyzer::canonicalTypeName(std::string_view name) const
 {
     if (support::isArrayTypeName(name)) {
         return canonicalArrayTypeName(name);
+    }
+    if (support::isSliceTypeName(name)) {
+        const std::string element = support::sliceElementTypeName(name);
+        resolveTypeOrThrow(element);
+        const std::string canonical = canonicalTypeName(element);
+        if (!support::isArrayTypeName(canonical) && !isNumericType(canonical) && canonical != "Bool") {
+            throw SemanticError("slices of " + canonical +
+                                " are not supported yet; use an integer, Float, Bool or array element");
+        }
+        return support::makeSliceTypeName(canonical);
     }
     const TypeSymbol* type = types_.resolve(name);
     if (type == nullptr) {
@@ -1055,7 +1074,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         std::string typeName = var.typeName().empty() ? std::string{} : canonicalTypeName(var.typeName());
         if (!var.typeName().empty()) {
             resolveTypeOrThrow(var.typeName());
-            if (support::isArrayTypeName(var.typeName())) {
+            if (support::isArrayTypeName(var.typeName()) || support::isSliceTypeName(var.typeName())) {
                 result_.setCanonicalTypeName(var.typeName(), typeName);
             }
         }
@@ -2208,6 +2227,13 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
 std::string SemanticAnalyzer::analyzeIndexExpression(const ast::CallExpression& call)
 {
     const std::string baseType = canonicalTypeName(analyzeExpression(*call.arguments()[0]));
+    if (support::isSliceTypeName(baseType)) {
+        const std::string indexType = canonicalTypeName(analyzeExpression(*call.arguments()[1]));
+        if (!isIntegerType(indexType)) {
+            throw SemanticError("an array index must be an integer, not " + indexType);
+        }
+        return support::sliceElementTypeName(baseType);
+    }
     const auto parts = support::splitArrayTypeName(baseType);
     if (!parts) {
         throw SemanticError("only an array can be indexed (CANON-13); this value has type " + baseType);
@@ -2224,6 +2250,85 @@ std::string SemanticAnalyzer::analyzeIndexExpression(const ast::CallExpression& 
                             parts->low + ".." + parts->high);
     }
     return parts->element;
+}
+
+// ADR-0017: `A[L..H]` is a read-only view of elements L..H of a named array
+// or slice, keeping their indices. An omitted bound is the base's own.
+std::string SemanticAnalyzer::analyzeSliceExpression(const ast::CallExpression& call)
+{
+    const ast::Expression& base = *call.arguments()[0];
+    const std::string baseType = canonicalTypeName(analyzeExpression(base));
+    std::string element;
+    std::optional<std::pair<std::int64_t, std::int64_t>> staticBounds;
+    if (support::isSliceTypeName(baseType)) {
+        element = support::sliceElementTypeName(baseType);
+    } else if (const auto parts = support::splitArrayTypeName(baseType)) {
+        element = parts->element;
+        staticBounds = std::make_pair(std::stoll(parts->low), std::stoll(parts->high));
+    } else {
+        throw SemanticError("only an array or a slice can be sliced (ADR-0017); this value has type " + baseType);
+    }
+    // The view must not outlive its storage: the base is a named variable or
+    // parameter (or a field or element of one), never a temporary.
+    const ast::Expression* root = &base;
+    while (root->kind() == ast::AstNodeKind::CallExpression) {
+        const auto& inner = static_cast<const ast::CallExpression&>(*root);
+        if (inner.callee().kind() != ast::AstNodeKind::IdentifierExpression || inner.arguments().empty()) {
+            break;
+        }
+        const std::string& name = static_cast<const ast::IdentifierExpression&>(inner.callee()).name();
+        if (name != "__index" && name != "__member" && name != "__slice") {
+            break;
+        }
+        root = inner.arguments()[0].get();
+    }
+    const Symbol* rootSymbol = root->kind() == ast::AstNodeKind::IdentifierExpression
+        ? symbols_.currentScope().resolve(static_cast<const ast::IdentifierExpression&>(*root).name())
+        : nullptr;
+    if (rootSymbol == nullptr ||
+        (rootSymbol->kind != SymbolKind::Variable && rootSymbol->kind != SymbolKind::State)) {
+        throw SemanticError("only a named array can be sliced, not a temporary value (ADR-0017)");
+    }
+    std::int64_t low = 0;
+    std::int64_t high = 0;
+    bool lowKnown = false;
+    bool highKnown = false;
+    for (int which = 1; which <= 2; ++which) {
+        const ast::Expression& bound = *call.arguments()[which];
+        if (bound.kind() == ast::AstNodeKind::IdentifierExpression &&
+            (static_cast<const ast::IdentifierExpression&>(bound).name() == "__low" ||
+             static_cast<const ast::IdentifierExpression&>(bound).name() == "__high")) {
+            if (staticBounds) {
+                (which == 1 ? low : high) = which == 1 ? staticBounds->first : staticBounds->second;
+                (which == 1 ? lowKnown : highKnown) = true;
+            }
+            continue;
+        }
+        const std::string boundType = canonicalTypeName(analyzeExpression(bound));
+        if (!isIntegerType(boundType)) {
+            throw SemanticError("a slice bound must be an integer, not " + boundType);
+        }
+        std::int64_t value = 0;
+        if (constantIntegerValue(bound, value)) {
+            (which == 1 ? low : high) = value;
+            (which == 1 ? lowKnown : highKnown) = true;
+        }
+    }
+    if (staticBounds) {
+        if (lowKnown && low < staticBounds->first) {
+            throw SemanticError("slice bounds out of range: " + std::to_string(low) + " is below " +
+                                std::to_string(staticBounds->first));
+        }
+        if (highKnown && high > staticBounds->second) {
+            throw SemanticError("slice bounds out of range: " + std::to_string(high) + " is above " +
+                                std::to_string(staticBounds->second));
+        }
+    }
+    if (lowKnown && highKnown && low > high) {
+        throw SemanticError("slice bounds out of range: " + std::to_string(low) + ".." +
+                            std::to_string(high));
+    }
+    return support::makeSliceTypeName(element);
 }
 
 std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
@@ -2258,10 +2363,16 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
         if (callee.name() == "__index") {
             return analyzeIndexExpression(call);
         }
+        if (callee.name() == "__slice") {
+            return analyzeSliceExpression(call);
+        }
         if ((equalsIgnoreCase(callee.name(), "Low") || equalsIgnoreCase(callee.name(), "High") ||
              equalsIgnoreCase(callee.name(), "Length")) &&
             call.arguments().size() == 1) {
             const std::string argumentType = canonicalTypeName(analyzeExpression(*call.arguments()[0]));
+            if (support::isSliceTypeName(argumentType)) {
+                return "Int64";  // ADR-0017: a slice's bounds are known at run time
+            }
             if (const auto parts = support::splitArrayTypeName(argumentType)) {
                 // CANON-13: Low, High and Length of a fixed array are
                 // compile-time constants of its type.
@@ -2655,6 +2766,10 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
                 !target.isMutable) {
                 throw SemanticError("assignment target is not mutable: " + identifier.name());
             }
+            if (support::isSliceTypeName(target.typeName)) {
+                throw SemanticError("a slice is bound once and cannot be reassigned: " + identifier.name() +
+                                    " (ADR-0017)");
+            }
             targetType = target.typeName;
         } else if (expression.left().kind() == ast::AstNodeKind::CallExpression &&
                    isMemberCall(static_cast<const ast::CallExpression&>(expression.left()))) {
@@ -2700,6 +2815,16 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
             targetType = analyzeExpression(expression.left());
             if (!rootWasRead) {
                 readSymbols_.erase(rootSymbol);
+            }
+            // ADR-0017: a slice is a read-only view.
+            for (const ast::Expression* base = &expression.left();
+                 base->kind() == ast::AstNodeKind::CallExpression;
+                 base = static_cast<const ast::CallExpression&>(*base).arguments()[0].get()) {
+                const ast::Expression& inner = *static_cast<const ast::CallExpression&>(*base).arguments()[0];
+                if (const ResolvedType* type = result_.typeOf(inner);
+                    type != nullptr && support::isSliceTypeName(type->name)) {
+                    throw SemanticError("a slice is read-only: its elements cannot be assigned (ADR-0017)");
+                }
             }
         } else {
             throw SemanticError("assignment target must be an identifier, field or array element");
@@ -2798,8 +2923,8 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
     case ast::BinaryOperator::LessEqual:
     case ast::BinaryOperator::GreaterEqual:
         requireMatchingTypes();
-        if (support::isArrayTypeName(leftType)) {
-            throw SemanticError("arrays cannot be compared with '" +
+        if (support::isArrayTypeName(leftType) || support::isSliceTypeName(leftType)) {
+            throw SemanticError("arrays and slices cannot be compared with '" +
                                 std::string(binaryOperatorName(op)) + "' (CANON-13)");
         }
         return "Bool";

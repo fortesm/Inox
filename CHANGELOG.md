@@ -11,6 +11,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 ## Unreleased
 
 ### Added
+- Read-only slices `A[L..H]`, `A[..H]`, `A[L..]`, `A[..]` of type `Slice<T>` (ADR-0017), checked bounds, never outliving their array.
 - `ref X T` and `ref mut X T` parameters (ADR-0016): references to the caller's variable, field or array element, with exclusivity checked at compile time.
 - Fixed arrays `Array[Low..High] T` with checked indexing, multi-dimensional `M[I, J]`, `Low`/`High`/`Length`, value copy, array parameters and results; `A[I] += 1`.
 - Fixed-width integers Int8, Int16, Int32, Byte/UInt8, UInt16, UInt32 are compiled with overflow and conversion range checks; a constant such as `B Byte := 200` or `B + 1` is read in the fixed-width type.

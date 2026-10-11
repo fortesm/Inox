@@ -86,6 +86,9 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
   as in Ada (ADR-0015); never require `Natural(X)`. A negative constant is a
   compile error; arithmetic on Natural yields Integer. `Byte` is `UInt8`.
   There is no `Double` and no `Variant`/`OleVariant`.
+- Slices (ADR-0017): `A[L..H]`, `A[..H]`, `A[L..]`, `A[..]` are read-only
+  `Slice<T>` views that keep the array's indices, are never empty, are bound
+  once, are never returned and only slice a named array.
 - Fixed-width integers never wrap: overflow traps. A constant Integer is read in
   a fixed-width type when it fits (`B Byte := 200`, `B + 1`); an Integer variable
   narrows only through `T(X)`, which is range-checked (CANON-8, v3.44).

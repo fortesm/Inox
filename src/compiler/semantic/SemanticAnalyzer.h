@@ -73,6 +73,7 @@ private:
     std::string canonicalTypeName(std::string_view name) const;
     std::string canonicalArrayTypeName(std::string_view name) const;
     std::string analyzeIndexExpression(const ast::CallExpression& call);
+    std::string analyzeSliceExpression(const ast::CallExpression& call);
     static bool isIndexTarget(const ast::Expression& expression);
     bool isSideEffectFree(const ast::Expression& expression) const;
     void checkReferenceArguments(const std::string& routine,

@@ -470,6 +470,17 @@ Main :
     M Array[1..2, -1..1] Byte
     M[1, 0] := 200
 ;</code></pre>
+<p>A slice is a read-only view of part of an array, without copying: <code>A[3..6]</code>, <code>A[..3]</code>, <code>A[7..]</code>, <code>A[..]</code>. Its type is <code>Slice&lt;Integer&gt;</code>, and it keeps the array's indices (<code>A[3..6]</code> is indexed 3 to 6; <code>Low</code>, <code>High</code> and <code>Length</code> give its bounds):</p>
+<pre><code>Sum(S Slice&lt;Integer&gt;) Integer :
+    Total Integer := 0
+    for I in Low(S)..High(S)
+        Total += S[I]
+    ;
+    Return Total
+;
+
+PutLn(Sum(A[2..4]), " ", Sum(A[..]))</code></pre>
+<p>A slice is never empty, cannot be written, is bound once and cannot be returned, so it never outlives its array; bounds outside the array stop the program with "slice bounds out of range".</p>
 <p>An array is a value: assigning it (<code>B Array[1..Size] Integer := A</code>) or passing it to a routine copies it. Every index is checked: <code>A[I]</code> with <code>I</code> outside <code>Low(A)..High(A)</code> stops the program with "array index out of bounds", and a constant index outside the bounds is a compile error. <code>Low</code>, <code>High</code> and <code>Length</code> are constants. A multi-dimensional array is an array of arrays (<code>M[I, J]</code> is <code>M[I][J]</code>). Bounds are integer literals or Consts; elements are integers, <code>Float</code> or <code>Bool</code> for now.</p>
 <ul>
 <li>Vectors are planned as dynamic, 0-based, bounds-checked collections.</li>

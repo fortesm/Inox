@@ -78,9 +78,11 @@ analysis but not lowered yet.)
 | `fixed-width-arith` | Int32/UInt16 arithmetic with a constant operand | **OK** |  |
 | `bitnot` | bitnot on Integer and Byte | **OK** |  |
 | `array-local` | fixed array with indexing, Low/High and += on an element | **OK** |  |
+| `slice` | read-only slice passed to a Slice<T> parameter | **OK** |  |
+| `ref-parameter` | ref mut parameter writing an array element | **OK** |  |
 | `uint64-local` | UInt64 local | **GAP** | unsupported local variable type for LLVM emission |
 
-Summary: GAP=5, OK=34
+Summary: GAP=5, OK=36
 
 ## Reading the table
 

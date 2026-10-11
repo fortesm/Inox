@@ -55,6 +55,30 @@ std::optional<ArrayTypeName> splitArrayTypeName(std::string_view name)
     return parts;
 }
 
+bool isSliceTypeName(std::string_view name)
+{
+    constexpr std::string_view prefix = "slice<";
+    if (name.size() < prefix.size() + 1 || name.back() != '>') {
+        return false;
+    }
+    for (std::size_t index = 0; index < prefix.size(); ++index) {
+        if (std::tolower(static_cast<unsigned char>(name[index])) != prefix[index]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::string sliceElementTypeName(std::string_view name)
+{
+    return isSliceTypeName(name) ? std::string(name.substr(6, name.size() - 7)) : std::string{};
+}
+
+std::string makeSliceTypeName(std::string_view element)
+{
+    return "Slice<" + std::string(element) + ">";
+}
+
 std::string makeArrayTypeName(std::string_view low, std::string_view high, std::string_view element)
 {
     std::string name = "Array[";

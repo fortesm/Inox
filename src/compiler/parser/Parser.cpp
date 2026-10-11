@@ -723,14 +723,39 @@ ast::ExpressionPtr Parser::parsePostfix()
 
         if (match(TokenKind::LeftBracket)) {
             // CANON-13: `M[I, J]` indexes a multi-dimensional array, which is
-            // an array of arrays, so it is `M[I][J]`.
+            // an array of arrays, so it is `M[I][J]`. ADR-0017: `A[L..H]`,
+            // `A[..H]`, `A[L..]` and `A[..]` are slices; an omitted bound is
+            // the base's own Low or High (`__low`/`__high`).
+            bool first = true;
             do {
-                auto index = parseValue();
+                ast::ExpressionPtr low;
+                if (!check(TokenKind::DotDot)) {
+                    low = parseBitOr();
+                }
+                if (match(TokenKind::DotDot)) {
+                    if (!first || check(TokenKind::Comma)) {
+                        errorAtCurrent("a slice takes one range: write A[L..H] (ADR-0017)");
+                    }
+                    ast::ExpressionPtr high = check(TokenKind::RightBracket)
+                        ? makeSyntheticIdentifier("__high")
+                        : parseBitOr();
+                    std::vector<ast::ExpressionPtr> arguments;
+                    arguments.push_back(std::move(expression));
+                    arguments.push_back(low ? std::move(low) : makeSyntheticIdentifier("__low"));
+                    arguments.push_back(std::move(high));
+                    expression = makeExpr<ast::CallExpression>(
+                        makeSyntheticIdentifier("__slice"), std::move(arguments));
+                    break;
+                }
+                if (!low) {
+                    errorAtCurrent("expected index expression");
+                }
                 std::vector<ast::ExpressionPtr> arguments;
                 arguments.push_back(std::move(expression));
-                arguments.push_back(std::move(index));
+                arguments.push_back(std::move(low));
                 expression = makeExpr<ast::CallExpression>(
                     makeSyntheticIdentifier("__index"), std::move(arguments));
+                first = false;
             } while (match(TokenKind::Comma));
             consume(TokenKind::RightBracket, "expected ']' after index expression");
             continue;
@@ -939,6 +964,14 @@ std::vector<ast::ExpressionPtr> Parser::parseArgumentList()
 std::string Parser::parseTypeName(const char* message)
 {
     const lexer::Token& name = consume(TokenKind::Identifier, message);
+    // ADR-0017: `Slice<T>`, a read-only view (generic arguments use <...>).
+    if (name.normalized == "slice" && check(TokenKind::Less) &&
+        peek().location.line == name.location.line) {
+        advance();
+        std::string element = parseTypeName("expected the element type of the slice");
+        consume(TokenKind::Greater, "expected '>' after the slice element type");
+        return "Slice<" + element + ">";
+    }
     if (!(name.normalized == "array") || !check(TokenKind::LeftBracket) ||
         peek().location.line != name.location.line) {
         return name.lexeme;
@@ -1640,8 +1673,9 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
     while (!isAtEnd() && !check(TokenKind::Colon)) {
         // CANON-13: an array type in a signature is one type token,
         // `Array[1..3] Integer`, so later phases read it like any type name.
-        if (check(TokenKind::Identifier) && peek().normalized == "array" &&
-            current_ + 1 < tokens_.size() && tokens_[current_ + 1].kind == TokenKind::LeftBracket) {
+        if (check(TokenKind::Identifier) && current_ + 1 < tokens_.size() &&
+            ((peek().normalized == "array" && tokens_[current_ + 1].kind == TokenKind::LeftBracket) ||
+             (peek().normalized == "slice" && tokens_[current_ + 1].kind == TokenKind::Less))) {
             signatureTokens.push_back(parseTypeName("expected type name"));
             continue;
         }
@@ -1789,6 +1823,10 @@ bool Parser::atTypedLocalStatementStart() const
     }
     // CANON-13: `A Array[1..10] Integer` declares a fixed array.
     if ((type.normalized == "array") && tokens_[index].kind == TokenKind::LeftBracket &&
+        tokens_[index].location.line == type.location.line) {
+        return true;
+    }
+    if (type.normalized == "slice" && tokens_[index].kind == TokenKind::Less &&
         tokens_[index].location.line == type.location.line) {
         return true;
     }

@@ -448,6 +448,11 @@ struct ArrayLayout {
 
 std::optional<ArrayLayout> arrayLayout(std::string_view canonicalType);
 
+// ADR-0017: a slice is { data, low, high }: data points at element `low`.
+constexpr std::string_view kSliceLlvmType = "{ ptr, i64, i64 }";
+
+std::string elementStorageType(std::string_view elementType);
+
 std::string llvmTypeForInoxType(std::string_view inoxType, const StructDefinitions& structs)
 {
     if (const std::string scalar = llvmTypeForScalar(inoxType); !scalar.empty()) {
@@ -455,6 +460,9 @@ std::string llvmTypeForInoxType(std::string_view inoxType, const StructDefinitio
     }
     if (const auto layout = arrayLayout(inoxType)) {
         return layout->llvmType;
+    }
+    if (support::isSliceTypeName(inoxType)) {
+        return std::string(kSliceLlvmType);
     }
     const auto structType = structs.find(normalize(inoxType));
     if (structType != structs.end()) {
@@ -499,6 +507,14 @@ std::optional<ArrayLayout> arrayLayout(std::string_view canonicalType)
     layout.llvmType = "[" + std::to_string(layout.high - layout.low + 1) + " x " +
                       layout.elementStorage + "]";
     return layout;
+}
+
+std::string elementStorageType(std::string_view elementType)
+{
+    if (const auto inner = arrayLayout(elementType)) {
+        return inner->llvmType;
+    }
+    return scalarStorageType(elementType);
 }
 
 const StructDefinition* findStruct(const StructDefinitions& structs, std::string_view inoxName)
@@ -615,7 +631,7 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
                 }
                 parameterType = tokens[index++];
             }
-            if (support::isArrayTypeName(parameterType)) {
+            if (support::isArrayTypeName(parameterType) || support::isSliceTypeName(parameterType)) {
                 parameterType = semantics.canonicalTypeName(parameterType);
             }
 
@@ -623,6 +639,8 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
             if (const auto layout = arrayLayout(parameterType)) {
                 // CANON-13: an array is a value; a by-value parameter is a copy.
                 llvmParameterType = layout->llvmType;
+            } else if (support::isSliceTypeName(parameterType)) {
+                llvmParameterType = std::string(kSliceLlvmType);
             } else if (llvmParameterType.empty()) {
                 const StructDefinition* structType = findStruct(structs, parameterType);
                 if (structType == nullptr) {
@@ -2110,7 +2128,9 @@ private:
     {
         const std::string canonicalArray = semantics_.canonicalTypeName(std::string(writtenTypeName));
         const std::string_view typeName =
-            support::isArrayTypeName(writtenTypeName) ? std::string_view(canonicalArray) : writtenTypeName;
+            support::isArrayTypeName(writtenTypeName) || support::isSliceTypeName(writtenTypeName)
+                ? std::string_view(canonicalArray)
+                : writtenTypeName;
         const std::string llvmType = llvmTypeForInoxType(typeName, structs_);
         if (llvmType.empty()) {
             throw CodegenUnsupported("unsupported local variable type for LLVM emission");
@@ -2769,7 +2789,7 @@ private:
                 if (isNaturalConversion(call)) {
                     return "i64";
                 }
-                if (callee.name() == "__index") {
+                if (callee.name() == "__index" || callee.name() == "__slice") {
                     return valueLlvmType(semanticTypeName(expression));
                 }
                 if (arrayBoundCall(call)) {
@@ -2893,6 +2913,9 @@ private:
         if (const auto layout = arrayLayout(inoxType)) {
             return layout->llvmType;
         }
+        if (support::isSliceTypeName(inoxType)) {
+            return std::string(kSliceLlvmType);
+        }
         const std::string scalar = llvmTypeForScalar(inoxType);
         return scalar.empty() ? std::string("i64") : scalar;
     }
@@ -2943,9 +2966,112 @@ private:
     }
 
     // CANON-13: every index is checked against Low..High (fault kind 9).
+    struct SliceParts {
+        std::string data;
+        std::string low;
+        std::string high;
+    };
+
+    SliceParts extractSlice(const std::string& value)
+    {
+        SliceParts parts;
+        parts.data = "%tmp" + std::to_string(nextTemporary_++);
+        parts.low = "%tmp" + std::to_string(nextTemporary_++);
+        parts.high = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << parts.data << " = extractvalue " << kSliceLlvmType << ' ' << value << ", 0\n";
+        output_ << "  " << parts.low << " = extractvalue " << kSliceLlvmType << ' ' << value << ", 1\n";
+        output_ << "  " << parts.high << " = extractvalue " << kSliceLlvmType << ' ' << value << ", 2\n";
+        return parts;
+    }
+
+    // The base of a slice expression: its data pointer and bounds, and the
+    // LLVM storage of one element.
+    SliceParts emitSliceSource(const ast::Expression& base, std::string& storage, std::string& elementType)
+    {
+        const std::string baseType = semanticTypeName(base);
+        if (support::isSliceTypeName(baseType)) {
+            elementType = support::sliceElementTypeName(baseType);
+            storage = elementStorageType(elementType);
+            return extractSlice(emitExpression(base));
+        }
+        const auto layout = arrayLayout(baseType);
+        if (!layout) {
+            throw CodegenUnsupported("slicing of this value is not lowered yet");
+        }
+        elementType = layout->elementType;
+        storage = layout->elementStorage;
+        const std::string pointer = emitArrayBaseAddress(base, *layout);
+        const std::string data = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << data << " = getelementptr inbounds " << layout->llvmType << ", ptr " << pointer
+                << ", i64 0, i64 0\n";
+        return SliceParts{data, std::to_string(layout->low), std::to_string(layout->high)};
+    }
+
+    // ADR-0017: `B[L..H]` checks Low(B) <= L <= H <= High(B) (a slice is never
+    // empty, like an array), then points at element L.
+    std::string emitSlice(const ast::CallExpression& call)
+    {
+        std::string storage;
+        std::string elementType;
+        const SliceParts source = emitSliceSource(*call.arguments()[0], storage, elementType);
+        const auto bound = [&](const ast::Expression& expression, const std::string& fallback) {
+            if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
+                const std::string& name = static_cast<const ast::IdentifierExpression&>(expression).name();
+                if (name == "__low" || name == "__high") {
+                    return fallback;
+                }
+            }
+            return emitExpression(expression);
+        };
+        const std::string low = bound(*call.arguments()[1], source.low);
+        const std::string high = bound(*call.arguments()[2], source.high);
+        const std::string lowOk = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string highOk = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string orderOk = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string both = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string valid = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string flag = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << lowOk << " = icmp sge i64 " << low << ", " << source.low << '\n';
+        output_ << "  " << highOk << " = icmp sle i64 " << high << ", " << source.high << '\n';
+        output_ << "  " << orderOk << " = icmp sle i64 " << low << ", " << high << '\n';
+        output_ << "  " << both << " = and i1 " << lowOk << ", " << highOk << '\n';
+        output_ << "  " << valid << " = and i1 " << both << ", " << orderOk << '\n';
+        output_ << "  " << flag << " = zext i1 " << valid << " to i64\n";
+        (void)emitRangeCheck(flag, IntegerRange{1, 1}, 10);
+        const std::string offset = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string data = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << offset << " = sub i64 " << low << ", " << source.low << '\n';
+        output_ << "  " << data << " = getelementptr inbounds " << storage << ", ptr " << source.data
+                << ", i64 " << offset << '\n';
+        const std::string withData = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string withLow = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << withData << " = insertvalue " << kSliceLlvmType << " undef, ptr " << data << ", 0\n";
+        output_ << "  " << withLow << " = insertvalue " << kSliceLlvmType << ' ' << withData << ", i64 " << low
+                << ", 1\n";
+        output_ << "  " << result << " = insertvalue " << kSliceLlvmType << ' ' << withLow << ", i64 " << high
+                << ", 2\n";
+        return result;
+    }
+
     ElementAddress emitElementAddress(const ast::CallExpression& call)
     {
         const ast::Expression& base = *call.arguments()[0];
+        if (support::isSliceTypeName(semanticTypeName(base))) {
+            std::string storage;
+            std::string elementType;
+            const SliceParts slice = emitSliceSource(base, storage, elementType);
+            const std::string index = emitExpression(*call.arguments()[1]);
+            const std::string checked = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << checked << " = call i64 @__inox_range_i64(i64 " << index << ", i64 "
+                    << slice.low << ", i64 " << slice.high << ", i32 9)\n";
+            const std::string offset = "%tmp" + std::to_string(nextTemporary_++);
+            const std::string pointer = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << offset << " = sub i64 " << checked << ", " << slice.low << '\n';
+            output_ << "  " << pointer << " = getelementptr inbounds " << storage << ", ptr " << slice.data
+                    << ", i64 " << offset << '\n';
+            return ElementAddress{pointer, storage, elementType};
+        }
         const auto layout = arrayLayout(semanticTypeName(base));
         if (!layout) {
             throw CodegenUnsupported("indexing of this value is not lowered yet");
@@ -3222,6 +3348,26 @@ private:
             if (callee.name() == "__index") {
                 const ElementAddress element = emitElementAddress(call);
                 return loadElement(element);
+            }
+            if (callee.name() == "__slice") {
+                return emitSlice(call);
+            }
+            if (call.arguments().size() == 1 &&
+                support::isSliceTypeName(semanticTypeName(*call.arguments()[0])) &&
+                (equalsIgnoreCase(callee.name(), "Low") || equalsIgnoreCase(callee.name(), "High") ||
+                 equalsIgnoreCase(callee.name(), "Length"))) {
+                const SliceParts slice = extractSlice(emitExpression(*call.arguments()[0]));
+                if (equalsIgnoreCase(callee.name(), "Low")) {
+                    return slice.low;
+                }
+                if (equalsIgnoreCase(callee.name(), "High")) {
+                    return slice.high;
+                }
+                const std::string span = "%tmp" + std::to_string(nextTemporary_++);
+                const std::string length = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << span << " = sub i64 " << slice.high << ", " << slice.low << '\n';
+                output_ << "  " << length << " = add i64 " << span << ", 1\n";
+                return length;
             }
             if (const auto bound = arrayBoundCall(call)) {
                 return std::to_string(*bound);
@@ -3689,6 +3835,7 @@ constexpr RuntimeFaultKind kRuntimeFaultKinds[] = {
     {7, "value out of range for Natural"},
     {8, "integer conversion out of range"},
     {9, "array index out of bounds"},
+    {10, "slice bounds out of range"},
 };
 
 std::string llvmByteString(const std::string& text)
@@ -3724,7 +3871,7 @@ std::string runtimeFaultSeam()
        << "; overflow, 2 division or modulo by zero, 3 shift count outside 0..63, 4 for\n"
        << "; step <= 0, 5 negative exponent, 6 invalid integer input, 7 negative value\n"
        << "; converted to Natural, 8 integer conversion outside the target range, 9 array\n"
-       << "; index outside Low..High.\n";
+       << "; index outside Low..High, 10 slice bounds outside the base.\n";
     for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
         const std::string text = std::string("Inox runtime error: ") + kind.message + "\n";
         ir << "@.inox.fault." << kind.code << " = private unnamed_addr constant ["

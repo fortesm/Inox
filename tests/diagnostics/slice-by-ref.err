@@ -1,0 +1,1 @@
+a slice is already a view: pass it without ref (ADR-0017)

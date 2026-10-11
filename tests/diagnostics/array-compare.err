@@ -1,1 +1,1 @@
-arrays cannot be compared with '=' (CANON-13)
+arrays and slices cannot be compared with '=' (CANON-13)

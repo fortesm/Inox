@@ -367,6 +367,26 @@ Main :
     PutLn(A[2])
 ;
 """),
+    ("slice", "read-only slice passed to a Slice<T> parameter", """First(S Slice<Integer>) Integer :
+    Return S[Low(S)]
+;
+
+Main :
+    A Array[1..4] Integer
+    A[2] := 5
+    PutLn(First(A[2..3]), Length(A[..]))
+;
+"""),
+    ("ref-parameter", "ref mut parameter writing an array element", """Bump(ref mut X Integer) :
+    X += 1
+;
+
+Main :
+    A Array[1..2] Integer
+    Bump(A[1])
+    PutLn(A[1])
+;
+"""),
     ("uint64-local", "UInt64 local", """Main :
     U UInt64 := UInt64(5)
     PutLn(U)

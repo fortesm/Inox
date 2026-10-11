@@ -28,4 +28,9 @@ std::optional<ArrayTypeName> splitArrayTypeName(std::string_view name);
 std::string makeArrayTypeName(std::string_view low, std::string_view high, std::string_view element);
 bool isArrayTypeName(std::string_view name);
 
+// ADR-0017: a read-only view `Slice<Element>`.
+bool isSliceTypeName(std::string_view name);
+std::string sliceElementTypeName(std::string_view name);
+std::string makeSliceTypeName(std::string_view element);
+
 } // namespace inox::compiler::support

@@ -1,0 +1,1 @@
+only a named array can be sliced, not a temporary value (ADR-0017)
