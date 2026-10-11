@@ -303,12 +303,47 @@ std::string llvmStructName(std::string_view inoxName)
     return "%" + normalize(inoxName);
 }
 
+struct IntegerRange {
+    std::int64_t low;
+    std::int64_t high;
+};
+
+// The range of a fixed-width integer type narrower than 64 bits (Byte is
+// UInt8), or nullopt for any other type.
+std::optional<IntegerRange> narrowIntegerRange(std::string_view type)
+{
+    struct Entry {
+        std::string_view name;
+        IntegerRange range;
+    };
+    static constexpr Entry entries[] = {
+        {"Int8", {-128, 127}},
+        {"Int16", {-32768, 32767}},
+        {"Int32", {-2147483648LL, 2147483647LL}},
+        {"UInt8", {0, 255}},
+        {"Byte", {0, 255}},
+        {"UInt16", {0, 65535}},
+        {"UInt32", {0, 4294967295LL}},
+    };
+    for (const Entry& entry : entries) {
+        if (equalsIgnoreCase(type, entry.name)) {
+            return entry.range;
+        }
+    }
+    return std::nullopt;
+}
+
 std::string llvmTypeForScalar(std::string_view inoxType)
 {
     // CANON-8: Natural is the non-negative subtype of Integer and shares its
     // i64 representation; the range is checked where a value becomes Natural.
     if (equalsIgnoreCase(inoxType, "Integer") || equalsIgnoreCase(inoxType, "Int64") ||
         equalsIgnoreCase(inoxType, "Natural")) {
+        return "i64";
+    }
+    // CANON-8 fixed widths narrower than 64 bits are computed as i64 holding
+    // the mathematical value and range-checked where a value takes the type.
+    if (narrowIntegerRange(inoxType)) {
         return "i64";
     }
     if (equalsIgnoreCase(inoxType, "Bool")) {
@@ -2199,6 +2234,12 @@ private:
         }
 
         output_ << "  call void @__inox_read_i64(ptr " << local->second.slot << ")\n";
+        if (const auto range = narrowIntegerRange(local->second.inoxType)) {
+            const std::string read = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << read << " = load i64, ptr " << local->second.slot << "\n";
+            const std::string checked = emitRangeCheck(read, *range, 6);
+            output_ << "  store i64 " << checked << ", ptr " << local->second.slot << "\n";
+        }
     }
 
     void emitInputDiscardToken()
@@ -2604,7 +2645,7 @@ private:
         }
         const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
         if (!equalsIgnoreCase(callee.name(), "Natural") && !equalsIgnoreCase(callee.name(), "Integer") &&
-            !equalsIgnoreCase(callee.name(), "Int64")) {
+            !equalsIgnoreCase(callee.name(), "Int64") && !narrowIntegerRange(callee.name())) {
             return false;
         }
         return expressionLlvmType(*call.arguments().front()) == "i64";
@@ -2670,9 +2711,57 @@ private:
 
     // ADR-0015: an Integer expression stored into a Natural carries an
     // implicit range check, recorded by semantic analysis.
+    // The semantic type name of an expression, or empty.
+    std::string semanticTypeName(const ast::Expression& expression) const
+    {
+        const semantic::ResolvedType* type = semantics_.typeOf(expression);
+        return type != nullptr ? type->name : std::string{};
+    }
+
+    // An arithmetic result whose semantic type is a narrow fixed-width integer
+    // must stay in that type's range (CANON-8: overflow is an error).
+    static bool isRangeCheckedArithmetic(const ast::Expression& expression)
+    {
+        if (expression.kind() == ast::AstNodeKind::UnaryExpression) {
+            return static_cast<const ast::UnaryExpression&>(expression).op() == ast::UnaryOperator::Minus;
+        }
+        if (expression.kind() != ast::AstNodeKind::BinaryExpression) {
+            return false;
+        }
+        switch (static_cast<const ast::BinaryExpression&>(expression).op()) {
+        case ast::BinaryOperator::Add:
+        case ast::BinaryOperator::Subtract:
+        case ast::BinaryOperator::Multiply:
+        case ast::BinaryOperator::Power:
+        case ast::BinaryOperator::IntegerDivide:
+        case ast::BinaryOperator::Modulo:
+        case ast::BinaryOperator::ShiftLeft:
+        case ast::BinaryOperator::ShiftRight:
+        case ast::BinaryOperator::BitAnd:
+        case ast::BinaryOperator::BitOr:
+        case ast::BinaryOperator::BitXor:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    std::string emitRangeCheck(const std::string& value, IntegerRange range, int faultKind)
+    {
+        const std::string checked = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << checked << " = call i64 @__inox_range_i64(i64 " << value << ", i64 "
+                << range.low << ", i64 " << range.high << ", i32 " << faultKind << ")\n";
+        return checked;
+    }
+
     std::string emitExpression(const ast::Expression& expression)
     {
-        const std::string value = emitExpressionValue(expression);
+        std::string value = emitExpressionValue(expression);
+        if (isRangeCheckedArithmetic(expression)) {
+            if (const auto range = narrowIntegerRange(semanticTypeName(expression))) {
+                value = emitRangeCheck(value, *range, 1);
+            }
+        }
         if (!semantics_.needsNaturalCheck(expression)) {
             return value;
         }
@@ -2741,7 +2830,22 @@ private:
             const std::string rightType = expressionLlvmType(binary.right());
             const std::string result = "%tmp" + std::to_string(nextTemporary_++);
             const std::string left = emitExpression(binary.left());
-            const std::string right = emitExpression(binary.right());
+            std::string right = emitExpression(binary.right());
+
+            // CANON-8: the shift count of a fixed-width type is 0..width-1.
+            if (binary.op() == ast::BinaryOperator::ShiftLeft ||
+                binary.op() == ast::BinaryOperator::ShiftRight) {
+                if (const auto range = narrowIntegerRange(semanticTypeName(expression))) {
+                    int bits = 0;
+                    for (std::int64_t span = range->high; span > 0; span >>= 1) {
+                        ++bits;
+                    }
+                    if (range->low < 0) {
+                        ++bits;
+                    }
+                    right = emitRangeCheck(right, IntegerRange{0, bits - 1}, 3);
+                }
+            }
 
             if (isFloatLlvmType(leftType) || isFloatLlvmType(rightType)) {
                 if (const std::string predicate = fcmpPredicate(binary.op()); !predicate.empty()) {
@@ -2789,6 +2893,19 @@ private:
             }
             if (unary.op() == ast::UnaryOperator::Plus) {
                 return emitExpression(unary.operand());
+            }
+            if (unary.op() == ast::UnaryOperator::BitNot) {
+                // Two's-complement NOT in the operand's width: for an unsigned
+                // narrow type that is `x xor (2^n - 1)`, which stays in range.
+                const std::string operand = emitExpression(unary.operand());
+                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+                std::int64_t mask = -1;
+                if (const auto range = narrowIntegerRange(semanticTypeName(unary.operand()));
+                    range && range->low == 0) {
+                    mask = range->high;
+                }
+                output_ << "  " << result << " = xor i64 " << operand << ", " << mask << '\n';
+                return result;
             }
             if (unary.op() == ast::UnaryOperator::Minus) {
                 const std::string operandType = expressionLlvmType(unary.operand());
@@ -2853,6 +2970,9 @@ private:
             // because Natural shares Integer's i64 representation.
             if (isNaturalConversion(call)) {
                 const std::string value = emitExpression(*call.arguments().front());
+                if (const auto range = narrowIntegerRange(callee.name())) {
+                    return emitRangeCheck(value, *range, 8);
+                }
                 if (!equalsIgnoreCase(callee.name(), "Natural")) {
                     return value;
                 }
@@ -3287,6 +3407,7 @@ constexpr RuntimeFaultKind kRuntimeFaultKinds[] = {
     {5, "negative exponent"},
     {6, "invalid integer input"},
     {7, "value out of range for Natural"},
+    {8, "integer conversion out of range"},
 };
 
 std::string llvmByteString(const std::string& text)
@@ -3321,7 +3442,7 @@ std::string runtimeFaultSeam()
        << "; unwinding, so try/except/ensure cannot intercept it. Kinds: 1 integer\n"
        << "; overflow, 2 division or modulo by zero, 3 shift count outside 0..63, 4 for\n"
        << "; step <= 0, 5 negative exponent, 6 invalid integer input, 7 negative value\n"
-       << "; converted to Natural.\n";
+       << "; converted to Natural, 8 integer conversion outside the target range.\n";
     for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
         const std::string text = std::string("Inox runtime error: ") + kind.message + "\n";
         ir << "@.inox.fault." << kind.code << " = private unnamed_addr constant ["
@@ -3524,6 +3645,21 @@ ok:
 
 trap:
   call void @__inox_arith_fault(i32 4)
+  unreachable
+}
+
+define internal i64 @__inox_range_i64(i64 %v, i64 %low, i64 %high, i32 %kind) alwaysinline nounwind {
+entry:
+  %below = icmp slt i64 %v, %low
+  %above = icmp sgt i64 %v, %high
+  %bad = or i1 %below, %above
+  br i1 %bad, label %trap, label %ok
+
+ok:
+  ret i64 %v
+
+trap:
+  call void @__inox_arith_fault(i32 %kind)
   unreachable
 }
 

@@ -84,6 +84,9 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
   as in Ada (ADR-0015); never require `Natural(X)`. A negative constant is a
   compile error; arithmetic on Natural yields Integer. `Byte` is `UInt8`.
   There is no `Double` and no `Variant`/`OleVariant`.
+- Fixed-width integers never wrap: overflow traps. A constant Integer is read in
+  a fixed-width type when it fits (`B Byte := 200`, `B + 1`); an Integer variable
+  narrows only through `T(X)`, which is range-checked (CANON-8, v3.44).
 - A local symbol dies at the end of its block.
 - `for` iterators are implicit, read-only, loop-scoped, and cannot conflict with visible symbols.
 - Sequential `for` loops may reuse an iterator name after the previous loop scope is closed; nested loops may not reuse an outer iterator name.

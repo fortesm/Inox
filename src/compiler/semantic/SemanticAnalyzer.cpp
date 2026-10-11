@@ -342,6 +342,14 @@ bool integerTypeRange(std::string_view type, std::int64_t& low, std::int64_t& hi
     return false;
 }
 
+// The fixed-width integer types narrower than 64 bits. Their values are
+// computed in the Int64 family and range-checked where a result has the type.
+bool isNarrowIntegerType(std::string_view type)
+{
+    return type == "Int8" || type == "Int16" || type == "Int32" ||
+           type == "UInt8" || type == "UInt16" || type == "UInt32";
+}
+
 } // namespace
 
 void SemanticAnalyzer::declareBuiltinTypes()
@@ -1653,6 +1661,18 @@ std::string SemanticAnalyzer::analyzeExpression(const ast::Expression& expressio
     std::string typeName = inferExpressionType(expression);
     result_.setExpressionType(expression, resolvedType(typeName));
     foldConstantExpression(expression);
+    // CANON-8: constant overflow is a compile-time error in every integer type.
+    const std::string canonical = canonicalTypeName(typeName);
+    if (isNarrowIntegerType(canonical)) {
+        std::int64_t value = 0;
+        std::int64_t low = 0;
+        std::int64_t high = 0;
+        if (constantIntegerValue(expression, value) && integerTypeRange(canonical, low, high) &&
+            (value < low || value > high)) {
+            throw SemanticError("constant overflow: " + std::to_string(value) + " does not fit " +
+                                canonical);
+        }
+    }
     return typeName;
 }
 
@@ -2580,8 +2600,31 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
     const auto integerFamily = [](std::string type) {
         return type == "Natural" ? std::string("Int64") : type;
     };
-    const std::string leftType = integerFamily(analyzeExpression(expression.left()));
-    const std::string rightType = integerFamily(analyzeExpression(expression.right()));
+    std::string leftType = integerFamily(analyzeExpression(expression.left()));
+    std::string rightType = integerFamily(analyzeExpression(expression.right()));
+
+    // CANON-8 (universal integer literal, as in Ada): a constant Integer
+    // operand next to a fixed-width integer is read in that type and must fit
+    // it (`B + 1` with B Byte); a value that does not fit is a compile error.
+    const auto adaptConstant = [&](const std::string& narrowType, const ast::Expression& other,
+                                   std::string& otherType) {
+        const std::string canonical = canonicalTypeName(narrowType);
+        if (!isNarrowIntegerType(canonical) || otherType != "Int64") {
+            return;
+        }
+        std::int64_t value = 0;
+        std::int64_t low = 0;
+        std::int64_t high = 0;
+        if (!constantIntegerValue(other, value) || !integerTypeRange(canonical, low, high)) {
+            return;
+        }
+        if (value < low || value > high) {
+            throw SemanticError("value out of range for " + canonical + ": " + std::to_string(value));
+        }
+        otherType = narrowType;
+    };
+    adaptConstant(leftType, expression.right(), rightType);
+    adaptConstant(rightType, expression.left(), leftType);
 
     const auto requireMatchingTypes = [&] {
         if (!typesMatch(leftType, rightType)) {
@@ -2833,6 +2876,22 @@ bool SemanticAnalyzer::canAssignValue(std::string_view targetType, std::string_v
 {
     if (canAssign(targetType, valueType)) {
         return true;
+    }
+    // CANON-8: a constant Integer is read in a fixed-width target type when it
+    // fits (`B Byte := 200`); otherwise it is a compile-time range error.
+    if (const std::string canonical = canonicalTypeName(targetType);
+        isNarrowIntegerType(canonical) && valueType == "Int64") {
+        std::int64_t constant = 0;
+        std::int64_t low = 0;
+        std::int64_t high = 0;
+        if (constantIntegerValue(value, constant) && integerTypeRange(canonical, low, high)) {
+            if (constant < low || constant > high) {
+                throw SemanticError("value out of range for " + canonical + ": " +
+                                    std::to_string(constant));
+            }
+            return true;
+        }
+        return false;
     }
     if (targetType == "Natural" && valueType == "Int64") {
         std::int64_t constant = 0;

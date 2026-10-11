@@ -11,6 +11,8 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 ## Unreleased
 
 ### Added
+- Fixed-width integers Int8, Int16, Int32, Byte/UInt8, UInt16, UInt32 are compiled with overflow and conversion range checks; a constant such as `B Byte := 200` or `B + 1` is read in the fixed-width type.
+- `bitnot` is compiled.
 - Module `State` variables (Integer, Natural, Bool, Float) are compiled; they are initialized in source order before `Main` runs.
 - `case` and `unless` are compiled to native code (the selector is evaluated once).
 - Precedence of `..` and `in` in CANON-20 (ADR-0008).
@@ -37,8 +39,8 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - A `Const` has no written type: `Const Mask UInt8 := $FF` is rejected; write `Const Mask := UInt8($FF)` (OPEN-5).
 
 ### Known limitations
-- Integer types other than `Integer`/`Int64`/`Natural` (Byte, Int32, ...) are checked but not lowered yet.
-- Not lowered yet: `State` of struct/String/fixed-width type, `String` locals, struct construction and initializers, Float32 conversion.
+- `UInt64`/`UInteger` values are not lowered yet.
+- Not lowered yet: `State` of struct/String type, `String` locals, struct construction and initializers, Float32 conversion.
 - Arrays, vectors, sets, enums and ranges are not implemented.
 - The compiler is not yet aligned with the canonical `<T>` generic syntax; its existing generic syntax still uses `[T]`.
 

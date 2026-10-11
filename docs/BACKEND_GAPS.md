@@ -74,9 +74,12 @@ analysis but not lowered yet.)
 | `conditional-expression` | conditional expression if C then A else B | **OK** |  |
 | `state-global` | State section variable | **OK** |  |
 | `natural-conversion` | Natural local and checked Natural(X) (ADR-0014) | **OK** |  |
-| `byte-local` | Byte (UInt8) local initialized by conversion | **GAP** | unsupported local variable type for LLVM emission |
+| `byte-local` | Byte (UInt8) local initialized by conversion | **OK** |  |
+| `fixed-width-arith` | Int32/UInt16 arithmetic with a constant operand | **OK** |  |
+| `bitnot` | bitnot on Integer and Byte | **OK** |  |
+| `uint64-local` | UInt64 local | **GAP** | unsupported local variable type for LLVM emission |
 
-Summary: GAP=5, OK=30
+Summary: GAP=5, OK=33
 
 ## Reading the table
 
@@ -94,14 +97,13 @@ Summary: GAP=5, OK=30
   body, including inside `if`, `try` and loops nested in the repeat, and it runs
   every `ensure` between it and the repeat, innermost first.
 * `state-global`: closed in v3.43; scalar State variables are LLVM globals
-  initialized at the start of `main`. State of struct, String or fixed-width
-  type is still a gap.
+  initialized at the start of `main`. State of struct or String type is
+  still a gap.
 * `case` and `unless` are lowered since v3.42 (probes `case`, `case-ada-choices`, `unless`).
-* `byte-local` (v3.39): `Byte` is registered as UInt8 and its conversions are
-  range-checked, but no integer type other than Integer/Int64/Natural is
-  lowered yet (Int8..Int32, UInt8..UInt64). `natural-conversion` is OK:
-  Natural shares the i64 representation and `Natural(X)` lowers to a range
-  check (runtime fault kind 7).
+* `byte-local`, `fixed-width-arith` (v3.44): integers narrower than 64 bits
+  are lowered as i64 values with range checks. `uint64-local` is a GAP:
+  UInt64/UInteger needs unsigned 64-bit arithmetic. `bitnot` is lowered since
+  v3.44.
 * `grouped-decl-struct` (v3.26): the grouped form itself lowers; the GAP is the
   older one, a struct local initialized from another struct value
   (`P TPoint := Base`). It closes with struct initializers.

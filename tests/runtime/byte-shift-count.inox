@@ -1,0 +1,16 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-8: the shift count of a fixed-width type must be 0..width-1; for
+== Byte that is 0..7, even when the shifted value is 0.
+Module Runtime.ByteShiftCount
+
+Main :
+    B Byte := 0
+    N Integer := 8
+    PutLn(B shl Byte(N))
+;

@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.43 (Layer B: module State lowered)
+# Version: v3.44 (fixed-width integers lowered; constant-literal clarification)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -486,6 +486,29 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.44 — 2026-10-11 — fixed-width integers lowered (Layer B) and a CANON-8
+#         clarification of constant literals (Layer A text added under
+#         "Conversions"; it applies existing rules, no new decision).
+#   - Int8, Int16, Int32, UInt8/Byte, UInt16 and UInt32 are compiled. A value
+#     is carried as i64 holding the mathematical value; every arithmetic
+#     result of such a type is range-checked (fault kind 1, integer
+#     overflow), so 255 + 1 in a Byte and 3 - 4 in a UInt8 trap and never
+#     wrap. `T(X)` checks the range at run time (new fault kind 8, "integer
+#     conversion out of range"); Get/GetLn into such a variable checks too
+#     (kind 6). The shift count is 0..width-1 (kind 3). Works in locals,
+#     parameters, returns, struct fields, State and case.
+#   - Constant literals: `B Byte := 200`, `B += 55`, `P.R + 5` read the
+#     constant in the fixed-width type; `B Byte := 256` and `B + 300` are
+#     compile-time range errors; a narrow constant expression that overflows
+#     is a compile error.
+#   - `bitnot` is lowered (it was a backend gap): two's-complement NOT, and
+#     `x xor (2^n - 1)` for an unsigned narrow type.
+#   - Still a gap: UInt64/UInteger (outside the i64 range).
+#   - Tests: runtime `fixed-width-integers`; traps `byte-overflow`,
+#     `unsigned-underflow`, `int8-negate-min`, `byte-conversion-runtime-range`,
+#     `byte-shift-count`; diagnostics `byte-literal-out-of-range`,
+#     `byte-operand-out-of-range`, `byte-from-integer-variable`.
 #
 # v3.43 — 2026-10-11 — module `State` lowered (Layer B; CANON-5 unchanged).
 #   - Each State variable of type Integer/Int64, Natural, Bool or Float is an
@@ -2316,6 +2339,13 @@ Implicit conversions allowed ONLY for safe widening explicitly defined by Inox.
 Narrowing is NEVER implicit. Explicit conversion uses `TypeName(Expression)`.
 `Integer(FloatExpr)` truncates toward zero and traps/errors if out of range.
 Constant narrowing with loss is a compile-time error.
+Clarification (v3.44, applying the two rules above and the Ada/SPARK
+universal-literal inference of CANON-5): a constant Integer expression is read
+in a fixed-width integer type when its value fits — as an initializer or
+assigned value (`B Byte := 200`), an argument or return, or an operand next to
+a value of that type (`B + 1`) — and is a compile-time range error otherwise
+(`B Byte := 256`). An Integer variable never narrows implicitly: `Byte(X)`
+checks the range at run time.
 
 ### Decimal literal form (CHANGE LOG v3.3 — closes OPEN-2)
 A real literal in a DECIMAL-TYPED CONTEXT is read directly as that decimal type,
@@ -3124,8 +3154,8 @@ Compile time:
   does NOT turn a run-time expression into a compile-time error; for example,
   `X := 0` followed by `A div X` remains a run-time checked operation;
 - the valid shift-count range follows the semantic bit width of the left operand.
-  For the current `Integer` (= Int64) this is 0..63; fixed-width integer types use
-  their own width when their arithmetic lowering is implemented.
+  For the current `Integer` (= Int64) this is 0..63; a fixed-width integer type
+  uses its own width (0..7 for Byte), checked at run time since v3.44.
 Run time (these operations trap):
 - `+ - *`, unary `-` and `Abs` on overflow (`Abs(Int64.Min)`, `-Int64.Min`);
 - `div`/`mod` with a zero divisor; `Int64.Min div -1` (`Int64.Min mod -1` is 0);
@@ -3161,6 +3191,7 @@ Diagnostic text (the category names are part of the contract and are checked by
     Inox runtime error: negative exponent
     Inox runtime error: invalid integer input        (Get/GetLn, see CANON-17)
     Inox runtime error: value out of range for Natural   (ADR-0014/0015)
+    Inox runtime error: integer conversion out of range  (T(X) to a fixed-width type)
 
 Lowering note (Layer B, not language law): every check calls one internal IR
 function, `__inox_arith_fault(i32 kind)`, `noreturn nounwind cold`. It calls
@@ -3275,7 +3306,7 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  `State` variables of struct, String or fixed-width type, `String` locals, and a
+  `State` variables of struct or String type, UInt64/UInteger values, `String` locals, and a
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
@@ -3307,9 +3338,9 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 4. Enum strict init (CANON-5 rule 5) — not enforced.
 5. `Byte`->UInt8 alias: CLOSED (v3.39, ADR-0014).
 6. Natural range semantics: CLOSED (v3.39/v3.40, ADR-0014/0015) — 0..Int64.Max,
-   i64; storing an Integer into a Natural is checked at run time (fault kind 7). Fixed-width integers other
-   than Int64 (Byte/UInt8, Int32, ...) are checked by the semantic analyzer but
-   not yet lowered by the LLVM backend.
+   i64; storing an Integer into a Natural is checked at run time (fault kind 7).
+   Fixed-width integers narrower than 64 bits (Int8/16/32, UInt8/Byte, UInt16,
+   UInt32) are lowered since v3.44; UInt64/UInteger is still a backend gap.
 7. Currency arithmetic (i64 x10^6) — name registered, behavior missing.
 8. Crypto arithmetic (i128 x10^18) — name registered, behavior missing, needs tests.
 9. BigCurrency — not present; needs big-integer runtime (0.2+).
@@ -3612,7 +3643,7 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  `State` variables of struct, String or fixed-width type, `String` locals, and a
+  `State` variables of struct or String type, UInt64/UInteger values, `String` locals, and a
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
@@ -3644,9 +3675,9 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 4. Enum strict init (CANON-5 rule 5) — not enforced.
 5. `Byte`->UInt8 alias: CLOSED (v3.39, ADR-0014).
 6. Natural range semantics: CLOSED (v3.39/v3.40, ADR-0014/0015) — 0..Int64.Max,
-   i64; storing an Integer into a Natural is checked at run time (fault kind 7). Fixed-width integers other
-   than Int64 (Byte/UInt8, Int32, ...) are checked by the semantic analyzer but
-   not yet lowered by the LLVM backend.
+   i64; storing an Integer into a Natural is checked at run time (fault kind 7).
+   Fixed-width integers narrower than 64 bits (Int8/16/32, UInt8/Byte, UInt16,
+   UInt32) are lowered since v3.44; UInt64/UInteger is still a backend gap.
 7. Currency arithmetic (i64 x10^6) — name registered, behavior missing.
 8. Crypto arithmetic (i128 x10^18) — name registered, behavior missing, needs tests.
 9. BigCurrency — not present; needs big-integer runtime (0.2+).

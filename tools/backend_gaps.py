@@ -346,6 +346,23 @@ Main :
     PutLn(B)
 ;
 """),
+    ("fixed-width-arith", "Int32/UInt16 arithmetic with a constant operand", """Main :
+    I Int32 := 1000
+    U UInt16 := 7
+    PutLn(I * 3 + 1, U div 2)
+;
+"""),
+    ("bitnot", "bitnot on Integer and Byte", """Main :
+    X Integer := 5
+    B Byte := 5
+    PutLn(bitnot X, bitnot B)
+;
+"""),
+    ("uint64-local", "UInt64 local", """Main :
+    U UInt64 := UInt64(5)
+    PutLn(U)
+;
+"""),
 ]
 
 
