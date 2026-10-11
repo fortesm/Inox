@@ -3496,14 +3496,14 @@ Compiler developers — Linux/Unix:
 Users testing a prebuilt compiler need no LLVM/Clang/CMake/Ninja/C++ to run:
     inox examples/hello.inox
     inox --parse-only examples/hello.inox
-    inox --emit-llvm examples/llvm-put-output-basic.inox
+    inox --emit-llvm examples/put-output-basic.inox
 On Windows a Release build may require the MSVC Redistributable. A DEBUG build
 must NOT be distributed (depends on non-redistributable Debug DLLs such as
 MSVCP140D.dll, VCRUNTIME140D.dll, ucrtbased.dll).
 
 Users building native programs need `clang` in PATH for now:
-    inox --build examples/llvm-put-output-basic.inox
-    inox --run examples/llvm-put-output-basic.inox
+    inox --build examples/put-output-basic.inox
+    inox --run examples/put-output-basic.inox
 This does not require building the compiler source; the driver delegates final
 native codegen and linking to an external platform toolchain. Future SDK work may
 package backend/linker tools with Inox or replace this path.

@@ -25,6 +25,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - `grammar/grammar.ebnf` rebuilt from the canon, checked by `tools/grammar_consistency.py`.
 
 ### Changed
+- Example files no longer carry the `llvm-` prefix (`examples/put-output-basic.inox`, ...).
 - Windows (MSVC ABI): exceptions are lowered with LLVM funclets (`__CxxFrameHandler3`); every exception test passes natively on the CI runner (EH-v3.16a closed).
 - `Var` blocks and scalars without an initializer are rejected (CANON-5).
 - A bare `:` block inside a routine is rejected (CANON-4).
