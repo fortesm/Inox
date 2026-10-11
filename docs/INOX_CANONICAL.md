@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.45 (Layer B: fixed arrays lowered)
+# Version: v3.46 (Layer A: ADR-0016 ref and ref mut parameters)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -486,6 +486,20 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.46 — 2026-10-11 — ADR-0016: `ref X T` and `ref mut X T` parameters
+#         (Layer A, approved by Marcelo Fortes on 2026-10-11 as part of the
+#         order "Array, then ref, then Slice": "Ok Faça logo tudo na sua
+#         ordem!"). `ref` becomes a keyword (50).
+#   - Rules in ADR-0016: exact type, writable place for `ref mut`, no other
+#     argument may use a `ref mut` variable, references never outlive the call.
+#   - Layer B: a reference parameter is an LLVM `ptr` to the caller's slot,
+#     field or element; a `ref` to a non-variable value uses a temporary. A
+#     narrow-integer array element (stored in its own width) cannot be passed
+#     by reference yet.
+#   - Tests: runtime `ref-parameters`, trap `ref-mut-range`; diagnostics
+#     `ref-mut-aliasing`, `ref-mut-not-writable`, `ref-type-exact`,
+#     `ref-readonly-assignment`, `ref-mut-from-value-parameter`.
 #
 # v3.45 — 2026-10-11 — fixed arrays `Array[Low..High] T` implemented (Layer B;
 #         CANON-13 unchanged).
@@ -1619,8 +1633,8 @@ Direction: mathematics/CAS direction leveraging Julia-inspired numerical and
 symbolic expressiveness for scientific/financial computing. Requires ADR.
 
 ## FUTURE-7. OTHER DEFERRED 0.2+ TOPICS (from roadmap + open-questions + ADR-0006)
-- ownership/borrow system beyond `Self`/`Self mut`; `Self owned`; `ref`/`ref mut`
-  parameters; arena allocation and deterministic memory regions; unsafe
+- ownership/borrow system beyond `Self`/`Self mut` and `ref`/`ref mut`
+  parameters (ADR-0016); `Self owned`; arena allocation and deterministic memory regions; unsafe
   boundaries, pointers, C interop;
 - vector runtime with move semantics; full string/Unicode runtime;
 - module visibility/export; interface/body separation;
@@ -1639,7 +1653,7 @@ path. Decisions 1–20 are consolidated in the CANONICAL and DECISIONS groups ab
 
 Deferred but directionally decided (NOT permission to invent semantics; each
 requires an explicit ADR before implementation): ownership/borrow beyond
-`Self`/`Self mut`; `Self owned`; `ref`/`ref mut` parameters; arena memory
+`Self`/`Self mut` and `ref`/`ref mut` parameters (ADR-0016); `Self owned`; arena memory
 management; unsafe blocks/`Pointer[T]`/C interop; contracts/protocols/behaviors;
 Chapel-style structured parallelism; data-race safety and non-mutable concurrent
 data defaults; vector runtime and move semantics; full string/Unicode runtime;
@@ -1810,6 +1824,38 @@ ADR-0006 decision 4 used the phrase “Runtime overflow should trap in checking
 mode.” That policy is superseded by DECISION P-A, approved 2026-10-09: runtime
 arithmetic faults are deterministic Inox traps in every conforming build. This
 note records the later approved decision without rewriting the locked ADR.
+
+## ADR-0016 — `ref` and `ref mut` parameters  (Status: Accepted, 2026-10-11)
+Decision (Marcelo Fortes, 2026-10-11, approving the order "Array, then ref T /
+ref mut T parameters, then Slice": "Ok Faça logo tudo na sua ordem!"). The
+spelling follows the direction already recorded in the canon (`ref X T`,
+`ref mut X T`); the rules are the safe subset agreed in the design discussion
+with ChatGPT (many readers or one writer, references never outlive the call).
+1. In a parameter list only: `ref X T` is a read-only reference to the
+   caller's storage; `ref mut X T` is a writable one. A plain parameter stays
+   an immutable copy; `mut X T` stays reserved (error). A method receiver is
+   `Self`/`Self mut`, never `ref`.
+2. A reference argument has exactly the parameter's type (no implicit
+   conversion through a reference).
+3. A `ref mut` argument is a writable place: a mutable local variable, a
+   State variable, a `ref mut` parameter, or a field or array element of one.
+   A constant, a literal, an expression or a value parameter is an error. A
+   `ref` argument may be any value of the type (a temporary holds a value
+   that is not a variable).
+4. Exclusivity: the variable a `ref mut` argument is rooted at appears in no
+   other argument of the same call (`Swap(X, X)`, `Swap(A[1], A[2])` and
+   `Swap(P.X, P.Y)` are errors). A routine therefore never sees one variable
+   through two names.
+5. A reference exists only for the duration of the call: there are no
+   reference variables, fields or results, so it cannot outlive what it
+   refers to. Copying from it (`Y := X`) copies the value.
+6. Writes through `ref mut` keep the type's checks (overflow, Natural range).
+Rationale: arrays are values (CANON-13), so passing a large array by value
+copies it; `ref` removes the copy without aliasing, and `ref mut` replaces
+output parameters without pointers. Rule 4 is the "many readers or one
+writer" discipline in its simplest checkable form; it is also the basis for
+data-race checks in future parallel constructs.
+Consequence: `ref` is a reserved word.
 
 ## ADR-0015 — Storing into a Natural checks the range implicitly  (Status: Accepted, 2026-10-10)
 Decision (Marcelo Fortes, 2026-10-10): "Façamos como Ada, a atribuição faria
@@ -2452,8 +2498,8 @@ See SECTION 11 for the full declaration model.
 - Use before declaration is an error.
 - Scoping blocks: subroutine/function body, if/elif/else, while, repeat, for
   body, each case arm, try/except/ensure, with body.
-- Future ownership work: `Self owned`, `ref X T`, `ref mut X T` — NOT part of the
-  0.1 executable subset.
+- `ref X T` and `ref mut X T` parameters are part of the language since
+  ADR-0016 (v3.46). Future ownership work: `Self owned`.
 
 Canonical diagnostics:
   "shadowing is forbidden: Name"
@@ -3307,7 +3353,7 @@ textual IR to the LLVM C++ API where justified.
 ## Current backend support status
 
 ## B-WORKS. WHAT WORKS TODAY (verified in source audit)
-Lexer: 49 keywords (`step` added by ADR-0010, `then` by ADR-0013), case-insensitive normalization, `$XX` hex, `==` comments.
+Lexer: 50 keywords (`step` added by ADR-0010, `then` by ADR-0013, `ref` by ADR-0016), case-insensitive normalization, `$XX` hex, `==` comments.
 Parser: recursive descent, 2-token lookahead for typed local declarations.
 Semantic: scoped symbol table, forward signature pass, inference (empty type +
   initializer -> initializer type), prelude calls (Put/PutLn/Clamp/Min/Max),
@@ -3649,7 +3695,7 @@ Targets must not be claimed as supported until tested on real or representative 
 This section is volatile implementation status. It may be updated to match the code. It must not override constitutional language rules above.
 
 ## B-WORKS. WHAT WORKS TODAY (verified in source audit)
-Lexer: 49 keywords (`step` added by ADR-0010, `then` by ADR-0013), case-insensitive normalization, `$XX` hex, `==` comments.
+Lexer: 50 keywords (`step` added by ADR-0010, `then` by ADR-0013, `ref` by ADR-0016), case-insensitive normalization, `$XX` hex, `==` comments.
 Parser: recursive descent, 2-token lookahead for typed local declarations.
 Semantic: scoped symbol table, forward signature pass, inference (empty type +
   initializer -> initializer type), prelude calls (Put/PutLn/Clamp/Min/Max),

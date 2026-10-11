@@ -48,7 +48,9 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - No universal `null`/`nil`.
 - Integer `/` is invalid; use `div` and `mod`.
 - Integer overflow is invalid; do not promise wraparound.
-- Parameters are immutable by default.
+- Parameters are immutable copies by default; `ref X T` passes a read-only
+  reference and `ref mut X T` a writable one (ADR-0016): exact type, a
+  writable place for `ref mut`, and no other argument may use that variable.
 - Local variables are declared inline and are mutable.
 - Every variable is born with a value: a scalar declaration requires an initializer (`C Integer := 0`, never `C Integer`); only structs/aggregates may omit `:=` (type-default initialization).
 - Associated receivers are `Self` or `Self mut`; do not write `Self TPoint`.

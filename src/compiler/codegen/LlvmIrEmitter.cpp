@@ -272,6 +272,10 @@ struct FunctionParameter {
     std::string llvmName;
     std::string inoxType;
     std::string llvmType;
+    // ADR-0016: a `ref`/`ref mut` parameter is a pointer to the caller's
+    // storage; valueType is the LLVM type of the value it points to.
+    bool byReference = false;
+    std::string valueType;
 };
 
 struct FunctionSignature {
@@ -588,6 +592,14 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
         }
 
         while (index < tokens.size() && tokens[index] != ")") {
+            bool byReference = false;
+            if (equalsIgnoreCase(tokens[index], "ref")) {
+                byReference = true;
+                ++index;
+                if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
+                    ++index;
+                }
+            }
             const std::string parameterName = tokens[index++];
             std::string parameterType;
             bool isReceiver = false;
@@ -620,11 +632,18 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
                 llvmParameterType = isReceiver ? "ptr" : structType->llvmName;
             }
 
+            std::string valueType;
+            if (byReference) {
+                valueType = llvmParameterType;
+                llvmParameterType = "ptr";
+            }
             parameters.push_back(FunctionParameter{
                 parameterName,
                 safeLlvmName(normalize(parameterName)),
                 parameterType,
-                llvmParameterType});
+                llvmParameterType,
+                byReference,
+                valueType});
             if (index < tokens.size() && tokens[index] == ",") {
                 ++index;
             } else if (index >= tokens.size() || tokens[index] != ")") {
@@ -703,6 +722,13 @@ public:
                             LocalInfo{stateGlobalSymbol(state.name), state.inoxType, state.llvmType});
         }
         for (const FunctionParameter& parameter : signature.parameters) {
+            if (parameter.byReference) {
+                // The pointer itself is the slot: reads and writes of the
+                // parameter go to the caller's storage.
+                locals_.emplace(normalize(parameter.inoxName),
+                                LocalInfo{"%" + parameter.llvmName, parameter.inoxType, parameter.valueType});
+                continue;
+            }
             if (const auto layout = arrayLayout(parameter.inoxType)) {
                 const std::string slot = "%" + parameter.llvmName + ".addr";
                 output_ << "  " << slot << " = alloca " << layout->llvmType << "\n";
@@ -2208,6 +2234,49 @@ private:
         emitSubroutineCall(call, callee.name());
     }
 
+    // ADR-0016: a reference argument passes the address of the caller's
+    // place: a variable's slot, a field or an element; a read-only reference
+    // to any other value gets a temporary.
+    std::string emitReferenceArgument(const ast::Expression& argument, const FunctionParameter& parameter)
+    {
+        if (argument.kind() == ast::AstNodeKind::IdentifierExpression) {
+            const auto local = locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(argument).name()));
+            if (local != locals_.end()) {
+                return local->second.slot;
+            }
+        }
+        if (isIndexCall(argument)) {
+            const ElementAddress element = emitElementAddress(static_cast<const ast::CallExpression&>(argument));
+            if (element.storage != parameter.valueType) {
+                throw CodegenUnsupported(
+                    "a narrow-integer array element cannot be passed by reference yet");
+            }
+            return element.pointer;
+        }
+        if (isMemberAccessCall(argument)) {
+            return emitMemberAddress(static_cast<const ast::CallExpression&>(argument)).pointer;
+        }
+        const std::string value = emitExpression(argument);
+        const std::string slot = "%reftmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << slot << " = alloca " << parameter.valueType << '\n';
+        output_ << "  store " << parameter.valueType << ' ' << value << ", ptr " << slot << '\n';
+        return slot;
+    }
+
+    std::vector<std::string> emitArguments(const FunctionSignature& signature,
+                                           const std::vector<ast::ExpressionPtr>& arguments,
+                                           std::size_t parameterOffset)
+    {
+        std::vector<std::string> values;
+        values.reserve(arguments.size());
+        for (std::size_t index = 0; index < arguments.size(); ++index) {
+            const FunctionParameter& parameter = signature.parameters[index + parameterOffset];
+            values.push_back(parameter.byReference ? emitReferenceArgument(*arguments[index], parameter)
+                                                   : emitExpression(*arguments[index]));
+        }
+        return values;
+    }
+
     std::string emitUserCall(const FunctionSignature& signature,
                              const std::vector<std::string>& arguments,
                              bool requireValue)
@@ -2279,12 +2348,7 @@ private:
             throw CodegenUnsupported("unsupported subroutine argument count: " + function_.name());
         }
 
-        std::vector<std::string> arguments;
-        arguments.reserve(call.arguments().size());
-        for (const auto& argument : call.arguments()) {
-            arguments.push_back(emitExpression(*argument));
-        }
-
+        const std::vector<std::string> arguments = emitArguments(signature->second, call.arguments(), 0);
         emitUserCall(signature->second, arguments, false);
     }
 
@@ -2560,8 +2624,8 @@ private:
         std::vector<std::string> arguments;
         arguments.reserve(call.arguments().size() + 1);
         arguments.push_back(target.receiverPointer);
-        for (const auto& argument : call.arguments()) {
-            arguments.push_back(emitExpression(*argument));
+        for (std::string& value : emitArguments(signature, call.arguments(), 1)) {
+            arguments.push_back(std::move(value));
         }
 
         return emitUserCall(signature, arguments, requireValue);
@@ -3213,12 +3277,7 @@ private:
                 throw CodegenUnsupported("unsupported call argument count in function: " + function_.name());
             }
 
-            std::vector<std::string> arguments;
-            arguments.reserve(call.arguments().size());
-            for (const auto& argument : call.arguments()) {
-                arguments.push_back(emitExpression(*argument));
-            }
-
+            const std::vector<std::string> arguments = emitArguments(signature->second, call.arguments(), 0);
             return emitUserCall(signature->second, arguments, true);
         }
         default:

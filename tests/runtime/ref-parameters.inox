@@ -1,0 +1,66 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0016: `ref X T` passes a read-only reference (no copy of the array);
+== `ref mut X T` lets the routine write the caller's variable, field or array
+== element. Range checks still apply through a reference (Byte).
+Module Runtime.RefParameters
+
+Const N := 5
+
+Type
+    TPoint Struct
+        X Integer
+        Y Integer
+    ;
+
+Sum(ref V Array[1..N] Integer) Integer :
+    Total Integer := 0
+    for I in Low(V)..High(V)
+        Total += V[I]
+    ;
+    Return Total
+;
+
+Fill(ref mut V Array[1..N] Integer, Start Integer) :
+    for I in 1..N
+        V[I] := Start + I
+    ;
+;
+
+Swap(ref mut A Integer, ref mut B Integer) :
+    T Integer := A
+    A := B
+    B := T
+;
+
+Move(ref mut P TPoint, DX Integer) :
+    P.X += DX
+;
+
+Bump(ref mut B Byte) :
+    B += 1
+;
+
+Main :
+    A Array[1..N] Integer
+    Fill(A, 10)
+    PutLn(Sum(A), " ", A[1], " ", A[5])
+    X Integer := 1
+    Y Integer := 2
+    Swap(X, Y)
+    PutLn(X, " ", Y)
+    Swap(A[1], X)
+    PutLn(A[1], " ", X)
+    P TPoint
+    Move(P, 7)
+    Swap(P.X, Y)
+    PutLn(P.X, " ", P.Y)
+    B Byte := 254
+    Bump(B)
+    PutLn(B, " ", Sum(A))
+;

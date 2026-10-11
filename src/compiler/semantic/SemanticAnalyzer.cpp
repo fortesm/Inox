@@ -227,6 +227,19 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
         }
 
         while (index < tokens.size() && tokens[index] != ")") {
+            // ADR-0016: `ref X T` and `ref mut X T` pass by reference.
+            PassMode mode = PassMode::Value;
+            if (equalsIgnoreCase(tokens[index], "ref")) {
+                ++index;
+                mode = PassMode::Ref;
+                if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
+                    ++index;
+                    mode = PassMode::RefMut;
+                }
+                if (isAssociatedMethod && signature.parameters.empty()) {
+                    throw SemanticError("the receiver of a method is Self or Self mut, never ref (ADR-0016)");
+                }
+            }
             if (equalsIgnoreCase(tokens[index], "mut")) {
                 throw SemanticError("mutable parameters are reserved for a future Inox version: use a local variable or return a new value");
             }
@@ -263,7 +276,7 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
                     throw SemanticError("duplicate parameter: " + parameterName);
                 }
             }
-            signature.parameters.push_back(FunctionParameter{parameterName, parameterType});
+            signature.parameters.push_back(FunctionParameter{parameterName, parameterType, mode});
 
             if (index < tokens.size() && tokens[index] == ",") {
                 ++index;
@@ -864,7 +877,8 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
     symbols_.pushScope();
     if (signature != nullptr) {
         for (const FunctionParameter& parameter : signature->parameters) {
-            declareOrThrow(parameter.name, SymbolKind::Variable, parameter.typeName, false);
+            declareOrThrow(parameter.name, SymbolKind::Variable, parameter.typeName,
+                           parameter.mode == PassMode::RefMut);
         }
     }
     analyzeStatements(function.body(), false);
@@ -2457,12 +2471,16 @@ std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpress
     for (std::size_t index = 0; index < call.arguments().size(); ++index) {
         const std::string argumentType = analyzeExpression(*call.arguments()[index]);
         const FunctionParameter& parameter = signature->parameters[index + 1];
+        if (parameter.mode != PassMode::Value) {
+            continue;
+        }
         if (!canAssignValue(parameter.typeName, argumentType, *call.arguments()[index])) {
             throw SemanticError(
                 "argument " + std::to_string(index + 1) + " of " + signature->name +
                 " expects " + parameter.typeName + ", got " + argumentType);
         }
     }
+    checkReferenceArguments(signature->name, signature->parameters, 1, call.arguments());
 
     return signature->returnType;
 }
@@ -2481,12 +2499,16 @@ std::string SemanticAnalyzer::analyzeUserFunctionCall(
     for (std::size_t index = 0; index < arguments.size(); ++index) {
         const std::string argumentType = analyzeExpression(*arguments[index]);
         const FunctionParameter& parameter = signature.parameters[index];
+        if (parameter.mode != PassMode::Value) {
+            continue;
+        }
         if (!canAssignValue(parameter.typeName, argumentType, *arguments[index])) {
             throw SemanticError(
                 "argument " + std::to_string(index + 1) + " of " + signature.name +
                 " expects " + parameter.typeName + ", got " + argumentType);
         }
     }
+    checkReferenceArguments(signature.name, signature.parameters, 0, arguments);
 
     return signature.returnType;
 }
@@ -2935,6 +2957,122 @@ bool SemanticAnalyzer::isSideEffectFree(const ast::Expression& expression) const
     }
     default:
         return false;
+    }
+}
+
+// The variable a writable place is rooted at (`X`, `P.F`, `A[I]`), when the
+// place can be written: a mutable local, a State variable or a `ref mut`
+// parameter. Null otherwise.
+const Symbol* SemanticAnalyzer::writableRoot(const ast::Expression& expression) const
+{
+    const ast::Expression* root = &expression;
+    while (root->kind() == ast::AstNodeKind::CallExpression) {
+        const auto& call = static_cast<const ast::CallExpression&>(*root);
+        if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().empty()) {
+            return nullptr;
+        }
+        const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
+        if (name != "__index" && name != "__member") {
+            return nullptr;
+        }
+        root = call.arguments()[0].get();
+    }
+    if (root->kind() != ast::AstNodeKind::IdentifierExpression) {
+        return nullptr;
+    }
+    const Symbol* symbol =
+        symbols_.currentScope().resolve(static_cast<const ast::IdentifierExpression&>(*root).name());
+    if (symbol == nullptr || !symbol->isMutable ||
+        (symbol->kind != SymbolKind::Variable && symbol->kind != SymbolKind::State)) {
+        return nullptr;
+    }
+    return symbol;
+}
+
+namespace {
+
+void collectNames(const ast::Expression& expression, std::vector<std::string>& names)
+{
+    switch (expression.kind()) {
+    case ast::AstNodeKind::IdentifierExpression:
+        names.push_back(static_cast<const ast::IdentifierExpression&>(expression).name());
+        return;
+    case ast::AstNodeKind::UnaryExpression:
+        collectNames(static_cast<const ast::UnaryExpression&>(expression).operand(), names);
+        return;
+    case ast::AstNodeKind::BinaryExpression: {
+        const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
+        collectNames(binary.left(), names);
+        collectNames(binary.right(), names);
+        return;
+    }
+    case ast::AstNodeKind::ConditionalExpression: {
+        const auto& conditional = static_cast<const ast::ConditionalExpression&>(expression);
+        collectNames(conditional.condition(), names);
+        collectNames(conditional.thenValue(), names);
+        collectNames(conditional.elseValue(), names);
+        return;
+    }
+    case ast::AstNodeKind::CallExpression: {
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        collectNames(call.callee(), names);
+        for (const auto& argument : call.arguments()) {
+            collectNames(*argument, names);
+        }
+        return;
+    }
+    default:
+        return;
+    }
+}
+
+} // namespace
+
+// ADR-0016: a reference argument has exactly the parameter's type. A
+// `ref mut` argument is a writable place (a mutable variable, a field or an
+// element of one, or a `ref mut` parameter), and the variable it is rooted
+// at appears in no other argument of the call, so the routine never sees one
+// variable through two names.
+void SemanticAnalyzer::checkReferenceArguments(const std::string& routine,
+                                               const std::vector<FunctionParameter>& parameters,
+                                               std::size_t parameterOffset,
+                                               const std::vector<ast::ExpressionPtr>& arguments)
+{
+    for (std::size_t index = 0; index < arguments.size(); ++index) {
+        const FunctionParameter& parameter = parameters[index + parameterOffset];
+        if (parameter.mode == PassMode::Value) {
+            continue;
+        }
+        const ResolvedType* resolved = result_.typeOf(*arguments[index]);
+        const std::string argumentType = resolved != nullptr ? canonicalTypeName(resolved->name) : std::string{};
+        if (argumentType != canonicalTypeName(parameter.typeName)) {
+            throw SemanticError("argument " + std::to_string(index + 1) + " of " + routine +
+                                " is passed by reference and must have type " + parameter.typeName +
+                                " exactly, got " + argumentType + " (ADR-0016)");
+        }
+        if (parameter.mode != PassMode::RefMut) {
+            continue;
+        }
+        const Symbol* root = writableRoot(*arguments[index]);
+        if (root == nullptr) {
+            throw SemanticError("argument " + std::to_string(index + 1) + " of " + routine +
+                                " is passed as ref mut and must be a mutable variable, a field or an "
+                                "element of one (ADR-0016)");
+        }
+        for (std::size_t other = 0; other < arguments.size(); ++other) {
+            if (other == index) {
+                continue;
+            }
+            std::vector<std::string> names;
+            collectNames(*arguments[other], names);
+            for (const std::string& name : names) {
+                if (symbols_.currentScope().resolve(name) == root) {
+                    throw SemanticError("argument " + std::to_string(index + 1) + " of " + routine +
+                                        " passes " + root->name +
+                                        " as ref mut, so no other argument may use it (ADR-0016)");
+                }
+            }
+        }
     }
 }
 

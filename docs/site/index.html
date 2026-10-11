@@ -256,6 +256,22 @@ P.X := P.Y := 0</code></pre>
     PutLn(&quot;report&quot;)
 ;</code></pre>
 <p><code>Exit</code> is reserved for early return from subroutines without a value. Functions with a return type must use <code>Return Expression</code>.</p>
+<h3>Parameters: by value, ref and ref mut</h3>
+<p>A parameter is normally an immutable copy. Two forms pass a reference to the caller's storage instead:</p>
+<pre><code>Sum(ref V Array[1..1000] Integer) Integer :     == read-only, no copy of the array
+    Total Integer := 0
+    for I in Low(V)..High(V)
+        Total += V[I]
+    ;
+    Return Total
+;
+
+Swap(ref mut A Integer, ref mut B Integer) :    == writes the caller's variables
+    T Integer := A
+    A := B
+    B := T
+;</code></pre>
+<p>A <code>ref</code> parameter cannot be written. A <code>ref mut</code> argument must be a mutable variable, a field or an array element of one (<code>Swap(X, Y)</code>, <code>Swap(P.X, Y)</code>, <code>Swap(A[1], Y)</code>), never a constant or an expression, and it may not appear in any other argument of the same call: <code>Swap(X, X)</code> and <code>Swap(A[1], A[2])</code> are compile errors, so a routine never sees one variable through two names. A reference argument has exactly the parameter's type (a Byte variable for a <code>ref mut</code> Byte). A reference lives only during the call: it cannot be stored or returned.</p>
 </section>
 <section id="types"><h2>Types and numeric semantics</h2>
 <p>Hexadecimal literals are written <code>$FF</code> or <code>0xFF</code>; both mean the same value. An underscore may separate digits: <code>1_000_000</code>, <code>$FF_FF</code>. A leading zero never means octal: <code>017</code> is seventeen.</p>

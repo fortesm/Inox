@@ -68,8 +68,10 @@ parameter_part    ::= "(" parameter_list ")"
 parameter_list    ::= receiver ( "," parameter )* | parameter ( "," parameter )*
 receiver          ::= "Self" "mut"?
                       (* associated methods only; "Self TPoint" is not canonical *)
-parameter         ::= identifier type_ref
-                      (* parameters are immutable; "mut X T" is reserved (error) *)
+parameter         ::= ( "ref" "mut"? )? identifier type_ref
+                      (* a value parameter is an immutable copy; "ref X T" is a
+                         read-only reference and "ref mut X T" a writable one
+                         (ADR-0016); "mut X T" is reserved (error) *)
 
 (* ---------- Types (SECTION 12 / CANON-8, SECTION 21 / CANON-13) ---------- *)
 
