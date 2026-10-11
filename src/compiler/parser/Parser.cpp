@@ -1099,6 +1099,9 @@ std::vector<ast::StatementPtr> Parser::parseCaseArmBody(std::size_t armLine, std
     std::vector<ast::StatementPtr> statements;
 
     if (!isAtEnd() && !check(TokenKind::Semicolon) && peek().location.line == armLine) {
+        // A single-line arm ends at its line: a next arm such as `-5..-1`
+        // must not be read as `Return 0 - 5 .. -1`.
+        FlagScope scope(headerExpression_);
         appendStatement(statements);
         return statements;
     }

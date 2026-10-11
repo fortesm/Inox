@@ -11,6 +11,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 ## Unreleased
 
 ### Added
+- `case` and `unless` are compiled to native code (the selector is evaluated once).
 - Precedence of `..` and `in` in CANON-20 (ADR-0008).
 - Grouped declarations `A, B T := X`, with `X` evaluated once.
 - Chained assignment `A := B := C := X` (ADR-0009).
@@ -36,7 +37,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 
 ### Known limitations
 - Integer types other than `Integer`/`Int64`/`Natural` (Byte, Int32, ...) are checked but not lowered yet.
-- Not lowered yet: `case`, `unless`, `State`, `String` locals, struct construction and initializers, Float32 conversion.
+- Not lowered yet: `State`, `String` locals, struct construction and initializers, Float32 conversion.
 - Arrays, vectors, sets, enums and ranges are not implemented.
 - The compiler is not yet aligned with the canonical `<T>` generic syntax; its existing generic syntax still uses `[T]`.
 

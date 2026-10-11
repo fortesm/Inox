@@ -629,10 +629,18 @@ public:
             return;
         }
 
-        if (function_.body().empty() ||
-            function_.body().back()->kind() != ast::AstNodeKind::ReturnStatement) {
+        if (function_.body().empty()) {
             throw CodegenUnsupported(
                 "LLVM emission currently requires a final Return expression");
+        }
+        if (function_.body().back()->kind() != ast::AstNodeKind::ReturnStatement) {
+            // Semantic analysis proved that every path returns (for example a
+            // total `case` whose arms all return), so the end is unreachable.
+            for (const auto& statement : function_.body()) {
+                emitStatement(*statement);
+            }
+            output_ << "  unreachable\n";
+            return;
         }
 
         for (std::size_t index = 0; index + 1 < function_.body().size(); ++index) {
@@ -885,6 +893,94 @@ private:
             output_ << "  br label %" << endTarget << "\n\n";
         }
 
+        output_ << endTarget << ":\n";
+    }
+
+    // `unless C` runs its body when C is false.
+    void emitUnless(const ast::UnlessStatement& statement)
+    {
+        const std::size_t label = nextLabel_++;
+        const std::string bodyTarget = "unlessbody" + std::to_string(label);
+        const std::string endTarget = "unlessend" + std::to_string(label);
+        const std::string value = emitExpression(statement.condition());
+        output_ << "  br i1 " << value << ", label %" << endTarget
+                << ", label %" << bodyTarget << "\n\n";
+        output_ << bodyTarget << ":\n";
+        emitAssignmentBranch(statement.body());
+        output_ << "  br label %" << endTarget << "\n\n";
+        output_ << endTarget << ":\n";
+    }
+
+    // ADR-0011: the selector is evaluated once; arms are tested in order and
+    // the first arm whose choices contain the value runs. Semantic analysis
+    // has already proven that choices do not overlap and, without
+    // `otherwise`, that they cover the selector type, so the fall-through
+    // edge of a total case is unreachable.
+    void emitCase(const ast::CaseStatement& statement)
+    {
+        const std::size_t label = nextLabel_++;
+        const std::string prefix = "case" + std::to_string(label);
+        const std::string endTarget = prefix + "end";
+        const std::string type = expressionLlvmType(statement.expression());
+        const std::string selector = emitExpression(statement.expression());
+        const bool unsignedCompare = type == "i1";
+        const auto& arms = statement.arms();
+        if (arms.empty()) {
+            output_ << "  br label %" << prefix << "otherwise\n\n";
+        }
+
+        for (std::size_t armIndex = 0; armIndex < arms.size(); ++armIndex) {
+            const std::string bodyTarget = prefix + "arm" + std::to_string(armIndex);
+            const std::string nextArm = armIndex + 1 < arms.size()
+                ? prefix + "test" + std::to_string(armIndex + 1)
+                : prefix + "otherwise";
+            const auto& choices = arms[armIndex].choices;
+            for (std::size_t choiceIndex = 0; choiceIndex < choices.size(); ++choiceIndex) {
+                const ast::Expression& choice = *choices[choiceIndex];
+                const std::string onMiss = choiceIndex + 1 < choices.size()
+                    ? prefix + "test" + std::to_string(armIndex) + "_" + std::to_string(choiceIndex + 1)
+                    : nextArm;
+                std::string hit;
+                if (choice.kind() == ast::AstNodeKind::BinaryExpression &&
+                    static_cast<const ast::BinaryExpression&>(choice).op() == ast::BinaryOperator::Range) {
+                    const auto& range = static_cast<const ast::BinaryExpression&>(choice);
+                    const std::string low = emitExpression(range.left());
+                    const std::string high = emitExpression(range.right());
+                    const std::string geLow = "%tmp" + std::to_string(nextTemporary_++);
+                    const std::string leHigh = "%tmp" + std::to_string(nextTemporary_++);
+                    hit = "%tmp" + std::to_string(nextTemporary_++);
+                    output_ << "  " << geLow << " = icmp " << (unsignedCompare ? "uge " : "sge ")
+                            << type << " " << selector << ", " << low << "\n";
+                    output_ << "  " << leHigh << " = icmp " << (unsignedCompare ? "ule " : "sle ")
+                            << type << " " << selector << ", " << high << "\n";
+                    output_ << "  " << hit << " = and i1 " << geLow << ", " << leHigh << "\n";
+                } else {
+                    const std::string value = emitExpression(choice);
+                    hit = "%tmp" + std::to_string(nextTemporary_++);
+                    output_ << "  " << hit << " = icmp eq " << type << " " << selector
+                            << ", " << value << "\n";
+                }
+                output_ << "  br i1 " << hit << ", label %" << bodyTarget
+                        << ", label %" << onMiss << "\n\n";
+                if (choiceIndex + 1 < choices.size()) {
+                    output_ << onMiss << ":\n";
+                }
+            }
+            output_ << bodyTarget << ":\n";
+            emitAssignmentBranch(arms[armIndex].body);
+            output_ << "  br label %" << endTarget << "\n\n";
+            if (armIndex + 1 < arms.size()) {
+                output_ << nextArm << ":\n";
+            }
+        }
+
+        output_ << prefix << "otherwise:\n";
+        if (statement.hasOtherwise()) {
+            emitAssignmentBranch(statement.otherwiseBody());
+            output_ << "  br label %" << endTarget << "\n\n";
+        } else {
+            output_ << "  unreachable\n\n";
+        }
         output_ << endTarget << ":\n";
     }
 
@@ -1772,10 +1868,12 @@ private:
         }
 
         if (statement.kind() == ast::AstNodeKind::CaseStatement) {
-            throw CodegenUnsupported("LLVM emission does not lower case statements yet");
+            emitCase(static_cast<const ast::CaseStatement&>(statement));
+            return;
         }
         if (statement.kind() == ast::AstNodeKind::UnlessStatement) {
-            throw CodegenUnsupported("LLVM emission does not lower unless statements yet");
+            emitUnless(static_cast<const ast::UnlessStatement&>(statement));
+            return;
         }
         throw CodegenUnsupported("LLVM emission does not lower this statement kind yet");
     }

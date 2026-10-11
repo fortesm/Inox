@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.41 (Layer B: EH-v3.16a closed, MSVC exception bridge validated on Windows)
+# Version: v3.42 (Layer B: case and unless lowered)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -486,6 +486,22 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.42 — 2026-10-11 — `case` and `unless` lowered (Layer B; ADR-0011 is
+#         unchanged).
+#   - `case`: the selector is evaluated once; arms are tested in source order
+#     with `icmp eq` for a value and a signed `sge`/`sle` pair for a static
+#     range (unsigned for Bool); `|` alternatives share one arm body. A case
+#     without `otherwise` is total (ADR-0011), so its fall-through edge is
+#     `unreachable`. `unless C` branches to its body when C is false.
+#   - A function whose last statement cannot fall through (for example a total
+#     case whose arms all Return) is now lowered: semantic analysis already
+#     proves every path returns, so the end is `unreachable`.
+#   - Parser fix: a single-line arm body ends at its line, so a next arm that
+#     starts with `-` (`-5..-1`) is no longer read as `Return 0 - 5 .. -1`.
+#   - Tests: runtime `case-lowering`, `unless-lowering`; the diagnostic
+#     `backend-gap-case` becomes `backend-gap-string-local` (String locals are
+#     still a backend gap).
 #
 # v3.41 — 2026-10-10 — EH-v3.16a closed (Layer B only).
 #   - The MSVC exception bridge (ChatGPT's patch, PR #21) is on main. On the
@@ -1567,8 +1583,8 @@ Chapel-style structured parallelism; data-race safety and non-mutable concurrent
 data defaults; vector runtime and move semantics; full string/Unicode runtime;
 full module export/visibility system; variant structs and metadata tags.
 
-Known implementation conformance gaps (spec may be ahead of the compiler): full
-`case` lowering and enum exhaustiveness; module exports/visibility/package search
+Known implementation conformance gaps (spec may be ahead of the compiler): enum
+exhaustiveness of `case` (lowered since v3.42); module exports/visibility/package search
 beyond the minimum local driver; arrays/enum/range/set implementation; vector
 implementation; final runtime ABI; canonical trap/abort before
 `Std.Debug.Assert`.
@@ -3240,17 +3256,16 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   Byte->UInt8, Float->Float64 + 12 standard nominal exception types.
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
-- `case`/`otherwise` (parsed and checked per ADR-0011, including coverage; LLVM
-  lowering pending; enum coverage pending with Enum; Byte selectors pending
-  with Byte).
-- `unless` (parsed; not lowered).
+- `case`/`otherwise`: parsed, checked and lowered (ADR-0011, v3.42); enum
+  coverage pending with Enum; Byte selectors pending with Byte lowering.
+- `unless`: parsed and lowered (v3.42).
 - Enum short/block forms (parsed; not lowered; strict-init not enforced).
 
 ## B-GAPS. CONFORMANCE GAPS (Layer A says it should exist; code doesn't yet)
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  `case`, `unless`, module `State` in expressions, `String` locals, and a
+  module `State` in expressions, `String` locals, and a
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
@@ -3288,7 +3303,7 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 7. Currency arithmetic (i64 x10^6) — name registered, behavior missing.
 8. Crypto arithmetic (i128 x10^18) — name registered, behavior missing, needs tests.
 9. BigCurrency — not present; needs big-integer runtime (0.2+).
-10. case LLVM lowering + enum exhaustiveness.
+10. case LLVM lowering: CLOSED (v3.42). Enum exhaustiveness waits for Enum.
 11. Array[Low..High] — not parsed or lowered.
 12. Range/Enum/Set full implementation.
 13. Checked integer arithmetic traps. — IMPLEMENTED (v3.18); see CANON-19.
@@ -3578,17 +3593,16 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   Byte->UInt8, Float->Float64 + 12 standard nominal exception types.
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
-- `case`/`otherwise` (parsed and checked per ADR-0011, including coverage; LLVM
-  lowering pending; enum coverage pending with Enum; Byte selectors pending
-  with Byte).
-- `unless` (parsed; not lowered).
+- `case`/`otherwise`: parsed, checked and lowered (ADR-0011, v3.42); enum
+  coverage pending with Enum; Byte selectors pending with Byte lowering.
+- `unless`: parsed and lowered (v3.42).
 - Enum short/block forms (parsed; not lowered; strict-init not enforced).
 
 ## B-GAPS. CONFORMANCE GAPS (Layer A says it should exist; code doesn't yet)
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  `case`, `unless`, module `State` in expressions, `String` locals, and a
+  module `State` in expressions, `String` locals, and a
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
@@ -3626,7 +3640,7 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 7. Currency arithmetic (i64 x10^6) — name registered, behavior missing.
 8. Crypto arithmetic (i128 x10^18) — name registered, behavior missing, needs tests.
 9. BigCurrency — not present; needs big-integer runtime (0.2+).
-10. case LLVM lowering + enum exhaustiveness.
+10. case LLVM lowering: CLOSED (v3.42). Enum exhaustiveness waits for Enum.
 11. Array[Low..High] — not parsed or lowered.
 12. Range/Enum/Set full implementation.
 13. Checked integer arithmetic traps. — IMPLEMENTED (v3.18); see CANON-19.
@@ -3685,7 +3699,7 @@ CANON-12 `for` in range, and E11. See CHANGE LOG v3.18.)
    rejection; control structures reject `:`).
 3. Extend the Clang-backed `--build`/`--run` driver beyond the minimum local
    module workflow.
-4. Complete `case` lowering and enum exhaustiveness checks.
+4. `case` lowering: done (v3.42); enum exhaustiveness checks wait for Enum.
 5. Extend local multi-file `Module`/`Use` with future export/visibility/package.
 6. Implement arrays with `Array[Low..High] T`, indexing, bounds checks, `Low`,
    `High`, `Length`.

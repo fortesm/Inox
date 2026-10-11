@@ -1,0 +1,54 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0011: case in the Ada style, lowered. Single values, static ranges,
+== `|` alternatives, negative ranges, Const bounds, otherwise, a total case
+== without otherwise (Bool), a function that ends in a total case, and a
+== selector that is evaluated exactly once.
+Module Runtime.CaseLowering
+
+Const Limit := 9
+
+Classify(N Integer) Integer :
+    case N
+        0 Return 0
+        1..Limit | 20 Return 1
+        -5..-1
+            Return 2
+        otherwise
+            Return 3
+    ;
+;
+
+Next(N Integer) Integer :
+    PutLn("selector evaluated")
+    Return N + 1
+;
+
+Main :
+    for I in -6..21 step 3
+        Put(Classify(I), " ")
+    ;
+    PutLn("")
+    B Bool := 3 > 2
+    case B
+        True PutLn("yes")
+        False PutLn("no")
+    ;
+    case Next(4)
+        1..4 PutLn("low")
+        5 | 6 PutLn("five or six")
+        otherwise PutLn("high")
+    ;
+    N Integer := 7
+    case N
+        7 | 8
+            PutLn("seven or eight")
+            PutLn("multi-line arm")
+        otherwise
+    ;
+;

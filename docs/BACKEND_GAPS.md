@@ -52,8 +52,8 @@ analysis but not lowered yet.)
 | `float32-conversion` | Float32 local initialized by explicit conversion | **GAP** | unsupported expression in function: Main |
 | `nested-if` | if inside if (straight-line code) | **OK** |  |
 | `const-use` | module Const used in an expression | **OK** |  |
-| `case` | case statement | **GAP** | LLVM emission does not lower case statements yet |
-| `unless` | unless statement | **GAP** | LLVM emission does not lower unless statements yet |
+| `case` | case statement | **OK** |  |
+| `unless` | unless statement | **OK** |  |
 | `string-local` | String local variable | **GAP** | unsupported expression in function: Main |
 | `bool-local` | Boolean local variable | **OK** |  |
 | `float-arith` | Float arithmetic | **OK** |  |
@@ -67,7 +67,7 @@ analysis but not lowered yet.)
 | `chained-assignment` | chained assignment A := B := C := X | **OK** |  |
 | `named-struct-construction` | named struct construction TPoint(X := 1, Y := 2) | **GAP** | unsupported expression in function: Main |
 | `for-step-expression-bounds` | for I in 1..N + 1 step N div 2 | **OK** |  |
-| `case-ada-choices` | case with | alternatives and a static range | **GAP** | LLVM emission does not lower case statements yet |
+| `case-ada-choices` | case with | alternatives and a static range | **OK** |  |
 | `digit-separators` | numeric literals with the digit separator _ | **OK** |  |
 | `compound-assignment` | compound assignment += -= *= /= ^= | **OK** |  |
 | `hex-0x` | hexadecimal literal written 0xFF | **OK** |  |
@@ -76,7 +76,7 @@ analysis but not lowered yet.)
 | `natural-conversion` | Natural local and checked Natural(X) (ADR-0014) | **OK** |  |
 | `byte-local` | Byte (UInt8) local initialized by conversion | **GAP** | unsupported local variable type for LLVM emission |
 
-Summary: GAP=9, OK=26
+Summary: GAP=6, OK=29
 
 ## Reading the table
 
@@ -96,7 +96,7 @@ Summary: GAP=9, OK=26
 * `state-global`: semantic analysis resolves module `State` names, but the
   emitter does not yet receive their storage. `const-use` was in the same
   situation and was closed by P-C stage 1 (below).
-* `case` and `unless` are also listed in CANON B-PARSED.
+* `case` and `unless` are lowered since v3.42 (probes `case`, `case-ada-choices`, `unless`).
 * `byte-local` (v3.39): `Byte` is registered as UInt8 and its conversions are
   range-checked, but no integer type other than Integer/Int64/Natural is
   lowered yet (Int8..Int32, UInt8..UInt64). `natural-conversion` is OK:

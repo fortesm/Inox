@@ -7,13 +7,10 @@
 
 == Legal Inox that the LLVM backend does not lower yet (docs/BACKEND_GAPS.md).
 == The diagnostic must say the gap is in the backend, not in the program.
-== When case is lowered, move this program to tests/runtime.
-Module Diagnostics.BackendGapCase
+== When String locals are lowered, move this program to tests/runtime.
+Module Diagnostics.BackendGapStringLocal
 
 Main :
-    X Integer := 1
-    case X
-        0 PutLn(0)
-        otherwise PutLn(1)
-    ;
+    S String := "abc"
+    PutLn(S)
 ;
