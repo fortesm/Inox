@@ -362,13 +362,26 @@ function Invoke-DriverTrapTest {
     $trapPath = [System.IO.Path]::ChangeExtension($TestFile.FullName, ".trap")
     $expectedMessage = ((Get-Content -LiteralPath $trapPath -TotalCount 1) -replace "`r$", "").Trim()
 
-    if ($InputPath -ne "") {
-        $actual = Get-Content -LiteralPath $InputPath | & $InoxExe "--run" $TestFile.FullName 2>&1 | Out-String
-    } else {
-        $actual = & $InoxExe "--run" $TestFile.FullName 2>&1 | Out-String
+    # Standard output and standard error are captured separately: when both
+    # are piped, Windows gives no ordering between the two streams, so a merged
+    # capture can show the runtime diagnostic before output the program had
+    # already flushed.
+    $stderrPath = [System.IO.Path]::GetTempFileName()
+    try {
+        if ($InputPath -ne "") {
+            $stdout = Get-Content -LiteralPath $InputPath | & $InoxExe "--run" $TestFile.FullName 2>$stderrPath | Out-String
+        } else {
+            $stdout = & $InoxExe "--run" $TestFile.FullName 2>$stderrPath | Out-String
+        }
+        $exitCode = $LASTEXITCODE
+        $stderr = Get-Content -LiteralPath $stderrPath -Raw
+    } finally {
+        Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
     }
-    $exitCode = $LASTEXITCODE
-    $actual = ($actual -replace "`r`n", "`n") -replace "`n+$", ""
+    if ($null -eq $stderr) { $stderr = "" }
+    $stdout = ($stdout -replace "`r`n", "`n") -replace "`n+$", ""
+    $stderr = ($stderr -replace "`r`n", "`n") -replace "`n+$", ""
+    $actual = (@($stdout, $stderr) | Where-Object { $_ -ne "" }) -join "`n"
 
     # A compile error also exits non-zero, so require the runtime diagnostic itself.
     # Optional NAME.out next to NAME.trap: the complete output (program output,
@@ -377,8 +390,13 @@ function Invoke-DriverTrapTest {
     $exactPath = [System.IO.Path]::ChangeExtension($TestFile.FullName, ".out")
     $exactOk = $true
     if (Test-Path -LiteralPath $exactPath) {
-        $exactExpected = ((Get-Content -LiteralPath $exactPath -Raw) -replace "`r`n", "`n") -replace "`n+$", ""
-        $exactOk = ($actual -ceq $exactExpected)
+        # The runtime diagnostic and the driver note go to standard error; the
+        # rest of NAME.out is the program's standard output, in order.
+        $exactLines = (((Get-Content -LiteralPath $exactPath -Raw) -replace "`r`n", "`n") -replace "`n+$", "") -split "`n"
+        $isDiagnostic = { param($line) $line.StartsWith("Inox runtime error:") -or $line.StartsWith("inox:") }
+        $expectedOut = ($exactLines | Where-Object { -not (& $isDiagnostic $_) }) -join "`n"
+        $expectedErr = ($exactLines | Where-Object { & $isDiagnostic $_ }) -join "`n"
+        $exactOk = ($stdout -ceq $expectedOut) -and ($stderr -ceq $expectedErr)
     }
     if ($exitCode -ne 0 -and $expectedMessage -ne "" -and $actual.Contains($expectedMessage) -and $exactOk) {
         $script:passed++
