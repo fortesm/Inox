@@ -1,0 +1,23 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.57 (Marcelo Fortes, 2026-10-12): Bool is ordered false < true, as in
+== Pascal and Ada, with every comparison operator.
+Module Runtime.BoolOrdering
+
+Main :
+    F Bool := false
+    T Bool := true
+    PutLn(F < T, " ", T < F, " ", F <= F, " ", T >= F, " ", T > T, " ", F # T)
+    PutLn(false < true, " ", (1 > 2) < (2 > 1), " ", not (T <= F))
+    for I in 1..3
+        Even := I mod 2 = 0
+        if Even > F
+            PutLn(I, " par")
+        ;
+    ;
+;

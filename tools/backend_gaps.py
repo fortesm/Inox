@@ -186,10 +186,10 @@ Main :
     PutLn(A < B and not (A >= B), " ", A > B or A <= B)
 ;
 """),
-    ("bool-equality", "Bool = and #", """Main :
+    ("bool-comparison", "Bool = # and ordering false < true", """Main :
     A Bool := true
     B Bool := false
-    PutLn(A = B, " ", A # B)
+    PutLn(A = B, " ", A # B, " ", B < A, " ", A <= B)
 ;
 """),
     ("string-getln", "GetLn into a String, compared with =", """Main :

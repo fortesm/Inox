@@ -19,9 +19,12 @@ design.md needed.
   byte over UTF-8, a prefix first: Unicode code point order, case-sensitive,
   not a locale collation.
 - Bool `=` and `#` are lowered in their own width (they produced invalid IR).
-- Until the maintainer decides otherwise, Bool has no order and structs are
-  not compared: both are compile errors with a clear message, instead of
-  being accepted and miscompiled.
+- Bool is ordered false < true (Marcelo Fortes, 2026-10-12: "Bool deve ter
+  ordem (false < true, como no Pascal e no Ada)!"; canon v3.57).
+- Structs are never compared (Marcelo Fortes, 2026-10-12: "Structs não deve
+  comparar com =/#, campo a campo. Como em Pascal. Permanece erro, com a
+  orientação de comparar os campos."; canon v3.57). Both used to be accepted
+  and miscompiled.
 - Runtime: `__inox_str_compare(ptr, ptr) -> i32` in libinoxrt.
 
 ## Capabilities

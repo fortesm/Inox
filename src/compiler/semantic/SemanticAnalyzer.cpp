@@ -2897,17 +2897,11 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
             throw SemanticError("arrays and slices cannot be compared with '" +
                                 std::string(binaryOperatorName(op)) + "' (CANON-13)");
         }
-        // v3.56: comparison is defined for numbers, Strings, Char and Bool
-        // (Bool: `=` and `#` only). Structs are not compared, and Bool has no
-        // order, until the maintainer decides otherwise.
+        // v3.57: numbers, Strings, Char and Bool (false < true) are compared
+        // and ordered; structs are never compared, as in Pascal.
         if (!leftType.empty() && resolveStruct(leftType) != nullptr) {
             throw SemanticError("structs cannot be compared with '" + std::string(binaryOperatorName(op)) +
                                 "'; compare their fields");
-        }
-        if (op != ast::BinaryOperator::Equal && op != ast::BinaryOperator::NotEqual &&
-            (leftType == "Bool" || rightType == "Bool")) {
-            throw SemanticError("Bool values are not ordered: '" + std::string(binaryOperatorName(op)) +
-                                "' is not defined for Bool; use '=' or '#'");
         }
         return "Bool";
     case ast::BinaryOperator::And:
