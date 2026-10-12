@@ -58,9 +58,25 @@ If these disagree, do not invent a third behavior. Fix the documentation/code mi
 Kept current by the OpenSpec change `compiler-modularization`; read the
 module that owns a concern instead of searching the whole emitter.
 
-- `src/compiler/codegen/LlvmIrEmitter.cpp` — `FunctionEmitter` (one routine:
-  statements, expressions, exceptions, String ownership) and the module
-  emission (`LlvmIrEmitter::emit`, `emitFunction`).
+- `src/compiler/codegen/LlvmIrEmitter.cpp` — the module: globals,
+  declarations, internal helpers, `main` (`LlvmIrEmitter::emit`,
+  `emitFunction`).
+- `codegen/FunctionEmitter.h` — the class that lowers one routine; its
+  member functions live by responsibility in:
+  - `FunctionEmitter.cpp` — construction and the routine body;
+  - `FunctionEmitterControlFlow.cpp` — if, unless, case, loops, Return,
+    Exit, leave, continue, until, with;
+  - `FunctionEmitterExceptions.cpp` — try/except/ensure, Raise, Retry,
+    capture and rethrow (both ABIs);
+  - `FunctionEmitterStatements.cpp` — the statement dispatcher,
+    declarations, assignments, calls;
+  - `FunctionEmitterIo.cpp` — Put/PutLn, Get/GetLn;
+  - `FunctionEmitterStrings.cpp` — String ownership (retain/release, owned
+    slots, statement temporaries);
+  - `FunctionEmitterAggregates.cpp` — struct defaults and construction,
+    places, fields, methods, assignment;
+  - `FunctionEmitterArrays.cpp` — indexing, bounds, slices;
+  - `FunctionEmitterExpressions.cpp` — expression types and lowering.
 - `codegen/TypeLayout.*` — LLVM types of scalars, arrays, slices, structs;
   routine signatures; State globals.
 - `codegen/AstQueries.*` — read-only AST walks (`forEachStatement`, "uses

@@ -24,6 +24,15 @@ set(INOX_COMPILER_SOURCES
     src/compiler/ast/Ast.cpp
     src/compiler/codegen/AstQueries.cpp
     src/compiler/codegen/ExceptionSupport.cpp
+    src/compiler/codegen/FunctionEmitter.cpp
+    src/compiler/codegen/FunctionEmitterAggregates.cpp
+    src/compiler/codegen/FunctionEmitterArrays.cpp
+    src/compiler/codegen/FunctionEmitterControlFlow.cpp
+    src/compiler/codegen/FunctionEmitterExceptions.cpp
+    src/compiler/codegen/FunctionEmitterExpressions.cpp
+    src/compiler/codegen/FunctionEmitterIo.cpp
+    src/compiler/codegen/FunctionEmitterStatements.cpp
+    src/compiler/codegen/FunctionEmitterStrings.cpp
     src/compiler/codegen/LlvmIrEmitter.cpp
     src/compiler/codegen/LlvmText.cpp
     src/compiler/codegen/MathBuiltins.cpp
