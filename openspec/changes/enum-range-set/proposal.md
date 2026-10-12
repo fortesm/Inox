@@ -10,6 +10,8 @@ Approval (Marcelo Fortes, 2026-10-12): "Todas as tomadas de decisão dos pontos
 1 a 5 foram verificadas e eleitas para serem acatadas." Item 4: Enum, Range
 and Set.
 
+Risk: normal.
+
 ## What Changes
 
 Implemented in three phases, each its own PR and green gates:

@@ -32,6 +32,10 @@ rules:
     - For a Layer A change, quote Marcelo Fortes's approval with its date, or
       mark the proposal "Awaiting approval" and do not implement it.
     - State what is out of scope and which existing behavior must not change.
+    - State the risk, `Risk: high` or `Risk: normal`. High when the change
+      touches exception lowering, the runtime ABI, memory ownership, or
+      rewrites a compiler phase; a high-risk change waits for Marcelo's dated
+      approval of design.md before any code is written.
   specs:
     - Every scenario names the test that proves it (tests/... path) or says
       "test to add".
@@ -39,13 +43,20 @@ rules:
       internals.
   design:
     - Describe the lowering to LLVM IR and the runtime faults involved.
+    - For `Risk: high`, end with "Design approval:" and Marcelo's quote and
+      date, or "Awaiting design approval".
   tasks:
     - End with the E19 gates (suite, ASan+UBSan with a 1 MiB stack, mutation
       fuzz seeds 1 and 7, backend_gaps 0 BUG, eh_state_balance,
-      grammar_consistency) and the documentation updates.
+      grammar_consistency, openspec validate, canon_trace) and the
+      documentation updates.
+    - A refactor starts with `tools/ir_snapshot.py record` and its gates
+      include `compare`, with every intended difference listed.
 
 operations:
   archive:
     guidance:
+      - Archive right after the pull request is merged, in the next branch, so
+        openspec/specs always matches main.
       - Add the dated entry to the canon change log and, for Layer A, the ADR.
       - Record the final test counts and gate results in the archived change.

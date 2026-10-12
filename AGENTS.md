@@ -40,6 +40,51 @@ If these disagree, do not invent a third behavior. Fix the documentation/code mi
   `python3 tools/canon_trace.py update`; CI runs `check`, which fails when a
   canon unit is missing from `openspec/migration/CANON_MAP.md`, an archived
   ADR is no longer verbatim, or a mirrored unit changed without its spec.
+- High-risk changes (proposal says `Risk: high`) wait for Marcelo's approval
+  of `design.md` before any code is written; the approval is quoted in the
+  design with its date. A change is high-risk when it touches exception
+  lowering (Itanium or MSVC funclets), the runtime ABI, memory ownership, or
+  rewrites a compiler phase. Other changes go from approved proposal to code.
+- A refactor that must not change behavior records `tools/ir_snapshot.py`
+  before the change, compares after it, and lists every intended difference
+  with `--allow` in the PR (canon E19, v3.54):
+
+      python3 tools/ir_snapshot.py record build/inox /tmp/snap   # before
+      python3 tools/ir_snapshot.py compare build/inox /tmp/snap \
+          --allow tests/x.inox                                    # after
+
+## Known pitfalls (lessons already paid for)
+
+Read these before working on the compiler; add a line when a new trap costs
+time. Each names where it bit.
+
+- **Context can be lost mid-task.** A session can restart (usage limit,
+  crash) after edits but before the commit. Before starting, run
+  `git status`: uncommitted work in a clone may be your own unfinished change
+  (2026-10-12, item 1 was found complete but uncommitted). Commit in small,
+  gated steps and keep `tasks.md` ticked as you go.
+- **A copied compiler binary does not find `stdlib/`.** Discovery is relative
+  to the executable; set `INOX_STDLIB` (ir_snapshot does) or every `Use
+  Std.*` program fails with "could not resolve module".
+- **Windows traps: compare stdout and stderr separately.** Merging the two
+  streams made `fault-not-catchable` flaky (PR #30).
+- **Never compute a value inside an `ostream <<` chain that also emits IR.**
+  Evaluation order inside the chain wrote instructions after their use (array
+  store bug, v3.45). Compute into a variable, then write.
+- **Builtins must not shadow user names.** Declaring `Low`/`High` as builtins
+  broke user Consts named Low/High; intercept the builtin only when its
+  argument is an array (v3.45).
+- **A bare identifier may be a call.** `V[Next] += 1` looked side-effect free;
+  the semantic check `isSideEffectFree` is the guard (v3.45).
+- **Sanitizer builds:** use `-DINOX_ENABLE_ASAN=ON -DINOX_ENABLE_UBSAN=ON`
+  (with `CXX=g++`), not raw `CMAKE_CXX_FLAGS`, which break the libinoxrt link;
+  run the suite with `ulimit -s 1024`.
+- **Two C runtimes on Windows break typed exception handlers.** libinoxrt
+  links the static release CRT (commit 6773ee8); keep it that way.
+- **The token scanners are gone.** Type/Const/State are typed declarations
+  (v3.53); never re-scan tokens of a section — extend the parser instead.
+- **GitHub GraphQL is blocked here.** Use `gh api` REST routes (`gh pr view`
+  and `gh pr create` fail); job logs come from check-run annotations.
 
 ## Non-negotiable language identity
 

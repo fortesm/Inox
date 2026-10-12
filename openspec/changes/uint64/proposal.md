@@ -9,6 +9,8 @@ local today (`uint64-local` GAP). This is item 3 of the order approved on
 Approval (Marcelo Fortes, 2026-10-12): "Todas as tomadas de decisão dos pontos
 1 a 5 foram verificadas e eleitas para serem acatadas." Item 3: UInt64.
 
+Risk: normal.
+
 ## What Changes
 
 - UInt64/UInteger values in locals, parameters, results, struct fields, State,

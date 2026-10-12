@@ -11,6 +11,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 ## Unreleased
 
 ### Added
+- `tools/ir_snapshot.py` (canon v3.54): records IR, types, diagnostics and exit codes of every program and compares them after a refactor; an E19 gate. AGENTS.md gains "Known pitfalls"; high-risk OpenSpec changes wait for design approval.
 - Type, Const and State sections are parsed into typed declarations (OpenSpec change `declaration-sections`, canon v3.53): a struct field may be a fixed array, `State` may hold structs and arrays (with or without initializer), and malformed entries report their line.
 - Struct values (canon v3.52): struct initializers `Q T := Expr`, named construction `T(F := V)` as an expression, nested struct fields and field paths, fields and literal defaults of every scalar type, methods on fields and elements, arrays of struct. A struct that contains itself is a compile error.
 - Read-only slices `A[L..H]`, `A[..H]`, `A[L..]`, `A[..]` of type `Slice<T>` (ADR-0017), checked bounds, never outliving their array.
@@ -37,6 +38,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - Language decisions recorded (canon v3.50): UInt64 literals up to 2^64-1 in UInt64 context, no unary minus on UInt64, no UInt64/Integer mixing; implicit Range checks; Enum `Succ`/`Pred`/`Low`/`High`; Set functions, literal and 256-value limit; `GetLn(S)` for String, non-atomic reference counts. Enum printing prints the literal's name (v3.51). Implementation follows.
 
 ### Changed
+- A Type line `TName := Type` is an error: Inox has no type alias form (canon v3.54).
 - Example files no longer carry the `llvm-` prefix (`examples/put-output-basic.inox`, ...).
 - Windows (MSVC ABI): exceptions are lowered with LLVM funclets (`__CxxFrameHandler3`); every exception test passes natively on the CI runner (EH-v3.16a closed).
 - `Var` blocks and scalars without an initializer are rejected (CANON-5).

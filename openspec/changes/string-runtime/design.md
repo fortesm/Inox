@@ -44,3 +44,7 @@ Windows, and the emitter already builds landing pads (Itanium) and funclets
 ## Runtime faults
 
 Kind 6 for invalid String input (Q1); one new kind for out of memory.
+
+## Design approval
+
+Awaiting design approval (Risk: high, AGENTS.md).
