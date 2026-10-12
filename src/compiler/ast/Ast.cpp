@@ -53,6 +53,16 @@ const std::vector<StatementPtr>& ModuleNode::statements() const
     return statements_;
 }
 
+void ModuleNode::addLoadedModule(std::string name)
+{
+    loadedModules_.push_back(std::move(name));
+}
+
+const std::vector<std::string>& ModuleNode::loadedModules() const
+{
+    return loadedModules_;
+}
+
 UseDeclaration::UseDeclaration(std::vector<std::string> path)
     : AstNode(AstNodeKind::UseDeclaration), path_(std::move(path))
 {

@@ -119,6 +119,15 @@ bool SemanticAnalyzer::canAssign(std::string_view targetType, std::string_view v
 bool SemanticAnalyzer::canAssignValue(std::string_view targetType, std::string_view valueType,
                                       const ast::Expression& value)
 {
+    // F6 (file-io): a File is moved from the call that opened it, never
+    // copied from another File.
+    if (isFileType(targetType) || isFileType(valueType)) {
+        if (!isFileType(targetType) || !isFileType(valueType)) {
+            return false;
+        }
+        requireFreshFile(value);
+        return true;
+    }
     if (canAssign(targetType, valueType)) {
         return true;
     }
@@ -207,6 +216,7 @@ std::string SemanticAnalyzer::canonicalArrayTypeName(std::string_view name) cons
     } else {
         resolveTypeOrThrow(parts->element);
         element = canonicalTypeName(parts->element);
+        rejectFileIn(element, "an array element");
         const bool isStruct = structs_.find(normalizeName(element)) != structs_.end();
         if (!isNumericType(element) && element != "Bool" && element != "String" && !isStruct) {
             throw SemanticError("array elements of type " + element +

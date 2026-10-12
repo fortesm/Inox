@@ -4,12 +4,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
-"""Run the String test programs under AddressSanitizer with leak detection.
+"""Run the String and File test programs under AddressSanitizer with leak detection.
 
-String values are reference counted by code the compiler inserts (OpenSpec
-change string-runtime). A missing release leaks; an extra one frees twice or
-reads freed memory. The regular suite only compares output, so it sees
-neither. For each tests/runtime/string*.inox this tool emits LLVM IR with
+String and File values are reference counted by code the compiler inserts
+(OpenSpec changes string-runtime and file-io). A missing release leaks (and
+leaves a file open); an extra one frees twice or reads freed memory. The
+regular suite only compares output, so it sees neither. For each
+tests/runtime/string*.inox and files-*.inox this tool emits LLVM IR with
 inox, links it with AddressSanitizer against libinoxrt, runs it with the
 NAME.in input, and requires:
 
@@ -79,7 +80,8 @@ def main(argv):
         print("SKIP string_leak_check: needs clang++, or clang and g++")
         return 0
 
-    programs = sorted(glob.glob(os.path.join(ROOT, "tests", "runtime", "string*.inox")))
+    programs = sorted(glob.glob(os.path.join(ROOT, "tests", "runtime", "string*.inox")) +
+                      glob.glob(os.path.join(ROOT, "tests", "runtime", "files-*.inox")))
     if not programs:
         print("FAIL string_leak_check: no String test programs found")
         return 1

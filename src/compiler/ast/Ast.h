@@ -156,10 +156,18 @@ public:
     std::vector<StatementPtr>& statements();
     const std::vector<StatementPtr>& statements() const;
 
+    // The modules a program was built from (the entry module and every
+    // module reached through Use), recorded by the driver; the analyzer
+    // makes the intrinsics of a standard module visible only when the
+    // program uses it (Std.Files, Std.IOUtils).
+    void addLoadedModule(std::string name);
+    const std::vector<std::string>& loadedModules() const;
+
 private:
     std::string name_;
     std::vector<AstNodePtr> items_;
     std::vector<StatementPtr> statements_;
+    std::vector<std::string> loadedModules_;
 };
 
 class UseDeclaration final : public AstNode {

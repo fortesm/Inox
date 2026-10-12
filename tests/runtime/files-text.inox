@@ -1,0 +1,48 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Std.IOUtils F2/F4/F5 (OpenSpec change file-io): Create, WriteLn and Write
+== with values of every printable type, Close, OpenRead, ReadLn until Eof,
+== OpenAppend, a file opened again in a loop (the previous one is closed),
+== and the file is deleted at the end.
+Module Runtime.FilesText
+Use Std.IOUtils
+
+Main :
+    Path String := "inox-test-files-text.txt"
+    F := Create(Path)
+    WriteLn(F, "Olá ", 42, " ", true, " ", 2.5)
+    Write(F, "sem quebra")
+    WriteLn(F)
+    WriteLn(F, -7)
+    Close(F)
+
+    G := OpenAppend(Path)
+    WriteLn(G, "anexada")
+    Close(G)
+
+    Count Integer := 0
+    R := OpenRead(Path)
+    while not Eof(R)
+        Line := ReadLn(R)
+        Count += 1
+        PutLn(Count, ": [", Line, "]")
+    ;
+    PutLn("depois do fim: [", ReadLn(R), "] ", Eof(R))
+
+    for Round in 1..2
+        Again := OpenRead(Path)
+        PutLn("volta ", Round, ": ", ReadLn(Again))
+        == Each round closes the file of the previous one when it stores the
+        == new one; the last stays open until Main ends (F1), so it is closed
+        == here: Windows does not delete an open file.
+        Close(Again)
+    ;
+    Close(R)
+    DeleteFile(Path)
+    PutLn(Exists(Path))
+;

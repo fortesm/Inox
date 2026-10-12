@@ -156,6 +156,21 @@ private:
     bool constantIntegerValue(const ast::Expression& expression, std::int64_t& value) const;
     void requireStatementExpression(const ast::Expression& expression);
 
+    // Std.Files / Std.IOUtils (OpenSpec change file-io; SemanticFiles.cpp).
+    // The File type and the file functions exist only in a program that uses
+    // the module; a File is never copied (F6).
+    void declareStandardModuleNames(const ast::ModuleNode& module);
+    static bool isFileType(std::string_view typeName);
+    // Whether `name` called with `argumentCount` arguments is a file function
+    // (ReadLn with no argument is the console prelude function).
+    static bool isFileFunction(std::string_view name, std::size_t argumentCount);
+    std::string analyzeFileCall(std::string_view name, const ast::CallExpression& call);
+    // A value stored into a File must be a file just opened (OpenRead,
+    // Create, OpenAppend): anything else would copy a File.
+    void requireFreshFile(const ast::Expression& value) const;
+    // A File may only be a local or a `ref mut` parameter.
+    static void rejectFileIn(std::string_view typeName, const std::string& what);
+
     SymbolTable symbols_;
     TypeTable types_;
     SemanticResult result_;
@@ -172,6 +187,8 @@ private:
     std::size_t retryHandlerDepth_ = 0;
     std::size_t ensureDepth_ = 0;
     bool hasMain_ = false;
+    bool filesVisible_ = false;    // the program uses Std.Files (the File type)
+    bool ioUtilsVisible_ = false;  // the program uses Std.IOUtils (the functions)
     std::unordered_map<const ast::Expression*, std::int64_t> constants_;
     // Char Consts (`Const Letter := 'A'`) by normalized name, as Unicode scalar
     // values; used for static case choices (ADR-0011).

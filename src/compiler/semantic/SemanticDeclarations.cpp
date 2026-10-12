@@ -110,6 +110,9 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
                     throw SemanticError("duplicate parameter: " + parameterName);
                 }
             }
+            if (mode != PassMode::RefMut) {
+                rejectFileIn(parameterType, "passed by value or as ref; write `ref mut " + parameterName + " File`");
+            }
             signature.parameters.push_back(FunctionParameter{parameterName, parameterType, mode});
 
             if (index < tokens.size() && tokens[index] == ",") {
@@ -133,6 +136,7 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
         }
         resolveTypeOrThrow(tokens[index]);
         signature.returnType = canonicalTypeName(tokens[index]);
+        rejectFileIn(signature.returnType, "returned by " + function.name());
         if (support::isSliceTypeName(signature.returnType)) {
             throw SemanticError("a slice cannot be returned: it would outlive its array (ADR-0017)");
         }
@@ -217,6 +221,9 @@ void SemanticAnalyzer::resolveTypeOrThrow(std::string_view name) const
         return;
     }
     if (types_.resolve(name) == nullptr) {
+        if (isFileType(name)) {
+            throw SemanticError("unknown type: File (it is declared in Std.Files: add `Use Std.IOUtils`)");
+        }
         throw SemanticError("unknown type: " + std::string(name));
     }
 }
@@ -292,6 +299,10 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
                 continue;
             }
             const std::string valueType = canonicalTypeName(analyzeExpression(*declaration.value));
+            rejectFileIn(valueType, std::string(section.sectionKind() == ast::SectionKind::State
+                                                    ? "a State variable, "
+                                                    : "a Const, ") +
+                                        declaration.name);
             if (declaration.typeName.empty() && !valueType.empty()) {
                 symbols_.currentScope().inferTypeName(declaration.name, valueType);
             }
@@ -451,6 +462,7 @@ void SemanticAnalyzer::validateStructDeclaration(const ast::TypeDeclaration& dec
             throw SemanticError("a slice cannot be a struct field (ADR-0017): " + field.name);
         }
         resolveTypeOrThrow(field.typeName);
+        rejectFileIn(canonicalTypeName(field.typeName), "a struct field, " + field.name);
         if (field.hasDefault) {
             if (support::isArrayTypeName(field.typeName) || resolveStruct(field.typeName) != nullptr) {
                 throw SemanticError("only a scalar struct field has a default (CANON-9): " + field.name);
@@ -563,6 +575,9 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
                                 " (ADR-0017): " + declaration.name);
         }
         resolveTypeOrThrow(declaration.typeName);
+        if (section.sectionKind() == ast::SectionKind::State) {
+            rejectFileIn(canonicalTypeName(declaration.typeName), "a State variable, " + declaration.name);
+        }
         if (support::isArrayTypeName(declaration.typeName)) {
             const std::string canonical = canonicalTypeName(declaration.typeName);
             result_.setCanonicalTypeName(declaration.typeName, canonical);

@@ -1,0 +1,29 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+Module Std.Files
+
+== Definitions of text files (canon r3.58 module pair: Std.Files defines,
+== Std.IOUtils works; OpenSpec change file-io).
+==
+== The type File is a compiler intrinsic, visible in a program that uses
+== Std.Files or Std.IOUtils.
+==
+==   File     == an open text file, owned by the routine that holds it.
+==
+== Rules of a File (F1, F6):
+==   - it is closed when the routine that holds it exits by any path: the
+==     end, Return, Exit or an exception; Close(F) closes it earlier, and
+==     closing twice does nothing;
+==   - it is never copied: it is a local variable that receives a file just
+==     opened (F := OpenRead(Path)), or a ref mut parameter. It cannot be a
+==     struct field, an array element, a State variable or a result, and it
+==     cannot be compared.
+==
+== The errors of file operations are the exception types of Std.Errors:
+== FileNotFound, PermissionDenied, AlreadyExists and DiskFull, all kinds of
+== IOError, which is raised for any other failure.

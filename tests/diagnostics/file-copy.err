@@ -1,0 +1,1 @@
+a File cannot be copied: store a file just opened (OpenRead, Create, OpenAppend) or pass the File as ref mut

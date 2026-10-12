@@ -206,7 +206,9 @@ private:
 
     static bool isStringType(std::string_view inoxType);
 
-    bool typeOwnsStrings(std::string_view inoxType) const;
+    static bool isFileType(std::string_view inoxType);
+
+    bool typeOwnsReferences(std::string_view inoxType) const;
 
     void requireModuleLine(const std::string& line);
 
@@ -224,6 +226,9 @@ private:
                          const std::function<void(const std::string&)>& action);
 
     void emitStringCallAt(const std::string& pointer, std::string_view inoxType, std::string_view function);
+
+    // Retains or releases the File stored at pointer.
+    void emitFileCallAt(const std::string& pointer, RuntimeFunction function);
 
     void emitRetainAt(const std::string& pointer, std::string_view inoxType);
 
@@ -243,7 +248,7 @@ private:
 
     void emitRetainResult(const std::string& value);
 
-    bool scanOwnsStrings() const;
+    bool scanOwnsReferences() const;
 
     bool structHasDefaults(const StructDefinition& structType) const;
 
@@ -344,6 +349,17 @@ private:
 
     std::string emitMathBuiltinCall(std::string_view name, const std::vector<ast::ExpressionPtr>& arguments);
 
+    // ---- Std.IOUtils (OpenSpec change file-io; FunctionEmitterFiles.cpp) ----
+    // A call to a file function (and not to a routine of the program).
+    bool isFileCall(const ast::CallExpression& call) const;
+    // The LLVM type of a file function's result ("void" when it has none).
+    static std::string fileCallLlvmType(const ast::CallExpression& call);
+    std::string emitFileCall(const ast::CallExpression& call);
+    // Calls a libinoxrt function with `invoke` inside a protected region, so
+    // an exception it raises reaches the handlers and cleanup pads.
+    std::string emitRuntimeCall(RuntimeFunction function, std::string_view returnType, std::string_view symbol,
+                                const std::string& arguments);
+
     std::ostringstream& output_;
     const ast::FunctionDeclaration& function_;
     const FunctionSignature& signature_;
@@ -382,7 +398,7 @@ private:
     std::vector<OwnedSlot> ownedSlots_;
     std::vector<OwnedSlot> pendingTemps_;
     std::size_t statementDepth_ = 0;
-    bool ownsStrings_ = false;
+    bool ownsReferences_ = false;
 };
 
 } // namespace inox::compiler::codegen::detail

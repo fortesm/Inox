@@ -10,8 +10,8 @@
 #
 # Maintainer / sole design authority: Marcelo Fortes
 # Language version: Inox 0.2.0-pre-alpha (language and compiler; SECTION 02)
-# Canon revision: r3.58 (decision log of this document, NOT a version;
-#                 naming and versioning)
+# Canon revision: r3.59 (decision log of this document, NOT a version;
+#                 text files: Std.Files / Std.IOUtils)
 # Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -524,6 +524,45 @@ Two numbers, never confused:
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# r3.59 — 2026-10-12 — text files: Std.Files and Std.IOUtils (Layer A and
+#         Layer B). Decisions F1–F7 approved by Marcelo Fortes on 2026-10-12
+#         ("Tudo aprovado", with I/O errors usable in try / except On /
+#         ensure, not only with Retry, and the basic file functions); design
+#         approved on 2026-10-12 ("100% aprovado!") with the module pair
+#         Std.Files (the File type) / Std.IOUtils (the functions). OpenSpec
+#         change `file-io`, Risk: high.
+#   - Layer A, CANON-17 "Files": a File closes itself when the routine that
+#     holds it exits by any path; OpenRead / Create / OpenAppend; errors are
+#     FileNotFound, PermissionDenied, AlreadyExists, DiskFull or IOError,
+#     ordinary exceptions; text only (ReadLn, Write, WriteLn, Eof, Close);
+#     UTF-8, lines written with "\n", "\n" or "\r\n" read; a File is never
+#     copied (a local that receives a file just opened, or a ref mut
+#     parameter); Exists, DeleteFile, RenameFile.
+#   - Rules settled while implementing (part of the approved design,
+#     reported to the maintainer): the file names are visible only in a
+#     program that uses the module (`Use Std.IOUtils`; the File type also
+#     with `Use Std.Files`), so Create, Close, Write ... stay free elsewhere;
+#     RenameFile raises AlreadyExists when the target exists, on every
+#     system; DeleteFile never deletes a directory; Exists is true only for a
+#     regular file; Write/WriteLn format values as PutLn; ReadLn past the end
+#     returns "" (Eof is true); reading a file opened for writing, or using
+#     a closed file, raises IOError; a file declared inside a loop is closed
+#     when the next iteration stores a new one, and the last one when the
+#     routine exits (close a file before deleting it: Windows refuses to
+#     delete an open file).
+#   - Layer B: runtime/FileRuntime.cpp (a reference-counted handle; every
+#     FILE* stays in libinoxrt; binary mode; UTF-16 paths on Windows; errno
+#     mapped to the exceptions); the String ownership paths of the emitter
+#     own File values too (released, i.e. closed, at every exit and in the
+#     cleanup pad).
+#   - Tests: runtime files-text, files-close-on-exception, files-not-found,
+#     files-system, file-names-free; 13 diagnostics (file-copy,
+#     file-assign-copy, file-without-use, file-type-without-use, file-field,
+#     file-parameter-by-value, file-return, file-state, file-array-element,
+#     file-compare, file-write-without-value, file-argument-type,
+#     file-name-taken); inoxrt-tests file runtime cases;
+#     tools/string_leak_check.py also runs the file programs.
 #
 # r3.58 — 2026-10-12 — naming of the standard library; versioning.
 #         Marcelo Fortes, 2026-10-12: "Std.Core muda para Std.System";
@@ -3487,11 +3526,13 @@ The initial portable 0.1 standard library lives under `stdlib/`:
   `Hypot3`, and angle conversions). Explicit `Use Std.Math`.
 - `Std.Debug` — documents future `Assert`; intentionally UNAVAILABLE until
   trap/abort behavior is canonical.
+- `Std.Files` / `Std.IOUtils` (r3.59) — the File type / the text file and
+  file system functions (CANON-17 "Files"). Explicit `Use Std.IOUtils`.
 Module pairs (r3.58): `Std.X` holds only the definitions and general data of
 a subject, like a C header; `Std.XUtils` holds the helper functions and may
 use `Std.X`. No module is a catch-all.
-Planned, not implemented (registered v3.57/r3.58; OpenSpec changes
-`std-strings`, `file-io`):
+Planned, not implemented (registered v3.57/r3.58; OpenSpec change
+`std-strings`):
 - `Std.Strings` — definitions and general data of Strings (the facts of
   CANON-14, character classes, Unicode data the functions rely on).
 - `Std.StrUtils` — String functions beyond the operators, by Unicode rules and
@@ -3503,8 +3544,6 @@ Planned, not implemented (registered v3.57/r3.58; OpenSpec changes
   (NFC/NFD); search (position, contains, starts/ends with), slicing,
   replacing, splitting, joining, repeating, padding. Function names and the
   String concatenation operator are decided in that change.
-- `Std.Files` / `Std.IOUtils` — the File type and its definitions / file,
-  path and directory functions (OpenSpec change `file-io`).
 - `Std.DateTime` / `Std.DateUtils` — dates, times and intervals / calendar
   calculations.
 - `Std.SystemUtils` — system-specific functions only (environment, process,
@@ -3549,6 +3588,39 @@ Initial 0.1 input semantics:
 `ReadLn` returning `String`, EOF modeling, and `Result[T, E]`-based I/O errors
 are DEFERRED until the runtime ABI is settled.
 The current implementation lowers `Put`/`PutLn` through C runtime `printf` and lowers minimal Integer `Get`/`GetLn` through internal LLVM helper functions built on C runtime `getchar`. This is a temporary ABI.
+
+### Files (r3.59; Std.Files, Std.IOUtils; OpenSpec change file-io)
+
+`Use Std.IOUtils` makes the file functions and the type `File` visible (`Use
+Std.Files` the type alone); without it their names are free for the
+program's own routines.
+    F := Create("notas.txt")             == new or truncated, for writing
+    WriteLn(F, "Total: ", 42, " ", true) == the values as PutLn prints them
+    Close(F)                             == optional: F closes itself
+    R := OpenRead("notas.txt")
+    while not Eof(R)
+        PutLn(ReadLn(R))
+    ;
+- Opening: `OpenRead(Path)`, `Create(Path)`, `OpenAppend(Path)` return a new
+  File. A File is never copied: it is a local variable that receives a file
+  just opened, or a `ref mut` parameter; it is not a field, an element, a
+  State variable or a result, and it is not compared.
+- A File closes itself when the routine that holds it exits by any path
+  (end, Return, Exit, an exception); `Close(F)` closes it earlier and
+  closing twice does nothing. Storing a new file into a File variable closes
+  the old one.
+- Text is UTF-8. `WriteLn` writes "\n" on every system; `ReadLn` accepts
+  "\n" and "\r\n", returns the line without it, and "" past the end, where
+  `Eof(F)` is true. `Write(F, ...)` and `WriteLn(F, ...)` take the values
+  PutLn prints.
+- `Exists(Path)` is true for a regular file; `DeleteFile(Path)` deletes a
+  file, never a directory; `RenameFile(From, To)` raises AlreadyExists when
+  To exists.
+- Every failure raises an exception of CANON-15: FileNotFound,
+  PermissionDenied, AlreadyExists, DiskFull, otherwise IOError (also for a
+  closed file, invalid UTF-8, or reading a file opened for writing). They are
+  handled with try, except On, Else, ensure and Retry like any exception.
+- Binary I/O, directories, positions and other encodings are later changes.
 
 
 # ============================================================================

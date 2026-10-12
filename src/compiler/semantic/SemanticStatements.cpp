@@ -225,6 +225,9 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             const std::string initializerType = analyzeExpression(*var.initializer());
             if (typeName.empty()) {
                 typeName = initializerType;
+                if (isFileType(typeName)) {
+                    requireFreshFile(*var.initializer());
+                }
             } else if (!canAssignValue(typeName, initializerType, *var.initializer())) {
                 throw SemanticError("cannot initialize " + typeName + " with " + initializerType);
             }

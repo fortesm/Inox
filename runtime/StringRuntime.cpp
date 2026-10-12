@@ -14,30 +14,30 @@
 // program (printf) and line input reads through the program's getchar, passed
 // in as a function pointer. Memory is allocated and freed only here.
 
+#include "StringBlock.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
-namespace {
+namespace inox::runtime {
 
-struct InoxString final {
-    std::int64_t count;
-    std::int64_t length;
-    char bytes[1];
-};
+namespace {
 
 constexpr std::int64_t kImmortal = -1;
 
 InoxString kEmpty = {kImmortal, 0, {'\0'}};
 
-// Status codes of __inox_str_getln; the program maps them to runtime faults.
-constexpr std::int32_t kStatusOk = 0;
-constexpr std::int32_t kStatusInvalidUtf8 = 1;
-constexpr std::int32_t kStatusOutOfMemory = 2;
+} // namespace
 
-InoxString* allocate(std::int64_t length) noexcept
+InoxString* emptyString() noexcept
+{
+    return &kEmpty;
+}
+
+InoxString* allocateString(std::int64_t length) noexcept
 {
     const std::size_t size = offsetof(InoxString, bytes) + static_cast<std::size_t>(length) + 1;
     auto* block = static_cast<InoxString*>(std::malloc(size));
@@ -50,8 +50,6 @@ InoxString* allocate(std::int64_t length) noexcept
     return block;
 }
 
-// RFC 3629: well-formed UTF-8 (no overlong forms, no surrogates, at most
-// U+10FFFF).
 bool isValidUtf8(const unsigned char* text, std::int64_t length) noexcept
 {
     std::int64_t index = 0;
@@ -93,13 +91,90 @@ bool isValidUtf8(const unsigned char* text, std::int64_t length) noexcept
     return true;
 }
 
+InoxString* readLine(int (*readByte)(void* context), void* context, LineStatus& status, bool* atEnd) noexcept
+{
+    std::int64_t length = 0;
+    std::int64_t capacity = 64;
+    auto* buffer = static_cast<unsigned char*>(std::malloc(static_cast<std::size_t>(capacity)));
+    if (atEnd != nullptr) {
+        *atEnd = false;
+    }
+    if (buffer == nullptr) {
+        status = LineStatus::OutOfMemory;
+        return &kEmpty;
+    }
+    for (;;) {
+        const int ch = readByte(context);
+        if (ch < 0) {
+            if (atEnd != nullptr) {
+                *atEnd = true;
+            }
+            break;
+        }
+        if (ch == '\n') {
+            break;
+        }
+        if (length == capacity) {
+            capacity *= 2;
+            auto* grown = static_cast<unsigned char*>(std::realloc(buffer, static_cast<std::size_t>(capacity)));
+            if (grown == nullptr) {
+                std::free(buffer);
+                status = LineStatus::OutOfMemory;
+                return &kEmpty;
+            }
+            buffer = grown;
+        }
+        buffer[length++] = static_cast<unsigned char>(ch);
+    }
+    if (length > 0 && buffer[length - 1] == '\r') {
+        --length;
+    }
+    if (!isValidUtf8(buffer, length)) {
+        std::free(buffer);
+        status = LineStatus::InvalidUtf8;
+        return &kEmpty;
+    }
+    if (length == 0) {
+        std::free(buffer);
+        status = LineStatus::Ok;
+        return &kEmpty;
+    }
+    InoxString* string = allocateString(length);
+    if (string == nullptr) {
+        std::free(buffer);
+        status = LineStatus::OutOfMemory;
+        return &kEmpty;
+    }
+    std::memcpy(string->bytes, buffer, static_cast<std::size_t>(length));
+    std::free(buffer);
+    status = LineStatus::Ok;
+    return string;
+}
+
+} // namespace inox::runtime
+
+namespace {
+
+using inox::runtime::InoxString;
+
+constexpr std::int64_t kImmortal = -1;
+
+int readThroughProgram(void* context)
+{
+    // context points at the program's getchar (a function pointer is never
+    // converted to void* itself).
+    const auto readByte = *static_cast<int (**)()>(context);
+    const int ch = readByte();
+    return ch == EOF ? -1 : ch;
+}
+
 } // namespace
 
 extern "C" {
 
 void* __inox_str_empty() noexcept
 {
-    return &kEmpty;
+    return inox::runtime::emptyString();
 }
 
 void __inox_str_retain(void* value) noexcept
@@ -153,58 +228,15 @@ std::int32_t __inox_str_compare(const void* left, const void* right) noexcept
     return a->length < b->length ? -1 : 1;
 }
 
-// Reads one line through the program's getchar: the bytes up to the newline,
-// without it (a `\r` before it is dropped too). At end of input with nothing
-// read, the line is "". The result is owned (+1) unless it is "".
+// Reads one line through the program's getchar (inox::runtime::readLine).
+// Status 0 ok, 1 invalid UTF-8, 2 out of memory; the program turns 1 and 2
+// into runtime faults.
 void* __inox_str_getln(int (*readByte)(), std::int32_t* status) noexcept
 {
-    std::int64_t length = 0;
-    std::int64_t capacity = 64;
-    auto* buffer = static_cast<unsigned char*>(std::malloc(static_cast<std::size_t>(capacity)));
-    if (buffer == nullptr) {
-        *status = kStatusOutOfMemory;
-        return &kEmpty;
-    }
-    for (;;) {
-        const int ch = readByte();
-        if (ch == EOF || ch == '\n') {
-            break;
-        }
-        if (length == capacity) {
-            capacity *= 2;
-            auto* grown = static_cast<unsigned char*>(std::realloc(buffer, static_cast<std::size_t>(capacity)));
-            if (grown == nullptr) {
-                std::free(buffer);
-                *status = kStatusOutOfMemory;
-                return &kEmpty;
-            }
-            buffer = grown;
-        }
-        buffer[length++] = static_cast<unsigned char>(ch);
-    }
-    if (length > 0 && buffer[length - 1] == '\r') {
-        --length;
-    }
-    if (!isValidUtf8(buffer, length)) {
-        std::free(buffer);
-        *status = kStatusInvalidUtf8;
-        return &kEmpty;
-    }
-    if (length == 0) {
-        std::free(buffer);
-        *status = kStatusOk;
-        return &kEmpty;
-    }
-    InoxString* string = allocate(length);
-    if (string == nullptr) {
-        std::free(buffer);
-        *status = kStatusOutOfMemory;
-        return &kEmpty;
-    }
-    std::memcpy(string->bytes, buffer, static_cast<std::size_t>(length));
-    std::free(buffer);
-    *status = kStatusOk;
-    return string;
+    inox::runtime::LineStatus lineStatus = inox::runtime::LineStatus::Ok;
+    InoxString* line = inox::runtime::readLine(readThroughProgram, &readByte, lineStatus);
+    *status = static_cast<std::int32_t>(lineStatus);
+    return line;
 }
 
 } // extern "C"

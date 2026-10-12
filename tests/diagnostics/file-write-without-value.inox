@@ -1,0 +1,15 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== F4 (file-io): Write needs a value (WriteLn(F) alone writes an empty line).
+Module Diagnostics.FileWriteWithoutValue
+Use Std.IOUtils
+
+Main :
+    F := Create("x.txt")
+    Write(F)
+;
