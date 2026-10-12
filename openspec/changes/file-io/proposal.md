@@ -22,7 +22,11 @@ Decisions (Layer A once implemented; canon entry with the change):
 - **F1. A file closes itself.** A `File` variable closes its file when the
   routine that holds it exits by any path (end, `Return`, `Exit`, an
   exception); `Close(F)` closes it earlier, and closing twice is harmless.
-- **F2. Opening.** Free functions of a new module `Std.Files`:
+- **Module pair (canon r3.58).** `Std.Files` holds the definitions: the
+  `File` type (the exception types stay in `Std.Errors`). `Std.IOUtils`
+  holds every function below (F2, F4, F7) and uses `Std.Files`. To be
+  confirmed with the design approval.
+- **F2. Opening.** Free functions of `Std.IOUtils`:
   `OpenRead(Path)`, `Create(Path)` (new or truncated, for writing),
   `OpenAppend(Path)`. No modes enum (Enum is not implemented yet) and no
   static method form (not defined in Inox).
@@ -47,14 +51,16 @@ encodings other than UTF-8, asynchronous I/O.
 ## Capabilities
 
 ### New Capabilities
-- `stdlib/files`: the `Std.Files` module and the `File` type.
+- `stdlib/files`: the `Std.Files` (the `File` type) and `Std.IOUtils`
+  (functions) modules.
 
 ### Modified Capabilities
 (none)
 
 ## Impact
 
-New `stdlib/Std.Files.inox` (declarations and documentation), runtime
+New `stdlib/Std.Files.inox` and `stdlib/Std.IOUtils.inox` (declarations
+and documentation), runtime
 `runtime/FileRuntime.cpp` (portable C++ over the C runtime, Windows and
 Linux), the emitter (the File slot is an owned resource closed by the String
 cleanup path), the analyzer (non-copyable rule), canon CANON-17/18, manual,

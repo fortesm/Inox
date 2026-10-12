@@ -36,4 +36,4 @@
 - [x] 5.4 `tools/backend_gaps.py` reports 0 BUG
 - [x] 5.5 `tools/eh_state_balance.py` and `tools/grammar_consistency.py` pass
 - [x] 5.7 `tools/ir_snapshot.py` against main: only intended differences (fault table kinds 12/13 in every program with checked arithmetic; programs with String locals now compile; clearer `Get` on String message; the unsupported-element test moved to Char)
-- [ ] 5.6 Linux and Windows CI green
+- [x] 5.6 Linux and Windows CI green (PR #36)

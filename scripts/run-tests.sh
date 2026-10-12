@@ -571,6 +571,22 @@ run_grammar_consistency() {
 }
 run_grammar_consistency
 
+# `inox --version` must match the canon header (SECTION 02, VERSIONING).
+run_version_check() {
+    local canon="$repo_root/docs/INOX_CANONICAL.md"
+    local language revision expected actual
+    language="$(sed -n 's/^# Language version: Inox \([^ ]*\).*/\1/p' "$canon" | head -n 1)"
+    revision="$(sed -n 's/^# Canon revision: \(r[0-9.]*\).*/\1/p' "$canon" | head -n 1)"
+    expected="inox $language (canon $revision)"
+    actual="$("$inox_exe" --version 2>&1 | sed 's/\r$//')"
+    if [[ -n "$language" && -n "$revision" && "$actual" == "$expected" ]]; then
+        record_pass "inox --version matches the canon header"
+    else
+        record_fail "inox --version matches the canon header" "expected: $expected" "actual: $actual"
+    fi
+}
+run_version_check
+
 # Unit tests of the runtime library (inoxrt-tests, built next to the compiler).
 run_runtime_unit_tests() {
     local unit_exe

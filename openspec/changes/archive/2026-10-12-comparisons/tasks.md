@@ -19,4 +19,4 @@
 ## 4. Gates (E19)
 
 - [x] 4.1 Suite, ASan+UBSan suite, string_leak_check, backend_gaps 0 BUG, eh_state_balance, grammar, openspec, canon_trace
-- [ ] 4.2 Linux and Windows CI green
+- [x] 4.2 Linux and Windows CI green (PRs #37, #38)

@@ -2,7 +2,7 @@
 
 This directory contains the minimal standard-library modules agreed for Inox 0.1:
 
-- `Std.Core.inox` — prelude/core documentation and compiler intrinsics.
+- `Std.System.inox` — prelude (implicit) documentation and compiler intrinsics (formerly `Std.Core`).
 - `Std.IO.inox` — I/O facade for `Put` and `PutLn` built-ins/runtime lowering.
 - `Std.Math.inox` — pure Integer helpers that can be implemented in Inox 0.1.
 - `Std.Debug.inox` — debug facade; `Assert` requires canonical trap/runtime support.
@@ -14,7 +14,7 @@ These modules are intentionally small. They must remain portable across Windows,
 
 `stdlib/` is not yet a complete standalone language runtime. It is the beginning of the Inox standard library and currently contains partial, dummy, or compiler-recognized declarations used for tests and early language development.
 
-Inox now ships a minimal native runtime support library (`libinoxrt.a` on Unix-like builds and `inoxrt.lib` on Windows builds) for exception transport. It is intentionally small and is not a VM or managed execution environment. The current compiler backend may still lower selected operations, such as `Put` and `PutLn`, through host facilities such as `printf` while the broader runtime ABI is being designed.
+Inox now ships a minimal native runtime support library (`libinoxrt.a` on Unix-like builds and `inoxrt.lib` on Windows builds) for exception transport and the String runtime. It is intentionally small and is not a VM or managed execution environment. The current compiler backend may still lower selected operations, such as `Put` and `PutLn`, through host facilities such as `printf` while the broader runtime ABI is being designed.
 
 ## Discovery
 

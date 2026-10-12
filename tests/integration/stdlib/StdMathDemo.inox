@@ -7,7 +7,7 @@
 
 Module StdMathDemo
 
-Use Std.Core
+Use Std.System
 Use Std.Math
 Use Std.IO
 Use Std.Debug
