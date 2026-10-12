@@ -1,0 +1,25 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== `unless C` runs its body when C is false; it composes with loops.
+Module Runtime.UnlessLowering
+
+Main :
+    N Integer := 3
+    unless N = 0
+        PutLn("not zero")
+    ;
+    unless N > 0
+        PutLn("never")
+    ;
+    for I in 1..5
+        unless I mod 2 = 0
+            Put(I, " ")
+        ;
+    ;
+    PutLn("")
+;

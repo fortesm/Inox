@@ -27,6 +27,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/parser/Parser.cpp
     src/compiler/semantic/SemanticAnalyzer.cpp
     src/compiler/semantic/Symbol.cpp
+    src/compiler/support/ArrayType.cpp
     src/compiler/support/Environment.cpp
     src/compiler/support/FileSystem.cpp
     src/compiler/support/Platform.cpp

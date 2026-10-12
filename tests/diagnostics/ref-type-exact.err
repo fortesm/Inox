@@ -1,0 +1,1 @@
+argument 1 of Bump is passed by reference and must have type UInt8 exactly, got Int64 (ADR-0016)

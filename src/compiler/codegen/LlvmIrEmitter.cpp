@@ -7,6 +7,7 @@
 
 #include "LlvmIrEmitter.h"
 #include "../support/Platform.h"
+#include "../support/ArrayType.h"
 #include "../exceptions/ExceptionTypes.h"
 
 #include <cctype>
@@ -271,6 +272,10 @@ struct FunctionParameter {
     std::string llvmName;
     std::string inoxType;
     std::string llvmType;
+    // ADR-0016: a `ref`/`ref mut` parameter is a pointer to the caller's
+    // storage; valueType is the LLVM type of the value it points to.
+    bool byReference = false;
+    std::string valueType;
 };
 
 struct FunctionSignature {
@@ -303,12 +308,47 @@ std::string llvmStructName(std::string_view inoxName)
     return "%" + normalize(inoxName);
 }
 
+struct IntegerRange {
+    std::int64_t low;
+    std::int64_t high;
+};
+
+// The range of a fixed-width integer type narrower than 64 bits (Byte is
+// UInt8), or nullopt for any other type.
+std::optional<IntegerRange> narrowIntegerRange(std::string_view type)
+{
+    struct Entry {
+        std::string_view name;
+        IntegerRange range;
+    };
+    static constexpr Entry entries[] = {
+        {"Int8", {-128, 127}},
+        {"Int16", {-32768, 32767}},
+        {"Int32", {-2147483648LL, 2147483647LL}},
+        {"UInt8", {0, 255}},
+        {"Byte", {0, 255}},
+        {"UInt16", {0, 65535}},
+        {"UInt32", {0, 4294967295LL}},
+    };
+    for (const Entry& entry : entries) {
+        if (equalsIgnoreCase(type, entry.name)) {
+            return entry.range;
+        }
+    }
+    return std::nullopt;
+}
+
 std::string llvmTypeForScalar(std::string_view inoxType)
 {
     // CANON-8: Natural is the non-negative subtype of Integer and shares its
     // i64 representation; the range is checked where a value becomes Natural.
     if (equalsIgnoreCase(inoxType, "Integer") || equalsIgnoreCase(inoxType, "Int64") ||
         equalsIgnoreCase(inoxType, "Natural")) {
+        return "i64";
+    }
+    // CANON-8 fixed widths narrower than 64 bits are computed as i64 holding
+    // the mathematical value and range-checked where a value takes the type.
+    if (narrowIntegerRange(inoxType)) {
         return "i64";
     }
     if (equalsIgnoreCase(inoxType, "Bool")) {
@@ -395,16 +435,86 @@ bool isMathBuiltin(std::string_view inoxName)
            equalsIgnoreCase(inoxName, "CycleToRad");
 }
 
+// CANON-13: a canonical fixed array type (numeric bounds, see
+// support/ArrayType.h) and the LLVM storage of its elements. Narrow integers
+// are stored in their own width and widened to i64 when read.
+struct ArrayLayout {
+    std::int64_t low = 0;
+    std::int64_t high = 0;
+    std::string elementType;      // Inox element type (may be an array)
+    std::string elementStorage;   // LLVM storage type of one element
+    std::string llvmType;         // [N x elementStorage]
+};
+
+std::optional<ArrayLayout> arrayLayout(std::string_view canonicalType);
+
+// ADR-0017: a slice is { data, low, high }: data points at element `low`.
+constexpr std::string_view kSliceLlvmType = "{ ptr, i64, i64 }";
+
+std::string elementStorageType(std::string_view elementType);
+
 std::string llvmTypeForInoxType(std::string_view inoxType, const StructDefinitions& structs)
 {
     if (const std::string scalar = llvmTypeForScalar(inoxType); !scalar.empty()) {
         return scalar;
+    }
+    if (const auto layout = arrayLayout(inoxType)) {
+        return layout->llvmType;
+    }
+    if (support::isSliceTypeName(inoxType)) {
+        return std::string(kSliceLlvmType);
     }
     const auto structType = structs.find(normalize(inoxType));
     if (structType != structs.end()) {
         return structType->second.llvmName;
     }
     return {};
+}
+
+
+std::string scalarStorageType(std::string_view inoxType)
+{
+    if (const auto range = narrowIntegerRange(inoxType)) {
+        if (range->high <= 255) {
+            return "i8";
+        }
+        if (range->high <= 65535) {
+            return "i16";
+        }
+        return "i32";
+    }
+    return llvmTypeForScalar(inoxType);
+}
+
+std::optional<ArrayLayout> arrayLayout(std::string_view canonicalType)
+{
+    const auto parts = support::splitArrayTypeName(canonicalType);
+    if (!parts) {
+        return std::nullopt;
+    }
+    ArrayLayout layout;
+    layout.low = std::stoll(parts->low);
+    layout.high = std::stoll(parts->high);
+    layout.elementType = parts->element;
+    if (const auto inner = arrayLayout(parts->element)) {
+        layout.elementStorage = inner->llvmType;
+    } else {
+        layout.elementStorage = scalarStorageType(parts->element);
+    }
+    if (layout.elementStorage.empty()) {
+        return std::nullopt;
+    }
+    layout.llvmType = "[" + std::to_string(layout.high - layout.low + 1) + " x " +
+                      layout.elementStorage + "]";
+    return layout;
+}
+
+std::string elementStorageType(std::string_view elementType)
+{
+    if (const auto inner = arrayLayout(elementType)) {
+        return inner->llvmType;
+    }
+    return scalarStorageType(elementType);
 }
 
 const StructDefinition* findStruct(const StructDefinitions& structs, std::string_view inoxName)
@@ -480,7 +590,8 @@ void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefi
 
 
 FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& function,
-                                         const StructDefinitions& structs)
+                                         const StructDefinitions& structs,
+                                         const semantic::SemanticResult& semantics)
 {
     const auto& tokens = function.signatureTokens();
 
@@ -497,6 +608,14 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
         }
 
         while (index < tokens.size() && tokens[index] != ")") {
+            bool byReference = false;
+            if (equalsIgnoreCase(tokens[index], "ref")) {
+                byReference = true;
+                ++index;
+                if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
+                    ++index;
+                }
+            }
             const std::string parameterName = tokens[index++];
             std::string parameterType;
             bool isReceiver = false;
@@ -512,9 +631,17 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
                 }
                 parameterType = tokens[index++];
             }
+            if (support::isArrayTypeName(parameterType) || support::isSliceTypeName(parameterType)) {
+                parameterType = semantics.canonicalTypeName(parameterType);
+            }
 
             std::string llvmParameterType = llvmTypeForScalar(parameterType);
-            if (llvmParameterType.empty()) {
+            if (const auto layout = arrayLayout(parameterType)) {
+                // CANON-13: an array is a value; a by-value parameter is a copy.
+                llvmParameterType = layout->llvmType;
+            } else if (support::isSliceTypeName(parameterType)) {
+                llvmParameterType = std::string(kSliceLlvmType);
+            } else if (llvmParameterType.empty()) {
                 const StructDefinition* structType = findStruct(structs, parameterType);
                 if (structType == nullptr) {
                     throw CodegenUnsupported(
@@ -523,11 +650,18 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
                 llvmParameterType = isReceiver ? "ptr" : structType->llvmName;
             }
 
+            std::string valueType;
+            if (byReference) {
+                valueType = llvmParameterType;
+                llvmParameterType = "ptr";
+            }
             parameters.push_back(FunctionParameter{
                 parameterName,
                 safeLlvmName(normalize(parameterName)),
                 parameterType,
-                llvmParameterType});
+                llvmParameterType,
+                byReference,
+                valueType});
             if (index < tokens.size() && tokens[index] == ",") {
                 ++index;
             } else if (index >= tokens.size() || tokens[index] != ")") {
@@ -549,6 +683,8 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
             "LLVM emission currently supports scalar, struct return types, or subroutines without return type");
     } else if (const std::string scalarReturnType = llvmTypeForScalar(tokens[index]); !scalarReturnType.empty()) {
         llvmReturnType = scalarReturnType;
+    } else if (const auto layout = arrayLayout(semantics.canonicalTypeName(tokens[index]))) {
+        llvmReturnType = layout->llvmType;
     } else if (const StructDefinition* structType = findStruct(structs, tokens[index])) {
         llvmReturnType = structType->llvmName;
     } else {
@@ -562,6 +698,21 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
         std::move(parameters)};
 }
 
+// A module `State` variable (CANON-5): a module-level LLVM global, zero at
+// load time and initialized in source order at the start of `main`.
+struct StateGlobal {
+    std::string name;
+    std::string inoxType;
+    std::string llvmType;
+    const ast::Expression* initializer = nullptr;
+};
+using StateGlobals = std::vector<StateGlobal>;
+
+std::string stateGlobalSymbol(std::string_view name)
+{
+    return "@inox.state." + normalize(name);
+}
+
 class FunctionEmitter {
 public:
     FunctionEmitter(std::ostringstream& output,
@@ -571,8 +722,10 @@ public:
                     const StructDefinitions& structs,
                     std::vector<std::string>& stringGlobals,
                     std::size_t& nextStringLiteral,
-                    const semantic::SemanticResult& semantics)
+                    const semantic::SemanticResult& semantics,
+                    const StateGlobals& stateGlobals)
         : semantics_(semantics),
+          stateGlobals_(stateGlobals),
           output_(output),
           function_(function),
           signature_(signature),
@@ -581,7 +734,28 @@ public:
           stringGlobals_(stringGlobals),
           nextStringLiteral_(nextStringLiteral)
     {
+        // State variables are addressed like locals whose slot is a global.
+        for (const StateGlobal& state : stateGlobals_) {
+            locals_.emplace(normalize(state.name),
+                            LocalInfo{stateGlobalSymbol(state.name), state.inoxType, state.llvmType});
+        }
         for (const FunctionParameter& parameter : signature.parameters) {
+            if (parameter.byReference) {
+                // The pointer itself is the slot: reads and writes of the
+                // parameter go to the caller's storage.
+                locals_.emplace(normalize(parameter.inoxName),
+                                LocalInfo{"%" + parameter.llvmName, parameter.inoxType, parameter.valueType});
+                continue;
+            }
+            if (const auto layout = arrayLayout(parameter.inoxType)) {
+                const std::string slot = "%" + parameter.llvmName + ".addr";
+                output_ << "  " << slot << " = alloca " << layout->llvmType << "\n";
+                output_ << "  store " << layout->llvmType << " %" << parameter.llvmName
+                        << ", ptr " << slot << '\n';
+                locals_.emplace(normalize(parameter.inoxName),
+                                LocalInfo{slot, parameter.inoxType, layout->llvmType});
+                continue;
+            }
             if (const StructDefinition* structType = findStruct(structs_, parameter.inoxType)) {
                 if (parameter.llvmType == "ptr") {
                     locals_.emplace(
@@ -610,6 +784,13 @@ public:
 
     void emit()
     {
+        if (signature_.llvmName == "main") {
+            for (const StateGlobal& state : stateGlobals_) {
+                const std::string value = emitExpression(*state.initializer);
+                output_ << "  store " << state.llvmType << ' ' << value << ", ptr "
+                        << stateGlobalSymbol(state.name) << '\n';
+            }
+        }
         if (signature_.llvmReturnType == "i32" || signature_.llvmReturnType == "void") {
             for (const auto& statement : function_.body()) {
                 emitStatement(*statement);
@@ -629,10 +810,18 @@ public:
             return;
         }
 
-        if (function_.body().empty() ||
-            function_.body().back()->kind() != ast::AstNodeKind::ReturnStatement) {
+        if (function_.body().empty()) {
             throw CodegenUnsupported(
                 "LLVM emission currently requires a final Return expression");
+        }
+        if (function_.body().back()->kind() != ast::AstNodeKind::ReturnStatement) {
+            // Semantic analysis proved that every path returns (for example a
+            // total `case` whose arms all return), so the end is unreachable.
+            for (const auto& statement : function_.body()) {
+                emitStatement(*statement);
+            }
+            output_ << "  unreachable\n";
+            return;
         }
 
         for (std::size_t index = 0; index + 1 < function_.body().size(); ++index) {
@@ -647,6 +836,7 @@ public:
 
 private:
     const semantic::SemanticResult& semantics_;
+    const StateGlobals& stateGlobals_;
     struct LoopTargets {
         std::string continueTarget;
         std::string leaveTarget;
@@ -885,6 +1075,94 @@ private:
             output_ << "  br label %" << endTarget << "\n\n";
         }
 
+        output_ << endTarget << ":\n";
+    }
+
+    // `unless C` runs its body when C is false.
+    void emitUnless(const ast::UnlessStatement& statement)
+    {
+        const std::size_t label = nextLabel_++;
+        const std::string bodyTarget = "unlessbody" + std::to_string(label);
+        const std::string endTarget = "unlessend" + std::to_string(label);
+        const std::string value = emitExpression(statement.condition());
+        output_ << "  br i1 " << value << ", label %" << endTarget
+                << ", label %" << bodyTarget << "\n\n";
+        output_ << bodyTarget << ":\n";
+        emitAssignmentBranch(statement.body());
+        output_ << "  br label %" << endTarget << "\n\n";
+        output_ << endTarget << ":\n";
+    }
+
+    // ADR-0011: the selector is evaluated once; arms are tested in order and
+    // the first arm whose choices contain the value runs. Semantic analysis
+    // has already proven that choices do not overlap and, without
+    // `otherwise`, that they cover the selector type, so the fall-through
+    // edge of a total case is unreachable.
+    void emitCase(const ast::CaseStatement& statement)
+    {
+        const std::size_t label = nextLabel_++;
+        const std::string prefix = "case" + std::to_string(label);
+        const std::string endTarget = prefix + "end";
+        const std::string type = expressionLlvmType(statement.expression());
+        const std::string selector = emitExpression(statement.expression());
+        const bool unsignedCompare = type == "i1";
+        const auto& arms = statement.arms();
+        if (arms.empty()) {
+            output_ << "  br label %" << prefix << "otherwise\n\n";
+        }
+
+        for (std::size_t armIndex = 0; armIndex < arms.size(); ++armIndex) {
+            const std::string bodyTarget = prefix + "arm" + std::to_string(armIndex);
+            const std::string nextArm = armIndex + 1 < arms.size()
+                ? prefix + "test" + std::to_string(armIndex + 1)
+                : prefix + "otherwise";
+            const auto& choices = arms[armIndex].choices;
+            for (std::size_t choiceIndex = 0; choiceIndex < choices.size(); ++choiceIndex) {
+                const ast::Expression& choice = *choices[choiceIndex];
+                const std::string onMiss = choiceIndex + 1 < choices.size()
+                    ? prefix + "test" + std::to_string(armIndex) + "_" + std::to_string(choiceIndex + 1)
+                    : nextArm;
+                std::string hit;
+                if (choice.kind() == ast::AstNodeKind::BinaryExpression &&
+                    static_cast<const ast::BinaryExpression&>(choice).op() == ast::BinaryOperator::Range) {
+                    const auto& range = static_cast<const ast::BinaryExpression&>(choice);
+                    const std::string low = emitExpression(range.left());
+                    const std::string high = emitExpression(range.right());
+                    const std::string geLow = "%tmp" + std::to_string(nextTemporary_++);
+                    const std::string leHigh = "%tmp" + std::to_string(nextTemporary_++);
+                    hit = "%tmp" + std::to_string(nextTemporary_++);
+                    output_ << "  " << geLow << " = icmp " << (unsignedCompare ? "uge " : "sge ")
+                            << type << " " << selector << ", " << low << "\n";
+                    output_ << "  " << leHigh << " = icmp " << (unsignedCompare ? "ule " : "sle ")
+                            << type << " " << selector << ", " << high << "\n";
+                    output_ << "  " << hit << " = and i1 " << geLow << ", " << leHigh << "\n";
+                } else {
+                    const std::string value = emitExpression(choice);
+                    hit = "%tmp" + std::to_string(nextTemporary_++);
+                    output_ << "  " << hit << " = icmp eq " << type << " " << selector
+                            << ", " << value << "\n";
+                }
+                output_ << "  br i1 " << hit << ", label %" << bodyTarget
+                        << ", label %" << onMiss << "\n\n";
+                if (choiceIndex + 1 < choices.size()) {
+                    output_ << onMiss << ":\n";
+                }
+            }
+            output_ << bodyTarget << ":\n";
+            emitAssignmentBranch(arms[armIndex].body);
+            output_ << "  br label %" << endTarget << "\n\n";
+            if (armIndex + 1 < arms.size()) {
+                output_ << nextArm << ":\n";
+            }
+        }
+
+        output_ << prefix << "otherwise:\n";
+        if (statement.hasOtherwise()) {
+            emitAssignmentBranch(statement.otherwiseBody());
+            output_ << "  br label %" << endTarget << "\n\n";
+        } else {
+            output_ << "  unreachable\n\n";
+        }
         output_ << endTarget << ":\n";
     }
 
@@ -1772,10 +2050,12 @@ private:
         }
 
         if (statement.kind() == ast::AstNodeKind::CaseStatement) {
-            throw CodegenUnsupported("LLVM emission does not lower case statements yet");
+            emitCase(static_cast<const ast::CaseStatement&>(statement));
+            return;
         }
         if (statement.kind() == ast::AstNodeKind::UnlessStatement) {
-            throw CodegenUnsupported("LLVM emission does not lower unless statements yet");
+            emitUnless(static_cast<const ast::UnlessStatement&>(statement));
+            return;
         }
         throw CodegenUnsupported("LLVM emission does not lower this statement kind yet");
     }
@@ -1844,8 +2124,13 @@ private:
         locals_.insert_or_assign(normalizedName, LocalInfo{slot, inoxType, llvmType});
     }
 
-    void emitTypedLocalVariable(std::string_view name, std::string_view typeName, const ast::Expression* initializer = nullptr)
+    void emitTypedLocalVariable(std::string_view name, std::string_view writtenTypeName, const ast::Expression* initializer = nullptr)
     {
+        const std::string canonicalArray = semantics_.canonicalTypeName(std::string(writtenTypeName));
+        const std::string_view typeName =
+            support::isArrayTypeName(writtenTypeName) || support::isSliceTypeName(writtenTypeName)
+                ? std::string_view(canonicalArray)
+                : writtenTypeName;
         const std::string llvmType = llvmTypeForInoxType(typeName, structs_);
         if (llvmType.empty()) {
             throw CodegenUnsupported("unsupported local variable type for LLVM emission");
@@ -1875,6 +2160,15 @@ private:
             }
             locals_.insert_or_assign(normalizedName,
                                      LocalInfo{slot, std::string(typeName), structType->llvmName});
+            return;
+        }
+
+        if (support::isArrayTypeName(typeName)) {
+            // CANON-13: an array is a value; without an initializer every
+            // element is its type's zero.
+            const std::string value = initializer != nullptr ? emitExpression(*initializer) : "zeroinitializer";
+            output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
+            locals_.insert_or_assign(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
             return;
         }
 
@@ -1960,6 +2254,49 @@ private:
         emitSubroutineCall(call, callee.name());
     }
 
+    // ADR-0016: a reference argument passes the address of the caller's
+    // place: a variable's slot, a field or an element; a read-only reference
+    // to any other value gets a temporary.
+    std::string emitReferenceArgument(const ast::Expression& argument, const FunctionParameter& parameter)
+    {
+        if (argument.kind() == ast::AstNodeKind::IdentifierExpression) {
+            const auto local = locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(argument).name()));
+            if (local != locals_.end()) {
+                return local->second.slot;
+            }
+        }
+        if (isIndexCall(argument)) {
+            const ElementAddress element = emitElementAddress(static_cast<const ast::CallExpression&>(argument));
+            if (element.storage != parameter.valueType) {
+                throw CodegenUnsupported(
+                    "a narrow-integer array element cannot be passed by reference yet");
+            }
+            return element.pointer;
+        }
+        if (isMemberAccessCall(argument)) {
+            return emitMemberAddress(static_cast<const ast::CallExpression&>(argument)).pointer;
+        }
+        const std::string value = emitExpression(argument);
+        const std::string slot = "%reftmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << slot << " = alloca " << parameter.valueType << '\n';
+        output_ << "  store " << parameter.valueType << ' ' << value << ", ptr " << slot << '\n';
+        return slot;
+    }
+
+    std::vector<std::string> emitArguments(const FunctionSignature& signature,
+                                           const std::vector<ast::ExpressionPtr>& arguments,
+                                           std::size_t parameterOffset)
+    {
+        std::vector<std::string> values;
+        values.reserve(arguments.size());
+        for (std::size_t index = 0; index < arguments.size(); ++index) {
+            const FunctionParameter& parameter = signature.parameters[index + parameterOffset];
+            values.push_back(parameter.byReference ? emitReferenceArgument(*arguments[index], parameter)
+                                                   : emitExpression(*arguments[index]));
+        }
+        return values;
+    }
+
     std::string emitUserCall(const FunctionSignature& signature,
                              const std::vector<std::string>& arguments,
                              bool requireValue)
@@ -2031,12 +2368,7 @@ private:
             throw CodegenUnsupported("unsupported subroutine argument count: " + function_.name());
         }
 
-        std::vector<std::string> arguments;
-        arguments.reserve(call.arguments().size());
-        for (const auto& argument : call.arguments()) {
-            arguments.push_back(emitExpression(*argument));
-        }
-
+        const std::vector<std::string> arguments = emitArguments(signature->second, call.arguments(), 0);
         emitUserCall(signature->second, arguments, false);
     }
 
@@ -2071,6 +2403,12 @@ private:
         }
 
         output_ << "  call void @__inox_read_i64(ptr " << local->second.slot << ")\n";
+        if (const auto range = narrowIntegerRange(local->second.inoxType)) {
+            const std::string read = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << read << " = load i64, ptr " << local->second.slot << "\n";
+            const std::string checked = emitRangeCheck(read, *range, 6);
+            output_ << "  store i64 " << checked << ", ptr " << local->second.slot << "\n";
+        }
     }
 
     void emitInputDiscardToken()
@@ -2306,8 +2644,8 @@ private:
         std::vector<std::string> arguments;
         arguments.reserve(call.arguments().size() + 1);
         arguments.push_back(target.receiverPointer);
-        for (const auto& argument : call.arguments()) {
-            arguments.push_back(emitExpression(*argument));
+        for (std::string& value : emitArguments(signature, call.arguments(), 1)) {
+            arguments.push_back(std::move(value));
         }
 
         return emitUserCall(signature, arguments, requireValue);
@@ -2342,6 +2680,15 @@ private:
             const std::string value = emitExpression(assignment.right());
             output_ << "  store " << local->second.llvmType << ' ' << value
                     << ", ptr " << local->second.slot << '\n';
+            return;
+        }
+
+        if (isIndexCall(assignment.left())) {
+            const ElementAddress element = emitElementAddress(
+                static_cast<const ast::CallExpression&>(assignment.left()));
+            const std::string value = emitExpression(assignment.right());
+            const std::string stored = narrowForStorage(value, element);
+            output_ << "  store " << element.storage << ' ' << stored << ", ptr " << element.pointer << '\n';
             return;
         }
 
@@ -2442,6 +2789,12 @@ private:
                 if (isNaturalConversion(call)) {
                     return "i64";
                 }
+                if (callee.name() == "__index" || callee.name() == "__slice") {
+                    return valueLlvmType(semanticTypeName(expression));
+                }
+                if (arrayBoundCall(call)) {
+                    return "i64";
+                }
                 const auto signature = signatures_.find(normalize(callee.name()));
                 if (signature != signatures_.end()) {
                     return signature->second.llvmReturnType;
@@ -2476,7 +2829,7 @@ private:
         }
         const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
         if (!equalsIgnoreCase(callee.name(), "Natural") && !equalsIgnoreCase(callee.name(), "Integer") &&
-            !equalsIgnoreCase(callee.name(), "Int64")) {
+            !equalsIgnoreCase(callee.name(), "Int64") && !narrowIntegerRange(callee.name())) {
             return false;
         }
         return expressionLlvmType(*call.arguments().front()) == "i64";
@@ -2542,9 +2895,277 @@ private:
 
     // ADR-0015: an Integer expression stored into a Natural carries an
     // implicit range check, recorded by semantic analysis.
+    static bool isIndexCall(const ast::Expression& expression)
+    {
+        if (expression.kind() != ast::AstNodeKind::CallExpression) {
+            return false;
+        }
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        return call.callee().kind() == ast::AstNodeKind::IdentifierExpression &&
+               static_cast<const ast::IdentifierExpression&>(call.callee()).name() == "__index" &&
+               call.arguments().size() == 2;
+    }
+
+    // The LLVM type of a value of an Inox type in SSA form: arrays are
+    // aggregates; every integer is i64.
+    std::string valueLlvmType(const std::string& inoxType) const
+    {
+        if (const auto layout = arrayLayout(inoxType)) {
+            return layout->llvmType;
+        }
+        if (support::isSliceTypeName(inoxType)) {
+            return std::string(kSliceLlvmType);
+        }
+        const std::string scalar = llvmTypeForScalar(inoxType);
+        return scalar.empty() ? std::string("i64") : scalar;
+    }
+
+    // Low(A), High(A) and Length(A) of a fixed array are constants (CANON-13).
+    std::optional<std::int64_t> arrayBoundCall(const ast::CallExpression& call) const
+    {
+        if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().size() != 1) {
+            return std::nullopt;
+        }
+        const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
+        const bool low = equalsIgnoreCase(callee.name(), "Low");
+        const bool high = equalsIgnoreCase(callee.name(), "High");
+        if (!low && !high && !equalsIgnoreCase(callee.name(), "Length")) {
+            return std::nullopt;
+        }
+        const auto layout = arrayLayout(semanticTypeName(*call.arguments()[0]));
+        if (!layout) {
+            return std::nullopt;
+        }
+        return low ? layout->low : high ? layout->high : layout->high - layout->low + 1;
+    }
+
+    struct ElementAddress {
+        std::string pointer;
+        std::string storage;      // LLVM storage type of the element
+        std::string elementType;  // Inox element type
+    };
+
+    // The address of an array value: a local's slot, an element of an outer
+    // array, or a temporary holding any other array value.
+    std::string emitArrayBaseAddress(const ast::Expression& base, const ArrayLayout& layout)
+    {
+        if (base.kind() == ast::AstNodeKind::IdentifierExpression) {
+            const auto local = locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(base).name()));
+            if (local != locals_.end()) {
+                return local->second.slot;
+            }
+        }
+        if (isIndexCall(base)) {
+            return emitElementAddress(static_cast<const ast::CallExpression&>(base)).pointer;
+        }
+        const std::string value = emitExpression(base);
+        const std::string slot = "%arraytmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << slot << " = alloca " << layout.llvmType << '\n';
+        output_ << "  store " << layout.llvmType << ' ' << value << ", ptr " << slot << '\n';
+        return slot;
+    }
+
+    // CANON-13: every index is checked against Low..High (fault kind 9).
+    struct SliceParts {
+        std::string data;
+        std::string low;
+        std::string high;
+    };
+
+    SliceParts extractSlice(const std::string& value)
+    {
+        SliceParts parts;
+        parts.data = "%tmp" + std::to_string(nextTemporary_++);
+        parts.low = "%tmp" + std::to_string(nextTemporary_++);
+        parts.high = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << parts.data << " = extractvalue " << kSliceLlvmType << ' ' << value << ", 0\n";
+        output_ << "  " << parts.low << " = extractvalue " << kSliceLlvmType << ' ' << value << ", 1\n";
+        output_ << "  " << parts.high << " = extractvalue " << kSliceLlvmType << ' ' << value << ", 2\n";
+        return parts;
+    }
+
+    // The base of a slice expression: its data pointer and bounds, and the
+    // LLVM storage of one element.
+    SliceParts emitSliceSource(const ast::Expression& base, std::string& storage, std::string& elementType)
+    {
+        const std::string baseType = semanticTypeName(base);
+        if (support::isSliceTypeName(baseType)) {
+            elementType = support::sliceElementTypeName(baseType);
+            storage = elementStorageType(elementType);
+            return extractSlice(emitExpression(base));
+        }
+        const auto layout = arrayLayout(baseType);
+        if (!layout) {
+            throw CodegenUnsupported("slicing of this value is not lowered yet");
+        }
+        elementType = layout->elementType;
+        storage = layout->elementStorage;
+        const std::string pointer = emitArrayBaseAddress(base, *layout);
+        const std::string data = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << data << " = getelementptr inbounds " << layout->llvmType << ", ptr " << pointer
+                << ", i64 0, i64 0\n";
+        return SliceParts{data, std::to_string(layout->low), std::to_string(layout->high)};
+    }
+
+    // ADR-0017: `B[L..H]` checks Low(B) <= L <= H <= High(B) (a slice is never
+    // empty, like an array), then points at element L.
+    std::string emitSlice(const ast::CallExpression& call)
+    {
+        std::string storage;
+        std::string elementType;
+        const SliceParts source = emitSliceSource(*call.arguments()[0], storage, elementType);
+        const auto bound = [&](const ast::Expression& expression, const std::string& fallback) {
+            if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
+                const std::string& name = static_cast<const ast::IdentifierExpression&>(expression).name();
+                if (name == "__low" || name == "__high") {
+                    return fallback;
+                }
+            }
+            return emitExpression(expression);
+        };
+        const std::string low = bound(*call.arguments()[1], source.low);
+        const std::string high = bound(*call.arguments()[2], source.high);
+        const std::string lowOk = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string highOk = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string orderOk = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string both = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string valid = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string flag = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << lowOk << " = icmp sge i64 " << low << ", " << source.low << '\n';
+        output_ << "  " << highOk << " = icmp sle i64 " << high << ", " << source.high << '\n';
+        output_ << "  " << orderOk << " = icmp sle i64 " << low << ", " << high << '\n';
+        output_ << "  " << both << " = and i1 " << lowOk << ", " << highOk << '\n';
+        output_ << "  " << valid << " = and i1 " << both << ", " << orderOk << '\n';
+        output_ << "  " << flag << " = zext i1 " << valid << " to i64\n";
+        (void)emitRangeCheck(flag, IntegerRange{1, 1}, 10);
+        const std::string offset = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string data = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << offset << " = sub i64 " << low << ", " << source.low << '\n';
+        output_ << "  " << data << " = getelementptr inbounds " << storage << ", ptr " << source.data
+                << ", i64 " << offset << '\n';
+        const std::string withData = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string withLow = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << withData << " = insertvalue " << kSliceLlvmType << " undef, ptr " << data << ", 0\n";
+        output_ << "  " << withLow << " = insertvalue " << kSliceLlvmType << ' ' << withData << ", i64 " << low
+                << ", 1\n";
+        output_ << "  " << result << " = insertvalue " << kSliceLlvmType << ' ' << withLow << ", i64 " << high
+                << ", 2\n";
+        return result;
+    }
+
+    ElementAddress emitElementAddress(const ast::CallExpression& call)
+    {
+        const ast::Expression& base = *call.arguments()[0];
+        if (support::isSliceTypeName(semanticTypeName(base))) {
+            std::string storage;
+            std::string elementType;
+            const SliceParts slice = emitSliceSource(base, storage, elementType);
+            const std::string index = emitExpression(*call.arguments()[1]);
+            const std::string checked = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << checked << " = call i64 @__inox_range_i64(i64 " << index << ", i64 "
+                    << slice.low << ", i64 " << slice.high << ", i32 9)\n";
+            const std::string offset = "%tmp" + std::to_string(nextTemporary_++);
+            const std::string pointer = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << offset << " = sub i64 " << checked << ", " << slice.low << '\n';
+            output_ << "  " << pointer << " = getelementptr inbounds " << storage << ", ptr " << slice.data
+                    << ", i64 " << offset << '\n';
+            return ElementAddress{pointer, storage, elementType};
+        }
+        const auto layout = arrayLayout(semanticTypeName(base));
+        if (!layout) {
+            throw CodegenUnsupported("indexing of this value is not lowered yet");
+        }
+        const std::string basePointer = emitArrayBaseAddress(base, *layout);
+        const std::string index = emitExpression(*call.arguments()[1]);
+        const std::string checked = emitRangeCheck(index, IntegerRange{layout->low, layout->high}, 9);
+        std::string offset = checked;
+        if (layout->low != 0) {
+            offset = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << offset << " = sub i64 " << checked << ", " << layout->low << '\n';
+        }
+        const std::string pointer = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << pointer << " = getelementptr inbounds " << layout->llvmType << ", ptr "
+                << basePointer << ", i64 0, i64 " << offset << '\n';
+        return ElementAddress{pointer, layout->elementStorage, layout->elementType};
+    }
+
+    std::string loadElement(const ElementAddress& element)
+    {
+        const std::string loaded = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << loaded << " = load " << element.storage << ", ptr " << element.pointer << '\n';
+        const auto range = narrowIntegerRange(element.elementType);
+        if (!range) {
+            return loaded;
+        }
+        const std::string widened = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << widened << " = " << (range->low < 0 ? "sext " : "zext ") << element.storage
+                << ' ' << loaded << " to i64\n";
+        return widened;
+    }
+
+    // A narrow integer is already in range; storing it keeps its low bits.
+    std::string narrowForStorage(const std::string& value, const ElementAddress& element)
+    {
+        if (!narrowIntegerRange(element.elementType)) {
+            return value;
+        }
+        const std::string truncated = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << truncated << " = trunc i64 " << value << " to " << element.storage << '\n';
+        return truncated;
+    }
+
+    // The semantic type name of an expression, or empty.
+    std::string semanticTypeName(const ast::Expression& expression) const
+    {
+        const semantic::ResolvedType* type = semantics_.typeOf(expression);
+        return type != nullptr ? type->name : std::string{};
+    }
+
+    // An arithmetic result whose semantic type is a narrow fixed-width integer
+    // must stay in that type's range (CANON-8: overflow is an error).
+    static bool isRangeCheckedArithmetic(const ast::Expression& expression)
+    {
+        if (expression.kind() == ast::AstNodeKind::UnaryExpression) {
+            return static_cast<const ast::UnaryExpression&>(expression).op() == ast::UnaryOperator::Minus;
+        }
+        if (expression.kind() != ast::AstNodeKind::BinaryExpression) {
+            return false;
+        }
+        switch (static_cast<const ast::BinaryExpression&>(expression).op()) {
+        case ast::BinaryOperator::Add:
+        case ast::BinaryOperator::Subtract:
+        case ast::BinaryOperator::Multiply:
+        case ast::BinaryOperator::Power:
+        case ast::BinaryOperator::IntegerDivide:
+        case ast::BinaryOperator::Modulo:
+        case ast::BinaryOperator::ShiftLeft:
+        case ast::BinaryOperator::ShiftRight:
+        case ast::BinaryOperator::BitAnd:
+        case ast::BinaryOperator::BitOr:
+        case ast::BinaryOperator::BitXor:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    std::string emitRangeCheck(const std::string& value, IntegerRange range, int faultKind)
+    {
+        const std::string checked = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << checked << " = call i64 @__inox_range_i64(i64 " << value << ", i64 "
+                << range.low << ", i64 " << range.high << ", i32 " << faultKind << ")\n";
+        return checked;
+    }
+
     std::string emitExpression(const ast::Expression& expression)
     {
-        const std::string value = emitExpressionValue(expression);
+        std::string value = emitExpressionValue(expression);
+        if (isRangeCheckedArithmetic(expression)) {
+            if (const auto range = narrowIntegerRange(semanticTypeName(expression))) {
+                value = emitRangeCheck(value, *range, 1);
+            }
+        }
         if (!semantics_.needsNaturalCheck(expression)) {
             return value;
         }
@@ -2613,7 +3234,22 @@ private:
             const std::string rightType = expressionLlvmType(binary.right());
             const std::string result = "%tmp" + std::to_string(nextTemporary_++);
             const std::string left = emitExpression(binary.left());
-            const std::string right = emitExpression(binary.right());
+            std::string right = emitExpression(binary.right());
+
+            // CANON-8: the shift count of a fixed-width type is 0..width-1.
+            if (binary.op() == ast::BinaryOperator::ShiftLeft ||
+                binary.op() == ast::BinaryOperator::ShiftRight) {
+                if (const auto range = narrowIntegerRange(semanticTypeName(expression))) {
+                    int bits = 0;
+                    for (std::int64_t span = range->high; span > 0; span >>= 1) {
+                        ++bits;
+                    }
+                    if (range->low < 0) {
+                        ++bits;
+                    }
+                    right = emitRangeCheck(right, IntegerRange{0, bits - 1}, 3);
+                }
+            }
 
             if (isFloatLlvmType(leftType) || isFloatLlvmType(rightType)) {
                 if (const std::string predicate = fcmpPredicate(binary.op()); !predicate.empty()) {
@@ -2662,6 +3298,19 @@ private:
             if (unary.op() == ast::UnaryOperator::Plus) {
                 return emitExpression(unary.operand());
             }
+            if (unary.op() == ast::UnaryOperator::BitNot) {
+                // Two's-complement NOT in the operand's width: for an unsigned
+                // narrow type that is `x xor (2^n - 1)`, which stays in range.
+                const std::string operand = emitExpression(unary.operand());
+                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+                std::int64_t mask = -1;
+                if (const auto range = narrowIntegerRange(semanticTypeName(unary.operand()));
+                    range && range->low == 0) {
+                    mask = range->high;
+                }
+                output_ << "  " << result << " = xor i64 " << operand << ", " << mask << '\n';
+                return result;
+            }
             if (unary.op() == ast::UnaryOperator::Minus) {
                 const std::string operandType = expressionLlvmType(unary.operand());
                 if (unary.operand().kind() == ast::AstNodeKind::LiteralExpression) {
@@ -2696,6 +3345,33 @@ private:
             }
 
             const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
+            if (callee.name() == "__index") {
+                const ElementAddress element = emitElementAddress(call);
+                return loadElement(element);
+            }
+            if (callee.name() == "__slice") {
+                return emitSlice(call);
+            }
+            if (call.arguments().size() == 1 &&
+                support::isSliceTypeName(semanticTypeName(*call.arguments()[0])) &&
+                (equalsIgnoreCase(callee.name(), "Low") || equalsIgnoreCase(callee.name(), "High") ||
+                 equalsIgnoreCase(callee.name(), "Length"))) {
+                const SliceParts slice = extractSlice(emitExpression(*call.arguments()[0]));
+                if (equalsIgnoreCase(callee.name(), "Low")) {
+                    return slice.low;
+                }
+                if (equalsIgnoreCase(callee.name(), "High")) {
+                    return slice.high;
+                }
+                const std::string span = "%tmp" + std::to_string(nextTemporary_++);
+                const std::string length = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << span << " = sub i64 " << slice.high << ", " << slice.low << '\n';
+                output_ << "  " << length << " = add i64 " << span << ", 1\n";
+                return length;
+            }
+            if (const auto bound = arrayBoundCall(call)) {
+                return std::to_string(*bound);
+            }
             if (equalsIgnoreCase(callee.name(), "__member")) {
                 try {
                     const FieldAddress field = emitMemberAddress(call);
@@ -2725,6 +3401,9 @@ private:
             // because Natural shares Integer's i64 representation.
             if (isNaturalConversion(call)) {
                 const std::string value = emitExpression(*call.arguments().front());
+                if (const auto range = narrowIntegerRange(callee.name())) {
+                    return emitRangeCheck(value, *range, 8);
+                }
                 if (!equalsIgnoreCase(callee.name(), "Natural")) {
                     return value;
                 }
@@ -2744,12 +3423,7 @@ private:
                 throw CodegenUnsupported("unsupported call argument count in function: " + function_.name());
             }
 
-            std::vector<std::string> arguments;
-            arguments.reserve(call.arguments().size());
-            for (const auto& argument : call.arguments()) {
-                arguments.push_back(emitExpression(*argument));
-            }
-
+            const std::vector<std::string> arguments = emitArguments(signature->second, call.arguments(), 0);
             return emitUserCall(signature->second, arguments, true);
         }
         default:
@@ -2940,7 +3614,8 @@ void emitFunction(std::ostringstream& output,
                   const StructDefinitions& structs,
                   std::vector<std::string>& stringGlobals,
                   std::size_t& nextStringLiteral,
-                  const semantic::SemanticResult& semantics)
+                  const semantic::SemanticResult& semantics,
+                  const StateGlobals& stateGlobals)
 {
     output << "define " << signature.llvmReturnType << " @" << signature.llvmName << '(';
     for (std::size_t index = 0; index < signature.parameters.size(); ++index) {
@@ -2959,7 +3634,8 @@ void emitFunction(std::ostringstream& output,
            << "entry:\n";
 
     std::ostringstream body;
-    FunctionEmitter(body, function, signature, signatures, structs, stringGlobals, nextStringLiteral, semantics).emit();
+    FunctionEmitter(body, function, signature, signatures, structs, stringGlobals, nextStringLiteral, semantics,
+                    stateGlobals).emit();
 
     // Static allocas belong in the entry block: an alloca inside a loop would grow
     // the stack on every iteration.
@@ -3157,6 +3833,9 @@ constexpr RuntimeFaultKind kRuntimeFaultKinds[] = {
     {5, "negative exponent"},
     {6, "invalid integer input"},
     {7, "value out of range for Natural"},
+    {8, "integer conversion out of range"},
+    {9, "array index out of bounds"},
+    {10, "slice bounds out of range"},
 };
 
 std::string llvmByteString(const std::string& text)
@@ -3191,7 +3870,8 @@ std::string runtimeFaultSeam()
        << "; unwinding, so try/except/ensure cannot intercept it. Kinds: 1 integer\n"
        << "; overflow, 2 division or modulo by zero, 3 shift count outside 0..63, 4 for\n"
        << "; step <= 0, 5 negative exponent, 6 invalid integer input, 7 negative value\n"
-       << "; converted to Natural.\n";
+       << "; converted to Natural, 8 integer conversion outside the target range, 9 array\n"
+       << "; index outside Low..High, 10 slice bounds outside the base.\n";
     for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
         const std::string text = std::string("Inox runtime error: ") + kind.message + "\n";
         ir << "@.inox.fault." << kind.code << " = private unnamed_addr constant ["
@@ -3397,6 +4077,21 @@ trap:
   unreachable
 }
 
+define internal i64 @__inox_range_i64(i64 %v, i64 %low, i64 %high, i32 %kind) alwaysinline nounwind {
+entry:
+  %below = icmp slt i64 %v, %low
+  %above = icmp sgt i64 %v, %high
+  %bad = or i1 %below, %above
+  br i1 %bad, label %trap, label %ok
+
+ok:
+  ret i64 %v
+
+trap:
+  call void @__inox_arith_fault(i32 %kind)
+  unreachable
+}
+
 define internal i64 @__inox_natural_i64(i64 %v) alwaysinline nounwind {
 entry:
   %bad = icmp slt i64 %v, 0
@@ -3483,6 +4178,30 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
         }
     }
 
+    StateGlobals stateGlobals;
+    for (const auto& item : module.items()) {
+        if (item->kind() != ast::AstNodeKind::SectionDeclaration) {
+            continue;
+        }
+        const auto& section = static_cast<const ast::SectionDeclaration&>(*item);
+        if (section.sectionKind() != ast::SectionKind::State) {
+            continue;
+        }
+        for (const ast::SectionInitializer& initializer : section.initializers()) {
+            std::string inoxType = initializer.typeName;
+            if (inoxType.empty()) {
+                if (const semantic::ResolvedType* resolved = semantics.typeOf(*initializer.value)) {
+                    inoxType = resolved->name;
+                }
+            }
+            const std::string llvmType = llvmTypeForScalar(inoxType);
+            if (llvmType.empty()) {
+                throw CodegenUnsupported("State variables of type " + inoxType + " are not lowered yet");
+            }
+            stateGlobals.push_back(StateGlobal{initializer.name, inoxType, llvmType, initializer.value.get()});
+        }
+    }
+
     for (const auto& item : module.items()) {
         if (item->kind() != ast::AstNodeKind::FunctionDeclaration) {
             continue;
@@ -3493,7 +4212,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
             mainFunction = &function;
         } else {
             const std::string normalizedName = normalize(function.name());
-            signatures.emplace(normalizedName, parseFunctionSignature(function, structs));
+            signatures.emplace(normalizedName, parseFunctionSignature(function, structs, semantics));
         }
     }
 
@@ -3505,7 +4224,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
         const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
         if (!equalsIgnoreCase(function.name(), "Main")) {
             const auto signature = signatures.find(normalize(function.name()));
-            emitFunction(functionOutput, function, signature->second, signatures, structs, stringGlobals, nextStringLiteral, semantics);
+            emitFunction(functionOutput, function, signature->second, signatures, structs, stringGlobals, nextStringLiteral, semantics, stateGlobals);
         }
     }
 
@@ -3513,7 +4232,15 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
         throw CodegenError("LLVM emission requires Main");
     }
     const FunctionSignature mainSignature{"main", "i32", {}};
-    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, structs, stringGlobals, nextStringLiteral, semantics);
+    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, structs, stringGlobals, nextStringLiteral, semantics, stateGlobals);
+
+    for (const StateGlobal& state : stateGlobals) {
+        output << stateGlobalSymbol(state.name) << " = internal global " << state.llvmType
+               << " zeroinitializer\n";
+    }
+    if (!stateGlobals.empty()) {
+        output << '\n';
+    }
 
     for (const auto& [_, structType] : structs) {
         output << structType.llvmName << " = type { ";

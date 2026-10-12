@@ -5,15 +5,11 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== Legal Inox that the LLVM backend does not lower yet (docs/BACKEND_GAPS.md).
-== The diagnostic must say the gap is in the backend, not in the program.
-== When case is lowered, move this program to tests/runtime.
-Module Diagnostics.BackendGapCase
+== CANON-13: arrays are not compared with relational operators.
+Module Diagnostics.ArrayCompare
 
 Main :
-    X Integer := 1
-    case X
-        0 PutLn(0)
-        otherwise PutLn(1)
-    ;
+    A Array[1..3] Integer
+    B Array[1..3] Integer
+    PutLn(A = B)
 ;

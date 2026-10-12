@@ -42,6 +42,7 @@ public:
         callSymbols_.clear();
         constantValues_.clear();
         naturalChecks_.clear();
+        canonicalTypes_.clear();
     }
 
     void setConstantValue(const Symbol& symbol, ConstantValue value)
@@ -88,6 +89,19 @@ public:
         return iterator != callSymbols_.end() ? iterator->second : nullptr;
     }
 
+    // CANON-13: the canonical spelling of an array type written in source
+    // (Const bounds replaced by their values), for later phases.
+    void setCanonicalTypeName(const std::string& written, const std::string& canonical)
+    {
+        canonicalTypes_[written] = canonical;
+    }
+
+    std::string canonicalTypeName(const std::string& written) const
+    {
+        const auto iterator = canonicalTypes_.find(written);
+        return iterator != canonicalTypes_.end() ? iterator->second : written;
+    }
+
     // ADR-0015: an Integer value stored into a Natural is range-checked at run
     // time, implicitly (Ada subtype semantics). The emitter wraps every marked
     // expression in the check.
@@ -103,6 +117,7 @@ public:
 
 private:
     std::unordered_set<const ast::Expression*> naturalChecks_;
+    std::unordered_map<std::string, std::string> canonicalTypes_;
     std::unordered_map<const ast::Expression*, ResolvedType> expressionTypes_;
     std::unordered_map<const ast::IdentifierExpression*, const Symbol*> identifierSymbols_;
     std::unordered_map<const ast::CallExpression*, const Symbol*> callSymbols_;

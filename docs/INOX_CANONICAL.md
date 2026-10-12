@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.41 (Layer B: EH-v3.16a closed, MSVC exception bridge validated on Windows)
+# Version: v3.47 (Layer A: ADR-0017 read-only slices)
 # Last updated: 2026-10-10
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -486,6 +486,111 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.47 — 2026-10-11 — ADR-0017: read-only slices (Layer A, approved by Marcelo
+#         Fortes on 2026-10-11 with the order "Array, ref, Slice").
+#   - `A[L..H]`, `A[..H]`, `A[L..]`, `A[..]`; type `Slice<T>`, the first generic
+#     type the compiler accepts; indices kept; never empty; read-only; never
+#     outlives its array (named base only, bound once, not returned).
+#   - Layer B: a slice is `{ ptr, i64, i64 }` (data at element L, L, H); new
+#     fault kind 10 "slice bounds out of range"; indices checked against the
+#     slice bounds (kind 9).
+#   - Tests: runtime `slices`, traps `slice-bounds-runtime`,
+#     `slice-index-out-of-bounds`; diagnostics `slice-readonly`,
+#     `slice-reassign`, `slice-return`, `slice-of-temporary`,
+#     `slice-constant-bounds`, `slice-empty`, `slice-by-ref`.
+#
+# v3.46 — 2026-10-11 — ADR-0016: `ref X T` and `ref mut X T` parameters
+#         (Layer A, approved by Marcelo Fortes on 2026-10-11 as part of the
+#         order "Array, then ref, then Slice": "Ok Faça logo tudo na sua
+#         ordem!"). `ref` becomes a keyword (50).
+#   - Rules in ADR-0016: exact type, writable place for `ref mut`, no other
+#     argument may use a `ref mut` variable, references never outlive the call.
+#   - Layer B: a reference parameter is an LLVM `ptr` to the caller's slot,
+#     field or element; a `ref` to a non-variable value uses a temporary. A
+#     narrow-integer array element (stored in its own width) cannot be passed
+#     by reference yet.
+#   - Tests: runtime `ref-parameters`, trap `ref-mut-range`; diagnostics
+#     `ref-mut-aliasing`, `ref-mut-not-writable`, `ref-type-exact`,
+#     `ref-readonly-assignment`, `ref-mut-from-value-parameter`.
+#
+# v3.45 — 2026-10-11 — fixed arrays `Array[Low..High] T` implemented (Layer B;
+#         CANON-13 unchanged).
+#   - Parser: `A Array[1..10] Integer`; a bound is an integer literal
+#     (optionally negative) or a Const name; `Array[1..3, 1..4] T` is an array
+#     of arrays and `M[I, J]` is `M[I][J]`. In a routine signature an array
+#     type is one type token.
+#   - Semantics: Const bounds are resolved (`Array[1..Size] T` equals
+#     `Array[1..5] T` when Size is 5); Low > High is an error; an index is an
+#     integer, and a constant index outside Low..High is a compile error.
+#     `Low(A)`, `High(A)`, `Length(A)` are constants. Arrays are not compared.
+#     `A[I] := X` needs a mutable array variable (parameters are immutable).
+#   - ADR-0012 extension of the target rule: `A[I] += 1` is accepted when the
+#     indices have no side effects (literals, variables, operators, field and
+#     index reads), so reading and writing the element through the same
+#     indices is exact; `A[Next] += 1` with a call stays an error.
+#   - Lowering: an array is an LLVM `[N x T]` value (value type: assignment and
+#     by-value parameters copy); narrow integer elements are stored in their
+#     own width (Byte in i8) and widened when read. Every index is checked
+#     (new fault kind 9, "array index out of bounds"). Arrays are allowed as
+#     parameters and results.
+#   - Still to come: arrays in struct fields and State, String/struct
+#     elements, array literals, `ref` parameters (next).
+#   - Tests: runtime `arrays`, trap `array-index-out-of-bounds`; diagnostics
+#     `array-constant-index-out-of-bounds`, `array-compare`,
+#     `array-empty-bounds`, `array-index-not-integer`,
+#     `array-parameter-immutable`, `index-non-array`,
+#     `array-element-type-unsupported`; `compound-index-target` now checks a
+#     call in the index.
+#
+# v3.44 — 2026-10-11 — fixed-width integers lowered (Layer B) and a CANON-8
+#         clarification of constant literals (Layer A text added under
+#         "Conversions"; it applies existing rules, no new decision).
+#   - Int8, Int16, Int32, UInt8/Byte, UInt16 and UInt32 are compiled. A value
+#     is carried as i64 holding the mathematical value; every arithmetic
+#     result of such a type is range-checked (fault kind 1, integer
+#     overflow), so 255 + 1 in a Byte and 3 - 4 in a UInt8 trap and never
+#     wrap. `T(X)` checks the range at run time (new fault kind 8, "integer
+#     conversion out of range"); Get/GetLn into such a variable checks too
+#     (kind 6). The shift count is 0..width-1 (kind 3). Works in locals,
+#     parameters, returns, struct fields, State and case.
+#   - Constant literals: `B Byte := 200`, `B += 55`, `P.R + 5` read the
+#     constant in the fixed-width type; `B Byte := 256` and `B + 300` are
+#     compile-time range errors; a narrow constant expression that overflows
+#     is a compile error.
+#   - `bitnot` is lowered (it was a backend gap): two's-complement NOT, and
+#     `x xor (2^n - 1)` for an unsigned narrow type.
+#   - Still a gap: UInt64/UInteger (outside the i64 range).
+#   - Tests: runtime `fixed-width-integers`; traps `byte-overflow`,
+#     `unsigned-underflow`, `int8-negate-min`, `byte-conversion-runtime-range`,
+#     `byte-shift-count`; diagnostics `byte-literal-out-of-range`,
+#     `byte-operand-out-of-range`, `byte-from-integer-variable`.
+#
+# v3.43 — 2026-10-11 — module `State` lowered (Layer B; CANON-5 unchanged).
+#   - Each State variable of type Integer/Int64, Natural, Bool or Float is an
+#     internal LLVM global (`@inox.state.<name>`), zero at load time and
+#     initialized in source order at the start of `main`, so an initializer
+#     may call a function or read an earlier State. Routines read and write it
+#     like a local; a Natural State keeps the ADR-0015 range check.
+#   - Still a gap: State of struct, String or fixed-width type ("State
+#     variables of type T are not lowered yet").
+#   - Tests: runtime `state-lowering`, trap `state-natural-range`.
+#
+# v3.42 — 2026-10-11 — `case` and `unless` lowered (Layer B; ADR-0011 is
+#         unchanged).
+#   - `case`: the selector is evaluated once; arms are tested in source order
+#     with `icmp eq` for a value and a signed `sge`/`sle` pair for a static
+#     range (unsigned for Bool); `|` alternatives share one arm body. A case
+#     without `otherwise` is total (ADR-0011), so its fall-through edge is
+#     `unreachable`. `unless C` branches to its body when C is false.
+#   - A function whose last statement cannot fall through (for example a total
+#     case whose arms all Return) is now lowered: semantic analysis already
+#     proves every path returns, so the end is `unreachable`.
+#   - Parser fix: a single-line arm body ends at its line, so a next arm that
+#     starts with `-` (`-5..-1`) is no longer read as `Return 0 - 5 .. -1`.
+#   - Tests: runtime `case-lowering`, `unless-lowering`; the diagnostic
+#     `backend-gap-case` becomes `backend-gap-string-local` (String locals are
+#     still a backend gap).
 #
 # v3.41 — 2026-10-10 — EH-v3.16a closed (Layer B only).
 #   - The MSVC exception bridge (ChatGPT's patch, PR #21) is on main. On the
@@ -1541,8 +1646,8 @@ Direction: mathematics/CAS direction leveraging Julia-inspired numerical and
 symbolic expressiveness for scientific/financial computing. Requires ADR.
 
 ## FUTURE-7. OTHER DEFERRED 0.2+ TOPICS (from roadmap + open-questions + ADR-0006)
-- ownership/borrow system beyond `Self`/`Self mut`; `Self owned`; `ref`/`ref mut`
-  parameters; arena allocation and deterministic memory regions; unsafe
+- ownership/borrow system beyond `Self`/`Self mut` and `ref`/`ref mut`
+  parameters (ADR-0016); `Self owned`; arena allocation and deterministic memory regions; unsafe
   boundaries, pointers, C interop;
 - vector runtime with move semantics; full string/Unicode runtime;
 - module visibility/export; interface/body separation;
@@ -1561,14 +1666,14 @@ path. Decisions 1–20 are consolidated in the CANONICAL and DECISIONS groups ab
 
 Deferred but directionally decided (NOT permission to invent semantics; each
 requires an explicit ADR before implementation): ownership/borrow beyond
-`Self`/`Self mut`; `Self owned`; `ref`/`ref mut` parameters; arena memory
+`Self`/`Self mut` and `ref`/`ref mut` parameters (ADR-0016); `Self owned`; arena memory
 management; unsafe blocks/`Pointer[T]`/C interop; contracts/protocols/behaviors;
 Chapel-style structured parallelism; data-race safety and non-mutable concurrent
 data defaults; vector runtime and move semantics; full string/Unicode runtime;
 full module export/visibility system; variant structs and metadata tags.
 
-Known implementation conformance gaps (spec may be ahead of the compiler): full
-`case` lowering and enum exhaustiveness; module exports/visibility/package search
+Known implementation conformance gaps (spec may be ahead of the compiler): enum
+exhaustiveness of `case` (lowered since v3.42); module exports/visibility/package search
 beyond the minimum local driver; arrays/enum/range/set implementation; vector
 implementation; final runtime ABI; canonical trap/abort before
 `Std.Debug.Assert`.
@@ -1732,6 +1837,64 @@ ADR-0006 decision 4 used the phrase “Runtime overflow should trap in checking
 mode.” That policy is superseded by DECISION P-A, approved 2026-10-09: runtime
 arithmetic faults are deterministic Inox traps in every conforming build. This
 note records the later approved decision without rewriting the locked ADR.
+
+## ADR-0017 — Read-only slices  (Status: Accepted, 2026-10-11)
+Decision (Marcelo Fortes, 2026-10-11, approving the order "Array, then ref,
+then a read-only Slice (A[5..10])": "Ok Faça logo tudo na sua ordem!"). The
+idea comes from the design discussion with ChatGPT on Go slices, adapted to
+Inox safety: a slice is a bounded view, read-only, that never outlives its
+array.
+1. `A[L..H]`, `A[..H]`, `A[L..]` and `A[..]` give a view of elements L..H
+   of the array (or slice) A, without copying. An omitted bound is A's own
+   Low or High. The type is `Slice<T>` (generic arguments use `<...>`).
+2. A slice keeps the indices of its array (as in Ada): `A[3..6]` is indexed
+   3..6; `Low`, `High` and `Length` give its bounds at run time.
+3. Bounds: Low(A) <= L <= H <= High(A); a slice is never empty, like an
+   array (so `for I in Low(S)..High(S)` never runs backwards). Constant
+   bounds are checked at compile time, the others at run time ("slice bounds
+   out of range"). Every index is checked against the slice's bounds.
+4. Read-only: an element of a slice cannot be assigned.
+5. Lifetime: only a named array, parameter or a field/element of one is
+   sliced (never a temporary); a slice variable is bound once (no
+   reassignment); a slice cannot be returned, and slice fields and State do
+   not exist. So a slice never outlives its array.
+6. A slice is passed by value (it is already a view); `ref` on a slice is an
+   error. Arrays and slices are not compared.
+Rationale: a slice is "a reference plus a length": the read-only half of
+safe array views without pointer arithmetic. A writable view (`Slice mut`),
+concatenation and Vector come later with ownership.
+
+## ADR-0016 — `ref` and `ref mut` parameters  (Status: Accepted, 2026-10-11)
+Decision (Marcelo Fortes, 2026-10-11, approving the order "Array, then ref T /
+ref mut T parameters, then Slice": "Ok Faça logo tudo na sua ordem!"). The
+spelling follows the direction already recorded in the canon (`ref X T`,
+`ref mut X T`); the rules are the safe subset agreed in the design discussion
+with ChatGPT (many readers or one writer, references never outlive the call).
+1. In a parameter list only: `ref X T` is a read-only reference to the
+   caller's storage; `ref mut X T` is a writable one. A plain parameter stays
+   an immutable copy; `mut X T` stays reserved (error). A method receiver is
+   `Self`/`Self mut`, never `ref`.
+2. A reference argument has exactly the parameter's type (no implicit
+   conversion through a reference).
+3. A `ref mut` argument is a writable place: a mutable local variable, a
+   State variable, a `ref mut` parameter, or a field or array element of one.
+   A constant, a literal, an expression or a value parameter is an error. A
+   `ref` argument may be any value of the type (a temporary holds a value
+   that is not a variable).
+4. Exclusivity: the variable a `ref mut` argument is rooted at appears in no
+   other argument of the same call (`Swap(X, X)`, `Swap(A[1], A[2])` and
+   `Swap(P.X, P.Y)` are errors). A routine therefore never sees one variable
+   through two names.
+5. A reference exists only for the duration of the call: there are no
+   reference variables, fields or results, so it cannot outlive what it
+   refers to. Copying from it (`Y := X`) copies the value.
+6. Writes through `ref mut` keep the type's checks (overflow, Natural range).
+Rationale: arrays are values (CANON-13), so passing a large array by value
+copies it; `ref` removes the copy without aliasing, and `ref mut` replaces
+output parameters without pointers. Rule 4 is the "many readers or one
+writer" discipline in its simplest checkable form; it is also the basis for
+data-race checks in future parallel constructs.
+Consequence: `ref` is a reserved word.
 
 ## ADR-0015 — Storing into a Natural checks the range implicitly  (Status: Accepted, 2026-10-10)
 Decision (Marcelo Fortes, 2026-10-10): "Façamos como Ada, a atribuição faria
@@ -2290,6 +2453,13 @@ Implicit conversions allowed ONLY for safe widening explicitly defined by Inox.
 Narrowing is NEVER implicit. Explicit conversion uses `TypeName(Expression)`.
 `Integer(FloatExpr)` truncates toward zero and traps/errors if out of range.
 Constant narrowing with loss is a compile-time error.
+Clarification (v3.44, applying the two rules above and the Ada/SPARK
+universal-literal inference of CANON-5): a constant Integer expression is read
+in a fixed-width integer type when its value fits — as an initializer or
+assigned value (`B Byte := 200`), an argument or return, or an operand next to
+a value of that type (`B + 1`) — and is a compile-time range error otherwise
+(`B Byte := 256`). An Integer variable never narrows implicitly: `Byte(X)`
+checks the range at run time.
 
 ### Decimal literal form (CHANGE LOG v3.3 — closes OPEN-2)
 A real literal in a DECIMAL-TYPED CONTEXT is read directly as that decimal type,
@@ -2367,8 +2537,8 @@ See SECTION 11 for the full declaration model.
 - Use before declaration is an error.
 - Scoping blocks: subroutine/function body, if/elif/else, while, repeat, for
   body, each case arm, try/except/ensure, with body.
-- Future ownership work: `Self owned`, `ref X T`, `ref mut X T` — NOT part of the
-  0.1 executable subset.
+- `ref X T` and `ref mut X T` parameters are part of the language since
+  ADR-0016 (v3.46). Future ownership work: `Self owned`.
 
 Canonical diagnostics:
   "shadowing is forbidden: Name"
@@ -3098,8 +3268,8 @@ Compile time:
   does NOT turn a run-time expression into a compile-time error; for example,
   `X := 0` followed by `A div X` remains a run-time checked operation;
 - the valid shift-count range follows the semantic bit width of the left operand.
-  For the current `Integer` (= Int64) this is 0..63; fixed-width integer types use
-  their own width when their arithmetic lowering is implemented.
+  For the current `Integer` (= Int64) this is 0..63; a fixed-width integer type
+  uses its own width (0..7 for Byte), checked at run time since v3.44.
 Run time (these operations trap):
 - `+ - *`, unary `-` and `Abs` on overflow (`Abs(Int64.Min)`, `-Int64.Min`);
 - `div`/`mod` with a zero divisor; `Int64.Min div -1` (`Int64.Min mod -1` is 0);
@@ -3135,6 +3305,9 @@ Diagnostic text (the category names are part of the contract and are checked by
     Inox runtime error: negative exponent
     Inox runtime error: invalid integer input        (Get/GetLn, see CANON-17)
     Inox runtime error: value out of range for Natural   (ADR-0014/0015)
+    Inox runtime error: integer conversion out of range  (T(X) to a fixed-width type)
+    Inox runtime error: array index out of bounds        (CANON-13)
+    Inox runtime error: slice bounds out of range        (ADR-0017)
 
 Lowering note (Layer B, not language law): every check calls one internal IR
 function, `__inox_arith_fault(i32 kind)`, `noreturn nounwind cold`. It calls
@@ -3220,7 +3393,7 @@ textual IR to the LLVM C++ API where justified.
 ## Current backend support status
 
 ## B-WORKS. WHAT WORKS TODAY (verified in source audit)
-Lexer: 49 keywords (`step` added by ADR-0010, `then` by ADR-0013), case-insensitive normalization, `$XX` hex, `==` comments.
+Lexer: 50 keywords (`step` added by ADR-0010, `then` by ADR-0013, `ref` by ADR-0016), case-insensitive normalization, `$XX` hex, `==` comments.
 Parser: recursive descent, 2-token lookahead for typed local declarations.
 Semantic: scoped symbol table, forward signature pass, inference (empty type +
   initializer -> initializer type), prelude calls (Put/PutLn/Clamp/Min/Max),
@@ -3240,17 +3413,16 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   Byte->UInt8, Float->Float64 + 12 standard nominal exception types.
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
-- `case`/`otherwise` (parsed and checked per ADR-0011, including coverage; LLVM
-  lowering pending; enum coverage pending with Enum; Byte selectors pending
-  with Byte).
-- `unless` (parsed; not lowered).
+- `case`/`otherwise`: parsed, checked and lowered (ADR-0011, v3.42); enum
+  coverage pending with Enum; Byte selectors pending with Byte lowering.
+- `unless`: parsed and lowered (v3.42).
 - Enum short/block forms (parsed; not lowered; strict-init not enforced).
 
 ## B-GAPS. CONFORMANCE GAPS (Layer A says it should exist; code doesn't yet)
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  `case`, `unless`, module `State` in expressions, `String` locals, and a
+  `State` variables of struct or String type, UInt64/UInteger values, `String` locals, and a
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
@@ -3282,14 +3454,16 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 4. Enum strict init (CANON-5 rule 5) — not enforced.
 5. `Byte`->UInt8 alias: CLOSED (v3.39, ADR-0014).
 6. Natural range semantics: CLOSED (v3.39/v3.40, ADR-0014/0015) — 0..Int64.Max,
-   i64; storing an Integer into a Natural is checked at run time (fault kind 7). Fixed-width integers other
-   than Int64 (Byte/UInt8, Int32, ...) are checked by the semantic analyzer but
-   not yet lowered by the LLVM backend.
+   i64; storing an Integer into a Natural is checked at run time (fault kind 7).
+   Fixed-width integers narrower than 64 bits (Int8/16/32, UInt8/Byte, UInt16,
+   UInt32) are lowered since v3.44; UInt64/UInteger is still a backend gap.
 7. Currency arithmetic (i64 x10^6) — name registered, behavior missing.
 8. Crypto arithmetic (i128 x10^18) — name registered, behavior missing, needs tests.
 9. BigCurrency — not present; needs big-integer runtime (0.2+).
-10. case LLVM lowering + enum exhaustiveness.
-11. Array[Low..High] — not parsed or lowered.
+10. case LLVM lowering: CLOSED (v3.42). Enum exhaustiveness waits for Enum.
+11. Array[Low..High]: parsed, checked and lowered since v3.45 in locals,
+    routine parameters and results; not yet in struct fields or `State`;
+    elements are integer, Float or Bool (not String or struct yet).
 12. Range/Enum/Set full implementation.
 13. Checked integer arithmetic traps. — IMPLEMENTED (v3.18); see CANON-19.
 14. Explicit type conversions `TypeName(x)`.
@@ -3561,7 +3735,7 @@ Targets must not be claimed as supported until tested on real or representative 
 This section is volatile implementation status. It may be updated to match the code. It must not override constitutional language rules above.
 
 ## B-WORKS. WHAT WORKS TODAY (verified in source audit)
-Lexer: 49 keywords (`step` added by ADR-0010, `then` by ADR-0013), case-insensitive normalization, `$XX` hex, `==` comments.
+Lexer: 50 keywords (`step` added by ADR-0010, `then` by ADR-0013, `ref` by ADR-0016), case-insensitive normalization, `$XX` hex, `==` comments.
 Parser: recursive descent, 2-token lookahead for typed local declarations.
 Semantic: scoped symbol table, forward signature pass, inference (empty type +
   initializer -> initializer type), prelude calls (Put/PutLn/Clamp/Min/Max),
@@ -3578,17 +3752,16 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
   Byte->UInt8, Float->Float64 + 12 standard nominal exception types.
 
 ## B-PARSED. PARSED BUT NOT FULLY LOWERED
-- `case`/`otherwise` (parsed and checked per ADR-0011, including coverage; LLVM
-  lowering pending; enum coverage pending with Enum; Byte selectors pending
-  with Byte).
-- `unless` (parsed; not lowered).
+- `case`/`otherwise`: parsed, checked and lowered (ADR-0011, v3.42); enum
+  coverage pending with Enum; Byte selectors pending with Byte lowering.
+- `unless`: parsed and lowered (v3.42).
 - Enum short/block forms (parsed; not lowered; strict-init not enforced).
 
 ## B-GAPS. CONFORMANCE GAPS (Layer A says it should exist; code doesn't yet)
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  `case`, `unless`, module `State` in expressions, `String` locals, and a
+  `State` variables of struct or String type, UInt64/UInteger values, `String` locals, and a
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
@@ -3620,14 +3793,16 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 4. Enum strict init (CANON-5 rule 5) — not enforced.
 5. `Byte`->UInt8 alias: CLOSED (v3.39, ADR-0014).
 6. Natural range semantics: CLOSED (v3.39/v3.40, ADR-0014/0015) — 0..Int64.Max,
-   i64; storing an Integer into a Natural is checked at run time (fault kind 7). Fixed-width integers other
-   than Int64 (Byte/UInt8, Int32, ...) are checked by the semantic analyzer but
-   not yet lowered by the LLVM backend.
+   i64; storing an Integer into a Natural is checked at run time (fault kind 7).
+   Fixed-width integers narrower than 64 bits (Int8/16/32, UInt8/Byte, UInt16,
+   UInt32) are lowered since v3.44; UInt64/UInteger is still a backend gap.
 7. Currency arithmetic (i64 x10^6) — name registered, behavior missing.
 8. Crypto arithmetic (i128 x10^18) — name registered, behavior missing, needs tests.
 9. BigCurrency — not present; needs big-integer runtime (0.2+).
-10. case LLVM lowering + enum exhaustiveness.
-11. Array[Low..High] — not parsed or lowered.
+10. case LLVM lowering: CLOSED (v3.42). Enum exhaustiveness waits for Enum.
+11. Array[Low..High]: parsed, checked and lowered since v3.45 in locals,
+    routine parameters and results; not yet in struct fields or `State`;
+    elements are integer, Float or Bool (not String or struct yet).
 12. Range/Enum/Set full implementation.
 13. Checked integer arithmetic traps. — IMPLEMENTED (v3.18); see CANON-19.
 14. Explicit type conversions `TypeName(x)`.
@@ -3685,7 +3860,7 @@ CANON-12 `for` in range, and E11. See CHANGE LOG v3.18.)
    rejection; control structures reject `:`).
 3. Extend the Clang-backed `--build`/`--run` driver beyond the minimum local
    module workflow.
-4. Complete `case` lowering and enum exhaustiveness checks.
+4. `case` lowering: done (v3.42); enum exhaustiveness checks wait for Enum.
 5. Extend local multi-file `Module`/`Use` with future export/visibility/package.
 6. Implement arrays with `Array[Low..High] T`, indexing, bounds checks, `Low`,
    `High`, `Length`.

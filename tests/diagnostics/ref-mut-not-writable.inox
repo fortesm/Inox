@@ -1,0 +1,21 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0016: a ref mut argument is a writable place, not a value.
+Module Diagnostics.RefMutNotWritable
+
+Swap(ref mut A Integer, ref mut B Integer) :
+    T Integer := A
+    A := B
+    B := T
+;
+
+Main :
+    X Integer := 1
+    Swap(X, 3)
+    PutLn(X)
+;

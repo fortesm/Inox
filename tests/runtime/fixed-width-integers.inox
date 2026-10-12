@@ -1,0 +1,59 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-8: fixed-width integers narrower than 64 bits (Byte = UInt8, Int8,
+== Int16, Int32, UInt16, UInt32) in locals, parameters, returns, struct fields,
+== State, case, comparisons and bitnot. A constant Integer is read in the
+== fixed-width type when it fits (`B += 55`, `P.R + 5`).
+Module Runtime.FixedWidthIntegers
+
+Type
+    TPixel Struct
+        R Byte
+        G Byte
+        B Byte
+    ;
+
+State :
+    Hits UInt16 := 0
+;
+
+Half(V Int32) Int32 :
+    Return V div 2
+;
+
+Main :
+    B Byte := 200
+    B += 55
+    PutLn(B)
+    I Int32 := -100000
+    I := I * 3
+    PutLn(I, " ", Half(I))
+    S Int16 := Int16(1234)
+    PutLn(S + 1, " ", S - 2000)
+    U UInt16 := 65535
+    PutLn(U, " ", U div 2, " ", U mod 7)
+    P TPixel
+    P.R := 10
+    P.G := B
+    P.B := P.R + 5
+    PutLn(P.R, " ", P.G, " ", P.B)
+    X Integer := 300
+    PutLn(Integer(B) + X)
+    case B
+        0..127 PutLn("low")
+        128..255 PutLn("high")
+    ;
+    if B = 255
+        PutLn("max")
+    ;
+    K Int8 := -128
+    PutLn(K, " ", K + 127)
+    Hits += 2
+    PutLn(Hits)
+    PutLn(bitnot B, " ", bitnot K, " ", bitnot X)
+;

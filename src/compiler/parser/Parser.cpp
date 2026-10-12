@@ -6,6 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include "Parser.h"
+#include "../support/ArrayType.h"
 
 #include "../lexer/Lexer.h"
 
@@ -68,6 +69,95 @@ bool isChainTarget(const ast::Expression& expression)
         return false;
     }
     return isChainTarget(*call.arguments()[0]);
+}
+
+bool isIndexCall(const ast::Expression& expression)
+{
+    if (expression.kind() != ast::AstNodeKind::CallExpression) {
+        return false;
+    }
+    const auto& call = static_cast<const ast::CallExpression&>(expression);
+    return call.callee().kind() == ast::AstNodeKind::IdentifierExpression &&
+           static_cast<const ast::IdentifierExpression&>(call.callee()).name() == "__index" &&
+           call.arguments().size() == 2;
+}
+
+// An expression without side effects: literals, names, operators, field and
+// index reads. Evaluating it twice gives the same value.
+bool isPureExpression(const ast::Expression& expression)
+{
+    switch (expression.kind()) {
+    case ast::AstNodeKind::LiteralExpression:
+    case ast::AstNodeKind::IdentifierExpression:
+        return true;
+    case ast::AstNodeKind::UnaryExpression:
+        return isPureExpression(static_cast<const ast::UnaryExpression&>(expression).operand());
+    case ast::AstNodeKind::BinaryExpression: {
+        const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
+        return binary.op() != ast::BinaryOperator::Assign && isPureExpression(binary.left()) &&
+               isPureExpression(binary.right());
+    }
+    case ast::AstNodeKind::CallExpression: {
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
+            return false;
+        }
+        const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
+        if (name != "__index" && name != "__member") {
+            return false;
+        }
+        for (const auto& argument : call.arguments()) {
+            if (!isPureExpression(*argument)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    default:
+        return false;
+    }
+}
+
+ast::ExpressionPtr clonePureExpression(const ast::Expression& expression)
+{
+    switch (expression.kind()) {
+    case ast::AstNodeKind::LiteralExpression: {
+        const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
+        return std::make_unique<ast::LiteralExpression>(literal.literalKind(), literal.value());
+    }
+    case ast::AstNodeKind::IdentifierExpression:
+        return makeSyntheticIdentifier(static_cast<const ast::IdentifierExpression&>(expression).name());
+    case ast::AstNodeKind::UnaryExpression: {
+        const auto& unary = static_cast<const ast::UnaryExpression&>(expression);
+        return std::make_unique<ast::UnaryExpression>(unary.op(), clonePureExpression(unary.operand()));
+    }
+    case ast::AstNodeKind::BinaryExpression: {
+        const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
+        return std::make_unique<ast::BinaryExpression>(
+            binary.op(), clonePureExpression(binary.left()), clonePureExpression(binary.right()));
+    }
+    default: {
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        std::vector<ast::ExpressionPtr> arguments;
+        for (const auto& argument : call.arguments()) {
+            arguments.push_back(clonePureExpression(*argument));
+        }
+        return std::make_unique<ast::CallExpression>(
+            makeSyntheticIdentifier(static_cast<const ast::IdentifierExpression&>(call.callee()).name()),
+            std::move(arguments));
+    }
+    }
+}
+
+// A compound-assignment target (ADR-0012): a chain target, or an array
+// element `A[I]` whose base and indices have no side effects, so the
+// desugared `A[I] := A[I] op R` reads and writes the same element.
+bool isCompoundTarget(const ast::Expression& expression)
+{
+    if (isChainTarget(expression)) {
+        return true;
+    }
+    return isIndexCall(expression) && isPureExpression(expression);
 }
 
 ast::ExpressionPtr cloneChainTarget(const ast::Expression& expression)
@@ -632,14 +722,42 @@ ast::ExpressionPtr Parser::parsePostfix()
         }
 
         if (match(TokenKind::LeftBracket)) {
-            auto index = parseValue();
+            // CANON-13: `M[I, J]` indexes a multi-dimensional array, which is
+            // an array of arrays, so it is `M[I][J]`. ADR-0017: `A[L..H]`,
+            // `A[..H]`, `A[L..]` and `A[..]` are slices; an omitted bound is
+            // the base's own Low or High (`__low`/`__high`).
+            bool first = true;
+            do {
+                ast::ExpressionPtr low;
+                if (!check(TokenKind::DotDot)) {
+                    low = parseBitOr();
+                }
+                if (match(TokenKind::DotDot)) {
+                    if (!first || check(TokenKind::Comma)) {
+                        errorAtCurrent("a slice takes one range: write A[L..H] (ADR-0017)");
+                    }
+                    ast::ExpressionPtr high = check(TokenKind::RightBracket)
+                        ? makeSyntheticIdentifier("__high")
+                        : parseBitOr();
+                    std::vector<ast::ExpressionPtr> arguments;
+                    arguments.push_back(std::move(expression));
+                    arguments.push_back(low ? std::move(low) : makeSyntheticIdentifier("__low"));
+                    arguments.push_back(std::move(high));
+                    expression = makeExpr<ast::CallExpression>(
+                        makeSyntheticIdentifier("__slice"), std::move(arguments));
+                    break;
+                }
+                if (!low) {
+                    errorAtCurrent("expected index expression");
+                }
+                std::vector<ast::ExpressionPtr> arguments;
+                arguments.push_back(std::move(expression));
+                arguments.push_back(std::move(low));
+                expression = makeExpr<ast::CallExpression>(
+                    makeSyntheticIdentifier("__index"), std::move(arguments));
+                first = false;
+            } while (match(TokenKind::Comma));
             consume(TokenKind::RightBracket, "expected ']' after index expression");
-
-            std::vector<ast::ExpressionPtr> arguments;
-            arguments.push_back(std::move(expression));
-            arguments.push_back(std::move(index));
-            expression = makeExpr<ast::CallExpression>(
-                makeSyntheticIdentifier("__index"), std::move(arguments));
             continue;
         }
 
@@ -840,6 +958,57 @@ std::vector<ast::ExpressionPtr> Parser::parseArgumentList()
     return arguments;
 }
 
+// A type name: an identifier, or a fixed array `Array[L..H, ...] Element`
+// (CANON-13). A bound is an integer literal, optionally negative, or a Const
+// name. The result is the front end's array spelling (support/ArrayType.h).
+std::string Parser::parseTypeName(const char* message)
+{
+    const lexer::Token& name = consume(TokenKind::Identifier, message);
+    // ADR-0017: `Slice<T>`, a read-only view (generic arguments use <...>).
+    if (name.normalized == "slice" && check(TokenKind::Less) &&
+        peek().location.line == name.location.line) {
+        advance();
+        std::string element = parseTypeName("expected the element type of the slice");
+        consume(TokenKind::Greater, "expected '>' after the slice element type");
+        return "Slice<" + element + ">";
+    }
+    if (!(name.normalized == "array") || !check(TokenKind::LeftBracket) ||
+        peek().location.line != name.location.line) {
+        return name.lexeme;
+    }
+    advance();
+    const auto bound = [&]() {
+        std::string text;
+        if (match(TokenKind::Minus)) {
+            text = "-";
+        }
+        if (match(TokenKind::IntegerLiteral)) {
+            return text + tokenText(previous());
+        }
+        if (text.empty() && match(TokenKind::Identifier)) {
+            return previous().lexeme;
+        }
+        errorAtCurrent("an array bound is an integer literal or a Const name (CANON-13)");
+        return std::string{};
+    };
+    std::vector<std::pair<std::string, std::string>> dimensions;
+    do {
+        std::string low = bound();
+        consume(TokenKind::DotDot, "expected '..' in array bounds");
+        std::string high = bound();
+        dimensions.emplace_back(std::move(low), std::move(high));
+    } while (match(TokenKind::Comma));
+    consume(TokenKind::RightBracket, "expected ']' after array bounds");
+    if (peek().location.line != previous().location.line) {
+        errorAtCurrent("expected the element type after the array bounds");
+    }
+    std::string element = parseTypeName("expected the element type after the array bounds");
+    for (auto it = dimensions.rbegin(); it != dimensions.rend(); ++it) {
+        element = support::makeArrayTypeName(it->first, it->second, element);
+    }
+    return element;
+}
+
 ast::StatementPtr Parser::parseTypedLocalStatement()
 {
     std::vector<std::string> names;
@@ -850,7 +1019,10 @@ ast::StatementPtr Parser::parseTypedLocalStatement()
         names.push_back(nextName.lexeme);
     }
 
-    const lexer::Token& type = consume(TokenKind::Identifier, "expected type name");
+    const std::string typeName = parseTypeName("expected type name");
+    struct {
+        std::string lexeme;
+    } type{typeName};
 
     std::vector<ast::StatementPtr> declarations;
     if (match(TokenKind::ColonEqual)) {
@@ -1099,6 +1271,9 @@ std::vector<ast::StatementPtr> Parser::parseCaseArmBody(std::size_t armLine, std
     std::vector<ast::StatementPtr> statements;
 
     if (!isAtEnd() && !check(TokenKind::Semicolon) && peek().location.line == armLine) {
+        // A single-line arm ends at its line: a next arm such as `-5..-1`
+        // must not be read as `Return 0 - 5 .. -1`.
+        FlagScope scope(headerExpression_);
         appendStatement(statements);
         return statements;
     }
@@ -1247,9 +1422,10 @@ ast::StatementPtr Parser::parseExpressionStatement()
     // must be evaluated once by the lowering, not duplicated here).
     if (atCompoundAssignment()) {
         const lexer::Token& op = advance();
-        if (!isChainTarget(*parts.front())) {
+        if (!isCompoundTarget(*parts.front())) {
             throw ParseError(
-                "a compound assignment target must be a variable or a field (ADR-0012)",
+                "a compound assignment target must be a variable, a field or an array "
+                "element whose indices have no side effects (ADR-0012)",
                 op.location);
         }
         auto value = parseValue();
@@ -1264,7 +1440,7 @@ ast::StatementPtr Parser::parseExpressionStatement()
         case TokenKind::CaretEqual: binary = ast::BinaryOperator::Power; break;
         default: break;
         }
-        auto current = cloneChainTarget(*parts.front());
+        auto current = clonePureExpression(*parts.front());
         auto combined = makeExpr<ast::BinaryExpression>(binary, std::move(current), std::move(value));
         return std::make_unique<ast::ExpressionStatement>(
             makeExpr<ast::BinaryExpression>(
@@ -1495,6 +1671,14 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
     std::vector<std::string> signatureTokens;
 
     while (!isAtEnd() && !check(TokenKind::Colon)) {
+        // CANON-13: an array type in a signature is one type token,
+        // `Array[1..3] Integer`, so later phases read it like any type name.
+        if (check(TokenKind::Identifier) && current_ + 1 < tokens_.size() &&
+            ((peek().normalized == "array" && tokens_[current_ + 1].kind == TokenKind::LeftBracket) ||
+             (peek().normalized == "slice" && tokens_[current_ + 1].kind == TokenKind::Less))) {
+            signatureTokens.push_back(parseTypeName("expected type name"));
+            continue;
+        }
         signatureTokens.push_back(tokenText(advance()));
     }
 
@@ -1635,6 +1819,15 @@ bool Parser::atTypedLocalStatementStart() const
     const lexer::Token& type = tokens_[index];
     ++index;
     if (index >= tokens_.size()) {
+        return true;
+    }
+    // CANON-13: `A Array[1..10] Integer` declares a fixed array.
+    if ((type.normalized == "array") && tokens_[index].kind == TokenKind::LeftBracket &&
+        tokens_[index].location.line == type.location.line) {
+        return true;
+    }
+    if (type.normalized == "slice" && tokens_[index].kind == TokenKind::Less &&
+        tokens_[index].location.line == type.location.line) {
         return true;
     }
 

@@ -1,0 +1,40 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-5: module State variables are module-level mutable storage, read and
+== written by any routine of the module, initialized in source order before
+== Main runs (an initializer may call a function or use an earlier State).
+Module Runtime.StateLowering
+
+Twice(N Integer) Integer :
+    Return N * 2
+;
+
+State :
+    Counter Integer := 0
+    Total := Twice(10)
+    Ready Bool := false
+    Ratio Float := 1.5
+    Limit Natural := 3
+    Base := Total + 1
+;
+
+Bump :
+    Counter += 1
+    Total := Total + Counter
+;
+
+Main :
+    Bump
+    Bump
+    Ready := Counter = 2
+    PutLn(Counter, " ", Total, " ", Ready, " ", Ratio * 2.0, " ", Twice(Limit), " ", Base)
+    for I in 1..3
+        Counter += I
+    ;
+    PutLn(Counter)
+;

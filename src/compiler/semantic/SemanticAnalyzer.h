@@ -25,9 +25,17 @@ public:
     explicit SemanticError(std::string message);
 };
 
+// ADR-0016: how an argument is passed.
+enum class PassMode {
+    Value,   // a copy; the parameter is immutable
+    Ref,     // `ref X T`: a read-only reference to the caller's storage
+    RefMut   // `ref mut X T`: a writable reference to the caller's variable
+};
+
 struct FunctionParameter {
     std::string name;
     std::string typeName;
+    PassMode mode = PassMode::Value;
 };
 
 struct FunctionSignature {
@@ -63,6 +71,16 @@ private:
     void declareTypeOrThrow(std::string_view name, bool isBuiltin, std::string aliasOf = {});
     void resolveTypeOrThrow(std::string_view name) const;
     std::string canonicalTypeName(std::string_view name) const;
+    std::string canonicalArrayTypeName(std::string_view name) const;
+    std::string analyzeIndexExpression(const ast::CallExpression& call);
+    std::string analyzeSliceExpression(const ast::CallExpression& call);
+    static bool isIndexTarget(const ast::Expression& expression);
+    bool isSideEffectFree(const ast::Expression& expression) const;
+    void checkReferenceArguments(const std::string& routine,
+                                 const std::vector<FunctionParameter>& parameters,
+                                 std::size_t parameterOffset,
+                                 const std::vector<ast::ExpressionPtr>& arguments);
+    const Symbol* writableRoot(const ast::Expression& expression) const;
 
     void declareModuleItem(const ast::AstNode& item);
     void registerFunctionSignatures(const ast::ModuleNode& module);

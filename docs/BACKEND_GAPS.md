@@ -52,8 +52,8 @@ analysis but not lowered yet.)
 | `float32-conversion` | Float32 local initialized by explicit conversion | **GAP** | unsupported expression in function: Main |
 | `nested-if` | if inside if (straight-line code) | **OK** |  |
 | `const-use` | module Const used in an expression | **OK** |  |
-| `case` | case statement | **GAP** | LLVM emission does not lower case statements yet |
-| `unless` | unless statement | **GAP** | LLVM emission does not lower unless statements yet |
+| `case` | case statement | **OK** |  |
+| `unless` | unless statement | **OK** |  |
 | `string-local` | String local variable | **GAP** | unsupported expression in function: Main |
 | `bool-local` | Boolean local variable | **OK** |  |
 | `float-arith` | Float arithmetic | **OK** |  |
@@ -67,16 +67,22 @@ analysis but not lowered yet.)
 | `chained-assignment` | chained assignment A := B := C := X | **OK** |  |
 | `named-struct-construction` | named struct construction TPoint(X := 1, Y := 2) | **GAP** | unsupported expression in function: Main |
 | `for-step-expression-bounds` | for I in 1..N + 1 step N div 2 | **OK** |  |
-| `case-ada-choices` | case with | alternatives and a static range | **GAP** | LLVM emission does not lower case statements yet |
+| `case-ada-choices` | case with | alternatives and a static range | **OK** |  |
 | `digit-separators` | numeric literals with the digit separator _ | **OK** |  |
 | `compound-assignment` | compound assignment += -= *= /= ^= | **OK** |  |
 | `hex-0x` | hexadecimal literal written 0xFF | **OK** |  |
 | `conditional-expression` | conditional expression if C then A else B | **OK** |  |
-| `state-global` | State section variable | **GAP** | unsupported expression in function: Main |
+| `state-global` | State section variable | **OK** |  |
 | `natural-conversion` | Natural local and checked Natural(X) (ADR-0014) | **OK** |  |
-| `byte-local` | Byte (UInt8) local initialized by conversion | **GAP** | unsupported local variable type for LLVM emission |
+| `byte-local` | Byte (UInt8) local initialized by conversion | **OK** |  |
+| `fixed-width-arith` | Int32/UInt16 arithmetic with a constant operand | **OK** |  |
+| `bitnot` | bitnot on Integer and Byte | **OK** |  |
+| `array-local` | fixed array with indexing, Low/High and += on an element | **OK** |  |
+| `slice` | read-only slice passed to a Slice<T> parameter | **OK** |  |
+| `ref-parameter` | ref mut parameter writing an array element | **OK** |  |
+| `uint64-local` | UInt64 local | **GAP** | unsupported local variable type for LLVM emission |
 
-Summary: GAP=9, OK=26
+Summary: GAP=5, OK=36
 
 ## Reading the table
 
@@ -93,15 +99,14 @@ Summary: GAP=9, OK=26
   (`until-in-if`, `until-across-loop`): it may appear anywhere in the repeat
   body, including inside `if`, `try` and loops nested in the repeat, and it runs
   every `ensure` between it and the repeat, innermost first.
-* `state-global`: semantic analysis resolves module `State` names, but the
-  emitter does not yet receive their storage. `const-use` was in the same
-  situation and was closed by P-C stage 1 (below).
-* `case` and `unless` are also listed in CANON B-PARSED.
-* `byte-local` (v3.39): `Byte` is registered as UInt8 and its conversions are
-  range-checked, but no integer type other than Integer/Int64/Natural is
-  lowered yet (Int8..Int32, UInt8..UInt64). `natural-conversion` is OK:
-  Natural shares the i64 representation and `Natural(X)` lowers to a range
-  check (runtime fault kind 7).
+* `state-global`: closed in v3.43; scalar State variables are LLVM globals
+  initialized at the start of `main`. State of struct or String type is
+  still a gap.
+* `case` and `unless` are lowered since v3.42 (probes `case`, `case-ada-choices`, `unless`).
+* `byte-local`, `fixed-width-arith` (v3.44): integers narrower than 64 bits
+  are lowered as i64 values with range checks. `uint64-local` is a GAP:
+  UInt64/UInteger needs unsigned 64-bit arithmetic. `bitnot` is lowered since
+  v3.44.
 * `grouped-decl-struct` (v3.26): the grouped form itself lowers; the GAP is the
   older one, a struct local initialized from another struct value
   (`P TPoint := Base`). It closes with struct initializers.

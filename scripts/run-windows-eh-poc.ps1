@@ -42,9 +42,17 @@ function Invoke-ExpectedInoxOutput {
         [bool]$ExpectSuccess
     )
 
-    $actual = & $InoxExe "--run" $TestPath 2>&1 | Out-String
-    $exitCode = $LASTEXITCODE
-    $actual = Normalize-Output $actual
+    # stdout and stderr separately: Windows does not order two piped streams.
+    $stderrPath = [System.IO.Path]::GetTempFileName()
+    try {
+        $stdout = & $InoxExe "--run" $TestPath 2>$stderrPath | Out-String
+        $exitCode = $LASTEXITCODE
+        $stderr = Get-Content -LiteralPath $stderrPath -Raw
+    } finally {
+        Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
+    }
+    if ($null -eq $stderr) { $stderr = "" }
+    $actual = (@((Normalize-Output $stdout), (Normalize-Output $stderr)) | Where-Object { $_ -ne "" }) -join "`n"
     $expected = Normalize-Output (Get-Content -LiteralPath $ExpectedPath -Raw)
 
     $exitOk = if ($ExpectSuccess) { $exitCode -eq 0 } else { $exitCode -ne 0 }

@@ -11,6 +11,13 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 ## Unreleased
 
 ### Added
+- Read-only slices `A[L..H]`, `A[..H]`, `A[L..]`, `A[..]` of type `Slice<T>` (ADR-0017), checked bounds, never outliving their array.
+- `ref X T` and `ref mut X T` parameters (ADR-0016): references to the caller's variable, field or array element, with exclusivity checked at compile time.
+- Fixed arrays `Array[Low..High] T` with checked indexing, multi-dimensional `M[I, J]`, `Low`/`High`/`Length`, value copy, array parameters and results; `A[I] += 1`.
+- Fixed-width integers Int8, Int16, Int32, Byte/UInt8, UInt16, UInt32 are compiled with overflow and conversion range checks; a constant such as `B Byte := 200` or `B + 1` is read in the fixed-width type.
+- `bitnot` is compiled.
+- Module `State` variables (Integer, Natural, Bool, Float) are compiled; they are initialized in source order before `Main` runs.
+- `case` and `unless` are compiled to native code (the selector is evaluated once).
 - Precedence of `..` and `in` in CANON-20 (ADR-0008).
 - Grouped declarations `A, B T := X`, with `X` evaluated once.
 - Chained assignment `A := B := C := X` (ADR-0009).
@@ -35,9 +42,9 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - A `Const` has no written type: `Const Mask UInt8 := $FF` is rejected; write `Const Mask := UInt8($FF)` (OPEN-5).
 
 ### Known limitations
-- Integer types other than `Integer`/`Int64`/`Natural` (Byte, Int32, ...) are checked but not lowered yet.
-- Not lowered yet: `case`, `unless`, `State`, `String` locals, struct construction and initializers, Float32 conversion.
-- Arrays, vectors, sets, enums and ranges are not implemented.
+- `UInt64`/`UInteger` values are not lowered yet.
+- Not lowered yet: `State` of struct/String type, `String` locals, struct construction and initializers, Float32 conversion.
+- Vectors, sets, enums and ranges are not implemented; arrays are not yet allowed in struct fields or State.
 - The compiler is not yet aligned with the canonical `<T>` generic syntax; its existing generic syntax still uses `[T]`.
 
 ## V0.4 — 2026-10-09

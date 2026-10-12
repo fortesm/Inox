@@ -256,6 +256,22 @@ P.X := P.Y := 0</code></pre>
     PutLn(&quot;report&quot;)
 ;</code></pre>
 <p><code>Exit</code> is reserved for early return from subroutines without a value. Functions with a return type must use <code>Return Expression</code>.</p>
+<h3>Parameters: by value, ref and ref mut</h3>
+<p>A parameter is normally an immutable copy. Two forms pass a reference to the caller's storage instead:</p>
+<pre><code>Sum(ref V Array[1..1000] Integer) Integer :     == read-only, no copy of the array
+    Total Integer := 0
+    for I in Low(V)..High(V)
+        Total += V[I]
+    ;
+    Return Total
+;
+
+Swap(ref mut A Integer, ref mut B Integer) :    == writes the caller's variables
+    T Integer := A
+    A := B
+    B := T
+;</code></pre>
+<p>A <code>ref</code> parameter cannot be written. A <code>ref mut</code> argument must be a mutable variable, a field or an array element of one (<code>Swap(X, Y)</code>, <code>Swap(P.X, Y)</code>, <code>Swap(A[1], Y)</code>), never a constant or an expression, and it may not appear in any other argument of the same call: <code>Swap(X, X)</code> and <code>Swap(A[1], A[2])</code> are compile errors, so a routine never sees one variable through two names. A reference argument has exactly the parameter's type (a Byte variable for a <code>ref mut</code> Byte). A reference lives only during the call: it cannot be stored or returned.</p>
 </section>
 <section id="types"><h2>Types and numeric semantics</h2>
 <p>Hexadecimal literals are written <code>$FF</code> or <code>0xFF</code>; both mean the same value. An underscore may separate digits: <code>1_000_000</code>, <code>$FF_FF</code>. A leading zero never means octal: <code>017</code> is seventeen.</p>
@@ -264,7 +280,7 @@ P.X := P.Y := 0</code></pre>
 <li><code>Integer</code> is intended as Int64.</li>
 <li><code>Float</code> is intended as Float64. There is no <code>Double</code>.</li>
 <li><code>Natural</code> is the non-negative subtype of <code>Integer</code>: 0..Int64.Max, same representation. A Natural can be used wherever an Integer is. As in Ada, storing an Integer into a Natural checks the range by itself, with no conversion written: <code>N += 1</code> works, and <code>N := N - 5</code> with N = 3 stops the program with "value out of range for Natural". <code>N Natural := -1</code> is a compile error.</li>
-<li><code>Byte</code> is the same type as <code>UInt8</code> (0..255). A conversion checks the range: <code>Byte(300)</code> is a compile error.</li>
+<li><code>Byte</code> is the same type as <code>UInt8</code> (0..255). The fixed-width types <code>Int8</code>, <code>Int16</code>, <code>Int32</code>, <code>UInt8</code>, <code>UInt16</code> and <code>UInt32</code> never wrap: <code>B += 1</code> with <code>B = 255</code> stops the program with "integer overflow". A constant is read in the variable's type when it fits (<code>B Byte := 200</code>, <code>B + 1</code>); <code>B Byte := 256</code> is a compile error. An Integer variable becomes a Byte only through <code>Byte(X)</code>, which checks the range when the program runs.</li>
 <li>There is no <code>Variant</code> or <code>OleVariant</code>: every value has one static type.</li>
 <li><code>String</code> is a non-null UTF-8 value type direction; the empty string is the base/default value, not absence.</li>
 <li><code>Char</code> is a Unicode scalar value.</li>
@@ -432,7 +448,41 @@ PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
 <section id="arrays-sets-future"><h2>Arrays, vectors, ranges, enums, and sets</h2>
 <p>The 0.1 direction defines or reserves several Pascal/Ada-inspired aggregate concepts:</p>
 <ul>
-<li>Fixed arrays use explicit ranges: <code>Array[Low..High] Type</code>.</li>
+<li>Fixed arrays use explicit ranges: <code>Array[Low..High] Type</code>. They work today:</li>
+</ul>
+<pre><code>Const Size := 5
+
+Sum(V Array[1..Size] Integer) Integer :
+    Total Integer := 0
+    for I in Low(V)..High(V)
+        Total += V[I]
+    ;
+    Return Total
+;
+
+Main :
+    A Array[1..Size] Integer
+    for I in 1..Size
+        A[I] := I * I
+    ;
+    A[2] += 100
+    PutLn(Sum(A))
+    M Array[1..2, -1..1] Byte
+    M[1, 0] := 200
+;</code></pre>
+<p>A slice is a read-only view of part of an array, without copying: <code>A[3..6]</code>, <code>A[..3]</code>, <code>A[7..]</code>, <code>A[..]</code>. Its type is <code>Slice&lt;Integer&gt;</code>, and it keeps the array's indices (<code>A[3..6]</code> is indexed 3 to 6; <code>Low</code>, <code>High</code> and <code>Length</code> give its bounds):</p>
+<pre><code>Sum(S Slice&lt;Integer&gt;) Integer :
+    Total Integer := 0
+    for I in Low(S)..High(S)
+        Total += S[I]
+    ;
+    Return Total
+;
+
+PutLn(Sum(A[2..4]), " ", Sum(A[..]))</code></pre>
+<p>A slice is never empty, cannot be written, is bound once and cannot be returned, so it never outlives its array; bounds outside the array stop the program with "slice bounds out of range".</p>
+<p>An array is a value: assigning it (<code>B Array[1..Size] Integer := A</code>) or passing it to a routine copies it. Every index is checked: <code>A[I]</code> with <code>I</code> outside <code>Low(A)..High(A)</code> stops the program with "array index out of bounds", and a constant index outside the bounds is a compile error. <code>Low</code>, <code>High</code> and <code>Length</code> are constants. A multi-dimensional array is an array of arrays (<code>M[I, J]</code> is <code>M[I][J]</code>). Bounds are integer literals or Consts; elements are integers, <code>Float</code> or <code>Bool</code> for now.</p>
+<ul>
 <li>Vectors are planned as dynamic, 0-based, bounds-checked collections.</li>
 <li>Generic types are written with angle brackets: <code>Vector&lt;Integer&gt;</code>, <code>Set&lt;TCardSuit&gt;</code>. Square brackets stay for indexing and bounds: <code>Values[I]</code>, <code>Array[1..10] Integer</code>. The compiler still uses the older <code>[T]</code> spelling until it is updated.</li>
 <li>Ranges are finite ordinal declarations.</li>

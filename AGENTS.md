@@ -48,7 +48,9 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 - No universal `null`/`nil`.
 - Integer `/` is invalid; use `div` and `mod`.
 - Integer overflow is invalid; do not promise wraparound.
-- Parameters are immutable by default.
+- Parameters are immutable copies by default; `ref X T` passes a read-only
+  reference and `ref mut X T` a writable one (ADR-0016): exact type, a
+  writable place for `ref mut`, and no other argument may use that variable.
 - Local variables are declared inline and are mutable.
 - Every variable is born with a value: a scalar declaration requires an initializer (`C Integer := 0`, never `C Integer`); only structs/aggregates may omit `:=` (type-default initialization).
 - Associated receivers are `Self` or `Self mut`; do not write `Self TPoint`.
@@ -84,6 +86,12 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
   as in Ada (ADR-0015); never require `Natural(X)`. A negative constant is a
   compile error; arithmetic on Natural yields Integer. `Byte` is `UInt8`.
   There is no `Double` and no `Variant`/`OleVariant`.
+- Slices (ADR-0017): `A[L..H]`, `A[..H]`, `A[L..]`, `A[..]` are read-only
+  `Slice<T>` views that keep the array's indices, are never empty, are bound
+  once, are never returned and only slice a named array.
+- Fixed-width integers never wrap: overflow traps. A constant Integer is read in
+  a fixed-width type when it fits (`B Byte := 200`, `B + 1`); an Integer variable
+  narrows only through `T(X)`, which is range-checked (CANON-8, v3.44).
 - A local symbol dies at the end of its block.
 - `for` iterators are implicit, read-only, loop-scoped, and cannot conflict with visible symbols.
 - Sequential `for` loops may reuse an iterator name after the previous loop scope is closed; nested loops may not reuse an outer iterator name.
@@ -113,9 +121,10 @@ Inox is post-object-oriented. It has no classes, classical inheritance, Java-sty
 
 ## Current major conformance gaps
 
-- full `case` lowering and enum exhaustiveness checks;
+- enum exhaustiveness checks for `case` (case itself is lowered since v3.42);
 - module exports, visibility, and package search beyond local `Module`/`Use`;
-- arrays/ranges/enums/sets implementation;
+- ranges/enums/sets; arrays in struct fields and State, String/struct array
+  elements (fixed arrays otherwise work since v3.45);
 - vector runtime;
 - final runtime-fault infrastructure beyond the checked arithmetic already implemented;
 - final runtime ABI beyond the temporary Clang-backed `--build`/`--run` driver.

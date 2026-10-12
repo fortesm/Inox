@@ -346,6 +346,52 @@ Main :
     PutLn(B)
 ;
 """),
+    ("fixed-width-arith", "Int32/UInt16 arithmetic with a constant operand", """Main :
+    I Int32 := 1000
+    U UInt16 := 7
+    PutLn(I * 3 + 1, U div 2)
+;
+"""),
+    ("bitnot", "bitnot on Integer and Byte", """Main :
+    X Integer := 5
+    B Byte := 5
+    PutLn(bitnot X, bitnot B)
+;
+"""),
+    ("array-local", "fixed array with indexing, Low/High and += on an element", """Main :
+    A Array[1..3] Integer
+    for I in Low(A)..High(A)
+        A[I] := I
+    ;
+    A[2] += 10
+    PutLn(A[2])
+;
+"""),
+    ("slice", "read-only slice passed to a Slice<T> parameter", """First(S Slice<Integer>) Integer :
+    Return S[Low(S)]
+;
+
+Main :
+    A Array[1..4] Integer
+    A[2] := 5
+    PutLn(First(A[2..3]), Length(A[..]))
+;
+"""),
+    ("ref-parameter", "ref mut parameter writing an array element", """Bump(ref mut X Integer) :
+    X += 1
+;
+
+Main :
+    A Array[1..2] Integer
+    Bump(A[1])
+    PutLn(A[1])
+;
+"""),
+    ("uint64-local", "UInt64 local", """Main :
+    U UInt64 := UInt64(5)
+    PutLn(U)
+;
+"""),
 ]
 
 

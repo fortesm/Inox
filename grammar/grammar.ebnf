@@ -68,16 +68,22 @@ parameter_part    ::= "(" parameter_list ")"
 parameter_list    ::= receiver ( "," parameter )* | parameter ( "," parameter )*
 receiver          ::= "Self" "mut"?
                       (* associated methods only; "Self TPoint" is not canonical *)
-parameter         ::= identifier type_ref
-                      (* parameters are immutable; "mut X T" is reserved (error) *)
+parameter         ::= ( "ref" "mut"? )? identifier type_ref
+                      (* a value parameter is an immutable copy; "ref X T" is a
+                         read-only reference and "ref mut X T" a writable one
+                         (ADR-0016); "mut X T" is reserved (error) *)
 
 (* ---------- Types (SECTION 12 / CANON-8, SECTION 21 / CANON-13) ---------- *)
 
 type_ref          ::= array_type | generic_type | identifier
 array_type        ::= "Array" "[" array_bounds ( "," array_bounds )* "]" type_ref
-array_bounds      ::= expression ".." expression
+array_bounds      ::= array_bound ".." array_bound
+array_bound       ::= "-"? integer_literal | identifier
+                      (* CANON-13: a bound is static, an integer literal or a
+                         Const name; "Array[1..3, 1..4] T" is an array of arrays *)
 generic_type      ::= identifier "<" type_ref ( "," type_ref )* ">"
-                      (* Vector<Integer>, Set<TCardSuit>: "<...>" is generic syntax
+                      (* Slice<T> (ADR-0017) is the first generic type the compiler
+                         accepts. Vector<Integer>, Set<TCardSuit>: "<...>" is generic syntax
                          only in type position; "[...]" stays for indexing and
                          bounds. The compiler still uses "[T]" (conformance gap). *)
 
@@ -105,7 +111,8 @@ assignment_stmt   ::= target ( ":=" target )* ":=" expression
 compound_op       ::= "+=" | "-=" | "*=" | "/=" | "^="
                       (* ADR-0012: L op= R is L := L op R with L evaluated once;
                          not chainable; "/=" never on Integer; target is an
-                         existing variable or field path *)
+                         existing variable, a field path, or an array element
+                         whose indices have no side effects (v3.45) *)
                       (* ADR-0009: ":=" is a statement, never an expression.
                          "A := B := C := X" evaluates X once and stores it in C,
                          then B, then A. In a chain every target is a variable or
@@ -235,7 +242,10 @@ argument          ::= expression | identifier ":=" expression
                       (* "Field := Value" is named struct construction only:
                          TPoint(FX := 10, FY := 20); named only, any order, each
                          field once; other calls reject it (CANON-9) *)
-index_suffix      ::= "[" expression ( "," expression )* "]"
+index_suffix      ::= "[" ( expression ( "," expression )* | slice_range ) "]"
+slice_range       ::= bitor_expr? ".." bitor_expr?
+                      (* ADR-0017: A[L..H], A[..H], A[L..], A[..] are read-only
+                         views; an omitted bound is the base's own *)
 member_suffix     ::= "." identifier
 primary           ::= literal | identifier | "(" expression ")" | with_member
                     | conditional_expr
@@ -297,10 +307,9 @@ EOF               ::= (* end of the source file *)
 Measured against the parser on 2026-10-10. Each item is an implementation gap
 to fix in the parser or the semantic analyzer, not a change to the language.
 
-1. Canonical but not parsed: array and generic types in declarations
-   (`Values Array[1..10] Integer`, `Items Vector<Integer>`,
-   `Suits Set<TCardSuit>`): a local declaration takes a single type name. The
-   compiler's existing generic spelling is `[T]`, not the canonical `<T>`.
+1. Canonical but not parsed: generic types (`Items Vector<Integer>`,
+   `Suits Set<TCardSuit>`). Array types are parsed since v3.45 in local
+   declarations and routine signatures; not yet in struct fields or `State`.
 2. Not structurally parsed yet: `Type`, `Const` and `State` sections and routine
    signatures are kept as token lists by the parser and interpreted later by the
    semantic analyzer.

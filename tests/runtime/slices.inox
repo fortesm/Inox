@@ -1,0 +1,44 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== ADR-0017: A[L..H], A[..H], A[L..], A[..] are read-only views that keep
+== the array's indices; Low/High/Length give their bounds; a slice of a slice;
+== a slice sees later writes to its array; slices of Byte arrays and of rows
+== of a multi-dimensional array; Slice<T> parameters.
+Module Runtime.Slices
+
+Const N := 8
+
+Sum(S Slice<Integer>) Integer :
+    Total Integer := 0
+    for I in Low(S)..High(S)
+        Total += S[I]
+    ;
+    Return Total
+;
+
+Main :
+    A Array[1..N] Integer
+    for I in 1..N
+        A[I] := I * 10
+    ;
+    PutLn(Sum(A[..]), " ", Sum(A[2..4]), " ", Sum(A[..3]), " ", Sum(A[7..]))
+    S := A[3..6]
+    PutLn(Low(S), " ", High(S), " ", Length(S), " ", S[3], " ", S[6])
+    T Slice<Integer> := S[4..5]
+    PutLn(Sum(T), " ", T[5])
+    A[4] := 999
+    PutLn(S[4], " ", T[4])
+    B Array[0..3] Byte
+    B[2] := 200
+    V := B[1..3]
+    PutLn(V[2], " ", Length(V))
+    M Array[1..2, 1..3] Integer
+    M[2, 3] := 7
+    R := M[2][2..3]
+    PutLn(R[3])
+;
