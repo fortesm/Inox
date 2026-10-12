@@ -11,6 +11,8 @@
 
 #pragma once
 
+#include "ModuleContext.h"
+#include "RuntimeAbi.h"
 #include "TypeLayout.h"
 #include "../ast/Ast.h"
 #include "../semantic/SemanticResult.h"
@@ -36,8 +38,7 @@ public:
                     const FunctionSignature& signature,
                     const FunctionSignatures& signatures,
                     const StructDefinitions& structs,
-                    std::vector<std::string>& stringGlobals,
-                    std::size_t& nextStringLiteral,
+                    ModuleContext& module,
                     const semantic::SemanticResult& semantics,
                     const StateGlobals& stateGlobals);
 
@@ -209,6 +210,10 @@ private:
 
     void requireModuleLine(const std::string& line);
 
+    // Declares a libinoxrt function once and marks the module as needing
+    // the runtime library.
+    void requireRuntime(RuntimeFunction function);
+
     void requireStringRuntime();
 
     std::string emptyStringValue();
@@ -344,8 +349,7 @@ private:
     const FunctionSignature& signature_;
     const FunctionSignatures& signatures_;
     const StructDefinitions& structs_;
-    std::vector<std::string>& stringGlobals_;
-    std::size_t& nextStringLiteral_;
+    ModuleContext& module_;
     std::unordered_map<std::string, std::string> parameters_;
     std::unordered_map<std::string, std::string> parameterTypes_;
     std::unordered_map<std::string, LocalInfo> locals_;

@@ -33,11 +33,15 @@ module (globals, declarations, runtime helpers, `main`).
   functions are defined in `FunctionEmitter*.cpp` files by responsibility.
   The class is still one class: this step only makes it readable.
 - **Step 3.** `ExceptionAbi` interface with `ItaniumExceptionAbi` and
-  `MsvcExceptionAbi`, chosen once per module (it replaces the
-  `usesMsvcExceptionAbi()` tests scattered in the emitter). `RuntimeAbi`
-  table: name, LLVM declaration, attributes; `requireRuntime(name)` emits the
-  declaration once and records the need; `LlvmIrEmitter::emit` returns the
-  IR and a `RuntimeNeeds` set to the driver.
+  `MsvcExceptionAbi`, chosen once per module by `hostExceptionAbi()` (it
+  replaces the `usesMsvcExceptionAbi()` tests): personality symbol and the
+  capture pad; the common tail of a capture (replacing an older state) is
+  written once in `FunctionEmitter::emitExceptionCapture`. `RuntimeAbi`
+  table: each libinoxrt function and its exact declaration;
+  `FunctionEmitter::requireRuntime` emits the declaration once and records
+  the need in `ModuleContext`; `LlvmIrEmitter::emitModule` returns
+  `LlvmModule{ir, needsInoxRuntime}` and the driver links libinoxrt from
+  that flag (it used to search the IR text). `emit` keeps returning the IR.
 - **Step 4.** `SemanticAnalyzer` keeps its public interface; its definitions
   move to `SemanticDeclarations.cpp`, `SemanticStatements.cpp`,
   `SemanticExpressions.cpp`, `SemanticBuiltins.cpp`, `ConstantEvaluator.cpp`.

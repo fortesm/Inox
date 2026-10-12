@@ -10,7 +10,7 @@
 #include "FunctionEmitter.h"
 
 #include "AstQueries.h"
-#include "ExceptionSupport.h"
+#include "ExceptionAbi.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
 #include "MathBuiltins.h"
@@ -114,62 +114,9 @@ void FunctionEmitter::emitExceptionCapture(std::string_view landingPadLabel,
                                            std::string_view nextLabel,
                                            bool replaceExisting)
 {
-    if (usesMsvcExceptionAbi()) {
-        // MSVC EH funclets are only an ABI bridge. No Inox user statement
-        // is emitted inside the catchpad. Capture the active C++ exception,
-        // carry the opaque state in SSA, and return to the parent CFG with catchret.
-        const std::string catchSwitch =
-            "%eh.cs" + std::to_string(nextTemporary_++);
-        const std::string catchPad =
-            "%eh.cp" + std::to_string(nextTemporary_++);
-        const std::string state =
-            "%eh.state" + std::to_string(nextTemporary_++);
-        const std::string catchPadLabel =
-            std::string(landingPadLabel) + ".catch";
-        const std::string parentLabel =
-            std::string(landingPadLabel) + ".parent";
-
-        output_ << landingPadLabel << ":\n";
-        output_ << "  " << catchSwitch
-                << " = catchswitch within none [label %" << catchPadLabel
-                << "] unwind to caller\n\n";
-        output_ << catchPadLabel << ":\n";
-        output_ << "  " << catchPad
-                << " = catchpad within " << catchSwitch
-                << " [ptr null, i32 64, ptr null]\n";
-        output_ << "  " << state
-                << " = call ptr @__inox_exception_capture(ptr null)"
-                << " [ \"funclet\"(token " << catchPad << ") ]\n";
-        output_ << "  catchret from " << catchPad
-                << " to label %" << parentLabel << "\n\n";
-        output_ << parentLabel << ":\n";
-
-        if (replaceExisting) {
-            const std::string old = "%eh.old" + std::to_string(nextTemporary_++);
-            const std::string hasOld = "%eh.hasold" + std::to_string(nextTemporary_++);
-            const std::string releaseLabel = "eh.release.old" + std::to_string(nextLabel_++);
-            const std::string storeLabel = "eh.store.new" + std::to_string(nextLabel_++);
-            output_ << "  " << old << " = load ptr, ptr " << stateSlot << "\n";
-            output_ << "  " << hasOld << " = icmp ne ptr " << old << ", null\n";
-            output_ << "  br i1 " << hasOld << ", label %" << releaseLabel
-                    << ", label %" << storeLabel << "\n\n";
-            output_ << releaseLabel << ":\n";
-            output_ << "  call void @__inox_exception_release(ptr " << old << ")\n";
-            output_ << "  br label %" << storeLabel << "\n\n";
-            output_ << storeLabel << ":\n";
-        }
-        output_ << "  store ptr " << state << ", ptr " << stateSlot << "\n";
-        output_ << "  br label %" << nextLabel << "\n\n";
-        return;
-    }
-
-    output_ << landingPadLabel << ":\n";
-    const std::string landing = "%eh.lp" + std::to_string(nextTemporary_++);
-    const std::string raw = "%eh.raw" + std::to_string(nextTemporary_++);
-    const std::string state = "%eh.state" + std::to_string(nextTemporary_++);
-    output_ << "  " << landing << " = landingpad { ptr, i32 } catch ptr null\n";
-    output_ << "  " << raw << " = extractvalue { ptr, i32 } " << landing << ", 0\n";
-    output_ << "  " << state << " = call ptr @__inox_exception_capture(ptr " << raw << ")\n";
+    const std::string state = module_.exceptionAbi.emitCapturePad(
+        output_, landingPadLabel,
+        [this](std::string_view prefix) { return std::string(prefix) + std::to_string(nextTemporary_++); });
     if (replaceExisting) {
         const std::string old = "%eh.old" + std::to_string(nextTemporary_++);
         const std::string hasOld = "%eh.hasold" + std::to_string(nextTemporary_++);

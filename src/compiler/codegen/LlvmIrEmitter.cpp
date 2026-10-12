@@ -8,9 +8,11 @@
 #include "LlvmIrEmitter.h"
 
 #include "AstQueries.h"
-#include "ExceptionSupport.h"
+#include "ExceptionAbi.h"
 #include "FunctionEmitter.h"
 #include "LlvmText.h"
+#include "ModuleContext.h"
+#include "RuntimeAbi.h"
 #include "RuntimeHelpersIr.h"
 #include "TypeLayout.h"
 #include "../support/ArrayType.h"
@@ -32,15 +34,13 @@ void emitFunction(std::ostringstream& output,
                   const FunctionSignature& signature,
                   const FunctionSignatures& signatures,
                   const StructDefinitions& structs,
-                  std::vector<std::string>& stringGlobals,
-                  std::size_t& nextStringLiteral,
+                  ModuleContext& moduleContext,
                   const semantic::SemanticResult& semantics,
                   const StateGlobals& stateGlobals,
                   bool& usesStringCleanup)
 {
     std::ostringstream body;
-    FunctionEmitter emitter(body, function, signature, signatures, structs, stringGlobals, nextStringLiteral,
-                            semantics, stateGlobals);
+    FunctionEmitter emitter(body, function, signature, signatures, structs, moduleContext, semantics, stateGlobals);
     emitter.emit();
     usesStringCleanup = usesStringCleanup || emitter.usesStringCleanup();
 
@@ -53,9 +53,7 @@ void emitFunction(std::ostringstream& output,
     }
     output << ')';
     if (functionContainsTry(function) || emitter.usesStringCleanup()) {
-        output << " personality ptr @"
-               << (usesMsvcExceptionAbi()
-                       ? "__CxxFrameHandler3" : "__gxx_personality_v0");
+        output << " personality ptr @" << moduleContext.exceptionAbi.personality();
     }
     output << " {\n"
            << "entry:\n";
@@ -88,17 +86,19 @@ CodegenUnsupported::CodegenUnsupported(std::string message)
 {
 }
 
-
-
 std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::SemanticResult& semantics) const
+{
+    return emitModule(module, semantics).ir;
+}
+
+LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semantic::SemanticResult& semantics) const
 {
     const ast::FunctionDeclaration* mainFunction = nullptr;
     FunctionSignatures signatures;
     StructDefinitions structs;
     std::ostringstream functionOutput;
     std::ostringstream output;
-    std::vector<std::string> stringGlobals;
-    std::size_t nextStringLiteral = 0;
+    ModuleContext moduleContext(hostExceptionAbi());
     const bool usesExceptions = moduleUsesExceptions(module);
     bool usesStringCleanup = false;
 
@@ -160,7 +160,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
         const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
         if (!equalsIgnoreCase(function.name(), "Main")) {
             const auto signature = signatures.find(normalize(function.name()));
-            emitFunction(functionOutput, function, signature->second, signatures, structs, stringGlobals, nextStringLiteral, semantics, stateGlobals, usesStringCleanup);
+            emitFunction(functionOutput, function, signature->second, signatures, structs, moduleContext, semantics, stateGlobals, usesStringCleanup);
         }
     }
 
@@ -168,7 +168,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
         throw CodegenError("LLVM emission requires Main");
     }
     const FunctionSignature mainSignature{"main", "i32", {}, {}};
-    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, structs, stringGlobals, nextStringLiteral, semantics, stateGlobals, usesStringCleanup);
+    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, structs, moduleContext, semantics, stateGlobals, usesStringCleanup);
 
     for (const StateGlobal& state : stateGlobals) {
         output << stateGlobalSymbol(state.name) << " = internal global " << state.llvmType
@@ -200,7 +200,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
            << "@.inox.fmt.str = private unnamed_addr constant [3 x i8] c\"%s\\00\"\n"
            << "@.inox.true = private unnamed_addr constant [5 x i8] c\"true\\00\"\n"
            << "@.inox.false = private unnamed_addr constant [6 x i8] c\"false\\00\"\n";
-    for (const std::string& global : stringGlobals) {
+    for (const std::string& global : moduleContext.moduleLines) {
         output << global << '\n';
     }
     output << "declare i32 @printf(ptr, ...)\n";
@@ -229,22 +229,17 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
     output << "declare double @fmod(double, double)\n";
     output << "declare double @hypot(double, double)\n";
     if (usesExceptions || usesStringCleanup) {
-        if (usesMsvcExceptionAbi()) {
-            output << "declare i32 @__CxxFrameHandler3(...)\n";
-        } else {
-            output << "declare i32 @__gxx_personality_v0(...)\n";
+        output << "declare i32 @" << moduleContext.exceptionAbi.personality() << "(...)\n";
+        for (const RuntimeFunction function : kExceptionRuntimeFunctions) {
+            output << runtimeDeclaration(function) << '\n';
         }
-        output << "declare void @__inox_raise(i64) noreturn\n";
-        output << "declare ptr @__inox_exception_capture(ptr) nounwind\n";
-        output << "declare i64 @__inox_exception_type(ptr) nounwind\n";
-        output << "declare void @__inox_exception_release(ptr) nounwind\n";
-        output << "declare void @__inox_exception_rethrow(ptr) noreturn\n";
+        moduleContext.usesInoxRuntime = true;
     }
     output << '\n';
     output << inputRuntimeHelpers();
     output << mathRuntimeHelpers();
     output << functionOutput.str();
-    return output.str();
+    return LlvmModule{output.str(), moduleContext.usesInoxRuntime};
 }
 
 } // namespace inox::compiler::codegen
