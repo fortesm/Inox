@@ -34,3 +34,16 @@ variable SHALL NOT mix with a UInt64 without a conversion.
 #### Scenario: Negative constant and mixed operands
 - **WHEN** a program writes `U UInt64 := -1` or `U + I` with an Integer variable I
 - **THEN** the compiler rejects it (test to add: tests/diagnostics/uint64-negative-literal.inox, tests/diagnostics/uint64-mixed-integer.inox)
+
+### Requirement: UInt64 literals and negation
+In a UInt64 context only, an integer literal (decimal or hexadecimal) SHALL be
+allowed up to 18446744073709551615; elsewhere a literal SHALL still fit Int64.
+Unary minus on a UInt64 SHALL be a compile error.
+
+#### Scenario: The largest UInt64 literal
+- **WHEN** a program writes `U UInt64 := 18446744073709551615` and `H UInt64 := $FFFFFFFFFFFFFFFF`, and prints both
+- **THEN** both print 18446744073709551615 (test to add: tests/runtime/uint64.inox)
+
+#### Scenario: Large literal outside a UInt64 context, and negation
+- **WHEN** a program writes `X := 18446744073709551615` or `-U` with U a UInt64
+- **THEN** the compiler rejects it (test to add: tests/diagnostics/uint64-literal-needs-context.inox, tests/diagnostics/uint64-unary-minus.inox)

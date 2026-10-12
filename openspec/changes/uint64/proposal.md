@@ -24,20 +24,16 @@ Approval (Marcelo Fortes, 2026-10-12): "Todas as tomadas de decisão dos pontos
 - Constants follow the v3.44 rule: a constant that fits is read as UInt64; a
   negative constant is a compile-time range error.
 
-Open questions for Marcelo (Layer A; the implementation follows the
-recommended answer only after he confirms it, and otherwise implements the
-rest without it):
-- **Q1. Literals above Int64.Max.** Canon CANON-19 says every integer literal
-  must fit Int64, so `U UInt64 := 18446744073709551615` is an error and
-  UInt64.Max cannot be written. Recommendation: in a UInt64 context only, an
-  integer literal (decimal or `$`/`0x` hex) may be up to 2^64-1, like the
-  decimal-literal rule of CHANGE LOG v3.3.
-- **Q2. Unary minus on UInt64.** Recommendation: a compile error ("unary minus
-  is not defined for UInt64; convert with Integer(U) first"), because no
-  signed type holds every negated UInt64.
-- **Q3. Mixing with Integer variables.** Recommendation (already implied by
-  "narrowing is never implicit"): `U + I` with an Integer variable I is a
-  compile error in both directions; write `U + UInt64(I)` or `Integer(U) + I`.
+Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message "Decisões que dependem de mim"); they are now Layer A (canon v3.50):
+- **Q1. Literals above Int64.Max: accepted ("→ Sim").** In a UInt64 context
+  only, an integer literal (decimal or `$`/`0x` hex) may be up to 2^64-1, like
+  the decimal-literal rule of CHANGE LOG v3.3. Elsewhere a literal must still
+  fit Int64 (CANON-19).
+- **Q2. Unary minus on UInt64: compile error.** No signed type holds every
+  negated UInt64; write `-Integer(U)`.
+- **Q3. Mixing with Integer variables: compile error.** `U + I` with an
+  Integer variable I needs a written conversion: `U + UInt64(I)` or
+  `Integer(U) + I`.
 
 Out of scope: Int128/Crypto, Currency, UInt64 ranges or enums.
 

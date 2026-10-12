@@ -1,11 +1,12 @@
 ## 0. Decisions
 
-- [ ] 0.1 Record Marcelo's answers to Q1–Q7 in the proposal; write the approved answers as Layer A text in CANON-13 through a dated change-log entry
+- [x] 0.1 Record Marcelo's answers to Q1, Q2, Q4–Q7 (canon v3.50)
+- [ ] 0.2 Q3 (enum printing) still open; Phase A leaves enum printing out until it is decided
 
 ## 1. Phase A — Enum (own PR)
 
 - [ ] 1.1 Enum types and literal constants in the analyzer; strict initialization; no implicit Integer conversion
-- [ ] 1.2 Lowering: i32 ordinals, `Ord`, checked `TEnum(I)`, comparisons, printing (Q3)
+- [ ] 1.2 Lowering: i32 ordinals, `Ord`, checked `TEnum(I)`, comparisons, printing only after Q3 is decided
 - [ ] 1.3 Enums in fields, elements, State, parameters, results; `for` over enum ranges
 - [ ] 1.4 case coverage for enums
 - [ ] 1.5 Tests: runtime enums, enum-case, enum-conversion-range; diagnostics enum-implicit-integer, enum-without-initializer, enum-case-incomplete
@@ -14,7 +15,7 @@
 ## 2. Phase B — Range (own PR)
 
 - [ ] 2.1 Range subtypes over the Integer family and Char; compile-time and run-time checks (Q1)
-- [ ] 2.2 Low/High on range and enum types (Q5); Succ/Pred if approved
+- [ ] 2.2 Low/High on range and enum types; checked Succ/Pred (Q5)
 - [ ] 2.3 case coverage for ranges
 - [ ] 2.4 Tests: runtime ranges, range-runtime-out-of-range; diagnostics range-constant-out-of-range, range-empty
 - [ ] 2.5 Gates and docs for Phase B

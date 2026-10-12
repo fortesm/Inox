@@ -6,7 +6,8 @@ type with mathematical set operations. Not a hash set.
 
 ### Requirement: Set base types
 `Set<T>` SHALL require T to be an Enum or a finite Range. `Set<Integer>`,
-`Set<Float>` and `Set<String>` SHALL be compile errors.
+`Set<Float>` and `Set<String>` SHALL be compile errors, and so SHALL a base
+with more than 256 values.
 
 #### Scenario: Invalid base
 - **WHEN** a program declares `S Set<Integer>`
@@ -28,3 +29,11 @@ SHALL test subset and superset. `Union`, `Intersection`, `Difference`,
 #### Scenario: Operations
 - **WHEN** a program builds sets with With and Union and tests them with in, =, <= and Difference
 - **THEN** each result is the mathematical one (test to add: tests/runtime/sets.inox)
+
+### Requirement: Set literal in a Set-typed context
+`[A, B, C]` SHALL denote the set of those elements where a `Set<T>` is
+expected (initializer, assignment, argument, return).
+
+#### Scenario: Literal initializer
+- **WHEN** a program writes `S Set<TSuit> := [Club, Heart]`
+- **THEN** `Club in S` and `Heart in S` are true and `Spade in S` is false (test to add: tests/runtime/sets.inox)

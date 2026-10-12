@@ -25,24 +25,16 @@ immutable, reference-counted value (Claude's proposal, accepted).
   `Exit`, `leave`, and exception unwinding (cleanup in the landing pads on
   Linux and in the funclets on Windows/MSVC).
 
-Open questions for Marcelo (Layer A; the recommended answer is used only after
-he confirms it):
-- **Q1. String input.** Recommendation: include `GetLn(S)` for a String
-  variable (reads the rest of the line, without the newline; invalid UTF-8 is
-  invalid input, kind 6). It is the first producer of run-time strings, so the
-  reference counting is exercised by programs, not only by runtime unit tests.
-- **Q2. Thread safety.** Recommendation: non-atomic counts in 0.1 (Inox has no
-  threads yet); the concurrency ADR decides atomic counts or per-thread
-  ownership before threads exist.
-- **Q3. Concatenation and lengths.** CANON-14 reserves concatenation,
-  `ByteLength`, `CharLength` and `GraphemeLength`. Recommendation: keep them
-  reserved in this change; propose them in a separate change with their
-  operator and cost model.
-- **Q4. `S String` without `:=`.** CANON-14 says `""` is the default, and
-  CANON-5 rule 3 says scalars require an initializer; the compiler applies
-  rule 3 to String today. Recommendation: keep that for locals and State (a
-  visible value is clearer), and use `""` for String fields without default
-  and for array elements, where rule 4 type defaults apply.
+Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message "Decisões que dependem de mim"); they are now Layer A (canon v3.50):
+- **Q1. String input: `GetLn(S)` reads a line into a String variable: yes.**
+  The line excludes the newline; invalid UTF-8 is invalid input (kind 6).
+- **Q2. Reference counts are non-atomic in 0.1.** The concurrency ADR decides
+  atomic counts or per-thread ownership before threads exist.
+- **Q3. Concatenation, `ByteLength`, `CharLength` and `GraphemeLength` stay
+  reserved**, for a separate proposal with their operator and cost model.
+- **Q4. `S String` without `:=` stays an error for locals and State**
+  (CANON-5 rule 3); String struct fields without default and String array
+  elements start as `""` (rule 4 type defaults).
 
 Out of scope: indexing `S[I]` (reserved), concatenation and lengths (Q3),
 Char output and Char-String conversions, `Option<String>`, file I/O, exception

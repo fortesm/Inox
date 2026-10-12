@@ -1,12 +1,12 @@
 ## 0. Decisions
 
-- [ ] 0.1 Record Marcelo's answers to Q1 (literals above Int64.Max), Q2 (unary minus) and Q3 (mixing with Integer) in the proposal; Q1 work waits for its answer
+- [x] 0.1 Record Marcelo's answers to Q1 (literals above Int64.Max), Q2 (unary minus) and Q3 (mixing with Integer) in the proposal; all three approved
 
 ## 1. Semantic analysis
 
 - [ ] 1.1 UInt64/UInteger type rules: constants that fit, negative constants rejected, no mixing with Integer variables
 - [ ] 1.2 Unsigned constant folder with overflow detection
-- [ ] 1.3 Q2 diagnostic for unary minus (after approval)
+- [ ] 1.3 Q2 diagnostic for unary minus
 
 ## 2. Lowering and runtime
 

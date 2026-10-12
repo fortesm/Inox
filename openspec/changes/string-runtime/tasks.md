@@ -1,11 +1,11 @@
 ## 0. Decisions
 
-- [ ] 0.1 Record Marcelo's answers to Q1 (GetLn into String), Q2 (non-atomic counts), Q3 (keep concatenation reserved) and Q4 (String without initializer)
+- [x] 0.1 Record Marcelo's answers to Q1 (GetLn into String), Q2 (non-atomic counts), Q3 (keep concatenation reserved) and Q4 (String without initializer)
 
 ## 1. Runtime
 
 - [ ] 1.1 `runtime/StringRuntime.cpp`: block layout, immortal literals, retain, release, equality, output
-- [ ] 1.2 Line input into a String (after Q1), with UTF-8 validation
+- [ ] 1.2 Line input into a String (`GetLn(S)`, Q1), with UTF-8 validation
 - [ ] 1.3 C++ unit tests for the runtime, run by the suite on Linux and Windows
 
 ## 2. Lowering

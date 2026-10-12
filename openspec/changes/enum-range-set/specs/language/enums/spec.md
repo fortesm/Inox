@@ -44,3 +44,25 @@ An enum variable SHALL require an explicit initializer (strict Ada rule).
 #### Scenario: Iterate a sub-range
 - **WHEN** a program prints `Ord(S)` for each S in `Diamond..Spade`
 - **THEN** it prints 1, 2, 3 (test to add: tests/runtime/enums.inox)
+
+### Requirement: A literal belongs to one enum
+The same literal name SHALL NOT appear in two enum types of a program, nor
+clash with any other visible name (case-insensitive).
+
+#### Scenario: Literal in two enums
+- **WHEN** `TSuit` and `TColor` both declare `Heart`
+- **THEN** the compiler rejects it (test to add: tests/diagnostics/enum-literal-in-two-enums.inox)
+
+### Requirement: Low, High, Succ and Pred
+`Low(T)` and `High(T)` SHALL give the first and last literal of an enum type
+T. `Succ(E)` and `Pred(E)` SHALL give the next and previous literal; past the
+last or before the first they SHALL stop the program (a constant case SHALL be
+a compile error).
+
+#### Scenario: Walking an enum
+- **WHEN** a program prints `Ord(Low(TSuit))`, `Ord(High(TSuit))` and `Ord(Succ(Club))`
+- **THEN** it prints 0, 3 and 1 (test to add: tests/runtime/enums.inox)
+
+#### Scenario: Past the last literal
+- **WHEN** `Succ(S)` runs with S = Spade
+- **THEN** the program stops with a range fault (test to add: tests/runtime/enum-succ-past-end.inox)

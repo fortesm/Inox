@@ -22,32 +22,30 @@ Implemented in three phases, each its own PR and green gates:
   State, parameters and results.
 - **Phase B, Range.** `TMonth Range 1..12` (Integer family) and
   `TLetter Range 'A'..'Z'` (Char): a constrained subtype of its base;
-  iteration with `for M in Low(TMonth)..High(TMonth)` once Q5 is decided;
+  iteration with `for M in Low(TMonth)..High(TMonth)` (Q5);
   ranges as array index types are NOT part of this change.
 - **Phase C, Set.** `Set<T>` over an Enum or finite Range, value type, empty by
   default; `in`, `=`, `#`, `<=`, `>=`; `Union`, `Intersection`, `Difference`,
   `SymmetricDifference`, `With`, `Without`.
 
-Open questions for Marcelo (Layer A; the recommended answer is used only after
-he confirms it):
-- **Q1. Storing into a Range.** Recommendation: like Natural (ADR-0015), an
-  Integer value stored into a Range variable is checked implicitly at run time
-  (new fault kind 11, "value out of range"); arithmetic on Range values yields
-  the base type.
-- **Q2. `TEnum(I)` fault.** Recommendation: reuse kind 8 "integer conversion
-  out of range".
-- **Q3. Printing an enum.** Recommendation: `PutLn(Suit)` prints the literal as
-  declared ("Heart"); `PutLn(Ord(Suit))` prints the ordinal.
-- **Q4. Same literal in two enums.** Recommendation: forbidden in 0.1 (no
-  shadowing, case-insensitive names), so literals never need qualification.
-- **Q5. `Low`, `High`, `Succ`, `Pred`.** Recommendation: `Low(T)`/`High(T)` on
-  enum and range types (as for arrays); `Succ`/`Pred` checked, trapping past
-  the ends.
-- **Q6. Set operation syntax.** Recommendation: free functions returning a new
-  set, `S := With(S, Club)`, `U := Union(A, B)`; the literal `[Club, Heart]` in
-  a Set-typed context is included (CANON-13 allows deferring it).
-- **Q7. Set size.** Recommendation: base cardinality at most 256 in 0.1 (as in
-  Pascal), a compile error above it.
+Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message "Decisões que dependem de mim"); they are now Layer A (canon v3.50), except Q3:
+- **Q1. Storing into a Range: implicit check, as for Natural (ADR-0015).** An
+  Integer value stored into a Range variable is checked at run time (new fault
+  kind 11, "value out of range"); a constant outside the range is a compile
+  error; arithmetic on Range values yields the base type.
+- **Q2. `TEnum(I)` fault: kind 8, "integer conversion out of range".**
+- **Q3. Printing an enum: OPEN.** Marcelo asked what it means (2026-10-12).
+  Proposal: with `Suit TSuit := Heart`, `PutLn(Suit)` prints `Heart` (the
+  literal's name, like Free Pascal `WriteLn` and Ada `'Image`), and
+  `PutLn(Ord(Suit))` prints `2`. The alternative is to reject `PutLn(Suit)`
+  and require `Ord`. Phase A does not lower enum printing until he decides.
+- **Q4. Same literal in two enums: forbidden.**
+- **Q5. `Low(T)`/`High(T)` on enum and range types: yes; `Succ`/`Pred`,
+  checked (trap past the ends): yes.**
+- **Q6. Sets: functions returning a new set (`S := With(S, Club)`,
+  `U := Union(A, B)`) plus the literal `[Club, Heart]` in a Set-typed context
+  ("-> sim").**
+- **Q7. Set base: at most 256 elements; above that is a compile error.**
 
 Out of scope: enum literal values other than 0..N-1, Range or Enum as array
 index types, sets over Char ranges larger than Q7's limit, Vector.

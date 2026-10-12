@@ -32,6 +32,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - `grammar/grammar.ebnf` rebuilt from the canon, checked by `tools/grammar_consistency.py`.
 - OpenSpec workflow (canon v3.48, G7): `openspec/specs/` mirrors seven language capabilities with test-backed scenarios; `openspec/changes/` holds the proposals for struct values, declaration sections, UInt64, Enum/Range/Set and the String runtime; CI runs `openspec validate --all --strict`.
 - Canon migration to OpenSpec, phases 1 and 3a (canon v3.49): `tools/canon_trace.py` and `openspec/migration/CANON_MAP.md` trace every line of the canon to its destination (checked in CI); ADR-0001..0017 imported verbatim as archived OpenSpec changes; six new diagnostics tests for `case` syntax and array types.
+- Language decisions recorded (canon v3.50): UInt64 literals up to 2^64-1 in UInt64 context, no unary minus on UInt64, no UInt64/Integer mixing; implicit Range checks; Enum `Succ`/`Pred`/`Low`/`High`; Set functions, literal and 256-value limit; `GetLn(S)` for String, non-atomic reference counts. Implementation follows.
 
 ### Changed
 - Example files no longer carry the `llvm-` prefix (`examples/put-output-basic.inox`, ...).

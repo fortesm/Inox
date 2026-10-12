@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.49 (canon migration to OpenSpec, phases 1 and 3a)
+# Version: v3.50 (decisions: UInt64, Enum/Range/Set, String)
 # Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -500,6 +500,31 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.50 — 2026-10-12 — Layer A decisions for UInt64, Enum/Range/Set and String
+#         (Marcelo Fortes, 2026-10-12, answering item by item the open
+#         questions of the OpenSpec changes `uint64`, `enum-range-set` and
+#         `string-runtime`). Implementation follows in those changes.
+#   - UInt64: in a UInt64 context only, an integer literal may be up to
+#     2^64-1 (decimal or hex); elsewhere CANON-19's "fits Int64" stays. Unary
+#     minus on UInt64 is a compile error. A UInt64 and an Integer variable never
+#     mix without a written conversion.
+#   - Range: storing an Integer into a Range variable is checked implicitly, as
+#     for Natural (ADR-0015): new fault kind 11 "value out of range"; a
+#     constant outside is a compile error; Range arithmetic yields the base type.
+#   - Enum: `TEnum(I)` out of range is fault kind 8; a literal name belongs to
+#     one enum only; `Low(T)`/`High(T)` on enum and range types; `Succ`/`Pred`
+#     checked. OPEN: whether `PutLn(E)` prints the literal's name (asked by the
+#     maintainer; Phase A does not lower enum printing until decided).
+#   - Set: operations are functions returning a new set (`S := With(S, Club)`,
+#     `Union(A, B)`, ...); the literal `[A, B]` is accepted in a Set-typed
+#     context; a base has at most 256 values.
+#   - String: `GetLn(S)` reads a line into a String variable (invalid UTF-8 is
+#     invalid input); reference counts are non-atomic in 0.1; concatenation and
+#     length functions stay reserved; `S String` without `:=` stays an error for
+#     locals and State, while String fields without default and array elements
+#     start as `""`. For `GetLn(S)`, this ends the CANON-17 deferral of String
+#     input.
 #
 # v3.49 — 2026-10-12 — migration of this document to OpenSpec, phases 1 and 3a
 #         (plan approved by Marcelo Fortes on 2026-10-12: "Aprovo o plano de
