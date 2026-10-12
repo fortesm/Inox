@@ -11,6 +11,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 ## Unreleased
 
 ### Added
+- String runtime (canon v3.55, OpenSpec change `string-runtime`): Strings in locals, parameters, results, struct fields (with a String literal default or `""`), array elements, State and `ref` parameters, as reference-counted immutable blocks in libinoxrt that the compiler frees exactly once, also when an exception leaves a routine. `GetLn(S)` reads a line into a String (UTF-8 checked). New runtime faults "out of memory" and "invalid UTF-8 input". `tools/string_leak_check.py` runs the String programs under AddressSanitizer with leak detection in the Linux CI; `inoxrt-tests` unit-tests the runtime on Linux and Windows.
 - `tools/ir_snapshot.py` (canon v3.54): records IR, types, diagnostics and exit codes of every program and compares them after a refactor; an E19 gate. AGENTS.md gains "Known pitfalls"; high-risk OpenSpec changes wait for design approval.
 - Type, Const and State sections are parsed into typed declarations (OpenSpec change `declaration-sections`, canon v3.53): a struct field may be a fixed array, `State` may hold structs and arrays (with or without initializer), and malformed entries report their line.
 - Struct values (canon v3.52): struct initializers `Q T := Expr`, named construction `T(F := V)` as an expression, nested struct fields and field paths, fields and literal defaults of every scalar type, methods on fields and elements, arrays of struct. A struct that contains itself is a compile error.
@@ -38,6 +39,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - Language decisions recorded (canon v3.50): UInt64 literals up to 2^64-1 in UInt64 context, no unary minus on UInt64, no UInt64/Integer mixing; implicit Range checks; Enum `Succ`/`Pred`/`Low`/`High`; Set functions, literal and 256-value limit; `GetLn(S)` for String, non-atomic reference counts. Enum printing prints the literal's name (v3.51). Implementation follows.
 
 ### Changed
+- The Windows test script feeds `.in` files to programs byte for byte and reads their output as UTF-8; `.gitattributes` keeps `.in` files unchanged by Git.
 - A Type line `TName := Type` is an error: Inox has no type alias form (canon v3.54).
 - Example files no longer carry the `llvm-` prefix (`examples/put-output-basic.inox`, ...).
 - Windows (MSVC ABI): exceptions are lowered with LLVM funclets (`__CxxFrameHandler3`); every exception test passes natively on the CI runner (EH-v3.16a closed).
@@ -48,10 +50,14 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - `Const` values that are constant expressions are folded (`Const K := 5 + 1` was silently 5).
 - A `Const` has no written type: `Const Mask UInt8 := $FF` is rejected; write `Const Mask := UInt8($FF)` (OPEN-5).
 
+### Fixed
+- A function called with no arguments inside `try` (`N := Fail`) now reaches the handler; it was emitted with `call` instead of `invoke` and its exception aborted the program.
+
 ### Known limitations
 - `UInt64`/`UInteger` values are not lowered yet.
-- Not lowered yet: `State` of String type, `String` locals, Float32 conversion.
-- Vectors, sets, enums and ranges are not implemented (Range and Enum declarations are parsed and checked for shape only); String fields and elements wait for the String runtime.
+- Not lowered yet: Float32 conversion.
+- Vectors, sets, enums and ranges are not implemented (Range and Enum declarations are parsed and checked for shape only).
+- String concatenation, indexing and length functions are reserved (not in 0.1); slices of String arrays are not supported yet.
 - The compiler is not yet aligned with the canonical `<T>` generic syntax; its existing generic syntax still uses `[T]`.
 
 ## V0.4 — 2026-10-09

@@ -83,6 +83,20 @@ time. Each names where it bit.
   links the static release CRT (commit 6773ee8); keep it that way.
 - **The token scanners are gone.** Type/Const/State are typed declarations
   (v3.53); never re-scan tokens of a section — extend the parser instead.
+- **Console I/O stays in the program, memory stays in libinoxrt.** On Windows
+  the program and libinoxrt may use different C runtimes: a `FILE*` or a
+  `malloc` block must never cross between them. String output is the
+  program's `printf`, `GetLn` reads through the program's `getchar` passed as
+  a function pointer, and only libinoxrt allocates or frees (v3.55).
+- **String literals are immortal; leak tests need input.** A test made only of
+  literals allocates nothing, so it cannot leak; feed lines through `GetLn`
+  (`NAME.in`) and run `tools/string_leak_check.py`. clang has no ASan runtime
+  in the agent container; the tool falls back to linking with g++ (v3.55).
+- **Include what you use.** The CI runner's clang uses libstdc++ 14, which
+  pulls in fewer headers transitively than 13: `std::find` without
+  `<algorithm>` built here and failed in CI (PR #36). Build with the
+  `linux-clang-debug` preset against libstdc++ 14 before pushing.
+- **`Step` is a keyword** (`for ... step`); do not use it as a test variable.
 - **GitHub GraphQL is blocked here.** Use `gh api` REST routes (`gh pr view`
   and `gh pr create` fail); job logs come from check-run annotations.
 

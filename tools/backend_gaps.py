@@ -164,6 +164,28 @@ Main :
     PutLn(S)
 ;
 """),
+    ("string-aggregates", "String struct field, array element and State", """Type
+    TP Struct
+        FName String := "a"
+    ;
+
+State :
+    G String := "b"
+;
+
+Main :
+    P TP
+    A Array[1..2] String
+    A[2] := P.FName
+    PutLn(A[1], A[2], G)
+;
+"""),
+    ("string-getln", "GetLn into a String, compared with =", """Main :
+    S String := ""
+    GetLn(S)
+    PutLn(S = "x")
+;
+"""),
     ("bool-local", "Boolean local variable", """Main :
     B := true
     PutLn(B)

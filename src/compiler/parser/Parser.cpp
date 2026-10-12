@@ -1690,6 +1690,11 @@ std::string Parser::parseStructFieldDefault(const std::string& fieldName)
     if (sign.empty() && (matchKeyword("true") || matchKeyword("false"))) {
         return previous().lexeme;
     }
+    // A String default keeps its quotes, so it is never mistaken for a
+    // number or a Bool (`FAge Integer := "12"` is a type error).
+    if (sign.empty() && match(TokenKind::StringLiteral)) {
+        return '"' + previous().lexeme + '"';
+    }
     throw ParseError("the default of struct field " + fieldName + " must be one literal (CANON-9)",
                      isAtEnd() ? previous().location : peek().location);
 }

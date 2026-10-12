@@ -5,12 +5,14 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== Legal Inox that the LLVM backend does not lower yet (docs/BACKEND_GAPS.md).
-== The diagnostic must say the gap is in the backend, not in the program.
-== When String locals are lowered, move this program to tests/runtime.
-Module Diagnostics.BackendGapStringLocal
+== CANON-17/19: GetLn checks that the line is well-formed UTF-8 (RFC 3629);
+== invalid input stops the program with a runtime fault (kind 13).
+Module Runtime.StringsInvalidUtf8
 
 Main :
-    S String := "abc"
-    PutLn(S)
+    Line String := ""
+    GetLn(Line)
+    PutLn("[", Line, "]")
+    GetLn(Line)
+    PutLn("unreachable ", Line)
 ;

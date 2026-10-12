@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+#
+# Test input files are fed to programs byte for byte (some hold CR LF or
+# invalid UTF-8 on purpose): Git must never rewrite their line endings.
+*.in -text

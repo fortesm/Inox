@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.54 (workflow safeguards; no type alias form)
+# Version: v3.55 (String runtime)
 # Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -504,6 +504,37 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.55 — 2026-10-12 — String runtime (Layer B; CANON-14 and CANON-17 now
+#         state the v3.50 decisions as implemented). OpenSpec change
+#         `string-runtime`, Risk: high; design approved by Marcelo Fortes on
+#         2026-10-12 ("Então tudo aprovado.").
+#   - A String value is a pointer to an immutable, reference-counted block in
+#     libinoxrt (`runtime/StringRuntime.cpp`); literals and `""` are immortal.
+#     Strings live in locals, parameters, results, struct fields (with or
+#     without a literal default), array elements (any dimension), State and
+#     `ref`/`ref mut` parameters; `=`/`#` compare bytes.
+#   - `GetLn(S)` reads one line into a String: without the line break, a CR
+#     before it dropped, `""` at end of input. The line must be well-formed
+#     UTF-8 (RFC 3629).
+#   - Two runtime faults are added to CANON-19: kind 12 "out of memory" and
+#     kind 13 "invalid UTF-8 input". (v3.50 called invalid UTF-8 "invalid
+#     input"; it gets its own message instead of the Integer one, kind 6.)
+#   - Changes from the approved design, reported to the maintainer: owned
+#     Strings are released at every exit of the routine and when overwritten,
+#     not at the end of every inner block; a routine holding Strings gets one
+#     cleanup pad built on the existing exception capture and rethrow, not on
+#     `cleanuppad` funclets.
+#   - Fixed on the way: a function called with no arguments inside `try`
+#     (`N := Fail`) was emitted with `call` instead of `invoke`, so its
+#     exception aborted the program instead of reaching the handler.
+#   - Tests: runtime `strings`, `strings-getln`, `strings-aggregates`,
+#     `strings-exception-cleanup`, `string-local` (moved from diagnostics),
+#     `exception-zero-argument-call`; trap `strings-invalid-utf8`; diagnostics
+#     `string-without-initializer`, `get-string`; runtime unit tests
+#     `inoxrt-tests`. E19 gains `tools/string_leak_check.py` (the String
+#     programs under AddressSanitizer with leak detection; Linux CI).
+#     backend_gaps GAP=2, OK=45.
 #
 # v3.54 — 2026-10-12 — workflow safeguards and one Layer A confirmation
 #         (Marcelo Fortes, 2026-10-12: "Faça os três ajustes, adote o que vale
@@ -3158,8 +3189,15 @@ Rules:
 `String` is UTF-8, immutable, non-null, with `""` as its zero/default value.
 There is no null string. Absence is future `Option[String]`.
 0.1 string operations: string literal; local `S String := "..."`; parameter and
-return type `String`; `Put`/`PutLn` for strings/literals; byte-by-byte equality
-and inequality with `=` and `#`.
+return type `String`; struct fields (default `""`, or a String literal default),
+array elements (default `""`), State, `ref` parameters; `Put`/`PutLn` for
+strings/literals; `GetLn(S)` (CANON-17); byte-by-byte equality and inequality
+with `=` and `#`. A String local or State variable needs an initializer
+(CANON-5).
+Status (Layer B, v3.55): implemented. A String is a reference-counted immutable
+block of libinoxrt; the compiler releases every String it owns exactly once,
+also when a routine is left by an exception (checked by
+`tools/string_leak_check.py`). Counts are not atomic: Inox 0.1 has no threads.
 Reserved/not implemented in 0.1: `S[I]` indexing; string concatenation;
 `ByteLength`, `CharLength`, `GraphemeLength`.
 `Char` is a Unicode scalar value — not a byte, not an integer, not a grapheme
@@ -3378,10 +3416,15 @@ Initial 0.1 input semantics:
 - `GetLn` without arguments reads/discards through end-of-line and is the
   Pascal-like console pause/read-line form;
 - the first supported input types are `Integer`/`Int64`;
+- `GetLn(S)` with a String variable `S` reads the rest of the line into `S`,
+  without the line break (a CR before it is dropped too); at end of input `S`
+  is `""`. The line must be well-formed UTF-8, otherwise the program stops
+  with "invalid UTF-8 input" (CANON-19). `Get(S)` with a String is a compile
+  error: use `GetLn(S)` (v3.50, implemented v3.55);
 - input arguments must be assignable variables, not literals or expressions.
 
-`ReadLn` returning `String`, String input, EOF modeling, encoding errors, and
-`Result[T, E]`-based I/O errors are DEFERRED until the runtime ABI is settled.
+`ReadLn` returning `String`, EOF modeling, and `Result[T, E]`-based I/O errors
+are DEFERRED until the runtime ABI is settled.
 The current implementation lowers `Put`/`PutLn` through C runtime `printf` and lowers minimal Integer `Get`/`GetLn` through internal LLVM helper functions built on C runtime `getchar`. This is a temporary ABI.
 
 
@@ -3486,6 +3529,8 @@ Diagnostic text (the category names are part of the contract and are checked by
     Inox runtime error: integer conversion out of range  (T(X) to a fixed-width type)
     Inox runtime error: array index out of bounds        (CANON-13)
     Inox runtime error: slice bounds out of range        (ADR-0017)
+    Inox runtime error: out of memory                    (String runtime, v3.55)
+    Inox runtime error: invalid UTF-8 input              (GetLn into a String, v3.55)
 
 Lowering note (Layer B, not language law): every check calls one internal IR
 function, `__inox_arith_fault(i32 kind)`, `noreturn nounwind cold`. It calls

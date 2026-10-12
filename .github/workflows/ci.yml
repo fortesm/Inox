@@ -39,6 +39,8 @@ jobs:
         run: python3 tools/backend_gaps.py build/linux-clang-debug/inox
       - name: Exception state lifetime (every captured state released)
         run: python3 tools/eh_state_balance.py build/linux-clang-debug/inox
+      - name: String memory (no leak, double free or use after free under ASan)
+        run: python3 tools/string_leak_check.py build/linux-clang-debug/inox
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

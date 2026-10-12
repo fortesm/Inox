@@ -571,6 +571,28 @@ run_grammar_consistency() {
 }
 run_grammar_consistency
 
+# Unit tests of the runtime library (inoxrt-tests, built next to the compiler).
+run_runtime_unit_tests() {
+    local unit_exe
+    unit_exe="$(dirname "$inox_exe")/inoxrt-tests"
+    if [[ ! -x "$unit_exe" ]]; then
+        echo "[SKIP] inoxrt unit tests (inoxrt-tests not built next to $inox_exe)"
+        return
+    fi
+    local output
+    output="$("$unit_exe" 2>&1)"
+    if [[ $? -eq 0 ]]; then
+        record_pass "inoxrt unit tests"
+    else
+        local details=()
+        while IFS= read -r line; do
+            details+=("$line")
+        done <<< "$output"
+        record_fail "inoxrt unit tests" "${details[@]}"
+    fi
+}
+run_runtime_unit_tests
+
 total=$((passed + failed))
 echo ""
 echo "Summary: $passed passed, $failed failed, $total total"

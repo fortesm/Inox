@@ -30,6 +30,8 @@ Risk: high (exception cleanup in Itanium landing pads and MSVC funclets, a new r
 Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message "Decisões que dependem de mim"); they are now Layer A (canon v3.50):
 - **Q1. String input: `GetLn(S)` reads a line into a String variable: yes.**
   The line excludes the newline; invalid UTF-8 is invalid input (kind 6).
+  As built: invalid UTF-8 has its own fault, kind 13 "invalid UTF-8 input"
+  (design.md, "Runtime faults").
 - **Q2. Reference counts are non-atomic in 0.1.** The concurrency ADR decides
   atomic counts or per-thread ownership before threads exist.
 - **Q3. Concatenation, `ByteLength`, `CharLength` and `GraphemeLength` stay
@@ -61,8 +63,9 @@ semantics; no null string anywhere.
 - Emitter: String slots, retain/release at copies and scope exits, cleanup in
   the exception paths, destruction of String fields, elements and State at
   program end.
-- `tools/eh_state_balance.py` extended to cleanups; ASan leak checking
-  (`detect_leaks=1`) added to the sanitizer gate for String tests.
+- `tools/eh_state_balance.py` covers the cleanup pads
+  (tests/eh-lifetime/string-cleanup); `tools/string_leak_check.py` runs the
+  String tests under ASan with `detect_leaks=1`.
 - Canon: CANON-14/17/19 Layer B, change log; docs/site/index.html,
   CHANGELOG.md, docs/BACKEND_GAPS.md.
 

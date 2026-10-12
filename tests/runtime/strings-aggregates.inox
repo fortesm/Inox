@@ -1,0 +1,72 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-9/13/14: Strings inside aggregates: field defaults, arrays of structs,
+== two-dimensional arrays, aggregates passed to and returned from routines and
+== copied whole, ref parameters to elements. The lines come from input (heap
+== Strings); the sanitizer gate runs this test with leak detection.
+Module Runtime.StringsAggregates
+
+Type
+    TPet Struct
+        FName String := "sem nome"
+        FKind String
+        FLegs Integer := 4
+    ;
+
+MakePet(Name String, Kind String) TPet :
+    Return TPet(FName := Name, FKind := Kind)
+;
+
+Reverse(Pair Array[1..2] String) Array[1..2] String :
+    Result Array[1..2] String := Pair
+    Result[1] := Pair[2]
+    Result[2] := Pair[1]
+    Return Result
+;
+
+Overwrite(ref mut Text String, Value String) :
+    Text := Value
+;
+
+Main :
+    First String := ""
+    Second String := ""
+    GetLn(First)
+    GetLn(Second)
+
+    Pets Array[1..3] TPet
+    Pets[1] := MakePet(First, "gato")
+    Pets[2].FName := Second
+    PutLn(Pets[1].FName, " ", Pets[1].FKind, " ", Pets[2].FName, " [", Pets[2].FKind, "] ", Pets[3].FName, " ", Pets[3].FLegs)
+
+    Copy := Pets
+    Pets[1] := Pets[3]
+    PutLn(Copy[1].FName, " ", Pets[1].FName)
+
+    Grid Array[1..2, 1..2] String
+    Grid[1, 2] := First
+    Grid[2, 1] := Second
+    Grid[2, 2] := Grid[1, 2]
+    PutLn("[", Grid[1, 1], "] ", Grid[1, 2], " ", Grid[2, 1], " ", Grid[2, 2])
+
+    Pair Array[1..2] String
+    Pair[1] := First
+    Pair[2] := Second
+    Flipped := Reverse(Pair)
+    PutLn(Flipped[1], " ", Flipped[2], " ", Reverse(Flipped)[1])
+
+    Overwrite(Pair[2], First)
+    Overwrite(Pets[2].FName, Second)
+    Overwrite(Grid[1, 1], Second)
+    PutLn(Pair[2], " ", Pets[2].FName, " ", Grid[1, 1])
+
+    for I in 1..3
+        Pets[I] := MakePet(Pair[1], Grid[2, 1])
+    ;
+    PutLn(Pets[3].FName, " ", Pets[3].FKind)
+;

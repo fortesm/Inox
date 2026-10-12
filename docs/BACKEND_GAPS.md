@@ -7,7 +7,8 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 
 Status: measured on 2026-10-09 against v3.18, re-measured against v3.20
 (keyword rename only; results unchanged) and against v3.21 (compositional
-statement lowering: 7 gaps closed, 3 probes added, none of them a gap). Layer B — describes the
+statement lowering: 7 gaps closed, 3 probes added, none of them a gap); table
+re-measured against v3.55. Layer B — describes the
 implementation, not the language.
 
 ## Why this file exists
@@ -54,7 +55,9 @@ analysis but not lowered yet.)
 | `const-use` | module Const used in an expression | **OK** |  |
 | `case` | case statement | **OK** |  |
 | `unless` | unless statement | **OK** |  |
-| `string-local` | String local variable | **GAP** | unsupported expression in function: Main |
+| `string-local` | String local variable | **OK** |  |
+| `string-aggregates` | String struct field, array element and State | **OK** |  |
+| `string-getln` | GetLn into a String, compared with = | **OK** |  |
 | `bool-local` | Boolean local variable | **OK** |  |
 | `float-arith` | Float arithmetic | **OK** |  |
 | `recursion` | recursive function | **OK** |  |
@@ -86,7 +89,7 @@ analysis but not lowered yet.)
 | `state-aggregates` | State variables of struct and array type | **OK** |  |
 | `uint64-local` | UInt64 local | **GAP** | unsupported local variable type for LLVM emission |
 
-Summary: GAP=3, OK=42
+Summary: GAP=2, OK=45
 
 ## Reading the table
 
@@ -105,8 +108,7 @@ Summary: GAP=3, OK=42
   every `ensure` between it and the repeat, innermost first.
 * `state-global`: closed in v3.43; scalar State variables are LLVM globals
   initialized at the start of `main`. State of struct and array type is
-  lowered since v3.53 (`state-aggregates`); String State waits for the String
-  runtime.
+  lowered since v3.53 (`state-aggregates`); String State since v3.55.
 * `case` and `unless` are lowered since v3.42 (probes `case`, `case-ada-choices`, `unless`).
 * `byte-local`, `fixed-width-arith` (v3.44): integers narrower than 64 bits
   are lowered as i64 values with range checks. `uint64-local` is a GAP:
@@ -121,7 +123,10 @@ Summary: GAP=3, OK=42
   v3.52): struct initializers, named construction, fields of every lowered
   scalar type and of struct type, field paths through fields and elements,
   methods on any struct place, and arrays of struct. Struct `State` and array
-  or String fields are the next change (`declaration-sections`).
+  fields followed in `declaration-sections` (v3.53).
+* `string-local`, `string-aggregates`, `string-getln` (v3.55, OpenSpec change
+  `string-runtime`): String values are reference-counted blocks of libinoxrt,
+  in every place a value can live; `GetLn(S)` reads a line into a String.
 
 ## Direction (DECISION P-C, approved 2026-10-09)
 
