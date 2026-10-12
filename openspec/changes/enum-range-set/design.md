@@ -14,8 +14,9 @@ Integer-family choices (ADR-0011) and has a hook for Enum.
 - **Enum lowering.** i32 holding the ordinal (no narrower type: keeps the ABI
   simple and leaves room for future explicit values). `TEnum(I)` checks
   0 <= I < N with `__inox_range_i64` (kind per Q2). `Ord(E)` is a `zext` to
-  i64. Comparisons are `icmp` on ordinals. Printing (Q3) uses a private
-  constant table of literal names per enum, emitted once per module.
+  i64. Comparisons are `icmp` on ordinals. Printing (Q3, decided) uses a
+  private constant table of literal names per enum, spelled as declared,
+  emitted once per module.
 - **Range lowering.** A Range is its base type's representation (i64 for the
   Integer family, i32 for Char) plus bounds known to the analyzer. Stores of a
   non-constant value into a Range target call `__inox_range_i64` (kind 11

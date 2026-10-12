@@ -28,17 +28,16 @@ Implemented in three phases, each its own PR and green gates:
   default; `in`, `=`, `#`, `<=`, `>=`; `Union`, `Intersection`, `Difference`,
   `SymmetricDifference`, `With`, `Without`.
 
-Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message "Decisões que dependem de mim"); they are now Layer A (canon v3.50), except Q3:
+Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message "Decisões que dependem de mim"); they are now Layer A (canon v3.50; Q3 in v3.51):
 - **Q1. Storing into a Range: implicit check, as for Natural (ADR-0015).** An
   Integer value stored into a Range variable is checked at run time (new fault
   kind 11, "value out of range"); a constant outside the range is a compile
   error; arithmetic on Range values yields the base type.
 - **Q2. `TEnum(I)` fault: kind 8, "integer conversion out of range".**
-- **Q3. Printing an enum: OPEN.** Marcelo asked what it means (2026-10-12).
-  Proposal: with `Suit TSuit := Heart`, `PutLn(Suit)` prints `Heart` (the
-  literal's name, like Free Pascal `WriteLn` and Ada `'Image`), and
-  `PutLn(Ord(Suit))` prints `2`. The alternative is to reject `PutLn(Suit)`
-  and require `Ord`. Phase A does not lower enum printing until he decides.
+- **Q3. Printing an enum: the literal's name ("Resposta (a) o nome Copas",
+  2026-10-12, canon v3.51).** With `Naipe TNaipe := Copas`, `PutLn(Naipe)`
+  prints `Copas`, spelled as in the declaration; `PutLn(Ord(Naipe))` prints
+  `2`.
 - **Q4. Same literal in two enums: forbidden.**
 - **Q5. `Low(T)`/`High(T)` on enum and range types: yes; `Succ`/`Pred`,
   checked (trap past the ends): yes.**

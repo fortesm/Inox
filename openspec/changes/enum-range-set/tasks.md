@@ -1,12 +1,12 @@
 ## 0. Decisions
 
 - [x] 0.1 Record Marcelo's answers to Q1, Q2, Q4–Q7 (canon v3.50)
-- [ ] 0.2 Q3 (enum printing) still open; Phase A leaves enum printing out until it is decided
+- [x] 0.2 Q3 decided: `PutLn(E)` prints the literal's name (canon v3.51)
 
 ## 1. Phase A — Enum (own PR)
 
 - [ ] 1.1 Enum types and literal constants in the analyzer; strict initialization; no implicit Integer conversion
-- [ ] 1.2 Lowering: i32 ordinals, `Ord`, checked `TEnum(I)`, comparisons, printing only after Q3 is decided
+- [ ] 1.2 Lowering: i32 ordinals, `Ord`, checked `TEnum(I)`, comparisons, printing the literal's name (Q3)
 - [ ] 1.3 Enums in fields, elements, State, parameters, results; `for` over enum ranges
 - [ ] 1.4 case coverage for enums
 - [ ] 1.5 Tests: runtime enums, enum-case, enum-conversion-range; diagnostics enum-implicit-integer, enum-without-initializer, enum-case-incomplete

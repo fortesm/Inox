@@ -66,3 +66,11 @@ a compile error).
 #### Scenario: Past the last literal
 - **WHEN** `Succ(S)` runs with S = Spade
 - **THEN** the program stops with a range fault (test to add: tests/runtime/enum-succ-past-end.inox)
+
+### Requirement: Printing an enum prints its name
+`Put(E)` and `PutLn(E)` SHALL print the literal's name as spelled in the enum
+declaration; `Ord(E)` SHALL give its ordinal.
+
+#### Scenario: Name and ordinal
+- **WHEN** `Naipe TNaipe := Copas` with `TNaipe (Paus, Ouros, Copas, Espadas)` and the program runs `PutLn(Naipe)` and `PutLn(Ord(Naipe))`
+- **THEN** it prints `Copas` and `2` (test to add: tests/runtime/enums.inox)

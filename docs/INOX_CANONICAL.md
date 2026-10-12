@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.50 (decisions: UInt64, Enum/Range/Set, String)
+# Version: v3.51 (decision: enum printing)
 # Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -500,6 +500,13 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.51 — 2026-10-12 — enum printing decided (Layer A, Marcelo Fortes,
+#         2026-10-12: "Resposta (a) o nome Copas"). Closes the item left open
+#         in v3.50: `PutLn(E)` and `Put(E)` print the enum literal's name as it
+#         is spelled in its declaration (`Copas` for `TNaipe (Paus, Ouros,
+#         Copas, Espadas)`); `Ord(E)` gives the ordinal. Enum literals are
+#         identifiers, never strings: `TNaipe ("Paus", ...)` is not an enum.
 #
 # v3.50 — 2026-10-12 — Layer A decisions for UInt64, Enum/Range/Set and String
 #         (Marcelo Fortes, 2026-10-12, answering item by item the open
