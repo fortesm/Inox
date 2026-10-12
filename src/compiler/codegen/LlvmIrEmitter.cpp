@@ -10,6 +10,7 @@
 #include "../support/ArrayType.h"
 #include "../exceptions/ExceptionTypes.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cstdint>
 #include <cstring>
