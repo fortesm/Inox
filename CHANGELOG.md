@@ -43,6 +43,7 @@ share one version (canon SECTION 02, VERSIONING). Numbers such as `v3.57` or
 - Language decisions recorded (canon v3.50): UInt64 literals up to 2^64-1 in UInt64 context, no unary minus on UInt64, no UInt64/Integer mixing; implicit Range checks; Enum `Succ`/`Pred`/`Low`/`High`; Set functions, literal and 256-value limit; `GetLn(S)` for String, non-atomic reference counts. Enum printing prints the literal's name (v3.51). Implementation follows.
 
 ### Changed
+- Compiler sources (OpenSpec change `compiler-modularization`, step 1): the support code of the LLVM emitter moves out of `LlvmIrEmitter.cpp` (5,154 → 3,704 lines) into `TypeLayout`, `AstQueries`, `LlvmText`, `Operators`, `MathBuiltins`, `ExceptionSupport` and `RuntimeHelpersIr`; the emitted IR is identical for every program. A stray `LlvmIrEmitter.cpp.diff` is deleted.
 - Versioning (canon r3.58): Inox is `0.2.0-pre-alpha`; `inox --version` prints the version and the canon revision. The `v3.xx` numbers are canon revisions, written `r3.NN` from now on.
 - `Std.Core` is renamed `Std.System` (canon r3.58). Library modules come in pairs: `Std.X` holds definitions, `Std.XUtils` helper functions.
 - The Windows test script feeds `.in` files to programs byte for byte and reads their output as UTF-8; `.gitattributes` keeps `.in` files unchanged by Git.
