@@ -97,6 +97,11 @@ private:
     ast::AstNodePtr parseModuleItem();
     ast::AstNodePtr parseUseDeclaration();
     ast::AstNodePtr parseSectionDeclaration(ast::SectionKind sectionKind);
+    ast::TypeDeclaration parseTypeDeclaration();
+    ast::StructFieldDeclaration parseStructField();
+    std::string parseStructFieldDefault(const std::string& fieldName);
+    ast::VariableDeclaration parseSectionVariable(ast::SectionKind sectionKind);
+    void expectEndOfDeclarationLine(std::size_t line, const char* what);
     ast::AstNodePtr parseRawDeclaration();
     ast::AstNodePtr parseFunctionDeclaration();
     std::string parseQualifiedName(std::string_view message);

@@ -1,0 +1,1 @@
+semantic error: a slice cannot be a struct field (ADR-0017): FItems

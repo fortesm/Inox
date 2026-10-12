@@ -82,9 +82,11 @@ analysis but not lowered yet.)
 | `ref-parameter` | ref mut parameter writing an array element | **OK** |  |
 | `struct-nested` | nested struct fields, field paths and defaults | **OK** |  |
 | `array-of-struct` | array of struct elements with defaults and field access | **OK** |  |
+| `struct-array-field` | struct field of array type, copied with its struct | **OK** |  |
+| `state-aggregates` | State variables of struct and array type | **OK** |  |
 | `uint64-local` | UInt64 local | **GAP** | unsupported local variable type for LLVM emission |
 
-Summary: GAP=3, OK=40
+Summary: GAP=3, OK=42
 
 ## Reading the table
 
@@ -102,13 +104,18 @@ Summary: GAP=3, OK=40
   body, including inside `if`, `try` and loops nested in the repeat, and it runs
   every `ensure` between it and the repeat, innermost first.
 * `state-global`: closed in v3.43; scalar State variables are LLVM globals
-  initialized at the start of `main`. State of struct or String type is
-  still a gap.
+  initialized at the start of `main`. State of struct and array type is
+  lowered since v3.53 (`state-aggregates`); String State waits for the String
+  runtime.
 * `case` and `unless` are lowered since v3.42 (probes `case`, `case-ada-choices`, `unless`).
 * `byte-local`, `fixed-width-arith` (v3.44): integers narrower than 64 bits
   are lowered as i64 values with range checks. `uint64-local` is a GAP:
   UInt64/UInteger needs unsigned 64-bit arithmetic. `bitnot` is lowered since
   v3.44.
+* `struct-array-field`, `state-aggregates` (v3.53, OpenSpec change
+  `declaration-sections`): the Type, Const and State sections are parsed into
+  typed declarations, so a struct field may be an array and State may hold
+  structs and arrays.
 * `grouped-decl-struct`, `named-struct-construction`, `struct-nested`,
   `array-of-struct`: closed by the OpenSpec change `struct-values` (canon
   v3.52): struct initializers, named construction, fields of every lowered

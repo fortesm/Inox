@@ -554,19 +554,21 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
         validateSectionTypes(section);
         // Const and State initializers are expressions: they are analyzed like
         // any other (CANON-9 named construction, types), not skipped.
-        for (const ast::SectionInitializer& initializer : section.initializers()) {
-            const std::string valueType =
-                canonicalTypeName(analyzeExpression(*initializer.value));
-            if (initializer.typeName.empty() && !valueType.empty()) {
-                symbols_.currentScope().inferTypeName(initializer.name, valueType);
+        for (const ast::VariableDeclaration& declaration : section.variables()) {
+            if (declaration.value == nullptr) {
+                continue;
+            }
+            const std::string valueType = canonicalTypeName(analyzeExpression(*declaration.value));
+            if (declaration.typeName.empty() && !valueType.empty()) {
+                symbols_.currentScope().inferTypeName(declaration.name, valueType);
             }
             if (section.sectionKind() == ast::SectionKind::Const) {
-                recordConstantExpression(initializer.name, *initializer.value);
+                recordConstantExpression(declaration.name, *declaration.value);
             }
-            if (!initializer.typeName.empty()) {
-                const std::string declared = canonicalTypeName(initializer.typeName);
-                if (!valueType.empty() && !canAssignValue(declared, valueType, *initializer.value)) {
-                    throw SemanticError("initializer of " + initializer.name + " has type " +
+            if (!declaration.typeName.empty()) {
+                const std::string declared = canonicalTypeName(declaration.typeName);
+                if (!valueType.empty() && !canAssignValue(declared, valueType, *declaration.value)) {
+                    throw SemanticError("initializer of " + declaration.name + " has type " +
                                         valueType + ", expected " + declared);
                 }
             }
@@ -581,239 +583,149 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
         return;
     }
 
-    SymbolKind kind = SymbolKind::Variable;
-    if (section.sectionKind() == ast::SectionKind::Const) {
-        kind = SymbolKind::Constant;
-    } else if (section.sectionKind() == ast::SectionKind::State) {
-        kind = SymbolKind::State;
-    }
-
-    const auto& tokens = section.tokens();
-    const auto& lines = section.tokenLines();
-    const bool isMutable = kind == SymbolKind::Variable || kind == SymbolKind::State;
-    // An initializer runs to the end of its line (one declaration per line).
-    // Skipping it as a unit keeps tokens inside it, such as the field names of
-    // `TPoint(X := 1, Y := 2)`, from being read as new declarations.
-    const auto endOfInitializer = [&](std::size_t valueIndex, std::size_t fallback) {
-        if (lines.size() != tokens.size() || valueIndex >= tokens.size()) {
-            return fallback;
-        }
-        std::size_t end = valueIndex;
-        while (end < tokens.size() && lines[end] == lines[valueIndex]) {
-            ++end;
-        }
-        return end;
-    };
-    // A Const value is recorded only when it is a single token; other
-    // initializers stay unresolved (the backend reports them as a GAP).
-    const auto singleTokenValue = [&](std::size_t valueIndex) {
-        return valueIndex < tokens.size() &&
-               endOfInitializer(valueIndex, valueIndex + 1) == valueIndex + 1;
-    };
-    for (std::size_t index = 0; index + 1 < tokens.size();) {
-        if (!looksLikeIdentifier(tokens[index])) {
-            ++index;
-            continue;
-        }
-
-        // Canonical forms recognized here:
-        //   Name := Expr            (inferred type)            tokens: Name := value ...
-        //   Name Type := Expr       (explicit type + value)    tokens: Name Type := value ...
-        //   Name Type               (struct/aggregate default) tokens: Name Type
-        // The OLD `Name : Type` form (with a ':') is also tolerated.
-        const std::string& next = tokens[index + 1];
-
-        if (next == ":=") {
-            // Name := Expr  -> inferred-type declaration
-            declareOrThrow(tokens[index], kind,
-                           inferSectionDeclarationType(tokens, index), isMutable);
-            if (kind == SymbolKind::Constant && singleTokenValue(index + 2)) {
-                recordConstantValue(tokens[index], tokens[index + 2]);
-            }
-            index = endOfInitializer(index + 2, index + 3);  // Name := value
-            continue;
-        }
-
-        if (next == ":") {
-            // legacy Name : Type (tolerated); CANON-5 still applies to State.
-            declareOrThrow(tokens[index], kind,
-                           inferSectionDeclarationType(tokens, index), isMutable);
-            const bool hasInitializer = index + 3 < tokens.size() && tokens[index + 3] == ":=";
-            if (kind == SymbolKind::State && !hasInitializer && index + 2 < tokens.size()) {
-                stateDeclarationsWithoutInitializer_.emplace_back(tokens[index], tokens[index + 2]);
-            }
-            index = hasInitializer ? endOfInitializer(index + 4, index + 3)
-                                   : index + 3;  // Name : Type [:= value]
-            continue;
-        }
-
-        if (looksLikeIdentifier(next)) {
-            // Name Type [:= Expr]  -> explicit-typed declaration.
-            // The TYPE token must NOT be declared as a symbol (it is a type name).
-            declareOrThrow(tokens[index], kind, canonicalTypeName(next), isMutable);
-            if (index + 2 < tokens.size() && tokens[index + 2] == ":=") {
-                if (kind == SymbolKind::Constant && singleTokenValue(index + 3)) {
-                    recordConstantValue(tokens[index], tokens[index + 3]);
-                }
-                index = endOfInitializer(index + 3, index + 4);  // Name Type := value
-            } else {
-                if (kind == SymbolKind::State) {
-                    stateDeclarationsWithoutInitializer_.emplace_back(tokens[index], next);
-                }
-                index += 2;  // Name Type
+    const SymbolKind kind = section.sectionKind() == ast::SectionKind::Const ? SymbolKind::Constant
+                                                                              : SymbolKind::State;
+    const bool isMutable = kind == SymbolKind::State;
+    for (const ast::VariableDeclaration& declaration : section.variables()) {
+        // An array type is made canonical when the section is analyzed: its
+        // bounds may name a Const declared later in the module.
+        const std::string typeName =
+            declaration.typeName.empty() ? inferSectionDeclarationType(declaration.value.get())
+            : support::isArrayTypeName(declaration.typeName) ? std::string{}
+                                                              : canonicalTypeName(declaration.typeName);
+        declareOrThrow(declaration.name, kind, typeName, isMutable);
+        if (declaration.value == nullptr) {
+            if (kind == SymbolKind::State) {
+                stateDeclarationsWithoutInitializer_.emplace_back(declaration.name, declaration.typeName);
             }
             continue;
         }
-
-        ++index;
+        // A Const value is recorded here only when it is a single literal or
+        // name; other initializers are folded when the section is analyzed.
+        if (kind == SymbolKind::Constant) {
+            if (const std::string token = singleTokenText(*declaration.value); !token.empty()) {
+                recordConstantValue(declaration.name, token);
+            }
+        }
     }
 }
 
-std::string SemanticAnalyzer::inferSectionDeclarationType(
-    const std::vector<std::string>& tokens,
-    std::size_t nameIndex) const
+// The text of a one-token expression (a literal or a name), or empty.
+std::string SemanticAnalyzer::singleTokenText(const ast::Expression& expression)
 {
-    if (nameIndex + 2 < tokens.size() && tokens[nameIndex + 1] == ":") {
-        return canonicalTypeName(tokens[nameIndex + 2]);
+    if (expression.kind() == ast::AstNodeKind::LiteralExpression) {
+        return static_cast<const ast::LiteralExpression&>(expression).value();
     }
+    if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
+        return static_cast<const ast::IdentifierExpression&>(expression).name();
+    }
+    return {};
+}
 
-    if (nameIndex + 2 >= tokens.size() || tokens[nameIndex + 1] != ":=") {
+// The type of `Name := Expr` known before the section is analyzed: the type of
+// a literal, or of the name or routine the expression starts with. Other
+// initializers get their type when the section is analyzed.
+std::string SemanticAnalyzer::inferSectionDeclarationType(const ast::Expression* value) const
+{
+    while (value != nullptr && value->kind() == ast::AstNodeKind::BinaryExpression) {
+        value = &static_cast<const ast::BinaryExpression*>(value)->left();
+    }
+    if (value != nullptr && value->kind() == ast::AstNodeKind::CallExpression) {
+        value = &static_cast<const ast::CallExpression*>(value)->callee();
+    }
+    if (value == nullptr) {
         return {};
     }
-
-    const std::string_view value = tokens[nameIndex + 2];
-    if (value == "True" || value == "False" || value == "true" || value == "false") {
-        return "Bool";
+    if (value->kind() == ast::AstNodeKind::LiteralExpression) {
+        switch (static_cast<const ast::LiteralExpression*>(value)->literalKind()) {
+        case ast::LiteralKind::Boolean:
+            return "Bool";
+        case ast::LiteralKind::String:
+            return "String";
+        case ast::LiteralKind::Char:
+            return "Char";
+        case ast::LiteralKind::Integer:
+            return "Int64";
+        case ast::LiteralKind::Float:
+            return "Float64";
+        default:
+            return {};
+        }
     }
-    if (!value.empty() && value.front() == '"') {
-        return "String";
+    if (value->kind() == ast::AstNodeKind::IdentifierExpression) {
+        const Symbol* symbol =
+            symbols_.currentScope().resolve(static_cast<const ast::IdentifierExpression*>(value)->name());
+        return symbol != nullptr ? symbol->typeName : std::string{};
     }
-    if (!value.empty() && value.front() == '\'') {
-        return "Char";
-    }
-    if (!value.empty() && (std::isdigit(static_cast<unsigned char>(value.front())) ||
-                           value.front() == '$')) {
-        return value.find('.') == std::string_view::npos ? "Int64" : "Float64";
-    }
-
-    const Symbol* symbol = symbols_.currentScope().resolve(value);
-    return symbol != nullptr ? symbol->typeName : std::string{};
+    return {};
 }
 
 void SemanticAnalyzer::registerTypeSectionSymbols(const ast::SectionDeclaration& section)
 {
-    const auto& tokens = section.tokens();
-    for (std::size_t index = 0; index < tokens.size();) {
-        if (index + 1 < tokens.size() && looksLikeIdentifier(tokens[index]) &&
-            equalsIgnoreCase(tokens[index + 1], "Struct")) {
-            registerStructDeclaration(tokens, index);
-            continue;
+    // Range and Enum declarations are parsed and shape-checked; their types
+    // come with the OpenSpec change enum-range-set.
+    for (const ast::TypeDeclaration& declaration : section.types()) {
+        if (declaration.kind == ast::TypeDeclarationKind::Struct) {
+            registerStructDeclaration(declaration);
         }
-
-        if (index + 1 < tokens.size() && looksLikeIdentifier(tokens[index]) &&
-            tokens[index + 1] == ":=") {
-            declareTypeOrThrow(tokens[index], false);
-            index += 2;
-            continue;
-        }
-
-        ++index;
     }
 }
 
-void SemanticAnalyzer::registerStructDeclaration(const std::vector<std::string>& tokens, std::size_t& index)
+void SemanticAnalyzer::registerStructDeclaration(const ast::TypeDeclaration& declaration)
 {
-    const std::string typeName = tokens[index];
-    declareTypeOrThrow(typeName, false);
+    declareTypeOrThrow(declaration.name, false);
 
     StructType structType;
-    structType.name = typeName;
-    index += 2;
-
+    structType.name = declaration.name;
     // Duplicate detection by normalized (case-insensitive) name keeps a large
-    // struct linear; the former scan over all earlier fields was quadratic.
+    // struct linear.
     std::unordered_set<std::string> seenFieldNames;
-
-    while (index < tokens.size() && tokens[index] != ";") {
-        if (index + 1 >= tokens.size() || !looksLikeIdentifier(tokens[index]) ||
-            !looksLikeIdentifier(tokens[index + 1])) {
-            throw SemanticError("invalid struct field declaration in: " + typeName);
+    for (const ast::StructFieldDeclaration& fieldDeclaration : declaration.fields) {
+        if (!seenFieldNames.insert(normalizeName(fieldDeclaration.name)).second) {
+            throw SemanticError("duplicate struct field: " + fieldDeclaration.name);
         }
-
-        const std::string fieldName = tokens[index++];
-        const std::string fieldType = tokens[index++];
         StructField field;
-        field.name = fieldName;
-        field.typeName = canonicalTypeName(fieldType);
-
-        if (index < tokens.size() && tokens[index] == ":=") {
-            ++index;
-            field.hasDefault = true;
-            field.defaultValue = readStructFieldDefault(tokens, index, fieldName);
-        }
-
-        if (!seenFieldNames.insert(normalizeName(fieldName)).second) {
-            throw SemanticError("duplicate struct field: " + fieldName);
-        }
+        field.name = fieldDeclaration.name;
+        // An array field type is made canonical once every Type and Const is
+        // declared (completeStructFields): its bounds may name a Const and
+        // its element may be a struct declared later.
+        field.typeName = support::isArrayTypeName(fieldDeclaration.typeName)
+                             ? fieldDeclaration.typeName
+                             : canonicalTypeName(fieldDeclaration.typeName);
+        field.hasDefault = fieldDeclaration.hasDefault;
+        field.defaultValue = fieldDeclaration.defaultValue;
         structType.fields.push_back(std::move(field));
     }
-
-    if (index >= tokens.size() || tokens[index] != ";") {
-        throw SemanticError("expected ';' to close Struct: " + typeName);
-    }
-    ++index;
-
-    structs_.emplace(normalizeName(typeName), std::move(structType));
+    structs_.emplace(normalizeName(declaration.name), std::move(structType));
 }
 
-
-void SemanticAnalyzer::validateStructDeclaration(const std::vector<std::string>& tokens, std::size_t& index) const
+void SemanticAnalyzer::completeStructFields(const ast::TypeDeclaration& declaration)
 {
-    const std::string typeName = tokens[index];
-    index += 2;
-
-    while (index < tokens.size() && tokens[index] != ";") {
-        if (index + 1 >= tokens.size() || !looksLikeIdentifier(tokens[index]) ||
-            !looksLikeIdentifier(tokens[index + 1])) {
-            throw SemanticError("invalid struct field declaration in: " + typeName);
-        }
-        const std::string fieldName = tokens[index];
-        index += 1;
-        const std::string fieldType = canonicalTypeName(tokens[index]);
-        resolveTypeOrThrow(tokens[index]);
-        index += 1;
-
-        if (index < tokens.size() && tokens[index] == ":=") {
-            ++index;
-            const std::string defaultValue = readStructFieldDefault(tokens, index, fieldName);
-            validateStructFieldDefault(fieldName, fieldType, defaultValue);
+    const auto structType = structs_.find(normalizeName(declaration.name));
+    for (StructField& field : structType->second.fields) {
+        if (support::isArrayTypeName(field.typeName)) {
+            const std::string written = field.typeName;
+            field.typeName = canonicalTypeName(written);
+            result_.setCanonicalTypeName(written, field.typeName);
         }
     }
-
-    if (index >= tokens.size() || tokens[index] != ";") {
-        throw SemanticError("expected ';' to close Struct: " + typeName);
-    }
-    ++index;
-    rejectRecursiveStruct(typeName);
 }
 
-// A struct field default is one literal, optionally preceded by `-` for a
-// number (CANON-9: "Fields may have literal defaults").
-std::string SemanticAnalyzer::readStructFieldDefault(const std::vector<std::string>& tokens,
-                                                     std::size_t& index,
-                                                     const std::string& fieldName)
+void SemanticAnalyzer::validateStructDeclaration(const ast::TypeDeclaration& declaration) const
 {
-    if (index >= tokens.size() || tokens[index] == ";") {
-        throw SemanticError("expected default value for struct field: " + fieldName);
+    for (const ast::StructFieldDeclaration& field : declaration.fields) {
+        if (support::isSliceTypeName(field.typeName)) {
+            throw SemanticError("a slice cannot be a struct field (ADR-0017): " + field.name);
+        }
+        resolveTypeOrThrow(field.typeName);
+        if (field.hasDefault) {
+            if (support::isArrayTypeName(field.typeName) || resolveStruct(field.typeName) != nullptr) {
+                throw SemanticError("only a scalar struct field has a default (CANON-9): " + field.name);
+            }
+            validateStructFieldDefault(field.name, canonicalTypeName(field.typeName), field.defaultValue);
+        }
     }
-    if (tokens[index] != "-") {
-        return tokens[index++];
-    }
-    ++index;
-    if (index >= tokens.size() || tokens[index] == ";") {
-        throw SemanticError("expected default value for struct field: " + fieldName);
-    }
-    return "-" + tokens[index++];
+    rejectRecursiveStruct(declaration.name);
 }
 
 void SemanticAnalyzer::validateStructFieldDefault(const std::string& fieldName,
@@ -880,74 +792,47 @@ void SemanticAnalyzer::rejectRecursiveStruct(const std::string& typeName) const
     visit(typeName);
 }
 
-void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& section) const
+void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& section)
 {
-    const auto& tokens = section.tokens();
-
     if (section.sectionKind() == ast::SectionKind::Type) {
-        for (std::size_t index = 0; index < tokens.size();) {
-            if (index + 1 < tokens.size() && looksLikeIdentifier(tokens[index]) &&
-                equalsIgnoreCase(tokens[index + 1], "Struct")) {
-                validateStructDeclaration(tokens, index);
-                continue;
+        for (const ast::TypeDeclaration& declaration : section.types()) {
+            if (declaration.kind == ast::TypeDeclarationKind::Struct) {
+                completeStructFields(declaration);
             }
-
-            if (index + 2 < tokens.size() && looksLikeIdentifier(tokens[index]) &&
-                tokens[index + 1] == ":=") {
-                const std::string_view head = tokens[index + 2];
-                if (equalsIgnoreCase(head, "Struct") || equalsIgnoreCase(head, "Enum")) {
-                    index += 3;
-                    continue;
-                }
-                if (equalsIgnoreCase(head, "Set") || equalsIgnoreCase(head, "Vector")) {
-                    if (index + 4 < tokens.size() && tokens[index + 3] == "[") {
-                        resolveTypeOrThrow(tokens[index + 4]);
-                    }
-                    index += 3;
-                    continue;
-                }
-                if (equalsIgnoreCase(head, "Array")) {
-                    for (std::size_t typeIndex = index + 3; typeIndex < tokens.size(); ++typeIndex) {
-                        if (tokens[typeIndex] == "]" && typeIndex + 1 < tokens.size() &&
-                            looksLikeIdentifier(tokens[typeIndex + 1])) {
-                            resolveTypeOrThrow(tokens[typeIndex + 1]);
-                            break;
-                        }
-                    }
-                    index += 3;
-                    continue;
-                }
-                if (looksLikeIdentifier(head)) {
-                    resolveTypeOrThrow(head);
-                }
-                index += 3;
-                continue;
+        }
+        for (const ast::TypeDeclaration& declaration : section.types()) {
+            if (declaration.kind == ast::TypeDeclarationKind::Struct) {
+                validateStructDeclaration(declaration);
             }
-
-            ++index;
         }
         return;
     }
 
-    if (section.sectionKind() != ast::SectionKind::Const &&
-        section.sectionKind() != ast::SectionKind::State) {
-        return;
+    for (const ast::VariableDeclaration& declaration : section.variables()) {
+        if (declaration.typeName.empty()) {
+            continue;
+        }
+        if (support::isSliceTypeName(declaration.typeName)) {
+            throw SemanticError("a slice cannot be a " +
+                                std::string(section.sectionKind() == ast::SectionKind::State ? "State variable"
+                                                                                               : "Const") +
+                                " (ADR-0017): " + declaration.name);
+        }
+        resolveTypeOrThrow(declaration.typeName);
+        if (support::isArrayTypeName(declaration.typeName)) {
+            const std::string canonical = canonicalTypeName(declaration.typeName);
+            result_.setCanonicalTypeName(declaration.typeName, canonical);
+            symbols_.currentScope().inferTypeName(declaration.name, canonical);
+        }
     }
 
     // CANON-5: "State scalars still require initializers"; like locals, only
-    // structs may use the type-default form `Name TStruct`.
+    // structs and arrays may use the type-default form `Name TType`.
     if (section.sectionKind() == ast::SectionKind::State) {
         for (const auto& [name, typeName] : stateDeclarationsWithoutInitializer_) {
-            if (resolveStruct(typeName) == nullptr) {
+            if (resolveStruct(typeName) == nullptr && !support::isArrayTypeName(typeName)) {
                 throw SemanticError("scalar declaration requires initializer: " + name);
             }
-        }
-    }
-
-    for (std::size_t index = 0; index + 2 < tokens.size(); ++index) {
-        if (looksLikeIdentifier(tokens[index]) && tokens[index + 1] == ":" &&
-            looksLikeIdentifier(tokens[index + 2])) {
-            resolveTypeOrThrow(tokens[index + 2]);
         }
     }
 }

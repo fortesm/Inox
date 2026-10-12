@@ -11,6 +11,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 ## Unreleased
 
 ### Added
+- Type, Const and State sections are parsed into typed declarations (OpenSpec change `declaration-sections`, canon v3.53): a struct field may be a fixed array, `State` may hold structs and arrays (with or without initializer), and malformed entries report their line.
 - Struct values (canon v3.52): struct initializers `Q T := Expr`, named construction `T(F := V)` as an expression, nested struct fields and field paths, fields and literal defaults of every scalar type, methods on fields and elements, arrays of struct. A struct that contains itself is a compile error.
 - Read-only slices `A[L..H]`, `A[..H]`, `A[L..]`, `A[..]` of type `Slice<T>` (ADR-0017), checked bounds, never outliving their array.
 - `ref X T` and `ref mut X T` parameters (ADR-0016): references to the caller's variable, field or array element, with exclusivity checked at compile time.
@@ -47,8 +48,8 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 
 ### Known limitations
 - `UInt64`/`UInteger` values are not lowered yet.
-- Not lowered yet: `State` of struct/String type, `String` locals, Float32 conversion.
-- Vectors, sets, enums and ranges are not implemented; arrays are not yet allowed in struct fields or State, and String fields and elements wait for the String runtime.
+- Not lowered yet: `State` of String type, `String` locals, Float32 conversion.
+- Vectors, sets, enums and ranges are not implemented (Range and Enum declarations are parsed and checked for shape only); String fields and elements wait for the String runtime.
 - The compiler is not yet aligned with the canonical `<T>` generic syntax; its existing generic syntax still uses `[T]`.
 
 ## V0.4 — 2026-10-09
