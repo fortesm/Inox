@@ -94,6 +94,13 @@ private:
     void registerStructDeclaration(const std::vector<std::string>& tokens, std::size_t& index);
     void validateSectionTypes(const ast::SectionDeclaration& section) const;
     void validateStructDeclaration(const std::vector<std::string>& tokens, std::size_t& index) const;
+    static std::string readStructFieldDefault(const std::vector<std::string>& tokens,
+                                              std::size_t& index,
+                                              const std::string& fieldName);
+    void validateStructFieldDefault(const std::string& fieldName,
+                                    const std::string& fieldType,
+                                    const std::string& defaultValue) const;
+    void rejectRecursiveStruct(const std::string& typeName) const;
     void analyzeFunction(const ast::FunctionDeclaration& function);
 
     void analyzeStatements(const std::vector<ast::StatementPtr>& statements, bool createScope);

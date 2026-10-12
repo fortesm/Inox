@@ -1,0 +1,32 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-9 / CANON-5 rule 4: a struct without initializer takes its field
+== defaults, or zero; literal defaults exist for every scalar type.
+Module Runtime.StructDefaults
+
+Type
+    TConfig Struct
+        FPort Integer := 8080
+        FRetries Int8 := -3
+        FMask Integer := $FF
+        FLevel Byte := 200
+        FCount Natural := 7
+        FRate Float := 1.5
+        FScale Float32 := 0.25
+        FHalf Float32 := 0.5
+        FEnabled Bool := true
+        FSpare Integer
+    ;
+
+Main :
+    C TConfig
+    PutLn(C.FPort, " ", C.FRetries, " ", C.FMask, " ", C.FLevel, " ", C.FCount)
+    PutLn(C.FRate, " ", C.FEnabled, " ", C.FSpare)
+    == Float32 values are not printed yet; compare them instead.
+    PutLn(C.FScale < C.FHalf, " ", C.FScale = C.FScale)
+;

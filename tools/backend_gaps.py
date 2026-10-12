@@ -387,6 +387,33 @@ Main :
     PutLn(A[1])
 ;
 """),
+    ("struct-nested", "nested struct fields, field paths and defaults", """Type
+    TLine Struct
+        FA TPoint
+        FB TPoint
+    ;
+    TPoint Struct
+        FX Integer := 1
+        FR Float := 0.5
+    ;
+
+Main :
+    L TLine
+    L.FB.FX := 7
+    PutLn(L.FA.FX + L.FB.FX)
+;
+"""),
+    ("array-of-struct", "array of struct elements with defaults and field access", """Type
+    TPoint Struct
+        FX Integer := 3
+    ;
+
+Main :
+    A Array[1..2] TPoint
+    A[2].FX := 4
+    PutLn(A[1].FX + A[2].FX)
+;
+"""),
     ("uint64-local", "UInt64 local", """Main :
     U UInt64 := UInt64(5)
     PutLn(U)

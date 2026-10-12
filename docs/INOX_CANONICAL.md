@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.51 (decision: enum printing)
+# Version: v3.52 (struct values lowered)
 # Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -500,6 +500,37 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.52 — 2026-10-12 — struct values lowered (Layer B; CANON-5 and CANON-9
+#         unchanged). OpenSpec change `struct-values`, item 1 of the order
+#         approved on 2026-10-12.
+#   - Struct fields of every lowered scalar type (the Integer family, Natural,
+#     Float, Float32, Bool) and of struct type, declared in any order; literal
+#     defaults for each scalar type, optionally negative, checked against the
+#     field type; a struct that contains itself, directly or through other
+#     structs, is a compile error ("struct contains itself: T").
+#   - `Q T := Expr` and grouped `P, Q T := Expr` (the initializer runs once,
+#     each name gets a copy); named construction `T(F := V, ...)` as an
+#     expression anywhere a value is expected; storing into a Natural or narrow
+#     field keeps the ADR-0015 and CANON-8 checks.
+#   - Field paths through fields and elements (`L.FB.FX`, `A[I].FX`), reads,
+#     writes, `ref mut` arguments, `with` and methods on any struct place
+#     (`L.FB.Move(1)`, `A[1].Sum`).
+#   - Arrays of struct: elements start at the struct defaults; indices are
+#     checked (kind 9); arrays of struct are parameters and results.
+#   - Layer B: a struct is a named LLVM type; narrow integer fields are i64
+#     (arrays keep narrow elements in their own width); Float32 defaults are
+#     written as LLVM hexadecimal constants.
+#   - Tests: runtime `struct-defaults`, `struct-construction`,
+#     `struct-initializers`, `struct-nested`, `array-of-struct`; trap
+#     `array-of-struct-out-of-bounds`; diagnostics `struct-recursive`,
+#     `struct-recursive-indirect`, `struct-default-out-of-range`,
+#     `struct-default-negative-natural`, `struct-float-default-integer`.
+#     backend_gaps: GAP=3, OK=40 (`grouped-decl-struct` and
+#     `named-struct-construction` closed; probes `struct-nested`,
+#     `array-of-struct` added).
+#   - Still to come (change `declaration-sections`): struct State, array
+#     fields; String fields wait for the String runtime.
 #
 # v3.51 — 2026-10-12 — enum printing decided (Layer A, Marcelo Fortes,
 #         2026-10-12: "Resposta (a) o nome Copas"). Closes the item left open
@@ -3558,7 +3589,7 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 10. case LLVM lowering: CLOSED (v3.42). Enum exhaustiveness waits for Enum.
 11. Array[Low..High]: parsed, checked and lowered since v3.45 in locals,
     routine parameters and results; not yet in struct fields or `State`;
-    elements are integer, Float or Bool (not String or struct yet).
+    elements are integer, Float, Bool or struct (since v3.52; not String yet).
 12. Range/Enum/Set full implementation.
 13. Checked integer arithmetic traps. — IMPLEMENTED (v3.18); see CANON-19.
 14. Explicit type conversions `TypeName(x)`.
@@ -3897,7 +3928,7 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 10. case LLVM lowering: CLOSED (v3.42). Enum exhaustiveness waits for Enum.
 11. Array[Low..High]: parsed, checked and lowered since v3.45 in locals,
     routine parameters and results; not yet in struct fields or `State`;
-    elements are integer, Float or Bool (not String or struct yet).
+    elements are integer, Float, Bool or struct (since v3.52; not String yet).
 12. Range/Enum/Set full implementation.
 13. Checked integer arithmetic traps. — IMPLEMENTED (v3.18); see CANON-19.
 14. Explicit type conversions `TypeName(x)`.

@@ -1,0 +1,36 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-9: named construction is an expression; fields are named in any
+== order, omitted fields take their defaults.
+Module Runtime.StructConstruction
+
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+        FTag Integer := 9
+    ;
+
+Make(X Integer) TPoint :
+    Return TPoint(FY := X * 2, FX := X)
+;
+
+Sum(P TPoint) Integer :
+    Return P.FX + P.FY + P.FTag
+;
+
+Main :
+    S := TPoint(FY := 4, FX := 3)
+    PutLn(S.FX, " ", S.FY, " ", S.FTag)
+    PutLn(Sum(TPoint(FX := 1, FY := 2, FTag := 0)))
+    M TPoint := Make(5)
+    PutLn(M.FX, " ", M.FY, " ", M.FTag)
+    PutLn(Make(7).FY)
+    S := TPoint(FX := 0, FY := 0)
+    PutLn(S.FX + S.FY + S.FTag)
+;

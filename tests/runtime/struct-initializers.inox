@@ -1,0 +1,37 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-5 / CANON-9: a struct initializer copies the value; a grouped
+== initializer runs once and every name gets its own copy (v3.26).
+Module Runtime.StructInitializers
+
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+Make TPoint :
+    PutLn("Make runs")
+    Return TPoint(FX := 1, FY := 2)
+;
+
+Shift(P TPoint) TPoint :
+    R TPoint := P
+    R.FX := R.FX + 10
+    Return R
+;
+
+Main :
+    P TPoint := Make
+    Q TPoint := Shift(P)
+    Q.FY := 99
+    PutLn(P.FX, " ", P.FY, " ", Q.FX, " ", Q.FY)
+    A, B TPoint := Make
+    B.FX := 50
+    PutLn(A.FX, " ", B.FX, " ", A.FY, " ", B.FY)
+;

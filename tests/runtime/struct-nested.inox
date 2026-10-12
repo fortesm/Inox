@@ -1,0 +1,50 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-9: a struct field may be a struct declared anywhere in the Type
+== section; field paths, methods and ref mut reach nested fields.
+Module Runtime.StructNested
+
+Type
+    TLine Struct
+        FA TPoint
+        FB TPoint
+        FVisible Bool := true
+    ;
+    TPoint Struct
+        FX Integer := 1
+        FY Integer
+    ;
+
+TPoint.Move(Self mut, D Integer) :
+    Self.FX := Self.FX + D
+;
+
+TPoint.Sum(Self) Integer :
+    Return Self.FX + Self.FY
+;
+
+Bump(ref mut P TPoint) :
+    P.FY := P.FY + 100
+;
+
+Main :
+    L TLine
+    PutLn(L.FA.FX, " ", L.FB.FY, " ", L.FVisible)
+    L.FB := TPoint(FX := 5, FY := 6)
+    L.FB.FX := 7
+    L.FA.Move(2)
+    Bump(L.FB)
+    PutLn(L.FA.FX, " ", L.FB.FX, " ", L.FB.FY, " ", L.FB.Sum)
+    Copy TLine := L
+    Copy.FA.FX := 0
+    PutLn(L.FA.FX, " ", Copy.FA.FX)
+    with L
+        .FA.FY := 42
+    ;
+    PutLn(L.FA.FY)
+;
