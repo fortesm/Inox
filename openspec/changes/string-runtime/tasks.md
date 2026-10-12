@@ -2,6 +2,8 @@
 
 - [x] 0.1 Record Marcelo's answers to Q1 (GetLn into String), Q2 (non-atomic counts), Q3 (keep concatenation reserved) and Q4 (String without initializer)
 
+- [ ] 0.2 Marcelo approves design.md (Risk: high) before any code
+
 ## 1. Runtime
 
 - [ ] 1.1 `runtime/StringRuntime.cpp`: block layout, immortal literals, retain, release, equality, output

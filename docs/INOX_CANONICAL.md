@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.53 (structured declaration sections)
+# Version: v3.54 (workflow safeguards; no type alias form)
 # Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -387,7 +387,11 @@ compiler is verified by all of those that apply:
   implementation limits of CANON-19 and the `limits-boundary-ok` tests;
 - `tools/mutation_fuzz.py` on the sanitizer build: no CRASH, TIMEOUT or CGERR
   (inputs nobody wrote a test for);
-- `tools/calc_differential_test.py`: arithmetic against an independent oracle.
+- `tools/calc_differential_test.py`: arithmetic against an independent oracle;
+- `tools/ir_snapshot.py` (v3.54, approved by Marcelo Fortes, 2026-10-12):
+  for a refactor that must not change behavior, the IR, types, diagnostics and
+  exit codes of every program before and after; every difference is listed as
+  intended or the refactor is not done.
 A report states which of these ran and which did not.
 
 ### E20. Refactoring policy
@@ -500,6 +504,23 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.54 — 2026-10-12 — workflow safeguards and one Layer A confirmation
+#         (Marcelo Fortes, 2026-10-12: "Faça os três ajustes, adote o que vale
+#         adotar, me chame atenção sobre mudanças, atualize o openspec sempre";
+#         "TNome := Integer deve ser erro"). OpenSpec change
+#         `workflow-safeguards`.
+#   - Layer A, CANON-5: a Type section declares Struct, Range and Enum types
+#     only; `TName := Type` is an error. Inox has no type alias form (the
+#     built-in aliases of CANON-8, such as Integer -> Int64, are not affected).
+#   - E19 gains `tools/ir_snapshot.py`, the no-regression gate for refactors.
+#   - AGENTS.md: "Known pitfalls" (lessons already paid for); high-risk changes
+#     (exception lowering, runtime ABI, memory ownership, a phase rewrite) wait
+#     for the maintainer's dated approval of design.md before code;
+#     `string-runtime` is the first such change.
+#   - OpenSpec changes are archived right after their PR is merged, so
+#     openspec/specs matches main (`struct-values` and `declaration-sections`
+#     are archived).
 #
 # v3.53 — 2026-10-12 — Type, Const and State sections parsed into typed
 #         declarations (Layer B; CANON-5, CANON-9 and CANON-13 unchanged).

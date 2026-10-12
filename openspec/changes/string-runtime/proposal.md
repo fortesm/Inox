@@ -12,6 +12,8 @@ Approval (Marcelo Fortes, 2026-10-12): "Todas as tomadas de decisão dos pontos
 1 a 5 foram verificadas e eleitas para serem acatadas." Item 5: String as an
 immutable, reference-counted value (Claude's proposal, accepted).
 
+Risk: high (exception cleanup in Itanium landing pads and MSVC funclets, a new runtime ABI, memory ownership). Implementation waits for Marcelo's approval of design.md.
+
 ## What Changes
 
 - Runtime representation: a String is a non-null pointer to an immutable,
