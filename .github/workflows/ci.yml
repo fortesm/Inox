@@ -46,6 +46,8 @@ jobs:
         env:
           OPENSPEC_TELEMETRY: '0'
         run: npx -y @fission-ai/openspec@1.14.1 validate --all --strict --no-interactive
+      - name: Canon migration map (every canon line traced; ADR copies verbatim)
+        run: python3 tools/canon_trace.py check
 
   windows:
     name: Windows (clang, MSVC ABI, Debug)

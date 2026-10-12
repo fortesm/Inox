@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.48 (governance G7: OpenSpec workflow)
+# Version: v3.49 (canon migration to OpenSpec, phases 1 and 3a)
 # Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -500,6 +500,33 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.49 — 2026-10-12 — migration of this document to OpenSpec, phases 1 and 3a
+#         (plan approved by Marcelo Fortes on 2026-10-12: "Aprovo o plano de
+#         migração em fases."; "Os ADRs viram mudanças arquivadas no
+#         OpenSpec."). No Layer A rule changes; this document stays the law (G7).
+#   - Phase 1, inventory: `tools/canon_trace.py` splits this document into
+#     units that cover every line; `openspec/migration/CANON_MAP.md` records
+#     each unit's hash, status (planned, mirrored, copied, approved, duplicate,
+#     structural) and destination. CI runs `check`: an unmapped unit, an
+#     archived ADR that is no longer verbatim, or a mirrored unit changed here
+#     without its spec fails the build. After editing this document, run
+#     `tools/canon_trace.py update`.
+#   - Phase 3a: ADR-0001..ADR-0017 imported verbatim as archived OpenSpec
+#     changes (`openspec/changes/archive/<date>-adr-NNNN-*`, decision in
+#     proposal.md, rationale in design.md). Dates of ADR-0001..0006 come from
+#     git (2026-05-28 and 2026-05-31). The original ADR-0005 and ADR-0006 files,
+#     removed on 2026-06-15 when this document absorbed them, are restored
+#     verbatim from git next to them. The ADR text below is unchanged.
+#   - Duplicates found and recorded: DEV-2 and GROUP FUTURE appear twice,
+#     identical; the AGENT RULES list appears twice (same rules).
+#   - The case-statement and fixed-arrays specs now cover their canon units
+#     completely (new diagnostics `case-of-keyword`, `case-arrow-arm`,
+#     `case-when-arm`, `case-as-expression`, `array-bounds-part-of-type`,
+#     `array-literal-reserved`); the seven baseline specs now say they are
+#     mirrors, not law (one wrongly said "migrated").
+#   - Status: 255 units (this entry included); 17 copied, 3 mirrored,
+#     3 duplicate, 36 structural, 196 planned.
 #
 # v3.48 — 2026-10-12 — OpenSpec adopted for specifications and changes
 #         (governance G7, requested by Marcelo Fortes on 2026-10-12: "quero

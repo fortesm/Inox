@@ -1,7 +1,8 @@
 # slices Specification
 
 ## Purpose
-Read-only slices `A[L..H]` of type `Slice<T>` (ADR-0017).
+Read-only slices `A[L..H]` of type `Slice<T>` (ADR-0017). Mirror of the canon (G7): the canon stays the law until Marcelo Fortes
+approves this capability's migration.
 
 ## Requirements
 

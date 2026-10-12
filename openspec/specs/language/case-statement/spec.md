@@ -1,8 +1,9 @@
 # case-statement Specification
 
 ## Purpose
-The Ada-style `case` statement (ADR-0011, canon CANON-12 "case") and `unless`.
-Migrated from the canon on 2026-10-12; the canon section points here.
+The Ada-style `case` statement (ADR-0011, canon SECTION 17 "case") and
+`unless`. Mirror of the canon (G7): the canon stays the law until Marcelo
+Fortes approves this capability's migration.
 
 ## Requirements
 
@@ -52,9 +53,45 @@ UInt64 always needs `otherwise`. A total case cannot fall through.
 - **WHEN** a case handles True and False, or a function ends in a total case whose arms all Return
 - **THEN** it compiles and runs (tests/runtime/case-lowering.inox, tests/semantic/valid/case-exhaustive-returns.inox)
 
+#### Scenario: Incomplete Bool case and UInt64 without otherwise
+- **WHEN** a Bool case handles only True, or a UInt64 case has no otherwise
+- **THEN** the compiler rejects it (tests/diagnostics/case-bool-incomplete.inox, tests/diagnostics/case-uint64-needs-otherwise.inox)
+
 #### Scenario: Natural coverage
 - **WHEN** a case on Natural covers 0..9223372036854775807, or leaves 0 out
 - **THEN** the first compiles, the second is rejected (tests/semantic/valid/case-natural-total.inox, tests/diagnostics/case-natural-missing-zero.inox)
+
+### Requirement: Arm syntax
+A case header SHALL be `case Expression` on its own line, and an arm SHALL be
+its choices followed by its body, on the same line or the next. `of`, `when`,
+`=>`, `:` and `do` SHALL be compile errors. `case` SHALL NOT be an expression
+(reserved for a future version).
+
+#### Scenario: Single-line and next-line arms
+- **WHEN** arms put their body on the choice line or on the next line
+- **THEN** both compile (tests/semantic/valid/case-arm-on-next-line.inox, tests/runtime/case-lowering.inox)
+
+#### Scenario: Words and symbols from other languages
+- **WHEN** a case writes `case X of`, an arm `1 => ...` or an arm `when 1 ...`
+- **THEN** the compiler rejects it (tests/diagnostics/case-of-keyword.inox, tests/diagnostics/case-arrow-arm.inox, tests/diagnostics/case-when-arm.inox)
+
+#### Scenario: Case as an expression
+- **WHEN** a program writes `Y := case X ...`
+- **THEN** the compiler rejects it (tests/diagnostics/case-as-expression.inox)
+
+### Requirement: Choices are static and of the selector's type
+A choice SHALL be a static value (literal, Const or constant expression) or a
+static range `A..B` with A <= B. A Const keeps its own type, which SHALL match
+the selector's; a literal-only expression SHALL be read in the selector's type
+and SHALL fit it. A non-discrete selector such as String SHALL be an error.
+
+#### Scenario: Static expressions and Const choices
+- **WHEN** choices use constant expressions, Consts and Char literals
+- **THEN** the case compiles (tests/semantic/valid/case-static-expressions.inox, tests/semantic/valid/case-const-expression-choice.inox, tests/semantic/valid/case-char-choices.inox)
+
+#### Scenario: Wrong choices and selectors
+- **WHEN** a choice is a variable, an inverted range, a literal that does not fit a Byte selector, a Const or Bool of another type, or the selector is a String
+- **THEN** the compiler rejects it (tests/diagnostics/case-nonstatic-choice.inox, tests/diagnostics/case-inverted-range.inox, tests/diagnostics/case-literal-out-of-range.inox, tests/diagnostics/case-typed-const-mismatch.inox, tests/diagnostics/case-choice-type-mismatch.inox, tests/diagnostics/case-string-selector.inox)
 
 ### Requirement: Unless runs its body when the condition is false
 `unless C` SHALL run its body exactly when C is false.

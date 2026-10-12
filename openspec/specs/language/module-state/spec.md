@@ -2,7 +2,8 @@
 
 ## Purpose
 Module `State` variables (CANON-5 "Const and State"): explicit, visible global
-mutable storage.
+mutable storage. Mirror of the canon (G7): the canon stays the law until Marcelo Fortes
+approves this capability's migration.
 
 ## Requirements
 

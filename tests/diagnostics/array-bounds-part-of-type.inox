@@ -1,0 +1,16 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-13: Low and High are part of an array type.
+Module Diagnostics.ArrayBoundsPartOfType
+
+Main :
+    A Array[1..3] Integer
+    B Array[0..2] Integer
+    B := A
+    PutLn(B[0])
+;

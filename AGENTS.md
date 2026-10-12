@@ -35,6 +35,11 @@ If these disagree, do not invent a third behavior. Fix the documentation/code mi
   `OPENSPEC_TELEMETRY=0`.
 - Specs describe Inox programs and diagnostics, never C++ internals; every
   scenario names its test or says "test to add".
+- The canon is being migrated into OpenSpec (plan approved 2026-10-12,
+  `openspec/README.md`). After editing `docs/INOX_CANONICAL.md`, run
+  `python3 tools/canon_trace.py update`; CI runs `check`, which fails when a
+  canon unit is missing from `openspec/migration/CANON_MAP.md`, an archived
+  ADR is no longer verbatim, or a mirrored unit changed without its spec.
 
 ## Non-negotiable language identity
 

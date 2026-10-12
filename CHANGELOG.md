@@ -31,6 +31,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - `Byte` is registered as `UInt8`; integer conversions such as `Byte(300)` or `Int8(-129)` with an out-of-range constant are compile errors.
 - `grammar/grammar.ebnf` rebuilt from the canon, checked by `tools/grammar_consistency.py`.
 - OpenSpec workflow (canon v3.48, G7): `openspec/specs/` mirrors seven language capabilities with test-backed scenarios; `openspec/changes/` holds the proposals for struct values, declaration sections, UInt64, Enum/Range/Set and the String runtime; CI runs `openspec validate --all --strict`.
+- Canon migration to OpenSpec, phases 1 and 3a (canon v3.49): `tools/canon_trace.py` and `openspec/migration/CANON_MAP.md` trace every line of the canon to its destination (checked in CI); ADR-0001..0017 imported verbatim as archived OpenSpec changes; six new diagnostics tests for `case` syntax and array types.
 
 ### Changed
 - Example files no longer carry the `llvm-` prefix (`examples/put-output-basic.inox`, ...).

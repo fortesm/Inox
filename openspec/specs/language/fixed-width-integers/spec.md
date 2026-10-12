@@ -3,7 +3,8 @@
 ## Purpose
 Fixed-width integer types of CANON-8 (Int8, Int16, Int32, Byte = UInt8,
 UInt16, UInt32) and `bitnot`. UInt64/UInteger is specified by the canon and not
-yet implemented.
+yet implemented. Mirror of the canon (G7): the canon stays the law until Marcelo Fortes
+approves this capability's migration.
 
 ## Requirements
 

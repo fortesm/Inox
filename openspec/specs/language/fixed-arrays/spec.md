@@ -1,8 +1,10 @@
 # fixed-arrays Specification
 
 ## Purpose
-Fixed arrays `Array[Low..High] T` (CANON-13). Arrays inside struct fields and
-State, and String or struct elements, are specified but not implemented yet.
+Fixed arrays `Array[Low..High] T` (CANON-13 "Array"). Mirror of the canon
+(G7): the canon stays the law until Marcelo Fortes approves this capability's
+migration. Arrays inside struct fields and State, and String or struct
+elements, are specified but not implemented yet.
 
 ## Requirements
 
@@ -15,6 +17,14 @@ its type's zero. Arrays SHALL NOT be compared.
 #### Scenario: Declaration, copy and parameters
 - **WHEN** a program fills an array, copies it, changes the copy and passes arrays to routines
 - **THEN** the original is unchanged and the results are correct (tests/runtime/arrays.inox)
+
+#### Scenario: Bounds are part of the type
+- **WHEN** an `Array[1..3] Integer` is assigned to an `Array[0..2] Integer`
+- **THEN** the compiler rejects it (tests/diagnostics/array-bounds-part-of-type.inox)
+
+#### Scenario: Array literals are reserved
+- **WHEN** a program writes `A Array[1..3] Integer := [1, 2, 3]`
+- **THEN** the compiler rejects it (tests/diagnostics/array-literal-reserved.inox)
 
 #### Scenario: Empty bounds and comparison
 - **WHEN** a program declares `Array[3..1] Integer` or compares two arrays
