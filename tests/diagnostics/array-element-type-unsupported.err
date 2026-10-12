@@ -1,1 +1,1 @@
-array elements of type String are not supported yet; use an integer, Float or Bool element
+array elements of type String are not supported yet; use an integer, Float, Bool or struct element

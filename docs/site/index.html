@@ -330,6 +330,27 @@ TPoint.Move(Self mut, DX Integer, DY Integer) :
     Self.Y := Self.Y + DY
 ;</code></pre>
 <p>This preserves <code>Object.Method</code> ergonomics without classes or inheritance.</p>
+<p>Fields may have literal defaults, and a field may itself be a struct. A struct declared without <code>:=</code> takes its defaults (or zero); named construction builds a value from named fields in any order, and is an expression usable anywhere a value is expected. Structs are values: assignment, parameters and results copy them. Arrays may hold structs:</p>
+<pre><code>Type
+    TLine Struct
+        FA TPoint
+        FB TPoint
+    ;
+    TConfig Struct
+        FPort Integer := 8080
+        FRate Float := 1.5
+        FEnabled Bool := true
+    ;
+
+C TConfig                           == FPort 8080, FRate 1.5, FEnabled true
+P := TPoint(Y := 2, X := 1)         == named construction, any order
+Q TPoint := P                       == a copy
+L TLine
+L.FB.X := 7                         == field paths reach nested fields
+L.FA.Move(1, 1)                     == and methods on them
+Points Array[1..10] TPoint
+Points[3].X := 5</code></pre>
+<p>A struct cannot contain itself, directly or through another struct.</p>
 </section>
 <section id="control-flow"><h2>Control flow</h2>
 <p><code>if</code> uses no <code>then</code> and no <code>:</code>:</p>

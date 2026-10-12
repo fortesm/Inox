@@ -63,9 +63,9 @@ analysis but not lowered yet.)
 | `with` | with statement on a struct local | **OK** |  |
 | `try-in-for` | try/except inside a loop body | **OK** |  |
 | `grouped-decl-scalar` | grouped declaration A, B, C T := X (X evaluated once) | **OK** |  |
-| `grouped-decl-struct` | grouped struct declaration P, Q TPoint := Base | **GAP** | LLVM emission does not support struct initializers yet |
+| `grouped-decl-struct` | grouped struct declaration P, Q TPoint := Base | **OK** |  |
 | `chained-assignment` | chained assignment A := B := C := X | **OK** |  |
-| `named-struct-construction` | named struct construction TPoint(X := 1, Y := 2) | **GAP** | unsupported expression in function: Main |
+| `named-struct-construction` | named struct construction TPoint(X := 1, Y := 2) | **OK** |  |
 | `for-step-expression-bounds` | for I in 1..N + 1 step N div 2 | **OK** |  |
 | `case-ada-choices` | case with | alternatives and a static range | **OK** |  |
 | `digit-separators` | numeric literals with the digit separator _ | **OK** |  |
@@ -80,9 +80,11 @@ analysis but not lowered yet.)
 | `array-local` | fixed array with indexing, Low/High and += on an element | **OK** |  |
 | `slice` | read-only slice passed to a Slice<T> parameter | **OK** |  |
 | `ref-parameter` | ref mut parameter writing an array element | **OK** |  |
+| `struct-nested` | nested struct fields, field paths and defaults | **OK** |  |
+| `array-of-struct` | array of struct elements with defaults and field access | **OK** |  |
 | `uint64-local` | UInt64 local | **GAP** | unsupported local variable type for LLVM emission |
 
-Summary: GAP=5, OK=36
+Summary: GAP=3, OK=40
 
 ## Reading the table
 
@@ -107,9 +109,12 @@ Summary: GAP=5, OK=36
   are lowered as i64 values with range checks. `uint64-local` is a GAP:
   UInt64/UInteger needs unsigned 64-bit arithmetic. `bitnot` is lowered since
   v3.44.
-* `grouped-decl-struct` (v3.26): the grouped form itself lowers; the GAP is the
-  older one, a struct local initialized from another struct value
-  (`P TPoint := Base`). It closes with struct initializers.
+* `grouped-decl-struct`, `named-struct-construction`, `struct-nested`,
+  `array-of-struct`: closed by the OpenSpec change `struct-values` (canon
+  v3.52): struct initializers, named construction, fields of every lowered
+  scalar type and of struct type, field paths through fields and elements,
+  methods on any struct place, and arrays of struct. Struct `State` and array
+  or String fields are the next change (`declaration-sections`).
 
 ## Direction (DECISION P-C, approved 2026-10-09)
 

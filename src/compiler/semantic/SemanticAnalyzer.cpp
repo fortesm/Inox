@@ -10,6 +10,7 @@
 #include "../exceptions/ExceptionTypes.h"
 
 #include <algorithm>
+#include <functional>
 #include <array>
 #include <cstddef>
 #include <cctype>
@@ -373,6 +374,8 @@ bool integerTypeRange(std::string_view type, std::int64_t& low, std::int64_t& hi
     }
     return false;
 }
+
+bool parseIntegerLiteralMagnitude(std::string_view text, std::uint64_t& value);
 
 // The fixed-width integer types narrower than 64 bits. Their values are
 // computed in the Int64 family and range-checked where a result has the type.
@@ -745,11 +748,8 @@ void SemanticAnalyzer::registerStructDeclaration(const std::vector<std::string>&
 
         if (index < tokens.size() && tokens[index] == ":=") {
             ++index;
-            if (index >= tokens.size() || tokens[index] == ";") {
-                throw SemanticError("expected default value for struct field: " + fieldName);
-            }
             field.hasDefault = true;
-            field.defaultValue = tokens[index++];
+            field.defaultValue = readStructFieldDefault(tokens, index, fieldName);
         }
 
         if (!seenFieldNames.insert(normalizeName(fieldName)).second) {
@@ -785,26 +785,8 @@ void SemanticAnalyzer::validateStructDeclaration(const std::vector<std::string>&
 
         if (index < tokens.size() && tokens[index] == ":=") {
             ++index;
-            if (index >= tokens.size() || tokens[index] == ";") {
-                throw SemanticError("expected default value for struct field: " + fieldName);
-            }
-            const std::string defaultValue = tokens[index++];
-            if (equalsIgnoreCase(fieldType, "Integer") || equalsIgnoreCase(fieldType, "Int64")) {
-                const bool isDecimal = !defaultValue.empty() &&
-                    std::all_of(defaultValue.begin(), defaultValue.end(), [](unsigned char ch) {
-                        return std::isdigit(ch) != 0;
-                    });
-                const bool isHex = defaultValue.size() > 1 && defaultValue.front() == '$';
-                if (!isDecimal && !isHex) {
-                    throw SemanticError("Integer struct field default must be an integer literal: " + fieldName);
-                }
-            } else if (equalsIgnoreCase(fieldType, "Bool")) {
-                if (!equalsIgnoreCase(defaultValue, "true") && !equalsIgnoreCase(defaultValue, "false")) {
-                    throw SemanticError("Bool struct field default must be true or false: " + fieldName);
-                }
-            } else {
-                throw SemanticError("struct field defaults are currently supported only for Integer and Bool: " + fieldName);
-            }
+            const std::string defaultValue = readStructFieldDefault(tokens, index, fieldName);
+            validateStructFieldDefault(fieldName, fieldType, defaultValue);
         }
     }
 
@@ -812,6 +794,90 @@ void SemanticAnalyzer::validateStructDeclaration(const std::vector<std::string>&
         throw SemanticError("expected ';' to close Struct: " + typeName);
     }
     ++index;
+    rejectRecursiveStruct(typeName);
+}
+
+// A struct field default is one literal, optionally preceded by `-` for a
+// number (CANON-9: "Fields may have literal defaults").
+std::string SemanticAnalyzer::readStructFieldDefault(const std::vector<std::string>& tokens,
+                                                     std::size_t& index,
+                                                     const std::string& fieldName)
+{
+    if (index >= tokens.size() || tokens[index] == ";") {
+        throw SemanticError("expected default value for struct field: " + fieldName);
+    }
+    if (tokens[index] != "-") {
+        return tokens[index++];
+    }
+    ++index;
+    if (index >= tokens.size() || tokens[index] == ";") {
+        throw SemanticError("expected default value for struct field: " + fieldName);
+    }
+    return "-" + tokens[index++];
+}
+
+void SemanticAnalyzer::validateStructFieldDefault(const std::string& fieldName,
+                                                  const std::string& fieldType,
+                                                  const std::string& defaultValue) const
+{
+    const bool negative = !defaultValue.empty() && defaultValue.front() == '-';
+    const std::string_view magnitudeText = negative ? std::string_view(defaultValue).substr(1)
+                                                    : std::string_view(defaultValue);
+    if (equalsIgnoreCase(fieldType, "Bool")) {
+        if (!equalsIgnoreCase(defaultValue, "true") && !equalsIgnoreCase(defaultValue, "false")) {
+            throw SemanticError("Bool struct field default must be true or false: " + fieldName);
+        }
+        return;
+    }
+    if (equalsIgnoreCase(fieldType, "Float64") || equalsIgnoreCase(fieldType, "Float32")) {
+        const bool isReal = !magnitudeText.empty() &&
+                            std::isdigit(static_cast<unsigned char>(magnitudeText.front())) != 0 &&
+                            magnitudeText.find_first_of(".eE") != std::string_view::npos &&
+                            magnitudeText.find_first_not_of("0123456789.eE+-") == std::string_view::npos;
+        if (!isReal) {
+            throw SemanticError("Float struct field default must be a real literal: " + fieldName);
+        }
+        return;
+    }
+    std::int64_t low = 0;
+    std::int64_t high = 0;
+    if (!integerTypeRange(fieldType, low, high)) {
+        throw SemanticError("struct field defaults of type " + fieldType +
+                            " are not supported yet: " + fieldName);
+    }
+    std::uint64_t magnitude = 0;
+    if (!parseIntegerLiteralMagnitude(magnitudeText, magnitude)) {
+        throw SemanticError("integer struct field default must be an integer literal: " + fieldName);
+    }
+    const bool fits = negative ? (low < 0 && magnitude <= static_cast<std::uint64_t>(-(low + 1)) + 1U)
+                               : magnitude <= static_cast<std::uint64_t>(high);
+    if (!fits) {
+        throw SemanticError("struct field default out of range for " + fieldType + ": " + fieldName);
+    }
+}
+
+// CANON-9: a struct is a value, so it cannot contain itself, directly or
+// through other struct fields.
+void SemanticAnalyzer::rejectRecursiveStruct(const std::string& typeName) const
+{
+    std::vector<std::string> path;
+    std::function<void(const std::string&)> visit = [&](const std::string& name) {
+        const auto structType = structs_.find(normalizeName(name));
+        if (structType == structs_.end()) {
+            return;
+        }
+        for (const std::string& seen : path) {
+            if (seen == normalizeName(name)) {
+                throw SemanticError("struct contains itself: " + typeName);
+            }
+        }
+        path.push_back(normalizeName(name));
+        for (const StructField& field : structType->second.fields) {
+            visit(field.typeName);
+        }
+        path.pop_back();
+    };
+    visit(typeName);
 }
 
 void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& section) const
@@ -3370,9 +3436,10 @@ std::string SemanticAnalyzer::canonicalArrayTypeName(std::string_view name) cons
     } else {
         resolveTypeOrThrow(parts->element);
         element = canonicalTypeName(parts->element);
-        if (!isNumericType(element) && element != "Bool") {
+        const bool isStruct = structs_.find(normalizeName(element)) != structs_.end();
+        if (!isNumericType(element) && element != "Bool" && !isStruct) {
             throw SemanticError("array elements of type " + element +
-                                " are not supported yet; use an integer, Float or Bool element");
+                                " are not supported yet; use an integer, Float, Bool or struct element");
         }
     }
     return support::makeArrayTypeName(std::to_string(low), std::to_string(high), element);

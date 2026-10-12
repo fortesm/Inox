@@ -15,10 +15,11 @@ which also replaces the token re-scan), String fields (item 5).
 ## Decisions
 
 - **Layout.** A struct is a named LLVM type `%T = type { ... }` in field order.
-  Narrow integer fields are stored in their own width (i8/i16/i32), like array
-  elements, and widened on load; Natural stays i64. Nested structs are embedded
-  by value. Types are emitted in dependency order (topological sort); a cycle
-  is reported by the semantic analyzer before codegen.
+  Scalar fields use the type's value representation (narrow integers and
+  Natural are i64, as for locals; only array elements are stored narrow).
+  Nested structs are embedded by value. No ordering is needed: LLVM accepts
+  forward references to named struct types; a cycle is reported by the
+  semantic analyzer before codegen.
 - **Defaults.** One routine `emitStructDefaults(ptr, T)` writes zero then each
   default, recursing into struct fields. Used by declarations, construction and
   array elements.
@@ -31,9 +32,14 @@ which also replaces the token re-scan), String fields (item 5).
 - **Initializers.** `Q T := E` evaluates E to a `%T` value and stores it; grouped
   declarations store into the first slot and copy into the next ones (the
   v3.26 rule, unchanged).
-- **Arrays of struct.** `[N x %T]`; `A[I].F` is one GEP with the checked index
-  (fault kind 9) and the field index. Array defaults loop over elements calling
-  `emitStructDefaults` only when the struct has a non-zero default.
+- **Places.** One routine computes the address of a variable, a field of a
+  place or an element (`L.FB.FX`, `A[I].FX`, `M[I, J].F`); any other value is
+  copied to a temporary. Field reads, writes, `ref mut` arguments, `with` and
+  method receivers all use it, so a method can be called on any struct place.
+- **Arrays of struct.** `[N x %T]`; `A[I].F` is a checked element address
+  (fault kind 9) then the field GEP. Without an initializer the array is zeroed
+  and, when the struct has a non-zero default, one loop over the flattened
+  elements writes the defaults.
 
 ## Risks / Trade-offs
 

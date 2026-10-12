@@ -12,6 +12,7 @@
 
 #include <cctype>
 #include <cstdint>
+#include <cstring>
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -194,13 +195,42 @@ std::string llvmIntegerLiteral(std::string_view value)
     return std::to_string(std::stoull(std::string(value.substr(1)), nullptr, 16));
 }
 
+// A struct field default (CANON-9) is one literal, possibly negative; the
+// semantic analyzer has checked its type and range.
 std::string llvmDefaultLiteral(std::string_view value, std::string_view llvmType)
 {
     if (llvmType == "i1") {
         return equalsIgnoreCase(value, "true") ? "1" : "0";
     }
-
-    return llvmIntegerLiteral(value);
+    if (llvmType == "double") {
+        return std::string(value);
+    }
+    if (llvmType == "float") {
+        // LLVM writes a float constant as the 64-bit pattern of the double
+        // holding the rounded float value.
+        const double rounded = static_cast<double>(std::stof(std::string(value)));
+        std::uint64_t bits = 0;
+        std::memcpy(&bits, &rounded, sizeof bits);
+        std::ostringstream hex;
+        hex << "0x" << std::uppercase << std::hex << std::setw(16) << std::setfill('0') << bits;
+        return hex.str();
+    }
+    const bool negative = !value.empty() && value.front() == '-';
+    std::string magnitude(negative ? value.substr(1) : value);
+    int base = 10;
+    if (!magnitude.empty() && magnitude.front() == '$') {
+        magnitude.erase(0, 1);
+        base = 16;
+    } else if (magnitude.size() > 2 && magnitude[0] == '0' && (magnitude[1] == 'x' || magnitude[1] == 'X')) {
+        magnitude.erase(0, 2);
+        base = 16;
+    }
+    const std::uint64_t bits = std::stoull(magnitude, nullptr, base);
+    if (!negative) {
+        return std::to_string(bits);
+    }
+    return bits == (std::uint64_t{1} << 63) ? "-9223372036854775808"
+                                             : "-" + std::to_string(bits);
 }
 
 
@@ -289,8 +319,10 @@ using FunctionSignatures =
 
 struct StructFieldInfo {
     std::string inoxName;
+    std::string inoxType;
     std::string llvmType;
     std::size_t index = 0;
+    bool isStruct = false;  // a nested struct value, embedded by value
     bool hasDefault = false;
     std::string defaultValue;
 };
@@ -501,6 +533,11 @@ std::optional<ArrayLayout> arrayLayout(std::string_view canonicalType)
     } else {
         layout.elementStorage = scalarStorageType(parts->element);
     }
+    if (layout.elementStorage.empty() && !parts->element.empty() &&
+        std::isalpha(static_cast<unsigned char>(parts->element.front())) != 0) {
+        // The semantic analyzer accepts only scalar or struct elements.
+        layout.elementStorage = llvmStructName(parts->element);
+    }
     if (layout.elementStorage.empty()) {
         return std::nullopt;
     }
@@ -558,15 +595,17 @@ void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefi
             }
             const std::string fieldName = tokens[index++];
             const std::string fieldType = tokens[index++];
-            const std::string llvmFieldType = llvmTypeForScalar(fieldType);
-            if (llvmFieldType.empty()) {
-                throw CodegenUnsupported(
-                    "LLVM emission currently supports only Integer and Bool struct fields");
-            }
-
             StructFieldInfo field;
             field.inoxName = fieldName;
-            field.llvmType = llvmFieldType;
+            field.inoxType = fieldType;
+            field.llvmType = llvmTypeForScalar(fieldType);
+            if (field.llvmType.empty()) {
+                // The semantic analyzer accepts only scalar and struct field
+                // types; a struct may be declared later in the module, and
+                // LLVM allows forward references to named struct types.
+                field.isStruct = true;
+                field.llvmType = llvmStructName(fieldType);
+            }
             field.index = definition.fields.size();
             if (index < tokens.size() && tokens[index] == ":=") {
                 ++index;
@@ -575,6 +614,9 @@ void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefi
                 }
                 field.hasDefault = true;
                 field.defaultValue = tokens[index++];
+                if (field.defaultValue == "-" && index < tokens.size()) {
+                    field.defaultValue += tokens[index++];
+                }
             }
 
             definition.fields.push_back(std::move(field));
@@ -2115,7 +2157,10 @@ private:
     {
         const std::string normalizedName = normalize(name);
         const std::string llvmType = expressionLlvmType(initializer);
-        const std::string inoxType = llvmType == "double" ? "Float64" :
+        const std::string semanticType = semanticTypeName(initializer);
+        const bool aggregate = findStruct(structs_, semanticType) != nullptr || arrayLayout(semanticType);
+        const std::string inoxType = aggregate ? semanticType :
+                                    llvmType == "double" ? "Float64" :
                                     llvmType == "i1" ? "Bool" : "Integer";
         const std::string slot = newSlot(normalizedName);
         output_ << "  " << slot << " = alloca " << llvmType << "\n";
@@ -2141,22 +2186,13 @@ private:
         output_ << "  " << slot << " = alloca " << llvmType << "\n";
 
         if (const StructDefinition* structType = findStruct(structs_, typeName)) {
+            // CANON-9: `Q T := Expr` copies the value; `P T` takes the type's
+            // field defaults (rule 4).
             if (initializer != nullptr) {
-                throw CodegenUnsupported("LLVM emission does not support struct initializers yet");
-            }
-            output_ << "  store " << structType->llvmName
-                    << " zeroinitializer, ptr " << slot << '\n';
-            for (const StructFieldInfo& field : structType->fields) {
-                if (!field.hasDefault) {
-                    continue;
-                }
-                const std::string fieldPointer = "%tmp" + std::to_string(nextTemporary_++);
-                output_ << "  " << fieldPointer << " = getelementptr " << structType->llvmName
-                        << ", ptr " << slot
-                        << ", i32 0, i32 " << field.index << '\n';
-                output_ << "  store " << field.llvmType << ' '
-                        << llvmDefaultLiteral(field.defaultValue, field.llvmType)
-                        << ", ptr " << fieldPointer << '\n';
+                const std::string value = emitExpression(*initializer);
+                output_ << "  store " << structType->llvmName << ' ' << value << ", ptr " << slot << '\n';
+            } else {
+                emitStructDefaults(slot, *structType);
             }
             locals_.insert_or_assign(normalizedName,
                                      LocalInfo{slot, std::string(typeName), structType->llvmName});
@@ -2165,9 +2201,12 @@ private:
 
         if (support::isArrayTypeName(typeName)) {
             // CANON-13: an array is a value; without an initializer every
-            // element is its type's zero.
+            // element is its type's zero, or its struct type's defaults.
             const std::string value = initializer != nullptr ? emitExpression(*initializer) : "zeroinitializer";
             output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
+            if (initializer == nullptr) {
+                emitArrayElementDefaults(slot, typeName);
+            }
             locals_.insert_or_assign(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
             return;
         }
@@ -2503,35 +2542,210 @@ private:
         return expressionLlvmType(expression) == "i1";
     }
 
-    FieldAddress emitMemberAddress(const ast::CallExpression& call)
+    // CANON-9: whether a struct type, or a struct nested in it, has a field
+    // default other than zero.
+    bool structHasDefaults(const StructDefinition& structType) const
     {
-        if (call.arguments().size() != 2 ||
-            call.arguments()[0]->kind() != ast::AstNodeKind::IdentifierExpression ||
-            call.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
-            throw CodegenUnsupported("LLVM emission currently supports only simple local field access");
+        for (const StructFieldInfo& field : structType.fields) {
+            if (field.hasDefault) {
+                return true;
+            }
+            if (field.isStruct) {
+                if (const StructDefinition* nested = findStruct(structs_, field.inoxType);
+                    nested != nullptr && structHasDefaults(*nested)) {
+                    return true;
+                }
+            }
         }
+        return false;
+    }
 
-        const auto& base = static_cast<const ast::IdentifierExpression&>(*call.arguments()[0]);
-        const auto& fieldName = static_cast<const ast::IdentifierExpression&>(*call.arguments()[1]);
-        const auto local = locals_.find(normalize(base.name()));
-        if (local == locals_.end()) {
-            throw CodegenError("LLVM emission supports field access only on local struct variables");
+    // Writes the type defaults of a struct at `pointer` (CANON-5 rule 4):
+    // zero, then each field default, recursively into nested structs.
+    void emitStructDefaults(const std::string& pointer, const StructDefinition& structType)
+    {
+        output_ << "  store " << structType.llvmName << " zeroinitializer, ptr " << pointer << '\n';
+        emitStructFieldDefaults(pointer, structType);
+    }
+
+    void emitStructFieldDefaults(const std::string& pointer, const StructDefinition& structType)
+    {
+        for (const StructFieldInfo& field : structType.fields) {
+            const StructDefinition* nested = field.isStruct ? findStruct(structs_, field.inoxType) : nullptr;
+            if (!field.hasDefault && (nested == nullptr || !structHasDefaults(*nested))) {
+                continue;
+            }
+            const std::string fieldPointer = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << fieldPointer << " = getelementptr " << structType.llvmName << ", ptr "
+                    << pointer << ", i32 0, i32 " << field.index << '\n';
+            if (nested != nullptr) {
+                emitStructFieldDefaults(fieldPointer, *nested);
+                continue;
+            }
+            output_ << "  store " << field.llvmType << ' '
+                    << llvmDefaultLiteral(field.defaultValue, field.llvmType) << ", ptr " << fieldPointer
+                    << '\n';
         }
+    }
 
-        const StructDefinition* structType = findStruct(structs_, local->second.inoxType);
+    // An array of structs with defaults starts with every element at its
+    // struct's defaults. The array was zeroed; nested arrays are contiguous,
+    // so the elements are walked as one flat run.
+    void emitArrayElementDefaults(const std::string& pointer, std::string_view arrayType)
+    {
+        std::optional<ArrayLayout> layout = arrayLayout(arrayType);
+        std::int64_t count = 1;
+        while (layout) {
+            count *= layout->high - layout->low + 1;
+            const std::string element = layout->elementType;
+            if (const auto inner = arrayLayout(element)) {
+                layout = inner;
+                continue;
+            }
+            const StructDefinition* structType = findStruct(structs_, element);
+            if (structType == nullptr || !structHasDefaults(*structType)) {
+                return;
+            }
+            const std::string label = std::to_string(nextLabel_++);
+            const std::string counter = "%elemdefault.i" + label;
+            output_ << "  " << counter << " = alloca i64\n";
+            output_ << "  store i64 0, ptr " << counter << '\n';
+            output_ << "  br label %elemdefault.cond" << label << "\n\n";
+            output_ << "elemdefault.cond" << label << ":\n";
+            const std::string index = "%tmp" + std::to_string(nextTemporary_++);
+            const std::string more = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << index << " = load i64, ptr " << counter << '\n';
+            output_ << "  " << more << " = icmp slt i64 " << index << ", " << count << '\n';
+            output_ << "  br i1 " << more << ", label %elemdefault.body" << label
+                    << ", label %elemdefault.end" << label << "\n\n";
+            output_ << "elemdefault.body" << label << ":\n";
+            const std::string elementPointer = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << elementPointer << " = getelementptr inbounds " << structType->llvmName
+                    << ", ptr " << pointer << ", i64 " << index << '\n';
+            emitStructFieldDefaults(elementPointer, *structType);
+            const std::string next = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << next << " = add i64 " << index << ", 1\n";
+            output_ << "  store i64 " << next << ", ptr " << counter << '\n';
+            output_ << "  br label %elemdefault.cond" << label << "\n\n";
+            output_ << "elemdefault.end" << label << ":\n";
+            return;
+        }
+    }
+
+    // CANON-9 named construction `T(Field := Value, ...)`: the type defaults,
+    // then each named value in source order.
+    std::string emitConstruction(const ast::CallExpression& call, const StructDefinition& structType)
+    {
+        const std::string slot = "%construct" + std::to_string(nextTemporary_++);
+        output_ << "  " << slot << " = alloca " << structType.llvmName << '\n';
+        emitStructDefaults(slot, structType);
+        for (const auto& argument : call.arguments()) {
+            const auto& named = static_cast<const ast::BinaryExpression&>(*argument);
+            const auto& fieldName = static_cast<const ast::IdentifierExpression&>(named.left());
+            const StructFieldInfo* field = findStructField(structType, fieldName.name());
+            if (field == nullptr) {
+                throw CodegenError("unknown field in construction: " + fieldName.name());
+            }
+            const std::string value = emitExpression(named.right());
+            const std::string fieldPointer = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << fieldPointer << " = getelementptr " << structType.llvmName << ", ptr " << slot
+                    << ", i32 0, i32 " << field->index << '\n';
+            output_ << "  store " << field->llvmType << ' ' << value << ", ptr " << fieldPointer << '\n';
+        }
+        const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << result << " = load " << structType.llvmName << ", ptr " << slot << '\n';
+        return result;
+    }
+
+    // The storage of a place: a variable, a field of a place or an element.
+    // Any other value is copied into a temporary so its fields can be read.
+    struct Place {
+        std::string pointer;
+        std::string inoxType;
+    };
+
+    Place emitPlace(const ast::Expression& expression)
+    {
+        if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
+            const auto local = locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(expression).name()));
+            if (local != locals_.end()) {
+                return Place{local->second.slot, local->second.inoxType};
+            }
+        }
+        if (isIndexCall(expression)) {
+            const ElementAddress element = emitElementAddress(static_cast<const ast::CallExpression&>(expression));
+            return Place{element.pointer, element.elementType};
+        }
+        if (isMemberAccessCall(expression)) {
+            const auto& member = static_cast<const ast::CallExpression&>(expression);
+            if (const auto field = memberField(member)) {
+                const Place base = emitPlace(*member.arguments()[0]);
+                const std::string pointer = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << pointer << " = getelementptr " << field->first->llvmName << ", ptr "
+                        << base.pointer << ", i32 0, i32 " << field->second->index << '\n';
+                return Place{pointer, field->second->inoxType};
+            }
+        }
+        const std::string type = semanticTypeName(expression);
+        const std::string llvmType = llvmTypeForInoxType(type, structs_);
+        if (llvmType.empty()) {
+            throw CodegenUnsupported("this value has no storage in the LLVM backend");
+        }
+        const std::string value = emitExpression(expression);
+        const std::string slot = "%placetmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << slot << " = alloca " << llvmType << '\n';
+        output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
+        return Place{slot, type};
+    }
+
+    // The struct and field a `__member(Base, Name)` names, when Base is a
+    // struct value and Name one of its fields (otherwise it is a method).
+    std::optional<std::pair<const StructDefinition*, const StructFieldInfo*>>
+    memberField(const ast::CallExpression& member) const
+    {
+        if (member.arguments().size() != 2 ||
+            member.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
+            return std::nullopt;
+        }
+        const StructDefinition* structType = findStruct(structs_, placeTypeName(*member.arguments()[0]));
         if (structType == nullptr) {
-            throw CodegenUnsupported("LLVM emission field access target is not a struct");
+            return std::nullopt;
         }
+        const auto& fieldName = static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
         const StructFieldInfo* field = findStructField(*structType, fieldName.name());
         if (field == nullptr) {
-            throw CodegenUnsupported("unknown struct field for LLVM emission");
+            return std::nullopt;
         }
+        return std::make_pair(structType, field);
+    }
 
-        const std::string pointer = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << pointer << " = getelementptr " << structType->llvmName
-                << ", ptr " << local->second.slot
-                << ", i32 0, i32 " << field->index << '\n';
-        return FieldAddress{pointer, field->llvmType};
+    // The Inox type of a place or value: a local's declared type, else the
+    // semantic type.
+    std::string placeTypeName(const ast::Expression& expression) const
+    {
+        if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
+            const auto local = locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(expression).name()));
+            if (local != locals_.end()) {
+                return local->second.inoxType;
+            }
+        }
+        if (isMemberAccessCall(expression)) {
+            if (const auto field = memberField(static_cast<const ast::CallExpression&>(expression))) {
+                return field->second->inoxType;
+            }
+        }
+        return semanticTypeName(expression);
+    }
+
+    FieldAddress emitMemberAddress(const ast::CallExpression& call)
+    {
+        if (!memberField(call)) {
+            // Not a field: the caller treats it as a zero-argument method.
+            throw CodegenError("not a struct field");
+        }
+        const Place place = emitPlace(call);
+        const auto field = memberField(call);
+        return FieldAddress{place.pointer, field->second->llvmType};
     }
 
     static bool isMemberAccessCall(const ast::Expression& expression)
@@ -2560,24 +2774,18 @@ private:
 
         const auto& member = static_cast<const ast::CallExpression&>(call.callee());
         if (member.arguments().size() != 2 ||
-            member.arguments()[0]->kind() != ast::AstNodeKind::IdentifierExpression ||
             member.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
             throw CodegenUnsupported("LLVM emission currently supports only local method calls");
         }
 
-        const auto& receiver =
-            static_cast<const ast::IdentifierExpression&>(*member.arguments()[0]);
         const auto& method =
             static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
-        const auto local = locals_.find(normalize(receiver.name()));
-        if (local == locals_.end()) {
-            throw CodegenError("LLVM emission supports method calls only on local struct variables");
-        }
-        if (findStruct(structs_, local->second.inoxType) == nullptr) {
+        const std::string receiverType = placeTypeName(*member.arguments()[0]);
+        if (findStruct(structs_, receiverType) == nullptr) {
             throw CodegenUnsupported("LLVM emission method receiver is not a struct");
         }
 
-        const std::string qualifiedName = local->second.inoxType + "." + method.name();
+        const std::string qualifiedName = receiverType + "." + method.name();
         const auto signature = signatures_.find(normalize(qualifiedName));
         if (signature == signatures_.end()) {
             throw CodegenUnsupported("unknown method for LLVM emission: " + qualifiedName);
@@ -2590,7 +2798,7 @@ private:
             throw CodegenUnsupported("unsupported method argument count: " + qualifiedName);
         }
 
-        return MethodCallTarget{&signature->second, local->second.slot};
+        return MethodCallTarget{&signature->second, emitPlace(*member.arguments()[0]).pointer};
     }
 
     MethodCallTarget resolveNoArgumentMethodAccess(const ast::CallExpression& member)
@@ -2599,24 +2807,18 @@ private:
             throw CodegenError("LLVM emission expected member access");
         }
         if (member.arguments().size() != 2 ||
-            member.arguments()[0]->kind() != ast::AstNodeKind::IdentifierExpression ||
             member.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
             throw CodegenUnsupported("LLVM emission currently supports only local zero-argument method calls");
         }
 
-        const auto& receiver =
-            static_cast<const ast::IdentifierExpression&>(*member.arguments()[0]);
         const auto& method =
             static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
-        const auto local = locals_.find(normalize(receiver.name()));
-        if (local == locals_.end()) {
-            throw CodegenError("LLVM emission supports method calls only on local struct variables");
-        }
-        if (findStruct(structs_, local->second.inoxType) == nullptr) {
+        const std::string receiverType = placeTypeName(*member.arguments()[0]);
+        if (findStruct(structs_, receiverType) == nullptr) {
             throw CodegenUnsupported("LLVM emission method receiver is not a struct");
         }
 
-        const std::string qualifiedName = local->second.inoxType + "." + method.name();
+        const std::string qualifiedName = receiverType + "." + method.name();
         const auto signature = signatures_.find(normalize(qualifiedName));
         if (signature == signatures_.end()) {
             throw CodegenUnsupported("unknown field or zero-argument method for LLVM emission: " + qualifiedName);
@@ -2625,7 +2827,7 @@ private:
             signature->second.parameters.front().llvmType != "ptr") {
             throw CodegenUnsupported("LLVM zero-argument method emission requires only an explicit struct receiver parameter");
         }
-        return MethodCallTarget{&signature->second, local->second.slot};
+        return MethodCallTarget{&signature->second, emitPlace(*member.arguments()[0]).pointer};
     }
 
     std::string emitNoArgumentMethodCall(const ast::CallExpression& member, bool requireValue)
@@ -2792,6 +2994,14 @@ private:
                 if (callee.name() == "__index" || callee.name() == "__slice") {
                     return valueLlvmType(semanticTypeName(expression));
                 }
+                if (const StructDefinition* structType = findStruct(structs_, callee.name())) {
+                    return structType->llvmName;
+                }
+                if (equalsIgnoreCase(callee.name(), "__member")) {
+                    if (const auto field = memberField(call)) {
+                        return field->second->llvmType;
+                    }
+                }
                 if (arrayBoundCall(call)) {
                     return "i64";
                 }
@@ -2803,7 +3013,7 @@ private:
             if (isMemberAccessCall(call.callee())) {
                 const auto& member = static_cast<const ast::CallExpression&>(call.callee());
                 if (member.arguments().size() == 2 && member.arguments()[0]) {
-                    const std::string receiverType = expressionInoxType(*member.arguments()[0]);
+                    const std::string receiverType = placeTypeName(*member.arguments()[0]);
                     if (member.arguments()[1]->kind() == ast::AstNodeKind::IdentifierExpression) {
                         const auto& method = static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
                         const auto signature = signatures_.find(normalize(receiverType + "." + method.name()));
@@ -2833,31 +3043,6 @@ private:
             return false;
         }
         return expressionLlvmType(*call.arguments().front()) == "i64";
-    }
-
-    std::string expressionInoxType(const ast::Expression& expression) const
-    {
-        switch (expression.kind()) {
-        case ast::AstNodeKind::IdentifierExpression: {
-            const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
-            const std::string normalizedName = normalize(identifier.name());
-            const auto local = locals_.find(normalizedName);
-            if (local != locals_.end()) {
-                return local->second.inoxType;
-            }
-            break;
-        }
-        case ast::AstNodeKind::LiteralExpression: {
-            const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
-            if (literal.literalKind() == ast::LiteralKind::Float) return "Float64";
-            if (literal.literalKind() == ast::LiteralKind::Boolean) return "Bool";
-            if (literal.literalKind() == ast::LiteralKind::Integer) return "Integer";
-            break;
-        }
-        default:
-            break;
-        }
-        return {};
     }
 
     // ADR-0013: `if C then A else B`. Only the chosen branch is evaluated, so
@@ -2916,6 +3101,9 @@ private:
         if (support::isSliceTypeName(inoxType)) {
             return std::string(kSliceLlvmType);
         }
+        if (const StructDefinition* structType = findStruct(structs_, inoxType)) {
+            return structType->llvmName;
+        }
         const std::string scalar = llvmTypeForScalar(inoxType);
         return scalar.empty() ? std::string("i64") : scalar;
     }
@@ -2957,6 +3145,9 @@ private:
         }
         if (isIndexCall(base)) {
             return emitElementAddress(static_cast<const ast::CallExpression&>(base)).pointer;
+        }
+        if (isMemberAccessCall(base) && memberField(static_cast<const ast::CallExpression&>(base))) {
+            return emitPlace(base).pointer;
         }
         const std::string value = emitExpression(base);
         const std::string slot = "%arraytmp" + std::to_string(nextTemporary_++);
@@ -3351,6 +3542,9 @@ private:
             }
             if (callee.name() == "__slice") {
                 return emitSlice(call);
+            }
+            if (const StructDefinition* structType = findStruct(structs_, callee.name())) {
+                return emitConstruction(call, *structType);
             }
             if (call.arguments().size() == 1 &&
                 support::isSliceTypeName(semanticTypeName(*call.arguments()[0])) &&
