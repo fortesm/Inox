@@ -311,7 +311,7 @@ Main :
 if not (A = B) and (A &lt; C or C = &quot;&quot;)
     PutLn(&quot;ok&quot;)
 ;</code></pre>
-<p><code>Bool</code> values are compared with <code>=</code> and <code>#</code> only, and structs are not compared: compare their fields.</p>
+<p><code>Bool</code> values are ordered as in Pascal and Ada: <code>false &lt; true</code>. Structs are never compared, also as in Pascal: compare their fields.</p>
 <p>Joining Strings (concatenation), indexing <code>S[I]</code> and length functions are reserved and not part of 0.1. The compiler frees every String when it is no longer used, also when an exception leaves a routine; there is nothing to free by hand.</p>
 </section>
 <section id="operators"><h2>Operators and precedence</h2>

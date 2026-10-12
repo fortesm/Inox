@@ -27,21 +27,21 @@ expression, and as a value stored or compared with `=`/`#`.
 - **WHEN** a program uses String comparisons under `not`, `and`, `or`, `xor`, `unless`, `elif`, `while`, `until`, `if ... then ... else` and stores one in a Bool variable
 - **THEN** each gives the expected result (tests/runtime/strings-ordering.inox)
 
-### Requirement: Bool values compare for equality only
-Two Bool values SHALL compare with `=` and `#`. `<` `>` `<=` `>=` on Bool
-SHALL be a compile error until the maintainer decides otherwise.
+### Requirement: Bool values are ordered false < true
+Two Bool values SHALL compare with every comparison operator, `false` being
+smaller than `true`, as in Pascal and Ada (maintainer decision, v3.57).
 
 #### Scenario: Bool equality
 - **WHEN** a program prints `A = B` and `A # B` for two Bool variables
-- **THEN** it prints their equality (tests/runtime/strings-ordering.inox; backend_gaps probe bool-equality)
+- **THEN** it prints their equality (tests/runtime/strings-ordering.inox; backend_gaps probe bool-comparison)
 
 #### Scenario: Bool ordering
-- **WHEN** a program writes `A < B` with Bool operands
-- **THEN** the compiler rejects it (tests/diagnostics/bool-ordering.inox)
+- **WHEN** a program compares `false` and `true` with `<` `>` `<=` `>=`, also through Bool expressions such as `(1 > 2) < (2 > 1)`
+- **THEN** `false` is smaller than `true` (tests/runtime/bool-ordering.inox)
 
 ### Requirement: Structs are not compared
 `=` `#` `<` `>` `<=` `>=` on struct operands SHALL be a compile error that
-points to comparing their fields, until the maintainer decides otherwise.
+points to comparing their fields, as in Pascal (maintainer decision, v3.57).
 
 #### Scenario: Struct comparison
 - **WHEN** a program writes `P = Q` or `P < Q` with struct operands

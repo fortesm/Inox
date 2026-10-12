@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.56 (String ordering; comparison operand rules)
+# Version: v3.57 (Bool ordering; structs never compared; Std.Strings registered)
 # Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -504,6 +504,27 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.57 — 2026-10-12 — two Layer A decisions and a planned library module.
+#         Marcelo Fortes, 2026-10-12: "Bool deve ter ordem (false < true,
+#         como no Pascal e no Ada)!"; "Structs não deve comparar com =/#,
+#         campo a campo. Como em Pascal. Permanece erro, com a orientação de
+#         comparar os campos."; "Registre essas funções de biblioteca no
+#         futuro -> Std.Strings." OpenSpec changes `comparisons` (updated)
+#         and `std-strings` (planned).
+#   - Layer A, CANON-8: Bool is ordered, false < true; every comparison
+#     operator applies (replaces the provisional v3.56 error).
+#   - Layer A, CANON-9: structs are never compared with `=`, `#` or the
+#     ordering operators, as in Pascal; compare their fields (the v3.56
+#     error is now the rule, no longer provisional).
+#   - CANON-18: `Std.Strings` is registered as a planned module (not
+#     implemented): lengths, trimming, case mapping and case-insensitive
+#     comparison by Unicode rules, language-neutral collation, search,
+#     slicing, replacing, splitting, joining and padding. Names of the other
+#     planned modules (the Delphi SysUtils / StrUtils / DateUtils / IOUtils
+#     families) are awaiting the maintainer's choice.
+#   - Tests: runtime `bool-ordering` (replaces the diagnostic of v3.56);
+#     backend_gaps probe `bool-equality` becomes `bool-comparison`.
 #
 # v3.56 — 2026-10-12 — String ordering (Layer A) and comparison operand rules.
 #         Marcelo Fortes, 2026-10-12: "Comparação de ordem entre Strings
@@ -2635,7 +2656,7 @@ per width (no Delphi Cardinal/LongWord duplication).
 
   BOOLEAN
     Bool        -> i1      True/False. (`Boolean` is NOT canonical.)
-                           Compared with `=` and `#` only (v3.56).
+                           Ordered false < true (v3.57), as in Pascal/Ada.
   INTEGER — friendly aliases
     Integer     -> Int64   (i64)  default integer; target of integer inference
     Natural     -> Integer subtype (i64)  0..Int64.Max; negatives are a RANGE ERROR
@@ -3166,8 +3187,8 @@ Associated methods are declared OUTSIDE the struct:
   calls. NOT virtual dispatch; no classes/inheritance/interfaces/subtyping.
 - `Self` = read-only receiver. `Self mut` = mutable receiver. `Self owned` is
   reserved for future ownership-consuming methods.
-- Structs are not compared with `=`, `#` or the ordering operators (v3.56);
-  compare their fields.
+- Structs are never compared with `=`, `#` or the ordering operators, as in
+  Pascal (v3.57, maintainer decision); compare their fields.
 
 ### Named struct construction (CHANGE LOG v3.2 — canonical)
 
@@ -3413,6 +3434,20 @@ The initial portable 0.1 standard library lives under `stdlib/`:
   `Hypot3`, and angle conversions). Explicit `Use Std.Math`.
 - `Std.Debug` — documents future `Assert`; intentionally UNAVAILABLE until
   trap/abort behavior is canonical.
+Planned, not implemented (registered v3.57; OpenSpec change `std-strings`):
+- `Std.Strings` — String functions beyond the operators, by Unicode rules and
+  never tied to one human language: lengths in bytes, characters and
+  graphemes; trimming (Unicode White_Space); upper/lower case and case
+  folding; case-insensitive equality and comparison; language-neutral
+  alphabetical collation (Unicode Collation Algorithm, root order), with
+  locale-specific collation as a later, explicit option; normalization
+  (NFC/NFD); search (position, contains, starts/ends with), slicing,
+  replacing, splitting, joining, repeating, padding. Function names and the
+  String concatenation operator are decided in that change.
+- Further modules modeled on Delphi's System.SysUtils (conversions,
+  exceptions, formatting), System.StrUtils, System.DateUtils (dates, times,
+  calendar) and System.IOUtils (files, paths, directories): names awaiting
+  the maintainer's choice.
 The standard library must remain portable across Windows and Linux and must not
 depend on GC, unsafe features, C interop, or a complex runtime. The current
 `stdlib/` is an early layer + documentation anchor, NOT a complete standalone

@@ -4072,11 +4072,16 @@ private:
 
             if (const std::string predicate = llvmComparisonPredicate(binary.op());
                 !predicate.empty()) {
-                // Bool operands are i1 (only `=` and `#` reach here); every
-                // integer type is carried as i64.
-                const char* operandType = leftType == "i1" ? "i1" : "i64";
-                output_ << "  " << result << " = icmp " << predicate << ' ' << operandType << ' '
-                        << left << ", " << right << '\n';
+                // Every integer type is carried as i64 (signed compare). Bool
+                // is i1 and ordered false < true (v3.57): compared unsigned,
+                // since a signed i1 reads true as -1.
+                const bool isBool = leftType == "i1";
+                std::string boolPredicate = predicate;
+                if (isBool && boolPredicate.front() == 's') {
+                    boolPredicate.front() = 'u';
+                }
+                output_ << "  " << result << " = icmp " << (isBool ? boolPredicate : predicate) << ' '
+                        << (isBool ? "i1" : "i64") << ' ' << left << ", " << right << '\n';
             } else if (const std::string operation = llvmBooleanOperation(binary.op());
                        !operation.empty()) {
                 output_ << "  " << result << " = " << operation << " i1 "
