@@ -91,12 +91,11 @@ private:
     void recordConstantValue(std::string_view name, std::string_view valueToken);
     static void rejectInvalidConstantRightOperand(ast::BinaryOperator op, std::int64_t value);
     void registerTypeSectionSymbols(const ast::SectionDeclaration& section);
-    void registerStructDeclaration(const std::vector<std::string>& tokens, std::size_t& index);
-    void validateSectionTypes(const ast::SectionDeclaration& section) const;
-    void validateStructDeclaration(const std::vector<std::string>& tokens, std::size_t& index) const;
-    static std::string readStructFieldDefault(const std::vector<std::string>& tokens,
-                                              std::size_t& index,
-                                              const std::string& fieldName);
+    void registerStructDeclaration(const ast::TypeDeclaration& declaration);
+    void completeStructFields(const ast::TypeDeclaration& declaration);
+    void validateSectionTypes(const ast::SectionDeclaration& section);
+    void validateStructDeclaration(const ast::TypeDeclaration& declaration) const;
+    static std::string singleTokenText(const ast::Expression& expression);
     void validateStructFieldDefault(const std::string& fieldName,
                                     const std::string& fieldType,
                                     const std::string& defaultValue) const;
@@ -132,8 +131,7 @@ private:
     std::string analyzeUserFunctionCall(const FunctionSignature& signature,
                                         const std::vector<ast::ExpressionPtr>& arguments);
     void requireBoolCondition(const ast::Expression& expression);
-    std::string inferSectionDeclarationType(const std::vector<std::string>& tokens,
-                                            std::size_t nameIndex) const;
+    std::string inferSectionDeclarationType(const ast::Expression* value) const;
     const StructType* resolveStruct(std::string_view name) const;
     const StructField* resolveStructField(std::string_view structName, std::string_view fieldName) const;
 

@@ -172,33 +172,60 @@ private:
     std::vector<std::string> path_;
 };
 
-// The initializer of one Const or State declaration, parsed as an expression
-// so that semantic analysis checks it like any other expression (ADR-0009,
-// CANON-9). `typeName` is empty for the inferred form `Name := Expr`.
-struct SectionInitializer {
+// A field of a Struct declaration (CANON-9). `typeName` uses the front end's
+// spelling (`Array[L..H] T`, `Slice<T>` or a name); a default is one literal,
+// with a leading `-` for a negative number.
+struct StructFieldDeclaration {
+    std::string name;
+    std::string typeName;
+    bool hasDefault = false;
+    std::string defaultValue;
+    std::size_t line = 0;
+};
+
+enum class TypeDeclarationKind {
+    Struct,
+    Range,
+    Enum
+};
+
+// One declaration of a Type section (CANON-5, CANON-13): a Struct with its
+// fields, a Range with its bounds, or an Enum with its literals.
+struct TypeDeclaration {
+    TypeDeclarationKind kind = TypeDeclarationKind::Struct;
+    std::string name;
+    std::size_t line = 0;
+    std::vector<StructFieldDeclaration> fields;
+    ExpressionPtr bounds;  // Range: the `Low..High` expression
+    std::vector<std::string> literals;
+};
+
+// One Const or State declaration (CANON-5). `typeName` is empty for the
+// inferred form `Name := Expr`; `value` is null for a State declaration that
+// takes its type's defaults (`Name TStruct`). The value is parsed as an
+// expression so semantic analysis checks it like any other (ADR-0009, CANON-9).
+struct VariableDeclaration {
     std::string name;
     std::string typeName;
     ExpressionPtr value;
+    std::size_t line = 0;
 };
 
 class SectionDeclaration final : public AstNode {
 public:
-    SectionDeclaration(SectionKind sectionKind, std::vector<std::string> tokens,
-                       std::vector<std::size_t> tokenLines = {},
-                       std::vector<SectionInitializer> initializers = {});
+    SectionDeclaration(SectionKind sectionKind, std::vector<TypeDeclaration> types,
+                       std::vector<VariableDeclaration> variables);
 
     SectionKind sectionKind() const;
-    const std::vector<std::string>& tokens() const;
-    // Source line of each token (same length as tokens(), or empty). A section
-    // holds one declaration per line, so the line bounds an initializer.
-    const std::vector<std::size_t>& tokenLines() const;
-    const std::vector<SectionInitializer>& initializers() const;
+    // The declarations of a Type section (empty for Const and State).
+    const std::vector<TypeDeclaration>& types() const;
+    // The declarations of a Const or State section (empty for Type).
+    const std::vector<VariableDeclaration>& variables() const;
 
 private:
     SectionKind sectionKind_;
-    std::vector<std::string> tokens_;
-    std::vector<std::size_t> tokenLines_;
-    std::vector<SectionInitializer> initializers_;
+    std::vector<TypeDeclaration> types_;
+    std::vector<VariableDeclaration> variables_;
 };
 
 class RawDeclaration final : public AstNode {

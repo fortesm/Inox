@@ -38,7 +38,8 @@ type_section      ::= "Type" type_decl+
                       (* section: no ":" and no closing ";" of its own *)
 type_decl         ::= struct_decl | range_decl | enum_short_decl | enum_block_decl
 struct_decl       ::= identifier "Struct" NEWLINE struct_field* ";"
-struct_field      ::= identifier type_ref ( ":=" literal )? NEWLINE
+struct_field      ::= identifier type_ref ( ":=" "-"? literal )? NEWLINE
+                      (* the type may be an array (v3.53), never a Slice<T> (ADR-0017) *)
 range_decl        ::= identifier "Range" range_bound ".." range_bound
 range_bound       ::= integer_literal | char_literal | "-" integer_literal
 enum_short_decl   ::= identifier "(" identifier ( "," identifier )* ")"
@@ -51,7 +52,8 @@ state_section     ::= "State" ":" NEWLINE state_field* ";"
 state_field       ::= identifier type_ref? ":=" expression NEWLINE
                     | identifier type_ref NEWLINE
                       (* State scalars require an initializer (the second form is
-                         for structs only); "mut" is forbidden. The initializer
+                         for structs and arrays, v3.53); one name per line;
+                         "mut" is forbidden. The initializer
                          is an expression: one top-level ":=" declares, and a
                          ":=" inside it can only be a named argument *)
 

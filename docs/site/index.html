@@ -351,6 +351,22 @@ L.FA.Move(1, 1)                     == and methods on them
 Points Array[1..10] TPoint
 Points[3].X := 5</code></pre>
 <p>A struct cannot contain itself, directly or through another struct.</p>
+<p>A field may be a fixed array, and module <code>State</code> may hold structs and arrays. Without an initializer they start at their type defaults; copying a struct copies its arrays:</p>
+<pre><code>Type
+    TBuffer Struct
+        FData Array[1..4] Byte
+        FCount Integer := 0
+    ;
+
+State :
+    Origin TPoint := TPoint(X := 1, Y := 2)
+    Counts Array[1..3] Integer          == all zero
+;
+
+B TBuffer
+B.FData[2] := 200                   == every index is checked
+C TBuffer := B                      == C has its own copy of FData</code></pre>
+<p>A slice cannot be a struct field or a <code>State</code> variable, because it never outlives its array (ADR-0017).</p>
 </section>
 <section id="control-flow"><h2>Control flow</h2>
 <p><code>if</code> uses no <code>then</code> and no <code>:</code>:</p>

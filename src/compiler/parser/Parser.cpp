@@ -1539,105 +1539,204 @@ ast::AstNodePtr Parser::parseUseDeclaration()
     return std::make_unique<ast::UseDeclaration>(std::move(path));
 }
 
+// Type, Const and State sections (CANON-5) are parsed into typed
+// declarations: Struct fields, Range bounds and Enum literals for Type; one
+// name, type and initializer per line for Const and State. Every later phase
+// reads these nodes; nothing re-scans tokens.
 ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
 {
-    std::vector<std::string> tokens;
-    std::vector<std::size_t> lines;
+    std::vector<ast::TypeDeclaration> types;
+    std::vector<ast::VariableDeclaration> variables;
 
-    std::vector<ast::SectionInitializer> initializers;
+    if (sectionKind == ast::SectionKind::Type) {
+        // `Type` is a section/declarator: no ':' and no closing ';' (CANON-5).
+        if (check(TokenKind::Colon)) {
+            errorAtCurrent("'Type' has no ':' (CANON-5): write 'Type' and its declarations on the next lines");
+        }
+        while (!isAtEnd() && !atTypeSectionBoundary()) {
+            types.push_back(parseTypeDeclaration());
+        }
+        return std::make_unique<ast::SectionDeclaration>(sectionKind, std::move(types),
+                                                         std::move(variables));
+    }
 
-    // Section contents stay token lists for the declaration shapes, but the
-    // initializer of a Const or State declaration is parsed as a real
-    // expression (ADR-0009: `:=` never appears in it; CANON-9: named
-    // construction is checked by semantic analysis). Its tokens are still
-    // recorded so the token-based consumers see the same list as before.
-    const bool parseInitializers = sectionKind != ast::SectionKind::Type;
-    std::size_t declarationStart = 0;
-    std::size_t declarationLine = 0;
-    const auto take = [&]() {
-        const lexer::Token& token = advance();
-        if (token.location.line != declarationLine) {
-            declarationLine = token.location.line;
-            declarationStart = tokens.size();
-        }
-        tokens.push_back(tokenText(token));
-        lines.push_back(token.location.line);
-        if (!parseInitializers || token.kind != TokenKind::ColonEqual) {
-            return;
-        }
-        // Name := Expr | Name Type := Expr | legacy Name : Type := Expr
-        const std::size_t head = tokens.size() - 1 - declarationStart;
-        if (head == 0) {
-            throw ParseError("expected a name before ':='", token.location);
-        }
-        ast::SectionInitializer initializer;
-        initializer.name = tokens[declarationStart];
-        if (head == 2 && sectionKind == ast::SectionKind::Const) {
-            // OPEN-5 (closed v3.38, Marcelo Fortes): a Const has no written
-            // type; its type is the value's. A conversion gives another type.
-            throw ParseError(
-                "a Const is written 'Const " + tokens[declarationStart] +
-                    " := Value' (CANON-5): to choose its type, convert the value, "
-                    "e.g. 'Const " + tokens[declarationStart] + " := " +
-                    tokens[declarationStart + 1] + "(Value)'",
-                token.location);
-        }
-        if (head == 2) {
-            initializer.typeName = tokens[declarationStart + 1];
-        } else if (head == 3 && tokens[declarationStart + 1] == ":") {
-            initializer.typeName = tokens[declarationStart + 2];
-        } else if (head != 1) {
-            throw ParseError(kAssignmentInExpressionMessage, token.location);
-        }
-        const std::size_t valueStart = current_;
-        initializer.value = parseValue();
-        if (!isAtEnd() && !check(TokenKind::Semicolon) &&
-            peek().location.line == previous().location.line) {
-            errorAtCurrent("expected line break after a section declaration");
-        }
-        // The whole initializer is recorded on the declaration's line, even
-        // when it spans lines, so the token scanners skip it as one unit.
-        for (std::size_t i = valueStart; i < current_; ++i) {
-            tokens.push_back(tokenText(tokens_[i]));
-            lines.push_back(token.location.line);
-        }
-        initializers.push_back(std::move(initializer));
-    };
-
-    // Type is always a section/declarator without ':'.
-    // Const supports the canonical single-line form `Const Name := Expr` (CANON-5),
-    // which has no ':'. When a ':' is present, Const falls through to the block form.
-    const bool lineForm =
-        (sectionKind == ast::SectionKind::Type && !check(TokenKind::Colon)) ||
-        (sectionKind == ast::SectionKind::Const && !check(TokenKind::Colon));
-
-    if (lineForm) {
-        if (sectionKind == ast::SectionKind::Const) {
-            // Single-line `Const Name := Expr`: consume tokens up to the end of
-            // the current source line (the declaration ends at the newline).
-            const std::size_t line = isAtEnd() ? 0 : peek().location.line;
-            while (!isAtEnd() && peek().location.line == line &&
-                   !check(TokenKind::Semicolon)) {
-                take();
-            }
-        } else {
-            while (!isAtEnd() && !atTypeSectionBoundary()) {
-                take();
-            }
-        }
-        return std::make_unique<ast::SectionDeclaration>(
-            sectionKind, std::move(tokens), std::move(lines), std::move(initializers));
+    // The canonical Const is one line, `Const Name := Expr`, without ':'.
+    if (sectionKind == ast::SectionKind::Const && !check(TokenKind::Colon)) {
+        variables.push_back(parseSectionVariable(sectionKind));
+        return std::make_unique<ast::SectionDeclaration>(sectionKind, std::move(types),
+                                                         std::move(variables));
     }
 
     consume(TokenKind::Colon, "expected ':' after section header");
-
     while (!isAtEnd() && !check(TokenKind::Semicolon)) {
-        take();
+        variables.push_back(parseSectionVariable(sectionKind));
+    }
+    consumeBlockClose();
+    return std::make_unique<ast::SectionDeclaration>(sectionKind, std::move(types),
+                                                     std::move(variables));
+}
+
+// A section declaration ends at the end of its line (one per line).
+void Parser::expectEndOfDeclarationLine(std::size_t line, const char* what)
+{
+    if (!isAtEnd() && !check(TokenKind::Semicolon) && peek().location.line == line) {
+        errorAtCurrent(std::string("expected line break after ") + what);
+    }
+}
+
+// `TName Struct <fields> ;`, `TName Range Low..High`, `TName (A, B, C)` or
+// `TName Enum <one literal per line> ;` (CANON-5, CANON-9, CANON-13).
+ast::TypeDeclaration Parser::parseTypeDeclaration()
+{
+    ast::TypeDeclaration declaration;
+    const lexer::Token& name = consume(TokenKind::Identifier, "expected a type name in the Type section");
+    declaration.name = name.lexeme;
+    declaration.line = name.location.line;
+
+    if (matchKeyword("struct")) {
+        declaration.kind = ast::TypeDeclarationKind::Struct;
+        expectEndOfDeclarationLine(name.location.line, "'Struct'");
+        while (!isAtEnd() && !check(TokenKind::Semicolon)) {
+            declaration.fields.push_back(parseStructField());
+        }
+        consumeBlockClose();
+        return declaration;
     }
 
-    consumeBlockClose();
-    return std::make_unique<ast::SectionDeclaration>(
-        sectionKind, std::move(tokens), std::move(lines), std::move(initializers));
+    if (check(TokenKind::Identifier) && peek().normalized == "range" &&
+        peek().location.line == name.location.line) {
+        advance();
+        declaration.kind = ast::TypeDeclarationKind::Range;
+        declaration.bounds = parseValue();
+        const auto* bounds = declaration.bounds.get();
+        if (bounds->kind() != ast::AstNodeKind::BinaryExpression ||
+            static_cast<const ast::BinaryExpression*>(bounds)->op() != ast::BinaryOperator::Range) {
+            throw ParseError("a Range is written 'TName Range Low..High' (CANON-13): " + declaration.name,
+                             name.location);
+        }
+        expectEndOfDeclarationLine(previous().location.line, "a Range declaration");
+        return declaration;
+    }
+
+    if (match(TokenKind::LeftParen)) {
+        declaration.kind = ast::TypeDeclarationKind::Enum;
+        do {
+            const lexer::Token& literal =
+                consume(TokenKind::Identifier, "expected an enum literal name");
+            declaration.literals.push_back(literal.lexeme);
+        } while (match(TokenKind::Comma));
+        consume(TokenKind::RightParen, "expected ')' after the enum literals");
+        expectEndOfDeclarationLine(previous().location.line, "an Enum declaration");
+        return declaration;
+    }
+
+    if (matchKeyword("enum")) {
+        declaration.kind = ast::TypeDeclarationKind::Enum;
+        expectEndOfDeclarationLine(name.location.line, "'Enum'");
+        while (!isAtEnd() && !check(TokenKind::Semicolon)) {
+            const lexer::Token& literal =
+                consume(TokenKind::Identifier, "expected an enum literal name");
+            declaration.literals.push_back(literal.lexeme);
+            expectEndOfDeclarationLine(literal.location.line, "an enum literal (one per line)");
+        }
+        if (declaration.literals.empty()) {
+            errorAtCurrent("an Enum declares at least one literal");
+        }
+        consumeBlockClose();
+        return declaration;
+    }
+
+    throw ParseError("expected 'Struct', 'Range', 'Enum' or '(' after the type name " + declaration.name +
+                         " (CANON-5)",
+                     isAtEnd() ? name.location : peek().location);
+}
+
+// `FName Type [:= Literal]` on one line (CANON-9).
+ast::StructFieldDeclaration Parser::parseStructField()
+{
+    ast::StructFieldDeclaration field;
+    const lexer::Token& name = consume(TokenKind::Identifier, "expected a field name");
+    field.name = name.lexeme;
+    field.line = name.location.line;
+    if (isAtEnd() || peek().location.line != name.location.line || !check(TokenKind::Identifier)) {
+        throw ParseError("expected the type of struct field " + field.name + " on its line",
+                         isAtEnd() || peek().location.line != name.location.line ? name.location
+                                                                                  : peek().location);
+    }
+    field.typeName = parseTypeName("expected the type of the struct field");
+    if (match(TokenKind::ColonEqual)) {
+        field.hasDefault = true;
+        field.defaultValue = parseStructFieldDefault(field.name);
+        if (!isAtEnd() && !check(TokenKind::Semicolon) && peek().location.line == name.location.line) {
+            throw ParseError("the default of struct field " + field.name + " must be one literal (CANON-9)",
+                             peek().location);
+        }
+    }
+    expectEndOfDeclarationLine(name.location.line, "a struct field");
+    return field;
+}
+
+// A field default is one literal, with `-` before a negative number
+// (CANON-9: "Fields may have literal defaults").
+std::string Parser::parseStructFieldDefault(const std::string& fieldName)
+{
+    std::string sign;
+    if (match(TokenKind::Minus)) {
+        sign = "-";
+    }
+    if (match(TokenKind::IntegerLiteral) || match(TokenKind::FloatLiteral)) {
+        return sign + tokenText(previous());
+    }
+    if (sign.empty() && (matchKeyword("true") || matchKeyword("false"))) {
+        return previous().lexeme;
+    }
+    throw ParseError("the default of struct field " + fieldName + " must be one literal (CANON-9)",
+                     isAtEnd() ? previous().location : peek().location);
+}
+
+// One Const or State declaration (CANON-5): `Name := Expr`,
+// `Name Type := Expr`, `Name Type` (State only: type defaults) or the
+// tolerated legacy `Name : Type [:= Expr]`.
+ast::VariableDeclaration Parser::parseSectionVariable(ast::SectionKind sectionKind)
+{
+    const bool isConst = sectionKind == ast::SectionKind::Const;
+    ast::VariableDeclaration declaration;
+    if (check(TokenKind::ColonEqual)) {
+        errorAtCurrent("expected a name before ':='");
+    }
+    const lexer::Token& name = consume(TokenKind::Identifier,
+                                       isConst ? "expected a Const name" : "expected a State variable name");
+    declaration.name = name.lexeme;
+    declaration.line = name.location.line;
+    if (check(TokenKind::Comma)) {
+        errorAtCurrent(isConst ? "a Const declares one name"
+                               : "grouped declarations in State are not supported yet; declare one name per line");
+    }
+
+    if (!match(TokenKind::ColonEqual)) {
+        const bool legacyColon = match(TokenKind::Colon);
+        declaration.typeName = parseTypeName("expected a type or ':=' after the name");
+        if (isConst && !legacyColon && check(TokenKind::ColonEqual)) {
+            // OPEN-5 (closed v3.38, Marcelo Fortes): a Const has no written
+            // type; its type is the value's. A conversion gives another type.
+            throw ParseError("a Const is written 'Const " + declaration.name +
+                                 " := Value' (CANON-5): to choose its type, convert the value, "
+                                 "e.g. 'Const " + declaration.name + " := " + declaration.typeName +
+                                 "(Value)'",
+                             peek().location);
+        }
+        if (!match(TokenKind::ColonEqual)) {
+            if (isConst) {
+                errorAtCurrent("a Const needs a value: 'Const Name := Value' (CANON-5)");
+            }
+            expectEndOfDeclarationLine(name.location.line, "a section declaration");
+            return declaration;
+        }
+    }
+
+    declaration.value = parseValue();
+    expectEndOfDeclarationLine(previous().location.line, "a section declaration");
+    return declaration;
 }
 
 ast::AstNodePtr Parser::parseRawDeclaration()

@@ -1,0 +1,54 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-13 and CANON-9: a struct field may be a fixed array (bounds may name
+== a Const). Its elements start at zero or at their struct's defaults, every
+== index is checked, and copying the struct copies the array.
+Module Runtime.StructArrayField
+
+Const Size := 4
+
+Type
+    TBuffer Struct
+        FData Array[1..Size] Byte
+        FCount Integer := 2
+        FPoints Array[0..1] TPoint
+    ;
+    TPoint Struct
+        FX Integer := 7
+        FY Integer
+    ;
+
+Fill(ref mut Data Array[1..Size] Byte, Value Byte) :
+    for I in Low(Data)..High(Data)
+        Data[I] := Value
+    ;
+;
+
+Total(Buffer TBuffer) Integer :
+    Sum := 0
+    for I in 1..Size
+        Sum += Integer(Buffer.FData[I])
+    ;
+    Return Sum
+;
+
+Main :
+    B TBuffer
+    B.FData[2] := 200
+    C TBuffer := B
+    C.FData[2] := 1
+    PutLn(B.FData[2], " ", C.FData[2], " ", B.FCount, " ", B.FPoints[1].FX)
+    B.FPoints[0].FY := 3
+    PutLn(B.FPoints[0].FY, " ", Low(B.FData), " ", High(B.FData), " ", Length(B.FData))
+    Fill(B.FData, 10)
+    PutLn(Total(B))
+    with B
+        .FData[4] := 50
+    ;
+    PutLn(Total(B))
+;

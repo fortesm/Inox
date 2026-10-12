@@ -571,61 +571,41 @@ const StructFieldInfo* findStructField(const StructDefinition& structType, std::
 }
 
 
-void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefinitions& structs)
+void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefinitions& structs,
+                              const semantic::SemanticResult& semantics)
 {
-    if (section.sectionKind() != ast::SectionKind::Type) {
-        return;
-    }
-
-    const auto& tokens = section.tokens();
-    for (std::size_t index = 0; index + 1 < tokens.size();) {
-        if (!equalsIgnoreCase(tokens[index + 1], "Struct")) {
-            ++index;
+    for (const ast::TypeDeclaration& declaration : section.types()) {
+        if (declaration.kind != ast::TypeDeclarationKind::Struct) {
             continue;
         }
-
         StructDefinition definition;
-        definition.inoxName = tokens[index];
-        definition.llvmName = llvmStructName(tokens[index]);
-        index += 2;
-
-        while (index < tokens.size() && tokens[index] != ";") {
-            if (index + 1 >= tokens.size()) {
-                throw CodegenError("invalid Struct declaration: " + definition.inoxName);
-            }
-            const std::string fieldName = tokens[index++];
-            const std::string fieldType = tokens[index++];
+        definition.inoxName = declaration.name;
+        definition.llvmName = llvmStructName(declaration.name);
+        for (const ast::StructFieldDeclaration& fieldDeclaration : declaration.fields) {
             StructFieldInfo field;
-            field.inoxName = fieldName;
-            field.inoxType = fieldType;
-            field.llvmType = llvmTypeForScalar(fieldType);
-            if (field.llvmType.empty()) {
-                // The semantic analyzer accepts only scalar and struct field
-                // types; a struct may be declared later in the module, and
-                // LLVM allows forward references to named struct types.
-                field.isStruct = true;
-                field.llvmType = llvmStructName(fieldType);
-            }
+            field.inoxName = fieldDeclaration.name;
+            field.inoxType = fieldDeclaration.typeName;
             field.index = definition.fields.size();
-            if (index < tokens.size() && tokens[index] == ":=") {
-                ++index;
-                if (index >= tokens.size() || tokens[index] == ";") {
-                    throw CodegenError("expected default value for struct field: " + fieldName);
+            field.llvmType = llvmTypeForScalar(fieldDeclaration.typeName);
+            if (support::isArrayTypeName(fieldDeclaration.typeName)) {
+                // CANON-13: an array field is embedded by value, [N x T].
+                field.inoxType = semantics.canonicalTypeName(fieldDeclaration.typeName);
+                const auto layout = arrayLayout(field.inoxType);
+                if (!layout) {
+                    throw CodegenError("array field without a layout: " + fieldDeclaration.name);
                 }
-                field.hasDefault = true;
-                field.defaultValue = tokens[index++];
-                if (field.defaultValue == "-" && index < tokens.size()) {
-                    field.defaultValue += tokens[index++];
-                }
+                field.llvmType = layout->llvmType;
+            } else if (field.llvmType.empty()) {
+                // The semantic analyzer accepts only scalar, array and struct
+                // field types; a struct may be declared later in the module,
+                // and LLVM allows forward references to named struct types.
+                field.isStruct = true;
+                field.llvmType = llvmStructName(fieldDeclaration.typeName);
             }
-
+            field.hasDefault = fieldDeclaration.hasDefault;
+            field.defaultValue = fieldDeclaration.defaultValue;
             definition.fields.push_back(std::move(field));
         }
-
-        if (index >= tokens.size() || tokens[index] != ";") {
-            throw CodegenError("expected ';' to close Struct: " + definition.inoxName);
-        }
-        ++index;
         structs.emplace(normalize(definition.inoxName), std::move(definition));
     }
 }
@@ -827,10 +807,18 @@ public:
     void emit()
     {
         if (signature_.llvmName == "main") {
+            // State is initialized in source order before Main's body: an
+            // initializer, or the type defaults of a struct or array.
             for (const StateGlobal& state : stateGlobals_) {
-                const std::string value = emitExpression(*state.initializer);
-                output_ << "  store " << state.llvmType << ' ' << value << ", ptr "
-                        << stateGlobalSymbol(state.name) << '\n';
+                const std::string global = stateGlobalSymbol(state.name);
+                if (state.initializer != nullptr) {
+                    const std::string value = emitExpression(*state.initializer);
+                    output_ << "  store " << state.llvmType << ' ' << value << ", ptr " << global << '\n';
+                } else if (const StructDefinition* structType = findStruct(structs_, state.inoxType)) {
+                    emitStructDefaults(global, *structType);
+                } else {
+                    emitArrayElementDefaults(global, state.inoxType);
+                }
             }
         }
         if (signature_.llvmReturnType == "i32" || signature_.llvmReturnType == "void") {
@@ -2550,14 +2538,23 @@ private:
             if (field.hasDefault) {
                 return true;
             }
-            if (field.isStruct) {
-                if (const StructDefinition* nested = findStruct(structs_, field.inoxType);
-                    nested != nullptr && structHasDefaults(*nested)) {
-                    return true;
-                }
+            if (defaultedStruct(field.inoxType) != nullptr) {
+                return true;
             }
         }
         return false;
+    }
+
+    // The struct with non-zero defaults that a value of `inoxType` holds: the
+    // type itself, or the innermost element of an array type; else null.
+    const StructDefinition* defaultedStruct(std::string_view inoxType) const
+    {
+        std::string type(inoxType);
+        while (const auto layout = arrayLayout(type)) {
+            type = layout->elementType;
+        }
+        const StructDefinition* structType = findStruct(structs_, type);
+        return structType != nullptr && structHasDefaults(*structType) ? structType : nullptr;
     }
 
     // Writes the type defaults of a struct at `pointer` (CANON-5 rule 4):
@@ -2571,15 +2568,20 @@ private:
     void emitStructFieldDefaults(const std::string& pointer, const StructDefinition& structType)
     {
         for (const StructFieldInfo& field : structType.fields) {
-            const StructDefinition* nested = field.isStruct ? findStruct(structs_, field.inoxType) : nullptr;
-            if (!field.hasDefault && (nested == nullptr || !structHasDefaults(*nested))) {
+            const StructDefinition* defaulted = field.hasDefault ? nullptr : defaultedStruct(field.inoxType);
+            if (!field.hasDefault && defaulted == nullptr) {
                 continue;
             }
             const std::string fieldPointer = "%tmp" + std::to_string(nextTemporary_++);
             output_ << "  " << fieldPointer << " = getelementptr " << structType.llvmName << ", ptr "
                     << pointer << ", i32 0, i32 " << field.index << '\n';
-            if (nested != nullptr) {
-                emitStructFieldDefaults(fieldPointer, *nested);
+            if (field.isStruct) {
+                emitStructFieldDefaults(fieldPointer, *defaulted);
+                continue;
+            }
+            if (defaulted != nullptr) {
+                // An array field of structs: every element gets the defaults.
+                emitArrayElementDefaults(fieldPointer, field.inoxType);
                 continue;
             }
             output_ << "  store " << field.llvmType << ' '
@@ -4368,7 +4370,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
 
     for (const auto& item : module.items()) {
         if (item->kind() == ast::AstNodeKind::SectionDeclaration) {
-            collectStructDefinitions(static_cast<const ast::SectionDeclaration&>(*item), structs);
+            collectStructDefinitions(static_cast<const ast::SectionDeclaration&>(*item), structs, semantics);
         }
     }
 
@@ -4381,18 +4383,24 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
         if (section.sectionKind() != ast::SectionKind::State) {
             continue;
         }
-        for (const ast::SectionInitializer& initializer : section.initializers()) {
-            std::string inoxType = initializer.typeName;
-            if (inoxType.empty()) {
-                if (const semantic::ResolvedType* resolved = semantics.typeOf(*initializer.value)) {
+        for (const ast::VariableDeclaration& declaration : section.variables()) {
+            std::string inoxType = declaration.typeName;
+            if (support::isArrayTypeName(inoxType)) {
+                inoxType = semantics.canonicalTypeName(inoxType);
+            }
+            if (inoxType.empty() && declaration.value != nullptr) {
+                if (const semantic::ResolvedType* resolved = semantics.typeOf(*declaration.value)) {
                     inoxType = resolved->name;
                 }
             }
-            const std::string llvmType = llvmTypeForScalar(inoxType);
+            if (const StructDefinition* structType = findStruct(structs, inoxType)) {
+                inoxType = structType->inoxName;
+            }
+            const std::string llvmType = llvmTypeForInoxType(inoxType, structs);
             if (llvmType.empty()) {
                 throw CodegenUnsupported("State variables of type " + inoxType + " are not lowered yet");
             }
-            stateGlobals.push_back(StateGlobal{initializer.name, inoxType, llvmType, initializer.value.get()});
+            stateGlobals.push_back(StateGlobal{declaration.name, inoxType, llvmType, declaration.value.get()});
         }
     }
 

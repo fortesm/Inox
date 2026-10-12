@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.52 (struct values lowered)
+# Version: v3.53 (structured declaration sections)
 # Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -500,6 +500,37 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.53 — 2026-10-12 — Type, Const and State sections parsed into typed
+#         declarations (Layer B; CANON-5, CANON-9 and CANON-13 unchanged).
+#         OpenSpec change `declaration-sections`, item 2 of the order approved
+#         on 2026-10-12.
+#   - The parser builds, for Type: Struct (fields with their type and literal
+#     default), Range (its `Low..High` expression) and short or multi-line
+#     Enum (its literals); for Const and State: one name, type and
+#     initializer per line. The analyzer and the emitter read these nodes; the
+#     three token scanners are deleted (E11, E13). Every test and example gives
+#     the same IR and types as before, except the three intended changes below.
+#   - New: a struct field may be a fixed array (bounds may name a Const), with
+#     checked indices, copies and defaults reaching struct elements inside it;
+#     State may hold structs and arrays, with or without initializer
+#     (`Origin TPoint`, `Counts Array[1..3] Integer`).
+#   - Diagnostics name the line: a field without type, a default that is not
+#     one literal, a Range without `Low..High`, two enum literals on one line,
+#     a `TName := Type` line (not a Type form), `Type :`. A slice cannot be a
+#     struct field or a State variable (ADR-0017); an array or struct field has
+#     no literal default; grouped declarations in State are reported as not
+#     supported yet (they were a misleading assignment error).
+#   - Range and Enum declarations are parsed and shape-checked only; their
+#     meaning comes with the change `enum-range-set`.
+#   - Tests: runtime `struct-array-field`, `state-aggregates`; trap
+#     `struct-array-field-out-of-bounds`; semantic-valid `type-section-forms`;
+#     diagnostics `struct-field-without-type`, `struct-field-slice`,
+#     `state-slice`, `struct-array-field-default`,
+#     `struct-field-default-expression`, `state-grouped`,
+#     `type-assignment-form`, `range-without-bounds`,
+#     `enum-literals-per-line`. backend_gaps GAP=3, OK=42 (probes
+#     `struct-array-field`, `state-aggregates`).
 #
 # v3.52 — 2026-10-12 — struct values lowered (Layer B; CANON-5 and CANON-9
 #         unchanged). OpenSpec change `struct-values`, item 1 of the order
@@ -3548,7 +3579,7 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  `State` variables of struct or String type, UInt64/UInteger values, `String` locals, and a
+  `State` variables of String type, UInt64/UInteger values, `String` locals, and a
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
@@ -3588,8 +3619,9 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 9. BigCurrency — not present; needs big-integer runtime (0.2+).
 10. case LLVM lowering: CLOSED (v3.42). Enum exhaustiveness waits for Enum.
 11. Array[Low..High]: parsed, checked and lowered since v3.45 in locals,
-    routine parameters and results; not yet in struct fields or `State`;
-    elements are integer, Float, Bool or struct (since v3.52; not String yet).
+    routine parameters and results, and since v3.53 in struct fields and
+    `State`; elements are integer, Float, Bool or struct (since v3.52; not
+    String yet).
 12. Range/Enum/Set full implementation.
 13. Checked integer arithmetic traps. — IMPLEMENTED (v3.18); see CANON-19.
 14. Explicit type conversions `TypeName(x)`.
@@ -3887,7 +3919,7 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 - BE-v3.18: constructs accepted by semantic analysis but not lowered by the
   LLVM backend are reported as "not yet implemented in the LLVM backend" and
   are measured by `tools/backend_gaps.py` (list in `docs/BACKEND_GAPS.md`):
-  `State` variables of struct or String type, UInt64/UInteger values, `String` locals, and a
+  `State` variables of String type, UInt64/UInteger values, `String` locals, and a
   module `Const` whose value is not a single Integer or Bool literal. Nested loops and `if`/`elif`/`else`
   or local declarations inside loop bodies are lowered since v3.21. Any other
   codegen failure after semantic acceptance is a BUG.
@@ -3927,8 +3959,9 @@ Types registered (31): Bool, Int8/16/32/64, UInt8/16/32/64, Natural, Float32/64,
 9. BigCurrency — not present; needs big-integer runtime (0.2+).
 10. case LLVM lowering: CLOSED (v3.42). Enum exhaustiveness waits for Enum.
 11. Array[Low..High]: parsed, checked and lowered since v3.45 in locals,
-    routine parameters and results; not yet in struct fields or `State`;
-    elements are integer, Float, Bool or struct (since v3.52; not String yet).
+    routine parameters and results, and since v3.53 in struct fields and
+    `State`; elements are integer, Float, Bool or struct (since v3.52; not
+    String yet).
 12. Range/Enum/Set full implementation.
 13. Checked integer arithmetic traps. — IMPLEMENTED (v3.18); see CANON-19.
 14. Explicit type conversions `TypeName(x)`.

@@ -414,6 +414,34 @@ Main :
     PutLn(A[1].FX + A[2].FX)
 ;
 """),
+    ("struct-array-field", "struct field of array type, copied with its struct", """Type
+    TBuffer Struct
+        FData Array[1..3] Integer
+    ;
+
+Main :
+    B TBuffer
+    B.FData[2] := 5
+    C TBuffer := B
+    C.FData[2] := 1
+    PutLn(B.FData[2] + C.FData[2])
+;
+"""),
+    ("state-aggregates", "State variables of struct and array type", """Type
+    TPoint Struct
+        FX Integer := 2
+    ;
+
+State :
+    Origin TPoint
+    Counts Array[1..2] Integer
+;
+
+Main :
+    Counts[1] := Origin.FX
+    PutLn(Counts[1])
+;
+"""),
     ("uint64-local", "UInt64 local", """Main :
     U UInt64 := UInt64(5)
     PutLn(U)

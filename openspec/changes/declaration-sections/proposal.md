@@ -29,7 +29,12 @@ of this.
 
 Out of scope: Enum/Range/Set meaning (item 4), String fields and String State
 (item 5), array literals (reserved by CANON-13), Const of array or struct type
-(Const stays scalar; no change).
+(Const stays scalar; no change), grouped declarations in State (reported as
+not supported yet).
+
+Removed by accident of the old scanner, never canonical: a Type line
+`TName := Type` was silently skipped; it is now a parse error naming the
+canonical forms. No test or example used it.
 
 Behavior that must not change: every existing section program and diagnostic
 keeps its result; the probe and suite counts only grow.
@@ -46,12 +51,10 @@ keeps its result; the probe and suite counts only grow.
 
 ## Impact
 
-- `src/compiler/ast/Ast.h/.cpp`: new declaration nodes replacing
+- `src/compiler/ast/Ast.h/.cpp`: typed declarations replace
   `SectionDeclaration::tokens()` for the three sections.
 - `src/compiler/parser/Parser.cpp`: section parsing reuses `parseTypeName` and
   the expression parser.
 - `src/compiler/semantic/SemanticAnalyzer.cpp`, `src/compiler/codegen/LlvmIrEmitter.cpp`:
   read the nodes; the State global path gains aggregate types.
-- `--dump-*` outputs and tests/parser expectations that print sections change
-  shape; the expectations are updated in the same change.
 - Canon Layer B, docs/BACKEND_GAPS.md, docs/site/index.html, CHANGELOG.md.
