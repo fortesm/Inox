@@ -17,4 +17,4 @@
 ## 4. Gates
 
 - [x] 4.1 openspec validate, canon_trace, grammar_consistency
-- [ ] 4.2 Linux and Windows CI green
+- [x] 4.2 Linux and Windows CI green (PR #35)

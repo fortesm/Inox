@@ -2,7 +2,7 @@
 
 - [x] 0.1 Record Marcelo's answers to Q1 (GetLn into String), Q2 (non-atomic counts), Q3 (keep concatenation reserved) and Q4 (String without initializer)
 
-- [ ] 0.2 Marcelo approves design.md (Risk: high) before any code
+- [x] 0.2 Marcelo approves design.md (Risk: high) before any code (2026-10-12, "Então tudo aprovado.")
 
 ## 1. Runtime
 
@@ -13,8 +13,8 @@
 ## 2. Lowering
 
 - [ ] 2.1 String slots for locals, parameters, results, fields, elements, State, ref parameters
-- [ ] 2.2 Retain/release at stores and temporaries; release at every normal scope exit
-- [ ] 2.3 Exception cleanups (Itanium landing pads and MSVC cleanuppads); extend eh_state_balance
+- [ ] 2.2 Retain/release at stores and temporaries; release owned slots at every routine exit
+- [ ] 2.3 Exception cleanup pad per routine owning Strings (capture, release, rethrow; both ABIs)
 - [ ] 2.4 `=`/`#` and Put/PutLn through the runtime
 
 ## 3. Tests
