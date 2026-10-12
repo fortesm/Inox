@@ -42,7 +42,15 @@ set(INOX_COMPILER_SOURCES
     src/compiler/codegen/TypeLayout.cpp
     src/compiler/lexer/Lexer.cpp
     src/compiler/parser/Parser.cpp
+    src/compiler/semantic/ConstantEvaluator.cpp
     src/compiler/semantic/SemanticAnalyzer.cpp
+    src/compiler/semantic/SemanticBuiltins.cpp
+    src/compiler/semantic/SemanticCalls.cpp
+    src/compiler/semantic/SemanticDeclarations.cpp
+    src/compiler/semantic/SemanticExpressions.cpp
+    src/compiler/semantic/SemanticStatements.cpp
+    src/compiler/semantic/SemanticSupport.cpp
+    src/compiler/semantic/SemanticTypes.cpp
     src/compiler/semantic/Symbol.cpp
     src/compiler/support/ArrayType.cpp
     src/compiler/support/Environment.cpp

@@ -14,10 +14,10 @@
 
 ## 4. Step 4 — SemanticAnalyzer split
 
-- [ ] 4.1 Declarations, statements, expressions, builtins, constant evaluator; `ir_snapshot compare`: no difference
+- [x] 4.1 Declarations, statements, expressions, builtins, constant evaluator (plus calls, types and SemanticSupport); every code line of the old file kept exactly once (checked); `ir_snapshot compare`: no difference (491 programs)
 
 ## 5. Gates (E19) and documentation, every step
 
-- [ ] 5.1 Suite (CI preset, libstdc++ 14), ASan+UBSan with a 1 MiB stack, mutation fuzz seeds 1 and 7, backend_gaps 0 BUG, eh_state_balance, string_leak_check, grammar_consistency, openspec validate, canon_trace
+- [x] 5.1 Suite (CI preset, libstdc++ 14), ASan+UBSan with a 1 MiB stack, mutation fuzz seeds 1 and 7, backend_gaps 0 BUG, eh_state_balance, string_leak_check, grammar_consistency, openspec validate, canon_trace
 - [ ] 5.2 Linux and Windows CI green
-- [ ] 5.3 Canon (Layer B source layout, change log), AGENTS.md (where things live), CHANGELOG.md
+- [x] 5.3 AGENTS.md (where things live), CHANGELOG.md. No canon entry: no language rule or implementation status changes (refactor only)
