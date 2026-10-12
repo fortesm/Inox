@@ -304,6 +304,14 @@ Main :
     Names[2] := P.FName
     PutLn(&quot;[&quot;, Names[1], &quot;] &quot;, Names[2])  == [] sem nome
 ;</code></pre>
+<p>Strings are ordered with <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code> and <code>&gt;=</code>, as in Pascal: byte by byte, and a String that is the beginning of another comes first. On UTF-8 text this is the order of the Unicode code points, so upper case comes before lower case and accented letters after unaccented ones: <code>"Z" &lt; "a" &lt; "á"</code>, <code>"ab" &lt; "abc"</code>, <code>"" &lt; "a"</code>. It is not the alphabetical order of a language (that will be a library function). The results combine like any <code>Bool</code>:</p>
+<pre><code>unless Name &gt;= Limit
+    PutLn(Name, &quot; comes before &quot;, Limit)
+;
+if not (A = B) and (A &lt; C or C = &quot;&quot;)
+    PutLn(&quot;ok&quot;)
+;</code></pre>
+<p><code>Bool</code> values are compared with <code>=</code> and <code>#</code> only, and structs are not compared: compare their fields.</p>
 <p>Joining Strings (concatenation), indexing <code>S[I]</code> and length functions are reserved and not part of 0.1. The compiler frees every String when it is no longer used, also when an exception leaves a routine; there is nothing to free by hand.</p>
 </section>
 <section id="operators"><h2>Operators and precedence</h2>

@@ -1,0 +1,22 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.56: structs are not compared (compare their fields); '=' was accepted and
+== then produced invalid IR.
+Module Diagnostics.StructEquality
+
+Type
+    TPoint Struct
+        FX Integer
+        FY Integer
+    ;
+
+Main :
+    P TPoint := TPoint(FX := 1, FY := 2)
+    Q TPoint := TPoint(FX := 1, FY := 2)
+    PutLn(P = Q)
+;

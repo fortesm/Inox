@@ -180,6 +180,18 @@ Main :
     PutLn(A[1], A[2], G)
 ;
 """),
+    ("string-ordering", "String < > <= >= combined with not, and, or", """Main :
+    A String := "abc"
+    B String := "abd"
+    PutLn(A < B and not (A >= B), " ", A > B or A <= B)
+;
+"""),
+    ("bool-equality", "Bool = and #", """Main :
+    A Bool := true
+    B Bool := false
+    PutLn(A = B, " ", A # B)
+;
+"""),
     ("string-getln", "GetLn into a String, compared with =", """Main :
     S String := ""
     GetLn(S)
