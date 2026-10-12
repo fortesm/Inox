@@ -11,6 +11,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 ## Unreleased
 
 ### Added
+- String ordering (canon v3.56): `<` `>` `<=` `>=` compare Strings byte by byte (Unicode code point order, a prefix first), combining with `not`, `and`, `or`, `xor`, `unless` like any Bool.
 - String runtime (canon v3.55, OpenSpec change `string-runtime`): Strings in locals, parameters, results, struct fields (with a String literal default or `""`), array elements, State and `ref` parameters, as reference-counted immutable blocks in libinoxrt that the compiler frees exactly once, also when an exception leaves a routine. `GetLn(S)` reads a line into a String (UTF-8 checked). New runtime faults "out of memory" and "invalid UTF-8 input". `tools/string_leak_check.py` runs the String programs under AddressSanitizer with leak detection in the Linux CI; `inoxrt-tests` unit-tests the runtime on Linux and Windows.
 - `tools/ir_snapshot.py` (canon v3.54): records IR, types, diagnostics and exit codes of every program and compares them after a refactor; an E19 gate. AGENTS.md gains "Known pitfalls"; high-risk OpenSpec changes wait for design approval.
 - Type, Const and State sections are parsed into typed declarations (OpenSpec change `declaration-sections`, canon v3.53): a struct field may be a fixed array, `State` may hold structs and arrays (with or without initializer), and malformed entries report their line.
@@ -51,6 +52,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - A `Const` has no written type: `Const Mask UInt8 := $FF` is rejected; write `Const Mask := UInt8($FF)` (OPEN-5).
 
 ### Fixed
+- `=` and `#` on two Bool variables, `<` on Strings and `=`/`<` on structs passed the analyzer and then produced invalid IR. Bool `=`/`#` and String ordering now work; Bool ordering and struct comparison are compile errors (canon v3.56).
 - A function called with no arguments inside `try` (`N := Fail`) now reaches the handler; it was emitted with `call` instead of `invoke` and its exception aborted the program.
 
 ### Known limitations

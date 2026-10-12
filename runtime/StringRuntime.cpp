@@ -132,6 +132,27 @@ bool __inox_str_equal(const void* left, const void* right) noexcept
            std::memcmp(a->bytes, b->bytes, static_cast<std::size_t>(a->length)) == 0;
 }
 
+// CANON-14 (v3.56): Strings are ordered byte by byte, the shorter first when
+// one is a prefix of the other. On UTF-8 this is Unicode code point order
+// ("Z" < "a" < "á"), not a locale collation. Returns -1, 0 or 1.
+std::int32_t __inox_str_compare(const void* left, const void* right) noexcept
+{
+    const auto* a = static_cast<const InoxString*>(left);
+    const auto* b = static_cast<const InoxString*>(right);
+    if (a == b) {
+        return 0;
+    }
+    const std::int64_t common = a->length < b->length ? a->length : b->length;
+    const int order = std::memcmp(a->bytes, b->bytes, static_cast<std::size_t>(common));
+    if (order != 0) {
+        return order < 0 ? -1 : 1;
+    }
+    if (a->length == b->length) {
+        return 0;
+    }
+    return a->length < b->length ? -1 : 1;
+}
+
 // Reads one line through the program's getchar: the bytes up to the newline,
 // without it (a `\r` before it is dropped too). At end of input with nothing
 // read, the line is "". The result is owned (+1) unless it is "".

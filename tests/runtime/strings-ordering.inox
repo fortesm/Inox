@@ -1,0 +1,63 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-14 (v3.56): Strings are compared with = # < > <= >=, byte by byte
+== (Unicode code point order, case-sensitive; a prefix comes first), and the
+== results combine with not, and, or, xor, unless, elif, loops and the
+== conditional expression like any Bool. Bool values compare with = and #.
+== The lines come from input, so they are heap Strings (leak-checked).
+Module Runtime.StringsOrdering
+
+Larger(A String, B String) String :
+    Return if A > B then A else B
+;
+
+Main :
+    A String := ""
+    B String := ""
+    C String := ""
+    E String := ""
+    U String := ""
+    GetLn(A)
+    GetLn(B)
+    GetLn(C)
+    GetLn(E)
+    GetLn(U)
+
+    PutLn(A < B, " ", A > B, " ", A <= B, " ", A >= B, " ", A = B, " ", A # B)
+    PutLn(A < C, " ", C > A, " ", A <= A, " ", A >= A, " ", E < A, " ", E <= "")
+    PutLn(B < U, " ", "z" < "á", " ", "Z" < "a", " ", "abc" < "abd")
+    PutLn(not (A = B), " ", not (A < B), " ", A < B and B < U, " ", A > B or C > A, " ", A < B xor C < A)
+
+    unless A >= B
+        PutLn("unless: ", A, " antes de ", B)
+    ;
+    if A > B
+        PutLn("errado")
+    elif A <= B and not (E # "")
+        PutLn("elif: vazio e ordem")
+    else
+        PutLn("errado")
+    ;
+    PutLn(Larger(A, B), " ", Larger(U, B), " ", Larger(E, E) = "")
+
+    Count Integer := 0
+    while C > A
+        Count += 1
+        C := A
+    ;
+    PutLn(Count, " ", C = A)
+    repeat
+        Count += 1
+        until Count >= 3 and A <= C
+    ;
+    PutLn(Count)
+
+    Flag := A < B
+    Same Bool := B = B
+    PutLn(Flag = Same, " ", Flag # Same, " ", Flag = true, " ", not Flag = false)
+;

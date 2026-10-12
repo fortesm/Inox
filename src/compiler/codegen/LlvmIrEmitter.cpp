@@ -4042,6 +4042,17 @@ private:
                 }
                 return result;
             }
+            // CANON-14 (v3.56): `<` `>` `<=` `>=` order Strings byte by byte.
+            if (isStringType(semanticTypeName(binary.left()))) {
+                if (const std::string predicate = llvmComparisonPredicate(binary.op()); !predicate.empty()) {
+                    requireModuleLine("declare i32 @__inox_str_compare(ptr, ptr) nounwind");
+                    const std::string order = "%tmp" + std::to_string(nextTemporary_++);
+                    output_ << "  " << order << " = call i32 @__inox_str_compare(ptr " << left << ", ptr " << right
+                            << ")\n";
+                    output_ << "  " << result << " = icmp " << predicate << " i32 " << order << ", 0\n";
+                    return result;
+                }
+            }
 
             if (isFloatLlvmType(leftType) || isFloatLlvmType(rightType)) {
                 if (const std::string predicate = fcmpPredicate(binary.op()); !predicate.empty()) {
@@ -4061,7 +4072,10 @@ private:
 
             if (const std::string predicate = llvmComparisonPredicate(binary.op());
                 !predicate.empty()) {
-                output_ << "  " << result << " = icmp " << predicate << " i64 "
+                // Bool operands are i1 (only `=` and `#` reach here); every
+                // integer type is carried as i64.
+                const char* operandType = leftType == "i1" ? "i1" : "i64";
+                output_ << "  " << result << " = icmp " << predicate << ' ' << operandType << ' '
                         << left << ", " << right << '\n';
             } else if (const std::string operation = llvmBooleanOperation(binary.op());
                        !operation.empty()) {

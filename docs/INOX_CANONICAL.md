@@ -9,7 +9,7 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.55 (String runtime)
+# Version: v3.56 (String ordering; comparison operand rules)
 # Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -504,6 +504,28 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.56 — 2026-10-12 — String ordering (Layer A) and comparison operand rules.
+#         Marcelo Fortes, 2026-10-12: "Comparação de ordem entre Strings
+#         (<, >, como no Pascal) também já deveria existir ... também >=, <=,
+#         #, not, invertendo o operador, unless, combinados com or, and".
+#         OpenSpec change `comparisons`.
+#   - Layer A, CANON-14: `<` `>` `<=` `>=` order Strings, as in the Wirth
+#     family: byte by byte over UTF-8, the shorter first when one is a prefix
+#     of the other. This is Unicode code point order and case-sensitive
+#     ("Z" < "a" < "á"); it is not a locale collation (accent- or
+#     case-insensitive ordering is a library function, not an operator).
+#     The results combine with `not`, `and`, `xor`, `or`, `unless`, `elif`,
+#     loop conditions and the conditional expression like any Bool.
+#   - Comparison operands (until the maintainer decides otherwise, so that no
+#     program is accepted and then miscompiled): Bool values compare with `=`
+#     and `#` only (`false < true` is an error); structs are not compared
+#     (compare their fields). Both used to pass the analyzer and then produce
+#     invalid IR, as did `<` on Strings; `=` on two Bool variables did too.
+#   - Tests: runtime `strings-ordering` (input lines, leak-checked);
+#     diagnostics `bool-ordering`, `struct-equality`, `struct-ordering`;
+#     `inoxrt-tests` covers `__inox_str_compare`. backend_gaps probes
+#     `string-ordering`, `bool-equality` (GAP=2, OK=47).
 #
 # v3.55 — 2026-10-12 — String runtime (Layer B; CANON-14 and CANON-17 now
 #         state the v3.50 decisions as implemented). OpenSpec change
@@ -2613,6 +2635,7 @@ per width (no Delphi Cardinal/LongWord duplication).
 
   BOOLEAN
     Bool        -> i1      True/False. (`Boolean` is NOT canonical.)
+                           Compared with `=` and `#` only (v3.56).
   INTEGER — friendly aliases
     Integer     -> Int64   (i64)  default integer; target of integer inference
     Natural     -> Integer subtype (i64)  0..Int64.Max; negatives are a RANGE ERROR
@@ -3143,6 +3166,8 @@ Associated methods are declared OUTSIDE the struct:
   calls. NOT virtual dispatch; no classes/inheritance/interfaces/subtyping.
 - `Self` = read-only receiver. `Self mut` = mutable receiver. `Self owned` is
   reserved for future ownership-consuming methods.
+- Structs are not compared with `=`, `#` or the ordering operators (v3.56);
+  compare their fields.
 
 ### Named struct construction (CHANGE LOG v3.2 — canonical)
 
@@ -3192,7 +3217,9 @@ There is no null string. Absence is future `Option[String]`.
 return type `String`; struct fields (default `""`, or a String literal default),
 array elements (default `""`), State, `ref` parameters; `Put`/`PutLn` for
 strings/literals; `GetLn(S)` (CANON-17); byte-by-byte equality and inequality
-with `=` and `#`. A String local or State variable needs an initializer
+with `=` and `#`; ordering with `<` `>` `<=` `>=` (v3.56): byte by byte over
+UTF-8, a prefix first, so Unicode code point order, case-sensitive, not a
+locale collation (`"Z" < "a" < "á"`, `"ab" < "abc"`, `"" < "a"`). A String local or State variable needs an initializer
 (CANON-5).
 Status (Layer B, v3.55): implemented. A String is a reference-counted immutable
 block of libinoxrt; the compiler releases every String it owns exactly once,

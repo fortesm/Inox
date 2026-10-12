@@ -15,6 +15,7 @@ void* __inox_str_empty() noexcept;
 void __inox_str_retain(void* value) noexcept;
 void __inox_str_release(void* value) noexcept;
 bool __inox_str_equal(const void* left, const void* right) noexcept;
+std::int32_t __inox_str_compare(const void* left, const void* right) noexcept;
 void* __inox_str_getln(int (*readByte)(), std::int32_t* status) noexcept;
 }
 
@@ -158,6 +159,40 @@ void testEqual()
     __inox_str_release(c);
 }
 
+void testCompare()
+{
+    struct Case {
+        const char* left;
+        const char* right;
+        std::int32_t order;
+        const char* what;
+    };
+    const Case cases[] = {
+        {"abc", "abc", 0, "equal strings"},
+        {"abc", "abd", -1, "first different byte decides"},
+        {"abd", "abc", 1, "first different byte decides (reversed)"},
+        {"ab", "abc", -1, "a prefix comes first"},
+        {"abc", "ab", 1, "a prefix comes first (reversed)"},
+        {"Z", "a", -1, "upper case before lower case (code points)"},
+        {"z", "\xC3\xA1", -1, "bytes compare unsigned: z before a-acute"},
+        {"\xC3\xA1", "\xC3\xA9", -1, "a-acute before e-acute"},
+    };
+    std::int32_t status = 0;
+    for (const Case& item : cases) {
+        void* left = readLine(std::string(item.left) + "\n", status);
+        void* right = readLine(std::string(item.right) + "\n", status);
+        const std::string what = std::string("compare: ") + item.what;
+        check(__inox_str_compare(left, right) == item.order, what.c_str());
+        __inox_str_release(left);
+        __inox_str_release(right);
+    }
+    void* word = readLine("a\n", status);
+    check(__inox_str_compare(__inox_str_empty(), word) == -1, "compare: \"\" comes first");
+    check(__inox_str_compare(word, word) == 0, "compare: a block equals itself");
+    check(__inox_str_compare(__inox_str_empty(), __inox_str_empty()) == 0, "compare: \"\" equals \"\"");
+    __inox_str_release(word);
+}
+
 } // namespace
 
 int main()
@@ -166,6 +201,7 @@ int main()
     testGetLn();
     testUtf8();
     testEqual();
+    testCompare();
     if (failures == 0) {
         std::printf("[PASS] inoxrt string runtime unit tests\n");
         return 0;
