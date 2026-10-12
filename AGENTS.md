@@ -6,14 +6,40 @@ This file is the operational contract for AI agents working on Inox.
 
 Use this hierarchy when modifying Inox:
 
-1. `docs/decisions/ADR-0006-inox-0.1-constitution.md` for settled 0.1 language decisions.
-2. `docs/canonical/language-reference.md` as the consolidated tutorial/reference.
-3. Topic-specific files under `docs/canonical/`.
-4. `grammar/grammar.ebnf` as the grammar mirror.
-5. `docs/site/index.html` as the human HTML manual.
-6. Examples and tests as executable evidence of implemented subsets.
+1. `docs/INOX_CANONICAL.md` (Layer A and its ADRs) for every language decision.
+   It replaced the former `docs/decisions/` and `docs/canonical/` files.
+2. `openspec/specs/` as the requirement-and-scenario mirror of the canon, one
+   capability per folder, each scenario tied to a test. A capability becomes
+   law in OpenSpec only when Marcelo Fortes approves its migration (canon G7);
+   until then the canon wins.
+3. `grammar/grammar.ebnf` as the grammar mirror.
+4. `docs/site/index.html` as the human HTML manual.
+5. Examples and tests as executable evidence of implemented subsets.
 
 If these disagree, do not invent a third behavior. Fix the documentation/code mismatch explicitly or ask for a design decision.
+
+## OpenSpec workflow (adopted 2026-10-12, canon v3.48)
+
+- Every language or compiler change starts as an OpenSpec change in
+  `openspec/changes/<name>/` (proposal, spec deltas, design, tasks), created
+  with `/opsx:propose` or `openspec new change <name>`.
+- A Layer A change is implemented only when its proposal quotes Marcelo
+  Fortes's approval with the date. Open questions stay listed in the proposal
+  until he answers them; agents implement only the approved parts.
+- Implement with `/opsx:apply`, ticking `tasks.md`. The E19 gates are the last
+  tasks of every change.
+- After the PR is merged, archive with `/opsx:archive` (or
+  `openspec archive <name> -y`), which folds the deltas into `openspec/specs/`,
+  and add the canon change-log entry as usual.
+- `openspec validate --all --strict` must pass (CI runs it). Set
+  `OPENSPEC_TELEMETRY=0`.
+- Specs describe Inox programs and diagnostics, never C++ internals; every
+  scenario names its test or says "test to add".
+- The canon is being migrated into OpenSpec (plan approved 2026-10-12,
+  `openspec/README.md`). After editing `docs/INOX_CANONICAL.md`, run
+  `python3 tools/canon_trace.py update`; CI runs `check`, which fails when a
+  canon unit is missing from `openspec/migration/CANON_MAP.md`, an archived
+  ADR is no longer verbatim, or a mirrored unit changed without its spec.
 
 ## Non-negotiable language identity
 

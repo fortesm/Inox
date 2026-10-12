@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.47 (Layer A: ADR-0017 read-only slices)
-# Last updated: 2026-10-10
+# Version: v3.51 (decision: enum printing)
+# Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
 #          "Secondary Licenses" notice.
@@ -112,6 +112,20 @@ This section defines document authority, reading order, governance, and the rule
 #       an optional style preference. New code and every code area touched by a
 #       change MUST follow the directive below. Existing legacy code is improved
 #       incrementally; broad cosmetic rewrites without tests are forbidden.
+#
+# G7. OPENSPEC CARRIES CHANGES; THIS DOCUMENT STAYS THE LAW (v3.48)
+#     - Adopted at the maintainer's request on 2026-10-12: "quero usar o
+#       OpenSpec, para gerenciar e coordenar as especificações da linguagem e
+#       do compilador".
+#     - Every change starts as an OpenSpec change (`openspec/changes/<name>/`):
+#       proposal, requirement deltas with test-backed scenarios, design and
+#       tasks. A Layer A change in a proposal still needs Marcelo Fortes's
+#       dated approval (G2); open questions stay open until he answers.
+#     - `openspec/specs/` mirrors Layer A capability by capability. This
+#       document remains authoritative; a capability moves to OpenSpec as law
+#       only by the maintainer's approval, recorded here, after which its
+#       section points to the spec. Disagreement between the two is a bug to
+#       report (G1).
 #
 # ============================================================================
 
@@ -486,6 +500,87 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.51 — 2026-10-12 — enum printing decided (Layer A, Marcelo Fortes,
+#         2026-10-12: "Resposta (a) o nome Copas"). Closes the item left open
+#         in v3.50: `PutLn(E)` and `Put(E)` print the enum literal's name as it
+#         is spelled in its declaration (`Copas` for `TNaipe (Paus, Ouros,
+#         Copas, Espadas)`); `Ord(E)` gives the ordinal. Enum literals are
+#         identifiers, never strings: `TNaipe ("Paus", ...)` is not an enum.
+#
+# v3.50 — 2026-10-12 — Layer A decisions for UInt64, Enum/Range/Set and String
+#         (Marcelo Fortes, 2026-10-12, answering item by item the open
+#         questions of the OpenSpec changes `uint64`, `enum-range-set` and
+#         `string-runtime`). Implementation follows in those changes.
+#   - UInt64: in a UInt64 context only, an integer literal may be up to
+#     2^64-1 (decimal or hex); elsewhere CANON-19's "fits Int64" stays. Unary
+#     minus on UInt64 is a compile error. A UInt64 and an Integer variable never
+#     mix without a written conversion.
+#   - Range: storing an Integer into a Range variable is checked implicitly, as
+#     for Natural (ADR-0015): new fault kind 11 "value out of range"; a
+#     constant outside is a compile error; Range arithmetic yields the base type.
+#   - Enum: `TEnum(I)` out of range is fault kind 8; a literal name belongs to
+#     one enum only; `Low(T)`/`High(T)` on enum and range types; `Succ`/`Pred`
+#     checked. OPEN: whether `PutLn(E)` prints the literal's name (asked by the
+#     maintainer; Phase A does not lower enum printing until decided).
+#   - Set: operations are functions returning a new set (`S := With(S, Club)`,
+#     `Union(A, B)`, ...); the literal `[A, B]` is accepted in a Set-typed
+#     context; a base has at most 256 values.
+#   - String: `GetLn(S)` reads a line into a String variable (invalid UTF-8 is
+#     invalid input); reference counts are non-atomic in 0.1; concatenation and
+#     length functions stay reserved; `S String` without `:=` stays an error for
+#     locals and State, while String fields without default and array elements
+#     start as `""`. For `GetLn(S)`, this ends the CANON-17 deferral of String
+#     input.
+#
+# v3.49 — 2026-10-12 — migration of this document to OpenSpec, phases 1 and 3a
+#         (plan approved by Marcelo Fortes on 2026-10-12: "Aprovo o plano de
+#         migração em fases."; "Os ADRs viram mudanças arquivadas no
+#         OpenSpec."). No Layer A rule changes; this document stays the law (G7).
+#   - Phase 1, inventory: `tools/canon_trace.py` splits this document into
+#     units that cover every line; `openspec/migration/CANON_MAP.md` records
+#     each unit's hash, status (planned, mirrored, copied, approved, duplicate,
+#     structural) and destination. CI runs `check`: an unmapped unit, an
+#     archived ADR that is no longer verbatim, or a mirrored unit changed here
+#     without its spec fails the build. After editing this document, run
+#     `tools/canon_trace.py update`.
+#   - Phase 3a: ADR-0001..ADR-0017 imported verbatim as archived OpenSpec
+#     changes (`openspec/changes/archive/<date>-adr-NNNN-*`, decision in
+#     proposal.md, rationale in design.md). Dates of ADR-0001..0006 come from
+#     git (2026-05-28 and 2026-05-31). The original ADR-0005 and ADR-0006 files,
+#     removed on 2026-06-15 when this document absorbed them, are restored
+#     verbatim from git next to them. The ADR text below is unchanged.
+#   - Duplicates found and recorded: DEV-2 and GROUP FUTURE appear twice,
+#     identical; the AGENT RULES list appears twice (same rules).
+#   - The case-statement and fixed-arrays specs now cover their canon units
+#     completely (new diagnostics `case-of-keyword`, `case-arrow-arm`,
+#     `case-when-arm`, `case-as-expression`, `array-bounds-part-of-type`,
+#     `array-literal-reserved`); the seven baseline specs now say they are
+#     mirrors, not law (one wrongly said "migrated").
+#   - Status: 255 units (this entry included); 17 copied, 3 mirrored,
+#     3 duplicate, 36 structural, 196 planned.
+#
+# v3.48 — 2026-10-12 — OpenSpec adopted for specifications and changes
+#         (governance G7, requested by Marcelo Fortes on 2026-10-12: "quero
+#         usar o OpenSpec, para gerenciar e coordenar as especificações da
+#         linguagem e do compilador"). No Layer A language rule changes.
+#   - `openspec/` (OpenSpec 1.14.1): `config.yaml` carries the Inox context and
+#     the proposal/spec/design/task rules; `.claude/` holds the `/opsx:*`
+#     commands and skills.
+#   - Baseline mirrors of Layer A, every scenario tied to an existing test:
+#     `language/case-statement` (ADR-0011, CANON-12), `language/fixed-width-
+#     integers` (CANON-8, v3.44), `language/natural` (ADR-0014, ADR-0015),
+#     `language/module-state` (CANON-5 Const and State), `language/fixed-
+#     arrays` (CANON-13 Array), `language/ref-parameters` (ADR-0016),
+#     `language/slices` (ADR-0017). This document stays the law for them (G7).
+#   - Open changes for the order approved on 2026-10-12 ("Todas as tomadas de
+#     decisão dos pontos 1 a 5 foram verificadas e eleitas para serem
+#     acatadas"): `struct-values`, `declaration-sections`, `uint64`,
+#     `enum-range-set`, `string-runtime`. Their open questions (UInt64 Q1–Q3,
+#     Enum/Range/Set Q1–Q7, String Q1–Q4) await the maintainer.
+#   - AGENTS.md truth hierarchy corrected: it still named the removed
+#     `docs/decisions/` and `docs/canonical/` files.
+#   - CI validates `openspec validate --all --strict`.
 #
 # v3.47 — 2026-10-11 — ADR-0017: read-only slices (Layer A, approved by Marcelo
 #         Fortes on 2026-10-11 with the order "Array, ref, Slice").

@@ -1,0 +1,76 @@
+## Purpose
+Enumeration types (CANON-13 Enum, CANON-5 rule 5): nominal, ordinal sets of
+named values with no implicit conversion to or from Integer.
+
+## ADDED Requirements
+
+### Requirement: Enums are nominal and ordinal
+An Enum SHALL be declared short (`TSuit (Club, Diamond, Heart, Spade)`) or
+multi-line (`TDay Enum ... ;`). Its literals SHALL have ordinals 0..N-1 in
+order. Values of one enum type SHALL compare with `=`, `#`, `<`, `<=`, `>`
+and `>=` by ordinal.
+
+#### Scenario: Ordinals and comparison
+- **WHEN** a program prints `Ord(Heart)` and compares `Club < Spade`
+- **THEN** it prints 2 and true (test to add: tests/runtime/enums.inox)
+
+#### Scenario: Both declaration forms
+- **WHEN** a program declares one short and one multi-line enum and uses both
+- **THEN** it compiles and runs (test to add: tests/runtime/enums.inox)
+
+### Requirement: No implicit Integer conversion
+An enum value SHALL NOT be used as an Integer, nor an Integer as an enum.
+`TEnum(I)` SHALL convert explicitly; a run-time I outside 0..N-1 SHALL stop the
+program and a constant one SHALL be a compile error.
+
+#### Scenario: Implicit use rejected
+- **WHEN** a program writes `X Integer := Heart` or `S TSuit := 2`
+- **THEN** the compiler rejects it (test to add: tests/diagnostics/enum-implicit-integer.inox)
+
+#### Scenario: Checked conversion
+- **WHEN** `TSuit(I)` runs with I = 4
+- **THEN** the program stops with a conversion fault (test to add: tests/runtime/enum-conversion-range.inox)
+
+### Requirement: Enum variables need an initializer
+An enum variable SHALL require an explicit initializer (strict Ada rule).
+
+#### Scenario: Missing initializer
+- **WHEN** a program declares `Suit TSuit`
+- **THEN** the compiler rejects it (test to add: tests/diagnostics/enum-without-initializer.inox)
+
+### Requirement: Enum ranges in for
+`for S in Club..Heart` SHALL iterate the literals in ordinal order.
+
+#### Scenario: Iterate a sub-range
+- **WHEN** a program prints `Ord(S)` for each S in `Diamond..Spade`
+- **THEN** it prints 1, 2, 3 (test to add: tests/runtime/enums.inox)
+
+### Requirement: A literal belongs to one enum
+The same literal name SHALL NOT appear in two enum types of a program, nor
+clash with any other visible name (case-insensitive).
+
+#### Scenario: Literal in two enums
+- **WHEN** `TSuit` and `TColor` both declare `Heart`
+- **THEN** the compiler rejects it (test to add: tests/diagnostics/enum-literal-in-two-enums.inox)
+
+### Requirement: Low, High, Succ and Pred
+`Low(T)` and `High(T)` SHALL give the first and last literal of an enum type
+T. `Succ(E)` and `Pred(E)` SHALL give the next and previous literal; past the
+last or before the first they SHALL stop the program (a constant case SHALL be
+a compile error).
+
+#### Scenario: Walking an enum
+- **WHEN** a program prints `Ord(Low(TSuit))`, `Ord(High(TSuit))` and `Ord(Succ(Club))`
+- **THEN** it prints 0, 3 and 1 (test to add: tests/runtime/enums.inox)
+
+#### Scenario: Past the last literal
+- **WHEN** `Succ(S)` runs with S = Spade
+- **THEN** the program stops with a range fault (test to add: tests/runtime/enum-succ-past-end.inox)
+
+### Requirement: Printing an enum prints its name
+`Put(E)` and `PutLn(E)` SHALL print the literal's name as spelled in the enum
+declaration; `Ord(E)` SHALL give its ordinal.
+
+#### Scenario: Name and ordinal
+- **WHEN** `Naipe TNaipe := Copas` with `TNaipe (Paus, Ouros, Copas, Espadas)` and the program runs `PutLn(Naipe)` and `PutLn(Ord(Naipe))`
+- **THEN** it prints `Copas` and `2` (test to add: tests/runtime/enums.inox)
