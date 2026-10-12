@@ -9,8 +9,8 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.47 (Layer A: ADR-0017 read-only slices)
-# Last updated: 2026-10-10
+# Version: v3.48 (governance G7: OpenSpec workflow)
+# Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
 #          "Secondary Licenses" notice.
@@ -112,6 +112,20 @@ This section defines document authority, reading order, governance, and the rule
 #       an optional style preference. New code and every code area touched by a
 #       change MUST follow the directive below. Existing legacy code is improved
 #       incrementally; broad cosmetic rewrites without tests are forbidden.
+#
+# G7. OPENSPEC CARRIES CHANGES; THIS DOCUMENT STAYS THE LAW (v3.48)
+#     - Adopted at the maintainer's request on 2026-10-12: "quero usar o
+#       OpenSpec, para gerenciar e coordenar as especificações da linguagem e
+#       do compilador".
+#     - Every change starts as an OpenSpec change (`openspec/changes/<name>/`):
+#       proposal, requirement deltas with test-backed scenarios, design and
+#       tasks. A Layer A change in a proposal still needs Marcelo Fortes's
+#       dated approval (G2); open questions stay open until he answers.
+#     - `openspec/specs/` mirrors Layer A capability by capability. This
+#       document remains authoritative; a capability moves to OpenSpec as law
+#       only by the maintainer's approval, recorded here, after which its
+#       section points to the spec. Disagreement between the two is a bug to
+#       report (G1).
 #
 # ============================================================================
 
@@ -486,6 +500,28 @@ specification, ADRs, manual HTML, and tests.
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# v3.48 — 2026-10-12 — OpenSpec adopted for specifications and changes
+#         (governance G7, requested by Marcelo Fortes on 2026-10-12: "quero
+#         usar o OpenSpec, para gerenciar e coordenar as especificações da
+#         linguagem e do compilador"). No Layer A language rule changes.
+#   - `openspec/` (OpenSpec 1.14.1): `config.yaml` carries the Inox context and
+#     the proposal/spec/design/task rules; `.claude/` holds the `/opsx:*`
+#     commands and skills.
+#   - Baseline mirrors of Layer A, every scenario tied to an existing test:
+#     `language/case-statement` (ADR-0011, CANON-12), `language/fixed-width-
+#     integers` (CANON-8, v3.44), `language/natural` (ADR-0014, ADR-0015),
+#     `language/module-state` (CANON-5 Const and State), `language/fixed-
+#     arrays` (CANON-13 Array), `language/ref-parameters` (ADR-0016),
+#     `language/slices` (ADR-0017). This document stays the law for them (G7).
+#   - Open changes for the order approved on 2026-10-12 ("Todas as tomadas de
+#     decisão dos pontos 1 a 5 foram verificadas e eleitas para serem
+#     acatadas"): `struct-values`, `declaration-sections`, `uint64`,
+#     `enum-range-set`, `string-runtime`. Their open questions (UInt64 Q1–Q3,
+#     Enum/Range/Set Q1–Q7, String Q1–Q4) await the maintainer.
+#   - AGENTS.md truth hierarchy corrected: it still named the removed
+#     `docs/decisions/` and `docs/canonical/` files.
+#   - CI validates `openspec validate --all --strict`.
 #
 # v3.47 — 2026-10-11 — ADR-0017: read-only slices (Layer A, approved by Marcelo
 #         Fortes on 2026-10-11 with the order "Array, ref, Slice").

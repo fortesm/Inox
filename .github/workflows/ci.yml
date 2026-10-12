@@ -39,6 +39,13 @@ jobs:
         run: python3 tools/backend_gaps.py build/linux-clang-debug/inox
       - name: Exception state lifetime (every captured state released)
         run: python3 tools/eh_state_balance.py build/linux-clang-debug/inox
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: OpenSpec (specs and changes valid)
+        env:
+          OPENSPEC_TELEMETRY: '0'
+        run: npx -y @fission-ai/openspec@1.14.1 validate --all --strict --no-interactive
 
   windows:
     name: Windows (clang, MSVC ABI, Debug)

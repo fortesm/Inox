@@ -30,6 +30,7 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - `Natural` is the non-negative subtype of `Integer` (0..Int64.Max, ADR-0014). As in Ada, storing an Integer into a Natural checks the range at run time with no conversion written (ADR-0015); a negative constant is a compile error.
 - `Byte` is registered as `UInt8`; integer conversions such as `Byte(300)` or `Int8(-129)` with an out-of-range constant are compile errors.
 - `grammar/grammar.ebnf` rebuilt from the canon, checked by `tools/grammar_consistency.py`.
+- OpenSpec workflow (canon v3.48, G7): `openspec/specs/` mirrors seven language capabilities with test-backed scenarios; `openspec/changes/` holds the proposals for struct values, declaration sections, UInt64, Enum/Range/Set and the String runtime; CI runs `openspec validate --all --strict`.
 
 ### Changed
 - Example files no longer carry the `llvm-` prefix (`examples/put-output-basic.inox`, ...).
