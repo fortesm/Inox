@@ -1,0 +1,3 @@
+[boa]
+Inox runtime error: invalid UTF-8 input
+inox: program stopped by an Inox runtime error (exit code 70)

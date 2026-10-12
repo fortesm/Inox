@@ -36,6 +36,7 @@ set(INOX_COMPILER_SOURCES
 
 add_library(inoxrt STATIC
     runtime/ExceptionRuntime.cpp
+    runtime/StringRuntime.cpp
 )
 
 inox_apply_compiler_options(inoxrt)
@@ -52,6 +53,21 @@ if(CMAKE_CXX_COMPILER_TARGET MATCHES "msvc" OR MSVC OR CMAKE_CXX_SIMULATE_ID STR
     set_property(TARGET inoxrt PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     target_compile_options(inoxrt PRIVATE -U_DEBUG)
     target_compile_definitions(inoxrt PRIVATE _ITERATOR_DEBUG_LEVEL=0)
+endif()
+
+# Unit tests of the runtime library, run by scripts/run-tests.sh and
+# scripts/run-tests.ps1 when found next to the compiler.
+add_executable(inoxrt-tests tests/runtime-unit/StringRuntimeTests.cpp)
+target_link_libraries(inoxrt-tests PRIVATE inoxrt)
+inox_apply_compiler_options(inoxrt-tests)
+inox_apply_warnings(inoxrt-tests)
+inox_apply_sanitizers(inoxrt-tests)
+if(CMAKE_CXX_COMPILER_TARGET MATCHES "msvc" OR MSVC OR CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC" OR
+   (WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+    # Same C runtime as inoxrt, which it links.
+    set_property(TARGET inoxrt-tests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+    target_compile_options(inoxrt-tests PRIVATE -U_DEBUG)
+    target_compile_definitions(inoxrt-tests PRIVATE _ITERATOR_DEBUG_LEVEL=0)
 endif()
 
 add_executable(inox ${INOX_COMPILER_SOURCES})

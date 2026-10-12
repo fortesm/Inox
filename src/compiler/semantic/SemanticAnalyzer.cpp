@@ -732,6 +732,17 @@ void SemanticAnalyzer::validateStructFieldDefault(const std::string& fieldName,
                                                   const std::string& fieldType,
                                                   const std::string& defaultValue) const
 {
+    const bool quoted = defaultValue.size() >= 2 && defaultValue.front() == '"' && defaultValue.back() == '"';
+    if (equalsIgnoreCase(fieldType, "String") || quoted) {
+        if (!equalsIgnoreCase(fieldType, "String")) {
+            throw SemanticError("a String literal cannot be the default of struct field " + fieldName +
+                                " of type " + fieldType);
+        }
+        if (!quoted) {
+            throw SemanticError("String struct field default must be a String literal: " + fieldName);
+        }
+        return;
+    }
     const bool negative = !defaultValue.empty() && defaultValue.front() == '-';
     const std::string_view magnitudeText = negative ? std::string_view(defaultValue).substr(1)
                                                     : std::string_view(defaultValue);
@@ -2603,9 +2614,17 @@ std::string SemanticAnalyzer::analyzeInputCall(
             !symbol.isMutable) {
             throw SemanticError(std::string(name) + " argument must be an assignable variable: " + identifier.name());
         }
+        // CANON-17 (v3.50): GetLn(S) reads the rest of the line into a String.
+        if (canonicalTypeName(symbol.typeName) == "String") {
+            if (!equalsIgnoreCase(name, "GetLn")) {
+                throw SemanticError("Get reads Integer values; use GetLn(" + identifier.name() +
+                                    ") to read a line of text into a String");
+            }
+            continue;
+        }
         if (!isIntegerType(symbol.typeName)) {
             throw SemanticError(
-                std::string(name) + " currently supports only Integer/Int64 input, got " +
+                std::string(name) + " currently supports only Integer/Int64 and String input, got " +
                 symbol.typeName + " for " + identifier.name());
         }
     }
@@ -3322,9 +3341,9 @@ std::string SemanticAnalyzer::canonicalArrayTypeName(std::string_view name) cons
         resolveTypeOrThrow(parts->element);
         element = canonicalTypeName(parts->element);
         const bool isStruct = structs_.find(normalizeName(element)) != structs_.end();
-        if (!isNumericType(element) && element != "Bool" && !isStruct) {
+        if (!isNumericType(element) && element != "Bool" && element != "String" && !isStruct) {
             throw SemanticError("array elements of type " + element +
-                                " are not supported yet; use an integer, Float, Bool or struct element");
+                                " are not supported yet; use an integer, Float, Bool, String or struct element");
         }
     }
     return support::makeArrayTypeName(std::to_string(low), std::to_string(high), element);

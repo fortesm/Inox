@@ -380,10 +380,13 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
     const std::string llvmIr = inox::compiler::codegen::LlvmIrEmitter().emit(module, semantics);
     writeFile(artifacts.llvmIr, llvmIr);
 
-    const bool usesExceptionRuntime = llvmIr.find("declare void @__inox_raise(i64)") != std::string::npos;
+    // libinoxrt holds the exception transport and the String runtime; a
+    // program that compares two String literals needs it without raising.
+    const bool usesExceptionRuntime = llvmIr.find("declare void @__inox_raise(i64)") != std::string::npos ||
+                                      llvmIr.find("@__inox_str_") != std::string::npos;
     if (usesExceptionRuntime && !clangxxExists()) {
         throw std::runtime_error(
-            "clang++ was not found; exception-enabled Inox programs currently require the C++ ABI runtime");
+            "clang++ was not found; Inox programs that use exceptions or Strings currently require the C++ ABI runtime");
     }
 
     std::vector<std::string> clangArgs{

@@ -13,6 +13,7 @@
 #include <cctype>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -109,6 +110,143 @@ bool statementContainsTry(const ast::Statement& statement)
 bool functionContainsTry(const ast::FunctionDeclaration& function)
 {
     return statementsContainTry(function.body());
+}
+
+// Visits every statement of a body, nested bodies included (try, handlers,
+// ensure, loops, case arms, with).
+void forEachStatement(const std::vector<ast::StatementPtr>& statements,
+                      const std::function<void(const ast::Statement&)>& visit)
+{
+    for (const auto& statement : statements) {
+        visit(*statement);
+        switch (statement->kind()) {
+        case ast::AstNodeKind::BlockStatement:
+            forEachStatement(static_cast<const ast::BlockStatement&>(*statement).statements(), visit);
+            break;
+        case ast::AstNodeKind::VarBlockStatement:
+            forEachStatement(static_cast<const ast::VarBlockStatement&>(*statement).declarations(), visit);
+            break;
+        case ast::AstNodeKind::IfStatement: {
+            const auto& node = static_cast<const ast::IfStatement&>(*statement);
+            forEachStatement(node.thenBody(), visit);
+            for (const auto& clause : node.elseIfClauses()) forEachStatement(clause.body, visit);
+            forEachStatement(node.elseBody(), visit);
+            break;
+        }
+        case ast::AstNodeKind::UnlessStatement:
+            forEachStatement(static_cast<const ast::UnlessStatement&>(*statement).body(), visit);
+            break;
+        case ast::AstNodeKind::WhileStatement:
+            forEachStatement(static_cast<const ast::WhileStatement&>(*statement).body(), visit);
+            break;
+        case ast::AstNodeKind::RepeatStatement:
+            forEachStatement(static_cast<const ast::RepeatStatement&>(*statement).body(), visit);
+            break;
+        case ast::AstNodeKind::ForInStatement:
+            forEachStatement(static_cast<const ast::ForInStatement&>(*statement).body(), visit);
+            break;
+        case ast::AstNodeKind::CaseStatement: {
+            const auto& node = static_cast<const ast::CaseStatement&>(*statement);
+            for (const auto& arm : node.arms()) forEachStatement(arm.body, visit);
+            forEachStatement(node.otherwiseBody(), visit);
+            break;
+        }
+        case ast::AstNodeKind::TryStatement: {
+            const auto& node = static_cast<const ast::TryStatement&>(*statement);
+            forEachStatement(node.body(), visit);
+            forEachStatement(node.exceptBody(), visit);
+            for (const auto& handler : node.handlers()) forEachStatement(handler.body, visit);
+            forEachStatement(node.elseBody(), visit);
+            forEachStatement(node.ensureBody(), visit);
+            break;
+        }
+        case ast::AstNodeKind::WithStatement:
+            forEachStatement(static_cast<const ast::WithStatement&>(*statement).body(), visit);
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+void forEachSubExpression(const ast::Expression& expression,
+                          const std::function<void(const ast::Expression&)>& visit)
+{
+    visit(expression);
+    switch (expression.kind()) {
+    case ast::AstNodeKind::BinaryExpression: {
+        const auto& node = static_cast<const ast::BinaryExpression&>(expression);
+        forEachSubExpression(node.left(), visit);
+        forEachSubExpression(node.right(), visit);
+        break;
+    }
+    case ast::AstNodeKind::UnaryExpression:
+        forEachSubExpression(static_cast<const ast::UnaryExpression&>(expression).operand(), visit);
+        break;
+    case ast::AstNodeKind::CallExpression: {
+        const auto& node = static_cast<const ast::CallExpression&>(expression);
+        forEachSubExpression(node.callee(), visit);
+        for (const auto& argument : node.arguments()) forEachSubExpression(*argument, visit);
+        break;
+    }
+    case ast::AstNodeKind::ConditionalExpression: {
+        const auto& node = static_cast<const ast::ConditionalExpression&>(expression);
+        forEachSubExpression(node.condition(), visit);
+        forEachSubExpression(node.thenValue(), visit);
+        forEachSubExpression(node.elseValue(), visit);
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+// The expressions a statement evaluates itself (not those of nested bodies).
+void forEachExpressionOf(const ast::Statement& statement,
+                         const std::function<void(const ast::Expression&)>& visit)
+{
+    switch (statement.kind()) {
+    case ast::AstNodeKind::VarStatement:
+        if (const ast::Expression* initializer = static_cast<const ast::VarStatement&>(statement).initializer()) {
+            forEachSubExpression(*initializer, visit);
+        }
+        break;
+    case ast::AstNodeKind::ExpressionStatement:
+        forEachSubExpression(static_cast<const ast::ExpressionStatement&>(statement).expression(), visit);
+        break;
+    case ast::AstNodeKind::IfStatement: {
+        const auto& node = static_cast<const ast::IfStatement&>(statement);
+        forEachSubExpression(node.condition(), visit);
+        for (const auto& clause : node.elseIfClauses()) forEachSubExpression(*clause.condition, visit);
+        break;
+    }
+    case ast::AstNodeKind::UnlessStatement:
+        forEachSubExpression(static_cast<const ast::UnlessStatement&>(statement).condition(), visit);
+        break;
+    case ast::AstNodeKind::WhileStatement:
+        forEachSubExpression(static_cast<const ast::WhileStatement&>(statement).condition(), visit);
+        break;
+    case ast::AstNodeKind::UntilStatement:
+        forEachSubExpression(static_cast<const ast::UntilStatement&>(statement).condition(), visit);
+        break;
+    case ast::AstNodeKind::ForInStatement: {
+        const auto& node = static_cast<const ast::ForInStatement&>(statement);
+        forEachSubExpression(node.iterable(), visit);
+        if (node.step() != nullptr) forEachSubExpression(*node.step(), visit);
+        break;
+    }
+    case ast::AstNodeKind::CaseStatement:
+        forEachSubExpression(static_cast<const ast::CaseStatement&>(statement).expression(), visit);
+        break;
+    case ast::AstNodeKind::ReturnStatement:
+        forEachSubExpression(static_cast<const ast::ReturnStatement&>(statement).expression(), visit);
+        break;
+    case ast::AstNodeKind::WithStatement:
+        forEachSubExpression(static_cast<const ast::WithStatement&>(statement).target(), visit);
+        break;
+    default:
+        break;
+    }
 }
 
 bool statementUsesExceptions(const ast::Statement& statement)
@@ -312,6 +450,7 @@ struct FunctionSignature {
     std::string llvmName;
     std::string llvmReturnType;
     std::vector<FunctionParameter> parameters;
+    std::string returnInoxType;  // canonical Inox type of the result, or empty
 };
 
 using FunctionSignatures =
@@ -391,6 +530,11 @@ std::string llvmTypeForScalar(std::string_view inoxType)
     }
     if (equalsIgnoreCase(inoxType, "Float32")) {
         return "float";
+    }
+    // CANON-14: a String is a pointer to an immutable, reference-counted
+    // block of the runtime (StringRuntime.cpp).
+    if (equalsIgnoreCase(inoxType, "String")) {
+        return "ptr";
     }
     return {};
 }
@@ -698,6 +842,14 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
     }
 
     std::string llvmReturnType;
+    std::string returnInoxType;
+    if (index + 1 == tokens.size()) {
+        returnInoxType = support::isArrayTypeName(tokens[index]) ? semantics.canonicalTypeName(tokens[index])
+                                                                  : tokens[index];
+        if (const StructDefinition* structType = findStruct(structs, returnInoxType)) {
+            returnInoxType = structType->inoxName;
+        }
+    }
     if (index == tokens.size()) {
         llvmReturnType = "void";
     } else if (index + 1 != tokens.size()) {
@@ -717,7 +869,8 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
     return FunctionSignature{
         "inox_" + normalize(function.name()),
         std::move(llvmReturnType),
-        std::move(parameters)};
+        std::move(parameters),
+        std::move(returnInoxType)};
 }
 
 // A module `State` variable (CANON-5): a module-level LLVM global, zero at
@@ -804,7 +957,46 @@ public:
         }
     }
 
+    // Whether the routine got a String cleanup pad (it needs a personality).
+    bool usesStringCleanup() const
+    {
+        return ownsStrings_;
+    }
+
     void emit()
+    {
+        ownsStrings_ = scanOwnsStrings();
+        if (!ownsStrings_) {
+            emitBody();
+            return;
+        }
+        // One cleanup pad for the whole routine: an exception that leaves it
+        // is captured, the owned Strings are released, and it is rethrown
+        // (the capture/rethrow lowering of try/ensure, on both ABIs).
+        const std::string pad = "str.cleanup";
+        const std::string stateSlot = "%str.cleanup.state";
+        output_ << "  " << stateSlot << " = alloca ptr\n";
+        if (signature_.llvmName == "main") {
+            for (const StateGlobal& state : stateGlobals_) {
+                if (typeOwnsStrings(state.inoxType)) {
+                    registerOwnedSlot(stateGlobalSymbol(state.name), state.inoxType, state.llvmType, false);
+                }
+            }
+        }
+        unwindTargets_.push_back(pad);
+        emitBody();
+        unwindTargets_.pop_back();
+        output_ << "\n";
+        emitExceptionCapture(pad, stateSlot, "str.cleanup.release");
+        output_ << "str.cleanup.release:\n";
+        emitReleaseOwnedSlots();
+        const std::string state = "%str.cleanup.rethrow" + std::to_string(nextTemporary_++);
+        output_ << "  " << state << " = load ptr, ptr " << stateSlot << "\n";
+        output_ << "  call void @__inox_exception_rethrow(ptr " << state << ")\n";
+        output_ << "  unreachable\n";
+    }
+
+    void emitBody()
     {
         if (signature_.llvmName == "main") {
             // State is initialized in source order before Main's body: an
@@ -813,7 +1005,8 @@ public:
                 const std::string global = stateGlobalSymbol(state.name);
                 if (state.initializer != nullptr) {
                     const std::string value = emitExpression(*state.initializer);
-                    output_ << "  store " << state.llvmType << ' ' << value << ", ptr " << global << '\n';
+                    emitOwningStore(global, state.inoxType, state.llvmType, value);
+                    flushStatementTemporaries();
                 } else if (const StructDefinition* structType = findStruct(structs_, state.inoxType)) {
                     emitStructDefaults(global, *structType);
                 } else {
@@ -825,6 +1018,7 @@ public:
             for (const auto& statement : function_.body()) {
                 emitStatement(*statement);
             }
+            emitReleaseOwnedSlots();
             if (signature_.llvmReturnType == "i32") {
                 output_ << "  ret i32 0\n";
             } else {
@@ -858,10 +1052,7 @@ public:
             emitStatement(*function_.body()[index]);
         }
 
-        const auto& returnStatement =
-            static_cast<const ast::ReturnStatement&>(*function_.body().back());
-        const std::string value = emitExpression(returnStatement.expression());
-        output_ << "  ret " << signature_.llvmReturnType << ' ' << value << '\n';
+        emitReturn(static_cast<const ast::ReturnStatement&>(*function_.body().back()));
     }
 
 private:
@@ -969,6 +1160,7 @@ private:
     void emitReturn(const ast::ReturnStatement& statement)
     {
         const std::string value = emitExpression(statement.expression());
+        emitRetainResult(value);
         emitReleaseHandlersLeftBy(0);
         if (!cleanupContexts_.empty()) {
             if (returnValueSlot_.empty()) {
@@ -981,6 +1173,7 @@ private:
             output_ << "\n" << dead << ":\n";
             return;
         }
+        emitReleaseOwnedSlots();
         output_ << "  ret " << signature_.llvmReturnType << ' ' << value << '\n';
     }
 
@@ -993,6 +1186,7 @@ private:
             output_ << "\n" << dead << ":\n";
             return;
         }
+        emitReleaseOwnedSlots();
         if (signature_.llvmReturnType == "i32") {
             output_ << "  ret i32 0\n";
         } else if (signature_.llvmReturnType == "void") {
@@ -1922,6 +2116,7 @@ private:
                     const std::string returnValue = "%eh.return.value" + std::to_string(nextTemporary_++);
                     output_ << "  " << returnValue << " = load " << signature_.llvmReturnType
                             << ", ptr " << returnValueSlot_ << "\n";
+                    emitReleaseOwnedSlots();
                     output_ << "  ret " << signature_.llvmReturnType << " " << returnValue << "\n\n";
                 }
             }
@@ -1931,8 +2126,10 @@ private:
                 if (!outerExitRequest.empty()) {
                     output_ << "  br label %" << outerExitRequest << "\n\n";
                 } else if (signature_.llvmReturnType == "i32") {
+                    emitReleaseOwnedSlots();
                     output_ << "  ret i32 0\n\n";
                 } else {
+                    emitReleaseOwnedSlots();
                     output_ << "  ret void\n\n";
                 }
             }
@@ -1977,7 +2174,16 @@ private:
         output_ << continueLabel << ":\n";
     }
 
+    // Every statement releases the String temporaries it created.
     void emitStatement(const ast::Statement& statement)
+    {
+        ++statementDepth_;
+        emitStatementKind(statement);
+        flushStatementTemporaries();
+        --statementDepth_;
+    }
+
+    void emitStatementKind(const ast::Statement& statement)
     {
         if (statement.kind() == ast::AstNodeKind::VarStatement) {
             const auto& variable = static_cast<const ast::VarStatement&>(statement);
@@ -2148,12 +2354,16 @@ private:
         const std::string semanticType = semanticTypeName(initializer);
         const bool aggregate = findStruct(structs_, semanticType) != nullptr || arrayLayout(semanticType);
         const std::string inoxType = aggregate ? semanticType :
+                                    isStringType(semanticType) ? "String" :
                                     llvmType == "double" ? "Float64" :
                                     llvmType == "i1" ? "Bool" : "Integer";
         const std::string slot = newSlot(normalizedName);
         output_ << "  " << slot << " = alloca " << llvmType << "\n";
+        if (typeOwnsStrings(inoxType)) {
+            registerOwnedSlot(slot, inoxType, llvmType);
+        }
         const std::string value = emitExpression(initializer);
-        output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
+        emitOwningStore(slot, inoxType, llvmType, value);
         locals_.insert_or_assign(normalizedName, LocalInfo{slot, inoxType, llvmType});
     }
 
@@ -2172,14 +2382,23 @@ private:
         const std::string normalizedName = normalize(name);
         const std::string slot = newSlot(normalizedName);
         output_ << "  " << slot << " = alloca " << llvmType << "\n";
+        const bool owned = typeOwnsStrings(typeName);
+        if (owned) {
+            // A declaration that runs again (in a loop) first releases the
+            // value of the previous run.
+            registerOwnedSlot(slot, typeName, llvmType);
+        }
 
         if (const StructDefinition* structType = findStruct(structs_, typeName)) {
             // CANON-9: `Q T := Expr` copies the value; `P T` takes the type's
             // field defaults (rule 4).
             if (initializer != nullptr) {
                 const std::string value = emitExpression(*initializer);
-                output_ << "  store " << structType->llvmName << ' ' << value << ", ptr " << slot << '\n';
+                emitOwningStore(slot, typeName, structType->llvmName, value);
             } else {
+                if (owned) {
+                    emitReleaseAt(slot, typeName);
+                }
                 emitStructDefaults(slot, *structType);
             }
             locals_.insert_or_assign(normalizedName,
@@ -2190,9 +2409,13 @@ private:
         if (support::isArrayTypeName(typeName)) {
             // CANON-13: an array is a value; without an initializer every
             // element is its type's zero, or its struct type's defaults.
-            const std::string value = initializer != nullptr ? emitExpression(*initializer) : "zeroinitializer";
-            output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
-            if (initializer == nullptr) {
+            if (initializer != nullptr) {
+                emitOwningStore(slot, typeName, llvmType, emitExpression(*initializer));
+            } else {
+                if (owned) {
+                    emitReleaseAt(slot, typeName);
+                }
+                output_ << "  store " << llvmType << " zeroinitializer, ptr " << slot << '\n';
                 emitArrayElementDefaults(slot, typeName);
             }
             locals_.insert_or_assign(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
@@ -2204,7 +2427,7 @@ private:
         // valid there.
         const std::string zero = isFloatLlvmType(llvmType) ? "0.0" : "0";
         const std::string value = initializer != nullptr ? emitExpression(*initializer) : zero;
-        output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
+        emitOwningStore(slot, typeName, llvmType, value);
         locals_.insert_or_assign(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
     }
 
@@ -2359,6 +2582,9 @@ private:
                     << " unwind label %" << currentUnwindTarget() << "\n\n";
             output_ << continuation << ":\n";
         }
+        if (!result.empty() && typeOwnsStrings(signature.returnInoxType)) {
+            holdOwnedResult(result, signature.returnInoxType, signature.llvmReturnType);
+        }
         return result;
     }
 
@@ -2405,13 +2631,52 @@ private:
             throw CodegenError("Get/GetLn calls with parentheses require at least one argument");
         }
 
+        bool lastReadLine = false;
         for (const auto& argument : arguments) {
-            emitInputReadInteger(*argument);
+            lastReadLine = isStringType(semanticTypeName(*argument));
+            if (lastReadLine) {
+                emitInputReadLine(*argument);
+            } else {
+                emitInputReadInteger(*argument);
+            }
         }
 
-        if (consumeRestOfLine) {
+        // A String argument already consumed the rest of its line.
+        if (consumeRestOfLine && !lastReadLine) {
             emitInputDiscardLine();
         }
+    }
+
+    // CANON-17 (v3.50): GetLn(S) reads the rest of the line, without its line
+    // end, through the program's getchar (StringRuntime.cpp). Invalid UTF-8 and
+    // allocation failure are runtime faults 13 and 12.
+    void emitInputReadLine(const ast::Expression& argument)
+    {
+        const auto& identifier = static_cast<const ast::IdentifierExpression&>(argument);
+        const auto local = locals_.find(normalize(identifier.name()));
+        if (local == locals_.end()) {
+            throw CodegenUnsupported("GetLn LLVM emission currently supports only local or State variables");
+        }
+        requireStringRuntime();
+        requireModuleLine("declare ptr @__inox_str_getln(ptr, ptr) nounwind");
+        const std::string status = "%getln.status" + std::to_string(nextTemporary_++);
+        const std::string line = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string code = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string label = std::to_string(nextLabel_++);
+        output_ << "  " << status << " = alloca i32\n";
+        output_ << "  " << line << " = call ptr @__inox_str_getln(ptr @getchar, ptr " << status << ")\n";
+        output_ << "  " << code << " = load i32, ptr " << status << '\n';
+        output_ << "  switch i32 " << code << ", label %getln.ok" << label << " [\n"
+                << "    i32 1, label %getln.utf8" << label << "\n"
+                << "    i32 2, label %getln.memory" << label << "\n  ]\n\n";
+        output_ << "getln.utf8" << label << ":\n  call void @__inox_arith_fault(i32 13)\n  unreachable\n\n";
+        output_ << "getln.memory" << label << ":\n  call void @__inox_arith_fault(i32 12)\n  unreachable\n\n";
+        output_ << "getln.ok" << label << ":\n";
+        // The line is owned (+1): it replaces the old value without a retain.
+        const std::string old = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << old << " = load ptr, ptr " << local->second.slot << '\n';
+        output_ << "  store ptr " << line << ", ptr " << local->second.slot << '\n';
+        output_ << "  call void @__inox_str_release(ptr " << old << ")\n";
     }
 
     void emitInputReadInteger(const ast::Expression& argument)
@@ -2472,6 +2737,25 @@ private:
             }
         }
 
+        if (isStringType(semanticTypeName(argument))) {
+            // The bytes of the block, printed by the program's printf so the
+            // output stays in order with every other Put (StringRuntime.cpp).
+            requireModuleLine("@.inox.fmt.strv = private unnamed_addr constant [5 x i8] c\"%.*s\\00\"");
+            requireModuleLine("@.inox.fmt.strv.nl = private unnamed_addr constant [6 x i8] c\"%.*s\\0A\\00\"");
+            const std::string value = emitExpression(argument);
+            const std::string lengthPointer = "%tmp" + std::to_string(nextTemporary_++);
+            const std::string length = "%tmp" + std::to_string(nextTemporary_++);
+            const std::string length32 = "%tmp" + std::to_string(nextTemporary_++);
+            const std::string bytes = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << lengthPointer << " = getelementptr { i64, i64 }, ptr " << value << ", i32 0, i32 1\n";
+            output_ << "  " << length << " = load i64, ptr " << lengthPointer << '\n';
+            output_ << "  " << length32 << " = trunc i64 " << length << " to i32\n";
+            output_ << "  " << bytes << " = getelementptr i8, ptr " << value << ", i64 16\n";
+            output_ << "  call i32 (ptr, ...) @printf(ptr " << (newline ? "@.inox.fmt.strv.nl" : "@.inox.fmt.strv")
+                    << ", i32 " << length32 << ", ptr " << bytes << ")\n";
+            return;
+        }
+
         if (isBoolExpression(argument)) {
             const std::string value = emitExpression(argument);
             const std::string selected = "%tmp" + std::to_string(nextTemporary_++);
@@ -2530,19 +2814,300 @@ private:
         return expressionLlvmType(expression) == "i1";
     }
 
+    // ---- String ownership (CANON-14, OpenSpec change string-runtime) ----
+    // Every String expression yields a borrowed pointer, valid until the end
+    // of its statement. Owned storage (variables, fields, elements, State,
+    // statement temporaries) holds one reference each; a routine releases its
+    // owned slots at every exit and, on an exception, in one cleanup pad.
+
+    static bool isStringType(std::string_view inoxType)
+    {
+        return equalsIgnoreCase(inoxType, "String");
+    }
+
+    bool typeOwnsStrings(std::string_view inoxType) const
+    {
+        if (isStringType(inoxType)) {
+            return true;
+        }
+        if (const auto layout = arrayLayout(inoxType)) {
+            return typeOwnsStrings(layout->elementType);
+        }
+        if (const StructDefinition* structType = findStruct(structs_, inoxType)) {
+            for (const StructFieldInfo& field : structType->fields) {
+                if (typeOwnsStrings(field.inoxType)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    void requireModuleLine(const std::string& line)
+    {
+        if (std::find(stringGlobals_.begin(), stringGlobals_.end(), line) == stringGlobals_.end()) {
+            stringGlobals_.push_back(line);
+        }
+    }
+
+    void requireStringRuntime()
+    {
+        requireModuleLine("declare void @__inox_str_retain(ptr) nounwind");
+        requireModuleLine("declare void @__inox_str_release(ptr) nounwind");
+    }
+
+    // The shared immortal "" of this module.
+    std::string emptyStringValue()
+    {
+        requireModuleLine("@.inox.strv.empty = private unnamed_addr constant { i64, i64, [1 x i8] } "
+                          "{ i64 -1, i64 0, [1 x i8] zeroinitializer }");
+        return "@.inox.strv.empty";
+    }
+
+    // A String literal as a value: an immortal block in the module.
+    std::string emitStringValue(std::string_view text)
+    {
+        const LlvmStringConstant constant = llvmStringConstant(text);
+        if (constant.size == 1) {
+            return emptyStringValue();
+        }
+        const std::string name = "@.inox.strv." + std::to_string(nextStringLiteral_++);
+        std::ostringstream global;
+        global << name << " = private unnamed_addr constant { i64, i64, [" << constant.size
+               << " x i8] } { i64 -1, i64 " << constant.size - 1 << ", [" << constant.size
+               << " x i8] c\"" << constant.bytes << "\" }";
+        stringGlobals_.push_back(global.str());
+        return name;
+    }
+
+    // Calls `action` with the address of every String inside a value of
+    // `inoxType` stored at `pointer`: the value itself, struct fields and
+    // array elements, recursively.
+    void forEachStringAt(const std::string& pointer, std::string_view inoxType,
+                         const std::function<void(const std::string&)>& action)
+    {
+        if (isStringType(inoxType)) {
+            action(pointer);
+            return;
+        }
+        if (const StructDefinition* structType = findStruct(structs_, inoxType)) {
+            for (const StructFieldInfo& field : structType->fields) {
+                if (!typeOwnsStrings(field.inoxType)) {
+                    continue;
+                }
+                const std::string fieldPointer = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << fieldPointer << " = getelementptr " << structType->llvmName << ", ptr "
+                        << pointer << ", i32 0, i32 " << field.index << '\n';
+                forEachStringAt(fieldPointer, field.inoxType, action);
+            }
+            return;
+        }
+        std::optional<ArrayLayout> layout = arrayLayout(inoxType);
+        if (!layout) {
+            return;
+        }
+        std::int64_t count = 1;
+        std::string element;
+        while (layout) {
+            count *= layout->high - layout->low + 1;
+            element = layout->elementType;
+            layout = arrayLayout(element);
+        }
+        if (!typeOwnsStrings(element)) {
+            return;
+        }
+        const std::string storage = llvmTypeForInoxType(element, structs_);
+        const std::string label = std::to_string(nextLabel_++);
+        const std::string counter = "%strwalk.i" + label;
+        output_ << "  " << counter << " = alloca i64\n";
+        output_ << "  store i64 0, ptr " << counter << '\n';
+        output_ << "  br label %strwalk.cond" << label << "\n\n";
+        output_ << "strwalk.cond" << label << ":\n";
+        const std::string index = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string more = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << index << " = load i64, ptr " << counter << '\n';
+        output_ << "  " << more << " = icmp slt i64 " << index << ", " << count << '\n';
+        output_ << "  br i1 " << more << ", label %strwalk.body" << label << ", label %strwalk.end" << label
+                << "\n\n";
+        output_ << "strwalk.body" << label << ":\n";
+        const std::string elementPointer = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << elementPointer << " = getelementptr inbounds " << storage << ", ptr " << pointer
+                << ", i64 " << index << '\n';
+        forEachStringAt(elementPointer, element, action);
+        const std::string next = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << next << " = add i64 " << index << ", 1\n";
+        output_ << "  store i64 " << next << ", ptr " << counter << '\n';
+        output_ << "  br label %strwalk.cond" << label << "\n\n";
+        output_ << "strwalk.end" << label << ":\n";
+    }
+
+    void emitStringCallAt(const std::string& pointer, std::string_view inoxType, std::string_view function)
+    {
+        requireStringRuntime();
+        forEachStringAt(pointer, inoxType, [&](const std::string& at) {
+            const std::string value = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << value << " = load ptr, ptr " << at << '\n';
+            output_ << "  call void @" << function << "(ptr " << value << ")\n";
+        });
+    }
+
+    void emitRetainAt(const std::string& pointer, std::string_view inoxType)
+    {
+        emitStringCallAt(pointer, inoxType, "__inox_str_retain");
+    }
+
+    void emitReleaseAt(const std::string& pointer, std::string_view inoxType)
+    {
+        emitStringCallAt(pointer, inoxType, "__inox_str_release");
+    }
+
+    // A store into owned storage (variable, field, element, State): the new
+    // value is retained before the old one is released, so `S := S` is safe.
+    void emitOwningStore(const std::string& pointer, std::string_view inoxType, const std::string& llvmType,
+                         const std::string& value)
+    {
+        if (!typeOwnsStrings(inoxType)) {
+            output_ << "  store " << llvmType << ' ' << value << ", ptr " << pointer << '\n';
+            return;
+        }
+        requireStringRuntime();
+        if (isStringType(inoxType)) {
+            const std::string old = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  call void @__inox_str_retain(ptr " << value << ")\n";
+            output_ << "  " << old << " = load ptr, ptr " << pointer << '\n';
+            output_ << "  store ptr " << value << ", ptr " << pointer << '\n';
+            output_ << "  call void @__inox_str_release(ptr " << old << ")\n";
+            return;
+        }
+        const std::string copy = "%strcopy" + std::to_string(nextTemporary_++);
+        output_ << "  " << copy << " = alloca " << llvmType << '\n';
+        output_ << "  store " << llvmType << ' ' << value << ", ptr " << copy << '\n';
+        emitRetainAt(copy, inoxType);
+        emitReleaseAt(pointer, inoxType);
+        output_ << "  store " << llvmType << ' ' << value << ", ptr " << pointer << '\n';
+    }
+
+    // An owned slot starts empty (null) in the entry block, so the exit and
+    // cleanup releases are valid on every path, also before its declaration.
+    void registerOwnedSlot(const std::string& slot, std::string_view inoxType, const std::string& llvmType,
+                           bool initialize = true)
+    {
+        ownedSlots_.push_back(OwnedSlot{slot, std::string(inoxType), llvmType, statementDepth_});
+        if (initialize) {
+            output_ << "  store " << llvmType << ' ' << (llvmType == "ptr" ? "null" : "zeroinitializer")
+                    << ", ptr " << slot << " ; inox.entry-init\n";
+        }
+    }
+
+    // A call result that owns Strings (+1) is held in a statement temporary
+    // and released at the end of the statement that produced it.
+    void holdOwnedResult(const std::string& value, std::string_view inoxType, const std::string& llvmType)
+    {
+        const std::string slot = "%strtmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << slot << " = alloca " << llvmType << '\n';
+        registerOwnedSlot(slot, inoxType, llvmType);
+        emitReleaseAt(slot, inoxType);
+        output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
+        pendingTemps_.push_back(ownedSlots_.back());
+    }
+
+    void emitReleaseOwnedSlots()
+    {
+        for (auto it = ownedSlots_.rbegin(); it != ownedSlots_.rend(); ++it) {
+            emitReleaseAt(it->pointer, it->inoxType);
+        }
+    }
+
+    void flushStatementTemporaries()
+    {
+        while (!pendingTemps_.empty() && pendingTemps_.back().depth >= statementDepth_) {
+            const OwnedSlot temp = pendingTemps_.back();
+            pendingTemps_.pop_back();
+            emitReleaseAt(temp.pointer, temp.inoxType);
+            output_ << "  store " << temp.llvmType << ' ' << (temp.llvmType == "ptr" ? "null" : "zeroinitializer")
+                    << ", ptr " << temp.pointer << '\n';
+        }
+    }
+
+    // Return: the result leaves the routine owned (+1).
+    void emitRetainResult(const std::string& value)
+    {
+        if (!typeOwnsStrings(signature_.returnInoxType)) {
+            return;
+        }
+        requireStringRuntime();
+        if (isStringType(signature_.returnInoxType)) {
+            output_ << "  call void @__inox_str_retain(ptr " << value << ")\n";
+            return;
+        }
+        const std::string copy = "%strret" + std::to_string(nextTemporary_++);
+        output_ << "  " << copy << " = alloca " << signature_.llvmReturnType << '\n';
+        output_ << "  store " << signature_.llvmReturnType << ' ' << value << ", ptr " << copy << '\n';
+        emitRetainAt(copy, signature_.returnInoxType);
+    }
+
+    // Whether this routine holds owned Strings: a declaration or assignment of
+    // a String-holding type, or a call whose result holds Strings.
+    bool scanOwnsStrings() const
+    {
+        bool owns = false;
+        forEachStatement(function_.body(), [&](const ast::Statement& statement) {
+            if (owns) {
+                return;
+            }
+            if (statement.kind() == ast::AstNodeKind::VarStatement) {
+                const auto& variable = static_cast<const ast::VarStatement&>(statement);
+                const std::string type = !variable.typeName().empty()
+                                             ? semantics_.canonicalTypeName(variable.typeName())
+                                             : (variable.initializer() != nullptr ? semanticTypeName(*variable.initializer())
+                                                                                  : std::string{});
+                owns = typeOwnsStrings(type);
+            }
+            forEachExpressionOf(statement, [&](const ast::Expression& expression) {
+                if (owns || expression.kind() != ast::AstNodeKind::CallExpression) {
+                    if (!owns && expression.kind() == ast::AstNodeKind::BinaryExpression &&
+                        static_cast<const ast::BinaryExpression&>(expression).op() == ast::BinaryOperator::Assign) {
+                        owns = typeOwnsStrings(semanticTypeName(static_cast<const ast::BinaryExpression&>(expression).right()));
+                    }
+                    return;
+                }
+                owns = typeOwnsStrings(semanticTypeName(expression)) && !isMemberAccessCall(expression) &&
+                       !isIndexCall(expression);
+            });
+        });
+        if (signature_.llvmName == "main") {
+            for (const StateGlobal& state : stateGlobals_) {
+                owns = owns || typeOwnsStrings(state.inoxType);
+            }
+        }
+        return owns;
+    }
+
     // CANON-9: whether a struct type, or a struct nested in it, has a field
-    // default other than zero.
+    // default other than zero (a String field starts as "", not null).
     bool structHasDefaults(const StructDefinition& structType) const
     {
         for (const StructFieldInfo& field : structType.fields) {
-            if (field.hasDefault) {
+            if (field.hasDefault || isStringType(field.inoxType)) {
                 return true;
             }
-            if (defaultedStruct(field.inoxType) != nullptr) {
+            if (defaultedStruct(field.inoxType) != nullptr || stringArray(field.inoxType)) {
                 return true;
             }
         }
         return false;
+    }
+
+    // Whether an array type's innermost element is a String.
+    static bool stringArray(std::string_view inoxType)
+    {
+        std::string type(inoxType);
+        bool isArray = false;
+        while (const auto layout = arrayLayout(type)) {
+            type = layout->elementType;
+            isArray = true;
+        }
+        return isArray && isStringType(type);
     }
 
     // The struct with non-zero defaults that a value of `inoxType` holds: the
@@ -2569,7 +3134,8 @@ private:
     {
         for (const StructFieldInfo& field : structType.fields) {
             const StructDefinition* defaulted = field.hasDefault ? nullptr : defaultedStruct(field.inoxType);
-            if (!field.hasDefault && defaulted == nullptr) {
+            if (!field.hasDefault && defaulted == nullptr && !isStringType(field.inoxType) &&
+                !stringArray(field.inoxType)) {
                 continue;
             }
             const std::string fieldPointer = "%tmp" + std::to_string(nextTemporary_++);
@@ -2579,9 +3145,20 @@ private:
                 emitStructFieldDefaults(fieldPointer, *defaulted);
                 continue;
             }
-            if (defaulted != nullptr) {
-                // An array field of structs: every element gets the defaults.
+            if (defaulted != nullptr || stringArray(field.inoxType)) {
+                // An array field of structs or Strings: every element gets
+                // the defaults.
                 emitArrayElementDefaults(fieldPointer, field.inoxType);
+                continue;
+            }
+            if (isStringType(field.inoxType)) {
+                // A default is an immortal literal (kept quoted by the parser),
+                // so storing it needs no retain.
+                const std::string& text = field.defaultValue;
+                const std::string value = field.hasDefault && text.size() >= 2
+                                              ? emitStringValue(std::string_view(text).substr(1, text.size() - 2))
+                                              : emptyStringValue();
+                output_ << "  store ptr " << value << ", ptr " << fieldPointer << '\n';
                 continue;
             }
             output_ << "  store " << field.llvmType << ' '
@@ -2605,7 +3182,7 @@ private:
                 continue;
             }
             const StructDefinition* structType = findStruct(structs_, element);
-            if (structType == nullptr || !structHasDefaults(*structType)) {
+            if (!isStringType(element) && (structType == nullptr || !structHasDefaults(*structType))) {
                 return;
             }
             const std::string label = std::to_string(nextLabel_++);
@@ -2622,9 +3199,14 @@ private:
                     << ", label %elemdefault.end" << label << "\n\n";
             output_ << "elemdefault.body" << label << ":\n";
             const std::string elementPointer = "%tmp" + std::to_string(nextTemporary_++);
-            output_ << "  " << elementPointer << " = getelementptr inbounds " << structType->llvmName
+            output_ << "  " << elementPointer << " = getelementptr inbounds "
+                    << (structType != nullptr ? structType->llvmName : std::string("ptr"))
                     << ", ptr " << pointer << ", i64 " << index << '\n';
-            emitStructFieldDefaults(elementPointer, *structType);
+            if (structType != nullptr) {
+                emitStructFieldDefaults(elementPointer, *structType);
+            } else {
+                output_ << "  store ptr " << emptyStringValue() << ", ptr " << elementPointer << '\n';
+            }
             const std::string next = "%tmp" + std::to_string(nextTemporary_++);
             output_ << "  " << next << " = add i64 " << index << ", 1\n";
             output_ << "  store i64 " << next << ", ptr " << counter << '\n';
@@ -2882,8 +3464,7 @@ private:
             }
 
             const std::string value = emitExpression(assignment.right());
-            output_ << "  store " << local->second.llvmType << ' ' << value
-                    << ", ptr " << local->second.slot << '\n';
+            emitOwningStore(local->second.slot, local->second.inoxType, local->second.llvmType, value);
             return;
         }
 
@@ -2892,16 +3473,16 @@ private:
                 static_cast<const ast::CallExpression&>(assignment.left()));
             const std::string value = emitExpression(assignment.right());
             const std::string stored = narrowForStorage(value, element);
-            output_ << "  store " << element.storage << ' ' << stored << ", ptr " << element.pointer << '\n';
+            emitOwningStore(element.pointer, element.elementType, element.storage, stored);
             return;
         }
 
         if (isMemberAccessCall(assignment.left())) {
-            const FieldAddress field = emitMemberAddress(
-                static_cast<const ast::CallExpression&>(assignment.left()));
+            const auto& member = static_cast<const ast::CallExpression&>(assignment.left());
+            const FieldAddress field = emitMemberAddress(member);
             const std::string value = emitExpression(assignment.right());
-            output_ << "  store " << field.llvmType << ' ' << value
-                    << ", ptr " << field.pointer << '\n';
+            const auto info = memberField(member);
+            emitOwningStore(field.pointer, info ? info->second->inoxType : std::string{}, field.llvmType, value);
             return;
         }
 
@@ -3381,6 +3962,9 @@ private:
             if (literal.literalKind() == ast::LiteralKind::Boolean) {
                 return equalsIgnoreCase(literal.value(), "true") ? "1" : "0";
             }
+            if (literal.literalKind() == ast::LiteralKind::String) {
+                return emitStringValue(literal.value());
+            }
             break;
         }
         case ast::AstNodeKind::IdentifierExpression: {
@@ -3408,10 +3992,9 @@ private:
                 if (signature->second.llvmReturnType == "void") {
                     throw CodegenError("void function call cannot be used as an expression");
                 }
-                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-                output_ << "  " << result << " = call " << signature->second.llvmReturnType
-                        << " @" << signature->second.llvmName << "()\n";
-                return result;
+                // Through emitUserCall: an `invoke` inside try (the call may
+                // raise) and the ownership of a String result.
+                return emitUserCall(signature->second, {}, true);
             }
             if (const semantic::ConstantValue* constant = resolvedConstant(identifier)) {
                 if (constant->kind == semantic::ConstantValue::Kind::Boolean) {
@@ -3442,6 +4025,21 @@ private:
                     }
                     right = emitRangeCheck(right, IntegerRange{0, bits - 1}, 3);
                 }
+            }
+
+            // CANON-14: `=` and `#` compare the UTF-8 bytes of two Strings.
+            if (isStringType(semanticTypeName(binary.left())) &&
+                (binary.op() == ast::BinaryOperator::Equal || binary.op() == ast::BinaryOperator::NotEqual)) {
+                requireModuleLine("declare zeroext i1 @__inox_str_equal(ptr, ptr) nounwind");
+                const std::string equal = binary.op() == ast::BinaryOperator::Equal
+                                              ? result
+                                              : "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << equal << " = call zeroext i1 @__inox_str_equal(ptr " << left << ", ptr " << right
+                        << ")\n";
+                if (binary.op() == ast::BinaryOperator::NotEqual) {
+                    output_ << "  " << result << " = xor i1 " << equal << ", true\n";
+                }
+                return result;
             }
 
             if (isFloatLlvmType(leftType) || isFloatLlvmType(rightType)) {
@@ -3801,6 +4399,16 @@ private:
     std::string returnValueSlot_;
     std::size_t nextTemporary_ = 0;
     std::size_t nextLabel_ = 0;
+    struct OwnedSlot {
+        std::string pointer;
+        std::string inoxType;
+        std::string llvmType;
+        std::size_t depth = 0;
+    };
+    std::vector<OwnedSlot> ownedSlots_;
+    std::vector<OwnedSlot> pendingTemps_;
+    std::size_t statementDepth_ = 0;
+    bool ownsStrings_ = false;
 };
 
 void emitFunction(std::ostringstream& output,
@@ -3811,8 +4419,15 @@ void emitFunction(std::ostringstream& output,
                   std::vector<std::string>& stringGlobals,
                   std::size_t& nextStringLiteral,
                   const semantic::SemanticResult& semantics,
-                  const StateGlobals& stateGlobals)
+                  const StateGlobals& stateGlobals,
+                  bool& usesStringCleanup)
 {
+    std::ostringstream body;
+    FunctionEmitter emitter(body, function, signature, signatures, structs, stringGlobals, nextStringLiteral,
+                            semantics, stateGlobals);
+    emitter.emit();
+    usesStringCleanup = usesStringCleanup || emitter.usesStringCleanup();
+
     output << "define " << signature.llvmReturnType << " @" << signature.llvmName << '(';
     for (std::size_t index = 0; index < signature.parameters.size(); ++index) {
         if (index != 0) {
@@ -3821,7 +4436,7 @@ void emitFunction(std::ostringstream& output,
         output << signature.parameters[index].llvmType << " %" << signature.parameters[index].llvmName;
     }
     output << ')';
-    if (functionContainsTry(function)) {
+    if (functionContainsTry(function) || emitter.usesStringCleanup()) {
         output << " personality ptr @"
                << (usesMsvcExceptionAbi()
                        ? "__CxxFrameHandler3" : "__gxx_personality_v0");
@@ -3829,20 +4444,19 @@ void emitFunction(std::ostringstream& output,
     output << " {\n"
            << "entry:\n";
 
-    std::ostringstream body;
-    FunctionEmitter(body, function, signature, signatures, structs, stringGlobals, nextStringLiteral, semantics,
-                    stateGlobals).emit();
-
     // Static allocas belong in the entry block: an alloca inside a loop would grow
-    // the stack on every iteration.
+    // the stack on every iteration. The empty initialization of owned String
+    // slots follows them, before any code that can unwind.
     std::istringstream bodyLines(body.str());
     std::string hoisted;
+    std::string entryInits;
     std::string remaining;
     for (std::string line; std::getline(bodyLines, line);) {
         const bool isAlloca = line.rfind("  %", 0) == 0 && line.find(" = alloca ") != std::string::npos;
-        (isAlloca ? hoisted : remaining) += line + "\n";
+        const bool isEntryInit = line.find(" ; inox.entry-init") != std::string::npos;
+        (isAlloca ? hoisted : isEntryInit ? entryInits : remaining) += line + "\n";
     }
-    output << hoisted << remaining;
+    output << hoisted << entryInits << remaining;
     output << "}\n\n";
 }
 
@@ -4032,6 +4646,8 @@ constexpr RuntimeFaultKind kRuntimeFaultKinds[] = {
     {8, "integer conversion out of range"},
     {9, "array index out of bounds"},
     {10, "slice bounds out of range"},
+    {12, "out of memory"},
+    {13, "invalid UTF-8 input"},
 };
 
 std::string llvmByteString(const std::string& text)
@@ -4067,7 +4683,8 @@ std::string runtimeFaultSeam()
        << "; overflow, 2 division or modulo by zero, 3 shift count outside 0..63, 4 for\n"
        << "; step <= 0, 5 negative exponent, 6 invalid integer input, 7 negative value\n"
        << "; converted to Natural, 8 integer conversion outside the target range, 9 array\n"
-       << "; index outside Low..High, 10 slice bounds outside the base.\n";
+       << "; index outside Low..High, 10 slice bounds outside the base, 12 out of memory,\n"
+       << "; 13 invalid UTF-8 input (kind 11 is reserved for the Range check).\n";
     for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
         const std::string text = std::string("Inox runtime error: ") + kind.message + "\n";
         ir << "@.inox.fault." << kind.code << " = private unnamed_addr constant ["
@@ -4367,6 +4984,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
     std::vector<std::string> stringGlobals;
     std::size_t nextStringLiteral = 0;
     const bool usesExceptions = moduleUsesExceptions(module);
+    bool usesStringCleanup = false;
 
     for (const auto& item : module.items()) {
         if (item->kind() == ast::AstNodeKind::SectionDeclaration) {
@@ -4426,15 +5044,15 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
         const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
         if (!equalsIgnoreCase(function.name(), "Main")) {
             const auto signature = signatures.find(normalize(function.name()));
-            emitFunction(functionOutput, function, signature->second, signatures, structs, stringGlobals, nextStringLiteral, semantics, stateGlobals);
+            emitFunction(functionOutput, function, signature->second, signatures, structs, stringGlobals, nextStringLiteral, semantics, stateGlobals, usesStringCleanup);
         }
     }
 
     if (mainFunction == nullptr) {
         throw CodegenError("LLVM emission requires Main");
     }
-    const FunctionSignature mainSignature{"main", "i32", {}};
-    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, structs, stringGlobals, nextStringLiteral, semantics, stateGlobals);
+    const FunctionSignature mainSignature{"main", "i32", {}, {}};
+    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, structs, stringGlobals, nextStringLiteral, semantics, stateGlobals, usesStringCleanup);
 
     for (const StateGlobal& state : stateGlobals) {
         output << stateGlobalSymbol(state.name) << " = internal global " << state.llvmType
@@ -4494,7 +5112,7 @@ std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::S
     output << "declare double @log1p(double)\n";
     output << "declare double @fmod(double, double)\n";
     output << "declare double @hypot(double, double)\n";
-    if (usesExceptions) {
+    if (usesExceptions || usesStringCleanup) {
         if (usesMsvcExceptionAbi()) {
             output << "declare i32 @__CxxFrameHandler3(...)\n";
         } else {

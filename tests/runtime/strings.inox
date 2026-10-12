@@ -1,0 +1,93 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-14: String is UTF-8, immutable, never null; a copy is a value. Strings
+== live in locals, parameters, results, struct fields, array elements and
+== State; = and # compare bytes.
+Module Runtime.Strings
+
+Type
+    TPerson Struct
+        FName String
+        FAge Integer := 30
+    ;
+    TTeam Struct
+        FLeader TPerson
+        FTags Array[1..2] String
+    ;
+
+State :
+    Greeting String := "Olá"
+;
+
+Shout(Text String) String :
+    Return Text
+;
+
+Rename(ref mut Person TPerson, Name String) :
+    Person.FName := Name
+;
+
+Swap(ref mut A String, ref mut B String) :
+    T := A
+    A := B
+    B := T
+;
+
+Describe(P TPerson) String :
+    if P.FAge > 40
+        Return P.FName
+    ;
+    Return if P.FAge = 30 then "young" else "?"
+;
+
+Main :
+    S String := "abc"
+    T := S
+    S := "xyz"
+    PutLn(S, " ", T, " ", S = T, " ", S # T)
+    PutLn(Shout("ação") = "ação", " ", "a" = "A")
+
+    P TPerson
+    PutLn("[", P.FName, "] ", P.FAge)
+    P.FName := T
+    Q TPerson := P
+    Q.FName := "Bia"
+    PutLn(P.FName, " ", Q.FName)
+    Rename(P, "Caio")
+    PutLn(P.FName)
+    R := TPerson(FName := "Dora", FAge := 50)
+    PutLn(Describe(R))
+
+    Names Array[1..3] String
+    Names[2] := "dois"
+    for I in 1..3
+        PutLn(I, "=[", Names[I], "]")
+    ;
+
+    Team TTeam
+    Team.FLeader.FName := "Eva"
+    Team.FTags[1] := "rápido"
+    Copy TTeam := Team
+    Copy.FTags[1] := "lento"
+    PutLn(Team.FLeader.FName, " ", Team.FTags[1], " ", Copy.FTags[1], " [", Team.FTags[2], "]")
+
+    X String := "x"
+    Y String := "y"
+    Swap(X, Y)
+    PutLn(X, Y, " ", Greeting)
+    Greeting := Greeting
+
+    for K in 1..3
+        Line String := "volta"
+        Line := Shout(Line)
+    ;
+    with P
+        .FName := "Fim"
+    ;
+    PutLn(P.FName)
+;

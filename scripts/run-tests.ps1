@@ -11,6 +11,48 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Programs print UTF-8 (CANON-14); decode their output as UTF-8, not with the
+# console code page.
+$utf8 = [System.Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = $utf8
+$OutputEncoding = $utf8
+
+# Runs `inox --run Test` with the bytes of InputPath as standard input, exactly
+# as they are in the file: piping Get-Content would re-encode the text (an
+# invalid UTF-8 byte would arrive as a valid U+FFFD) and rewrite line breaks.
+function Invoke-InoxWithInput {
+    param(
+        [string]$TestPath,
+        [string]$InputPath
+    )
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new($InoxExe)
+    $startInfo.ArgumentList.Add("--run")
+    $startInfo.ArgumentList.Add($TestPath)
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardInput = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.StandardOutputEncoding = $utf8
+    $startInfo.StandardErrorEncoding = $utf8
+    $process = [System.Diagnostics.Process]::Start($startInfo)
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+    $bytes = [System.IO.File]::ReadAllBytes($InputPath)
+    try {
+        $process.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
+        $process.StandardInput.BaseStream.Flush()
+    } catch [System.IO.IOException] {
+        # The program may stop (a trap) before it reads all of its input.
+    }
+    $process.StandardInput.Close()
+    $process.WaitForExit()
+    return [pscustomobject]@{
+        Stdout = $stdoutTask.Result
+        Stderr = $stderrTask.Result
+        ExitCode = $process.ExitCode
+    }
+}
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($InoxExe)) {
     $candidateExecutables = @(
@@ -324,8 +366,9 @@ function Invoke-RunDriverInputTest {
         return
     }
 
-    $actual = Get-Content -LiteralPath $InputFile.FullName | & $InoxExe "--run" $TestFile.FullName 2>&1 | Out-String
-    $exitCode = $LASTEXITCODE
+    $result = Invoke-InoxWithInput -TestPath $TestFile.FullName -InputPath $InputFile.FullName
+    $actual = $result.Stdout + $result.Stderr
+    $exitCode = $result.ExitCode
     $expected = Get-Content -LiteralPath $ExpectedOutputFile.FullName -Raw
     $actual = ($actual -replace "`r`n", "`n") -replace "`n+$", ""
     $expected = ($expected -replace "`r`n", "`n") -replace "`n+$", ""
@@ -369,12 +412,15 @@ function Invoke-DriverTrapTest {
     $stderrPath = [System.IO.Path]::GetTempFileName()
     try {
         if ($InputPath -ne "") {
-            $stdout = Get-Content -LiteralPath $InputPath | & $InoxExe "--run" $TestFile.FullName 2>$stderrPath | Out-String
+            $result = Invoke-InoxWithInput -TestPath $TestFile.FullName -InputPath $InputPath
+            $stdout = $result.Stdout
+            $exitCode = $result.ExitCode
+            $stderr = $result.Stderr
         } else {
             $stdout = & $InoxExe "--run" $TestFile.FullName 2>$stderrPath | Out-String
+            $exitCode = $LASTEXITCODE
+            $stderr = Get-Content -LiteralPath $stderrPath -Raw
         }
-        $exitCode = $LASTEXITCODE
-        $stderr = Get-Content -LiteralPath $stderrPath -Raw
     } finally {
         Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
     }
@@ -759,6 +805,22 @@ if ($null -eq $pythonExe) {
         $failed++
         Write-Host "[FAIL] grammar/grammar.ebnf consistency"
         $grammarOutput | Where-Object { "$_" -match "FAIL|^       " } | ForEach-Object { Write-Host "       $_" }
+    }
+}
+
+# Unit tests of the runtime library (inoxrt-tests, built next to the compiler).
+$unitExe = Join-Path (Split-Path -Parent $InoxExe) "inoxrt-tests.exe"
+if (-not (Test-Path -LiteralPath $unitExe -PathType Leaf)) {
+    Write-Host "[SKIP] inoxrt unit tests (inoxrt-tests.exe not built next to $InoxExe)"
+} else {
+    $unitOutput = & $unitExe 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        $passed++
+        Write-Host "[PASS] inoxrt unit tests"
+    } else {
+        $failed++
+        Write-Host "[FAIL] inoxrt unit tests"
+        $unitOutput | ForEach-Object { Write-Host "       $_" }
     }
 }
 

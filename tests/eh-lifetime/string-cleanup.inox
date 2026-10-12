@@ -1,0 +1,123 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== v3.55: a routine that holds Strings gets one cleanup pad, which captures the
+== exception, releases the Strings and rethrows. Every state it captures must
+== be consumed by the rethrow (tools/eh_state_balance.py), also through
+== handlers, ensure, Retry and loops. (tests/runtime/strings-exception-cleanup
+== runs the same program on input lines, under the leak checker.)
+Module EhLifetime.StringCleanup
+
+Type
+    TBox Struct
+        FText String
+        FItems Array[1..2] String
+    ;
+
+Thrower(Text String) :
+    Mine := Text
+    PutLn("thrower ", Mine)
+    Raise RangeError
+;
+
+Shout(Text String) String :
+    Return Text
+;
+
+Holder(Text String) String :
+    Box TBox
+    Box.FText := Text
+    Box.FItems[2] := Text
+    Thrower(Box.FItems[2])
+    Return Box.FText
+;
+
+Through(Text String) String :
+    Mine := Text
+    try
+        Return Mine
+    ensure
+        PutLn("ensure ", Mine)
+    ;
+;
+
+Leaver(Text String) :
+    Mine := Text
+    if Mine = ""
+        Exit
+    ;
+    for I in 1..3
+        Item := Mine
+        if I = 2
+            continue
+        ;
+        if I = 3
+            leave
+        ;
+        PutLn("step ", I, " ", Item)
+    ;
+    Exit
+;
+
+Retrier(Text String) :
+    Tries Integer := 0
+    try
+        Mine := Text
+        Tries += 1
+        PutLn("try ", Tries, " ", Mine)
+        if Tries < 3
+            Raise RangeError
+        ;
+    except
+        On RangeError
+            Retry(5)
+        ;
+    ;
+;
+
+Boom(Text String) Integer :
+    if Text # ""
+        Raise RangeError
+    ;
+    Return 1
+;
+
+Main :
+    Line String := "pedra"
+    try
+        Got := Holder(Line)
+        PutLn("unreachable ", Got)
+    except
+        On RangeError
+            PutLn("caught ", Line)
+        ;
+    ;
+    PutLn(Through(Line))
+    Leaver(Line)
+    Leaver("")
+    Retrier(Line)
+    try
+        Thrower(Through(Line))
+    except
+        On RangeError
+            PutLn("caught again")
+        ;
+    ensure
+        PutLn("done ", Line)
+    ;
+    for I in 1..2
+        try
+            N := Boom(Shout(Line))
+            PutLn("unreachable ", N)
+        except
+            On RangeError
+                PutLn("abandoned temporary ", I)
+                continue
+            ;
+        ;
+    ;
+;

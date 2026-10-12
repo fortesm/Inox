@@ -35,11 +35,25 @@ Windows, and the emitter already builds landing pads (Itanium) and funclets
   rethrow. This reuses the lowering validated on the Windows CI (EH-v3.16a)
   instead of adding `cleanuppad` funclets, which no Inox code emits today.
 - **State.** String State globals are released at the end of `main`.
-- **Runtime API.** `__inox_str_retain(ptr)`, `__inox_str_release(ptr)`,
-  `__inox_str_equal(ptr, ptr) -> i1`, `__inox_str_put(ptr)`,
-  `__inox_str_getln() -> ptr` (Q1, +1). Allocation failure stops the program
-  with fault kind 12, "out of memory" (kind 11 stays reserved for the Range
-  check of `enum-range-set`).
+- **Runtime API (as built).** `__inox_str_empty() -> ptr`,
+  `__inox_str_retain(ptr)`, `__inox_str_release(ptr)` (both skip null and
+  immortal blocks), `__inox_str_equal(ptr, ptr) -> i1`, and
+  `__inox_str_getln(readByte, status*) -> ptr` (Q1; +1, or the immortal `""`).
+  There is no `__inox_str_put`: on Windows the program and libinoxrt may use
+  different C runtimes, so console output stays in the program (`printf` with
+  `"%.*s"`, length at offset 8, bytes at offset 16) and line input reads
+  through the program's own `getchar`, passed as `readByte`. Memory is
+  allocated and freed only in libinoxrt. `getln` reports status 0 (ok), 1
+  (invalid UTF-8) or 2 (out of memory); the program turns 1 and 2 into
+  runtime faults.
+- **Statement temporaries.** A call that returns a String (+1) is held in a
+  temporary slot of the routine and released at the end of its statement; the
+  slot is also an owned slot, so an exception that abandons the statement
+  releases it in the cleanup pad, and the next store releases what an
+  abandoned statement left behind.
+- **Driver.** The program is linked with libinoxrt whenever its IR uses the
+  String runtime, not only when it raises (a program comparing two literals
+  calls `__inox_str_equal`).
 - **Counts.** Non-atomic (Q2).
 
 ## Risks / Trade-offs
@@ -57,7 +71,10 @@ Windows, and the emitter already builds landing pads (Itanium) and funclets
 
 ## Runtime faults
 
-Kind 6 for invalid String input (Q1); one new kind for out of memory.
+Kind 12 "out of memory" (as planned). Invalid UTF-8 input gets its own kind,
+13 "invalid UTF-8 input", instead of kind 6 "invalid integer input" planned
+here: the Integer message would mislead. Kind 11 stays reserved for the Range
+check of `enum-range-set`. Reported to the maintainer in the pull request.
 
 ## Design approval
 
