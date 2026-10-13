@@ -2,7 +2,7 @@
 
 - [x] 0.1 Register the modules (canon v3.57, r3.58)
 - [x] 0.2 Names, concatenation, positions and the module rule decided (2026-10-13; change `module-pairs`)
-- [ ] 0.3 Marcelo approves design.md (Risk: high)
+- [x] 0.3 Marcelo approves design.md (Risk: high) — 2026-10-13, canon r3.65
 
 ## 1. Runtime
 

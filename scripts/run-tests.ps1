@@ -829,6 +829,7 @@ Invoke-RunDriverTest `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output\variadic-put.out"))
 Invoke-RuntimeTree "tests\integration\input"
 Invoke-RuntimeTree "tests\runtime"
+Invoke-RuntimeTree "examples"          # examples with a NAME.out also run
 Invoke-DiagnosticTree "tests\diagnostics"
 Invoke-ModeExitTest `
     -Mode "--emit-llvm" `

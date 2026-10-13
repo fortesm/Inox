@@ -164,3 +164,4 @@ inox-out/
 # Files left by tests that cannot delete them (tests/runtime/files-basic-module)
 # --------------------
 inox-test-*.txt
+inox-file-io-*.txt
