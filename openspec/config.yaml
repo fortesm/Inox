@@ -10,7 +10,7 @@ context: |
   compiler, textual LLVM IR, Clang-backed driver, Linux and Windows/MSVC ABI).
   Law: openspec/specs/constitution/spec.md and engineering.md (locked by
   constitution.lock; read them first), detailed by the capability specs in
-  openspec/specs/language. Status: docs/STATUS.md. History: revisions.md,
+  openspec/specs/language and openspec/specs/stdlib. Status: docs/STATUS.md. History: revisions.md,
   docs/history, openspec/changes/archive.
   Authority: Marcelo Fortes is the sole design authority. A change to the law
   is accepted only when the proposal quotes his approval; agents may propose,

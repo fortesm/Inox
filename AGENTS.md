@@ -8,7 +8,7 @@ Before any task, read `openspec/specs/constitution/spec.md` — the law of
 Inox: what it is, its syntax and semantics, and who decides — then
 `engineering.md` and `revisions.md` next to it (current version, revision
 and open questions). The detail of a topic is in
-`openspec/specs/language/<topic>/spec.md`; what the compiler does today is
+`openspec/specs/{language,stdlib}/<topic>/spec.md`; what the compiler does today is
 `docs/STATUS.md`. This file only says how to work in this repository; it
 does not restate the language rules, so they cannot drift apart.
 

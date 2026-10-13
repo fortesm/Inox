@@ -12,7 +12,8 @@ openspec/
 ├── specs/             the law, as it is on main
 │   ├── constitution/  spec.md (the law), engineering.md, revisions.md,
 │   │                  constitution.lock (G8)
-│   └── language/<capability>/spec.md   one topic of the constitution in detail
+│   ├── language/<capability>/spec.md   one topic of the constitution in detail
+│   └── stdlib/<capability>/spec.md     the same for a library module
 └── changes/           proposed changes, one folder each
     ├── <name>/        proposal.md, design.md, tasks.md, specs/ (deltas)
     └── archive/       finished changes, dated; ADR-0001..0017 are here

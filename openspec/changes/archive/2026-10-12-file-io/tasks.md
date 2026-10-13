@@ -20,4 +20,4 @@
 ## 4. Documentation and gates
 
 - [x] 4.1 Canon r3.59 (CANON-17 "Files", CANON-18, change log), manual, CHANGELOG, AGENTS.md
-- [ ] 4.2 E19 gates; Linux and Windows CI green
+- [x] 4.2 E19 gates; Linux and Windows CI green (PR #44; main 2c2e85d green)

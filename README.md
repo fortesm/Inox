@@ -45,7 +45,7 @@ See [`BUILD_AND_TEST_INSTRUCTIONS.md`](BUILD_AND_TEST_INSTRUCTIONS.md) for curre
 
 ## Documentation
 
-- The law of the language — the constitution: [`openspec/specs/constitution/spec.md`](openspec/specs/constitution/spec.md), with the engineering directive, the current revision and the open questions next to it, and one detailed spec per topic in [`openspec/specs/language/`](openspec/specs/language/).
+- The law of the language — the constitution: [`openspec/specs/constitution/spec.md`](openspec/specs/constitution/spec.md), with the engineering directive, the current revision and the open questions next to it, and one detailed spec per topic in [`openspec/specs/`](openspec/specs/).
 - The manual: [`docs/site/index.html`](docs/site/index.html).
 - Status and plans: [`docs/STATUS.md`](docs/STATUS.md), [`docs/ROADMAP.md`](docs/ROADMAP.md), [`CHANGELOG.md`](CHANGELOG.md).
 - How to contribute (humans and AI agents): [`AGENTS.md`](AGENTS.md).

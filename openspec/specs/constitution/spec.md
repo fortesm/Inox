@@ -13,8 +13,8 @@ Inox has already decided.
 Inox is described in three layers that are never confused:
 
 - **Law** — what Inox is. This file, `engineering.md` next to it, and the
-  capability specs in `openspec/specs/language/*`, which detail a topic of
-  this file (a capability spec may add detail, never contradict this file).
+  capability specs in `openspec/specs/language/*` and
+  `openspec/specs/stdlib/*`, which detail a topic of this file (a capability spec may add detail, never contradict this file).
   The law changes only by the maintainer's dated approval (G2).
 - **Status** — what the compiler does today: `docs/STATUS.md`,
   `docs/BACKEND_GAPS.md` (generated) and `CHANGELOG.md`. Status follows the
@@ -1042,7 +1042,8 @@ error.
 ### Requirement: CANON-17 Files are visible only with Use
 `Use Std.IOUtils` SHALL make the file functions and the type `File` of
 `Std.Files` visible; `Use Std.Files` gives the type alone. Without the `Use`
-these names are free for the program's own routines.
+these names are free for the program's own routines. Details:
+`stdlib/files`.
 
 #### Scenario: Names stay free
 - **WHEN** a program uses a file function without `Use`, or declares its own `Create`

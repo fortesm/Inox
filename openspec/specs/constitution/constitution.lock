@@ -2,7 +2,7 @@
 # One line per locked unit: unit <TAB> sha256 prefix <TAB> approving OpenSpec change.
 # A unit changes only through relock --approval <change>, where <change> quotes
 # Marcelo Fortes's approval (constitution G2, G8).
-spec.md#preamble	1a8fc0613107e877	constitution
+spec.md#preamble	629f22762326f969	constitution
 spec.md#G1 The law wins on design, the code on status	3cd4e7bd04e698d5	constitution
 spec.md#G1 Disagreements are reported, never resolved silently	8ccfa1ba6f382aff	constitution
 spec.md#G2 Authority	ba32846a762fe307	constitution
@@ -90,7 +90,7 @@ spec.md#CANON-17 Put and PutLn	a72aa0b863f387da	constitution
 spec.md#CANON-17 Get and GetLn	aa7214828a99f9f6	constitution
 spec.md#CANON-17 Integer input is strict	c34b1f0df7db3030	constitution
 spec.md#CANON-17 GetLn into a String	7c1ca5427a6d4b93	constitution
-spec.md#CANON-17 Files are visible only with Use	1b2912d837098313	constitution
+spec.md#CANON-17 Files are visible only with Use	a2ccced78a17cf50	constitution
 spec.md#CANON-17 Opening a File; a File is never copied	c37b53c36ea29e37	constitution
 spec.md#CANON-17 A File closes itself	ad1cb7932ba552c2	constitution
 spec.md#CANON-17 Text in files	1a59a7ef5bb0ee53	constitution
