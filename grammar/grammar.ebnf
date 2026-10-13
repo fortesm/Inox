@@ -3,11 +3,11 @@ SPDX-License-Identifier: MPL-2.0
 Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 -->
 
-# Inox Canonical Grammar Mirror
+# Inox Grammar Mirror
 
-This is the human-readable grammar of Inox. It mirrors `docs/INOX_CANONICAL.md`,
-which is the authority: when this file and the canonical document disagree, the
-canonical document wins and this file is corrected. The parser
+This is the human-readable grammar of Inox. It mirrors the constitution
+(`openspec/specs/constitution/spec.md`), which is the authority: when this file
+and the constitution disagree, the constitution wins and this file is corrected. The parser
 (`src/compiler/parser/Parser.cpp`) must accept exactly this language; where it
 does not, the difference is a Layer B conformance gap, listed at the end of this
 file. `tools/grammar_consistency.py` checks this file automatically.
@@ -21,7 +21,7 @@ A `(`, `[` or `.` that begins a new line never continues the previous line as a
 call, index or member access.
 
 ```ebnf
-(* ---------- Module structure (SECTION 07, SECTION 09 / CANON-3) ---------- *)
+(* ---------- Module structure (CANON-3) ---------- *)
 
 module            ::= "Module" qualified_name use_decl* module_item* EOF
                       (* no ";" after Module; EOF closes the module *)
@@ -32,7 +32,7 @@ identifier_like   ::= identifier | "Main"
                       (* "Main" is reserved (the entry routine) but may name a
                          module or a routine: "Module Main", "Main :" *)
 
-(* ---------- Declarations (SECTION 11 / CANON-5, CANON-9, CANON-13) ---------- *)
+(* ---------- Declarations (CANON-5, CANON-9, CANON-13) ---------- *)
 
 type_section      ::= "Type" type_decl+
                       (* section: no ":" and no closing ";" of its own *)
@@ -57,7 +57,7 @@ state_field       ::= identifier type_ref? ":=" expression NEWLINE
                          is an expression: one top-level ":=" declares, and a
                          ":=" inside it can only be a named argument *)
 
-(* ---------- Routines (SECTION 15 / CANON-6, CANON-7, CANON-9) ---------- *)
+(* ---------- Routines (CANON-6, CANON-7, CANON-9) ---------- *)
 
 routine_decl      ::= routine_name parameter_part? type_ref? ":" NEWLINE block_body ";"
                       (* ":" declares the routine and opens its body (CANON-4);
@@ -75,7 +75,7 @@ parameter         ::= ( "ref" "mut"? )? identifier type_ref
                          read-only reference and "ref mut X T" a writable one
                          (ADR-0016); "mut X T" is reserved (error) *)
 
-(* ---------- Types (SECTION 12 / CANON-8, SECTION 21 / CANON-13) ---------- *)
+(* ---------- Types (CANON-8, CANON-13) ---------- *)
 
 type_ref          ::= array_type | generic_type | identifier
 array_type        ::= "Array" "[" array_bounds ( "," array_bounds )* "]" type_ref
@@ -89,7 +89,7 @@ generic_type      ::= identifier "<" type_ref ( "," type_ref )* ">"
                          only in type position; "[...]" stays for indexing and
                          bounds. The compiler still uses "[T]" (conformance gap). *)
 
-(* ---------- Statements and blocks (SECTION 10 / CANON-4) ---------- *)
+(* ---------- Statements and blocks (CANON-4) ---------- *)
 
 block_body        ::= statement*
 statement         ::= ( simple_stmt NEWLINE ) | compound_stmt
@@ -124,7 +124,7 @@ call_stmt         ::= postfix_expr
                       (* must be a call: a bare identifier or literal is not a
                          statement; "Report" and "Account.Print" call without "()" *)
 
-(* ---------- Control flow (SECTION 16 / CANON-12, CANON-11) ---------- *)
+(* ---------- Control flow (CANON-12, CANON-11) ---------- *)
 
 if_stmt           ::= "if" expression NEWLINE block_body elif_clause* else_clause? ";"
 elif_clause       ::= "elif" expression NEWLINE block_body
@@ -154,7 +154,7 @@ otherwise_arm     ::= "otherwise" ( simple_stmt NEWLINE | NEWLINE block_body )
                          value of the selector type; no "of", "when", "=>", ":"
                          or "do"; no fall-through *)
 
-(* ---------- Loops (SECTION 17) ---------- *)
+(* ---------- Loops (CANON-12) ---------- *)
 
 while_stmt        ::= "while" expression NEWLINE block_body ";"
 repeat_stmt       ::= "repeat" NEWLINE block_body ";"
@@ -175,7 +175,7 @@ leave_stmt        ::= "leave"
 continue_stmt     ::= "continue"
                       (* both act on the nearest enclosing loop *)
 
-(* ---------- Routines: transfers (SECTION 15) ---------- *)
+(* ---------- Routines: transfers (CANON-6, CANON-12) ---------- *)
 
 return_stmt       ::= "Return" expression
                       (* required in functions, forbidden in subroutines *)
@@ -258,7 +258,7 @@ conditional_expr  ::= "if" expression "then" expression "else" expression
                          is evaluated; the branches have compatible types. The
                          if statement has no "then". *)
 
-(* ---------- Lexical elements (SECTION 08 / CANON-2) ---------- *)
+(* ---------- Lexical elements (CANON-2) ---------- *)
 
 literal           ::= integer_literal | real_literal | string_literal
                     | char_literal | bool_literal
@@ -302,20 +302,24 @@ EOF               ::= (* end of the source file *)
   ordinary identifiers (ADR-0007, ADR-0010).
 - `Var` is reserved and is not a declaration form: the old `Var ... ;` block was
   removed (CANON-4, CANON-5).
-- Shadowing is forbidden in all scopes (SECTION 14).
+- Shadowing is forbidden in all scopes (CANON-10).
 
 ## Conformance gaps: parser versus this grammar (Layer B)
 
-Measured against the parser on 2026-10-10. Each item is an implementation gap
-to fix in the parser or the semantic analyzer, not a change to the language.
+Measured against the parser on 2026-10-12 (canon r3.61). Each item is an
+implementation gap to fix in the parser or the semantic analyzer, not a change
+to the language.
 
-1. Canonical but not parsed: generic types (`Items Vector<Integer>`,
-   `Suits Set<TCardSuit>`). Array types are parsed since v3.45 in local
-   declarations and routine signatures; not yet in struct fields or `State`.
-2. Not structurally parsed yet: `Type`, `Const` and `State` sections and routine
-   signatures are kept as token lists by the parser and interpreted later by the
-   semantic analyzer.
-3. OPEN-4 and OPEN-5 are closed (v3.32, v3.38).
+1. Canonical but not parsed: the generic types `Vector<T>` and `Set<T>`
+   (`Slice<T>` is parsed since v3.47). Array types are parsed everywhere a
+   type is written: locals, routine signatures (v3.45), struct fields and
+   `State` (v3.53).
+2. Range and Enum entries of a `Type` section are parsed and shape-checked
+   only; their meaning comes with the change `enum-range-set`.
+
+Closed in v3.53: `Type`, `Const` and `State` sections are parsed into typed
+declarations (they were token lists). OPEN-4 and OPEN-5 were closed in v3.32
+and v3.38.
 
 Closed in v3.31: the digit separator `_` is lexed. In v3.34 `0x` literals
 became canonical next to `$` (before, they were lowered to invalid IR).

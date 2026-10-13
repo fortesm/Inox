@@ -1,0 +1,15 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-8: the numeric set is closed (ADR-0014): there is no Double; the
+== 64-bit real is Float (Float64).
+Module Diagnostics.DoubleIsNotInox
+
+Main :
+    D Double := 1.0
+    PutLn(D)
+;

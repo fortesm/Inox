@@ -1,9 +1,8 @@
 # case-statement Specification
 
 ## Purpose
-The Ada-style `case` statement (ADR-0011, canon SECTION 17 "case") and
-`unless`. Mirror of the canon (G7): the canon stays the law until Marcelo
-Fortes approves this capability's migration.
+The Ada-style `case` statement (ADR-0011, CANON-12) and `unless`. Part of the
+Inox law, detailing the constitution (`openspec/specs/constitution`).
 
 ## Requirements
 

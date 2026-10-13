@@ -19,5 +19,5 @@
 ## 5. Gates (E19) and documentation, every step
 
 - [x] 5.1 Suite (CI preset, libstdc++ 14), ASan+UBSan with a 1 MiB stack, mutation fuzz seeds 1 and 7, backend_gaps 0 BUG, eh_state_balance, string_leak_check, grammar_consistency, openspec validate, canon_trace
-- [ ] 5.2 Linux and Windows CI green
+- [x] 5.2 Linux and Windows CI green (PRs #40-#43; main 2c2e85d green)
 - [x] 5.3 AGENTS.md (where things live), CHANGELOG.md. No canon entry: no language rule or implementation status changes (refactor only)

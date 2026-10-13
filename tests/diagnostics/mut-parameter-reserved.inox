@@ -1,0 +1,18 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-10: `mut X T` parameters are reserved for a future version and are
+== rejected; a parameter is an immutable copy unless written `ref` or `ref mut`.
+Module Diagnostics.MutParameterReserved
+
+Show(mut X Integer) :
+    PutLn(X)
+;
+
+Main :
+    Show(1)
+;

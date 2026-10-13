@@ -1,10 +1,8 @@
 # fixed-arrays Specification
 
 ## Purpose
-Fixed arrays `Array[Low..High] T` (CANON-13 "Array"). Mirror of the canon
-(G7): the canon stays the law until Marcelo Fortes approves this capability's
-migration. Arrays inside struct fields and State, and String or struct
-elements, are specified but not implemented yet.
+Fixed arrays `Array[Low..High] T` (CANON-13 "Array"). Part of the Inox law,
+detailing the constitution (`openspec/specs/constitution`).
 
 ## Requirements
 

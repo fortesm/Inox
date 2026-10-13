@@ -2,9 +2,9 @@
 
 ## Purpose
 Struct values (CANON-9): nominal value types with fields, defaults, named
-construction, initializers and nesting. Associated methods are covered by the
-canon until they migrate. Mirror of the canon (G7): the canon stays the law
-until Marcelo Fortes approves this capability's migration.
+construction, initializers and nesting. Associated methods are specified in
+the constitution (CANON-9). Part of the Inox law, detailing the constitution
+(`openspec/specs/constitution`).
 
 ## Requirements
 

@@ -1,8 +1,8 @@
 # slices Specification
 
 ## Purpose
-Read-only slices `A[L..H]` of type `Slice<T>` (ADR-0017). Mirror of the canon (G7): the canon stays the law until Marcelo Fortes
-approves this capability's migration.
+Read-only slices `A[L..H]` of type `Slice<T>` (ADR-0017). Part of the Inox
+law, detailing the constitution (`openspec/specs/constitution`).
 
 ## Requirements
 

@@ -2,10 +2,10 @@
 
 ## Purpose
 The `Type`, `Const` and `State` declaration sections (CANON-5): which entries
-each section holds and how malformed entries are reported. Mirror of the canon
-(G7): the canon stays the law until Marcelo Fortes approves this capability's
-migration. There is no type alias form `TName := Type` (Marcelo Fortes,
-2026-10-12: "TNome := Integer deve ser erro").
+each section holds and how malformed entries are reported. Part of the Inox
+law, detailing the constitution (`openspec/specs/constitution`). There is no
+type alias form `TName := Type` (Marcelo Fortes, 2026-10-12: "TNome := Integer
+deve ser erro").
 
 ## Requirements
 

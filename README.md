@@ -35,9 +35,9 @@ Inox is aimed at systems where correctness and predictability matter:
 
 ## Implementation
 
-The reference compiler is written in portable C++20 and targets LLVM. Windows and Linux are the primary validation targets, with platform support claims distinguished from cross-build-only evidence. Native exception lowering is currently validated on Unix-like Itanium-ABI hosts; Windows funclet lowering remains an explicit open gap (EH-v3.16a). The language core does not rely on a tracing garbage collector; future memory management work favors explicit ownership, moves, arenas, and deterministic resource control.
+The reference compiler is written in portable C++20 and targets LLVM. Windows x64 (Clang, MSVC ABI) and Linux x64 are the primary targets; both run the full regression suite in CI, including native exception handling (MSVC funclets on Windows, Itanium landing pads on Linux). The language core does not rely on a tracing garbage collector; memory management favors explicit ownership, moves, arenas, and deterministic resource control.
 
-Inox remains under active development. The current focus is a coherent, well-specified 0.1 foundation with a complete compiler pipeline (lexer → parser → semantic analysis → LLVM IR → executable) and a growing standard library surface.
+Inox is at version 0.2.0, pre-alpha: the complete compiler pipeline (lexer → parser → semantic analysis → LLVM IR → executable) works, and the language and its standard library are growing toward 1.0. What works today and what is still missing is in [`docs/STATUS.md`](docs/STATUS.md).
 
 ## Building
 
@@ -45,11 +45,12 @@ See [`BUILD_AND_TEST_INSTRUCTIONS.md`](BUILD_AND_TEST_INSTRUCTIONS.md) for curre
 
 ## Documentation
 
-The single authoritative source of truth for language design, compiler contract, and project rules is:
+- The law of the language — the constitution: [`openspec/specs/constitution/spec.md`](openspec/specs/constitution/spec.md), with the engineering directive, the current revision and the open questions next to it, and one detailed spec per topic in [`openspec/specs/`](openspec/specs/).
+- The manual: [`docs/site/index.html`](docs/site/index.html).
+- Status and plans: [`docs/STATUS.md`](docs/STATUS.md), [`docs/ROADMAP.md`](docs/ROADMAP.md), [`CHANGELOG.md`](CHANGELOG.md).
+- How to contribute (humans and AI agents): [`AGENTS.md`](AGENTS.md).
 
-- [`docs/INOX_CANONICAL.md`](docs/INOX_CANONICAL.md)
-
-Additional materials (examples, tests, build instructions, and contribution guidelines) live in the repository and are kept consistent with the canonical document.
+Everything else (README files, the manual, examples) derives from the constitution and is corrected when it disagrees.
 
 ## Status
 

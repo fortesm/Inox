@@ -546,7 +546,7 @@ run_runtime_tree "$repo_root/tests/runtime"
 run_diagnostic_tree "$repo_root/tests/diagnostics"
 run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 
-# grammar/grammar.ebnf must agree with the canon, the lexer and the parser.
+# grammar/grammar.ebnf must agree with the constitution, the lexer and the parser.
 run_grammar_consistency() {
     local python_exe=""
     if command -v python3 >/dev/null 2>&1; then
@@ -571,23 +571,24 @@ run_grammar_consistency() {
 }
 run_grammar_consistency
 
-# `inox --version` must match the canon header (SECTION 02, VERSIONING).
+# `inox --version` must match the version and revision at the top of
+# openspec/specs/constitution/revisions.md (constitution VERSIONING).
 run_version_check() {
-    local canon="$repo_root/docs/INOX_CANONICAL.md"
+    local revisions="$repo_root/openspec/specs/constitution/revisions.md"
     local language revision expected actual
-    # Header: "# Language version: Inox 0.2.0 pre-alpha (...)"; the program
-    # prints MAJOR.MINOR.RELEASE.BUILD, BUILD being set by each build.
-    language="$(sed -n 's/^# Language version: Inox \([0-9]*\.[0-9]*\.[0-9]*\) \([a-z-]*\).*/\1 \2/p' "$canon" | head -n 1)"
-    revision="$(sed -n 's/^# Canon revision: \(r[0-9.]*\).*/\1/p' "$canon" | head -n 1)"
+    # "Language version: Inox 0.2.0 pre-alpha"; the program prints
+    # MAJOR.MINOR.RELEASE.BUILD, BUILD being set by each build.
+    language="$(sed -n 's/^Language version: Inox \([0-9]*\.[0-9]*\.[0-9]*\) \([a-z-]*\).*/\1 \2/p' "$revisions" | head -n 1)"
+    revision="$(sed -n 's/^Canon revision: \(r[0-9.]*\).*/\1/p' "$revisions" | head -n 1)"
     local number="${language%% *}"
     local stage="${language#* }"
     expected="inox ${number}.<BUILD> ${stage} (canon $revision)"
     actual="$("$inox_exe" --version 2>&1 | sed 's/\r$//')"
     local pattern="^inox ${number//./\\.}\\.[0-9]{1,4} ${stage} \\(canon ${revision//./\\.}\\)\$"
     if [[ -n "$language" && -n "$revision" && "$actual" =~ $pattern ]]; then
-        record_pass "inox --version matches the canon header"
+        record_pass "inox --version matches the constitution"
     else
-        record_fail "inox --version matches the canon header" "expected: $expected" "actual: $actual"
+        record_fail "inox --version matches the constitution" "expected: $expected" "actual: $actual"
     fi
 }
 run_version_check

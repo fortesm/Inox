@@ -1,8 +1,8 @@
 # ref-parameters Specification
 
 ## Purpose
-`ref X T` and `ref mut X T` parameters (ADR-0016). Mirror of the canon (G7): the canon stays the law until Marcelo Fortes
-approves this capability's migration.
+`ref X T` and `ref mut X T` parameters (ADR-0016). Part of the Inox law,
+detailing the constitution (`openspec/specs/constitution`).
 
 ## Requirements
 

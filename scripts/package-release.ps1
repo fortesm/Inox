@@ -47,8 +47,18 @@ New-Item -ItemType Directory -Path (Join-Path $packageRoot "docs") -Force | Out-
 Copy-Item -LiteralPath $compilerExe -Destination (Join-Path $packageRoot "bin\inox.exe") -Force
 Copy-DirectoryContents -Source (Join-Path $repoRoot "stdlib") -Destination (Join-Path $packageRoot "stdlib")
 Copy-DirectoryContents -Source (Join-Path $repoRoot "examples") -Destination (Join-Path $packageRoot "examples")
-Copy-Item -LiteralPath (Join-Path $repoRoot "docs\index.html") -Destination (Join-Path $packageRoot "docs\index.html") -Force
-Copy-Item -LiteralPath (Join-Path $repoRoot "docs\LANGUAGE_REFERENCE.md") -Destination (Join-Path $packageRoot "docs\LANGUAGE_REFERENCE.md") -Force
+# libinoxrt (exceptions, Strings, Files) is found beside the compiler.
+$runtimeLib = Join-Path (Split-Path -Parent $compilerExe) "inoxrt.lib"
+if (!(Test-Path -LiteralPath $runtimeLib)) {
+    throw "inoxrt.lib not found beside the compiler: $runtimeLib"
+}
+Copy-Item -LiteralPath $runtimeLib -Destination (Join-Path $packageRoot "bin\inoxrt.lib") -Force
+# The manual and the constitution (the language law).
+Copy-Item -LiteralPath (Join-Path $repoRoot "docs\site\index.html") -Destination (Join-Path $packageRoot "docs\index.html") -Force
+New-Item -ItemType Directory -Path (Join-Path $packageRoot "docs\constitution") -Force | Out-Null
+foreach ($lawFile in @("spec.md", "engineering.md", "revisions.md")) {
+    Copy-Item -LiteralPath (Join-Path $repoRoot "openspec\specs\constitution\$lawFile") -Destination (Join-Path $packageRoot "docs\constitution\$lawFile") -Force
+}
 
 if (Test-Path -LiteralPath (Join-Path $repoRoot "licenses")) {
     Copy-DirectoryContents -Source (Join-Path $repoRoot "licenses") -Destination (Join-Path $packageRoot "licenses")
@@ -84,8 +94,8 @@ $envScript = @(
     'Write-Host "Inox release environment configured."',
     'Write-Host "INOX_STDLIB=$env:INOX_STDLIB"',
     'Write-Host "INOX_OUTPUT_DIR=$env:INOX_OUTPUT_DIR"',
-    'Write-Host ("Language reference: " + (Join-Path $releaseRoot "docs\LANGUAGE_REFERENCE.md"))',
-    'Write-Host ("HTML copy: " + (Join-Path $releaseRoot "docs\index.html"))',
+    'Write-Host ("Manual: " + (Join-Path $releaseRoot "docs\index.html"))',
+    'Write-Host ("Language law: " + (Join-Path $releaseRoot "docs\constitution\spec.md"))',
     'Write-Host "Compiler:"',
     'Get-Command inox -ErrorAction SilentlyContinue'
 )

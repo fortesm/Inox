@@ -40,8 +40,19 @@ mkdir -p "$package_root/bin" "$package_root/stdlib" "$package_root/examples" "$p
 cp "$compiler_path" "$package_root/bin/inox"
 cp -R "$repo_root/stdlib/." "$package_root/stdlib/"
 cp -R "$repo_root/examples/." "$package_root/examples/"
-cp "$repo_root/docs/index.html" "$package_root/docs/index.html"
-cp "$repo_root/docs/LANGUAGE_REFERENCE.md" "$package_root/docs/LANGUAGE_REFERENCE.md"
+# libinoxrt (exceptions, Strings, Files) is found beside the compiler.
+runtime_path="$(dirname "$compiler_path")/libinoxrt.a"
+if [[ ! -f "$runtime_path" ]]; then
+    echo "libinoxrt.a not found beside the compiler: $runtime_path" >&2
+    exit 1
+fi
+cp "$runtime_path" "$package_root/bin/libinoxrt.a"
+# The manual and the constitution (the language law).
+cp "$repo_root/docs/site/index.html" "$package_root/docs/index.html"
+mkdir -p "$package_root/docs/constitution"
+for law_file in spec.md engineering.md revisions.md; do
+    cp "$repo_root/openspec/specs/constitution/$law_file" "$package_root/docs/constitution/$law_file"
+done
 [[ -d "$repo_root/licenses" ]] && cp -R "$repo_root/licenses/." "$package_root/licenses/"
 
 for legal_file in LICENSE LICENSE.md NOTICE.md AUTHORS.md TRADEMARK.md; do
@@ -65,8 +76,8 @@ export INOX_OUTPUT_DIR="$release_root/output"
 echo "Inox release environment configured."
 echo "INOX_STDLIB=$INOX_STDLIB"
 echo "INOX_OUTPUT_DIR=$INOX_OUTPUT_DIR"
-echo "Language reference: $release_root/docs/LANGUAGE_REFERENCE.md"
-echo "HTML copy: $release_root/docs/index.html"
+echo "Manual: $release_root/docs/index.html"
+echo "Language law: $release_root/docs/constitution/spec.md"
 command -v inox || true
 EOS
 chmod +x "$package_root/set-inox-env.sh" "$package_root/bin/inox"

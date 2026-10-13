@@ -2,7 +2,8 @@
 
 ## Purpose
 The String value type (CANON-14): UTF-8, immutable, never null, `""` by
-default, with value semantics wherever a value can live.
+default, with value semantics wherever a value can live. Part of the Inox law,
+detailing the constitution (`openspec/specs/constitution`).
 
 ## Requirements
 

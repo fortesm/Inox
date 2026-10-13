@@ -6,9 +6,9 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 # Changelog — Inox compiler
 
 This file tracks the versions of Inox, the language and its compiler, which
-share one version (canon SECTION 02, VERSIONING). Numbers such as `v3.57` or
-`r3.58` are canon revisions, entries of the decision log in
-`docs/INOX_CANONICAL.md`, not versions.
+share one version (constitution VERSIONING). Numbers such as `v3.57` or
+`r3.61` are canon revisions, entries of the decision log
+(`openspec/specs/constitution/revisions.md`), not versions.
 
 ## 0.2.0 pre-alpha — unreleased
 
@@ -44,6 +44,7 @@ share one version (canon SECTION 02, VERSIONING). Numbers such as `v3.57` or
 - Language decisions recorded (canon v3.50): UInt64 literals up to 2^64-1 in UInt64 context, no unary minus on UInt64, no UInt64/Integer mixing; implicit Range checks; Enum `Succ`/`Pred`/`Low`/`High`; Set functions, literal and 256-value limit; `GetLn(S)` for String, non-atomic reference counts. Enum printing prints the literal's name (v3.51). Implementation follows.
 
 ### Changed
+- The canon becomes the constitution (canon r3.61, OpenSpec change `constitution`): `docs/INOX_CANONICAL.md` is retired; the language law lives, minimized and without duplicates or stale status, in `openspec/specs/constitution/` (`spec.md`, `engineering.md`, `revisions.md`), locked by `constitution.lock` and checked in CI by `tools/constitution_check.py`, which also verifies that every test a spec names exists. Status moves to `docs/STATUS.md` and `docs/ROADMAP.md`; the old change log is frozen in `docs/history/`. `inox --version` prints `(canon r3.61)`.
 - Version scheme (canon r3.60): `MAJOR.MINOR.RELEASE.BUILD` plus the stage, today `0.2.0.<BUILD> pre-alpha`. The BUILD is the commit count of the compiled history, written at every build; `inox --version` prints e.g. `inox 0.2.0.206 pre-alpha (canon r3.60)`. CI clones the full history.
 - Compiler sources (OpenSpec change `compiler-modularization`, step 4): `SemanticAnalyzer.cpp` (3,358 lines) is split into eight files by responsibility (declarations, built-ins, statements, constant evaluation, expressions, calls, types) and `SemanticSupport` for the shared helpers; types, diagnostics and IR are identical for every program.
 - Compiler sources (OpenSpec change `compiler-modularization`, step 3): the exception ABI is a Strategy (`ItaniumExceptionAbi`, `MsvcExceptionAbi`) chosen once per module; the libinoxrt functions are one table (`RuntimeAbi`); the emitter tells the driver whether to link libinoxrt instead of the driver searching the IR text. The emitted IR is identical for every program, with both ABIs.
@@ -63,6 +64,7 @@ share one version (canon SECTION 02, VERSIONING). Numbers such as `v3.57` or
 - A `Const` has no written type: `Const Mask UInt8 := $FF` is rejected; write `Const Mask := UInt8($FF)` (OPEN-5).
 
 ### Fixed
+- The release scripts copied a manual that no longer existed and did not ship `libinoxrt`, so packaging failed and packaged compilers could not build programs that use exceptions, Strings or Files; packages now hold the manual, the constitution and the runtime library beside the compiler.
 - `=` and `#` on two Bool variables, `<` on Strings and `=`/`<` on structs passed the analyzer and then produced invalid IR. Bool and String comparisons now work; struct comparison is a compile error, as in Pascal (canon v3.56, v3.57).
 - A function called with no arguments inside `try` (`N := Fail`) now reaches the handler; it was emitted with `call` instead of `invoke` and its exception aborted the program.
 
@@ -71,7 +73,7 @@ share one version (canon SECTION 02, VERSIONING). Numbers such as `v3.57` or
 - Not lowered yet: Float32 conversion.
 - Vectors, sets, enums and ranges are not implemented (Range and Enum declarations are parsed and checked for shape only).
 - String concatenation, indexing and length functions are reserved (not in 0.1); slices of String arrays are not supported yet.
-- The compiler is not yet aligned with the canonical `<T>` generic syntax; its existing generic syntax still uses `[T]`.
+- Generic types other than `Slice<T>` (`Vector<T>`, `Set<T>`) are not parsed yet.
 
 ## Compiler milestone — 2026-10-09 (labeled "V0.4" at the time; never released or tagged)
 - Compositional lowering of nested statements (v3.21), toolchain diagnostics, CI on Linux and Windows (clang, MSVC ABI).

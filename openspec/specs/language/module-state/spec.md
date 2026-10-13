@@ -2,8 +2,8 @@
 
 ## Purpose
 Module `State` variables (CANON-5 "Const and State"): explicit, visible global
-mutable storage. Mirror of the canon (G7): the canon stays the law until Marcelo Fortes
-approves this capability's migration.
+mutable storage. Part of the Inox law, detailing the constitution
+(`openspec/specs/constitution`).
 
 ## Requirements
 

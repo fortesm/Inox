@@ -1,35 +1,36 @@
 schema: spec-driven
 
-# Inox — OpenSpec configuration (adopted 2026-10-12, canon v3.48).
-# Only Marcelo Fortes approves language changes. OpenSpec is the workflow that
-# carries a change from proposal to approval, implementation and archive; the
-# canon (docs/INOX_CANONICAL.md) stays the language law while capabilities are
-# migrated into openspec/specs one by one.
+# Inox — OpenSpec configuration (adopted 2026-10-12, canon v3.48; the canon
+# became openspec/specs/constitution at r3.61). Only Marcelo Fortes approves
+# changes to the law. OpenSpec carries every change from proposal to approval,
+# implementation and archive.
 
 context: |
   Inox is a post-object-oriented, safety-first compiled language (C++20
   compiler, textual LLVM IR, Clang-backed driver, Linux and Windows/MSVC ABI).
-  Authority: Marcelo Fortes is the sole design authority. A change to the
-  language (canon Layer A) is accepted only when the proposal quotes his
-  approval; agents may propose, never decide. Layer B (implementation status)
-  follows the code.
-  Truth: docs/INOX_CANONICAL.md is authoritative until a capability is fully
-  migrated to openspec/specs; then the spec is the law for that capability
-  and the canon section points to it. If spec and canon disagree, stop and
-  report; never pick one silently.
-  Non-negotiables (AGENTS.md): no classes/inheritance/null; `;` closes blocks;
-  `End` is not a keyword; `==` comments; case-insensitive; integer `/` is
-  invalid (div/mod); overflow traps, never wraps; no empty parentheses;
+  Law: openspec/specs/constitution/spec.md and engineering.md (locked by
+  constitution.lock; read them first), detailed by the capability specs in
+  openspec/specs/language and openspec/specs/stdlib. Status: docs/STATUS.md. History: revisions.md,
+  docs/history, openspec/changes/archive.
+  Authority: Marcelo Fortes is the sole design authority. A change to the law
+  is accepted only when the proposal quotes his approval; agents may propose,
+  never decide. Status follows the code; the law never follows the code. If
+  two sources disagree, stop and report; never pick one silently.
+  Non-negotiables: no classes/inheritance/null; `;` closes blocks; `End` is
+  not a keyword; `==` comments; case-insensitive; integer `/` is invalid
+  (div/mod); overflow traps, never wraps; no empty parentheses;
   `leave`/`ensure`, never `break`/`finally`; generics use `<T>`.
-  Every language change updates code, tests, docs/site/index.html, the canon
-  change log (append-only; locked ADR text is never edited), CHANGELOG.md and
-  grammar/grammar.ebnf when syntax changes.
+  Every language change updates code, tests, docs/site/index.html, the
+  specs, a revision line in openspec/specs/constitution/revisions.md,
+  CHANGELOG.md and grammar/grammar.ebnf when syntax changes. A change to
+  constitution text relocks it: tools/constitution_check.py relock
+  --approval <change>.
   Write artifacts in English; Marcelo's approval quotes stay in Portuguese.
 
 rules:
   proposal:
-    - State the canon sections and ADRs the change touches.
-    - For a Layer A change, quote Marcelo Fortes's approval with its date, or
+    - State the constitution requirements (G/CANON anchors) and ADRs the change touches.
+    - For a change to the law, quote Marcelo Fortes's approval with its date, or
       mark the proposal "Awaiting approval" and do not implement it.
     - State what is out of scope and which existing behavior must not change.
     - State the risk, `Risk: high` or `Risk: normal`. High when the change
@@ -48,7 +49,8 @@ rules:
   tasks:
     - End with the E19 gates (suite, ASan+UBSan with a 1 MiB stack, mutation
       fuzz seeds 1 and 7, backend_gaps 0 BUG, eh_state_balance,
-      grammar_consistency, openspec validate, canon_trace) and the
+      string_leak_check, grammar_consistency, openspec validate,
+      constitution_check) and the
       documentation updates.
     - A refactor starts with `tools/ir_snapshot.py record` and its gates
       include `compare`, with every intended difference listed.
@@ -58,5 +60,6 @@ operations:
     guidance:
       - Archive right after the pull request is merged, in the next branch, so
         openspec/specs always matches main.
-      - Add the dated entry to the canon change log and, for Layer A, the ADR.
+      - Add the revision line to openspec/specs/constitution/revisions.md
+        (and relock the constitution when its text changed).
       - Record the final test counts and gate results in the archived change.
