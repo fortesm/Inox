@@ -1,0 +1,22 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-19 (r3.63): Assert(Condition, Message) prints the message after the
+== category when the condition is false.
+Module Runtime.DebugAssertMessage
+
+Use Std.Debug
+
+Check(Total Integer) :
+    Assert(Total > 0, "Total must be positive")
+    PutLn("checked ", Total)
+;
+
+Main :
+    Check(5)
+    Check(-1)
+;

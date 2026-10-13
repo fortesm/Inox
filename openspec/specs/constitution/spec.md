@@ -431,8 +431,9 @@ variable needs an initializer (strict Ada rule).
 A local that is never read SHALL be a compile error ("local variable never
 read: Name"), so a misspelled assignment `Coutner := Counter + 1` is caught.
 Assigning a variable or one of its fields is not reading it. Parameters,
-`for` iterators, State and Const are exempt; exception bindings are exempt
-until exceptions have readable members (an open question in `revisions.md`).
+`for` iterators, State and Const are exempt; an exception binding (`On E T`)
+is exempt only until exceptions have readable members, then the rule
+applies and a handler that ignores the exception writes `On T`.
 
 #### Scenario: Unread locals
 - **WHEN** a local is only assigned, or a typo declares a new name
@@ -1153,12 +1154,17 @@ subject, like a C header; `Std.XUtils` holds helper functions and may use
 ### Requirement: CANON-18 Library modules
 The library SHALL hold `Std.System` (the implicit prelude), `Std.IO` (Put,
 PutLn, Get, GetLn), `Std.Math` (Integer helpers written in Inox and the
-Float64 elementary functions), `Std.Debug` (`Assert`, unavailable until
-its open question in `revisions.md` is decided) and `Std.Files` / `Std.IOUtils` (CANON-17).
+Float64 elementary functions), `Std.Debug` (`Assert(Condition)` and
+`Assert(Condition, Message)`, a trap when false, CANON-19) and `Std.Files` /
+`Std.IOUtils` (CANON-17). `Assert` exists only with `Use Std.Debug`.
 
 #### Scenario: Std.Math through Use
 - **WHEN** a program writes `Use Std.Math` and calls its helpers
 - **THEN** the module resolves through the library path and runs (tests/integration/stdlib/StdMathDemo.inox, tests/integration/modules/math-showcase.inox)
+
+#### Scenario: Assert
+- **WHEN** Assert holds, fails, fails with a message, is used without `Use Std.Debug`, or a program declares its own Assert without the module
+- **THEN** it does nothing, traps, traps with the message, is rejected, and the own routine is called (tests/runtime/debug-assert-holds.inox, tests/runtime/debug-assert-fails.inox, tests/runtime/debug-assert-message.inox, tests/diagnostics/assert-without-use.inox, tests/runtime/assert-name-free.inox)
 
 ### Requirement: CANON-18 Planned modules
 The planned modules SHALL be `Std.Strings` / `Std.StrUtils` (String functions
@@ -1198,8 +1204,9 @@ The category texts SHALL be: `integer overflow`, `division by zero`,
 `invalid shift count`, `for-loop step must be positive`, `negative
 exponent`, `invalid integer input`, `value out of range for Natural`,
 `integer conversion out of range`, `array index out of bounds`, `slice
-bounds out of range`, `out of memory`, `invalid UTF-8 input`, and `value out
-of range` (Range types).
+bounds out of range`, `out of memory`, `invalid UTF-8 input`, `assertion
+failed` (followed by `: Message` when given), and `value out of range`
+(Range types).
 
 #### Scenario: Categories
 - **WHEN** each kind of fault happens at run time
@@ -1324,15 +1331,16 @@ failure after semantic acceptance is a bug.
 - **THEN** none is a BUG (tools/backend_gaps.py; docs/BACKEND_GAPS.md)
 
 ### Requirement: CANON-23 Driver commands
-The driver SHALL keep the switches `--parse-only`, `--dump-tokens`,
-`--dump-types`, `--emit-llvm`, `--build`, `--run`, `--help` and `--version`
-until it converges on its stated goal: `inox file.inox` (build and run),
-`inox run`, `inox build`, `inox check`, `inox emit-llvm`, `inox help` and
-`inox version` (an open question in `revisions.md`).
+The driver commands SHALL be `inox file.inox` and `inox run file.inox`
+(build and run), `inox build`, `inox check` (parse and check), `inox
+emit-llvm`, `inox help` and `inox version` (Marcelo Fortes, 2026-10-13).
+`--run`, `--build`, `--emit-llvm`, `--help` and `--version` stay as aliases
+for a transition; `--parse-only`, `--dump-tokens` and `--dump-types` are
+developer switches.
 
-#### Scenario: Switches today
-- **WHEN** the runners compile and run programs
-- **THEN** they use the switches (scripts/run-tests.sh)
+#### Scenario: Commands and aliases
+- **WHEN** a program is run with `inox file`, `inox run` and `--run`, checked with `inox check`, and `inox help`, `inox version` and `inox run` without a file are called
+- **THEN** each behaves as stated (scripts/run-tests.sh, scripts/run-tests.ps1: "inox check <file>", "inox help", "inox version = inox --version", "inox run without a file is an error", tests/integration/run-hello.inox)
 
 ### Requirement: VERSIONING The version number
 Inox SHALL have one version for the language and its compiler,

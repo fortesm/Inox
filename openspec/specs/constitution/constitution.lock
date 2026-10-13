@@ -30,7 +30,7 @@ spec.md#CANON-4 One statement per line	8ee77f1d6ea33df1	constitution
 spec.md#CANON-4 Sections and removed forms	5e7112e068617ad9	state-without-colon
 spec.md#CANON-5 Three declaration forms	def4ac0631701707	constitution
 spec.md#CANON-5 Every variable is born with a value	78399b74c50748c3	constitution
-spec.md#CANON-5 Unread locals are errors	74fd598fea4e16f6	state-without-colon
+spec.md#CANON-5 Unread locals are errors	49f999bc0b47b9e2	driver-commands
 spec.md#CANON-5 Grouped declarations	8c0f134a15fbaefc	constitution
 spec.md#CANON-5 Assignment is a statement	b3da436634a3b804	constitution
 spec.md#CANON-5 Compound assignment	dd10a3d40b134734	constitution
@@ -97,11 +97,11 @@ spec.md#CANON-17 Text in files	1a59a7ef5bb0ee53	constitution
 spec.md#CANON-17 File system functions	b0aa61e9bafcb323	constitution
 spec.md#CANON-17 File errors are exceptions	bc7b1e4c7018bea9	constitution
 spec.md#CANON-18 Library principles	4271c83783e8a45c	constitution
-spec.md#CANON-18 Library modules	751bd43bc32e4bc7	state-without-colon
+spec.md#CANON-18 Library modules	54d79e37d75eb991	debug-assert
 spec.md#CANON-18 Planned modules	4955763ea05c20f2	constitution
 spec.md#CANON-19 Run-time faults are traps	b35d7570f0992acd	constitution
 spec.md#CANON-19 Compile-time faults	bf1622e491bf380a	constitution
-spec.md#CANON-19 Trap categories	4783b09f8cf09043	constitution
+spec.md#CANON-19 Trap categories	e67598fd00dbc996	debug-assert
 spec.md#CANON-19 What traps	11389ad5bbf19f0c	constitution
 spec.md#CANON-19 Compiler, library and runtime	558fa5d9a67425f8	constitution
 spec.md#CANON-19 Compiler limits	2ea229dba96e0ae7	constitution
@@ -113,7 +113,7 @@ spec.md#CANON-21 Test layers	3dd5f11b490b5d34	constitution
 spec.md#CANON-23 LLVM backend and the clang driver	7017ebec86d19fdf	constitution
 spec.md#CANON-23 Lowering rules	a2d41e406c3ccf63	constitution
 spec.md#CANON-23 Valid IR or a clear stop	b65face9199b56ba	constitution
-spec.md#CANON-23 Driver commands	4e01ba6cab0f3bdd	state-without-colon
+spec.md#CANON-23 Driver commands	c12adc30bfb52519	driver-commands
 spec.md#VERSIONING The version number	4913b3727284db7b	constitution
 spec.md#VERSIONING Who changes the version	59a96df0746489b0	constitution
 spec.md#VERSIONING Canon revision	7325a37130b8e81e	constitution

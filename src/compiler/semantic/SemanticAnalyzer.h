@@ -171,6 +171,11 @@ private:
     // A File may only be a local or a `ref mut` parameter.
     static void rejectFileIn(std::string_view typeName, const std::string& what);
 
+    // Std.Debug (OpenSpec change debug-assert; SemanticDebug.cpp):
+    // `Assert(Condition)` and `Assert(Condition, Message)`, visible only in a
+    // program that uses the module.
+    std::string analyzeAssertCall(const ast::CallExpression& call);
+
     SymbolTable symbols_;
     TypeTable types_;
     SemanticResult result_;
@@ -189,6 +194,7 @@ private:
     bool hasMain_ = false;
     bool filesVisible_ = false;    // the program uses Std.Files (the File type)
     bool ioUtilsVisible_ = false;  // the program uses Std.IOUtils (the functions)
+    bool debugVisible_ = false;    // the program uses Std.Debug (Assert)
     std::unordered_map<const ast::Expression*, std::int64_t> constants_;
     // Char Consts (`Const Letter := 'A'`) by normalized name, as Unicode scalar
     // values; used for static case choices (ADR-0011).

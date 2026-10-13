@@ -422,34 +422,91 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
 
 } // namespace
 
+namespace {
+
+// The commands of the driver (CANON-23; Marcelo Fortes, 2026-10-13): the
+// subcommands are the user's contract and the `--` switches their aliases;
+// `--parse-only`, `--dump-tokens` and `--dump-types` are developer switches.
+enum class Command {
+    Run,       // inox <file>, inox run <file>, --run
+    Build,     // inox build <file>, --build
+    Check,     // inox check <file>: parse and semantic analysis
+    EmitLlvm,  // inox emit-llvm <file>, --emit-llvm
+    ParseOnly,
+    DumpTokens,
+    DumpTypes,
+};
+
+constexpr const char* kUsage =
+    "usage: inox <file.inox>              build and run the program\n"
+    "       inox run <file.inox>          build and run the program\n"
+    "       inox build <file.inox>        build the program, print the executable path\n"
+    "       inox check <file.inox>        parse and check the program\n"
+    "       inox emit-llvm <file.inox>    print the LLVM IR\n"
+    "       inox help                     print this help\n"
+    "       inox version                  print the version\n"
+    "developer switches: --parse-only, --dump-tokens, --dump-types <file.inox>;\n"
+    "--run, --build, --emit-llvm, --help and --version are aliases\n";
+
+bool commandFromWord(const std::string& word, Command& command)
+{
+    struct Entry {
+        const char* word;
+        Command command;
+    };
+    static constexpr Entry entries[] = {
+        {"run", Command::Run},           {"--run", Command::Run},
+        {"build", Command::Build},       {"--build", Command::Build},
+        {"check", Command::Check},       {"emit-llvm", Command::EmitLlvm},
+        {"--emit-llvm", Command::EmitLlvm}, {"--parse-only", Command::ParseOnly},
+        {"--dump-tokens", Command::DumpTokens}, {"--dump-types", Command::DumpTypes},
+    };
+    for (const Entry& entry : entries) {
+        if (word == entry.word) {
+            command = entry.command;
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace
+
 int main(int argc, char** argv)
 {
-    const bool dumpTypes = argc == 3 && std::string(argv[1]) == "--dump-types";
-    const bool dumpTokensMode = argc == 3 && std::string(argv[1]) == "--dump-tokens";
-    const bool parseOnly = argc == 3 && std::string(argv[1]) == "--parse-only";
-    const bool emitLlvm = argc == 3 && std::string(argv[1]) == "--emit-llvm";
-    const bool build = argc == 3 && std::string(argv[1]) == "--build";
-    const bool run = argc == 3 && std::string(argv[1]) == "--run";
-    if (argc == 2 && std::string(argv[1]) == "--version") {
+    const std::string first = argc > 1 ? argv[1] : "";
+    if (argc == 2 && (first == "version" || first == "--version")) {
         std::cout << "inox " << inox::compiler::support::versionText() << ' '
                   << inox::compiler::support::kVersionStage << " (canon "
                   << inox::compiler::support::kCanonRevision << ")\n";
         return 0;
     }
-    if (argc == 2 && (std::string(argv[1]) == "--help" || std::string(argv[1]) == "-h")) {
-        std::cout << "usage: inox [--dump-tokens|--parse-only|--dump-types|--emit-llvm|--build|--run] <source.inox>\n"
-                  << "       inox --version\n";
+    if (argc == 2 && (first == "help" || first == "--help" || first == "-h")) {
+        std::cout << kUsage;
         return 0;
     }
-    const fs::path executableDir = inox::compiler::support::executableDirectory(argc > 0 ? argv[0] : nullptr);
-    const bool hasMode = dumpTypes || dumpTokensMode || parseOnly || emitLlvm || build || run;
-    if ((!hasMode && argc != 2) || (hasMode && argc != 3)) {
-        std::cerr << "usage: inox [--dump-tokens|--parse-only|--dump-types|--emit-llvm|--build|--run] <source.inox>\n";
+
+    Command command = Command::Run;
+    const char* sourcePath = nullptr;
+    if (argc == 3 && commandFromWord(first, command)) {
+        sourcePath = argv[2];
+    } else if (argc == 2 && !first.empty() && first[0] != '-' && !commandFromWord(first, command)) {
+        command = Command::Run;
+        sourcePath = argv[1];
+    } else {
+        std::cerr << kUsage;
         return 1;
     }
 
+    const bool dumpTypes = command == Command::DumpTypes;
+    const bool dumpTokensMode = command == Command::DumpTokens;
+    const bool parseOnly = command == Command::ParseOnly;
+    const bool emitLlvm = command == Command::EmitLlvm;
+    const bool build = command == Command::Build;
+    const bool run = command == Command::Run;
+    const fs::path executableDir = inox::compiler::support::executableDirectory(argc > 0 ? argv[0] : nullptr);
+
     try {
-        const char* sourcePath = hasMode ? argv[2] : argv[1];
         const std::string source = readFile(fs::path(sourcePath));
         inox::compiler::lexer::Lexer lexer(source);
         const auto tokens = lexer.tokenize();
@@ -463,7 +520,7 @@ int main(int argc, char** argv)
         throwOnInvalidToken(tokens);
 
         std::unique_ptr<ModuleNode> module;
-        if (dumpTypes || emitLlvm || build || run || !hasMode) {
+        if (!parseOnly) {
             module = loadProgram(fs::path(sourcePath), executableDir);
         } else {
             inox::compiler::parser::Parser parser(tokens);

@@ -31,6 +31,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/codegen/FunctionEmitterExceptions.cpp
     src/compiler/codegen/FunctionEmitterExpressions.cpp
     src/compiler/codegen/FunctionEmitterFiles.cpp
+    src/compiler/codegen/FunctionEmitterDebug.cpp
     src/compiler/codegen/FunctionEmitterIo.cpp
     src/compiler/codegen/FunctionEmitterStatements.cpp
     src/compiler/codegen/FunctionEmitterStrings.cpp
@@ -50,6 +51,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticDeclarations.cpp
     src/compiler/semantic/SemanticExpressions.cpp
     src/compiler/semantic/SemanticFiles.cpp
+    src/compiler/semantic/SemanticDebug.cpp
     src/compiler/semantic/SemanticStatements.cpp
     src/compiler/semantic/SemanticSupport.cpp
     src/compiler/semantic/SemanticTypes.cpp

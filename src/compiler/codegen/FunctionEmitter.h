@@ -352,6 +352,9 @@ private:
     // ---- Std.IOUtils (OpenSpec change file-io; FunctionEmitterFiles.cpp) ----
     // A call to a file function (and not to a routine of the program).
     bool isFileCall(const ast::CallExpression& call) const;
+    // Std.Debug Assert (FunctionEmitterDebug.cpp): a branch to a trap.
+    bool isAssertCall(const ast::CallExpression& call) const;
+    void emitAssertCall(const ast::CallExpression& call);
     // The LLVM type of a file function's result ("void" when it has none).
     static std::string fileCallLlvmType(const ast::CallExpression& call);
     std::string emitFileCall(const ast::CallExpression& call);
