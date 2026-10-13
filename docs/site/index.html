@@ -451,8 +451,8 @@ TPessoa.UpdateNome(Self mut, Nome String) :
 A TAssinatura
 A.UpdateNome("Marcelo")                      == TPessoa.UpdateNome on the TPessoa part of A
 A.Mudar("Rua A", "Recife")                   == two levels down, no forwarding methods
-A.TPessoa.TEndereco.Mudar("Rua B", "Natal")  == the full path always works
 PutLn(A.FNome, " ", A.FCidade)</code></pre>
+<p>The short name is the normal way. The path through the parts (<code>A.TPessoa.Title</code>) is needed only to reach a method that an <code>Override</code> replaced, or to use the part itself as a value (<code>Imprimir(A.TPessoa)</code>).</p>
 <p>A reused method runs on its part: it behaves the same wherever it is reused. A struct may replace a reused method by declaring one with the same name and signature, marked <code>Override</code>; callers of the struct get it, and the part's method stays reachable by its path:</p>
 <pre><code>TPessoa.Title(Self) String :
     Return "Pessoa"

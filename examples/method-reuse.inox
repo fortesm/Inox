@@ -9,7 +9,7 @@
 ==   TAssinatura Struct (TPessoa)   reuses TPessoa: its fields and methods are
 ==                                  offered by TAssinatura, at every level
 ==   A.UpdateNome(...)              runs TPessoa.UpdateNome on the TPessoa part of A
-==   A.TPessoa.UpdateNome(...)      the full path always works
+==   A.TPessoa.Title                the part's own method, when an Override replaced it
 ==   Override                       replaces a reused method for callers of A
 ==   String.UpdateStr               a method of a built-in type, for any String field
 Module MethodReuse
@@ -60,7 +60,7 @@ Main :
     A.UpdateNome("Marcelo")                 == de TPessoa: grava em A.FNome
     A.Mudar("Rua A", "Recife")              == de TEndereco, dois níveis abaixo
     A.FPlano.UpdateStr("Plano9")            == helper de String
-    A.TPessoa.TEndereco.Mudar("Rua B", "Natal")
+    A.Mudar("Rua B", "Natal")
     PutLn(P.FNome)
     PutLn(A.FNome, ", ", A.FRua, ", ", A.FCidade, ", ", A.FPlano)
     PutLn(A.Title, " (a parte é ", A.TPessoa.Title, ")")
