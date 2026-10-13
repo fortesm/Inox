@@ -22,7 +22,14 @@ include(InoxSanitizers)
 set(INOX_COMPILER_SOURCES
     src/compiler/main/main.cpp
     src/compiler/ast/Ast.cpp
+    src/compiler/codegen/AstQueries.cpp
+    src/compiler/codegen/ExceptionSupport.cpp
     src/compiler/codegen/LlvmIrEmitter.cpp
+    src/compiler/codegen/LlvmText.cpp
+    src/compiler/codegen/MathBuiltins.cpp
+    src/compiler/codegen/Operators.cpp
+    src/compiler/codegen/RuntimeHelpersIr.cpp
+    src/compiler/codegen/TypeLayout.cpp
     src/compiler/lexer/Lexer.cpp
     src/compiler/parser/Parser.cpp
     src/compiler/semantic/SemanticAnalyzer.cpp

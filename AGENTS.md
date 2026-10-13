@@ -53,6 +53,27 @@ If these disagree, do not invent a third behavior. Fix the documentation/code mi
       python3 tools/ir_snapshot.py compare build/inox /tmp/snap \
           --allow tests/x.inox                                    # after
 
+## Where things live (compiler sources)
+
+Kept current by the OpenSpec change `compiler-modularization`; read the
+module that owns a concern instead of searching the whole emitter.
+
+- `src/compiler/codegen/LlvmIrEmitter.cpp` — `FunctionEmitter` (one routine:
+  statements, expressions, exceptions, String ownership) and the module
+  emission (`LlvmIrEmitter::emit`, `emitFunction`).
+- `codegen/TypeLayout.*` — LLVM types of scalars, arrays, slices, structs;
+  routine signatures; State globals.
+- `codegen/AstQueries.*` — read-only AST walks (`forEachStatement`, "uses
+  try / exceptions").
+- `codegen/LlvmText.*` — names, literals, string constants in IR text.
+- `codegen/Operators.*` — LLVM instruction or predicate of each operator.
+- `codegen/MathBuiltins.*` — Std.Math functions lowered to intrinsics/libm.
+- `codegen/ExceptionSupport.*` — exception type ids, ABI choice (Itanium /
+  MSVC).
+- `codegen/RuntimeHelpersIr.*` — IR text of the internal helpers: runtime
+  faults (CANON-19), checked arithmetic, console input.
+- Helpers live in `namespace inox::compiler::codegen::detail`.
+
 ## Known pitfalls (lessons already paid for)
 
 Read these before working on the compiler; add a line when a new trap costs
