@@ -6,7 +6,7 @@
 
 ## 2. Step 2 — FunctionEmitter split by responsibility
 
-- [ ] 2.1 FunctionEmitter.h and FunctionEmitter*.cpp; `ir_snapshot compare`: no difference
+- [x] 2.1 FunctionEmitter.h and FunctionEmitter*.cpp; `ir_snapshot compare`: no difference (491 programs)
 
 ## 3. Step 3 — exception ABI Strategy, runtime ABI table
 
