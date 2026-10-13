@@ -12,9 +12,8 @@ Module Variables
 Const MaxCount := 10
 
 
-State :
+State
     GlobalCount Integer := 0
-;
 
 Main :
     Name := "Ada"

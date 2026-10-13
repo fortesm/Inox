@@ -170,6 +170,14 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
             return analyzeFileCall(callee.name(), call);
         }
 
+        // Length of anything but an array or a slice, and Ord before enums
+        // exist, are not Inox (CANON-13, CANON-14); a routine of the program
+        // with that name is called instead.
+        if ((equalsIgnoreCase(callee.name(), "Length") || equalsIgnoreCase(callee.name(), "Ord")) &&
+            resolveFunctionSignature(callee.name()) == nullptr) {
+            analyzePreludeCall(callee.name(), {});
+        }
+
         if (isPreludeCall(callee.name())) {
             const Symbol& symbol = resolveOrThrow(callee.name());
             result_.bind(callee, symbol);

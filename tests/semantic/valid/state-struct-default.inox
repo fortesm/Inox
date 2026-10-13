@@ -15,10 +15,9 @@ Type
         FY Integer
     ;
 
-State :
+State
     Origin TPoint
     Count Integer := 0
-;
 
 Main :
     PutLn(1)

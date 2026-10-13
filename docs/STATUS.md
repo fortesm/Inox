@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-12 against Inox 0.2.0 pre-alpha, canon r3.61.
+Verified on 2026-10-12 against Inox 0.2.0 pre-alpha, canon r3.62.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -55,10 +55,10 @@ each version added.
   functions.
 - Char values: a Char local or comparison is accepted and not lowered, and
   `PutLn(C)` with a Char is rejected ("cannot be printed yet").
-- Std.Debug.Assert is unavailable (open question 5 in revisions.md).
+- Std.Debug.Assert is unavailable (an open question in revisions.md).
 - Module exports, visibility and package search beyond local `Use`.
 - The driver has switches, not the subcommands of CANON-23 (open
-  question 3).
+  question in revisions.md).
 - Console output goes through the C `printf` and Integer input through
   `getchar`-based helpers: a temporary ABI.
 - Final runtime ABI and toolchain discovery; clang is still the external
@@ -70,11 +70,11 @@ each version added.
 
 These are bugs to fix (G1, G4), not features:
 
-- `Length(S)` on a String and `Ord(C)` on a Char pass semantic analysis
-  (and then stop in the backend); the law reserves String lengths for
-  `Std.StrUtils` and defines `Ord` for enums only.
 - `TPoint.M(Self TPoint)` is rejected, but with a generic parse message
   instead of one that names the rule (CANON-9).
+
+(`Length(S)` of a String and `Ord(C)` of a Char were accepted until r3.62;
+they are rejected now.)
 
 ## Implementation debt
 

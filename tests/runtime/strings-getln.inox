@@ -17,9 +17,8 @@ Type
         FAge Integer := 0
     ;
 
-State :
+State
     Last String := ""
-;
 
 Keep(Text String) String :
     Return Text

@@ -185,8 +185,14 @@ Use Std.Math</code></pre>
         PutLn(&quot;yes&quot;)
     ;
 ;</code></pre>
-<p>Named subroutine/function blocks use <code>:</code>. Control structures such as <code>if</code>, <code>while</code>, <code>repeat</code>, and <code>for</code> do not use <code>:</code> or <code>do</code>.</p>
-<p>The <code>:</code> only declares a routine. A bare <code>:</code> block inside a routine body is a compile error, at any depth. Inox has no anonymous nested blocks:</p>
+<p>The <code>:</code> has one job: after a routine's name and signature it says "this is a subroutine, and its body starts here". It replaces Pascal's <code>procedure ... begin</code>, Ada's <code>is</code> and C's <code>{</code>, so a routine is written with less than Pascal or Ada and without C's symbols:</p>
+<pre><code>Procedure Sum(A : Integer; B : Integer) : Integer;   == Pascal
+Begin ... End;
+
+Sum(A Integer, B Integer) Integer :                  == Inox
+    Return A + B
+;</code></pre>
+<p>Nothing else needs it. Control structures such as <code>if</code>, <code>while</code>, <code>repeat</code>, <code>for</code> and <code>with</code> open their body at the line break and close with <code>;</code>; the sections <code>Type</code>, <code>Const</code> and <code>State</code> use neither <code>:</code> nor <code>;</code>. Because <code>:</code> needs a name and a signature before it, a bare <code>:</code> block is a compile error, at any depth. Inox has no anonymous nested blocks:</p>
 <pre><code>Main :
     :            == error: a bare ':' block is illegal (CANON-4)
         PutLn(1)
@@ -221,6 +227,15 @@ P, Q TPoint                   == both get the struct defaults</code></pre>
 Coutner := Counter + 1   == error: local variable never read: Coutner
 PutLn(Counter)</code></pre>
 <p>Parameters, <code>for</code> iterators, exception bindings, <code>State</code> and <code>Const</code> are exempt.</p>
+<p>Module variables live in a <code>State</code> section. Like <code>Type</code>, it is a section, not a block: no <code>:</code> and no closing <code>;</code>. It ends where the next declaration starts:</p>
+<pre><code>State
+    Counter Integer := 0
+    Ready Bool := false
+
+Main :
+    Counter += 1
+    PutLn(Counter, &quot; &quot;, Ready)
+;</code></pre>
 <p>A module constant is written <code>Const Name := Value</code> and takes the type of its value. It has no written type; to choose one, convert the value:</p>
 <pre><code>Const Limit := 10            == Integer
 Const Mask := UInt8($FF)     == UInt8
@@ -388,10 +403,9 @@ Points[3].X := 5</code></pre>
         FCount Integer := 0
     ;
 
-State :
+State
     Origin TPoint := TPoint(X := 1, Y := 2)
     Counts Array[1..3] Integer          == all zero
-;
 
 B TBuffer
 B.FData[2] := 200                   == every index is checked

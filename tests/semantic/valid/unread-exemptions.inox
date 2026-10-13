@@ -11,9 +11,8 @@ Module UnreadExemptions
 
 Const Unused := 1
 
-State :
+State
     Spare Integer := 0
-;
 
 Ignore(N Integer) :
     PutLn(1)

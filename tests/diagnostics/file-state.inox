@@ -9,9 +9,8 @@
 Module Diagnostics.FileState
 Use Std.IOUtils
 
-State :
+State
     Log := Create("log.txt")
-;
 
 Main :
     PutLn(1)

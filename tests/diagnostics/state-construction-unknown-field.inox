@@ -14,9 +14,8 @@ Type
         Y Integer
     ;
 
-State :
+State
     Origin TPoint := TPoint(Z := 1)
-;
 
 Main :
     PutLn(1)

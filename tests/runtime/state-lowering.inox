@@ -14,14 +14,13 @@ Twice(N Integer) Integer :
     Return N * 2
 ;
 
-State :
+State
     Counter Integer := 0
     Total := Twice(10)
     Ready Bool := false
     Ratio Float := 1.5
     Limit Natural := 3
     Base := Total + 1
-;
 
 Bump :
     Counter += 1

@@ -8,9 +8,8 @@
 == A State initializer must have the declared type.
 Module Diagnostics.StateInitializerTypeMismatch
 
-State :
+State
     N Integer := True
-;
 
 Main :
     PutLn(1)

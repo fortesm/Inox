@@ -5,14 +5,10 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== CANON-5: the tolerated legacy form `Name : Type` in State does not bypass
-== the initializer rule for scalars.
-Module Diagnostics.StateLegacyScalarWithoutInitializer
-
-State :
-    Counter : Integer
-;
+== CANON-14: a Char is not an ordinal; Ord takes an enum value (CANON-13)
+== (Marcelo Fortes, 2026-10-12).
+Module Diagnostics.OrdOfChar
 
 Main :
-    PutLn(1)
+    PutLn(Ord('A'))
 ;

@@ -95,8 +95,6 @@ const std::vector<PreludeSignature>& preludeSignatures()
         {"Get", {}, "Void"},
         {"GetLn", {}, "Void"},
         {"ReadLn", {}, "String"},
-        {"Length", {"String"}, "Int64"},
-        {"Ord", {"Char"}, "Int64"},
 
         {"Abs", {"Int64"}, "Int64"},
         {"Abs", {"Float64"}, "Float64"},
