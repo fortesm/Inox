@@ -295,6 +295,9 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
                     throw SemanticError(
                         "cannot infer type for declaration: " + identifier.name());
                 }
+                if (isFileType(inferredType)) {
+                    requireFreshFile(expression.right());
+                }
                 declareOrThrow(
                     identifier.name(),
                     SymbolKind::Variable,
@@ -483,6 +486,9 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
         if (!leftType.empty() && resolveStruct(leftType) != nullptr) {
             throw SemanticError("structs cannot be compared with '" + std::string(binaryOperatorName(op)) +
                                 "'; compare their fields");
+        }
+        if (isFileType(leftType) || isFileType(rightType)) {
+            throw SemanticError("Files cannot be compared with '" + std::string(binaryOperatorName(op)) + "'");
         }
         return "Bool";
     case ast::BinaryOperator::And:

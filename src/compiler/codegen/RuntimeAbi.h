@@ -30,6 +30,22 @@ enum class RuntimeFunction {
     StringEqual,
     StringCompare,
     StringGetLn,
+    // File runtime (runtime/FileRuntime.cpp), declared on first use. The
+    // functions without `nounwind` raise Inox exceptions (F3).
+    FileOpen,
+    FileRetain,
+    FileRelease,
+    FileClose,
+    FileReadLn,
+    FileEof,
+    FileWriteString,
+    FileWriteInteger,
+    FileWriteFloat,
+    FileWriteBool,
+    FileWriteNewline,
+    FileExists,
+    FileDelete,
+    FileRename,
 };
 
 // The exception functions, in the order the module declares them.

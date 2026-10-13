@@ -30,6 +30,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/codegen/FunctionEmitterControlFlow.cpp
     src/compiler/codegen/FunctionEmitterExceptions.cpp
     src/compiler/codegen/FunctionEmitterExpressions.cpp
+    src/compiler/codegen/FunctionEmitterFiles.cpp
     src/compiler/codegen/FunctionEmitterIo.cpp
     src/compiler/codegen/FunctionEmitterStatements.cpp
     src/compiler/codegen/FunctionEmitterStrings.cpp
@@ -48,6 +49,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticCalls.cpp
     src/compiler/semantic/SemanticDeclarations.cpp
     src/compiler/semantic/SemanticExpressions.cpp
+    src/compiler/semantic/SemanticFiles.cpp
     src/compiler/semantic/SemanticStatements.cpp
     src/compiler/semantic/SemanticSupport.cpp
     src/compiler/semantic/SemanticTypes.cpp
@@ -61,6 +63,7 @@ set(INOX_COMPILER_SOURCES
 
 add_library(inoxrt STATIC
     runtime/ExceptionRuntime.cpp
+    runtime/FileRuntime.cpp
     runtime/StringRuntime.cpp
 )
 
@@ -82,7 +85,7 @@ endif()
 
 # Unit tests of the runtime library, run by scripts/run-tests.sh and
 # scripts/run-tests.ps1 when found next to the compiler.
-add_executable(inoxrt-tests tests/runtime-unit/StringRuntimeTests.cpp)
+add_executable(inoxrt-tests tests/runtime-unit/StringRuntimeTests.cpp tests/runtime-unit/FileRuntimeTests.cpp)
 target_link_libraries(inoxrt-tests PRIVATE inoxrt)
 inox_apply_compiler_options(inoxrt-tests)
 inox_apply_warnings(inoxrt-tests)

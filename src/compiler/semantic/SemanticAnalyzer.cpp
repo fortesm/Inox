@@ -47,6 +47,7 @@ const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
     if (module.name().empty()) {
         throw SemanticError("module must have a name");
     }
+    declareStandardModuleNames(module);
 
     for (const auto& item : module.items()) {
         declareModuleItem(*item);

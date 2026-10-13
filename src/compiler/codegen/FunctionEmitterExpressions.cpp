@@ -114,6 +114,9 @@ std::string FunctionEmitter::expressionLlvmType(const ast::Expression& expressio
             if (equalsIgnoreCase(callee.name(), "Abs") && call.arguments().size() == 1) {
                 return expressionLlvmType(*call.arguments().front());
             }
+            if (isFileCall(call)) {
+                return fileCallLlvmType(call);
+            }
             if (isMathBuiltin(callee.name())) {
                 return "double";
             }
@@ -521,6 +524,13 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             const std::string result = "%tmp" + std::to_string(nextTemporary_++);
             output_ << "  " << result << " = call i64 @__inox_abs_i64(i64 " << value << ")\n";
             return result;
+        }
+
+        if (isFileCall(call)) {
+            if (fileCallLlvmType(call) == "void") {
+                throw CodegenError("void function call cannot be used as an expression");
+            }
+            return emitFileCall(call);
         }
 
         if (isMathBuiltin(callee.name())) {

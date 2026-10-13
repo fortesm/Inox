@@ -13,6 +13,6 @@
 namespace inox::compiler::support {
 
 inline constexpr std::string_view kInoxVersion = "0.2.0-pre-alpha";
-inline constexpr std::string_view kCanonRevision = "r3.58";
+inline constexpr std::string_view kCanonRevision = "r3.59";
 
 } // namespace inox::compiler::support

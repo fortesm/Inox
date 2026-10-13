@@ -1,0 +1,22 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== file-io: without `Use Std.IOUtils` the file function names are free for
+== the program's own routines.
+Module Runtime.FileNamesFree
+
+Create(N Integer) Integer :
+    Return N * 2
+;
+
+Close(Text String) String :
+    Return Text
+;
+
+Main :
+    PutLn(Create(21), " ", Close("ok"))
+;

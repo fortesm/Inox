@@ -1,0 +1,32 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Std.IOUtils F7 (OpenSpec change file-io): Exists, RenameFile (raising
+== AlreadyExists onto an existing file, on every system) and DeleteFile.
+Module Runtime.FilesSystem
+Use Std.IOUtils
+
+Main :
+    First String := "inox-test-files-a.txt"
+    Second String := "inox-test-files-b.txt"
+    PutLn(Exists(First), " ", Exists(Second))
+    Create(First)
+    PutLn(Exists(First), " ", Exists(Second))
+    RenameFile(First, Second)
+    PutLn(Exists(First), " ", Exists(Second))
+    Create(First)
+    try
+        RenameFile(First, Second)
+    except
+        On AlreadyExists
+            PutLn("AlreadyExists")
+        ;
+    ;
+    DeleteFile(First)
+    DeleteFile(Second)
+    PutLn(Exists(First), " ", Exists(Second), " ", Exists("."))
+;

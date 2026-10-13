@@ -72,6 +72,11 @@ std::string llvmTypeForScalar(std::string_view inoxType)
     if (equalsIgnoreCase(inoxType, "String")) {
         return "ptr";
     }
+    // Std.Files (file-io): a File is a pointer to a handle of the runtime
+    // (FileRuntime.cpp), owned like a String.
+    if (equalsIgnoreCase(inoxType, "File")) {
+        return "ptr";
+    }
     return {};
 }
 

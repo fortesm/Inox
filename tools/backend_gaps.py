@@ -192,6 +192,19 @@ Main :
     PutLn(A = B, " ", A # B, " ", B < A, " ", A <= B)
 ;
 """),
+    ("file-text", "Std.IOUtils: Create, WriteLn, OpenRead, ReadLn, Eof, Exists", """Use Std.IOUtils
+
+Main :
+    F := Create("inox-probe.txt")
+    WriteLn(F, 1, " ", true)
+    Close(F)
+    R := OpenRead("inox-probe.txt")
+    while not Eof(R)
+        PutLn(ReadLn(R))
+    ;
+    PutLn(Exists("inox-probe.txt"))
+;
+"""),
     ("string-getln", "GetLn into a String, compared with =", """Main :
     S String := ""
     GetLn(S)

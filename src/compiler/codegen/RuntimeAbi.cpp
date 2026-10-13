@@ -32,6 +32,34 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
         return "declare i32 @__inox_str_compare(ptr, ptr) nounwind";
     case RuntimeFunction::StringGetLn:
         return "declare ptr @__inox_str_getln(ptr, ptr) nounwind";
+    case RuntimeFunction::FileOpen:
+        return "declare ptr @__inox_file_open(ptr, i32)";
+    case RuntimeFunction::FileRetain:
+        return "declare void @__inox_file_retain(ptr) nounwind";
+    case RuntimeFunction::FileRelease:
+        return "declare void @__inox_file_release(ptr) nounwind";
+    case RuntimeFunction::FileClose:
+        return "declare void @__inox_file_close(ptr)";
+    case RuntimeFunction::FileReadLn:
+        return "declare ptr @__inox_file_readln(ptr)";
+    case RuntimeFunction::FileEof:
+        return "declare zeroext i1 @__inox_file_eof(ptr)";
+    case RuntimeFunction::FileWriteString:
+        return "declare void @__inox_file_write_str(ptr, ptr)";
+    case RuntimeFunction::FileWriteInteger:
+        return "declare void @__inox_file_write_i64(ptr, i64)";
+    case RuntimeFunction::FileWriteFloat:
+        return "declare void @__inox_file_write_f64(ptr, double)";
+    case RuntimeFunction::FileWriteBool:
+        return "declare void @__inox_file_write_bool(ptr, i1 zeroext)";
+    case RuntimeFunction::FileWriteNewline:
+        return "declare void @__inox_file_write_newline(ptr)";
+    case RuntimeFunction::FileExists:
+        return "declare zeroext i1 @__inox_file_exists(ptr) nounwind";
+    case RuntimeFunction::FileDelete:
+        return "declare void @__inox_file_delete(ptr)";
+    case RuntimeFunction::FileRename:
+        return "declare void @__inox_file_rename(ptr, ptr)";
     }
     return {};
 }

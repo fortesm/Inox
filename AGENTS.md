@@ -76,7 +76,9 @@ module that owns a concern instead of searching the whole emitter.
   - `FunctionEmitterAggregates.cpp` — struct defaults and construction,
     places, fields, methods, assignment;
   - `FunctionEmitterArrays.cpp` — indexing, bounds, slices;
-  - `FunctionEmitterExpressions.cpp` — expression types and lowering.
+  - `FunctionEmitterExpressions.cpp` — expression types and lowering;
+  - `FunctionEmitterFiles.cpp` — the Std.IOUtils file functions (calls into
+    libinoxrt with `invoke` inside protected regions).
 - `codegen/TypeLayout.*` — LLVM types of scalars, arrays, slices, structs;
   routine signatures; State globals.
 - `codegen/AstQueries.*` — read-only AST walks (`forEachStatement`, "uses
@@ -109,6 +111,8 @@ module that owns a concern instead of searching the whole emitter.
     slices, members, side effects);
   - `SemanticCalls.cpp` — calls, methods, construction, `ref` arguments;
   - `SemanticTypes.cpp` — type predicates, assignability, canonical names;
+  - `SemanticFiles.cpp` — Std.Files / Std.IOUtils: the File type and file
+    functions (visible only with `Use`), the never-copied rule;
   - `SemanticSupport.*` — shared helpers (`semantic::detail`).
 
 ## Known pitfalls (lessons already paid for)
@@ -154,7 +158,16 @@ time. Each names where it bit.
   pulls in fewer headers transitively than 13: `std::find` without
   `<algorithm>` built here and failed in CI (PR #36). Build with the
   `linux-clang-debug` preset against libstdc++ 14 before pushing.
-- **`Step` is a keyword** (`for ... step`); do not use it as a test variable.
+- **Runtime library layout.** `runtime/StringBlock.h` is internal to
+  libinoxrt (String block, line reader shared by GetLn and ReadLn);
+  `runtime/FileRuntime.cpp` owns every `FILE*`. A runtime function that can
+  raise has no `nounwind` in `codegen/RuntimeAbi.cpp` and is called through
+  `FunctionEmitter::emitRuntimeCall`, which uses `invoke` inside a
+  protected region.
+- **Windows does not delete or rename an open file.** A File declared in a
+  loop stays open until the next round or the routine's exit; tests that
+  delete their files close them first.
+- **`Step` and `In` are keywords** (`for ... step`, `for ... in`); do not use them as test variables.
 - **GitHub GraphQL is blocked here.** Use `gh api` REST routes (`gh pr view`
   and `gh pr create` fail); job logs come from check-run annotations.
 

@@ -217,11 +217,12 @@ void FunctionEmitter::emitLocalVariable(std::string_view name, const ast::Expres
     const bool aggregate = findStruct(structs_, semanticType) != nullptr || arrayLayout(semanticType);
     const std::string inoxType = aggregate ? semanticType :
                                 isStringType(semanticType) ? "String" :
+                                isFileType(semanticType) ? "File" :
                                 llvmType == "double" ? "Float64" :
                                 llvmType == "i1" ? "Bool" : "Integer";
     const std::string slot = newSlot(normalizedName);
     output_ << "  " << slot << " = alloca " << llvmType << "\n";
-    if (typeOwnsStrings(inoxType)) {
+    if (typeOwnsReferences(inoxType)) {
         registerOwnedSlot(slot, inoxType, llvmType);
     }
     const std::string value = emitExpression(initializer);
@@ -244,7 +245,7 @@ void FunctionEmitter::emitTypedLocalVariable(std::string_view name, std::string_
     const std::string normalizedName = normalize(name);
     const std::string slot = newSlot(normalizedName);
     output_ << "  " << slot << " = alloca " << llvmType << "\n";
-    const bool owned = typeOwnsStrings(typeName);
+    const bool owned = typeOwnsReferences(typeName);
     if (owned) {
         // A declaration that runs again (in a loop) first releases the
         // value of the previous run.
@@ -349,6 +350,10 @@ void FunctionEmitter::emitExpressionStatement(const ast::Expression& expression)
 
     const auto& callee =
         static_cast<const ast::IdentifierExpression&>(call.callee());
+    if (isFileCall(call)) {
+        emitFileCall(call);
+        return;
+    }
     const bool isPut = equalsIgnoreCase(callee.name(), "Put");
     const bool isPutLn = equalsIgnoreCase(callee.name(), "PutLn");
     if (isPut || isPutLn) {
@@ -444,7 +449,7 @@ std::string FunctionEmitter::emitUserCall(const FunctionSignature& signature,
                 << " unwind label %" << currentUnwindTarget() << "\n\n";
         output_ << continuation << ":\n";
     }
-    if (!result.empty() && typeOwnsStrings(signature.returnInoxType)) {
+    if (!result.empty() && typeOwnsReferences(signature.returnInoxType)) {
         holdOwnedResult(result, signature.returnInoxType, signature.llvmReturnType);
     }
     return result;

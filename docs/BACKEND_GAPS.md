@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 Status: measured on 2026-10-09 against v3.18, re-measured against v3.20
 (keyword rename only; results unchanged) and against v3.21 (compositional
 statement lowering: 7 gaps closed, 3 probes added, none of them a gap); table
-re-measured against v3.55. Layer B — describes the
+re-measured against canon r3.59. Layer B — describes the
 implementation, not the language.
 
 ## Why this file exists
@@ -57,6 +57,9 @@ analysis but not lowered yet.)
 | `unless` | unless statement | **OK** |  |
 | `string-local` | String local variable | **OK** |  |
 | `string-aggregates` | String struct field, array element and State | **OK** |  |
+| `string-ordering` | String < > <= >= combined with not, and, or | **OK** |  |
+| `bool-comparison` | Bool = # and ordering false < true | **OK** |  |
+| `file-text` | Std.IOUtils: Create, WriteLn, OpenRead, ReadLn, Eof, Exists | **OK** |  |
 | `string-getln` | GetLn into a String, compared with = | **OK** |  |
 | `bool-local` | Boolean local variable | **OK** |  |
 | `float-arith` | Float arithmetic | **OK** |  |
@@ -89,7 +92,7 @@ analysis but not lowered yet.)
 | `state-aggregates` | State variables of struct and array type | **OK** |  |
 | `uint64-local` | UInt64 local | **GAP** | unsupported local variable type for LLVM emission |
 
-Summary: GAP=2, OK=45
+Summary: GAP=2, OK=48
 
 ## Reading the table
 
@@ -124,6 +127,8 @@ Summary: GAP=2, OK=45
   scalar type and of struct type, field paths through fields and elements,
   methods on any struct place, and arrays of struct. Struct `State` and array
   fields followed in `declaration-sections` (v3.53).
+* `file-text` (r3.59, OpenSpec change `file-io`): text files through
+  Std.IOUtils; File values are owned like Strings.
 * `string-local`, `string-aggregates`, `string-getln` (v3.55, OpenSpec change
   `string-runtime`): String values are reference-counted blocks of libinoxrt,
   in every place a value can live; `GetLn(S)` reads a line into a String.

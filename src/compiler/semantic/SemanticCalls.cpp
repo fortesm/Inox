@@ -163,6 +163,13 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
             return canonicalTypeName(type->name);
         }
 
+        // Std.IOUtils (file-io): without `Use Std.IOUtils` the names stay free
+        // for the program's own routines; a call to none of them gets a hint.
+        if (isFileFunction(callee.name(), call.arguments().size()) &&
+            (ioUtilsVisible_ || resolveFunctionSignature(callee.name()) == nullptr)) {
+            return analyzeFileCall(callee.name(), call);
+        }
+
         if (isPreludeCall(callee.name())) {
             const Symbol& symbol = resolveOrThrow(callee.name());
             result_.bind(callee, symbol);

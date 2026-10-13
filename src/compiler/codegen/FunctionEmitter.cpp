@@ -104,13 +104,13 @@ FunctionEmitter::FunctionEmitter(std::ostringstream& output,
 // Whether the routine got a String cleanup pad (it needs a personality).
 bool FunctionEmitter::usesStringCleanup() const
 {
-    return ownsStrings_;
+    return ownsReferences_;
 }
 
 void FunctionEmitter::emit()
 {
-    ownsStrings_ = scanOwnsStrings();
-    if (!ownsStrings_) {
+    ownsReferences_ = scanOwnsReferences();
+    if (!ownsReferences_) {
         emitBody();
         return;
     }
@@ -122,7 +122,7 @@ void FunctionEmitter::emit()
     output_ << "  " << stateSlot << " = alloca ptr\n";
     if (signature_.llvmName == "main") {
         for (const StateGlobal& state : stateGlobals_) {
-            if (typeOwnsStrings(state.inoxType)) {
+            if (typeOwnsReferences(state.inoxType)) {
                 registerOwnedSlot(stateGlobalSymbol(state.name), state.inoxType, state.llvmType, false);
             }
         }

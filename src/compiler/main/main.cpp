@@ -141,6 +141,7 @@ public:
 
         auto program = std::make_unique<ModuleNode>(entryModuleName_);
         for (auto& module : modules_) {
+            program->addLoadedModule(module->name());
             for (auto& item : module->items()) {
                 if (item->kind() != inox::compiler::ast::AstNodeKind::UseDeclaration) {
                     program->items().push_back(std::move(item));

@@ -1,0 +1,73 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Std.IOUtils F3 (OpenSpec change file-io): file errors are ordinary Inox
+== exceptions: On FileNotFound, On IOError (its parent), Else, ensure, and
+== Retry after the handler creates the missing file.
+Module Runtime.FilesNotFound
+Use Std.IOUtils
+
+Main :
+    Path String := "inox-test-files-missing.txt"
+    try
+        F := OpenRead(Path)
+        PutLn("inesperado ", ReadLn(F))
+    except
+        On FileNotFound
+            PutLn("FileNotFound")
+        ;
+    ensure
+        PutLn("ensure 1")
+    ;
+
+    try
+        DeleteFile(Path)
+    except
+        On IOError
+            PutLn("IOError pega FileNotFound")
+        ;
+    ;
+
+    Tries Integer := 0
+    try
+        Tries += 1
+        F := OpenRead(Path)
+        PutLn("tentativa ", Tries, ": ", ReadLn(F))
+        Close(F)
+    except
+        On FileNotFound
+            PutLn("tentativa ", Tries, ": não existe, criando")
+            G := Create(Path)
+            WriteLn(G, "criado no handler")
+            Close(G)
+            Retry(1)
+        ;
+    ensure
+        PutLn("ensure 2")
+    ;
+
+    W := Create(Path)
+    try
+        PutLn(ReadLn(W))
+    except
+        On FileNotFound
+            PutLn("inesperado")
+        ;
+        Else
+            PutLn("Else: ler um arquivo aberto para escrita")
+        ;
+    ;
+    Close(W)
+    try
+        WriteLn(W, "depois de Close")
+    except
+        On IOError
+            PutLn("IOError: arquivo fechado")
+        ;
+    ;
+    DeleteFile(Path)
+;

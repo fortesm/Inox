@@ -41,17 +41,25 @@ bool FunctionEmitter::isStringType(std::string_view inoxType)
     return equalsIgnoreCase(inoxType, "String");
 }
 
-bool FunctionEmitter::typeOwnsStrings(std::string_view inoxType) const
+bool FunctionEmitter::isFileType(std::string_view inoxType)
 {
-    if (isStringType(inoxType)) {
+    return equalsIgnoreCase(inoxType, "File");
+}
+
+// The types whose values are references owned by the routine that holds
+// them: String (CANON-14), File (file-io), and aggregates holding Strings
+// (a File is never inside an aggregate).
+bool FunctionEmitter::typeOwnsReferences(std::string_view inoxType) const
+{
+    if (isStringType(inoxType) || isFileType(inoxType)) {
         return true;
     }
     if (const auto layout = arrayLayout(inoxType)) {
-        return typeOwnsStrings(layout->elementType);
+        return typeOwnsReferences(layout->elementType);
     }
     if (const StructDefinition* structType = findStruct(structs_, inoxType)) {
         for (const StructFieldInfo& field : structType->fields) {
-            if (typeOwnsStrings(field.inoxType)) {
+            if (typeOwnsReferences(field.inoxType)) {
                 return true;
             }
         }
@@ -114,7 +122,7 @@ void FunctionEmitter::forEachStringAt(const std::string& pointer, std::string_vi
     }
     if (const StructDefinition* structType = findStruct(structs_, inoxType)) {
         for (const StructFieldInfo& field : structType->fields) {
-            if (!typeOwnsStrings(field.inoxType)) {
+            if (!typeOwnsReferences(field.inoxType)) {
                 continue;
             }
             const std::string fieldPointer = "%tmp" + std::to_string(nextTemporary_++);
@@ -135,7 +143,7 @@ void FunctionEmitter::forEachStringAt(const std::string& pointer, std::string_vi
         element = layout->elementType;
         layout = arrayLayout(element);
     }
-    if (!typeOwnsStrings(element)) {
+    if (!typeOwnsReferences(element)) {
         return;
     }
     const std::string storage = llvmTypeForInoxType(element, structs_);
@@ -173,13 +181,32 @@ void FunctionEmitter::emitStringCallAt(const std::string& pointer, std::string_v
     });
 }
 
+void FunctionEmitter::emitFileCallAt(const std::string& pointer, RuntimeFunction function)
+{
+    requireRuntime(function);
+    const std::string value = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << value << " = load ptr, ptr " << pointer << '\n';
+    output_ << "  call void @"
+            << (function == RuntimeFunction::FileRetain ? "__inox_file_retain" : "__inox_file_release") << "(ptr "
+            << value << ")\n";
+}
+
 void FunctionEmitter::emitRetainAt(const std::string& pointer, std::string_view inoxType)
 {
+    if (isFileType(inoxType)) {
+        emitFileCallAt(pointer, RuntimeFunction::FileRetain);
+        return;
+    }
     emitStringCallAt(pointer, inoxType, "__inox_str_retain");
 }
 
+// Releasing the last reference of a File closes it (FileRuntime.cpp).
 void FunctionEmitter::emitReleaseAt(const std::string& pointer, std::string_view inoxType)
 {
+    if (isFileType(inoxType)) {
+        emitFileCallAt(pointer, RuntimeFunction::FileRelease);
+        return;
+    }
     emitStringCallAt(pointer, inoxType, "__inox_str_release");
 }
 
@@ -188,8 +215,20 @@ void FunctionEmitter::emitReleaseAt(const std::string& pointer, std::string_view
 void FunctionEmitter::emitOwningStore(const std::string& pointer, std::string_view inoxType, const std::string& llvmType,
                                       const std::string& value)
 {
-    if (!typeOwnsStrings(inoxType)) {
+    if (!typeOwnsReferences(inoxType)) {
         output_ << "  store " << llvmType << ' ' << value << ", ptr " << pointer << '\n';
+        return;
+    }
+    // A File is only ever moved in from the call that opened it (F6): the
+    // store keeps the new handle and releases (closes) the previous one.
+    if (isFileType(inoxType)) {
+        requireRuntime(RuntimeFunction::FileRetain);
+        requireRuntime(RuntimeFunction::FileRelease);
+        const std::string old = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  call void @__inox_file_retain(ptr " << value << ")\n";
+        output_ << "  " << old << " = load ptr, ptr " << pointer << '\n';
+        output_ << "  store ptr " << value << ", ptr " << pointer << '\n';
+        output_ << "  call void @__inox_file_release(ptr " << old << ")\n";
         return;
     }
     requireStringRuntime();
@@ -254,7 +293,7 @@ void FunctionEmitter::flushStatementTemporaries()
 // Return: the result leaves the routine owned (+1).
 void FunctionEmitter::emitRetainResult(const std::string& value)
 {
-    if (!typeOwnsStrings(signature_.returnInoxType)) {
+    if (!typeOwnsReferences(signature_.returnInoxType)) {
         return;
     }
     requireStringRuntime();
@@ -270,7 +309,7 @@ void FunctionEmitter::emitRetainResult(const std::string& value)
 
 // Whether this routine holds owned Strings: a declaration or assignment of
 // a String-holding type, or a call whose result holds Strings.
-bool FunctionEmitter::scanOwnsStrings() const
+bool FunctionEmitter::scanOwnsReferences() const
 {
     bool owns = false;
     forEachStatement(function_.body(), [&](const ast::Statement& statement) {
@@ -283,23 +322,23 @@ bool FunctionEmitter::scanOwnsStrings() const
                                          ? semantics_.canonicalTypeName(variable.typeName())
                                          : (variable.initializer() != nullptr ? semanticTypeName(*variable.initializer())
                                                                               : std::string{});
-            owns = typeOwnsStrings(type);
+            owns = typeOwnsReferences(type);
         }
         forEachExpressionOf(statement, [&](const ast::Expression& expression) {
             if (owns || expression.kind() != ast::AstNodeKind::CallExpression) {
                 if (!owns && expression.kind() == ast::AstNodeKind::BinaryExpression &&
                     static_cast<const ast::BinaryExpression&>(expression).op() == ast::BinaryOperator::Assign) {
-                    owns = typeOwnsStrings(semanticTypeName(static_cast<const ast::BinaryExpression&>(expression).right()));
+                    owns = typeOwnsReferences(semanticTypeName(static_cast<const ast::BinaryExpression&>(expression).right()));
                 }
                 return;
             }
-            owns = typeOwnsStrings(semanticTypeName(expression)) && !isMemberAccessCall(expression) &&
+            owns = typeOwnsReferences(semanticTypeName(expression)) && !isMemberAccessCall(expression) &&
                    !isIndexCall(expression);
         });
     });
     if (signature_.llvmName == "main") {
         for (const StateGlobal& state : stateGlobals_) {
-            owns = owns || typeOwnsStrings(state.inoxType);
+            owns = owns || typeOwnsReferences(state.inoxType);
         }
     }
     return owns;

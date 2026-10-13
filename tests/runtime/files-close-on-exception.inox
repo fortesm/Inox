@@ -1,0 +1,56 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Std.Files F1 (OpenSpec change file-io): a File is closed when its routine
+== is left by an exception, so what it wrote is in the file; a File passed
+== as ref mut is written by the callee and still open in the caller.
+Module Runtime.FilesCloseOnException
+Use Std.IOUtils
+
+WriteThenFail(Path String) :
+    F := Create(Path)
+    WriteLn(F, "escrita antes da exceção")
+    Raise RangeError
+;
+
+AddLines(ref mut Target File, Count Integer) :
+    for I in 1..Count
+        WriteLn(Target, "linha ", I)
+    ;
+;
+
+ReadAll(ref mut Source File) Integer :
+    Lines Integer := 0
+    while not Eof(Source)
+        PutLn("  ", ReadLn(Source))
+        Lines += 1
+    ;
+    Return Lines
+;
+
+Main :
+    Path String := "inox-test-files-close.txt"
+    try
+        WriteThenFail(Path)
+    except
+        On RangeError
+            PutLn("capturada")
+        ;
+    ;
+    R := OpenRead(Path)
+    PutLn(ReadLn(R))
+    Close(R)
+
+    Out := Create(Path)
+    AddLines(Out, 3)
+    WriteLn(Out, "fim")
+    Close(Out)
+    Input := OpenRead(Path)
+    PutLn(ReadAll(Input), " linhas")
+    Close(Input)
+    DeleteFile(Path)
+;

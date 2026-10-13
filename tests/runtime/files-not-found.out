@@ -1,0 +1,9 @@
+FileNotFound
+ensure 1
+IOError pega FileNotFound
+tentativa 1: não existe, criando
+ensure 2
+tentativa 2: criado no handler
+ensure 2
+Else: ler um arquivo aberto para escrita
+IOError: arquivo fechado
