@@ -2,7 +2,7 @@
 # One line per locked unit: unit <TAB> sha256 prefix <TAB> approving OpenSpec change.
 # A unit changes only through relock --approval <change>, where <change> quotes
 # Marcelo Fortes's approval (constitution G2, G8).
-spec.md#preamble	e1d1bccd278599dd	state-without-colon
+spec.md#preamble	6cc937eec9722a1b	state-without-colon
 spec.md#G1 The law wins on design, the code on status	3cd4e7bd04e698d5	constitution
 spec.md#G1 Disagreements are reported, never resolved silently	8ccfa1ba6f382aff	constitution
 spec.md#G2 Authority	ba32846a762fe307	constitution
@@ -27,7 +27,7 @@ spec.md#CANON-3 Visibility	cc7082a5f84021ec	constitution
 spec.md#CANON-4 Semicolon closes, colon declares	fa0c21e30dd35647	state-without-colon
 spec.md#CANON-4 Control structures use no colon	5efc6a9619e1419f	constitution
 spec.md#CANON-4 One statement per line	8ee77f1d6ea33df1	constitution
-spec.md#CANON-4 Sections and removed forms	8a142e48713861d1	state-without-colon
+spec.md#CANON-4 Sections and removed forms	5e7112e068617ad9	state-without-colon
 spec.md#CANON-5 Three declaration forms	def4ac0631701707	constitution
 spec.md#CANON-5 Every variable is born with a value	78399b74c50748c3	constitution
 spec.md#CANON-5 Unread locals are errors	74fd598fea4e16f6	state-without-colon
@@ -36,7 +36,7 @@ spec.md#CANON-5 Assignment is a statement	b3da436634a3b804	constitution
 spec.md#CANON-5 Compound assignment	dd10a3d40b134734	constitution
 spec.md#CANON-5 Safe inference	d38b28e5f8aba169	constitution
 spec.md#CANON-5 Const	c197440f16489fef	constitution
-spec.md#CANON-5 State	50d0734624014a38	state-without-colon
+spec.md#CANON-5 State	44b828a421ea1bb3	state-without-colon
 spec.md#CANON-5 Type section forms	9aed9c6a5e82fb8e	constitution
 spec.md#CANON-6 Functions and subroutines	f14392ba57c91bea	constitution
 spec.md#CANON-6 Exit	9b3a00557eb7a21e	constitution

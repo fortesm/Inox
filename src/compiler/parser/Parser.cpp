@@ -1560,21 +1560,21 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
                                                          std::move(variables));
     }
 
-    // `State` is a section like `Type`: no ':' and no closing ';' (CANON-4,
-    // Marcelo Fortes, 2026-10-12: "O State não deve usar :"). It ends where
-    // the next module item starts.
+    // `State` opens its variables at the line break and closes them with
+    // `;`, like a control structure; it has no ':' (CANON-4, Marcelo Fortes,
+    // 2026-10-12: "O State não deve usar :"; 2026-10-13: "State fecha com ;").
     if (sectionKind == ast::SectionKind::State) {
         if (check(TokenKind::Colon)) {
-            errorAtCurrent("'State' has no ':' (CANON-4): ':' only declares a routine; write 'State' "
-                           "and its variables on the next lines, with no closing ';'");
+            errorAtCurrent("'State' has no ':' (CANON-4): ':' only declares a routine; write 'State', "
+                           "its variables on the next lines, and ';'");
         }
-        while (!isAtEnd() && !atSectionBoundary()) {
-            if (check(TokenKind::Semicolon)) {
-                errorAtCurrent("'State' has no closing ';' (CANON-5): the section ends where the next "
-                               "declaration starts");
+        while (!check(TokenKind::Semicolon)) {
+            if (isAtEnd() || atSectionBoundary()) {
+                errorAtCurrent("'State' closes with ';' (CANON-5): end the State variables with ';'");
             }
             variables.push_back(parseSectionVariable(sectionKind));
         }
+        consumeBlockClose();
         return std::make_unique<ast::SectionDeclaration>(sectionKind, std::move(types),
                                                          std::move(variables));
     }

@@ -14,6 +14,7 @@ Const MaxCount := 10
 
 State
     GlobalCount Integer := 0
+;
 
 Main :
     Name := "Ada"

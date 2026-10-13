@@ -20,6 +20,7 @@ Type
 State
     Origin TPoint := TPoint(X := 1, Y := 2)
     Count Integer := 0
+;
 
 Main :
     Y Integer := 3

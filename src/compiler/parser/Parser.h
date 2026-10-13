@@ -110,8 +110,9 @@ private:
     std::vector<ast::StatementPtr> parseDelimitedBody(std::initializer_list<std::string_view> stopKeywords);
     bool atAnyKeyword(std::initializer_list<std::string_view> keywords) const;
     bool atStatementBoundary() const;
-    // Whether the current token ends a Type or State section: another module
-    // item starts (Use, Type, Const, State, Var or a routine header).
+    // Whether another module item starts at the current token (Use, Type,
+    // Const, State, Var or a routine header): the end of a Type section, or a
+    // State section missing its closing ';'.
     bool atSectionBoundary() const;
     bool atTypedLocalStatementStart() const;
     void requireHeaderLineBreak();

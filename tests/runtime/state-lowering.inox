@@ -21,6 +21,7 @@ State
     Ratio Float := 1.5
     Limit Natural := 3
     Base := Total + 1
+;
 
 Bump :
     Counter += 1

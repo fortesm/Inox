@@ -48,9 +48,9 @@ enum_block_decl   ::= identifier "Enum" NEWLINE ( identifier NEWLINE )+ ";"
 const_decl        ::= "Const" identifier ":=" expression
                       (* single line; immutable; the type is the value's (no
                          written type, v3.38); one ":=" only *)
-state_section     ::= "State" NEWLINE state_field*
-                      (* section like Type: no ":" and no closing ";"; it ends
-                         where the next module item starts (r3.62) *)
+state_section     ::= "State" NEWLINE state_field* ";"
+                      (* no ":" (r3.62): the variables start at the line break
+                         and end with ";", like a control structure *)
 state_field       ::= identifier type_ref? ":=" expression NEWLINE
                     | identifier type_ref NEWLINE
                       (* State scalars require an initializer (the second form is

@@ -11,6 +11,7 @@ Module Diagnostics.AssignmentInStateInitializer
 State
     B Integer := 1
     A Integer := B := 3
+;
 
 Main :
     PutLn(1)

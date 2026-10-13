@@ -18,6 +18,7 @@ Type
 State
     Origin TPoint
     Count Integer := 0
+;
 
 Main :
     PutLn(1)

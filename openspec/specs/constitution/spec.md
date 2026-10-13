@@ -58,8 +58,8 @@ The `:` does two jobs at once: after a name and a signature it tells the
 compiler that this is a subroutine, and it opens the body, like `begin` or
 `{` ("`:` tanto serve para abrir o bloco quanto serve para dizer pro
 compilador que esse Sum(...) é uma subrotina"). Nothing else needs it:
-control structures open their body at the line break, sections (`Type`,
-`Const`, `State`) are not blocks, and `;` closes every block. A `:` without
+control structures and `State` open their body at the line break, `Type`
+and `Const` are declarators, and `;` closes every block. A `:` without
 a name and a signature before it is meaningless, so a bare `:` block does
 not exist. New syntax is judged by the same balance: elegant, ergonomic,
 short, never cryptic and never verbose.
@@ -385,15 +385,15 @@ not continue the expression of the previous line.
 - **THEN** it is not a call on the previous line (tests/diagnostics/call-paren-on-next-line.inox)
 
 ### Requirement: CANON-4 Sections and removed forms
-The sections `Type` and `State` SHALL have no `:` and no closing `;`; each
-ends where the next module item starts. In `Type`, `Struct` and multi-line
-`Enum` close with `;`; `Range` and short `Enum` are single lines. `Const
-Name := Value` is one line. The forms `State :`, `Name : Type` and `Var`
-blocks are rejected with a message showing the right form.
+`Type` SHALL have no `:` and no closing `;`, ending where the next module
+item starts; in it `Struct` and multi-line `Enum` close with `;`, `Range`
+and short `Enum` are single lines. `State` has no `:` and closes with `;`.
+`Const Name := Value` is one line. `State :`, `Name : Type` and `Var` blocks
+are rejected with a message showing the right form.
 
 #### Scenario: Sections without colon
-- **WHEN** a State section is written `State :`, closed with `;`, or declares `Name : Type`, or a Const declares `Const Name : Type`
-- **THEN** it is rejected (tests/diagnostics/state-with-colon.inox, tests/diagnostics/state-closing-semicolon.inox, tests/diagnostics/state-legacy-colon.inox, tests/diagnostics/const-legacy-colon.inox)
+- **WHEN** a State section is written `State :`, misses its `;`, or declares `Name : Type`, or a Const declares `Const Name : Type`
+- **THEN** it is rejected (tests/diagnostics/state-with-colon.inox, tests/diagnostics/state-without-semicolon.inox, tests/diagnostics/state-legacy-colon.inox, tests/diagnostics/const-legacy-colon.inox)
 
 #### Scenario: Var is gone
 - **WHEN** a program writes a `Var` block, `mut var`, or a module `Var` section
@@ -498,8 +498,8 @@ constant expression, and a Const may follow the routine that uses it.
 - **THEN** the first is rejected (tests/diagnostics/const-typed-rejected.inox) and the others compile (tests/semantic/valid/const-conversion.inox, tests/runtime/const-expression.inox)
 
 ### Requirement: CANON-5 State
-A `State` section SHALL hold a module's mutable global variables, explicit
-and rare: one declaration per line; scalars need initializers; structs and
+A `State` section (`State`, its variables, `;`) SHALL hold a module's
+mutable global variables, explicit and rare: one declaration per line; scalars need initializers; structs and
 arrays may omit them; `mut` is forbidden. Initializers run in source order
 before `Main`. A module may have several State sections. Details:
 `language/module-state`, `language/declaration-sections`.
@@ -508,9 +508,9 @@ before `Main`. A module may have several State sections. Details:
 - **WHEN** routines read and write State variables initialized in order
 - **THEN** they behave as module globals (tests/runtime/state-lowering.inox, tests/runtime/state-aggregates.inox)
 
-#### Scenario: Where a State section ends
-- **WHEN** State sections are followed by a Const, a Type section, another State, a function, a method and Main
-- **THEN** each section ends where the next item starts (tests/runtime/state-section-boundaries.inox)
+#### Scenario: Several State sections
+- **WHEN** several State sections stand between a Const, a Type section, a function, a method and Main
+- **THEN** every routine sees every variable (tests/runtime/state-section-boundaries.inox)
 
 ### Requirement: CANON-5 Type section forms
 A `Type` section SHALL declare Struct, Range and Enum types only. Inox has no

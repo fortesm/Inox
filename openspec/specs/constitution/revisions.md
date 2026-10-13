@@ -48,12 +48,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `openspec/specs/constitution/`, Ele deve ser editado por você para
   refletir as suas necessidades, e remover todas as incosistências,
   incoerências e redundâncias desnecessárias". Change `constitution`.
-- r3.62 — 2026-10-12 — Three decisions. (1) `State` is a section like
-  `Type`: no `:` and no closing `;`; the forms `State :`, `Name : Type` and
-  `Const Name : Type` are rejected; the constitution records the idea of the
-  syntax and of `:` in the maintainer's words (Marcelo Fortes: "O State não
-  deve usar :"; "A ideia de Inox é escrever menos. Fazer mais."; the `;`
-  rule chosen on 2026-10-13: "Igual ao Type"). Change `state-without-colon`.
+- r3.62 — 2026-10-12 — Three decisions. (1) `State` has no `:` and keeps
+  its closing `;`; the forms `State :`, `Name : Type` and `Const Name : Type`
+  are rejected; the constitution records the idea of the syntax and of `:`
+  in the maintainer's words (Marcelo Fortes: "O State não deve usar :"; "A
+  ideia de Inox é escrever menos. Fazer mais."; 2026-10-13: "State fecha com
+  ;"). Change `state-without-colon`.
   (2) `Length` of a String and `Ord` of a Char are rejected, as the law
   already said (Marcelo Fortes: "Excelente não pode ter isso para char
   mesmo!"). Change `char-not-ordinal`. (3) The roadmap is renumbered for

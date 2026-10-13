@@ -19,6 +19,7 @@ Type
 
 State
     Last String := ""
+;
 
 Keep(Text String) String :
     Return Text

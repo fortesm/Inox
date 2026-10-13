@@ -10,6 +10,7 @@ Module Diagnostics.StateSlice
 
 State
     View Slice<Integer>
+;
 
 Main :
     PutLn(1)

@@ -22,6 +22,7 @@ State
     Counts Array[1..3] Integer
     Grid Array[1..2, 1..2] TPoint
     Total Integer := Origin.FX + Origin.FY
+;
 
 Bump :
     Counts[2] += 5
