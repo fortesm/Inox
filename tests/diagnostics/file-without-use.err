@@ -1,1 +1,1 @@
-OpenRead is declared in Std.IOUtils: add `Use Std.IOUtils`
+OpenRead is declared in Std.Files: add `Use Std.Files`

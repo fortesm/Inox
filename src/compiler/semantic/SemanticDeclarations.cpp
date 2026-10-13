@@ -222,7 +222,7 @@ void SemanticAnalyzer::resolveTypeOrThrow(std::string_view name) const
     }
     if (types_.resolve(name) == nullptr) {
         if (isFileType(name)) {
-            throw SemanticError("unknown type: File (it is declared in Std.Files: add `Use Std.IOUtils`)");
+            throw SemanticError("unknown type: File (it is declared in Std.Files: add `Use Std.Files`)");
         }
         throw SemanticError("unknown type: " + std::string(name));
     }

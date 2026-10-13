@@ -8,31 +8,13 @@
 Module Std.IOUtils
 Use Std.Files
 
-== Functions on text files and the file system (canon r3.58 module pair;
-== OpenSpec change file-io). They are compiler intrinsics, visible in a
-== program that uses Std.IOUtils, so their names stay free elsewhere.
+== File-system conveniences built on Std.Files (canon r3.64 module pairs).
+== Compiler intrinsics, visible in a program that uses Std.IOUtils, which
+== also gives everything of Std.Files:
 ==
-== Opening (F2) — a new File, owned by the variable that receives it:
-==   OpenRead(Path String) File      == an existing file, for reading
-==   Create(Path String) File        == a new or truncated file, for writing
-==   OpenAppend(Path String) File    == a new or existing file, writing at its end
-==
-== Text (F4, F5) — UTF-8; lines end with "\n" when written, and "\n" or
-== "\r\n" are accepted when read:
-==   ReadLn(F File) String           == the next line without its line end; "" at the end
-==   Eof(F File) Bool                == true when nothing is left to read
-==   Write(F File, Values...)        == the values, as Put prints them
-==   WriteLn(F File, Values...)      == the values and one line end, as PutLn
-==   Close(F File)                   == flush and close now (also automatic)
-==
-== File system (F7):
-==   Exists(Path String) Bool        == a regular file exists at Path
-==   DeleteFile(Path String)         == delete a file (never a directory)
+==   Exists(Path String) Bool            == a regular file exists at Path
+==   DeleteFile(Path String)             == delete a file (never a directory)
 ==   RenameFile(From String, To String)  == AlreadyExists when To exists
-==
-== Every failure raises FileNotFound, PermissionDenied, AlreadyExists,
-== DiskFull or IOError (Std.Errors), handled with try, except On, Else,
-== ensure and Retry like any exception:
 ==
 ==   try
 ==       F := OpenRead("dados.txt")

@@ -1,1 +1,1 @@
-unknown type: File (it is declared in Std.Files: add `Use Std.IOUtils`)
+unknown type: File (it is declared in Std.Files: add `Use Std.Files`)

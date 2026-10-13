@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-12 against Inox 0.2.0 pre-alpha, canon r3.63.
+Verified on 2026-10-12 against Inox 0.2.0 pre-alpha, canon r3.64.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -36,7 +36,8 @@ each version added.
   equality and ordering, `GetLn(S)`.
 - Exceptions: try/except/On/Else/ensure/Raise/Retry with the standard
   taxonomy, Itanium landing pads on Linux and MSVC funclets on Windows.
-- Text files: Std.Files / Std.IOUtils.
+- Text files: Std.Files (type and basic operations) / Std.IOUtils
+  (conveniences).
 - Standard library: Std.System, Std.IO, Std.Math, Std.Errors, Std.Debug
   (Assert), Std.Files, Std.IOUtils.
 - Windows x64 and Linux x64 run the full suite in CI

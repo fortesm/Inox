@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.63
+Canon revision: r3.64
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -17,14 +17,10 @@ maintainer answers them, and the answer becomes a revision.
 None of these is permission to choose (G4); until answered, the current text
 stands.
 
-1. **`std-strings`** (open change). Decided on 2026-10-13: concatenation
-   with `+`, without Delphi's copy on every step (a StringBuilder like
-   Delphi's if the compiler cannot avoid it); positions start at 1 and count
-   code points; `Substr()` as in Java instead of `Copy`; `Trim`, `LTrim`,
-   `RTrim`; Delphi-style names for the rest. Open: which functions belong to
-   `Std.Strings` and which to `Std.StrUtils` (the maintainer wants usable
-   functions in `Std.Strings`, not only definitions), and the remaining
-   names.
+1. **`std-strings` design** (Risk: high): approve
+   `openspec/changes/std-strings/design.md` — concatenation without repeated
+   copies, the block header, positions and the trap "string index out of
+   range", the Unicode tables — before any code is written.
 
 ## Revision log
 
@@ -63,3 +59,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `Std.Debug.Assert(Condition)` and `Assert(Condition, Message)` exist; a
   failed Assert is a trap, "assertion failed", exit 70, never compiled out.
   Change `debug-assert`.
+- r3.64 — 2026-10-13 — Module pairs: `Std.X` holds a subject's types, data
+  and fundamental operations, `Std.XUtils` the conveniences built on them
+  (and gives everything of `Std.X`). Std.Files holds the File type and the
+  basic operations; Std.IOUtils keeps Exists, DeleteFile, RenameFile.
+  Std.Strings decisions: `+` concatenates without repeated copies,
+  positions count code points from 1, `Length(S)`, `Substr`, `Trim`,
+  `LTrim`, `RTrim`, Delphi-style names (Marcelo Fortes: "Length(S) ewm vez
+  de charlenghth (aprovado)"; "Concatenação com + (aprovado)"; "Arquivos
+  muda isso também o básico fica em Std.Files e as comodidades para
+  Std,IOUtils"). Changes `module-pairs` (implemented) and `std-strings`
+  (design awaiting approval).

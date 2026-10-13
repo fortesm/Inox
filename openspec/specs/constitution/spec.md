@@ -1081,14 +1081,20 @@ error.
 - **THEN** each line arrives without its break (tests/runtime/strings-getln.inox), the bad line traps (tests/runtime/strings-invalid-utf8.inox), and `Get(S)` is rejected (tests/diagnostics/get-string.inox)
 
 ### Requirement: CANON-17 Files are visible only with Use
-`Use Std.IOUtils` SHALL make the file functions and the type `File` of
-`Std.Files` visible; `Use Std.Files` gives the type alone. Without the `Use`
-these names are free for the program's own routines. Details:
+`Use Std.Files` SHALL make the type `File` and the basic operations
+(`OpenRead`, `Create`, `OpenAppend`, `ReadLn`, `Eof`, `Write`, `WriteLn`,
+`Close`) visible; `Use Std.IOUtils` adds the conveniences (`Exists`,
+`DeleteFile`, `RenameFile`) and gives everything of `Std.Files`. Without the
+`Use` these names are free for the program's own routines. Details:
 `stdlib/files`.
 
 #### Scenario: Names stay free
 - **WHEN** a program uses a file function without `Use`, or declares its own `Create`
 - **THEN** the first is rejected (tests/diagnostics/file-without-use.inox) and the second compiles (tests/runtime/file-names-free.inox)
+
+#### Scenario: Basics and conveniences
+- **WHEN** a program with only `Use Std.Files` writes and reads a file, or calls `Exists`
+- **THEN** the first works (tests/runtime/files-basic-module.inox) and the second asks for `Use Std.IOUtils` (tests/diagnostics/file-utility-needs-ioutils.inox)
 
 ### Requirement: CANON-17 Opening a File; a File is never copied
 `OpenRead(Path)`, `Create(Path)` (new or truncated) and `OpenAppend(Path)`
@@ -1143,13 +1149,14 @@ with try, `On`, `Else`, `ensure` and `Retry` like any exception.
 ### Requirement: CANON-18 Library principles
 The standard library SHALL live in `stdlib/` as Inox modules, portable across
 Windows and Linux, without garbage collection, unsafe features or C interop.
-Modules come in pairs: `Std.X` holds the definitions and general data of a
-subject, like a C header; `Std.XUtils` holds helper functions and may use
-`Std.X`. No module is a catch-all.
+Modules come in pairs: `Std.X` holds a subject's types, data and
+fundamental operations, the ones nearly every program needs; `Std.XUtils`
+holds the conveniences built on them, uses `Std.X` and gives everything of
+it. No module is a catch-all.
 
 #### Scenario: A module pair
-- **WHEN** a program uses `Std.IOUtils`
-- **THEN** the File type of `Std.Files` comes with it (tests/runtime/files-text.inox)
+- **WHEN** a program uses `Std.IOUtils`, or only `Std.Files`
+- **THEN** the first has the type, the basics and the conveniences (tests/runtime/files-text.inox), the second the type and the basics (tests/runtime/files-basic-module.inox)
 
 ### Requirement: CANON-18 Library modules
 The library SHALL hold `Std.System` (the implicit prelude), `Std.IO` (Put,

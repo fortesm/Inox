@@ -7,15 +7,25 @@
 
 Module Std.Files
 
-== Definitions of text files (canon r3.58 module pair: Std.Files defines,
-== Std.IOUtils works; OpenSpec change file-io).
+== Text files: the File type and the basic operations (canon r3.64 module
+== pairs: Std.X holds a subject's type, data and fundamental operations;
+== Std.XUtils the conveniences). They are compiler intrinsics, visible in a
+== program that uses Std.Files or Std.IOUtils, so their names stay free
+== elsewhere.
 ==
-== The type File is a compiler intrinsic, visible in a program that uses
-== Std.Files or Std.IOUtils.
+==   File                            == an open text file, owned by the routine that holds it
+==   OpenRead(Path String) File      == an existing file, for reading
+==   Create(Path String) File        == a new or truncated file, for writing
+==   OpenAppend(Path String) File    == a new or existing file, writing at its end
+==   ReadLn(F File) String           == the next line without its line end; "" at the end
+==   Eof(F File) Bool                == true when nothing is left to read
+==   Write(F File, Values...)        == the values, as Put prints them
+==   WriteLn(F File, Values...)      == the values and one line end, as PutLn
+==   Close(F File)                   == flush and close now (also automatic)
 ==
-==   File     == an open text file, owned by the routine that holds it.
-==
-== Rules of a File (F1, F6):
+== Text is UTF-8; lines end with "\n" when written, and "\n" or "\r\n" are
+== accepted when read.
+== Rules of a File:
 ==   - it is closed when the routine that holds it exits by any path: the
 ==     end, Return, Exit or an exception; Close(F) closes it earlier, and
 ==     closing twice does nothing;
@@ -23,7 +33,6 @@ Module Std.Files
 ==     opened (F := OpenRead(Path)), or a ref mut parameter. It cannot be a
 ==     struct field, an array element, a State variable or a result, and it
 ==     cannot be compared.
-==
-== The errors of file operations are the exception types of Std.Errors:
-== FileNotFound, PermissionDenied, AlreadyExists and DiskFull, all kinds of
-== IOError, which is raised for any other failure.
+== Every failure raises FileNotFound, PermissionDenied, AlreadyExists,
+== DiskFull or IOError (Std.Errors), handled with try, except On, Else,
+== ensure and Retry like any exception.
