@@ -575,11 +575,16 @@ run_grammar_consistency
 run_version_check() {
     local canon="$repo_root/docs/INOX_CANONICAL.md"
     local language revision expected actual
-    language="$(sed -n 's/^# Language version: Inox \([^ ]*\).*/\1/p' "$canon" | head -n 1)"
+    # Header: "# Language version: Inox 0.2.0 pre-alpha (...)"; the program
+    # prints MAJOR.MINOR.RELEASE.BUILD, BUILD being set by each build.
+    language="$(sed -n 's/^# Language version: Inox \([0-9]*\.[0-9]*\.[0-9]*\) \([a-z-]*\).*/\1 \2/p' "$canon" | head -n 1)"
     revision="$(sed -n 's/^# Canon revision: \(r[0-9.]*\).*/\1/p' "$canon" | head -n 1)"
-    expected="inox $language (canon $revision)"
+    local number="${language%% *}"
+    local stage="${language#* }"
+    expected="inox ${number}.<BUILD> ${stage} (canon $revision)"
     actual="$("$inox_exe" --version 2>&1 | sed 's/\r$//')"
-    if [[ -n "$language" && -n "$revision" && "$actual" == "$expected" ]]; then
+    local pattern="^inox ${number//./\\.}\\.[0-9]{1,4} ${stage} \\(canon ${revision//./\\.}\\)\$"
+    if [[ -n "$language" && -n "$revision" && "$actual" =~ $pattern ]]; then
         record_pass "inox --version matches the canon header"
     else
         record_fail "inox --version matches the canon header" "expected: $expected" "actual: $actual"

@@ -431,7 +431,8 @@ int main(int argc, char** argv)
     const bool build = argc == 3 && std::string(argv[1]) == "--build";
     const bool run = argc == 3 && std::string(argv[1]) == "--run";
     if (argc == 2 && std::string(argv[1]) == "--version") {
-        std::cout << "inox " << inox::compiler::support::kInoxVersion << " (canon "
+        std::cout << "inox " << inox::compiler::support::versionText() << ' '
+                  << inox::compiler::support::kVersionStage << " (canon "
                   << inox::compiler::support::kCanonRevision << ")\n";
         return 0;
     }

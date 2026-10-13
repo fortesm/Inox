@@ -810,11 +810,15 @@ if ($null -eq $pythonExe) {
 
 # `inox --version` must match the canon header (SECTION 02, VERSIONING).
 $canonText = Get-Content -LiteralPath (Join-Path $repoRoot "docs\INOX_CANONICAL.md") -Raw
-$languageMatch = [regex]::Match($canonText, "(?m)^# Language version: Inox (\S+)")
+# Header: "# Language version: Inox 0.2.0 pre-alpha (...)"; the program
+# prints MAJOR.MINOR.RELEASE.BUILD, BUILD being set by each build.
+$languageMatch = [regex]::Match($canonText, "(?m)^# Language version: Inox ([0-9]+\.[0-9]+\.[0-9]+) ([a-z-]+)")
 $revisionMatch = [regex]::Match($canonText, "(?m)^# Canon revision: (r[0-9.]+)")
-$expectedVersion = "inox $($languageMatch.Groups[1].Value) (canon $($revisionMatch.Groups[1].Value))"
+$expectedVersion = "inox $($languageMatch.Groups[1].Value).<BUILD> $($languageMatch.Groups[2].Value) (canon $($revisionMatch.Groups[1].Value))"
+$versionPattern = "^inox " + [regex]::Escape($languageMatch.Groups[1].Value) + "\.[0-9]{1,4} " +
+    [regex]::Escape($languageMatch.Groups[2].Value) + " \(canon " + [regex]::Escape($revisionMatch.Groups[1].Value) + "\)$"
 $actualVersion = ((& $InoxExe "--version" 2>&1 | Out-String) -replace "`r", "").Trim()
-if ($languageMatch.Success -and $revisionMatch.Success -and $actualVersion -eq $expectedVersion) {
+if ($languageMatch.Success -and $revisionMatch.Success -and $actualVersion -match $versionPattern) {
     $passed++
     Write-Host "[PASS] inox --version matches the canon header"
 } else {

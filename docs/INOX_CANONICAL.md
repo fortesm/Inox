@@ -9,9 +9,10 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Language version: Inox 0.2.0-pre-alpha (language and compiler; SECTION 02)
-# Canon revision: r3.59 (decision log of this document, NOT a version;
-#                 text files: Std.Files / Std.IOUtils)
+# Language version: Inox 0.2.0 pre-alpha (MAJOR.MINOR.RELEASE; the BUILD is
+#                   set by each build; language and compiler; SECTION 02)
+# Canon revision: r3.60 (decision log of this document, NOT a version;
+#                 version scheme MAJOR.MINOR.RELEASE.BUILD)
 # Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -504,16 +505,34 @@ specification, ADRs, manual HTML, and tests.
 # SECTION 02 - VERSIONING AND RELEASE POLICY
 # ============================================================================
 
-## VERSIONING (r3.58, Marcelo Fortes, 2026-10-12)
+## VERSIONING (r3.58; scheme r3.60; Marcelo Fortes, 2026-10-12)
 
 Two numbers, never confused:
-- **Language version** — `Inox 0.2.0-pre-alpha`. The language and its
-  compiler share one version (Semantic Versioning, 0.x): before 1.0 a minor
-  version may change the language. Stages: pre-alpha (the 1.0 scope is still
-  being built) → alpha (1.0 scope complete) → beta (frozen; fixes only) →
-  1.0. `inox --version` prints it; `src/compiler/support/Version.h` is its
-  one source and the CMake project version follows it. "Inox 0.1" names the
-  baseline of ADR-0006 and the `v0.1.0-test` release (2026-06-02).
+- **Language version** — `MAJOR.MINOR.RELEASE.BUILD` plus a stage, today
+  `Inox 0.2.0.<BUILD> pre-alpha` (r3.60, Marcelo Fortes: "XX.XXX.XXX.XXXX
+  ONDE se divide em MAIOR VERSAO, MENOR VERSAO, RELEASE, BUILD"). The
+  language and its compiler share one version.
+    MAJOR    0..99     a generation of the language (1 is the first stable).
+    MINOR    0..999    new language or library features; before 1.0 a minor
+                       version may change the language.
+    RELEASE  0..999    a published revision without new features (fixes).
+    BUILD    0..9999   set by every build, never by hand: the number of
+                       commits in the history being compiled
+                       (`git rev-list --count HEAD`; 0 outside a git
+                       checkout). On main it only grows; two builds of the
+                       same commit have the same number. CI clones the whole
+                       history so the count is right.
+  MAJOR, MINOR, RELEASE and the stage change only by the maintainer's
+  decision, recorded here and in CHANGELOG.md; a new MINOR resets RELEASE to
+  0, a new MAJOR resets MINOR and RELEASE; BUILD is never reset. Stages:
+  pre-alpha (the 1.0 scope is still being built) → alpha (1.0 scope
+  complete) → beta (frozen; fixes only) → stable (1.0). Git tags and
+  release names use MAJOR.MINOR.RELEASE (`v0.2.0`); the BUILD identifies one
+  build. `inox --version` prints `inox 0.2.0.<BUILD> pre-alpha (canon
+  r3.NN)`; `src/compiler/support/Version.h` is the one source of the
+  numbers, cmake/InoxBuildNumber.cmake writes the BUILD at every build.
+  "Inox 0.1" names the baseline of ADR-0006 and the `v0.1.0-test` release
+  (2026-06-02).
 - **Canon revision** — `r3.58`: the number of an entry of the change log
   below, i.e. of a set of decisions recorded in this document. It is NOT a
   version of the language. Entries up to v3.57 keep their old `v3.xx` label
@@ -524,6 +543,27 @@ Two numbers, never confused:
 
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# r3.60 — 2026-10-12 — version scheme; file rules approved.
+#         Marcelo Fortes, 2026-10-12: "Tudo 100% aprovado, Canonize!";
+#         "quero definir essa nomenclatura de versao XX.XXX.XXX.XXXX ONDE se
+#         divide em MAIOR VERSAO, MENOR VERSAO, RELEASE, BUILD ... A versao
+#         atual é 0.2.0.build indefindo. Pré-Alfa".
+#   - Layer A, CANON-17 "Files": the rules settled while implementing r3.59
+#     are approved: the file names exist only with `Use Std.IOUtils` (the
+#     File type also with `Use Std.Files`); RenameFile raises AlreadyExists
+#     when the target exists, on every system; DeleteFile never deletes a
+#     directory and Exists is true only for a regular file; ReadLn past the
+#     end returns "" and Eof is true; a file declared in a loop is closed
+#     when the next iteration stores another, the last one at routine exit.
+#   - SECTION 02 VERSIONING: the version is MAJOR.MINOR.RELEASE.BUILD (0..99,
+#     0..999, 0..999, 0..9999) plus the stage; today 0.2.0.<BUILD>
+#     pre-alpha. The BUILD, left undefined by the maintainer, is defined as
+#     the commit count of the compiled history, written at every build by
+#     cmake/InoxBuildNumber.cmake (CI clones the full history). This
+#     replaces the SemVer wording of r3.58 ("0.2.0-pre-alpha").
+#   - The test scripts check `inox --version` against this header with any
+#     BUILD.
 #
 # r3.59 — 2026-10-12 — text files: Std.Files and Std.IOUtils (Layer A and
 #         Layer B). Decisions F1–F7 approved by Marcelo Fortes on 2026-10-12

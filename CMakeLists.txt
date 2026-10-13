@@ -98,7 +98,20 @@ if(CMAKE_CXX_COMPILER_TARGET MATCHES "msvc" OR MSVC OR CMAKE_CXX_SIMULATE_ID STR
     target_compile_definitions(inoxrt-tests PRIVATE _ITERATOR_DEBUG_LEVEL=0)
 endif()
 
+# The BUILD number of the version (canon SECTION 02), regenerated at every
+# build into build/generated/InoxBuildNumber.h.
+set(INOX_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+add_custom_target(inox-build-number ALL
+    COMMAND "${CMAKE_COMMAND}"
+            "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+            "-DOUTPUT=${INOX_GENERATED_DIR}/InoxBuildNumber.h"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/InoxBuildNumber.cmake"
+    BYPRODUCTS "${INOX_GENERATED_DIR}/InoxBuildNumber.h"
+    COMMENT "Inox build number"
+    VERBATIM)
+
 add_executable(inox ${INOX_COMPILER_SOURCES})
+add_dependencies(inox inox-build-number)
 
 inox_apply_compiler_options(inox)
 inox_apply_warnings(inox)
@@ -106,6 +119,7 @@ inox_apply_sanitizers(inox)
 
 target_include_directories(inox PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${INOX_GENERATED_DIR}
 )
 
 include(InoxInstall)
