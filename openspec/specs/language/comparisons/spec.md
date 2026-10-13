@@ -3,7 +3,8 @@
 ## Purpose
 Which operand types each comparison operator (`=` `#` `<` `>` `<=` `>=`)
 accepts, what it means for each type, and how the Bool results combine
-(CANON-14, CANON-20; canon v3.56).
+(CANON-14, CANON-20; canon v3.56). Part of the Inox law, detailing the
+constitution (`openspec/specs/constitution`).
 
 ## Requirements
 

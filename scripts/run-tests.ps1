@@ -790,7 +790,7 @@ Invoke-ModeExitTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\cycles\Cycle.A.inox")) `
     -ExpectSuccess $false
 
-# grammar/grammar.ebnf must agree with the canon, the lexer and the parser.
+# grammar/grammar.ebnf must agree with the constitution, the lexer and the parser.
 $pythonExe = @("python3", "python") | Where-Object {
     $null -ne (Get-Command $_ -ErrorAction SilentlyContinue)
 } | Select-Object -First 1
@@ -808,22 +808,23 @@ if ($null -eq $pythonExe) {
     }
 }
 
-# `inox --version` must match the canon header (SECTION 02, VERSIONING).
-$canonText = Get-Content -LiteralPath (Join-Path $repoRoot "docs\INOX_CANONICAL.md") -Raw
-# Header: "# Language version: Inox 0.2.0 pre-alpha (...)"; the program
-# prints MAJOR.MINOR.RELEASE.BUILD, BUILD being set by each build.
-$languageMatch = [regex]::Match($canonText, "(?m)^# Language version: Inox ([0-9]+\.[0-9]+\.[0-9]+) ([a-z-]+)")
-$revisionMatch = [regex]::Match($canonText, "(?m)^# Canon revision: (r[0-9.]+)")
+# `inox --version` must match the version and revision at the top of
+# openspec/specs/constitution/revisions.md (constitution VERSIONING).
+$revisionsText = Get-Content -LiteralPath (Join-Path $repoRoot "openspec\specs\constitution\revisions.md") -Raw
+# "Language version: Inox 0.2.0 pre-alpha"; the program prints
+# MAJOR.MINOR.RELEASE.BUILD, BUILD being set by each build.
+$languageMatch = [regex]::Match($revisionsText, "(?m)^Language version: Inox ([0-9]+\.[0-9]+\.[0-9]+) ([a-z-]+)")
+$revisionMatch = [regex]::Match($revisionsText, "(?m)^Canon revision: (r[0-9.]+)")
 $expectedVersion = "inox $($languageMatch.Groups[1].Value).<BUILD> $($languageMatch.Groups[2].Value) (canon $($revisionMatch.Groups[1].Value))"
 $versionPattern = "^inox " + [regex]::Escape($languageMatch.Groups[1].Value) + "\.[0-9]{1,4} " +
     [regex]::Escape($languageMatch.Groups[2].Value) + " \(canon " + [regex]::Escape($revisionMatch.Groups[1].Value) + "\)$"
 $actualVersion = ((& $InoxExe "--version" 2>&1 | Out-String) -replace "`r", "").Trim()
 if ($languageMatch.Success -and $revisionMatch.Success -and $actualVersion -match $versionPattern) {
     $passed++
-    Write-Host "[PASS] inox --version matches the canon header"
+    Write-Host "[PASS] inox --version matches the constitution"
 } else {
     $failed++
-    Write-Host "[FAIL] inox --version matches the canon header"
+    Write-Host "[FAIL] inox --version matches the constitution"
     Write-Host "       expected: $expectedVersion"
     Write-Host "       actual: $actualVersion"
 }

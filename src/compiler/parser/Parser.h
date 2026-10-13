@@ -127,12 +127,12 @@ private:
     const lexer::Token& consumeIdentifierLike(std::string_view message);
     const lexer::Token& advance();
 
-    // Implementation limits (CANON-19, checked arithmetic and limits). They turn pathological input into a
+    // Implementation limits (CANON-19). They turn pathological input into a
     // normal diagnostic instead of a native stack overflow.
     // The values are measured, not guessed: they are the largest nesting the
     // deepest recursive pass survives on a 1 MiB main-thread stack (the Windows
     // default) in the worst build we have, Debug + AddressSanitizer, divided by
-    // a safety factor of about two. See docs/INOX_CANONICAL.md (CANON-21).
+    // a safety factor of about two (constitution CANON-19).
     static constexpr std::size_t kMaxStatementNesting = 64;
     static constexpr std::size_t kMaxExpressionNesting = 256;
     static constexpr std::size_t kMaxExpressionDepth = 128;

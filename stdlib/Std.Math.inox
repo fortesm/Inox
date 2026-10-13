@@ -116,7 +116,7 @@ Lcm(A Integer, B Integer) Integer :
 == Float convenience functions implemented in Inox source over backend math
 == intrinsics. They deliberately use Float/Float64, not Currency/Crypto.
 ==
-== STATUS NOTES (see INOX_CANONICAL conformance gaps):
+== STATUS NOTES (see docs/STATUS.md, conformance gaps):
 ==  - Lcm/Sqr/Cube inherit checked integer arithmetic. Overflow deterministically
 ==    traps under DECISION P-A; v3.19 verification confirmed all three paths.
 ==  - Pi/Tau/E are written as zero-argument functions (not Const) because the

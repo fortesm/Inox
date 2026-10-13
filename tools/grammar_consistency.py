@@ -5,9 +5,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
-"""Checks that grammar/grammar.ebnf agrees with the canon, the lexer and the parser.
+"""Checks that grammar/grammar.ebnf agrees with the constitution, the lexer and the parser.
 
-The grammar is a mirror of docs/INOX_CANONICAL.md (AGENTS.md hierarchy, level 4).
+The grammar mirrors the constitution, openspec/specs/constitution/spec.md (G1).
 This tool does not prove the parser accepts exactly the grammar; it catches the
 drift that has happened before:
 
@@ -19,7 +19,7 @@ drift that has happened before:
   forbidden   terminals Inox does not have (`end`, `break`, `finally`, `then`,
               `of`, `when`, `=>`, `var`) and empty parentheses never appear
   canon20     the `(* level N, assoc *)` annotations follow the CANON-20 table
-              of the canonical document: same levels, same associativity,
+              of the constitution: same levels, same associativity,
               weakest first
   parser      each parser function in PARSER_MAP exists in Parser.cpp and its
               production exists in the grammar; the expression functions call
@@ -237,7 +237,7 @@ def check_forbidden(rules, block):
 
 
 def canon_table(canon_text):
-    section = canon_text.split("### Precedence table", 1)
+    section = canon_text.split("### CANON-20 precedence table", 1)
     if len(section) < 2:
         raise SystemExit("grammar_consistency: CANON-20 precedence table not found")
     table = section[1].split("```", 2)[1]
@@ -310,7 +310,7 @@ def check_parser(rules, parser_text):
 def main(argv):
     root = Path(argv[1]) if len(argv) > 1 else Path(__file__).resolve().parent.parent
     grammar = (root / "grammar" / "grammar.ebnf").read_text(encoding="utf-8")
-    canon = (root / "docs" / "INOX_CANONICAL.md").read_text(encoding="utf-8")
+    canon = (root / "openspec" / "specs" / "constitution" / "spec.md").read_text(encoding="utf-8")
     lexer = (root / "src" / "compiler" / "lexer" / "Lexer.cpp").read_text(encoding="utf-8")
     parser = (root / "src" / "compiler" / "parser" / "Parser.cpp").read_text(encoding="utf-8")
 

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
-# Tests that fail on the Windows CI runner (windows-2022, clang 19.1.5,
-# x86_64-pc-windows-msvc) until the MSVC exception bridge lands (CANON B-GAPS
-# EH-v3.16a). The failing set must EQUAL this list (tools/ci_known_failures.py):
+# Tests known to fail on the Windows CI runner (windows-2022, clang 19.1.5,
+# x86_64-pc-windows-msvc). Empty since the MSVC exception bridge closed
+# EH-v3.16a (canon v3.41). The failing set must EQUAL this list (tools/ci_known_failures.py):
 # an unlisted failure or a listed test that passes fails the job. This list
 # describes that runner only; results with other toolchains (for example clang
 # 22.1.6 on the maintainer's machine) are recorded separately, not here.

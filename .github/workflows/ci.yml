@@ -25,8 +25,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # The BUILD number is the commit count of the history (canon
-          # SECTION 02); a shallow clone would count 1.
+          # The BUILD number is the commit count of the history (constitution
+          # VERSIONING); a shallow clone would count 1.
           fetch-depth: 0
       - name: Install toolchain
         run: |
@@ -52,8 +52,8 @@ jobs:
         env:
           OPENSPEC_TELEMETRY: '0'
         run: npx -y @fission-ai/openspec@1.14.1 validate --all --strict --no-interactive
-      - name: Canon migration map (every canon line traced; ADR copies verbatim)
-        run: python3 tools/canon_trace.py check
+      - name: Constitution lock (law unchanged unless approved; named tests exist)
+        run: python3 tools/constitution_check.py check
 
   windows:
     name: Windows (clang, MSVC ABI, Debug)
@@ -61,8 +61,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # The BUILD number is the commit count of the history (canon
-          # SECTION 02); a shallow clone would count 1.
+          # The BUILD number is the commit count of the history (constitution
+          # VERSIONING); a shallow clone would count 1.
           fetch-depth: 0
       - name: Developer environment (MSVC x64)
         uses: ilammy/msvc-dev-cmd@v1

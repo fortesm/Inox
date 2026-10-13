@@ -1,8 +1,8 @@
 # natural Specification
 
 ## Purpose
-`Natural`, the non-negative subtype of Integer (ADR-0014, ADR-0015). Mirror of the canon (G7): the canon stays the law until Marcelo Fortes
-approves this capability's migration.
+`Natural`, the non-negative subtype of Integer (ADR-0014, ADR-0015). Part of
+the Inox law, detailing the constitution (`openspec/specs/constitution`).
 
 ## Requirements
 

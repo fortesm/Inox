@@ -1,0 +1,148 @@
+# constitution.lock - written by tools/constitution_check.py relock; never edit by hand.
+# One line per locked unit: unit <TAB> sha256 prefix <TAB> approving OpenSpec change.
+# A unit changes only through relock --approval <change>, where <change> quotes
+# Marcelo Fortes's approval (constitution G2, G8).
+spec.md#preamble	1a8fc0613107e877	constitution
+spec.md#G1 The law wins on design, the code on status	3cd4e7bd04e698d5	constitution
+spec.md#G1 Disagreements are reported, never resolved silently	8ccfa1ba6f382aff	constitution
+spec.md#G2 Authority	ba32846a762fe307	constitution
+spec.md#G3 Every decision is recorded	5ebf41d13bfad975	constitution
+spec.md#G4 No silent scope expansion	d918598ff21a108f	constitution
+spec.md#G5 Verifiability	dfb3a9ac11998f7b	constitution
+spec.md#G6 Engineering quality is constitutional	c07f1b8b66fd618c	constitution
+spec.md#G7 OpenSpec carries every change	1152cd5cd0bf4853	constitution
+spec.md#G7 High-risk changes wait for design approval	471d4dfc4f7e3cd2	constitution
+spec.md#G8 The lock	e3d8b06f2031a704	constitution
+spec.md#CANON-1 Identity of Inox	7fc3e6d9b452398d	constitution
+spec.md#CANON-1 Post-object-oriented design	42a5f6910145ce27	constitution
+spec.md#CANON-1 Safety defaults	579a8963240512e4	constitution
+spec.md#CANON-2 Names are case-insensitive	34febe6d17f2bbd8	constitution
+spec.md#CANON-2 Comments and literals	5984e594e993a409	constitution
+spec.md#CANON-2 Digit separator	006404ba593459d4	constitution
+spec.md#CANON-2 Symbols	a2a1906d85614427	constitution
+spec.md#CANON-2 Words Inox does not have	f36760beac82b140	constitution
+spec.md#CANON-3 Modules and Use	2f7fff12bd7cc966	constitution
+spec.md#CANON-3 Module resolution	87deaf60cefa2a59	constitution
+spec.md#CANON-3 Visibility	cc7082a5f84021ec	constitution
+spec.md#CANON-4 Semicolon closes, colon declares	ff9d6370169084c8	constitution
+spec.md#CANON-4 Control structures use no colon	5efc6a9619e1419f	constitution
+spec.md#CANON-4 One statement per line	8ee77f1d6ea33df1	constitution
+spec.md#CANON-4 Sections and removed forms	4385a8a368c95c53	constitution
+spec.md#CANON-5 Three declaration forms	def4ac0631701707	constitution
+spec.md#CANON-5 Every variable is born with a value	78399b74c50748c3	constitution
+spec.md#CANON-5 Unread locals are errors	8befd986fac7a4ee	constitution
+spec.md#CANON-5 Grouped declarations	8c0f134a15fbaefc	constitution
+spec.md#CANON-5 Assignment is a statement	b3da436634a3b804	constitution
+spec.md#CANON-5 Compound assignment	dd10a3d40b134734	constitution
+spec.md#CANON-5 Safe inference	d38b28e5f8aba169	constitution
+spec.md#CANON-5 Const	c197440f16489fef	constitution
+spec.md#CANON-5 State	ba7075eae07aa1ed	constitution
+spec.md#CANON-5 Type section forms	9aed9c6a5e82fb8e	constitution
+spec.md#CANON-6 Functions and subroutines	f14392ba57c91bea	constitution
+spec.md#CANON-6 Exit	9b3a00557eb7a21e	constitution
+spec.md#CANON-7 Empty parentheses are forbidden	f2c66de5a62e9bae	constitution
+spec.md#CANON-8 Built-in types	781016d8d519add9	constitution
+spec.md#CANON-8 The numeric set is closed	41287e2139bf5048	constitution
+spec.md#CANON-8 Conversions	eb495ebb922c23dd	constitution
+spec.md#CANON-8 Constants in fixed-width types	865fe0822fe03457	constitution
+spec.md#CANON-8 UInt64 literals	bf715740aa538738	constitution
+spec.md#CANON-8 Exact decimals	9ad292af3a271504	constitution
+spec.md#CANON-8 Operators	89dad5646c88f097	constitution
+spec.md#CANON-8 Overflow is never silent	614aba4ebbefff21	constitution
+spec.md#CANON-8 Division by zero and power	048fec166105c948	constitution
+spec.md#CANON-8 Generic syntax	a940aa804615980f	constitution
+spec.md#CANON-9 Structs are nominal value types	a4d0ea5d913d8c24	constitution
+spec.md#CANON-9 Fields	1e7fbb70bed7cf50	constitution
+spec.md#CANON-9 Associated methods	fad873f99ec30d01	constitution
+spec.md#CANON-9 Named construction	af42acdf70dbb28f	constitution
+spec.md#CANON-9 Structs are not compared	8271b9ae445cd83b	constitution
+spec.md#CANON-10 Parameters and mutability	4b68cbc4da9335be	constitution
+spec.md#CANON-10 Scope of locals	d219e369bba5040a	constitution
+spec.md#CANON-10 No shadowing	374e96362c01e03d	constitution
+spec.md#CANON-10 Loop iterators	29b268cf62e9f413	constitution
+spec.md#CANON-11 The with statement	13a44dc08c560628	constitution
+spec.md#CANON-12 if, elif, else and unless	5bb95dc4f0eafe7d	constitution
+spec.md#CANON-12 Conditional expression	093f47656baf1a63	constitution
+spec.md#CANON-12 while, leave and continue	4e5611369f5c405a	constitution
+spec.md#CANON-12 repeat and until	00d3f517f353512d	constitution
+spec.md#CANON-12 for loops	d097122190e2dca7	constitution
+spec.md#CANON-12 for evaluates its header once	1e21a50aec55f675	constitution
+spec.md#CANON-12 case	3a8a3d1314e6aefc	constitution
+spec.md#CANON-13 Array	1241a5bd9705ff10	constitution
+spec.md#CANON-13 Slice	b7058d14d22dc286	constitution
+spec.md#CANON-13 Vector	cf3e9c09995b13ef	constitution
+spec.md#CANON-13 Range	76f401a27eed4290	constitution
+spec.md#CANON-13 Enum	8339752622ecfac0	constitution
+spec.md#CANON-13 Enum operations	683f3478756223d3	constitution
+spec.md#CANON-13 Set	92cf72f9b1065b4e	constitution
+spec.md#CANON-14 String values	5d7a5e2811c9ed78	constitution
+spec.md#CANON-14 String comparison	b425efc203c39994	constitution
+spec.md#CANON-14 Reserved String operations	af5b1cc59826d0bd	constitution
+spec.md#CANON-14 Char	4f6d6a1ef3ea611f	constitution
+spec.md#CANON-15 The try statement	5388bdd6cd1d1c0d	constitution
+spec.md#CANON-15 Typed handlers	f805cb680eaed837	constitution
+spec.md#CANON-15 Raise	44fa410a9bb2fe56	constitution
+spec.md#CANON-15 Retry	7fdded6974106129	constitution
+spec.md#CANON-15 ensure	b689e2f1c71d1bce	constitution
+spec.md#CANON-15 Exception taxonomy	a06d0b586ea8bfb0	constitution
+spec.md#CANON-15 Deferred exception features	705ebf3b9b58ff8b	constitution
+spec.md#CANON-17 Put and PutLn	a72aa0b863f387da	constitution
+spec.md#CANON-17 Get and GetLn	aa7214828a99f9f6	constitution
+spec.md#CANON-17 Integer input is strict	c34b1f0df7db3030	constitution
+spec.md#CANON-17 GetLn into a String	7c1ca5427a6d4b93	constitution
+spec.md#CANON-17 Files are visible only with Use	1b2912d837098313	constitution
+spec.md#CANON-17 Opening a File; a File is never copied	c37b53c36ea29e37	constitution
+spec.md#CANON-17 A File closes itself	ad1cb7932ba552c2	constitution
+spec.md#CANON-17 Text in files	1a59a7ef5bb0ee53	constitution
+spec.md#CANON-17 File system functions	b0aa61e9bafcb323	constitution
+spec.md#CANON-17 File errors are exceptions	bc7b1e4c7018bea9	constitution
+spec.md#CANON-18 Library principles	4271c83783e8a45c	constitution
+spec.md#CANON-18 Library modules	2f4aae8347c283bf	constitution
+spec.md#CANON-18 Planned modules	4955763ea05c20f2	constitution
+spec.md#CANON-19 Run-time faults are traps	b35d7570f0992acd	constitution
+spec.md#CANON-19 Compile-time faults	bf1622e491bf380a	constitution
+spec.md#CANON-19 Trap categories	4783b09f8cf09043	constitution
+spec.md#CANON-19 What traps	11389ad5bbf19f0c	constitution
+spec.md#CANON-19 Compiler, library and runtime	558fa5d9a67425f8	constitution
+spec.md#CANON-19 Compiler limits	2ea229dba96e0ae7	constitution
+spec.md#CANON-20 Operator precedence	1735231177adf8e3	constitution
+spec.md#CANON-20 Associativity	d963058f4f15fd1a	constitution
+spec.md#CANON-20 Mandatory parentheses	a91280e7e8bcf866	constitution
+spec.md#CANON-21 The test suite is part of the law	d2378e914a8ad594	constitution
+spec.md#CANON-21 Test layers	3dd5f11b490b5d34	constitution
+spec.md#CANON-23 LLVM backend and the clang driver	7017ebec86d19fdf	constitution
+spec.md#CANON-23 Lowering rules	a2d41e406c3ccf63	constitution
+spec.md#CANON-23 Valid IR or a clear stop	b65face9199b56ba	constitution
+spec.md#CANON-23 Driver commands	c5aa33274a926245	constitution
+spec.md#VERSIONING The version number	4913b3727284db7b	constitution
+spec.md#VERSIONING Who changes the version	59a96df0746489b0	constitution
+spec.md#VERSIONING Canon revision	7325a37130b8e81e	constitution
+spec.md#FUTURE Concurrency	7e4363bb408956d2	constitution
+spec.md#FUTURE Contracts, protocols and generics	6505a6ce4c543775	constitution
+spec.md#FUTURE Ownership, absence and failure	076b1bfa29ef29af	constitution
+spec.md#FUTURE Modules, variants and numbers	90ca5a0360a10d21	constitution
+engineering.md#preamble	60703a2fce444e01	constitution
+engineering.md#Sources of influence	32a192c5bf83b9ac	constitution
+engineering.md#E1. Shallow control flow	0af555ce8718f759	constitution
+engineering.md#E2. No unnecessary else	95dbd52b4f29cebf	constitution
+engineering.md#E3. Small, cohesive functions, classes and files	130ecccb2414957b	constitution
+engineering.md#E4. Meaningful names	9b69581e63607888	constitution
+engineering.md#E5. Domain concepts are explicit	997012f068d3d5b5	constitution
+engineering.md#E6. Collections with invariants are abstractions	7931b864a495feed	constitution
+engineering.md#E7. No deep navigation into another subsystem	36ece1c359e91d6a	constitution
+engineering.md#E8. Behavior over getters and setters	daca3553e152ff1c	constitution
+engineering.md#E9. Explicit ownership and lifetime	f3c9baa65fbce229	constitution
+engineering.md#E10. Minimal mutable and global state	6955047b0a077722	constitution
+engineering.md#E11. Compiler phase boundaries	be3736b1982f98c8	constitution
+engineering.md#E12. Platform code is isolated	9324d5ff194ba145	constitution
+engineering.md#E13. No silent failure	219140743840d464	constitution
+engineering.md#E14. Diagnostics are compiler output	c05ef57c12f04fe6	constitution
+engineering.md#E15. Valid LLVM IR or a clear stop	f6cc69fcf3dbf7a7	constitution
+engineering.md#E16. Every behavior and every fix has tests	1ad4f8eeb1b2b179	constitution
+engineering.md#E17. Design patterns that earn their place	60599020ba37f2e2	constitution
+engineering.md#E18. Modern C++ baseline	fb3c6be1a9286106	constitution
+engineering.md#E19. Quality gates	11de8388d8aea6c4	constitution
+engineering.md#E20. Refactoring	8ef6bec77e01fcbd	constitution
+engineering.md#E21. Module structure of the compiler	664a5ebb7a021d5b	constitution
+engineering.md#E22. Backend strategy: clang as the external driver	b270452cbb569e71	constitution
+engineering.md#E23. Examples, releases and documentation	731005369caf160d	constitution

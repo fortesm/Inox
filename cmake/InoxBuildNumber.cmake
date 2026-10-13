@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 #
-# The BUILD part of the Inox version (canon SECTION 02, VERSIONING): the
+# The BUILD part of the Inox version (constitution VERSIONING): the
 # number of commits in the history being compiled. On main it only grows,
 # and two builds of the same commit get the same number. Run at every build
 # (`cmake -P`); the header is rewritten only when the number changes, so
