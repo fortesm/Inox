@@ -8,15 +8,16 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-12 against Inox 0.2.0 pre-alpha, canon r3.62.
+Verified on 2026-10-12 against Inox 0.2.0 pre-alpha, canon r3.63.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
 
 ## Implemented
 
-- Driver: `--dump-tokens`, `--parse-only`, `--dump-types`, `--emit-llvm`,
-  `--build`, `--run`, `--help`, `--version`; local `Module`/`Use` with
+- Driver: `inox file.inox`, `run`, `build`, `check`, `emit-llvm`, `help`,
+  `version` (the `--` switches are aliases; `--parse-only`, `--dump-tokens`,
+  `--dump-types` for development); local `Module`/`Use` with
   recursive loading and cycle rejection; library discovery; toolchain
   failures reported with the tool's own messages.
 - Lexical rules, blocks, declarations (inline, grouped, chained, compound),
@@ -36,7 +37,8 @@ each version added.
 - Exceptions: try/except/On/Else/ensure/Raise/Retry with the standard
   taxonomy, Itanium landing pads on Linux and MSVC funclets on Windows.
 - Text files: Std.Files / Std.IOUtils.
-- Standard library: Std.System, Std.IO, Std.Math, Std.Files, Std.IOUtils.
+- Standard library: Std.System, Std.IO, Std.Math, Std.Errors, Std.Debug
+  (Assert), Std.Files, Std.IOUtils.
 - Windows x64 and Linux x64 run the full suite in CI
   (`ci/windows-known-failures.txt` is empty).
 
@@ -55,10 +57,7 @@ each version added.
   functions.
 - Char values: a Char local or comparison is accepted and not lowered, and
   `PutLn(C)` with a Char is rejected ("cannot be printed yet").
-- Std.Debug.Assert is unavailable (an open question in revisions.md).
 - Module exports, visibility and package search beyond local `Use`.
-- The driver has switches, not the subcommands of CANON-23 (open
-  question in revisions.md).
 - Console output goes through the C `printf` and Integer input through
   `getchar`-based helpers: a temporary ABI.
 - Final runtime ABI and toolchain discovery; clang is still the external

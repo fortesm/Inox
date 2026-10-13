@@ -93,7 +93,7 @@ function Invoke-InoxTest {
     )
 
     $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
-    & $InoxExe $TestFile.FullName *> $null
+    & $InoxExe "check" $TestFile.FullName *> $null
     $exitCode = $LASTEXITCODE
 
     if ($ExpectSuccess) {
@@ -320,19 +320,27 @@ function Invoke-ToolchainFailureTest {
 }
 
 function Invoke-RunDriverTest {
+    # Command (CANON-23): "--run" (default), "run", or "-" for `inox <file>`
+    # alone, which also builds and runs.
     param(
         [System.IO.FileInfo]$TestFile,
-        [System.IO.FileInfo]$ExpectedOutputFile
+        [System.IO.FileInfo]$ExpectedOutputFile,
+        [string]$Command = "--run"
     )
 
     $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
+    $label = if ($Command -eq "-") { "$relativePath (inox <file>)" } else { "$relativePath $Command" }
     $clang = Get-Command clang -ErrorAction SilentlyContinue
     if ($null -eq $clang) {
-        Write-Host "[SKIP] $relativePath --run (clang not found)"
+        Write-Host "[SKIP] $label (clang not found)"
         return
     }
 
-    $actual = & $InoxExe "--run" $TestFile.FullName 2>&1 | Out-String
+    if ($Command -eq "-") {
+        $actual = & $InoxExe $TestFile.FullName 2>&1 | Out-String
+    } else {
+        $actual = & $InoxExe $Command $TestFile.FullName 2>&1 | Out-String
+    }
     $exitCode = $LASTEXITCODE
     $expected = Get-Content -LiteralPath $ExpectedOutputFile.FullName -Raw
     $actual = ($actual -replace "`r`n", "`n") -replace "`n+$", ""
@@ -340,10 +348,10 @@ function Invoke-RunDriverTest {
 
     if ($exitCode -eq 0 -and $actual -eq $expected) {
         $script:passed++
-        Write-Host "[PASS] $relativePath --run"
+        Write-Host "[PASS] $label"
     } else {
         $script:failed++
-        Write-Host "[FAIL] $relativePath --run"
+        Write-Host "[FAIL] $label"
         Write-Host "       exit code: $exitCode"
         Write-Host "       expected output:"
         Write-Host $expected
@@ -719,6 +727,43 @@ Invoke-ToolchainFailureTest `
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.out"))
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.out")) `
+    -Command "run"
+Invoke-RunDriverTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.inox")) `
+    -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\run-hello.out")) `
+    -Command "-"
+
+# Driver commands (CANON-23): `check` checks without building, `help` and
+# `version` are aliases of their switches, a command without a file is an error.
+$helloPath = Join-Path $repoRoot "tests\integration\run-hello.inox"
+$checkOutput = & $InoxExe "check" $helloPath 2>&1 | Out-String
+if ($LASTEXITCODE -eq 0 -and $checkOutput -match "semantic ok") {
+    $passed++; Write-Host "[PASS] inox check <file>"
+} else {
+    $failed++; Write-Host "[FAIL] inox check <file>"; Write-Host "       actual output: $checkOutput"
+}
+$versionWord = (& $InoxExe "version" 2>&1 | Out-String).Trim()
+$versionSwitch = (& $InoxExe "--version" 2>&1 | Out-String).Trim()
+if ($versionWord -eq $versionSwitch) {
+    $passed++; Write-Host "[PASS] inox version = inox --version"
+} else {
+    $failed++; Write-Host "[FAIL] inox version = inox --version"
+}
+$helpOutput = & $InoxExe "help" 2>&1 | Out-String
+if ($LASTEXITCODE -eq 0 -and $helpOutput.Contains("inox run <file.inox>")) {
+    $passed++; Write-Host "[PASS] inox help"
+} else {
+    $failed++; Write-Host "[FAIL] inox help"; Write-Host "       actual output: $helpOutput"
+}
+& $InoxExe "run" *> $null
+if ($LASTEXITCODE -ne 0) {
+    $passed++; Write-Host "[PASS] inox run without a file is an error"
+} else {
+    $failed++; Write-Host "[FAIL] inox run without a file is an error"
+}
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\typed-ensure.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\typed-ensure.out"))

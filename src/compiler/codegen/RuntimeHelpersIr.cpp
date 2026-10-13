@@ -193,6 +193,7 @@ constexpr RuntimeFaultKind kRuntimeFaultKinds[] = {
     {10, "slice bounds out of range"},
     {12, "out of memory"},
     {13, "invalid UTF-8 input"},
+    {14, "assertion failed"},
 };
 
 } // namespace
@@ -213,7 +214,8 @@ std::string runtimeFaultSeam()
        << "; step <= 0, 5 negative exponent, 6 invalid integer input, 7 negative value\n"
        << "; converted to Natural, 8 integer conversion outside the target range, 9 array\n"
        << "; index outside Low..High, 10 slice bounds outside the base, 12 out of memory,\n"
-       << "; 13 invalid UTF-8 input (kind 11 is reserved for the Range check).\n";
+       << "; 13 invalid UTF-8 input, 14 a failed Std.Debug.Assert (kind 11 is reserved\n"
+       << "; for the Range check).\n";
     for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
         const std::string text = std::string("Inox runtime error: ") + kind.message + "\n";
         ir << "@.inox.fault." << kind.code << " = private unnamed_addr constant ["
@@ -251,6 +253,42 @@ std::string runtimeFaultSeam()
        << "  call void @_exit(i32 " << kRuntimeFaultExitStatus << ")\n"
        << "  unreachable\n"
        << "}\n";
+    return ir.str();
+}
+
+std::string assertMessageHelper()
+{
+    const support::NativeErrorWriter writer = support::nativeErrorWriter();
+    const std::string lengthType = "i" + std::to_string(writer.lengthBits);
+    const std::string resultType = "i" + std::to_string(writer.resultBits);
+    const std::string prefix = "Inox runtime error: assertion failed: ";
+
+    std::ostringstream ir;
+    ir << "; A failed Assert(Condition, Message) (Std.Debug): the trap of kind 14 with the\n"
+       << "; message after the category, read from the String block { count, length, bytes }.\n"
+       << "@.inox.assert.prefix = private unnamed_addr constant [" << prefix.size() << " x i8] c\""
+       << llvmByteString(prefix) << "\"\n"
+       << "@.inox.assert.newline = private unnamed_addr constant [1 x i8] c\"\\0A\"\n"
+       << "define internal void @__inox_assert_message(ptr %message) noreturn nounwind cold noinline {\n"
+       << "entry:\n"
+       << "  %flushed = call i32 @fflush(ptr null)\n"
+       << "  %prefix = call " << resultType << " @" << writer.symbol << "(i32 2, ptr @.inox.assert.prefix, "
+       << lengthType << " " << prefix.size() << ")\n"
+       << "  %lengthPointer = getelementptr { i64, i64 }, ptr %message, i32 0, i32 1\n"
+       << "  %length = load i64, ptr %lengthPointer\n";
+    std::string length = "%length";
+    if (writer.lengthBits != 64) {
+        ir << "  %lengthNarrow = trunc i64 %length to " << lengthType << "\n";
+        length = "%lengthNarrow";
+    }
+    ir << "  %bytes = getelementptr i8, ptr %message, i64 16\n"
+       << "  %text = call " << resultType << " @" << writer.symbol << "(i32 2, ptr %bytes, " << lengthType
+       << " " << length << ")\n"
+       << "  %newline = call " << resultType << " @" << writer.symbol << "(i32 2, ptr @.inox.assert.newline, "
+       << lengthType << " 1)\n"
+       << "  call void @_exit(i32 " << kRuntimeFaultExitStatus << ")\n"
+       << "  unreachable\n"
+       << "}";
     return ir.str();
 }
 

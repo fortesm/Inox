@@ -69,7 +69,7 @@ run_inox_test() {
     local rel
     rel="$(relative_path "$test_file")"
 
-    "$inox_exe" "$test_file" >/dev/null 2>&1
+    "$inox_exe" check "$test_file" >/dev/null 2>&1
     local exit_code=$?
     local ok=0
     local expectation="failure"
@@ -281,27 +281,36 @@ run_toolchain_failure_test() {
     fi
 }
 
+# The third argument is the driver command (CANON-23): `--run` (default),
+# `run`, or `-` for `inox <file>` alone, which also builds and runs.
 run_driver_execution_test() {
     local test_file="$1"
     local expected_file="$2"
-    local rel
+    local command="${3:---run}"
+    local rel label
     rel="$(relative_path "$test_file")"
+    label="$rel $command"
+    [[ "$command" == "-" ]] && label="$rel (inox <file>)"
 
     if ! command -v clang >/dev/null 2>&1; then
-        echo "[SKIP] $rel --run (clang not found)"
+        echo "[SKIP] $label (clang not found)"
         return 0
     fi
 
     local actual expected exit_code
-    actual="$("$inox_exe" --run "$test_file" 2>&1)"
+    if [[ "$command" == "-" ]]; then
+        actual="$("$inox_exe" "$test_file" 2>&1)"
+    else
+        actual="$("$inox_exe" "$command" "$test_file" 2>&1)"
+    fi
     exit_code=$?
     expected="$(sed 's/\r$//' "$expected_file")"
     actual="$(printf '%s' "$actual" | sed 's/\r$//')"
 
     if [[ $exit_code -eq 0 && "$actual" == "$expected" ]]; then
-        record_pass "$rel --run"
+        record_pass "$label"
     else
-        record_fail "$rel --run" "exit code: $exit_code" "expected output: $expected" "actual output: $actual"
+        record_fail "$label" "exit code: $exit_code" "expected output: $expected" "actual output: $actual"
     fi
 }
 
@@ -520,6 +529,39 @@ run_linked_execution_test "$repo_root/tests/integration/output-basic.inox" "$rep
 run_build_driver_test "$repo_root/tests/integration/run-hello.inox"
 run_toolchain_failure_test "$repo_root/tests/integration/run-hello.inox"
 run_driver_execution_test "$repo_root/tests/integration/run-hello.inox" "$repo_root/tests/integration/run-hello.out"
+run_driver_execution_test "$repo_root/tests/integration/run-hello.inox" "$repo_root/tests/integration/run-hello.out" run
+run_driver_execution_test "$repo_root/tests/integration/run-hello.inox" "$repo_root/tests/integration/run-hello.out" -
+
+# Driver commands (CANON-23): `check` checks without building, `help` and
+# `version` are aliases of their switches, a command without a file is an error.
+run_driver_command_tests() {
+    local hello="$repo_root/tests/integration/run-hello.inox"
+    local output
+    output="$("$inox_exe" check "$hello" 2>&1)"
+    if [[ $? -eq 0 && "$output" == *"semantic ok"* ]]; then
+        record_pass "inox check <file>"
+    else
+        record_fail "inox check <file>" "actual output: $output"
+    fi
+    if [[ "$("$inox_exe" version 2>&1)" == "$("$inox_exe" --version 2>&1)" ]]; then
+        record_pass "inox version = inox --version"
+    else
+        record_fail "inox version = inox --version"
+    fi
+    output="$("$inox_exe" help 2>&1)"
+    if [[ $? -eq 0 && "$output" == *"inox run <file.inox>"* ]]; then
+        record_pass "inox help"
+    else
+        record_fail "inox help" "actual output: $output"
+    fi
+    "$inox_exe" run >/dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        record_pass "inox run without a file is an error"
+    else
+        record_fail "inox run without a file is an error"
+    fi
+}
+run_driver_command_tests
 run_driver_execution_test "$repo_root/tests/integration/exceptions/typed-ensure.inox" "$repo_root/tests/integration/exceptions/typed-ensure.out"
 run_driver_execution_test "$repo_root/tests/integration/exceptions/rethrow.inox" "$repo_root/tests/integration/exceptions/rethrow.out"
 run_driver_execution_test "$repo_root/tests/integration/exceptions/plain-except.inox" "$repo_root/tests/integration/exceptions/plain-except.out"

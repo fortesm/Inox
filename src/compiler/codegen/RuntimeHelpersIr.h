@@ -19,6 +19,9 @@ namespace inox::compiler::codegen::detail {
 std::string inputRuntimeHelpers();
 // The fault messages and `__inox_arith_fault` (CANON-19).
 std::string runtimeFaultSeam();
+// `@__inox_assert_message(ptr)`: a failed Assert with a message (Std.Debug);
+// emitted only by a module that needs it.
+std::string assertMessageHelper();
 // Checked Integer arithmetic helpers (`__inox_add_i64`, ...).
 std::string mathRuntimeHelpers();
 

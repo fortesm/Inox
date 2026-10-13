@@ -13,6 +13,8 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 ## 0.2.0 pre-alpha — unreleased
 
 ### Added
+- Driver commands (canon r3.63, OpenSpec change `driver-commands`): `inox file.inox` and `inox run` build and run (before, `inox file.inox` only checked), `inox build`, `inox check`, `inox emit-llvm`, `inox help`, `inox version`. `--run`, `--build`, `--emit-llvm`, `--help` and `--version` stay as aliases.
+- `Std.Debug.Assert(Condition)` and `Assert(Condition, Message)` (canon r3.63, change `debug-assert`): a failed Assert stops the program with "Inox runtime error: assertion failed" (and the message), exit status 70, like an overflow; it is never compiled out.
 - Text files (canon r3.59, OpenSpec change `file-io`): `Use Std.IOUtils` gives the type `File` (Std.Files) and `OpenRead`, `Create`, `OpenAppend`, `ReadLn`, `Eof`, `Write`, `WriteLn`, `Close`, `Exists`, `DeleteFile`, `RenameFile`. A File closes itself when its routine exits by any path, also an exception; it is never copied (a local or a `ref mut` parameter). Failures raise `FileNotFound`, `PermissionDenied`, `AlreadyExists`, `DiskFull` or `IOError`, handled with try/except On/ensure/Retry. UTF-8 text, `\n` written on every system. Runtime `runtime/FileRuntime.cpp`; the leak check covers the file programs.
 - Bool ordering `false < true` (canon v3.57).
 - String ordering (canon v3.56): `<` `>` `<=` `>=` compare Strings byte by byte (Unicode code point order, a prefix first), combining with `not`, `and`, `or`, `xor`, `unless` like any Bool.
@@ -44,7 +46,7 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 - Language decisions recorded (canon v3.50): UInt64 literals up to 2^64-1 in UInt64 context, no unary minus on UInt64, no UInt64/Integer mixing; implicit Range checks; Enum `Succ`/`Pred`/`Low`/`High`; Set functions, literal and 256-value limit; `GetLn(S)` for String, non-atomic reference counts. Enum printing prints the literal's name (v3.51). Implementation follows.
 
 ### Changed
-- `State` is a section like `Type` (canon r3.62, OpenSpec change `state-without-colon`): no `:` and no closing `;`; it ends where the next declaration starts. `State :`, a closing `;` and the old `Name : Type` form (also in `Const`) are rejected with a message showing the right form. `:` now appears only after a routine's name and signature.
+- `State` has no `:` (canon r3.62, OpenSpec change `state-without-colon`): `State`, its variables on the next lines, and `;`. `State :`, a State without its `;` and the old `Name : Type` form (also in `Const`) are rejected with a message showing the right form. `:` now appears only after a routine's name and signature.
 - `Length(S)` of a String and `Ord(C)` of a Char are rejected (canon r3.62, change `char-not-ordinal`): `Length` takes an array or a slice, String lengths come with Std.StrUtils, and a Char is not an ordinal.
 - The roadmap is renumbered for the version scheme (`docs/ROADMAP.md`, change `roadmap-renumber`).
 - The canon becomes the constitution (canon r3.61, OpenSpec change `constitution`): `docs/INOX_CANONICAL.md` is retired; the language law lives, minimized and without duplicates or stale status, in `openspec/specs/constitution/` (`spec.md`, `engineering.md`, `revisions.md`), locked by `constitution.lock` and checked in CI by `tools/constitution_check.py`, which also verifies that every test a spec names exists. Status moves to `docs/STATUS.md` and `docs/ROADMAP.md`; the old change log is frozen in `docs/history/`. `inox --version` prints `(canon r3.61)`.

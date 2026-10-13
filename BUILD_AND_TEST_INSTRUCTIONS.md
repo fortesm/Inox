@@ -12,10 +12,11 @@ law is `openspec/specs/constitution/` (the quality gates are E19 of its
   the Windows SDK, which provide the MSVC STL, the UCRT and the linker).
 - **User of a prebuilt compiler**: nothing beyond the release package and
   the normal OS runtime libraries (a Windows Release build may need the MSVC
-  Redistributable). Parsing, checking and emitting IR need no LLVM or clang:
-  `inox --parse-only examples/hello.inox`, `inox --emit-llvm
+  Redistributable). Checking and emitting IR need no LLVM or clang:
+  `inox check examples/hello.inox`, `inox emit-llvm
   examples/put-output-basic.inox`.
-- **User of `--build`/`--run`**: `clang` in `PATH` for now; the driver
+- **User who builds or runs programs** (`inox file.inox`, `inox run`,
+  `inox build`): `clang` in `PATH` for now; the driver
   delegates object generation and linking to it (`clang++` and the bundled
   `libinoxrt` for programs that use exceptions, Strings or Files).
 
@@ -89,17 +90,17 @@ status 70; `tests/runtime/*.trap` hold the expected diagnostic.
 ## Console input by hand
 
 ```bash
-printf '42\n' | build/inox --run tests/integration/input/get-integer.inox            # A=42
-printf '40 2 ignored\n' | build/inox --run tests/integration/input/getln-two-integers.inox  # S=42
+printf '42\n' | build/inox run tests/integration/input/get-integer.inox            # A=42
+printf '40 2 ignored\n' | build/inox run tests/integration/input/getln-two-integers.inox  # S=42
 ```
 
 ```powershell
-"42" | .\build\windows-clang-msvc\Debug\inox.exe --run .\tests\integration\input\get-integer.inox
+"42" | .\build\windows-clang-msvc\Debug\inox.exe run .\tests\integration\input\get-integer.inox
 ```
 
 ## When the native build fails
 
-`--build` and `--run` call clang (and through it the linker). On failure the
+`inox build` and `inox run` (and `inox file.inox`) call clang (and through it the linker). On failure the
 error names the tool, its exit code and the first lines of its own messages,
 and points to `<output dir>/<name>.toolchain.log` (`INOX_OUTPUT_DIR`, or
 `build/inox-artifacts`). A program that needs `libinoxrt` looks for it beside

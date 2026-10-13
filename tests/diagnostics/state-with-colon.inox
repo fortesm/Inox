@@ -5,11 +5,13 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== CANON-4 (r3.62): 'State' is a section like 'Type'; it has no ':'.
+== CANON-4 (r3.62): 'State' has no ':' (':' only declares a routine); it
+== closes with ';'.
 Module Diagnostics.StateWithColon
 
 State :
     Counter Integer := 0
+;
 
 Main :
     PutLn(Counter)

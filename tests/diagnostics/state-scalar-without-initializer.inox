@@ -11,6 +11,7 @@ Module Diagnostics.StateScalarWithoutInitializer
 
 State
     Counter Integer
+;
 
 Main :
     PutLn(1)

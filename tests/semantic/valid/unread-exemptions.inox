@@ -13,6 +13,7 @@ Const Unused := 1
 
 State
     Spare Integer := 0
+;
 
 Ignore(N Integer) :
     PutLn(1)

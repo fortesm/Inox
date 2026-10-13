@@ -5,14 +5,9 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== CANON-5 (r3.62): the State section has no closing ';'; it ends where
-== the next declaration starts.
-Module Diagnostics.StateClosingSemicolon
-
-State
-    Counter Integer := 0
-;
+== CANON-18 (r3.63): Assert exists only in a program that uses Std.Debug.
+Module Diagnostics.AssertWithoutUse
 
 Main :
-    PutLn(Counter)
+    Assert(1 = 1)
 ;

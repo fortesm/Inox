@@ -5,23 +5,25 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== CANON-5 (r3.62): 'State' is a section like 'Type', with no ':' and no
-== closing ';'. It ends where the next module item starts: a Const, a Type
-== section, another State section, a function, a method or Main.
+== CANON-5 (r3.62): 'State' has no ':' and closes with ';'. A module may
+== have several State sections, between Consts, Type sections and routines.
 Module Runtime.StateSectionBoundaries
 
 State
     Counter Integer := 1
     Origin TPoint
+;
 Const Delta := 10
 State
     Total := Counter + Delta
+;
 Type
     TPoint Struct
         FX Integer := 5
     ;
 State
     Last Integer := 0
+;
 Twice(N Integer) Integer :
     Return N * 2
 ;
@@ -30,6 +32,7 @@ TPoint.Shift(Self mut, D Integer) :
 ;
 State
     Ready Bool := true
+;
 Main :
     Counter += Twice(Total)
     Origin.Shift(Delta)

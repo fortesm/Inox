@@ -1,12 +1,12 @@
 ## 1. Parser
 
-- [x] 1.1 `State` without `:` and without closing `;`; the section ends at the next module item (shared `atSectionBoundary`)
-- [x] 1.2 Migration diagnostics: `State :`, a closing `;`, `Name : Type` in State and Const
+- [x] 1.1 `State` without `:`, closed by `;`; a section that reaches the next module item without `;` is reported (`atSectionBoundary`)
+- [x] 1.2 Migration diagnostics: `State :`, a missing `;`, `Name : Type` in State and Const
 
 ## 2. Tests and sources
 
 - [x] 2.1 All `.inox` files with `State :` migrated (19 files) and the three gap probes
-- [x] 2.2 New: runtime `state-section-boundaries`; diagnostics `state-with-colon`, `state-closing-semicolon`, `const-legacy-colon`; `state-legacy-scalar-without-initializer` becomes `state-legacy-colon`
+- [x] 2.2 New: runtime `state-section-boundaries`; diagnostics `state-with-colon`, `state-without-semicolon`, `const-legacy-colon`; `state-legacy-scalar-without-initializer` becomes `state-legacy-colon`
 
 ## 3. Documentation
 

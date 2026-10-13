@@ -79,6 +79,10 @@ void SemanticAnalyzer::declareStandardModuleNames(const ast::ModuleNode& module)
     if (filesVisible_ && types_.resolve("File") == nullptr) {
         declareTypeOrThrow("File", true);
     }
+    debugVisible_ = usesModule(module, "Std.Debug");
+    if (debugVisible_ && !symbols_.globalScope().containsLocal("Assert")) {
+        symbols_.globalScope().declare("Assert", SymbolKind::Builtin);
+    }
     if (ioUtilsVisible_) {
         for (const FileFunction& function : kFileFunctions) {
             // ReadLn is also the console prelude function (no argument).

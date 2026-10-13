@@ -10,6 +10,7 @@ Module Diagnostics.StateInitializerTypeMismatch
 
 State
     N Integer := True
+;
 
 Main :
     PutLn(1)

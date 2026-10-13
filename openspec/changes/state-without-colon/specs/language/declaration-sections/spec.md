@@ -3,9 +3,9 @@
 ### Requirement: Section entries
 A `Type` section SHALL hold Struct, Range and Enum declarations; a `Const`
 line SHALL hold `Name := Expression`; a `State` section SHALL hold variable
-declarations, one per line. `Type` and `State` are sections, not blocks: no
-`:` after the keyword and no closing `;`; each ends where the next module item
-starts. A field or State type SHALL be any type the language accepts in a
+declarations, one per line, closed by `;`. Neither `Type` nor `State` has a
+`:` after the keyword; `Type` has no closing `;` and ends where the next
+module item starts. A field or State type SHALL be any type the language accepts in a
 local declaration, including `Array[...] T`.
 
 #### Scenario: Multi-token field types
@@ -25,5 +25,5 @@ local declaration, including `Array[...] T`.
 - **THEN** the compiler rejects it naming the canonical forms (tests/diagnostics/type-assignment-form.inox, tests/parser/invalid/type-colon.inox)
 
 #### Scenario: Not a State or Const form
-- **WHEN** a State section is written `State :` or closed with `;`, or a State or Const entry is written `Name : Type`
-- **THEN** the compiler rejects it naming the right form (tests/diagnostics/state-with-colon.inox, tests/diagnostics/state-closing-semicolon.inox, tests/diagnostics/state-legacy-colon.inox, tests/diagnostics/const-legacy-colon.inox)
+- **WHEN** a State section is written `State :` or misses its `;`, or a State or Const entry is written `Name : Type`
+- **THEN** the compiler rejects it naming the right form (tests/diagnostics/state-with-colon.inox, tests/diagnostics/state-without-semicolon.inox, tests/diagnostics/state-legacy-colon.inox, tests/diagnostics/const-legacy-colon.inox)

@@ -11,6 +11,7 @@ Use Std.IOUtils
 
 State
     Log := Create("log.txt")
+;
 
 Main :
     PutLn(1)

@@ -2,8 +2,8 @@
 
 ### Requirement: State variables are module-level mutable storage
 A `State` section SHALL declare variables that every routine of the module
-can read and write. The section has no `:` and no closing `;`, like `Type`; it
-ends where the next module item starts, and a module may have several.
+can read and write. The section is written `State`, its variables on the
+next lines, and `;` (no `:`); a module may have several.
 Scalar State variables SHALL require an initializer, and initializers SHALL
 run in source order before Main (an initializer may call a function or read
 an earlier State variable).
@@ -13,8 +13,8 @@ an earlier State variable).
 - **THEN** the program prints the expected values (tests/runtime/state-lowering.inox)
 
 #### Scenario: Where a section ends
-- **WHEN** State sections are followed by a Const, a Type section, another State section, a function, a method and Main
-- **THEN** each section ends where the next item starts and the program prints the expected values (tests/runtime/state-section-boundaries.inox)
+- **WHEN** several State sections stand between a Const, a Type section, a function, a method and Main
+- **THEN** every variable is visible to every routine and the program prints the expected values (tests/runtime/state-section-boundaries.inox)
 
 #### Scenario: Scalar without initializer
 - **WHEN** a scalar State variable has no initializer

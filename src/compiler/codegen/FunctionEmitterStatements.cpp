@@ -350,6 +350,10 @@ void FunctionEmitter::emitExpressionStatement(const ast::Expression& expression)
 
     const auto& callee =
         static_cast<const ast::IdentifierExpression&>(call.callee());
+    if (isAssertCall(call)) {
+        emitAssertCall(call);
+        return;
+    }
     if (isFileCall(call)) {
         emitFileCall(call);
         return;

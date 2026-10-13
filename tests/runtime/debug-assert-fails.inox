@@ -1,0 +1,27 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-19 (r3.63): a failed Assert is a deterministic trap, like an
+== overflow: no handler, Else, plain except or ensure runs (Marcelo Fortes,
+== 2026-10-13: "3 escolho a alternativa A").
+Module Runtime.DebugAssertFails
+
+Use Std.Debug
+
+Main :
+    Total := 0
+    try
+        PutLn("before")
+        Assert(Total > 0)
+        PutLn("after")
+    except
+        PutLn("caught")
+    ensure
+        PutLn("ensure ran")
+    ;
+    PutLn("continued")
+;

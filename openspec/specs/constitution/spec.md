@@ -58,8 +58,8 @@ The `:` does two jobs at once: after a name and a signature it tells the
 compiler that this is a subroutine, and it opens the body, like `begin` or
 `{` ("`:` tanto serve para abrir o bloco quanto serve para dizer pro
 compilador que esse Sum(...) é uma subrotina"). Nothing else needs it:
-control structures open their body at the line break, sections (`Type`,
-`Const`, `State`) are not blocks, and `;` closes every block. A `:` without
+control structures and `State` open their body at the line break, `Type`
+and `Const` are declarators, and `;` closes every block. A `:` without
 a name and a signature before it is meaningless, so a bare `:` block does
 not exist. New syntax is judged by the same balance: elegant, ergonomic,
 short, never cryptic and never verbose.
@@ -385,15 +385,15 @@ not continue the expression of the previous line.
 - **THEN** it is not a call on the previous line (tests/diagnostics/call-paren-on-next-line.inox)
 
 ### Requirement: CANON-4 Sections and removed forms
-The sections `Type` and `State` SHALL have no `:` and no closing `;`; each
-ends where the next module item starts. In `Type`, `Struct` and multi-line
-`Enum` close with `;`; `Range` and short `Enum` are single lines. `Const
-Name := Value` is one line. The forms `State :`, `Name : Type` and `Var`
-blocks are rejected with a message showing the right form.
+`Type` SHALL have no `:` and no closing `;`, ending where the next module
+item starts; in it `Struct` and multi-line `Enum` close with `;`, `Range`
+and short `Enum` are single lines. `State` has no `:` and closes with `;`.
+`Const Name := Value` is one line. `State :`, `Name : Type` and `Var` blocks
+are rejected with a message showing the right form.
 
 #### Scenario: Sections without colon
-- **WHEN** a State section is written `State :`, closed with `;`, or declares `Name : Type`, or a Const declares `Const Name : Type`
-- **THEN** it is rejected (tests/diagnostics/state-with-colon.inox, tests/diagnostics/state-closing-semicolon.inox, tests/diagnostics/state-legacy-colon.inox, tests/diagnostics/const-legacy-colon.inox)
+- **WHEN** a State section is written `State :`, misses its `;`, or declares `Name : Type`, or a Const declares `Const Name : Type`
+- **THEN** it is rejected (tests/diagnostics/state-with-colon.inox, tests/diagnostics/state-without-semicolon.inox, tests/diagnostics/state-legacy-colon.inox, tests/diagnostics/const-legacy-colon.inox)
 
 #### Scenario: Var is gone
 - **WHEN** a program writes a `Var` block, `mut var`, or a module `Var` section
@@ -431,8 +431,9 @@ variable needs an initializer (strict Ada rule).
 A local that is never read SHALL be a compile error ("local variable never
 read: Name"), so a misspelled assignment `Coutner := Counter + 1` is caught.
 Assigning a variable or one of its fields is not reading it. Parameters,
-`for` iterators, State and Const are exempt; exception bindings are exempt
-until exceptions have readable members (an open question in `revisions.md`).
+`for` iterators, State and Const are exempt; an exception binding (`On E T`)
+is exempt only until exceptions have readable members, then the rule
+applies and a handler that ignores the exception writes `On T`.
 
 #### Scenario: Unread locals
 - **WHEN** a local is only assigned, or a typo declares a new name
@@ -498,8 +499,8 @@ constant expression, and a Const may follow the routine that uses it.
 - **THEN** the first is rejected (tests/diagnostics/const-typed-rejected.inox) and the others compile (tests/semantic/valid/const-conversion.inox, tests/runtime/const-expression.inox)
 
 ### Requirement: CANON-5 State
-A `State` section SHALL hold a module's mutable global variables, explicit
-and rare: one declaration per line; scalars need initializers; structs and
+A `State` section (`State`, its variables, `;`) SHALL hold a module's
+mutable global variables, explicit and rare: one declaration per line; scalars need initializers; structs and
 arrays may omit them; `mut` is forbidden. Initializers run in source order
 before `Main`. A module may have several State sections. Details:
 `language/module-state`, `language/declaration-sections`.
@@ -508,9 +509,9 @@ before `Main`. A module may have several State sections. Details:
 - **WHEN** routines read and write State variables initialized in order
 - **THEN** they behave as module globals (tests/runtime/state-lowering.inox, tests/runtime/state-aggregates.inox)
 
-#### Scenario: Where a State section ends
-- **WHEN** State sections are followed by a Const, a Type section, another State, a function, a method and Main
-- **THEN** each section ends where the next item starts (tests/runtime/state-section-boundaries.inox)
+#### Scenario: Several State sections
+- **WHEN** several State sections stand between a Const, a Type section, a function, a method and Main
+- **THEN** every routine sees every variable (tests/runtime/state-section-boundaries.inox)
 
 ### Requirement: CANON-5 Type section forms
 A `Type` section SHALL declare Struct, Range and Enum types only. Inox has no
@@ -1153,12 +1154,17 @@ subject, like a C header; `Std.XUtils` holds helper functions and may use
 ### Requirement: CANON-18 Library modules
 The library SHALL hold `Std.System` (the implicit prelude), `Std.IO` (Put,
 PutLn, Get, GetLn), `Std.Math` (Integer helpers written in Inox and the
-Float64 elementary functions), `Std.Debug` (`Assert`, unavailable until
-its open question in `revisions.md` is decided) and `Std.Files` / `Std.IOUtils` (CANON-17).
+Float64 elementary functions), `Std.Debug` (`Assert(Condition)` and
+`Assert(Condition, Message)`, a trap when false, CANON-19) and `Std.Files` /
+`Std.IOUtils` (CANON-17). `Assert` exists only with `Use Std.Debug`.
 
 #### Scenario: Std.Math through Use
 - **WHEN** a program writes `Use Std.Math` and calls its helpers
 - **THEN** the module resolves through the library path and runs (tests/integration/stdlib/StdMathDemo.inox, tests/integration/modules/math-showcase.inox)
+
+#### Scenario: Assert
+- **WHEN** Assert holds, fails, fails with a message, is used without `Use Std.Debug`, or a program declares its own Assert without the module
+- **THEN** it does nothing, traps, traps with the message, is rejected, and the own routine is called (tests/runtime/debug-assert-holds.inox, tests/runtime/debug-assert-fails.inox, tests/runtime/debug-assert-message.inox, tests/diagnostics/assert-without-use.inox, tests/runtime/assert-name-free.inox)
 
 ### Requirement: CANON-18 Planned modules
 The planned modules SHALL be `Std.Strings` / `Std.StrUtils` (String functions
@@ -1198,8 +1204,9 @@ The category texts SHALL be: `integer overflow`, `division by zero`,
 `invalid shift count`, `for-loop step must be positive`, `negative
 exponent`, `invalid integer input`, `value out of range for Natural`,
 `integer conversion out of range`, `array index out of bounds`, `slice
-bounds out of range`, `out of memory`, `invalid UTF-8 input`, and `value out
-of range` (Range types).
+bounds out of range`, `out of memory`, `invalid UTF-8 input`, `assertion
+failed` (followed by `: Message` when given), and `value out of range`
+(Range types).
 
 #### Scenario: Categories
 - **WHEN** each kind of fault happens at run time
@@ -1324,15 +1331,16 @@ failure after semantic acceptance is a bug.
 - **THEN** none is a BUG (tools/backend_gaps.py; docs/BACKEND_GAPS.md)
 
 ### Requirement: CANON-23 Driver commands
-The driver SHALL keep the switches `--parse-only`, `--dump-tokens`,
-`--dump-types`, `--emit-llvm`, `--build`, `--run`, `--help` and `--version`
-until it converges on its stated goal: `inox file.inox` (build and run),
-`inox run`, `inox build`, `inox check`, `inox emit-llvm`, `inox help` and
-`inox version` (an open question in `revisions.md`).
+The driver commands SHALL be `inox file.inox` and `inox run file.inox`
+(build and run), `inox build`, `inox check` (parse and check), `inox
+emit-llvm`, `inox help` and `inox version` (Marcelo Fortes, 2026-10-13).
+`--run`, `--build`, `--emit-llvm`, `--help` and `--version` stay as aliases
+for a transition; `--parse-only`, `--dump-tokens` and `--dump-types` are
+developer switches.
 
-#### Scenario: Switches today
-- **WHEN** the runners compile and run programs
-- **THEN** they use the switches (scripts/run-tests.sh)
+#### Scenario: Commands and aliases
+- **WHEN** a program is run with `inox file`, `inox run` and `--run`, checked with `inox check`, and `inox help`, `inox version` and `inox run` without a file are called
+- **THEN** each behaves as stated (scripts/run-tests.sh, scripts/run-tests.ps1: "inox check <file>", "inox help", "inox version = inox --version", "inox run without a file is an error", tests/integration/run-hello.inox)
 
 ### Requirement: VERSIONING The version number
 Inox SHALL have one version for the language and its compiler,

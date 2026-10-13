@@ -7,17 +7,13 @@
 
 Module Std.Debug
 
-== Inox 0.1 debug facade.
-==
-== Canonical future API:
+== Std.Debug (canon r3.63, OpenSpec change debug-assert).
 ==
 ==   Assert(Condition Bool)
 ==   Assert(Condition Bool, Message String)
 ==
-== Assert(false) must trap/abort with a clear diagnostic once Assert is implemented.
-== It is intentionally not implemented as a non-fatal PutLn wrapper. A fake
-== Assert that merely prints and returns would violate Inox's mission-critical
-== semantics.
-==
-== This module becomes executable once the compiler/runtime exposes a canonical
-== trap or abort intrinsic.
+== Assert is a compiler intrinsic, visible only in a program that writes
+== `Use Std.Debug`. When the condition is false the program stops at once with
+== "Inox runtime error: assertion failed" (and ": Message" when one is given)
+== and exit status 70, like an overflow (CANON-19): no handler catches it and
+== no ensure runs. It is never compiled out.
