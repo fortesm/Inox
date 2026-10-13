@@ -1,0 +1,88 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-9 method reuse with Strings in the parts (OpenSpec change
+== method-reuse): arrays, State, by-value and ref mut parameters, results
+== and an exception keep every String owned once (string_leak_check runs
+== this program). A field of `Self mut` is a writable place for ref mut.
+Module Runtime.StringsMethodReuse
+
+Type
+    TEndereco Struct
+        FCidade String := ""
+    ;
+    TPessoa Struct (TEndereco)
+        FNome String := ""
+    ;
+    TAssinatura Struct (TPessoa)
+        FPlano String := ""
+    ;
+
+State
+    Global TAssinatura
+;
+
+TEndereco.Mudar(Self mut, Cidade String) :
+    Self.FCidade := Cidade
+;
+
+TPessoa.UpdateNome(Self mut, Nome String) :
+    Self.FNome := Nome
+;
+
+TPessoa.Describe(Self) String :
+    Return Self.FNome
+;
+
+SetName(ref mut Field String, Value String) :
+    Field := Value
+;
+
+TPessoa.Rename(Self mut, Nome String) :
+    SetName(Self.FNome, Nome)
+;
+
+ShowAll(P TAssinatura) :
+    PutLn(P.Describe, " em ", P.FCidade)
+;
+
+Fill(ref mut P TAssinatura, Nome String) :
+    P.UpdateNome(Nome)
+    P.Mudar("Olinda")
+;
+
+Make(Nome String) TAssinatura :
+    R TAssinatura
+    R.Rename(Nome)
+    Return R
+;
+
+Main :
+    L Array[1..2] TAssinatura
+    L[1].UpdateNome("Um")
+    L[2].Rename("Dois")
+    L[2].Mudar("Recife")
+    for I in 1..2
+        ShowAll(L[I])
+    ;
+    Global.UpdateNome("Global")
+    Global.Mudar("Natal")
+    ShowAll(Global)
+    X TAssinatura
+    Fill(X, "Preenchido")
+    ShowAll(X)
+    Y := Make("Feito")
+    ShowAll(Y)
+    try
+        Y.Rename("Antes")
+        Raise RangeError
+    except
+        On RangeError
+            PutLn("capturada: ", Y.FNome)
+        ;
+    ;
+;

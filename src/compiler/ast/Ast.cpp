@@ -116,12 +116,19 @@ const std::vector<std::string>& RawDeclaration::tokens() const
 
 FunctionDeclaration::FunctionDeclaration(std::string name,
                                          std::vector<std::string> signatureTokens,
-                                         std::vector<StatementPtr> body)
+                                         std::vector<StatementPtr> body,
+                                         bool isOverride)
     : AstNode(AstNodeKind::FunctionDeclaration),
       name_(std::move(name)),
       signatureTokens_(std::move(signatureTokens)),
-      body_(std::move(body))
+      body_(std::move(body)),
+      isOverride_(isOverride)
 {
+}
+
+bool FunctionDeclaration::isOverride() const
+{
+    return isOverride_;
 }
 
 const std::string& FunctionDeclaration::name() const
@@ -259,6 +266,23 @@ CallExpression::CallExpression(ExpressionPtr callee, std::vector<ExpressionPtr> 
     for (const auto& argument : arguments_) {
         if (argument && argument->depth() > deepest) {
             deepest = argument->depth();
+        }
+    }
+    depth_ = 1 + deepest;
+}
+
+ExpressionPtr CallExpression::takeArgument(std::size_t index)
+{
+    return std::move(arguments_.at(index));
+}
+
+void CallExpression::setArgument(std::size_t index, ExpressionPtr argument)
+{
+    arguments_.at(index) = std::move(argument);
+    std::size_t deepest = callee_ ? callee_->depth() : 0;
+    for (const auto& each : arguments_) {
+        if (each && each->depth() > deepest) {
+            deepest = each->depth();
         }
     }
     depth_ = 1 + deepest;

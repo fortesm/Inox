@@ -10,6 +10,7 @@
 
 #include "../lexer/Lexer.h"
 
+#include <cctype>
 #include <memory>
 #include <string>
 #include <utility>
@@ -1607,6 +1608,27 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
 
     if (matchKeyword("struct")) {
         declaration.kind = ast::TypeDeclarationKind::Struct;
+        // Method reuse (CANON-9, Marcelo Fortes 2026-10-13): `TName Struct
+        // (TA, TB)` reuses TA and TB. Each part is a field named after its
+        // type, written first, so `X.TA` reaches it.
+        if (check(TokenKind::LeftParen) && peek().location.line == name.location.line) {
+            advance();
+            if (check(TokenKind::RightParen)) {
+                errorAtCurrent("empty parentheses are not Inox: write 'TName Struct' or name the reused "
+                               "structs, 'TName Struct (TPart)'");
+            }
+            do {
+                const lexer::Token& part =
+                    consume(TokenKind::Identifier, "expected the name of a reused struct");
+                ast::StructFieldDeclaration field;
+                field.name = part.lexeme;
+                field.typeName = part.lexeme;
+                field.line = part.location.line;
+                field.isPart = true;
+                declaration.fields.push_back(std::move(field));
+            } while (match(TokenKind::Comma));
+            consume(TokenKind::RightParen, "expected ')' after the reused structs");
+        }
         expectEndOfDeclarationLine(name.location.line, "'Struct'");
         while (!isAtEnd() && !check(TokenKind::Semicolon)) {
             declaration.fields.push_back(parseStructField());
@@ -1807,6 +1829,24 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
         errorAt(name, "empty parentheses are not allowed in declarations; omit parentheses when there are no parameters");
     }
 
+    // `Override` ends the signature of a method that replaces a reused one
+    // (CANON-9): `TName.Method(Self) Type Override :`.
+    bool isOverride = false;
+    const auto isOverrideWord = [](std::string word) {
+        for (char& ch : word) {
+            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        }
+        return word == "override";
+    };
+    if (!signatureTokens.empty() && isOverrideWord(signatureTokens.back())) {
+        if (functionName.find('.') == std::string::npos) {
+            errorAt(name, "'Override' marks a method that replaces a reused one (CANON-9); " +
+                              functionName + " is not a method");
+        }
+        signatureTokens.pop_back();
+        isOverride = true;
+    }
+
     consume(TokenKind::Colon, "expected ':' after function signature");
     auto body = parseBlockBody();
     consumeBlockClose();
@@ -1814,7 +1854,8 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
     return std::make_unique<ast::FunctionDeclaration>(
         std::move(functionName),
         std::move(signatureTokens),
-        std::move(body));
+        std::move(body),
+        isOverride);
 }
 
 std::string Parser::parseQualifiedName(std::string_view message)

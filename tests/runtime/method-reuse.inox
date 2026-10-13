@@ -1,0 +1,108 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-9 method reuse (OpenSpec change method-reuse): `Struct (TPart)`
+== offers the fields and methods of TPart at every level, a reused method
+== runs on its part (delegation: TPessoa.Show calls TPessoa.Title), Override
+== replaces a reused method for callers of the outer struct, and the full
+== path always works. Built-in type methods (String.UpdateStr) act on fields.
+Module Runtime.MethodReuse
+
+Type
+    TEndereco Struct
+        FRua String := ""
+        FCidade String := ""
+    ;
+    TPessoa Struct (TEndereco)
+        FId Integer := 0
+        FNome String := ""
+    ;
+    TAssinatura Struct (TPessoa)
+        FIdAss Integer := 0
+        FPlano String := ""
+    ;
+    TA Struct
+        FX Integer := 1
+    ;
+    TB Struct
+        FY Integer := 2
+    ;
+    TC Struct (TA, TB)
+        FZ Integer := 3
+    ;
+
+TEndereco.Mudar(Self mut, Rua String, Cidade String) :
+    Self.FRua := Rua
+    Self.FCidade := Cidade
+;
+
+TPessoa.UpdateNome(Self mut, Nome String) :
+    if Nome # ""
+        Self.FNome := Nome
+    ;
+;
+
+TPessoa.Title(Self) String :
+    Return "Pessoa"
+;
+
+TPessoa.Show(Self) :
+    PutLn(Self.Title, ": ", Self.FNome, " (", Self.FCidade, ")")
+;
+
+TAssinatura.Title(Self) String Override :
+    Return "Assinante"
+;
+
+String.UpdateStr(Self mut, Value String) :
+    if Value # ""
+        Self := Value
+    ;
+;
+
+TA.Show(Self) :
+    PutLn("A ", Self.FX)
+;
+
+TB.Show(Self) :
+    PutLn("B ", Self.FY)
+;
+
+== Two parts have Show: TC replaces both, and still reaches each by its path.
+TC.Show(Self) Override :
+    PutLn("C ", Self.FZ)
+    Self.TA.Show
+    Self.TB.Show
+;
+
+Main :
+    A TAssinatura
+    A.UpdateNome("Marcelo")
+    A.Mudar("Rua A", "Recife")
+    A.FPlano.UpdateStr("Plano9")
+    A.FPlano.UpdateStr("")
+    A.TPessoa.TEndereco.Mudar("Rua B", "Natal")
+    PutLn(A.FNome, " ", A.FCidade, " ", A.FRua, " ", A.FPlano)
+    PutLn(A.Title, " / ", A.TPessoa.Title)
+    A.Show
+    A.FId := 7
+    PutLn(A.FId, " ", A.TPessoa.FId)
+    with A
+        .FNome := "Com with"
+        .UpdateNome("Com with 2")
+    ;
+    PutLn(A.FNome)
+    B := A
+    B.UpdateNome("Copia")
+    PutLn(A.FNome, " ", B.FNome)
+    P := TPessoa(FNome := "Parte")
+    D := TAssinatura(TPessoa := P, FPlano := "Ouro")
+    PutLn(D.FNome, " ", D.FPlano)
+    C TC
+    C.Show
+    PutLn(C.FX + C.FY + C.FZ)
+;

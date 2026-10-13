@@ -117,6 +117,11 @@ module that owns a concern instead of searching the whole emitter.
   - `SemanticTypes.cpp` — type predicates, assignability, canonical names;
   - `SemanticFiles.cpp` — Std.Files / Std.IOUtils: the File type and file
     functions (visible only with `Use`), the never-copied rule;
+  - `SemanticReuse.cpp` — method reuse (`Struct (TPart)`, `Override`): the
+    members a struct offers through its parts, the declaration errors, and
+    the one AST rewrite of the analyzer (`A.FNome` becomes
+    `A.TPessoa.FNome`, so codegen sees ordinary field access);
+  - `SemanticDebug.cpp` — Std.Debug: Assert;
   - `SemanticSupport.*` — shared helpers (`semantic::detail`).
 
 ## Known pitfalls (lessons already paid for)

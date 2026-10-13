@@ -288,6 +288,8 @@ private:
     };
 
     MethodCallTarget resolveMethodCall(const ast::CallExpression& call);
+    const FunctionSignature* findMethodSignature(const ast::Expression& receiver, const std::string& method) const;
+    std::string emitReceiver(const FunctionSignature& signature, const ast::Expression& receiver);
 
     MethodCallTarget resolveNoArgumentMethodAccess(const ast::CallExpression& member);
 

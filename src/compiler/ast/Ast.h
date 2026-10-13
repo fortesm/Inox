@@ -189,6 +189,10 @@ struct StructFieldDeclaration {
     bool hasDefault = false;
     std::string defaultValue;
     std::size_t line = 0;
+    // Method reuse (CANON-9): `TName Struct (TPart)` reuses TPart. The part
+    // is a field named after its type, whose fields and methods the struct
+    // also offers directly.
+    bool isPart = false;
 };
 
 enum class TypeDeclarationKind {
@@ -252,16 +256,20 @@ class FunctionDeclaration final : public AstNode {
 public:
     FunctionDeclaration(std::string name,
                         std::vector<std::string> signatureTokens,
-                        std::vector<StatementPtr> body);
+                        std::vector<StatementPtr> body,
+                        bool isOverride = false);
 
     const std::string& name() const;
     const std::vector<std::string>& signatureTokens() const;
     const std::vector<StatementPtr>& body() const;
+    // `TName.Method(...) [Type] Override :` replaces a reused method (CANON-9).
+    bool isOverride() const;
 
 private:
     std::string name_;
     std::vector<std::string> signatureTokens_;
     std::vector<StatementPtr> body_;
+    bool isOverride_ = false;
 };
 
 class LiteralExpression final : public Expression {
@@ -323,6 +331,11 @@ public:
     const std::vector<ExpressionPtr>& arguments() const;
     ExpressionPtr takeCallee();
     std::vector<ExpressionPtr> takeArguments();
+    // Method reuse (CANON-9): the analyzer replaces the receiver of a member
+    // access that reaches a reused part (`A.FNome`) with the explicit path
+    // (`A.TPessoa.FNome`), so every later phase sees ordinary field access.
+    ExpressionPtr takeArgument(std::size_t index);
+    void setArgument(std::size_t index, ExpressionPtr argument);
 
 private:
     ExpressionPtr callee_;

@@ -132,6 +132,11 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
                     static_cast<const ast::IdentifierExpression&>(named->left()).name();
                 const StructField* field = resolveStructField(type->name, fieldName);
                 if (field == nullptr) {
+                    if (const auto reused = findReusedMember(type->name, fieldName); reused && !reused->isMethod) {
+                        throw SemanticError(fieldName + " belongs to the reused part " + reused->path.front() +
+                                            " (CANON-9): construct the part, " + type->name + "(" +
+                                            reused->path.front() + " := " + reused->path.front() + "(...))");
+                    }
                     throw SemanticError("unknown field in construction: " +
                                         type->name + "." + fieldName);
                 }
@@ -243,6 +248,13 @@ std::string SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression&
 
     const std::string qualifiedName = baseType + "." + fieldIdentifier.name();
     const FunctionSignature* signature = resolveFunctionSignature(qualifiedName);
+    if (signature == nullptr) {
+        // CANON-9: a field or method of a reused part, reached through it.
+        if (const auto reused = findReusedMember(baseType, fieldIdentifier.name())) {
+            routeThroughParts(call, reused->path);
+            return analyzeMemberExpression(call);
+        }
+    }
     if (signature != nullptr) {
         if (signature->parameters.empty()) {
             throw SemanticError("method " + signature->name + " must declare an explicit receiver parameter");
@@ -255,6 +267,7 @@ std::string SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression&
                 "method " + signature->name + " receiver expects " +
                 signature->parameters.front().typeName + ", got " + baseType);
         }
+        requireWritableReceiver(*signature, *call.arguments()[0]);
         const Symbol& symbol = resolveOrThrow(signature->name);
         result_.bind(fieldIdentifier, symbol);
         result_.bind(call, symbol);
@@ -277,6 +290,14 @@ std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpress
         static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
     const std::string qualifiedName = receiverType + "." + methodIdentifier.name();
     const FunctionSignature* signature = resolveFunctionSignature(qualifiedName);
+    if (signature == nullptr && resolveStructField(receiverType, methodIdentifier.name()) == nullptr) {
+        // CANON-9: a method of a reused part runs on that part.
+        if (const auto reused = findReusedMember(receiverType, methodIdentifier.name());
+            reused && reused->isMethod) {
+            routeThroughParts(member, reused->path);
+            return analyzeMethodCallExpression(call);
+        }
+    }
     if (signature == nullptr) {
         throw SemanticError("unknown method " + methodIdentifier.name() + " for " + receiverType);
     }
@@ -289,6 +310,7 @@ std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpress
             "method " + signature->name + " receiver expects " +
             signature->parameters.front().typeName + ", got " + receiverType);
     }
+    requireWritableReceiver(*signature, *member.arguments()[0]);
     if (call.arguments().size() + 1 != signature->parameters.size()) {
         throw SemanticError(
             "method " + signature->name + " expects " +
@@ -313,6 +335,24 @@ std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpress
         }
     }
     checkReferenceArguments(signature->name, signature->parameters, 1, call.arguments());
+    // ADR-0016: the receiver is an argument too; a `ref mut` argument may
+    // not reach the receiver's variable through another name.
+    std::vector<std::string> receiverNames;
+    collectNames(*member.arguments()[0], receiverNames);
+    for (std::size_t index = 0; index < call.arguments().size(); ++index) {
+        if (signature->parameters[index + 1].mode != PassMode::RefMut) {
+            continue;
+        }
+        const Symbol* root = writableRoot(*call.arguments()[index]);
+        for (const std::string& name : receiverNames) {
+            if (root != nullptr && equalsIgnoreCase(name, root->name)) {
+                throw SemanticError("argument " + std::to_string(index + 1) + " of " + signature->name +
+                                    " is passed as ref mut, and " + root->name +
+                                    " is also the receiver; a routine never sees one variable through "
+                                    "two names (ADR-0016)");
+            }
+        }
+    }
 
     return signature->returnType;
 }

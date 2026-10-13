@@ -305,25 +305,39 @@ FunctionEmitter::MethodCallTarget FunctionEmitter::resolveMethodCall(const ast::
 
     const auto& method =
         static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
-    const std::string receiverType = placeTypeName(*member.arguments()[0]);
-    if (findStruct(structs_, receiverType) == nullptr) {
-        throw CodegenUnsupported("LLVM emission method receiver is not a struct");
+    const FunctionSignature* signature = findMethodSignature(*member.arguments()[0], method.name());
+    if (signature == nullptr) {
+        throw CodegenUnsupported("unknown method for LLVM emission: " + method.name());
     }
+    if (call.arguments().size() + 1 != signature->parameters.size()) {
+        throw CodegenUnsupported("unsupported method argument count: " + method.name());
+    }
+    return MethodCallTarget{signature, emitReceiver(*signature, *member.arguments()[0])};
+}
 
-    const std::string qualifiedName = receiverType + "." + method.name();
-    const auto signature = signatures_.find(normalize(qualifiedName));
-    if (signature == signatures_.end()) {
-        throw CodegenUnsupported("unknown method for LLVM emission: " + qualifiedName);
+// A method of the receiver's type: a struct method, or (CANON-9) a method
+// of a built-in type, declared under its written or canonical name.
+const FunctionSignature* FunctionEmitter::findMethodSignature(const ast::Expression& receiver,
+                                                              const std::string& method) const
+{
+    for (const std::string& receiverType : {placeTypeName(receiver), semanticTypeName(receiver)}) {
+        const auto signature = signatures_.find(normalize(receiverType + "." + method));
+        if (signature != signatures_.end() && !signature->second.parameters.empty()) {
+            return &signature->second;
+        }
     }
-    if (signature->second.parameters.empty() ||
-        signature->second.parameters.front().llvmType != "ptr") {
-        throw CodegenUnsupported("LLVM method emission requires an explicit struct receiver parameter");
-    }
-    if (call.arguments().size() + 1 != signature->second.parameters.size()) {
-        throw CodegenUnsupported("unsupported method argument count: " + qualifiedName);
-    }
+    return nullptr;
+}
 
-    return MethodCallTarget{&signature->second, emitPlace(*member.arguments()[0]).pointer};
+// A struct receiver is passed by address; a built-in one as its parameter
+// says: the caller's variable for `Self mut`, a copy for `Self` (CANON-9).
+std::string FunctionEmitter::emitReceiver(const FunctionSignature& signature, const ast::Expression& receiver)
+{
+    const FunctionParameter& self = signature.parameters.front();
+    if (findStruct(structs_, self.inoxType) != nullptr) {
+        return emitPlace(receiver).pointer;
+    }
+    return self.byReference ? emitReferenceArgument(receiver, self) : emitExpression(receiver);
 }
 
 FunctionEmitter::MethodCallTarget FunctionEmitter::resolveNoArgumentMethodAccess(const ast::CallExpression& member)
@@ -338,21 +352,14 @@ FunctionEmitter::MethodCallTarget FunctionEmitter::resolveNoArgumentMethodAccess
 
     const auto& method =
         static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
-    const std::string receiverType = placeTypeName(*member.arguments()[0]);
-    if (findStruct(structs_, receiverType) == nullptr) {
-        throw CodegenUnsupported("LLVM emission method receiver is not a struct");
+    const FunctionSignature* signature = findMethodSignature(*member.arguments()[0], method.name());
+    if (signature == nullptr) {
+        throw CodegenUnsupported("unknown field or zero-argument method for LLVM emission: " + method.name());
     }
-
-    const std::string qualifiedName = receiverType + "." + method.name();
-    const auto signature = signatures_.find(normalize(qualifiedName));
-    if (signature == signatures_.end()) {
-        throw CodegenUnsupported("unknown field or zero-argument method for LLVM emission: " + qualifiedName);
+    if (signature->parameters.size() != 1) {
+        throw CodegenUnsupported("LLVM zero-argument method emission requires only an explicit receiver parameter");
     }
-    if (signature->second.parameters.size() != 1 ||
-        signature->second.parameters.front().llvmType != "ptr") {
-        throw CodegenUnsupported("LLVM zero-argument method emission requires only an explicit struct receiver parameter");
-    }
-    return MethodCallTarget{&signature->second, emitPlace(*member.arguments()[0]).pointer};
+    return MethodCallTarget{signature, emitReceiver(*signature, *member.arguments()[0])};
 }
 
 std::string FunctionEmitter::emitNoArgumentMethodCall(const ast::CallExpression& member, bool requireValue)

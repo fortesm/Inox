@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <stdexcept>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -42,6 +43,8 @@ struct FunctionSignature {
     std::string name;
     std::vector<FunctionParameter> parameters;
     std::string returnType;
+    // A method `T.M(...) Override :` replaces a method T reuses (CANON-9).
+    bool isOverride = false;
 };
 
 struct StructField {
@@ -49,6 +52,17 @@ struct StructField {
     std::string typeName;
     bool hasDefault = false;
     std::string defaultValue;
+    // A reused struct (`TName Struct (TPart)`): a field named after its type.
+    bool isPart = false;
+};
+
+// A field or method a struct offers through its reused parts (CANON-9): the
+// path names the parts from the struct to the member's owner.
+struct ReusedMember {
+    std::vector<std::string> path;
+    std::string name;
+    std::string owner;
+    bool isMethod = false;
 };
 
 struct StructType {
@@ -100,6 +114,18 @@ private:
                                     const std::string& fieldType,
                                     const std::string& defaultValue) const;
     void rejectRecursiveStruct(const std::string& typeName) const;
+
+    // Method reuse (CANON-9; SemanticReuse.cpp). A struct offers the fields
+    // and methods of the structs it reuses, at every level, as long as each
+    // name is reachable by exactly one path; `Override` replaces a reused
+    // method. Access is rewritten to the explicit path, so a reused method
+    // runs on its part (delegation).
+    std::vector<std::string> ownMethodNames(std::string_view typeName) const;
+    std::vector<ReusedMember> reusedMembers(std::string_view typeName) const;
+    std::optional<ReusedMember> findReusedMember(std::string_view typeName, std::string_view name) const;
+    void validateReuse(const ast::TypeDeclaration& declaration) const;
+    void routeThroughParts(const ast::CallExpression& member, const std::vector<std::string>& path);
+    void requireWritableReceiver(const FunctionSignature& signature, const ast::Expression& receiver) const;
     void analyzeFunction(const ast::FunctionDeclaration& function);
 
     void analyzeStatements(const std::vector<ast::StatementPtr>& statements, bool createScope);

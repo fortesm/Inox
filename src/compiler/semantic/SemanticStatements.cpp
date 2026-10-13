@@ -481,8 +481,11 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         symbols_.pushScope();
         // Declare the synthetic binding directly — no shadowing check needed
         // because the name (__with_N) is compiler-generated and never user-visible.
+        // The binding is as writable as its target (CANON-9): `with P`
+        // on a parameter or a read-only Self only reads.
         symbols_.currentScope().declare(
-            withStatement.bindingName(), SymbolKind::Variable, targetType, true);
+            withStatement.bindingName(), SymbolKind::Variable, targetType,
+            writableRoot(withStatement.target()) != nullptr);
         analyzeStatements(withStatement.body(), false);
         leaveScope();
         break;

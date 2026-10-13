@@ -1,0 +1,32 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-9: Self only reads its receiver; a method that changes it declares Self mut.
+Module Diagnostics.SelfReadonlyAssignment
+Type
+    TA Struct
+        FX Integer := 0
+    ;
+    TB Struct
+        FX Integer := 0
+    ;
+TA.Show(Self) :
+    PutLn(Self.FX)
+;
+TB.Show(Self) :
+    PutLn(Self.FX)
+;
+TA.Bump(Self mut) :
+    Self.FX += 1
+;
+TA.Set(Self, V Integer) :
+    Self.FX := V
+;
+Main :
+    A TA
+    A.Set(1)
+;

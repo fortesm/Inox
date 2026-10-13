@@ -7,57 +7,50 @@ Type
         FValue V
     ;
 
-Max<T Ordered>(A T, B T) T :
+Max<T>(A T, B T) T :
     Return if A > B then A else B
 ;
 
-TPair<K, V>.Swapped(Self) TPair<V, K> :
-    Return TPair(FKey := Self.FValue, FValue := Self.FKey)   == K and V from the result type
+Swap<T>(ref mut A T, ref mut B T) :
+    C := A
+    A := B
+    B := C
 ;
 
 Main :
     P TPair<String, Integer> := TPair(FKey := "a", FValue := 1)
-    PutLn(P.FKey, " ", Max(3, 7), " ", Max("b", "a"))   == T is Integer, then String
+    X := 1
+    Y := 2
+    Swap(X, Y)
+    PutLn(P.FKey, " ", Max(3, 7), " ", Max("b", "a"), " ", X)
 ;
 ```
 
-CANON-8 keeps `<...>` out of expressions: type arguments are written only
-in type position (declarations, signatures, routine headers). A
-construction or a call never writes them; they come from the arguments or
-from the declared target (`P TPair<String, Integer> := TPair(...)`). Less
-to write, and `<` in an expression is always a comparison.
+`Max(3, 7)` compiles Max with T = Integer; `Max("b", "a")` with T = String.
+`Max(P, P)` with a struct is an error at that call: "Max<TPair<String,
+Integer>>: `>` is not defined for TPair (line 2 of Max)", because structs
+are not ordered (CANON-9).
 
 ## Decisions for the maintainer
 
-1. **Constraint syntax** `<T Ordered>` (recommended: the Inox `Name Type`
-   form) — or `<T: Ordered>` (Rust/Swift, but `:` only declares routines),
-   or `<T is Ordered>`.
-2. **Constraints required** (recommended): inside a generic body only the
-   operations its constraints grant are allowed (`>` needs `Ordered`). The
-   alternative, C++-style templates checked at each use, gives errors far
-   from their cause.
-3. **Built-in protocols** now: `Equatable` (`=`, `#`), `Ordered`
-   (`Equatable` plus `<` `<=` `>` `>=`), `Numeric` (`Ordered` plus `+` `-`
-   `*` and `div`/`mod` or `/` as the type allows). User protocols come with
-   `composition`.
-4. **Inference only** (recommended, and what CANON-8 already implies): no
-   `Max<Integer>(3, 7)` or `TPair<String, Integer>(...)` in expressions;
-   when nothing determines T, the compiler asks for a typed target
-   (`Z Integer := Zero`).
-5. **Which types may be T**: every type that can be copied (so not `File`,
-   which is never copied); a later `Movable` rule for Vector.
-6. **Monomorphization** (recommended) — or one shared body with run-time
-   type descriptors (smaller code, slower, needs RTTI, which Inox avoids).
+1. **No constraints at first** (recommended: the simplest; errors appear at
+   the use, with the generic line), or a short written list now
+   (`Max<T Ordered>`).
+2. **Inference only** (recommended, what CANON-8 implies): no
+   `Max<Integer>(3, 7)` in expressions; when nothing determines T, a typed
+   target is needed (`Z Integer := Zero`).
+3. **What T may be**: any type that can be copied (so not File); a struct,
+   an array, a String.
 
 ## Lowering
 
-The analyzer records each instance (`Max<Int64>`, `Max<String>`); the
-emitter emits one LLVM function per instance (`@inox_max$Int64`), with the
-String ownership paths applying to String instances as to any routine.
-Generic structs become one LLVM type per instance.
+The analyzer checks and records each instance (`Max<Int64>`, `Max<String>`);
+the same instance machinery serves generic structs (one LLVM type per
+instance). The emitter emits one LLVM function per instance
+(`@inox_max$Int64`); String instances use the String ownership paths.
 
 ## Order of work after approval
 
-1. Generic routines with built-in constraints. 2. Generic structs and their
-methods. 3. `Option<T>` and `Result<T, E>`. 4. `Vector<T>` (move
-semantics). Each step: tests, gates, its own spec delta.
+1. Generic routines. 2. Generic structs and their methods. 3. `Option<T>`
+and `Result<T, E>`. 4. `Vector<T>` (move semantics). Each step: tests,
+gates, its own spec delta.

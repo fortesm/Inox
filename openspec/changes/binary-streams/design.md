@@ -74,10 +74,10 @@ Operations proposed (compiler intrinsics, like the text ones):
 6. **Offsets 0-based in bytes** (recommended; a position in a file is not a
    string position, which counts code points from 1).
 
-## Phase 2: streams (after `generics` and `composition`)
+## Phase 2: streams (after `generics`)
 
 ```
-CopyAll<S TStream, D TStream>(ref mut Source S, ref mut Target D) Integer :
+CopyAll<S, D>(ref mut Source S, ref mut Target D) Integer :
     Buffer Array[1..4096] Byte
     Total Integer := 0
     repeat
@@ -92,15 +92,15 @@ CopyAll<S TStream, D TStream>(ref mut Source S, ref mut Target D) Integer :
 ;
 ```
 
-`TStream` is a protocol (`ReadBytes`, `WriteBytes`, `Position`, `Seek`,
-`Size`); `BinaryFile`, a `MemoryStream` over `Vector<Byte>` and the console
-streams satisfy it. Generic code over a protocol is compiled once per type,
-with no virtual calls (decision 6 of `generics`). The decisions for phase 2
-come with that change.
+Any type with `ReadBytes`, `WriteBytes`, `Position`, `Seek` and `Size` works
+as a stream: `BinaryFile`, a `MemoryStream` over `Vector<Byte>` and the
+console streams. Each use is checked with its real types and compiled once
+per type, with no virtual calls; no nominal protocol is needed (FUTURE).
+The decisions for phase 2 come with that change.
 
 ## Order of work after approval
 
 `BinaryFile` with bytes, positions and `Close` → typed `Read`/`Write` →
 `CopyFile`/`FileSize` in Std.IOUtils → tests (round trip, every error,
 close on exception, leak check) and the example extended. Streams after
-`composition`.
+`generics`.

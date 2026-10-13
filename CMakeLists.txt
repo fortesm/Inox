@@ -52,6 +52,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticExpressions.cpp
     src/compiler/semantic/SemanticFiles.cpp
     src/compiler/semantic/SemanticDebug.cpp
+    src/compiler/semantic/SemanticReuse.cpp
     src/compiler/semantic/SemanticStatements.cpp
     src/compiler/semantic/SemanticSupport.cpp
     src/compiler/semantic/SemanticTypes.cpp

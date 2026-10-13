@@ -18,8 +18,8 @@ approval.
   values in little-endian, `Position`, `Seek`, `Size`, `Eof`, `Close`.
   Every failure is a CANON-15 IOError, as for text files.
 - Std.IOUtils gains `CopyFile` and `FileSize` (conveniences built on it).
-- Phase 2, after `generics` and `composition`: streams, a `TStream`
-  protocol satisfied by `BinaryFile`, a memory stream (needs `Vector<Byte>`)
-  and the console streams, so one routine reads or writes any of them.
+- Phase 2, after `generics`: streams; `BinaryFile`, a memory stream (needs
+  `Vector<Byte>`) and the console streams offer the same operations, so one
+  generic routine reads or writes any of them.
 - Text files get no `Seek` (positions in a UTF-8 text are bytes, not
   characters); they stay as they are.

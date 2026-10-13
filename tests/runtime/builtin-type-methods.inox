@@ -1,0 +1,53 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-9 methods of built-in types (OpenSpec change method-reuse): `Self`
+== reads a copy of the value, `Self mut` changes the caller's variable. A
+== method belongs to its exact type (Integer methods are not Byte methods).
+Module Runtime.BuiltinTypeMethods
+
+Integer.Twice(Self) Integer :
+    Return Self * 2
+;
+
+Integer.Inc(Self mut) :
+    Self += 1
+;
+
+Bool.Text(Self) String :
+    Return if Self then "sim" else "não"
+;
+
+Float.Half(Self) Float :
+    Return Self / 2.0
+;
+
+Byte.Next(Self) Byte :
+    Return Self + 1
+;
+
+String.UpdateStr(Self mut, Value String) :
+    if Value # ""
+        Self := Value
+    ;
+;
+
+Main :
+    B Byte := 3
+    PutLn(B.Next)
+    N := 5
+    N.Inc
+    PutLn(N, " ", N.Twice, " ", N.Twice.Twice)
+    Ok := true
+    PutLn(Ok.Text, " ", (N > 100).Text)
+    F := 3.0
+    PutLn(F.Half)
+    S := "x"
+    S.UpdateStr("y")
+    S.UpdateStr("")
+    PutLn(S)
+;
