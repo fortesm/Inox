@@ -50,6 +50,10 @@ linux-clang-release`. The `linux-clang-debug` preset builds against the
 system libstdc++ (14 on the CI runner), which includes fewer headers
 transitively than older versions: build with it before pushing.
 
+Every program in `examples/` is built and run; its expected output is
+`tests/examples/NAME.out` (input `tests/examples/NAME.in`), so a new
+example needs one, and `examples/` holds only programs.
+
 The two runners hold the same checks; CI runs both (Linux, and Windows
 natively on windows-2022). Both end with `Summary: N passed, 0 failed`.
 

@@ -8,8 +8,8 @@
 == Tour of file I/O in Inox 0.2: every operation of Std.Files and
 == Std.IOUtils, and every way a file operation fails, handled with try.
 == Run it with `inox examples/file_io.inox`; it creates its files in the
-== current directory and deletes them at the end. examples/file_io.out is
-== the expected output, checked by the test suite.
+== current directory and deletes them at the end. The test suite runs it
+== and compares its output with tests/examples/file_io.out.
 ==
 == Text files only: binary files, streams, positions (Seek), directories
 == and other encodings are later changes (CANON-17).

@@ -403,6 +403,28 @@ run_runtime_tree() {
     done < <(find "$root" -maxdepth 1 -type f -name '*.inox' -print0 | sort -z)
 }
 
+# Every examples/NAME.inox must build and run: its expected output is
+# tests/examples/NAME.out (and its input, if any, tests/examples/NAME.in), so
+# the examples directory holds only programs.
+run_examples() {
+    local root="$1"
+    local expected_root="$2"
+    while IFS= read -r -d '' example; do
+        local name expected input
+        name="$(basename "$example" .inox)"
+        expected="$expected_root/$name.out"
+        input="$expected_root/$name.in"
+        if [[ ! -f "$expected" ]]; then
+            record_fail "$(relative_path "$example") runs" "missing expected output: $(relative_path "$expected")"
+        elif [[ -f "$input" ]]; then
+            run_driver_input_test "$example" "$input" "$expected"
+        else
+            # stdin from /dev/null: the loop reads the file list from stdin.
+            run_driver_execution_test "$example" "$expected" < /dev/null
+        fi
+    done < <(find "$root" -maxdepth 1 -type f -name '*.inox' -print0 | sort -z)
+}
+
 # Each NAME.inox must be rejected, and the error output must contain NAME.err.
 run_diagnostic_tree() {
     local root="$1"
@@ -585,7 +607,7 @@ run_driver_execution_test "$repo_root/tests/integration/showcase/account-showcas
 run_driver_execution_test "$repo_root/tests/integration/output/variadic-put.inox" "$repo_root/tests/integration/output/variadic-put.out"
 run_runtime_tree "$repo_root/tests/integration/input"
 run_runtime_tree "$repo_root/tests/runtime"
-run_runtime_tree "$repo_root/examples"          # examples with a NAME.out also run
+run_examples "$repo_root/examples" "$repo_root/tests/examples"
 run_diagnostic_tree "$repo_root/tests/diagnostics"
 run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 

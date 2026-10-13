@@ -93,6 +93,9 @@ def main(argv):
         for program in programs:
             name = os.path.splitext(os.path.basename(program))[0]
             base = os.path.splitext(program)[0]
+            if os.path.dirname(program) == os.path.join(ROOT, "examples"):
+                # An example's expected output lives in tests/examples.
+                base = os.path.join(ROOT, "tests", "examples", os.path.basename(base))
             ll = os.path.join(work, name + ".ll")
             obj = os.path.join(work, name + ".o")
             exe = os.path.join(work, name)

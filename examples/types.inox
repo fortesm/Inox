@@ -7,27 +7,34 @@
 
 Module Types
 
+== The value types that run today (docs/STATUS.md lists the rest:
+== Currency, Crypto, Char values and UInt64 are not lowered yet).
+
 Type
     TPoint Struct
         FX Integer
-        FY Integer
+        FY Integer := 5
     ;
 
 Const Limit := 10
 
-
 Main :
-    Flag := True
-    PutLn(Flag)
-    Count := Integer(42)
-    Money := Currency("12.34")
-    Coin := Crypto("0.00000001")
-    Letter := "A"
-    Text := "Hello, Inox"
+    Flag := true                    == Bool
+    Count := 42                     == Integer (Int64)
+    Small Int8 := -100
+    Medium Int32 := 70000
+    Octet Byte := 255
+    Unsigned UInt32 := 4000000000
+    Steps Natural := 7
+    Ratio := 2.5                    == Float (Float64)
+    Text := "Hello, Inox"           == String, UTF-8
+    Point TPoint                    == a struct at its field defaults
+    Point.FX := Limit
 
-    PutLn(Text)
-    PutLn(Count)
-    PutLn(Money = Money)
-    PutLn(Coin = Coin)
-    PutLn(Letter)
+    PutLn(Flag, " ", not Flag)
+    PutLn(Count, " ", Small, " ", Medium, " ", Octet, " ", Unsigned, " ", Steps)
+    PutLn(Integer(Octet) + Count, " ", Int32(Count) + Medium)
+    PutLn(Ratio * 2.0)
+    PutLn(Text, " ", Text = "Hello, Inox", " ", Text < "Inox")
+    PutLn(Point.FX, " ", Point.FY)
 ;
