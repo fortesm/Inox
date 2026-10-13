@@ -24,6 +24,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The BUILD number is the commit count of the history (canon
+          # SECTION 02); a shallow clone would count 1.
+          fetch-depth: 0
       - name: Install toolchain
         run: |
           sudo apt-get update
@@ -56,6 +60,10 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The BUILD number is the commit count of the history (canon
+          # SECTION 02); a shallow clone would count 1.
+          fetch-depth: 0
       - name: Developer environment (MSVC x64)
         uses: ilammy/msvc-dev-cmd@v1
         with:

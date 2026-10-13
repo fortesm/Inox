@@ -10,7 +10,7 @@ share one version (canon SECTION 02, VERSIONING). Numbers such as `v3.57` or
 `r3.58` are canon revisions, entries of the decision log in
 `docs/INOX_CANONICAL.md`, not versions.
 
-## 0.2.0-pre-alpha — unreleased
+## 0.2.0 pre-alpha — unreleased
 
 ### Added
 - Text files (canon r3.59, OpenSpec change `file-io`): `Use Std.IOUtils` gives the type `File` (Std.Files) and `OpenRead`, `Create`, `OpenAppend`, `ReadLn`, `Eof`, `Write`, `WriteLn`, `Close`, `Exists`, `DeleteFile`, `RenameFile`. A File closes itself when its routine exits by any path, also an exception; it is never copied (a local or a `ref mut` parameter). Failures raise `FileNotFound`, `PermissionDenied`, `AlreadyExists`, `DiskFull` or `IOError`, handled with try/except On/ensure/Retry. UTF-8 text, `\n` written on every system. Runtime `runtime/FileRuntime.cpp`; the leak check covers the file programs.
@@ -44,6 +44,7 @@ share one version (canon SECTION 02, VERSIONING). Numbers such as `v3.57` or
 - Language decisions recorded (canon v3.50): UInt64 literals up to 2^64-1 in UInt64 context, no unary minus on UInt64, no UInt64/Integer mixing; implicit Range checks; Enum `Succ`/`Pred`/`Low`/`High`; Set functions, literal and 256-value limit; `GetLn(S)` for String, non-atomic reference counts. Enum printing prints the literal's name (v3.51). Implementation follows.
 
 ### Changed
+- Version scheme (canon r3.60): `MAJOR.MINOR.RELEASE.BUILD` plus the stage, today `0.2.0.<BUILD> pre-alpha`. The BUILD is the commit count of the compiled history, written at every build; `inox --version` prints e.g. `inox 0.2.0.206 pre-alpha (canon r3.60)`. CI clones the full history.
 - Compiler sources (OpenSpec change `compiler-modularization`, step 4): `SemanticAnalyzer.cpp` (3,358 lines) is split into eight files by responsibility (declarations, built-ins, statements, constant evaluation, expressions, calls, types) and `SemanticSupport` for the shared helpers; types, diagnostics and IR are identical for every program.
 - Compiler sources (OpenSpec change `compiler-modularization`, step 3): the exception ABI is a Strategy (`ItaniumExceptionAbi`, `MsvcExceptionAbi`) chosen once per module; the libinoxrt functions are one table (`RuntimeAbi`); the emitter tells the driver whether to link libinoxrt instead of the driver searching the IR text. The emitted IR is identical for every program, with both ABIs.
 - Compiler sources (OpenSpec change `compiler-modularization`, step 2): `FunctionEmitter` gets its own header and nine source files by responsibility (control flow, exceptions, statements, I/O, String ownership, aggregates, arrays, expressions); `LlvmIrEmitter.cpp` keeps only the module emission (264 lines). The emitted IR is identical for every program.
