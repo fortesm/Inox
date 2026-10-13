@@ -100,4 +100,4 @@ trap), `S += X` in a loop of 100 000 steps (time bound and memory balance),
 leak check over every new program, runtime unit tests for the tables and
 the append paths, the MSVC IR check, and every E19 gate.
 
-Design approval: **awaiting** (Marcelo Fortes).
+Design approval: **approved** (Marcelo Fortes, 2026-10-13: "Std.Strings / Std.StrUtils: o design espera a sua aprovação (aprovado)"; canon r3.65).

@@ -585,6 +585,7 @@ run_driver_execution_test "$repo_root/tests/integration/showcase/account-showcas
 run_driver_execution_test "$repo_root/tests/integration/output/variadic-put.inox" "$repo_root/tests/integration/output/variadic-put.out"
 run_runtime_tree "$repo_root/tests/integration/input"
 run_runtime_tree "$repo_root/tests/runtime"
+run_runtime_tree "$repo_root/examples"          # examples with a NAME.out also run
 run_diagnostic_tree "$repo_root/tests/diagnostics"
 run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 

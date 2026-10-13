@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.64
+Canon revision: r3.65
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -17,22 +17,23 @@ maintainer answers them, and the answer becomes a revision.
 None of these is permission to choose (G4); until answered, the current text
 stands.
 
-1. **`std-strings` design** (Risk: high): approve
-   `openspec/changes/std-strings/design.md` — concatenation without repeated
-   copies, the block header, positions and the trap "string index out of
-   range", the Unicode tables — before any code is written.
-2. **`generics` design** (Risk: high): `openspec/changes/generics/design.md`,
+1. **`generics` design** (Risk: high): `openspec/changes/generics/design.md`,
    six decisions (constraint syntax `<T Ordered>`, constraints required,
    built-in protocols, inference only, which types may be T,
    monomorphization).
-3. **`composition` design** (Risk: high):
+2. **`composition` design** (Risk: high):
    `openspec/changes/composition/design.md`, five decisions (embedding by a
    bare type line, collisions are errors, `TCircle Struct (TShape)`,
    protocol values later, default routines later).
-4. **`safe-pointers` design** (Risk: high):
+3. **`safe-pointers` design** (Risk: high):
    `openspec/changes/safe-pointers/design.md`, five decisions (counted
    `Ref<T>`, mutation through a shared Ref, names, arenas in phase 2, the
    unsafe layer later). Depends on `generics`.
+4. **`binary-streams` design** (Risk: high):
+   `openspec/changes/binary-streams/design.md`, six decisions for binary
+   files (a `BinaryFile` type, little-endian, `Write`/`Read` sized by the
+   type, Strings in binary files, reading past the end, 0-based byte
+   offsets); streams come after `generics` and `composition`.
 
 ## Revision log
 
@@ -81,8 +82,15 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   de charlenghth (aprovado)"; "Concatenação com + (aprovado)"; "Arquivos
   muda isso também o básico fica em Std.Files e as comodidades para
   Std,IOUtils"). Changes `module-pairs` (implemented) and `std-strings`
-  (design awaiting approval). Open question 2 closed: a function called as
-  a statement (its result thrown away) stays as it is, accepted by the
-  analyzer and reported by the backend as "not yet implemented" (a backend
-  gap, `docs/BACKEND_GAPS.md`); the law adds no rule (Marcelo Fortes: "Deixe
-  como está pois ele diz que esse método não foi implementado ainda").
+  (design awaiting approval).
+- r3.65 — 2026-10-13 — Two answers and three designs. (1) The `std-strings`
+  design is approved (Marcelo Fortes: "Std.Strings / Std.StrUtils: o design
+  espera a sua aprovação (aprovado)"); its implementation may start.
+  Change `std-strings`. (2) A function called as a statement (its result
+  thrown away) stays as it is: accepted by the analyzer and reported by the
+  backend as "not yet implemented" (a backend gap, `docs/BACKEND_GAPS.md`);
+  the law adds no rule (Marcelo Fortes: "Deixe como está pois ele diz que
+  esse método não foi implementado ainda"). (3) Designs proposed, awaiting
+  decisions: changes `generics`, `composition`, `safe-pointers`, and
+  `binary-streams` (binary files and streams, which CANON-17 leaves to a
+  later change).

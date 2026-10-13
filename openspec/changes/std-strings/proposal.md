@@ -20,7 +20,7 @@ registered the modules (canon v3.57, r3.58) and decided their shape on
   idioma específico".
 
 Risk: high (new runtime ABI functions; in-place append changes how String
-blocks are owned). **Awaiting design approval** (design.md).
+blocks are owned). Design approved 2026-10-13 (canon r3.65); implementation follows tasks.md.
 
 ## What Changes
 

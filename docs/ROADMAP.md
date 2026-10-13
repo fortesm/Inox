@@ -46,6 +46,8 @@ whether concurrency or contracts are in it) is the maintainer's decision.
 - `uint64` — UInt64/UInteger values.
 - `enum-range-set` — Enum, Range and Set with `Ord`, `Low`/`High`,
   `Succ`/`Pred`, enum `for` and `case` coverage.
-- `std-strings` — Std.Strings / Std.StrUtils, String concatenation.
+- `std-strings` — Std.Strings / Std.StrUtils, String concatenation (design approved, r3.65).
+- Designs awaiting decisions: `generics`, `composition`, `safe-pointers`,
+  `binary-streams` (binary files, positions; streams after composition).
 - Then the rest of 0.2: Char values and output; Float conversions and Float
   `Const`.
