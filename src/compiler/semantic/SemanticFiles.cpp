@@ -5,10 +5,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// SemanticAnalyzer: text files (OpenSpec change file-io). Std.Files defines
-// the File type; Std.IOUtils the functions (canon r3.58 module pairs). Both
-// are compiler intrinsics that exist only in a program that uses the module,
-// so their names (Create, Close, Write, Exists, ...) stay free elsewhere.
+// SemanticAnalyzer: text files (OpenSpec changes file-io and module-pairs).
+// Std.Files holds the File type and the basic operations (open, read, write,
+// close); Std.IOUtils, which uses Std.Files, the conveniences (Exists,
+// DeleteFile, RenameFile) (canon r3.64 module pairs). They are compiler
+// intrinsics that exist only in a program that uses the module, so their
+// names (Create, Close, Write, Exists, ...) stay free elsewhere.
 
 #include "SemanticAnalyzer.h"
 
@@ -32,6 +34,7 @@ struct FileFunction {
     std::string_view result;
     bool variadic = false;
     std::size_t minimumValues = 0;
+    bool convenience = false;  // declared in Std.IOUtils, not Std.Files
 };
 
 // F2 opening, F4 text I/O, F7 file system (OpenSpec change file-io).
@@ -44,9 +47,9 @@ constexpr std::array<FileFunction, 11> kFileFunctions{{
     {"Close", {"File", ""}, 1, "Void"},
     {"Write", {"File", ""}, 1, "Void", true, 1},
     {"WriteLn", {"File", ""}, 1, "Void", true, 0},
-    {"Exists", {"String", ""}, 1, "Bool"},
-    {"DeleteFile", {"String", ""}, 1, "Void"},
-    {"RenameFile", {"String", "String"}, 2, "Void"},
+    {"Exists", {"String", ""}, 1, "Bool", false, 0, true},
+    {"DeleteFile", {"String", ""}, 1, "Void", false, 0, true},
+    {"RenameFile", {"String", "String"}, 2, "Void", false, 0, true},
 }};
 
 const FileFunction* findFileFunction(std::string_view name)
@@ -74,7 +77,7 @@ bool usesModule(const ast::ModuleNode& module, std::string_view name)
 void SemanticAnalyzer::declareStandardModuleNames(const ast::ModuleNode& module)
 {
     ioUtilsVisible_ = usesModule(module, "Std.IOUtils");
-    // Std.IOUtils uses Std.Files; either makes the File type visible.
+    // Std.IOUtils uses Std.Files, so it also gives the type and the basics.
     filesVisible_ = ioUtilsVisible_ || usesModule(module, "Std.Files");
     if (filesVisible_ && types_.resolve("File") == nullptr) {
         declareTypeOrThrow("File", true);
@@ -83,14 +86,18 @@ void SemanticAnalyzer::declareStandardModuleNames(const ast::ModuleNode& module)
     if (debugVisible_ && !symbols_.globalScope().containsLocal("Assert")) {
         symbols_.globalScope().declare("Assert", SymbolKind::Builtin);
     }
-    if (ioUtilsVisible_) {
-        for (const FileFunction& function : kFileFunctions) {
-            // ReadLn is also the console prelude function (no argument).
-            if (!symbols_.globalScope().containsLocal(function.name)) {
-                symbols_.globalScope().declare(std::string(function.name), SymbolKind::Builtin);
-            }
+    for (const FileFunction& function : kFileFunctions) {
+        // ReadLn is also the console prelude function (no argument).
+        if (fileFunctionVisible(function.name) && !symbols_.globalScope().containsLocal(function.name)) {
+            symbols_.globalScope().declare(std::string(function.name), SymbolKind::Builtin);
         }
     }
+}
+
+bool SemanticAnalyzer::fileFunctionVisible(std::string_view name) const
+{
+    const FileFunction* function = findFileFunction(name);
+    return function != nullptr && (function->convenience ? ioUtilsVisible_ : filesVisible_);
 }
 
 bool SemanticAnalyzer::isFileType(std::string_view typeName)
@@ -112,8 +119,11 @@ std::string SemanticAnalyzer::analyzeFileCall(std::string_view name, const ast::
     const FileFunction& function = *findFileFunction(name);
     const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
     const std::string functionName(function.name);
-    if (!ioUtilsVisible_) {
+    if (function.convenience && !ioUtilsVisible_) {
         throw SemanticError(functionName + " is declared in Std.IOUtils: add `Use Std.IOUtils`");
+    }
+    if (!filesVisible_) {
+        throw SemanticError(functionName + " is declared in Std.Files: add `Use Std.Files`");
     }
     const Symbol& symbol = resolveOrThrow(callee.name());
     result_.bind(callee, symbol);

@@ -34,8 +34,18 @@ void SemanticAnalyzer::requireStatementExpression(const ast::Expression& express
     switch (expression.kind()) {
     case ast::AstNodeKind::IdentifierExpression: {
         const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
-        if (equalsIgnoreCase(identifier.name(), "Get") || equalsIgnoreCase(identifier.name(), "GetLn") ||
-            resolveFunctionSignature(identifier.name()) != nullptr) {
+        if (equalsIgnoreCase(identifier.name(), "Get") || equalsIgnoreCase(identifier.name(), "GetLn")) {
+            return;
+        }
+        if (const FunctionSignature* signature = resolveFunctionSignature(identifier.name())) {
+            // `Report` calls a routine without arguments (CANON-7); a routine
+            // that takes arguments needs them.
+            if (!signature->parameters.empty()) {
+                throw SemanticError(identifier.name() + " expects " +
+                                    std::to_string(signature->parameters.size()) +
+                                    (signature->parameters.size() == 1 ? " argument" : " arguments") +
+                                    ", got 0");
+            }
             return;
         }
         throw SemanticError("'" + identifier.name() +

@@ -165,6 +165,8 @@ private:
     // (ReadLn with no argument is the console prelude function).
     static bool isFileFunction(std::string_view name, std::size_t argumentCount);
     std::string analyzeFileCall(std::string_view name, const ast::CallExpression& call);
+    // Whether the module that declares this file function is used.
+    bool fileFunctionVisible(std::string_view name) const;
     // A value stored into a File must be a file just opened (OpenRead,
     // Create, OpenAppend): anything else would copy a File.
     void requireFreshFile(const ast::Expression& value) const;
@@ -192,8 +194,8 @@ private:
     std::size_t retryHandlerDepth_ = 0;
     std::size_t ensureDepth_ = 0;
     bool hasMain_ = false;
-    bool filesVisible_ = false;    // the program uses Std.Files (the File type)
-    bool ioUtilsVisible_ = false;  // the program uses Std.IOUtils (the functions)
+    bool filesVisible_ = false;    // Std.Files: the File type and the basic operations
+    bool ioUtilsVisible_ = false;  // Std.IOUtils: the conveniences (it uses Std.Files)
     bool debugVisible_ = false;    // the program uses Std.Debug (Assert)
     std::unordered_map<const ast::Expression*, std::int64_t> constants_;
     // Char Consts (`Const Letter := 'A'`) by normalized name, as Unicode scalar

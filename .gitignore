@@ -159,3 +159,8 @@ inox-out/
 # Machine identity for agents (local only; see AGENTS.md "Machine identity").
 # The tracked template is .inox-machine.example.
 /.inox-machine
+
+# --------------------
+# Files left by tests that cannot delete them (tests/runtime/files-basic-module)
+# --------------------
+inox-test-*.txt

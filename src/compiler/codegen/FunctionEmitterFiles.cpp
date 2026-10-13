@@ -5,7 +5,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// FunctionEmitter: the Std.IOUtils file functions (OpenSpec change file-io).
+// FunctionEmitter: the file functions of Std.Files and Std.IOUtils (OpenSpec
+// changes file-io and module-pairs).
 // Each is one call into runtime/FileRuntime.cpp. A File value is an owned
 // reference like a String: a function that opens a file returns it owned
 // (+1), held for the statement and moved into its variable; the routine's
@@ -76,7 +77,7 @@ bool FunctionEmitter::isFileCall(const ast::CallExpression& call) const
         return false;
     }
     // A routine of the program with the same name is called instead; the
-    // analyzer rejects that name next to `Use Std.IOUtils`.
+    // analyzer rejects that name next to `Use Std.Files`.
     const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
     return signatures_.find(normalize(callee.name())) == signatures_.end();
 }

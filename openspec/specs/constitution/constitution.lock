@@ -90,13 +90,13 @@ spec.md#CANON-17 Put and PutLn	a72aa0b863f387da	constitution
 spec.md#CANON-17 Get and GetLn	aa7214828a99f9f6	constitution
 spec.md#CANON-17 Integer input is strict	c34b1f0df7db3030	constitution
 spec.md#CANON-17 GetLn into a String	7c1ca5427a6d4b93	constitution
-spec.md#CANON-17 Files are visible only with Use	a2ccced78a17cf50	constitution
+spec.md#CANON-17 Files are visible only with Use	4b196d8825fd05ff	module-pairs
 spec.md#CANON-17 Opening a File; a File is never copied	c37b53c36ea29e37	constitution
 spec.md#CANON-17 A File closes itself	ad1cb7932ba552c2	constitution
 spec.md#CANON-17 Text in files	1a59a7ef5bb0ee53	constitution
 spec.md#CANON-17 File system functions	b0aa61e9bafcb323	constitution
 spec.md#CANON-17 File errors are exceptions	bc7b1e4c7018bea9	constitution
-spec.md#CANON-18 Library principles	4271c83783e8a45c	constitution
+spec.md#CANON-18 Library principles	247dc55ac8637e02	module-pairs
 spec.md#CANON-18 Library modules	54d79e37d75eb991	debug-assert
 spec.md#CANON-18 Planned modules	4955763ea05c20f2	constitution
 spec.md#CANON-19 Run-time faults are traps	b35d7570f0992acd	constitution

@@ -142,7 +142,7 @@ inox version               print the version</code></pre>
 <p>Checking and IR emission do not require Clang when using a prebuilt compiler. Building and running currently require <code>clang</code> in <code>PATH</code>.</p>
 </section>
 <section id="stdlib-output"><h2>Standard library discovery and output directory</h2>
-<p>The standard library has <code>Std.System</code> (the prelude, always available, formerly <code>Std.Core</code>), <code>Std.IO</code>, <code>Std.Math</code>, <code>Std.Errors</code> (the exception types), <code>Std.Debug</code> and the pair <code>Std.Files</code> / <code>Std.IOUtils</code>. Modules come in pairs: <code>Std.X</code> holds the definitions of a subject and <code>Std.XUtils</code> the helper functions. Planned: <code>Std.Strings</code> / <code>Std.StrUtils</code>, <code>Std.DateTime</code> / <code>Std.DateUtils</code>, and <code>Std.SystemUtils</code> for system functions.</p>
+<p>The standard library has <code>Std.System</code> (the prelude, always available, formerly <code>Std.Core</code>), <code>Std.IO</code>, <code>Std.Math</code>, <code>Std.Errors</code> (the exception types), <code>Std.Debug</code> and the pair <code>Std.Files</code> / <code>Std.IOUtils</code>. Modules come in pairs: <code>Std.X</code> holds a subject's types and fundamental operations, and <code>Std.XUtils</code> the conveniences built on them (using <code>Std.XUtils</code> also gives everything of <code>Std.X</code>). Planned: <code>Std.Strings</code> / <code>Std.StrUtils</code>, <code>Std.DateTime</code> / <code>Std.DateUtils</code>, and <code>Std.SystemUtils</code> for system functions.</p>
 <p><code>Use Std.Debug</code> gives <code>Assert(Condition)</code> and <code>Assert(Condition, Message)</code>. When the condition is false the program stops at once, like an overflow: no handler catches it and no <code>ensure</code> runs. Assert is never compiled out.</p>
 <pre><code>Use Std.Debug
 
@@ -544,9 +544,9 @@ PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
 <p>The current backend lowers these facilities through the runtime/compiler path used by the LLVM smoke-test backend. This is not the final language ABI.</p>
 </section>
 <section id="files"><h2>Text files: Std.Files and Std.IOUtils</h2>
-<p><code>Use Std.IOUtils</code> gives a program the type <code>File</code> (defined in <code>Std.Files</code>) and the file functions. Without it, names such as <code>Create</code>, <code>Close</code> or <code>Write</code> are free for your own routines.</p>
+<p><code>Use Std.Files</code> gives a program the type <code>File</code> and the basic operations: <code>OpenRead</code>, <code>Create</code>, <code>OpenAppend</code>, <code>ReadLn</code>, <code>Eof</code>, <code>Write</code>, <code>WriteLn</code> and <code>Close</code>. <code>Use Std.IOUtils</code> adds the conveniences <code>Exists</code>, <code>DeleteFile</code> and <code>RenameFile</code>, and gives everything of <code>Std.Files</code>. Without them, names such as <code>Create</code>, <code>Close</code> or <code>Exists</code> are free for your own routines.</p>
 <pre><code>Module Notes
-Use Std.IOUtils
+Use Std.Files
 
 Main :
     F := Create(&quot;notes.txt&quot;)              == new or truncated, for writing

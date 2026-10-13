@@ -1,0 +1,36 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-17/CANON-18 (r3.64): Std.Files holds the File type and the basic
+== operations; the conveniences (Exists, DeleteFile, RenameFile) are in
+== Std.IOUtils, so without it the name Exists is free for the program.
+== Without Std.IOUtils the file cannot be deleted: it stays in the working
+== directory, truncated by the next run (.gitignore: inox-test-*.txt).
+Module Runtime.FilesBasicModule
+
+Use Std.Files
+
+Exists(N Integer) Bool :
+    Return N > 0
+;
+
+Main :
+    F := Create("inox-test-files-basic.txt")
+    WriteLn(F, "first ", 1)
+    Write(F, "second")
+    WriteLn(F)
+    Close(F)
+    R := OpenRead("inox-test-files-basic.txt")
+    while not Eof(R)
+        PutLn(ReadLn(R))
+    ;
+    Close(R)
+    A := OpenAppend("inox-test-files-basic.txt")
+    WriteLn(A, "third")
+    Close(A)
+    PutLn(Exists(2))
+;

@@ -46,6 +46,7 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 - Language decisions recorded (canon v3.50): UInt64 literals up to 2^64-1 in UInt64 context, no unary minus on UInt64, no UInt64/Integer mixing; implicit Range checks; Enum `Succ`/`Pred`/`Low`/`High`; Set functions, literal and 256-value limit; `GetLn(S)` for String, non-atomic reference counts. Enum printing prints the literal's name (v3.51). Implementation follows.
 
 ### Changed
+- Module pairs (canon r3.64, OpenSpec change `module-pairs`): `Std.Files` now holds the File type and the basic operations (OpenRead, Create, OpenAppend, ReadLn, Eof, Write, WriteLn, Close); `Std.IOUtils` the conveniences (Exists, DeleteFile, RenameFile) and everything of Std.Files. Programs with `Use Std.IOUtils` are unchanged.
 - `State` has no `:` (canon r3.62, OpenSpec change `state-without-colon`): `State`, its variables on the next lines, and `;`. `State :`, a State without its `;` and the old `Name : Type` form (also in `Const`) are rejected with a message showing the right form. `:` now appears only after a routine's name and signature.
 - `Length(S)` of a String and `Ord(C)` of a Char are rejected (canon r3.62, change `char-not-ordinal`): `Length` takes an array or a slice, String lengths come with Std.StrUtils, and a Char is not an ordinal.
 - The roadmap is renumbered for the version scheme (`docs/ROADMAP.md`, change `roadmap-renumber`).
@@ -69,6 +70,7 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 - A `Const` has no written type: `Const Mask UInt8 := $FF` is rejected; write `Const Mask := UInt8($FF)` (OPEN-5).
 
 ### Fixed
+- A routine that takes arguments, called by its bare name (`Show` for `Show(N Integer)`), passed the analyzer and stopped in the backend; it is now "Show expects 1 argument, got 0". A function called as a statement is reported as a backend gap instead of a codegen error. Found by mutation fuzzing (seed 7).
 - The release scripts copied a manual that no longer existed and did not ship `libinoxrt`, so packaging failed and packaged compilers could not build programs that use exceptions, Strings or Files; packages now hold the manual, the constitution and the runtime library beside the compiler.
 - `=` and `#` on two Bool variables, `<` on Strings and `=`/`<` on structs passed the analyzer and then produced invalid IR. Bool and String comparisons now work; struct comparison is a compile error, as in Pascal (canon v3.56, v3.57).
 - A function called with no arguments inside `try` (`N := Fail`) now reaches the handler; it was emitted with `call` instead of `invoke` and its exception aborted the program.
