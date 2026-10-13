@@ -44,7 +44,7 @@ NEEDS_DESTINATION_FILE = ("mirrored", "copied", "approved")
 
 SECTION_RE = re.compile(r"^# SECTION (\d+) - (.+)$")
 HEADING_RE = re.compile(r"^(##|###) (.+)$")
-LOG_RE = re.compile(r"^# (v\d+\.\d+[a-z]?)\b")
+LOG_RE = re.compile(r"^# ([vr]\d+\.\d+[a-z]?)\b")  # v3.xx up to v3.57, r3.NN from r3.58
 GOVERNANCE_RE = re.compile(r"^# (G\d+)\. ")
 GROUP_RE = re.compile(r"^# GROUP: (.+)$")
 BANNER_RE = re.compile(r"^# [=#]{20,}\s*$")

@@ -9,7 +9,9 @@
 # stale docs, prior chat summaries, and previous agent instructions.
 #
 # Maintainer / sole design authority: Marcelo Fortes
-# Version: v3.57 (Bool ordering; structs never compared; Std.Strings registered)
+# Language version: Inox 0.2.0-pre-alpha (language and compiler; SECTION 02)
+# Canon revision: r3.58 (decision log of this document, NOT a version;
+#                 naming and versioning)
 # Last updated: 2026-10-12
 # Repository: github.com/fortesm/Inox
 # License: Mozilla Public License 2.0 (MPL-2.0), without the "Incompatible With"
@@ -502,8 +504,55 @@ specification, ADRs, manual HTML, and tests.
 # SECTION 02 - VERSIONING AND RELEASE POLICY
 # ============================================================================
 
+## VERSIONING (r3.58, Marcelo Fortes, 2026-10-12)
+
+Two numbers, never confused:
+- **Language version** — `Inox 0.2.0-pre-alpha`. The language and its
+  compiler share one version (Semantic Versioning, 0.x): before 1.0 a minor
+  version may change the language. Stages: pre-alpha (the 1.0 scope is still
+  being built) → alpha (1.0 scope complete) → beta (frozen; fixes only) →
+  1.0. `inox --version` prints it; `src/compiler/support/Version.h` is its
+  one source and the CMake project version follows it. "Inox 0.1" names the
+  baseline of ADR-0006 and the `v0.1.0-test` release (2026-06-02).
+- **Canon revision** — `r3.58`: the number of an entry of the change log
+  below, i.e. of a set of decisions recorded in this document. It is NOT a
+  version of the language. Entries up to v3.57 keep their old `v3.xx` label
+  (the log is append-only); from r3.58 on, entries, commits and pull
+  requests say "canon r3.NN".
+- A language version bump is decided by the maintainer and recorded here and
+  in CHANGELOG.md.
+
 ## CHANGE LOG (newest first — dated, attributed, append-only)
 # ============================================================================
+#
+# r3.58 — 2026-10-12 — naming of the standard library; versioning.
+#         Marcelo Fortes, 2026-10-12: "Std.Core muda para Std.System";
+#         "Std.Strings deve ficar somente definições e dados gerais de strings
+#         semelhante a um arquivo .h de C. Já Std.StrUtils ficam funções que
+#         auxiliam a vida do programador para manipular strings pode fazer uso
+#         de Std.Strings, o mesmo vale para Std.DateTime -> Std.DateUtils,
+#         StdFiles -> Std.IoUtils e subsequentes, para não termos um módulo
+#         saco de tudo, podemos ter um Std.SystemUtils com somente funções
+#         específicas de sistema."; "Quero mudar aquele versionamento 3.XX ...
+#         A linguagem eu diria uma versão 0.2 ou 0.3 pré-alpha."
+#   - Layer A, CANON-18: `Std.Core` is renamed `Std.System` (the implicit
+#     prelude, like Delphi's System unit).
+#   - Layer A, CANON-18: library modules come in pairs. `Std.X` holds only
+#     the definitions and general data of a subject (types, constants,
+#     exception types, the facts the compiler knows), like a C header;
+#     `Std.XUtils` holds the functions that help the programmer and may use
+#     `Std.X`. Pairs planned: `Std.Strings` / `Std.StrUtils`,
+#     `Std.DateTime` / `Std.DateUtils`, `Std.Files` / `Std.IOUtils`;
+#     `Std.SystemUtils` holds only system-specific functions. No module is a
+#     catch-all.
+#   - SECTION 02 gains VERSIONING: the language is `Inox 0.2.0-pre-alpha`
+#     (language and compiler share one version); the `v3.xx` numbers are
+#     canon revisions, written `r3.NN` from now on. `inox --version` prints
+#     both; CMake project version 0.2.0.
+#   - The compact-form example of `Module`/`Use` said `Use Sys.IO`, a module
+#     that never existed; it now says `Use Std.IO`.
+#   - OpenSpec: `string-runtime` and `comparisons` archived (merged in #36,
+#     #37, #38); `std-strings` and `file-io` follow the module pairs.
 #
 # v3.57 — 2026-10-12 — two Layer A decisions and a planned library module.
 #         Marcelo Fortes, 2026-10-12: "Bool deve ter ordem (false < true,
@@ -2427,7 +2476,7 @@ The detailed module/import rules are in SECTION 09. Lexical/comment rules are in
 - `Use Name` declares a SEMANTIC dependency. It is NOT textual inclusion, NOT
   `#include`, NOT source copying, NOT manual linking. It tells the compiler to
   load imported module types and signatures.
-- Compact form allowed: `Module Calc.Core Use Sys.IO Use Math.Basic Use Calc.Types`.
+- Compact form allowed: `Module Calc.Core Use Std.IO Use Math.Basic Use Calc.Types`.
 - Multi-file compilation is required for the 0.1 direction (implementation is
   incremental).
 - In 0.1 ALL module symbols are public by default. `Export`, interface/body
@@ -3242,6 +3291,9 @@ with `=` and `#`; ordering with `<` `>` `<=` `>=` (v3.56): byte by byte over
 UTF-8, a prefix first, so Unicode code point order, case-sensitive, not a
 locale collation (`"Z" < "a" < "á"`, `"ab" < "abc"`, `"" < "a"`). A String local or State variable needs an initializer
 (CANON-5).
+Specified in openspec/specs/language/strings and
+openspec/specs/language/comparisons (archived OpenSpec changes; this section
+stays the law, G7).
 Status (Layer B, v3.55): implemented. A String is a reference-counted immutable
 block of libinoxrt; the compiler releases every String it owns exactly once,
 also when a routine is left by an exception (checked by
@@ -3421,8 +3473,9 @@ generic hash set.
 ## CANON-18. STANDARD LIBRARY (was language-reference §Standard library + runtime)
 
 The initial portable 0.1 standard library lives under `stdlib/`:
-- `Std.Core` — conceptual prelude/core; anchors fundamental names and compiler
-  intrinsics such as future array-bounds operations. Conceptually IMPLICIT.
+- `Std.System` (formerly `Std.Core`, r3.58) — conceptual prelude; anchors
+  fundamental names and compiler intrinsics such as array-bounds operations.
+  Conceptually IMPLICIT.
 - `Std.IO` — canonical `Put`/`PutLn` output and minimal `Get`/`GetLn` Integer input facade. Explicit `Use Std.IO`.
 - `Std.Math` — strategic mathematical library surface. The initial serious
   layer includes pure Inox Integer helpers such as `Min`, `Max`, `Clamp`,
@@ -3434,8 +3487,14 @@ The initial portable 0.1 standard library lives under `stdlib/`:
   `Hypot3`, and angle conversions). Explicit `Use Std.Math`.
 - `Std.Debug` — documents future `Assert`; intentionally UNAVAILABLE until
   trap/abort behavior is canonical.
-Planned, not implemented (registered v3.57; OpenSpec change `std-strings`):
-- `Std.Strings` — String functions beyond the operators, by Unicode rules and
+Module pairs (r3.58): `Std.X` holds only the definitions and general data of
+a subject, like a C header; `Std.XUtils` holds the helper functions and may
+use `Std.X`. No module is a catch-all.
+Planned, not implemented (registered v3.57/r3.58; OpenSpec changes
+`std-strings`, `file-io`):
+- `Std.Strings` — definitions and general data of Strings (the facts of
+  CANON-14, character classes, Unicode data the functions rely on).
+- `Std.StrUtils` — String functions beyond the operators, by Unicode rules and
   never tied to one human language: lengths in bytes, characters and
   graphemes; trimming (Unicode White_Space); upper/lower case and case
   folding; case-insensitive equality and comparison; language-neutral
@@ -3444,10 +3503,12 @@ Planned, not implemented (registered v3.57; OpenSpec change `std-strings`):
   (NFC/NFD); search (position, contains, starts/ends with), slicing,
   replacing, splitting, joining, repeating, padding. Function names and the
   String concatenation operator are decided in that change.
-- Further modules modeled on Delphi's System.SysUtils (conversions,
-  exceptions, formatting), System.StrUtils, System.DateUtils (dates, times,
-  calendar) and System.IOUtils (files, paths, directories): names awaiting
-  the maintainer's choice.
+- `Std.Files` / `Std.IOUtils` — the File type and its definitions / file,
+  path and directory functions (OpenSpec change `file-io`).
+- `Std.DateTime` / `Std.DateUtils` — dates, times and intervals / calendar
+  calculations.
+- `Std.SystemUtils` — system-specific functions only (environment, process,
+  command line).
 The standard library must remain portable across Windows and Linux and must not
 depend on GC, unsafe features, C interop, or a complex runtime. The current
 `stdlib/` is an early layer + documentation anchor, NOT a complete standalone

@@ -2,7 +2,7 @@
 
 Module StdMathExpanded
 
-Use Std.Core
+Use Std.System
 Use Std.Math
 Use Std.IO
 

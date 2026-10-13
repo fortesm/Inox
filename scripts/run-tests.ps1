@@ -808,6 +808,22 @@ if ($null -eq $pythonExe) {
     }
 }
 
+# `inox --version` must match the canon header (SECTION 02, VERSIONING).
+$canonText = Get-Content -LiteralPath (Join-Path $repoRoot "docs\INOX_CANONICAL.md") -Raw
+$languageMatch = [regex]::Match($canonText, "(?m)^# Language version: Inox (\S+)")
+$revisionMatch = [regex]::Match($canonText, "(?m)^# Canon revision: (r[0-9.]+)")
+$expectedVersion = "inox $($languageMatch.Groups[1].Value) (canon $($revisionMatch.Groups[1].Value))"
+$actualVersion = ((& $InoxExe "--version" 2>&1 | Out-String) -replace "`r", "").Trim()
+if ($languageMatch.Success -and $revisionMatch.Success -and $actualVersion -eq $expectedVersion) {
+    $passed++
+    Write-Host "[PASS] inox --version matches the canon header"
+} else {
+    $failed++
+    Write-Host "[FAIL] inox --version matches the canon header"
+    Write-Host "       expected: $expectedVersion"
+    Write-Host "       actual: $actualVersion"
+}
+
 # Unit tests of the runtime library (inoxrt-tests, built next to the compiler).
 $unitExe = Join-Path (Split-Path -Parent $InoxExe) "inoxrt-tests.exe"
 if (-not (Test-Path -LiteralPath $unitExe -PathType Leaf)) {

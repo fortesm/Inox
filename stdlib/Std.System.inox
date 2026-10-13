@@ -5,11 +5,11 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module Std.Core
+Module Std.System
 
 == Inox 0.1 core/prelude module.
 ==
-== Std.Core is conceptually imported by default.
+== Std.System is conceptually imported by default (formerly Std.Core; renamed in canon revision 3.58).
 == Fundamental types and compiler intrinsics belong to the prelude layer:
 ==
 ==   Integer  == Int64
@@ -18,13 +18,13 @@ Module Std.Core
 ==   Char     == Unicode scalar value
 ==   Float    == Float64 direction for real numbers
 ==
-== Compiler intrinsics documented as part of Std.Core:
+== Compiler intrinsics documented as part of Std.System:
 ==
 ==   Ord(E)       == ordinal value for Enum/Char where supported
 ==   Low(A)       == lower bound for fixed Array
 ==   High(A)      == upper bound for fixed Array
 ==   Length(A)    == length for fixed Array
 ==
-== Some Std.Core names are compiler-recognized intrinsics in 0.1, not ordinary
+== Some Std.System names are compiler-recognized intrinsics in 0.1, not ordinary
 == functions implemented in Inox source. This file exists so Module/Use,
 == documentation and tooling have a concrete standard-library anchor.

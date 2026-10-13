@@ -1,11 +1,12 @@
 ## Purpose
-`Std.Strings`: String functions beyond the comparison operators, by Unicode
-rules and independent of any one human language (PLANNED, canon v3.57).
+`Std.Strings` (definitions and data) and `Std.StrUtils` (functions): String
+functions beyond the comparison operators, by Unicode rules and independent
+of any one human language (PLANNED, canon v3.57, r3.58).
 
 ## ADDED Requirements
 
 ### Requirement: Language-neutral by default
-Every `Std.Strings` function SHALL follow Unicode rules that belong to no
+Every `Std.StrUtils` function SHALL follow Unicode rules that belong to no
 single human language (default case mapping and folding, White_Space,
 normalization, root collation order). A language-specific behavior SHALL
 only be available through an explicit, separate call.

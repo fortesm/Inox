@@ -16,8 +16,9 @@ an owned resource released by the same exit and exception cleanup.
   owned like a String slot: closed at every routine exit and in the cleanup
   pad. Non-copyable: the analyzer rejects any copy (assignment, by-value
   argument, field, element, State, return).
-- **Std.Files.** A source module that documents the API; the functions are
-  compiler intrinsics (like `Put`/`PutLn` in `Std.IO`).
+- **Std.Files / Std.IOUtils (canon r3.58).** Source modules that document
+  the API: `Std.Files` the `File` type, `Std.IOUtils` the functions, which
+  are compiler intrinsics (like `Put`/`PutLn` in `Std.IO`).
 
 ## Risks / Trade-offs
 

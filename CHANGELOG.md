@@ -5,10 +5,12 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 
 # Changelog — Inox compiler
 
-This file tracks compiler and language releases. The versions `v3.xx` belong to
-the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
+This file tracks the versions of Inox, the language and its compiler, which
+share one version (canon SECTION 02, VERSIONING). Numbers such as `v3.57` or
+`r3.58` are canon revisions, entries of the decision log in
+`docs/INOX_CANONICAL.md`, not versions.
 
-## Unreleased
+## 0.2.0-pre-alpha — unreleased
 
 ### Added
 - Bool ordering `false < true` (canon v3.57).
@@ -41,6 +43,8 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - Language decisions recorded (canon v3.50): UInt64 literals up to 2^64-1 in UInt64 context, no unary minus on UInt64, no UInt64/Integer mixing; implicit Range checks; Enum `Succ`/`Pred`/`Low`/`High`; Set functions, literal and 256-value limit; `GetLn(S)` for String, non-atomic reference counts. Enum printing prints the literal's name (v3.51). Implementation follows.
 
 ### Changed
+- Versioning (canon r3.58): Inox is `0.2.0-pre-alpha`; `inox --version` prints the version and the canon revision. The `v3.xx` numbers are canon revisions, written `r3.NN` from now on.
+- `Std.Core` is renamed `Std.System` (canon r3.58). Library modules come in pairs: `Std.X` holds definitions, `Std.XUtils` helper functions.
 - The Windows test script feeds `.in` files to programs byte for byte and reads their output as UTF-8; `.gitattributes` keeps `.in` files unchanged by Git.
 - A Type line `TName := Type` is an error: Inox has no type alias form (canon v3.54).
 - Example files no longer carry the `llvm-` prefix (`examples/put-output-basic.inox`, ...).
@@ -63,5 +67,5 @@ the canonical document (`docs/INOX_CANONICAL.md`), which has its own change log.
 - String concatenation, indexing and length functions are reserved (not in 0.1); slices of String arrays are not supported yet.
 - The compiler is not yet aligned with the canonical `<T>` generic syntax; its existing generic syntax still uses `[T]`.
 
-## V0.4 — 2026-10-09
+## Compiler milestone — 2026-10-09 (labeled "V0.4" at the time; never released or tagged)
 - Compositional lowering of nested statements (v3.21), toolchain diagnostics, CI on Linux and Windows (clang, MSVC ABI).

@@ -10,7 +10,7 @@
 ## 2. Compiler
 
 - [ ] 2.1 `File` type, non-copyable rule, `ref mut` passing
-- [ ] 2.2 Intrinsics and stdlib/Std.Files.inox
+- [ ] 2.2 Intrinsics, stdlib/Std.Files.inox and stdlib/Std.IOUtils.inox
 - [ ] 2.3 Owned File slots closed at every exit and in the cleanup pad
 
 ## 3. Tests

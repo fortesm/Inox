@@ -7,7 +7,14 @@ futuro -> Std.Strings", and Inox must not be tied to one human language:
 "Não queria ficar preso a um idioma específico e deveria ser mais genérico
 acho que como moderno Delphi, FreePascal, Ada2005 em diante".
 
-Status: PLANNED. Registered in canon v3.57 (CANON-18). Not scheduled yet: it
+Module pair (canon r3.58, Marcelo Fortes: "Std.Strings deve ficar somente
+definições e dados gerais de strings semelhante a um arquivo .h de C. Já
+Std.StrUtils ficam funções que auxiliam a vida do programador"):
+`Std.Strings` holds the definitions and general data (the facts of
+CANON-14, character classes, the Unicode data); `Std.StrUtils` holds every
+function below and uses `Std.Strings`.
+
+Status: PLANNED. Registered in canon v3.57 and r3.58 (CANON-18). Not scheduled yet: it
 comes after the compiler modularization and Std.Files. Design approval is
 required before code (a new runtime surface).
 
@@ -35,6 +42,8 @@ Unicode Collation Algorithm with its root (default) order, which sorts
 
 ## What Changes (draft; names decided in the design)
 
+All functions below belong to `Std.StrUtils`.
+
 - Lengths: `ByteLength(S)`, `CharLength(S)` (code points), `GraphemeLength(S)`.
 - Trimming: `Trim`, `TrimLeft`, `TrimRight` (Unicode White_Space).
 - Case: `Upper`, `Lower` (Unicode default case mapping), `CaseFold`.
@@ -55,12 +64,13 @@ in `stdlib/`.
 ## Capabilities
 
 ### New Capabilities
-- `stdlib/strings`: the `Std.Strings` module.
+- `stdlib/strings`: the `Std.Strings` (definitions) and `Std.StrUtils`
+  (functions) modules.
 
 ### Modified Capabilities
 (none)
 
 ## Impact
 
-stdlib/Std.Strings.inox, libinoxrt (Unicode tables and algorithms), the
+stdlib/Std.Strings.inox, stdlib/Std.StrUtils.inox, libinoxrt (Unicode tables and algorithms), the
 emitter (intrinsics), canon CANON-14/18, manual.

@@ -14,6 +14,7 @@
 #include "../support/FileSystem.h"
 #include "../support/Platform.h"
 #include "../support/Process.h"
+#include "../support/Version.h"
 
 #include <algorithm>
 #include <cctype>
@@ -427,8 +428,14 @@ int main(int argc, char** argv)
     const bool emitLlvm = argc == 3 && std::string(argv[1]) == "--emit-llvm";
     const bool build = argc == 3 && std::string(argv[1]) == "--build";
     const bool run = argc == 3 && std::string(argv[1]) == "--run";
+    if (argc == 2 && std::string(argv[1]) == "--version") {
+        std::cout << "inox " << inox::compiler::support::kInoxVersion << " (canon "
+                  << inox::compiler::support::kCanonRevision << ")\n";
+        return 0;
+    }
     if (argc == 2 && (std::string(argv[1]) == "--help" || std::string(argv[1]) == "-h")) {
-        std::cout << "usage: inox [--dump-tokens|--parse-only|--dump-types|--emit-llvm|--build|--run] <source.inox>\n";
+        std::cout << "usage: inox [--dump-tokens|--parse-only|--dump-types|--emit-llvm|--build|--run] <source.inox>\n"
+                  << "       inox --version\n";
         return 0;
     }
     const fs::path executableDir = inox::compiler::support::executableDirectory(argc > 0 ? argv[0] : nullptr);

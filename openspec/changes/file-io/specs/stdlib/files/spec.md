@@ -1,5 +1,6 @@
 ## Purpose
-Text files in the `Std.Files` module: opening, reading, writing and closing
+Text files in the `Std.Files` (the `File` type) and `Std.IOUtils`
+(functions) modules: opening, reading, writing and closing
 files, file system functions, and their errors as Inox exceptions.
 
 ## ADDED Requirements
