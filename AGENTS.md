@@ -97,6 +97,19 @@ module that owns a concern instead of searching the whole emitter.
 - `codegen/RuntimeHelpersIr.*` — IR text of the internal helpers: runtime
   faults (CANON-19), checked arithmetic, console input.
 - Helpers live in `namespace inox::compiler::codegen::detail`.
+- `src/compiler/semantic/SemanticAnalyzer.h` — the analyzer's interface; its
+  member functions live by responsibility in:
+  - `SemanticAnalyzer.cpp` — construction, the entry point, errors;
+  - `SemanticDeclarations.cpp` — routine signatures, scopes and symbols,
+    module items, Type/Const/State sections, structs;
+  - `SemanticBuiltins.cpp` — built-in types and routines (Put/Get, prelude);
+  - `SemanticStatements.cpp` — routine bodies, statements, `case`;
+  - `ConstantEvaluator.cpp` — constant evaluation and folding, static values;
+  - `SemanticExpressions.cpp` — expression typing (operators, indexing,
+    slices, members, side effects);
+  - `SemanticCalls.cpp` — calls, methods, construction, `ref` arguments;
+  - `SemanticTypes.cpp` — type predicates, assignability, canonical names;
+  - `SemanticSupport.*` — shared helpers (`semantic::detail`).
 
 ## Known pitfalls (lessons already paid for)
 
