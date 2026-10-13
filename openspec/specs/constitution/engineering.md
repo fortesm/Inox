@@ -195,12 +195,11 @@ The external clang driver is a build-time dependency, not technical debt
 adds no language capability and brings a large C++ API that breaks between
 releases, so the effort goes into the language and its runtime instead.
 
-Intended sequence (direction, not a timetable): 0.1.x keep clang and
-stabilize; 0.2.x grow libinoxrt (runtime faults, I/O, strings), keep clang;
-0.3.x emit object files and integrate the linker; 0.4.x use the LLVM
-libraries directly, keeping `--emit-llvm` for development; 0.5.x
-cross-targets and packaging; 1.0 own frontend, runtime, integrated backend
-and driver.
+Intended order (the versions are in `docs/ROADMAP.md`): keep clang while
+libinoxrt grows (runtime faults, I/O, strings, files); then emit object
+files and integrate the linker; then use the LLVM libraries directly,
+keeping `--emit-llvm` for development; then cross-targets and packaging;
+1.0 has its own frontend, runtime, integrated backend and driver.
 
 Clang is replaced only when one of these is concretely true: it is a real
 bottleneck; a needed capability exists only through the LLVM API (JIT,

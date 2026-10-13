@@ -1,0 +1,38 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-5 (r3.62): 'State' is a section like 'Type', with no ':' and no
+== closing ';'. It ends where the next module item starts: a Const, a Type
+== section, another State section, a function, a method or Main.
+Module Runtime.StateSectionBoundaries
+
+State
+    Counter Integer := 1
+    Origin TPoint
+Const Delta := 10
+State
+    Total := Counter + Delta
+Type
+    TPoint Struct
+        FX Integer := 5
+    ;
+State
+    Last Integer := 0
+Twice(N Integer) Integer :
+    Return N * 2
+;
+TPoint.Shift(Self mut, D Integer) :
+    Self.FX += D
+;
+State
+    Ready Bool := true
+Main :
+    Counter += Twice(Total)
+    Origin.Shift(Delta)
+    Last := Origin.FX
+    PutLn(Counter, " ", Total, " ", Last, " ", Ready)
+;

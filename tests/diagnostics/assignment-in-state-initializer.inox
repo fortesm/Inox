@@ -8,10 +8,9 @@
 == ADR-0009: `:=` is never part of an initializer, also in State.
 Module Diagnostics.AssignmentInStateInitializer
 
-State :
+State
     B Integer := 1
     A Integer := B := 3
-;
 
 Main :
     PutLn(1)

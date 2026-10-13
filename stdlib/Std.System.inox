@@ -20,10 +20,10 @@ Module Std.System
 ==
 == Compiler intrinsics documented as part of Std.System:
 ==
-==   Ord(E)       == ordinal value for Enum/Char where supported
+==   Ord(E)       == ordinal value of an Enum (never of a Char, CANON-14)
 ==   Low(A)       == lower bound for fixed Array
 ==   High(A)      == upper bound for fixed Array
-==   Length(A)    == length for fixed Array
+==   Length(A)    == length of a fixed Array or a Slice
 ==
 == Some Std.System names are compiler-recognized intrinsics in 0.1, not ordinary
 == functions implemented in Inox source. This file exists so Module/Use,

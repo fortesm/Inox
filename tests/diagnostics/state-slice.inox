@@ -8,9 +8,8 @@
 == ADR-0017: a slice cannot be a State variable.
 Module Diagnostics.StateSlice
 
-State :
+State
     View Slice<Integer>
-;
 
 Main :
     PutLn(1)

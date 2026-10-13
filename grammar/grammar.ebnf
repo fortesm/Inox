@@ -48,7 +48,9 @@ enum_block_decl   ::= identifier "Enum" NEWLINE ( identifier NEWLINE )+ ";"
 const_decl        ::= "Const" identifier ":=" expression
                       (* single line; immutable; the type is the value's (no
                          written type, v3.38); one ":=" only *)
-state_section     ::= "State" ":" NEWLINE state_field* ";"
+state_section     ::= "State" NEWLINE state_field*
+                      (* section like Type: no ":" and no closing ";"; it ends
+                         where the next module item starts (r3.62) *)
 state_field       ::= identifier type_ref? ":=" expression NEWLINE
                     | identifier type_ref NEWLINE
                       (* State scalars require an initializer (the second form is
@@ -292,7 +294,8 @@ EOF               ::= (* end of the source file *)
   name (CANON-2).
 - `;` closes blocks; it is never a statement terminator. Only `;` closes a block
   (CANON-2, CANON-4).
-- `:` appears only where a routine is declared and in `State :`. No control
+- `:` appears only where a routine is declared, after its name and signature
+  (r3.62: `State` has no `:`). No control
   structure uses `:`, and a bare `:` block inside a routine is illegal (CANON-4,
   v3.25).
 - Empty parentheses never appear: not in declarations (`Main :`), not in calls

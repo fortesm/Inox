@@ -9,9 +9,8 @@
 == type-default form.
 Module Diagnostics.StateScalarWithoutInitializer
 
-State :
+State
     Counter Integer
-;
 
 Main :
     PutLn(1)

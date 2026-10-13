@@ -37,6 +37,33 @@ proves it, or says "test to add" (a recorded gap). Everything in this file
 and in `engineering.md`, the tables below included, is locked by
 `constitution.lock` (G8).
 
+## The idea of the syntax: write less, do more
+Inox removes the verbosity of Ada and Pascal and the cryptic symbols of C,
+C++ and Rust (Marcelo Fortes, 2026-10-12: "A ideia de Inox é escrever menos.
+Fazer mais."). A Pascal routine needs `procedure`, `begin` and `end`; Ada
+needs `is` and `end`; C needs `{` and `}`. Inox keeps only what carries
+meaning:
+
+```text
+Procedure Sum(A : Integer; B : Integer) : Integer;   Pascal
+Begin
+End;
+
+Sum(A Integer, B Integer) Integer :                   Inox
+    Return A + B
+;
+```
+
+The `:` does two jobs at once: after a name and a signature it tells the
+compiler that this is a subroutine, and it opens the body, like `begin` or
+`{` ("`:` tanto serve para abrir o bloco quanto serve para dizer pro
+compilador que esse Sum(...) é uma subrotina"). Nothing else needs it:
+control structures open their body at the line break, sections (`Type`,
+`Const`, `State`) are not blocks, and `;` closes every block. A `:` without
+a name and a signature before it is meaningless, so a bare `:` block does
+not exist. New syntax is judged by the same balance: elegant, ergonomic,
+short, never cryptic and never verbose.
+
 ## Reference tables
 
 ### CANON-8 built-in types
@@ -321,10 +348,9 @@ for the future (FUTURE).
 
 ### Requirement: CANON-4 Semicolon closes, colon declares
 `;` SHALL close blocks and is not a statement terminator. `:` has one
-meaning: it declares a function or subroutine and opens its body; it is the
-word other languages spell `function`, `def`, `fn` or `procedure`. (The
-State section header `State :` is the one other use; open question 1 of
-`revisions.md`.)
+meaning, after a routine's name and signature: it declares the function or
+subroutine and opens its body (the word other languages spell `procedure`,
+`begin` or `{`). No other construct uses `:` (see "The idea of the syntax").
 
 #### Scenario: Routine declaration
 - **WHEN** a routine is declared `Sum(A Integer, B Integer) Integer :` … `;`
@@ -359,11 +385,15 @@ not continue the expression of the previous line.
 - **THEN** it is not a call on the previous line (tests/diagnostics/call-paren-on-next-line.inox)
 
 ### Requirement: CANON-4 Sections and removed forms
-The `Type` section SHALL have no `:` and no closing `;`; inside it `Struct`
-and multi-line `Enum` close with `;`, while `Range` and short `Enum` are
-single lines. `State :` … `;` holds module variables; `Const Name := Value`
-is one line. `Var` blocks do not exist: `Var` and `mut` stay reserved and
-are rejected with a message showing the inline forms.
+The sections `Type` and `State` SHALL have no `:` and no closing `;`; each
+ends where the next module item starts. In `Type`, `Struct` and multi-line
+`Enum` close with `;`; `Range` and short `Enum` are single lines. `Const
+Name := Value` is one line. The forms `State :`, `Name : Type` and `Var`
+blocks are rejected with a message showing the right form.
+
+#### Scenario: Sections without colon
+- **WHEN** a State section is written `State :`, closed with `;`, or declares `Name : Type`, or a Const declares `Const Name : Type`
+- **THEN** it is rejected (tests/diagnostics/state-with-colon.inox, tests/diagnostics/state-closing-semicolon.inox, tests/diagnostics/state-legacy-colon.inox, tests/diagnostics/const-legacy-colon.inox)
 
 #### Scenario: Var is gone
 - **WHEN** a program writes a `Var` block, `mut var`, or a module `Var` section
@@ -402,7 +432,7 @@ A local that is never read SHALL be a compile error ("local variable never
 read: Name"), so a misspelled assignment `Coutner := Counter + 1` is caught.
 Assigning a variable or one of its fields is not reading it. Parameters,
 `for` iterators, State and Const are exempt; exception bindings are exempt
-until exceptions have readable members (open question 4).
+until exceptions have readable members (an open question in `revisions.md`).
 
 #### Scenario: Unread locals
 - **WHEN** a local is only assigned, or a typo declares a new name
@@ -468,14 +498,19 @@ constant expression, and a Const may follow the routine that uses it.
 - **THEN** the first is rejected (tests/diagnostics/const-typed-rejected.inox) and the others compile (tests/semantic/valid/const-conversion.inox, tests/runtime/const-expression.inox)
 
 ### Requirement: CANON-5 State
-`State :` … `;` SHALL hold a module's mutable global variables, explicit and
-rare: one declaration per line; scalars need initializers; structs and
+A `State` section SHALL hold a module's mutable global variables, explicit
+and rare: one declaration per line; scalars need initializers; structs and
 arrays may omit them; `mut` is forbidden. Initializers run in source order
-before `Main`. Details: `language/module-state`, `language/declaration-sections`.
+before `Main`. A module may have several State sections. Details:
+`language/module-state`, `language/declaration-sections`.
 
 #### Scenario: State variables
 - **WHEN** routines read and write State variables initialized in order
 - **THEN** they behave as module globals (tests/runtime/state-lowering.inox, tests/runtime/state-aggregates.inox)
+
+#### Scenario: Where a State section ends
+- **WHEN** State sections are followed by a Const, a Type section, another State, a function, a method and Main
+- **THEN** each section ends where the next item starts (tests/runtime/state-section-boundaries.inox)
 
 ### Requirement: CANON-5 Type section forms
 A `Type` section SHALL declare Struct, Range and Enum types only. Inox has no
@@ -913,18 +948,23 @@ orderings are library functions (CANON-18). Details:
 defines them in `Std.StrUtils`.
 
 #### Scenario: Reserved operations
-- **WHEN** a program indexes a String or asks its length
-- **THEN** it is rejected (test to add: today `Length(S)` passes the analyzer, see docs/STATUS.md)
+- **WHEN** a program asks `Length(S)` of a String
+- **THEN** it is rejected: String lengths come with Std.StrUtils (tests/diagnostics/string-length-reserved.inox)
 
 ### Requirement: CANON-14 Char
 `Char` SHALL be a Unicode scalar value, U+0000..U+10FFFF without the
 surrogates U+D800..U+DFFF: not a byte, an integer or a grapheme cluster. A
 surrogate literal is a compile error; conversions among Char, Byte and
-Integer are always explicit.
+Integer are always explicit. A Char is not an ordinal: `Ord` never applies
+to it.
 
 #### Scenario: Char assignment
 - **WHEN** a String is assigned to a Char
 - **THEN** it is rejected (tests/invalid/invalid-011.inox); a surrogate literal is rejected (test to add)
+
+#### Scenario: Ord of a Char
+- **WHEN** a program writes `Ord('A')`
+- **THEN** it is rejected (tests/diagnostics/ord-of-char.inox)
 
 ### Requirement: CANON-15 The try statement
 Exception handling SHALL be structured control flow over nominal exception
@@ -1114,7 +1154,7 @@ subject, like a C header; `Std.XUtils` holds helper functions and may use
 The library SHALL hold `Std.System` (the implicit prelude), `Std.IO` (Put,
 PutLn, Get, GetLn), `Std.Math` (Integer helpers written in Inox and the
 Float64 elementary functions), `Std.Debug` (`Assert`, unavailable until
-open question 5 is decided) and `Std.Files` / `Std.IOUtils` (CANON-17).
+its open question in `revisions.md` is decided) and `Std.Files` / `Std.IOUtils` (CANON-17).
 
 #### Scenario: Std.Math through Use
 - **WHEN** a program writes `Use Std.Math` and calls its helpers
@@ -1288,7 +1328,7 @@ The driver SHALL keep the switches `--parse-only`, `--dump-tokens`,
 `--dump-types`, `--emit-llvm`, `--build`, `--run`, `--help` and `--version`
 until it converges on its stated goal: `inox file.inox` (build and run),
 `inox run`, `inox build`, `inox check`, `inox emit-llvm`, `inox help` and
-`inox version` (open question 3).
+`inox version` (an open question in `revisions.md`).
 
 #### Scenario: Switches today
 - **WHEN** the runners compile and run programs

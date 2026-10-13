@@ -8,9 +8,8 @@
 == Grouped declarations are not supported in State yet.
 Module Diagnostics.StateGrouped
 
-State :
+State
     A, B Integer := 1
-;
 
 Main :
     PutLn(A)

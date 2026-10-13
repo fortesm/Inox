@@ -1,0 +1,17 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-4: ':' only declares a routine, so the old State form `Name : Type`
+== is rejected (r3.62); write `Name Type := Value`.
+Module Diagnostics.StateLegacyColon
+
+State
+    Counter : Integer
+
+Main :
+    PutLn(1)
+;

@@ -1553,25 +1553,37 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
         if (check(TokenKind::Colon)) {
             errorAtCurrent("'Type' has no ':' (CANON-5): write 'Type' and its declarations on the next lines");
         }
-        while (!isAtEnd() && !atTypeSectionBoundary()) {
+        while (!isAtEnd() && !atSectionBoundary()) {
             types.push_back(parseTypeDeclaration());
         }
         return std::make_unique<ast::SectionDeclaration>(sectionKind, std::move(types),
                                                          std::move(variables));
     }
 
-    // The canonical Const is one line, `Const Name := Expr`, without ':'.
-    if (sectionKind == ast::SectionKind::Const && !check(TokenKind::Colon)) {
-        variables.push_back(parseSectionVariable(sectionKind));
+    // `State` is a section like `Type`: no ':' and no closing ';' (CANON-4,
+    // Marcelo Fortes, 2026-10-12: "O State não deve usar :"). It ends where
+    // the next module item starts.
+    if (sectionKind == ast::SectionKind::State) {
+        if (check(TokenKind::Colon)) {
+            errorAtCurrent("'State' has no ':' (CANON-4): ':' only declares a routine; write 'State' "
+                           "and its variables on the next lines, with no closing ';'");
+        }
+        while (!isAtEnd() && !atSectionBoundary()) {
+            if (check(TokenKind::Semicolon)) {
+                errorAtCurrent("'State' has no closing ';' (CANON-5): the section ends where the next "
+                               "declaration starts");
+            }
+            variables.push_back(parseSectionVariable(sectionKind));
+        }
         return std::make_unique<ast::SectionDeclaration>(sectionKind, std::move(types),
                                                          std::move(variables));
     }
 
-    consume(TokenKind::Colon, "expected ':' after section header");
-    while (!isAtEnd() && !check(TokenKind::Semicolon)) {
-        variables.push_back(parseSectionVariable(sectionKind));
+    // A Const is one line, `Const Name := Expr`, without ':' (CANON-5).
+    if (check(TokenKind::Colon)) {
+        errorAtCurrent("a Const is one line, 'Const Name := Value' (CANON-5): ':' only declares a routine");
     }
-    consumeBlockClose();
+    variables.push_back(parseSectionVariable(sectionKind));
     return std::make_unique<ast::SectionDeclaration>(sectionKind, std::move(types),
                                                      std::move(variables));
 }
@@ -1700,8 +1712,8 @@ std::string Parser::parseStructFieldDefault(const std::string& fieldName)
 }
 
 // One Const or State declaration (CANON-5): `Name := Expr`,
-// `Name Type := Expr`, `Name Type` (State only: type defaults) or the
-// tolerated legacy `Name : Type [:= Expr]`.
+// `Name Type := Expr` or `Name Type` (State only: type defaults). The old
+// `Name : Type` form is rejected: ':' only declares a routine (CANON-4).
 ast::VariableDeclaration Parser::parseSectionVariable(ast::SectionKind sectionKind)
 {
     const bool isConst = sectionKind == ast::SectionKind::Const;
@@ -1718,10 +1730,15 @@ ast::VariableDeclaration Parser::parseSectionVariable(ast::SectionKind sectionKi
                                : "grouped declarations in State are not supported yet; declare one name per line");
     }
 
+    if (check(TokenKind::Colon)) {
+        errorAtCurrent("':' only declares a routine (CANON-4): write '" +
+                       (isConst ? "Const " + declaration.name + " := Value"
+                                : declaration.name + " Type := Value") +
+                       "', without ':'");
+    }
     if (!match(TokenKind::ColonEqual)) {
-        const bool legacyColon = match(TokenKind::Colon);
         declaration.typeName = parseTypeName("expected a type or ':=' after the name");
-        if (isConst && !legacyColon && check(TokenKind::ColonEqual)) {
+        if (isConst && check(TokenKind::ColonEqual)) {
             // OPEN-5 (closed v3.38, Marcelo Fortes): a Const has no written
             // type; its type is the value's. A conversion gives another type.
             throw ParseError("a Const is written 'Const " + declaration.name +
@@ -1852,7 +1869,7 @@ bool Parser::atStatementBoundary() const
            checkKeyword("otherwise");
 }
 
-bool Parser::atTypeSectionBoundary() const
+bool Parser::atSectionBoundary() const
 {
     if (isAtEnd()) {
         return true;
@@ -1871,6 +1888,13 @@ bool Parser::atTypeSectionBoundary() const
     // look-ahead never leaves the current line. This keeps large Type sections
     // linear instead of quadratic.
     const std::size_t headerLine = tokens_[current_].location.line;
+    // `Name : Type` with more on its line is the removed declaration form,
+    // reported by the section parser, not a routine header (`Main :`).
+    if (current_ + 2 < tokens_.size() && tokens_[current_ + 1].kind == TokenKind::Colon &&
+        tokens_[current_ + 2].location.line == headerLine &&
+        tokens_[current_ + 2].kind != TokenKind::EndOfFile) {
+        return false;
+    }
     for (std::size_t index = current_ + 1; index < tokens_.size(); ++index) {
         if (tokens_[index].kind == TokenKind::Semicolon ||
             tokens_[index].kind == TokenKind::EndOfFile ||

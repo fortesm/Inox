@@ -7,8 +7,8 @@ These programs must fail parsing or semantic analysis.
 | `invalid-001.inox` | type mismatch: cannot assign `String` to `Int64` |
 | `invalid-002.inox` | condition must be `Bool` |
 | `invalid-003.inox` | `bitand` requires integer operands |
-| `invalid-004.inox` | `Length` expects `String` |
-| `invalid-005.inox` | `Ord` expects `Char` |
+| `invalid-004.inox` | `Length` takes an array or a slice (CANON-13) |
+| `invalid-005.inox` | `Ord` takes an enum value, never a String or Char (CANON-13, CANON-14) |
 | `invalid-006.inox` | `leave` outside loop |
 | `invalid-007.inox` | `continue` outside loop |
 | `invalid-008.inox` | cannot assign `Bool` to `Int64` |

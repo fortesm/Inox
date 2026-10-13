@@ -18,9 +18,8 @@ Type
         B Byte
     ;
 
-State :
+State
     Hits UInt16 := 0
-;
 
 Half(V Int32) Int32 :
     Return V div 2

@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.61
+Canon revision: r3.62
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -17,25 +17,20 @@ maintainer answers them, and the answer becomes a revision.
 None of these is permission to choose (G4); until answered, the current text
 stands.
 
-1. **`State :` and the colon rule.** CANON-4 says `:` only declares a
-   routine, yet the State section is written `State :` … `;` (the canon
-   always listed it so, and every test uses it). Keep `State :` as the one
-   other use of `:`, or write the section like `Type` (no `:`)?
-2. **Roadmap numbering.** `docs/ROADMAP.md` keeps the 0.1.x–0.9.x plan of
-   2026-06, written before the version scheme of r3.60; with Inox already
-   at 0.2.0 and arrays done, should the milestones be renumbered?
-3. **Driver commands.** CANON-23 says the driver should converge on `inox
-   run/build/check/emit-llvm/help/version`; today it has `--build`, `--run`
-   and the other switches. Is the subcommand form still the goal, and when?
-4. **Exception bindings and unread locals.** `On E T` bindings are exempt
-   from the unread-local rule until exceptions have readable members
-   (pending since v3.32). Decide with the first readable member.
-5. **`Std.Debug.Assert`.** It waits for "canonical trap/abort behavior";
-   DECISION P-A defines traps since v3.18. Should `Assert` be a trap
-   ("Inox runtime error: assertion failed"), an exception, or wait for
-   contracts?
-6. **`std-strings`** (open change): function names, the concatenation
-   operator and the remaining module family names.
+1. **Driver commands.** Today the compiler is called with switches
+   (`inox --run x.inox`, `inox --build x.inox`); CANON-23 records a goal of
+   subcommands (`inox run x.inox`, `inox build x.inox`, `inox check
+   x.inox`). Keep that goal, or keep the switches for good?
+2. **Exception bindings and unread locals.** In `On E FileNotFound`, the
+   name E can never be read yet (exceptions have no members such as
+   `E.Message`), so the unread-local rule exempts it. Decide when the first
+   member exists.
+3. **`Std.Debug.Assert`.** What happens when `Assert(Condition)` fails: a
+   trap like an overflow (program stops, exit 70, "Inox runtime error:
+   assertion failed"), an exception that `try` can catch, or wait for
+   contracts (`Pre`, `Pos`, `Invariant`)?
+4. **`std-strings`** (open change): function names and the concatenation
+   operator.
 
 ## Revision log
 
@@ -53,3 +48,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `openspec/specs/constitution/`, Ele deve ser editado por você para
   refletir as suas necessidades, e remover todas as incosistências,
   incoerências e redundâncias desnecessárias". Change `constitution`.
+- r3.62 — 2026-10-12 — Three decisions. (1) `State` is a section like
+  `Type`: no `:` and no closing `;`; the forms `State :`, `Name : Type` and
+  `Const Name : Type` are rejected; the constitution records the idea of the
+  syntax and of `:` in the maintainer's words (Marcelo Fortes: "O State não
+  deve usar :"; "A ideia de Inox é escrever menos. Fazer mais."; the `;`
+  rule chosen on 2026-10-13: "Igual ao Type"). Change `state-without-colon`.
+  (2) `Length` of a String and `Ord` of a Char are rejected, as the law
+  already said (Marcelo Fortes: "Excelente não pode ter isso para char
+  mesmo!"). Change `char-not-ordinal`. (3) The roadmap is renumbered for
+  the version scheme and E22 names no versions (Marcelo Fortes: "Sim esse
+  roadmap é antigo pode renumerar"). Change `roadmap-renumber`.

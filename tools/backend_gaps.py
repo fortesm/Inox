@@ -169,9 +169,8 @@ Main :
         FName String := "a"
     ;
 
-State :
+State
     G String := "b"
-;
 
 Main :
     P TP
@@ -373,9 +372,8 @@ Main :
     PutLn(Y)
 ;
 """),
-    ("state-global", "State section variable", """State :
+    ("state-global", "State section variable", """State
     Counter Integer := 0
-;
 
 Main :
     Counter := Counter + 1
@@ -479,10 +477,9 @@ Main :
         FX Integer := 2
     ;
 
-State :
+State
     Origin TPoint
     Counts Array[1..2] Integer
-;
 
 Main :
     Counts[1] := Origin.FX

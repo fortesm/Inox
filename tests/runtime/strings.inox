@@ -20,9 +20,8 @@ Type
         FTags Array[1..2] String
     ;
 
-State :
+State
     Greeting String := "Olá"
-;
 
 Shout(Text String) String :
     Return Text
