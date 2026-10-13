@@ -70,6 +70,7 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 - A `Const` has no written type: `Const Mask UInt8 := $FF` is rejected; write `Const Mask := UInt8($FF)` (OPEN-5).
 
 ### Fixed
+- A routine that takes arguments, called by its bare name (`Show` for `Show(N Integer)`), passed the analyzer and stopped in the backend; it is now "Show expects 1 argument, got 0". A function called as a statement is reported as a backend gap instead of a codegen error. Found by mutation fuzzing (seed 7).
 - The release scripts copied a manual that no longer existed and did not ship `libinoxrt`, so packaging failed and packaged compilers could not build programs that use exceptions, Strings or Files; packages now hold the manual, the constitution and the runtime library beside the compiler.
 - `=` and `#` on two Bool variables, `<` on Strings and `=`/`<` on structs passed the analyzer and then produced invalid IR. Bool and String comparisons now work; struct comparison is a compile error, as in Pascal (canon v3.56, v3.57).
 - A function called with no arguments inside `try` (`N := Fail`) now reaches the handler; it was emitted with `call` instead of `invoke` and its exception aborted the program.

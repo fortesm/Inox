@@ -58,6 +58,9 @@ each version added.
   functions.
 - Char values: a Char local or comparison is accepted and not lowered, and
   `PutLn(C)` with a Char is rejected ("cannot be printed yet").
+- A function called as a statement (its result unused) passes the analyzer
+  and is "not yet implemented" in the backend; whether Inox allows it is an
+  open question in revisions.md.
 - Module exports, visibility and package search beyond local `Use`.
 - Console output goes through the C `printf` and Integer input through
   `getchar`-based helpers: a temporary ABI.

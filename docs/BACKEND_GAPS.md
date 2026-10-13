@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 Status: measured on 2026-10-09 against v3.18, re-measured against v3.20
 (keyword rename only; results unchanged) and against v3.21 (compositional
 statement lowering: 7 gaps closed, 3 probes added, none of them a gap); table
-re-measured against canon r3.59. Layer B — describes the
+re-measured against canon r3.64. Layer B — describes the
 implementation, not the language.
 
 ## Why this file exists
@@ -51,6 +51,7 @@ analysis but not lowered yet.)
 | `until-in-if` | until inside if within repeat | **OK** |  |
 | `until-across-loop` | until with a loop between it and its repeat | **OK** |  |
 | `float32-conversion` | Float32 local initialized by explicit conversion | **GAP** | unsupported expression in function: Main |
+| `function-result-discarded` | function called as a statement (result not used; open question) | **GAP** | LLVM emission currently supports only subroutine calls as expression statements |
 | `nested-if` | if inside if (straight-line code) | **OK** |  |
 | `const-use` | module Const used in an expression | **OK** |  |
 | `case` | case statement | **OK** |  |
@@ -92,7 +93,7 @@ analysis but not lowered yet.)
 | `state-aggregates` | State variables of struct and array type | **OK** |  |
 | `uint64-local` | UInt64 local | **GAP** | unsupported local variable type for LLVM emission |
 
-Summary: GAP=2, OK=48
+Summary: GAP=3, OK=48
 
 ## Reading the table
 

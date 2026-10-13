@@ -471,8 +471,11 @@ void FunctionEmitter::emitNoArgumentSubroutineCall(std::string_view calleeName)
             "subroutine requires arguments; use parentheses only when passing arguments");
     }
     if (signature->second.llvmReturnType != "void") {
-        throw CodegenError(
-            "function result cannot be ignored in zero-argument call: " + std::string(calleeName));
+        // The same backend gap as a call with arguments whose result is not
+        // used (`Twice(2)` as a statement); whether Inox allows discarding a
+        // function result is an open question (revisions.md).
+        throw CodegenUnsupported(
+            "LLVM emission currently supports only subroutine calls as expression statements");
     }
     emitUserCall(signature->second, {}, false);
 }

@@ -1,0 +1,19 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-6/CANON-7: a routine that takes arguments cannot be called by its bare
+== name. Found by tools/mutation_fuzz.py (seed 7): the analyzer accepted it
+== and only the LLVM backend rejected it.
+Module Diagnostics.CallMissingArguments
+
+Show(N Integer) :
+    PutLn(N)
+;
+
+Main :
+    Show
+;

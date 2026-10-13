@@ -21,6 +21,11 @@ stands.
    `openspec/changes/std-strings/design.md` — concatenation without repeated
    copies, the block header, positions and the trap "string index out of
    range", the Unicode tables — before any code is written.
+2. **Calling a function and ignoring its result.** `Twice(2)` or `Value`
+   (functions with a result) written as statements pass the analyzer and the
+   backend reports "not yet implemented". Should Inox allow it (the result is
+   thrown away, as in C and Delphi) or reject it, as Ada and standard Pascal
+   do ("a function call is not a statement")?
 
 ## Revision log
 

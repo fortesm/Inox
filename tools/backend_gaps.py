@@ -129,6 +129,20 @@ PROBES = [
     PutLn(G = F)
 ;
 """),
+    ("function-result-discarded", "function called as a statement (result not used; open question)", """Value Integer :
+    Return 42
+;
+
+Twice(N Integer) Integer :
+    Return N * 2
+;
+
+Main :
+    Value
+    Twice(2)
+    PutLn(1)
+;
+"""),
     ("nested-if", "if inside if (straight-line code)", """Main :
     X Integer := 1
     if X = 1
