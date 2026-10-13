@@ -21,11 +21,18 @@ stands.
    `openspec/changes/std-strings/design.md` — concatenation without repeated
    copies, the block header, positions and the trap "string index out of
    range", the Unicode tables — before any code is written.
-2. **Calling a function and ignoring its result.** `Twice(2)` or `Value`
-   (functions with a result) written as statements pass the analyzer and the
-   backend reports "not yet implemented". Should Inox allow it (the result is
-   thrown away, as in C and Delphi) or reject it, as Ada and standard Pascal
-   do ("a function call is not a statement")?
+2. **`generics` design** (Risk: high): `openspec/changes/generics/design.md`,
+   six decisions (constraint syntax `<T Ordered>`, constraints required,
+   built-in protocols, inference only, which types may be T,
+   monomorphization).
+3. **`composition` design** (Risk: high):
+   `openspec/changes/composition/design.md`, five decisions (embedding by a
+   bare type line, collisions are errors, `TCircle Struct (TShape)`,
+   protocol values later, default routines later).
+4. **`safe-pointers` design** (Risk: high):
+   `openspec/changes/safe-pointers/design.md`, five decisions (counted
+   `Ref<T>`, mutation through a shared Ref, names, arenas in phase 2, the
+   unsafe layer later). Depends on `generics`.
 
 ## Revision log
 
@@ -74,4 +81,8 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   de charlenghth (aprovado)"; "Concatenação com + (aprovado)"; "Arquivos
   muda isso também o básico fica em Std.Files e as comodidades para
   Std,IOUtils"). Changes `module-pairs` (implemented) and `std-strings`
-  (design awaiting approval).
+  (design awaiting approval). Open question 2 closed: a function called as
+  a statement (its result thrown away) stays as it is, accepted by the
+  analyzer and reported by the backend as "not yet implemented" (a backend
+  gap, `docs/BACKEND_GAPS.md`); the law adds no rule (Marcelo Fortes: "Deixe
+  como está pois ele diz que esse método não foi implementado ainda").
