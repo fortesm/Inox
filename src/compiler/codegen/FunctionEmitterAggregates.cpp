@@ -10,7 +10,7 @@
 #include "FunctionEmitter.h"
 
 #include "AstQueries.h"
-#include "ExceptionSupport.h"
+#include "ExceptionAbi.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
 #include "MathBuiltins.h"

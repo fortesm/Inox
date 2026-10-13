@@ -10,7 +10,7 @@
 #include "FunctionEmitter.h"
 
 #include "AstQueries.h"
-#include "ExceptionSupport.h"
+#include "ExceptionAbi.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
 #include "MathBuiltins.h"
@@ -41,8 +41,7 @@ FunctionEmitter::FunctionEmitter(std::ostringstream& output,
                                  const FunctionSignature& signature,
                                  const FunctionSignatures& signatures,
                                  const StructDefinitions& structs,
-                                 std::vector<std::string>& stringGlobals,
-                                 std::size_t& nextStringLiteral,
+                                 ModuleContext& module,
                                  const semantic::SemanticResult& semantics,
                                  const StateGlobals& stateGlobals)
     : semantics_(semantics),
@@ -52,8 +51,7 @@ FunctionEmitter::FunctionEmitter(std::ostringstream& output,
       signature_(signature),
       signatures_(signatures),
       structs_(structs),
-      stringGlobals_(stringGlobals),
-      nextStringLiteral_(nextStringLiteral)
+      module_(module)
 {
     // State variables are addressed like locals whose slot is a global.
     for (const StateGlobal& state : stateGlobals_) {

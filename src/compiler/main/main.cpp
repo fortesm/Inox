@@ -378,13 +378,14 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
     const BuildArtifacts artifacts{
         outputDirectory / (stem + ".ll"),
         outputDirectory / (stem + std::string(inox::compiler::support::executableSuffix()))};
-    const std::string llvmIr = inox::compiler::codegen::LlvmIrEmitter().emit(module, semantics);
+    const inox::compiler::codegen::LlvmModule llvmModule =
+        inox::compiler::codegen::LlvmIrEmitter().emitModule(module, semantics);
+    const std::string& llvmIr = llvmModule.ir;
     writeFile(artifacts.llvmIr, llvmIr);
 
-    // libinoxrt holds the exception transport and the String runtime; a
-    // program that compares two String literals needs it without raising.
-    const bool usesExceptionRuntime = llvmIr.find("declare void @__inox_raise(i64)") != std::string::npos ||
-                                      llvmIr.find("@__inox_str_") != std::string::npos;
+    // libinoxrt holds the exception transport and the String runtime; the
+    // emitter reports whether the module calls it (codegen/RuntimeAbi.h).
+    const bool usesExceptionRuntime = llvmModule.needsInoxRuntime;
     if (usesExceptionRuntime && !clangxxExists()) {
         throw std::runtime_error(
             "clang++ was not found; Inox programs that use exceptions or Strings currently require the C++ ABI runtime");

@@ -84,8 +84,16 @@ module that owns a concern instead of searching the whole emitter.
 - `codegen/LlvmText.*` — names, literals, string constants in IR text.
 - `codegen/Operators.*` — LLVM instruction or predicate of each operator.
 - `codegen/MathBuiltins.*` — Std.Math functions lowered to intrinsics/libm.
-- `codegen/ExceptionSupport.*` — exception type ids, ABI choice (Itanium /
-  MSVC).
+- `codegen/ExceptionAbi.*` — the exception ABI Strategy: `ItaniumExceptionAbi`
+  (landingpad) and `MsvcExceptionAbi` (funclets), chosen once per module by
+  `hostExceptionAbi()`; personality and capture pad. Never test the host
+  OS for exception lowering anywhere else.
+- `codegen/RuntimeAbi.*` — the one table of libinoxrt functions and their
+  exact declarations. Generated code reaches libinoxrt only through
+  `FunctionEmitter::requireRuntime`, which also tells the driver to link it
+  (`LlvmModule::needsInoxRuntime`).
+- `codegen/ModuleContext.h` — what the routines of a module share (module
+  lines, string literal counter, exception ABI, runtime need).
 - `codegen/RuntimeHelpersIr.*` — IR text of the internal helpers: runtime
   faults (CANON-19), checked arithmetic, console input.
 - Helpers live in `namespace inox::compiler::codegen::detail`.

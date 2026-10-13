@@ -10,7 +10,7 @@
 
 ## 3. Step 3 — exception ABI Strategy, runtime ABI table
 
-- [ ] 3.1 ExceptionAbi (Itanium, MSVC); RuntimeAbi table; RuntimeNeeds reported to the driver; `ir_snapshot compare`: no difference
+- [x] 3.1 ExceptionAbi (Itanium, MSVC); RuntimeAbi table; `LlvmModule::needsInoxRuntime` reported to the driver; `ir_snapshot compare`: no difference (491 programs); MSVC-ABI IR compared with the step 2 compiler forced to the Windows ABI: no difference (491 programs)
 
 ## 4. Step 4 — SemanticAnalyzer split
 

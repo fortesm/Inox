@@ -35,10 +35,20 @@ public:
 // intentionally coincides with BSD EX_SOFTWARE where that convention exists.
 inline constexpr int kRuntimeFaultExitStatus = 70;
 
+// The LLVM IR of a module and what it needs to be linked.
+struct LlvmModule {
+    std::string ir;
+    // The module calls libinoxrt (exceptions or Strings): the driver links
+    // the runtime library.
+    bool needsInoxRuntime = false;
+};
+
 class LlvmIrEmitter {
 public:
     // The backend consumes the semantic result instead of re-deriving what
     // semantic analysis already resolved (CANON E11, decision P-C).
+    LlvmModule emitModule(const ast::ModuleNode& module, const semantic::SemanticResult& semantics) const;
+    // The IR only (--emit-llvm and tools).
     std::string emit(const ast::ModuleNode& module, const semantic::SemanticResult& semantics) const;
 };
 

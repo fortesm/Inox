@@ -10,7 +10,7 @@
 #include "FunctionEmitter.h"
 
 #include "AstQueries.h"
-#include "ExceptionSupport.h"
+#include "ExceptionAbi.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
 #include "MathBuiltins.h"
@@ -348,7 +348,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         // CANON-14: `=` and `#` compare the UTF-8 bytes of two Strings.
         if (isStringType(semanticTypeName(binary.left())) &&
             (binary.op() == ast::BinaryOperator::Equal || binary.op() == ast::BinaryOperator::NotEqual)) {
-            requireModuleLine("declare zeroext i1 @__inox_str_equal(ptr, ptr) nounwind");
+            requireRuntime(RuntimeFunction::StringEqual);
             const std::string equal = binary.op() == ast::BinaryOperator::Equal
                                           ? result
                                           : "%tmp" + std::to_string(nextTemporary_++);
@@ -362,7 +362,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         // CANON-14 (v3.56): `<` `>` `<=` `>=` order Strings byte by byte.
         if (isStringType(semanticTypeName(binary.left()))) {
             if (const std::string predicate = llvmComparisonPredicate(binary.op()); !predicate.empty()) {
-                requireModuleLine("declare i32 @__inox_str_compare(ptr, ptr) nounwind");
+                requireRuntime(RuntimeFunction::StringCompare);
                 const std::string order = "%tmp" + std::to_string(nextTemporary_++);
                 output_ << "  " << order << " = call i32 @__inox_str_compare(ptr " << left << ", ptr " << right
                         << ")\n";

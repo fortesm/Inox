@@ -10,7 +10,7 @@
 #include "FunctionEmitter.h"
 
 #include "AstQueries.h"
-#include "ExceptionSupport.h"
+#include "ExceptionAbi.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
 #include "MathBuiltins.h"
@@ -69,7 +69,7 @@ void FunctionEmitter::emitInputReadLine(const ast::Expression& argument)
         throw CodegenUnsupported("GetLn LLVM emission currently supports only local or State variables");
     }
     requireStringRuntime();
-    requireModuleLine("declare ptr @__inox_str_getln(ptr, ptr) nounwind");
+    requireRuntime(RuntimeFunction::StringGetLn);
     const std::string status = "%getln.status" + std::to_string(nextTemporary_++);
     const std::string line = "%tmp" + std::to_string(nextTemporary_++);
     const std::string code = "%tmp" + std::to_string(nextTemporary_++);
@@ -195,12 +195,12 @@ void FunctionEmitter::emitOutputCall(const ast::Expression& argument, bool newli
 
 std::string FunctionEmitter::emitStringLiteral(std::string_view value)
 {
-    const std::string name = ".inox.str." + std::to_string(nextStringLiteral_++);
+    const std::string name = ".inox.str." + std::to_string(module_.nextStringLiteral++);
     const LlvmStringConstant constant = llvmStringConstant(value);
     std::ostringstream global;
     global << "@" << name << " = private unnamed_addr constant ["
            << constant.size << " x i8] c\"" << constant.bytes << "\"";
-    stringGlobals_.push_back(global.str());
+    module_.moduleLines.push_back(global.str());
     return "@" + name;
 }
 

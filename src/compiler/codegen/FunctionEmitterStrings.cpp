@@ -10,7 +10,7 @@
 #include "FunctionEmitter.h"
 
 #include "AstQueries.h"
-#include "ExceptionSupport.h"
+#include "ExceptionAbi.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
 #include "MathBuiltins.h"
@@ -61,15 +61,21 @@ bool FunctionEmitter::typeOwnsStrings(std::string_view inoxType) const
 
 void FunctionEmitter::requireModuleLine(const std::string& line)
 {
-    if (std::find(stringGlobals_.begin(), stringGlobals_.end(), line) == stringGlobals_.end()) {
-        stringGlobals_.push_back(line);
+    if (std::find(module_.moduleLines.begin(), module_.moduleLines.end(), line) == module_.moduleLines.end()) {
+        module_.moduleLines.push_back(line);
     }
+}
+
+void FunctionEmitter::requireRuntime(RuntimeFunction function)
+{
+    requireModuleLine(std::string(runtimeDeclaration(function)));
+    module_.usesInoxRuntime = true;
 }
 
 void FunctionEmitter::requireStringRuntime()
 {
-    requireModuleLine("declare void @__inox_str_retain(ptr) nounwind");
-    requireModuleLine("declare void @__inox_str_release(ptr) nounwind");
+    requireRuntime(RuntimeFunction::StringRetain);
+    requireRuntime(RuntimeFunction::StringRelease);
 }
 
 // The shared immortal "" of this module.
@@ -87,12 +93,12 @@ std::string FunctionEmitter::emitStringValue(std::string_view text)
     if (constant.size == 1) {
         return emptyStringValue();
     }
-    const std::string name = "@.inox.strv." + std::to_string(nextStringLiteral_++);
+    const std::string name = "@.inox.strv." + std::to_string(module_.nextStringLiteral++);
     std::ostringstream global;
     global << name << " = private unnamed_addr constant { i64, i64, [" << constant.size
            << " x i8] } { i64 -1, i64 " << constant.size - 1 << ", [" << constant.size
            << " x i8] c\"" << constant.bytes << "\" }";
-    stringGlobals_.push_back(global.str());
+    module_.moduleLines.push_back(global.str());
     return name;
 }
 
