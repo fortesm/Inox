@@ -29,8 +29,8 @@ may still move.
 0.6            backend: object files and linker integration (E22);
                portability hardening; clang-format, clang-tidy, cppcheck,
                coverage
-0.7            contracts (Pre, Pos, Invariant), protocols, generic
-               constraints
+0.7            contracts (Pre, Pos, Invariant); generic constraints if
+               real programs ask for them
 0.8            concurrency (`do`) with data-race safety
 0.9            alpha: the 1.0 scope is complete; then beta: frozen, fixes only
 1.0            stable: the core language, reproducible releases, coherent
@@ -47,7 +47,9 @@ whether concurrency or contracts are in it) is the maintainer's decision.
 - `enum-range-set` — Enum, Range and Set with `Ord`, `Low`/`High`,
   `Succ`/`Pred`, enum `for` and `case` coverage.
 - `std-strings` — Std.Strings / Std.StrUtils, String concatenation (design approved, r3.65).
-- Designs awaiting decisions: `generics`, `composition`, `safe-pointers`,
-  `binary-streams` (binary files, positions; streams after composition).
+- `method-reuse` — `Struct (TPart)`, Override, methods of built-in types
+  (done, r3.66).
+- Designs awaiting decisions: `generics` (simplest form), `safe-pointers`,
+  `binary-streams` (binary files, positions; streams after generics).
 - Then the rest of 0.2: Char values and output; Float conversions and Float
   `Const`.

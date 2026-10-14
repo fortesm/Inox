@@ -357,6 +357,21 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
             if (rootSymbol != nullptr && !rootWasRead) {
                 readSymbols_.erase(rootSymbol);
             }
+            // Parameters are immutable and `Self` only reads its receiver:
+            // a field is written only through a mutable variable, `Self mut`
+            // or a `ref mut` parameter (CANON-9, ADR-0016).
+            if (writableRoot(expression.left()) == nullptr) {
+                throw SemanticError(
+                    "assignment target is not mutable: " +
+                    (root->kind() == ast::AstNodeKind::IdentifierExpression
+                         ? (static_cast<const ast::IdentifierExpression&>(*root).name().rfind("__with", 0) == 0
+                                ? std::string("the target of 'with' is not a mutable variable")
+                                : static_cast<const ast::IdentifierExpression&>(*root).name()) +
+                               (equalsIgnoreCase(static_cast<const ast::IdentifierExpression&>(*root).name(), "Self")
+                                    ? " (a method that changes its receiver declares Self mut)"
+                                    : "")
+                         : std::string("a field of a value that is not a variable")));
+            }
         } else if (isIndexTarget(expression.left())) {
             // CANON-13: `A[I] := X` writes an element. The root must be a
             // mutable variable; writing it is not reading it (OPEN-4).

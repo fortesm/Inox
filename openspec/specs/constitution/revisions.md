@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.65
+Canon revision: r3.66
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -18,22 +18,18 @@ None of these is permission to choose (G4); until answered, the current text
 stands.
 
 1. **`generics` design** (Risk: high): `openspec/changes/generics/design.md`,
-   six decisions (constraint syntax `<T Ordered>`, constraints required,
-   built-in protocols, inference only, which types may be T,
-   monomorphization).
-2. **`composition` design** (Risk: high):
-   `openspec/changes/composition/design.md`, five decisions (embedding by a
-   bare type line, collisions are errors, `TCircle Struct (TShape)`,
-   protocol values later, default routines later).
-3. **`safe-pointers` design** (Risk: high):
+   rewritten in its simplest form (Marcelo Fortes, 2026-10-13: "da forma
+   mais simples possível e depois podemos evoluir"): no constraints or
+   protocols, inference only, one copy per type; three decisions.
+2. **`safe-pointers` design** (Risk: high):
    `openspec/changes/safe-pointers/design.md`, five decisions (counted
    `Ref<T>`, mutation through a shared Ref, names, arenas in phase 2, the
    unsafe layer later). Depends on `generics`.
-4. **`binary-streams` design** (Risk: high):
+3. **`binary-streams` design** (Risk: high):
    `openspec/changes/binary-streams/design.md`, six decisions for binary
    files (a `BinaryFile` type, little-endian, `Write`/`Read` sized by the
    type, Strings in binary files, reading past the end, 0-based byte
-   offsets); streams come after `generics` and `composition`.
+   offsets); streams come after `generics`.
 
 ## Revision log
 
@@ -94,3 +90,16 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   decisions: changes `generics`, `composition`, `safe-pointers`, and
   `binary-streams` (binary files and streams, which CANON-17 leaves to a
   later change).
+- r3.66 — 2026-10-13 — Method reuse. `TName Struct (TPart, ...)` reuses
+  structs: each part is a field named after its type and brings its fields
+  and methods, at every level; a reused method runs on its part; a name
+  reached by two paths, or hidden, is an error at the declaration; a method
+  replaces a reused one only with `Override`; no subtyping. Built-in value
+  types accept methods (`String.UpdateStr(Self mut, ...)`), and a field of
+  `Self mut` may be passed as `ref mut`. CANON-1, CANON-9 and CANON-10 say
+  so; FUTURE no longer plans nominal protocols or traits. Conformance fixes:
+  `Self` and value parameters cannot be written, `with` follows its target,
+  a `Self mut` method needs a writable receiver. The `composition` design
+  (embedding, protocols) is replaced. Marcelo Fortes: "troque herança por
+  reaproveitamento de métodos isso já satifaz!"; "Aprovo tudo como você
+  sugeriu 1a, 2a, 3b e 4a+b". Change `method-reuse`.

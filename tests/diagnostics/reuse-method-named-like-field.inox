@@ -1,0 +1,36 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-9 (method-reuse): a method cannot take the name of a reused field.
+Module Diagnostics.ReuseMethodNamedLikeField
+Type
+    TA Struct
+        FX Integer := 0
+    ;
+    TB Struct
+        FX Integer := 0
+    ;
+TA.Show(Self) :
+    PutLn(Self.FX)
+;
+TB.Show(Self) :
+    PutLn(Self.FX)
+;
+TA.Bump(Self mut) :
+    Self.FX += 1
+;
+Type
+    TC Struct (TA)
+        FY Integer := 0
+    ;
+TC.FX(Self) Integer :
+    Return 1
+;
+Main :
+    C TC
+    PutLn(C.FY)
+;

@@ -37,7 +37,10 @@ identifier_like   ::= identifier | "Main"
 type_section      ::= "Type" type_decl+
                       (* section: no ":" and no closing ";" of its own *)
 type_decl         ::= struct_decl | range_decl | enum_short_decl | enum_block_decl
-struct_decl       ::= identifier "Struct" NEWLINE struct_field* ";"
+struct_decl       ::= identifier "Struct" reused_parts? NEWLINE struct_field* ";"
+reused_parts      ::= "(" identifier ( "," identifier )* ")"
+                      (* method reuse (CANON-9): each part is a field named after
+                         its type that brings its fields and methods; never empty *)
 struct_field      ::= identifier type_ref ( ":=" "-"? literal )? NEWLINE
                       (* the type may be an array (v3.53), never a Slice<T> (ADR-0017) *)
 range_decl        ::= identifier "Range" range_bound ".." range_bound
@@ -61,11 +64,13 @@ state_field       ::= identifier type_ref? ":=" expression NEWLINE
 
 (* ---------- Routines (CANON-6, CANON-7, CANON-9) ---------- *)
 
-routine_decl      ::= routine_name parameter_part? type_ref? ":" NEWLINE block_body ";"
+routine_decl      ::= routine_name parameter_part? type_ref? "Override"? ":" NEWLINE block_body ";"
                       (* ":" declares the routine and opens its body (CANON-4);
-                         with type_ref it is a function, without it a subroutine *)
+                         with type_ref it is a function, without it a subroutine;
+                         "Override" marks a method that replaces a reused one (CANON-9) *)
 routine_name      ::= identifier_like ( "." identifier )?
-                      (* "TPoint.Move" declares an associated method of TPoint *)
+                      (* "TPoint.Move" declares an associated method of TPoint;
+                         "String.UpdateStr" a method of a built-in type (CANON-9) *)
 parameter_part    ::= "(" parameter_list ")"
                       (* never empty: zero parameters means no parentheses at all,
                          "Main :", never "Main() :" (CANON-7) *)

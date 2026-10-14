@@ -245,7 +245,8 @@ Inox SHALL have no classes, classical inheritance, Java-style interfaces,
 mixins, duck typing, class taxonomies or OO visibility model. `Struct` is
 data; free functions, subroutines and associated methods declared outside
 the struct are behavior; `P.Method(args)` is sugar for a static call;
-composition replaces inheritance.
+composition replaces inheritance: a struct reuses other structs' fields and
+methods (CANON-9) and never becomes them.
 
 #### Scenario: Behavior outside the data
 - **WHEN** a struct gets methods declared as `TPoint.Move(Self mut, ...)` outside its `Struct` block
@@ -666,9 +667,9 @@ comparisons. `[...]` is for indexing, slicing and array bounds
 
 ### Requirement: CANON-9 Structs are nominal value types
 A struct SHALL be declared in a `Type` section as `TName Struct` … `;` and
-hold fields only. Assignment, parameters and results copy it; the backend may
-pass receivers by pointer without creating reference semantics. Details:
-`language/structs`.
+hold fields only; `TName Struct (TPart)` also reuses other structs. Assignment,
+parameters and results copy it; the backend may pass receivers by pointer
+without creating reference semantics. Details: `language/structs`.
 
 #### Scenario: Value semantics
 - **WHEN** a struct is copied and the copy is changed
@@ -699,6 +700,32 @@ are static calls, never virtual dispatch.
 - **WHEN** a method writes `Self TPoint`
 - **THEN** it is rejected (test to add: today it is rejected with a generic message)
 
+### Requirement: CANON-9 Method reuse
+`TName Struct (TPart, ...)` SHALL reuse each part: a field named after its
+type that brings its fields and methods to the struct, at every level; a
+reused method runs on its part. A name reached by two paths, or hidden by
+the struct's own field, is an error at the declaration; a method replaces a
+reused one only when marked `Override`. No subtyping. (Marcelo Fortes,
+2026-10-13: "troque herança por reaproveitamento de métodos".)
+
+#### Scenario: Reuse through parts
+- **WHEN** a struct reuses a struct that reuses a third and overrides one method
+- **THEN** members are reached directly or by path and callers get the override (tests/runtime/method-reuse.inox, examples/method-reuse.inox)
+
+#### Scenario: Ambiguity and hidden overrides
+- **WHEN** two parts bring one name, or a method takes a reused name without Override
+- **THEN** it is rejected (tests/diagnostics/reuse-name-two-paths.inox, tests/diagnostics/reuse-method-without-override.inox)
+
+### Requirement: CANON-9 Methods of built-in types
+A built-in value type SHALL accept associated methods like a struct's:
+`String.UpdateStr(Self mut, Value String) :` serves every String variable
+or field (`A.FPlano.UpdateStr("x")`). `Self` is a copy, `Self mut` the
+caller's variable; a method belongs to its exact type.
+
+#### Scenario: Methods of String and Integer
+- **WHEN** methods of built-in types are called on variables, fields and expressions
+- **THEN** they work (tests/runtime/builtin-type-methods.inox)
+
 ### Requirement: CANON-9 Named construction
 `TPoint(FX := 10, FY := 20)` SHALL build a struct value as an expression:
 named arguments only, in any order; a duplicate or unknown field is an
@@ -728,6 +755,10 @@ rejected. Local variables are mutable; a receiver mutates only through
 #### Scenario: Immutable parameters
 - **WHEN** a routine assigns a value parameter, or declares `mut X Integer`
 - **THEN** it is rejected (tests/semantic/invalid/parameter-assignment.inox, tests/diagnostics/mut-parameter-reserved.inox)
+
+#### Scenario: Read-only receivers and fields
+- **WHEN** a method writes through `Self`, or a routine writes a field of a value parameter
+- **THEN** it is rejected (tests/diagnostics/self-readonly-assignment.inox, tests/diagnostics/parameter-field-assignment.inox)
 
 #### Scenario: References
 - **WHEN** a routine writes through `ref mut` and reads through `ref`
@@ -1390,12 +1421,13 @@ idea is not decided. It needs an approved design before implementation.
 - **WHEN** a program uses `do` as a name
 - **THEN** it is rejected (tests/diagnostics/do-reserved.inox)
 
-### Requirement: FUTURE Contracts, protocols and generics
-Contracts (`Pre`, `Pos`, `Invariant`) SHALL be static capability checks,
-never interfaces, subtyping, mixins or duck typing. A protocol is satisfied
-by providing its operations (likely associated methods) without repeating
-signatures in the struct. Generic constraints build on them. Each needs an
-approved design.
+### Requirement: FUTURE Contracts and generics
+Contracts (`Pre`, `Pos`, `Invariant`) SHALL be static checks, never
+interfaces, subtyping, mixins or duck typing. No decision introduces traits,
+protocols, interfaces or behaviors as nominal entities: behavior is reused
+by method reuse (CANON-9). Generics come first in their simplest form (Marcelo
+Fortes, 2026-10-13: "da forma mais simples possível e depois podemos
+evoluir"). Each needs an approved design.
 
 #### Scenario: Not yet in the language
 - **WHEN** a program writes a contract

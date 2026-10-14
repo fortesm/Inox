@@ -14,7 +14,7 @@ spec.md#G7 OpenSpec carries every change	1152cd5cd0bf4853	constitution
 spec.md#G7 High-risk changes wait for design approval	471d4dfc4f7e3cd2	constitution
 spec.md#G8 The lock	e3d8b06f2031a704	constitution
 spec.md#CANON-1 Identity of Inox	7fc3e6d9b452398d	constitution
-spec.md#CANON-1 Post-object-oriented design	42a5f6910145ce27	constitution
+spec.md#CANON-1 Post-object-oriented design	69bafd532db2ea1c	method-reuse
 spec.md#CANON-1 Safety defaults	579a8963240512e4	constitution
 spec.md#CANON-2 Names are case-insensitive	34febe6d17f2bbd8	constitution
 spec.md#CANON-2 Comments and literals	5984e594e993a409	constitution
@@ -51,12 +51,14 @@ spec.md#CANON-8 Operators	89dad5646c88f097	constitution
 spec.md#CANON-8 Overflow is never silent	614aba4ebbefff21	constitution
 spec.md#CANON-8 Division by zero and power	048fec166105c948	constitution
 spec.md#CANON-8 Generic syntax	a940aa804615980f	constitution
-spec.md#CANON-9 Structs are nominal value types	a4d0ea5d913d8c24	constitution
+spec.md#CANON-9 Structs are nominal value types	dc875c23516647e8	method-reuse
 spec.md#CANON-9 Fields	1e7fbb70bed7cf50	constitution
 spec.md#CANON-9 Associated methods	fad873f99ec30d01	constitution
+spec.md#CANON-9 Method reuse	acc8de932d91e277	method-reuse
+spec.md#CANON-9 Methods of built-in types	32a2985898e98345	method-reuse
 spec.md#CANON-9 Named construction	af42acdf70dbb28f	constitution
 spec.md#CANON-9 Structs are not compared	8271b9ae445cd83b	constitution
-spec.md#CANON-10 Parameters and mutability	4b68cbc4da9335be	constitution
+spec.md#CANON-10 Parameters and mutability	4f674605f2f74e7d	method-reuse
 spec.md#CANON-10 Scope of locals	d219e369bba5040a	constitution
 spec.md#CANON-10 No shadowing	374e96362c01e03d	constitution
 spec.md#CANON-10 Loop iterators	29b268cf62e9f413	constitution
@@ -118,7 +120,7 @@ spec.md#VERSIONING The version number	4913b3727284db7b	constitution
 spec.md#VERSIONING Who changes the version	59a96df0746489b0	constitution
 spec.md#VERSIONING Canon revision	7325a37130b8e81e	constitution
 spec.md#FUTURE Concurrency	7e4363bb408956d2	constitution
-spec.md#FUTURE Contracts, protocols and generics	6505a6ce4c543775	constitution
+spec.md#FUTURE Contracts and generics	1127ffe454d9b537	method-reuse
 spec.md#FUTURE Ownership, absence and failure	076b1bfa29ef29af	constitution
 spec.md#FUTURE Modules, variants and numbers	90ca5a0360a10d21	constitution
 engineering.md#preamble	60703a2fce444e01	constitution

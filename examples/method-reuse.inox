@@ -1,0 +1,67 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Method reuse (CANON-9): composition without inheritance.
+==   TAssinatura Struct (TPessoa)   reuses TPessoa: its fields and methods are
+==                                  offered by TAssinatura, at every level
+==   A.UpdateNome(...)              runs TPessoa.UpdateNome on the TPessoa part of A
+==   A.TPessoa.Title                the part's own method, when an Override replaced it
+==   Override                       replaces a reused method for callers of A
+==   String.UpdateStr               a method of a built-in type, for any String field
+Module MethodReuse
+
+Type
+    TEndereco Struct
+        FRua String := ""
+        FCidade String := ""
+    ;
+    TPessoa Struct (TEndereco)
+        FId Integer := 0
+        FNome String := ""
+    ;
+    TAssinatura Struct (TPessoa)
+        FIdAss Integer := 0
+        FPlano String := ""
+    ;
+
+TEndereco.Mudar(Self mut, Rua String, Cidade String) :
+    Self.FRua := Rua
+    Self.FCidade := Cidade
+;
+
+TPessoa.UpdateNome(Self mut, Nome String) :
+    if Nome # ""
+        Self.FNome := Nome
+    ;
+;
+
+TPessoa.Title(Self) String :
+    Return "Pessoa"
+;
+
+TAssinatura.Title(Self) String Override :
+    Return "Assinante"
+;
+
+String.UpdateStr(Self mut, Value String) :
+    if Value # ""
+        Self := Value
+    ;
+;
+
+Main :
+    P TPessoa
+    P.UpdateNome("Reisidalt")               == grava em P.FNome
+    A TAssinatura
+    A.UpdateNome("Marcelo")                 == de TPessoa: grava em A.FNome
+    A.Mudar("Rua A", "Recife")              == de TEndereco, dois níveis abaixo
+    A.FPlano.UpdateStr("Plano9")            == helper de String
+    A.Mudar("Rua B", "Natal")
+    PutLn(P.FNome)
+    PutLn(A.FNome, ", ", A.FRua, ", ", A.FCidade, ", ", A.FPlano)
+    PutLn(A.Title, " (a parte é ", A.TPessoa.Title, ")")
+;

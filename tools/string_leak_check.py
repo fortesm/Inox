@@ -82,7 +82,7 @@ def main(argv):
 
     programs = sorted(glob.glob(os.path.join(ROOT, "tests", "runtime", "string*.inox")) +
                       glob.glob(os.path.join(ROOT, "tests", "runtime", "files-*.inox")) +
-                      [os.path.join(ROOT, "examples", "file_io.inox")])
+                      [os.path.join(ROOT, "examples", name) for name in ("file_io.inox", "bank-atm.inox")])
     if not programs:
         print("FAIL string_leak_check: no String test programs found")
         return 1

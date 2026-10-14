@@ -82,6 +82,9 @@ std::string FunctionEmitter::expressionLlvmType(const ast::Expression& expressio
             return signature->second.llvmReturnType;
         }
         if (const semantic::ConstantValue* constant = resolvedConstant(identifier)) {
+            if (constant->kind == semantic::ConstantValue::Kind::String) {
+                return "ptr";
+            }
             return constant->kind == semantic::ConstantValue::Kind::Boolean ? "i1" : "i64";
         }
         break;
@@ -133,6 +136,13 @@ std::string FunctionEmitter::expressionLlvmType(const ast::Expression& expressio
                 if (const auto field = memberField(call)) {
                     return field->second->llvmType;
                 }
+                if (call.arguments().size() == 2 &&
+                    call.arguments()[1]->kind() == ast::AstNodeKind::IdentifierExpression) {
+                    const auto& method = static_cast<const ast::IdentifierExpression&>(*call.arguments()[1]);
+                    if (const FunctionSignature* signature = findMethodSignature(*call.arguments()[0], method.name())) {
+                        return signature->llvmReturnType;
+                    }
+                }
             }
             if (arrayBoundCall(call)) {
                 return "i64";
@@ -145,12 +155,10 @@ std::string FunctionEmitter::expressionLlvmType(const ast::Expression& expressio
         if (isMemberAccessCall(call.callee())) {
             const auto& member = static_cast<const ast::CallExpression&>(call.callee());
             if (member.arguments().size() == 2 && member.arguments()[0]) {
-                const std::string receiverType = placeTypeName(*member.arguments()[0]);
                 if (member.arguments()[1]->kind() == ast::AstNodeKind::IdentifierExpression) {
                     const auto& method = static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
-                    const auto signature = signatures_.find(normalize(receiverType + "." + method.name()));
-                    if (signature != signatures_.end()) {
-                        return signature->second.llvmReturnType;
+                    if (const FunctionSignature* signature = findMethodSignature(*member.arguments()[0], method.name())) {
+                        return signature->llvmReturnType;
                     }
                 }
             }
@@ -320,6 +328,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (const semantic::ConstantValue* constant = resolvedConstant(identifier)) {
             if (constant->kind == semantic::ConstantValue::Kind::Boolean) {
                 return constant->boolean ? "1" : "0";
+            }
+            if (constant->kind == semantic::ConstantValue::Kind::String) {
+                return emitStringValue(constant->text);
             }
             return std::to_string(constant->integer);
         }

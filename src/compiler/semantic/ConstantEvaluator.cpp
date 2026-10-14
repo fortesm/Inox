@@ -274,6 +274,12 @@ void SemanticAnalyzer::recordConstantExpression(const std::string& name,
         constant.kind = ConstantValue::Kind::Boolean;
         constant.boolean = boolean;
         result_.setConstantValue(*symbol, constant);
+    } else if (value.kind() == ast::AstNodeKind::LiteralExpression &&
+               static_cast<const ast::LiteralExpression&>(value).literalKind() == ast::LiteralKind::String) {
+        // `Const Arquivo := "dados.txt"`: the backend emits the literal.
+        constant.kind = ConstantValue::Kind::String;
+        constant.text = static_cast<const ast::LiteralExpression&>(value).value();
+        result_.setConstantValue(*symbol, constant);
     }
 }
 

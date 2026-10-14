@@ -17,7 +17,7 @@ Core safety defaults include:
 - Parameters immutable by default
 - Mutating methods require an explicit `Self mut` receiver
 - Strong nominal typing with no implicit narrowing
-- Composition preferred over inheritance
+- Composition instead of inheritance: `TAssinatura Struct (TPessoa)` reuses the fields and methods of `TPessoa`, at every level, with `Override` to replace a reused method
 
 The language draws carefully from several traditions (Ada/SPARK robustness, Rust ownership and mutability discipline, Modula/Oberon modular clarity, modern Pascal ergonomics, C/C++ performance realism, and others) while rejecting defaults that introduce undefined behavior or ambiguity.
 

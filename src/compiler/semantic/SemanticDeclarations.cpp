@@ -44,6 +44,7 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
 
     FunctionSignature signature;
     signature.name = function.name();
+    signature.isOverride = function.isOverride();
 
     const std::size_t dot = function.name().find('.');
     const bool isAssociatedMethod = dot != std::string::npos;
@@ -80,11 +81,20 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
             std::string parameterType;
 
             if (isAssociatedMethod && signature.parameters.empty() && equalsIgnoreCase(parameterName, "Self")) {
+                // `Self mut` may change the receiver; `Self` only reads it
+                // (CANON-9). A method of a built-in type (`String.Trim`) has
+                // the same two receivers: `Self mut` is the caller's variable.
                 if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
                     ++index;
+                    mode = PassMode::RefMut;
                 }
                 resolveTypeOrThrow(receiverType);
                 parameterType = canonicalTypeName(receiverType);
+                if (resolveStruct(receiverType) == nullptr &&
+                    (support::isArrayTypeName(receiverType) || isFileType(parameterType))) {
+                    throw SemanticError("methods belong to structs and built-in value types; " +
+                                        receiverType + " cannot have methods: " + function.name());
+                }
             } else {
                 if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
                     throw SemanticError("mutable parameters are reserved for a future Inox version: use a local variable or return a new value");
@@ -145,6 +155,27 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
         }
     }
 
+    if (isAssociatedMethod && resolveStruct(receiverType) == nullptr) {
+        // A method of a built-in type is found under the type's canonical
+        // name (`Integer.Twice` is called on an Int64 value).
+        if (signature.isOverride) {
+            throw SemanticError(function.name() + " is marked Override, but " + receiverType +
+                                " reuses no struct: Override replaces a reused method (CANON-9)");
+        }
+        const std::string canonical = canonicalTypeName(receiverType);
+        result_.setCanonicalTypeName(receiverType, canonical);
+        const std::string canonicalKey = normalizeName(canonical + function.name().substr(dot));
+        if (canonicalKey != normalizeName(function.name())) {
+            if (functions_.contains(canonicalKey)) {
+                throw SemanticError("method " + function.name().substr(dot + 1) + " is declared twice for " +
+                                    canonical + " (" + receiverType + " is " + canonical + ")");
+            }
+            functions_.emplace(canonicalKey, signature);
+        }
+    }
+    if (functions_.contains(normalizeName(function.name()))) {
+        throw SemanticError("duplicate routine: " + function.name());
+    }
     functions_.emplace(normalizeName(function.name()), std::move(signature));
 }
 
@@ -438,6 +469,7 @@ void SemanticAnalyzer::registerStructDeclaration(const ast::TypeDeclaration& dec
                              : canonicalTypeName(fieldDeclaration.typeName);
         field.hasDefault = fieldDeclaration.hasDefault;
         field.defaultValue = fieldDeclaration.defaultValue;
+        field.isPart = fieldDeclaration.isPart;
         structType.fields.push_back(std::move(field));
     }
     structs_.emplace(normalizeName(declaration.name), std::move(structType));
@@ -471,6 +503,7 @@ void SemanticAnalyzer::validateStructDeclaration(const ast::TypeDeclaration& dec
         }
     }
     rejectRecursiveStruct(declaration.name);
+    validateReuse(declaration);
 }
 
 void SemanticAnalyzer::validateStructFieldDefault(const std::string& fieldName,

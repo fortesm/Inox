@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-13 against Inox 0.2.0 pre-alpha, canon r3.65.
+Verified on 2026-10-13 against Inox 0.2.0 pre-alpha, canon r3.66.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -21,7 +21,7 @@ each version added.
   recursive loading and cycle rejection; library discovery; toolchain
   failures reported with the tool's own messages.
 - Lexical rules, blocks, declarations (inline, grouped, chained, compound),
-  unread-local rule, Const (also constant expressions), State (scalars,
+  unread-local rule, Const (Integer, Bool, String, constant expressions), State (scalars,
   structs, arrays, Strings), routines, no empty parentheses.
 - Types: Bool, Integer/Int64, Natural, Int8/16/32, Byte/UInt8, UInt16/32,
   Float/Float64 (Float32 partly), String, Char literals as `case`
@@ -30,7 +30,8 @@ each version added.
 - Control flow: if/elif/else, unless, conditional expression, while,
   repeat/until, for with step, leave/continue, case (Ada style), with.
 - Structs with defaults, named construction, nesting, associated methods;
-  fixed arrays (multi-dimensional, in fields and State, of structs and
+  method reuse (`Struct (TPart)`, reused fields and methods at every level,
+  `Override`); methods of built-in types (`String.UpdateStr`); fixed arrays (multi-dimensional, in fields and State, of structs and
   Strings); read-only slices; `ref`/`ref mut` parameters.
 - Strings: reference-counted UTF-8 values everywhere a value lives,
   equality and ordering, `GetLn(S)`.
@@ -74,6 +75,10 @@ These are bugs to fix (G1, G4), not features:
 
 - `TPoint.M(Self TPoint)` is rejected, but with a generic parse message
   instead of one that names the rule (CANON-9).
+
+(Until r3.66, `Self` could write its receiver, a field of a value parameter
+could be assigned, and `with` on a parameter could write it; they are
+rejected now.)
 
 (`Length(S)` of a String and `Ord(C)` of a Char were accepted until r3.62;
 they are rejected now.)

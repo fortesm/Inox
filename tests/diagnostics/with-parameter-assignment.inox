@@ -1,0 +1,34 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== A 'with' binding is as writable as its target: a parameter only reads.
+Module Diagnostics.WithParameterAssignment
+Type
+    TA Struct
+        FX Integer := 0
+    ;
+    TB Struct
+        FX Integer := 0
+    ;
+TA.Show(Self) :
+    PutLn(Self.FX)
+;
+TB.Show(Self) :
+    PutLn(Self.FX)
+;
+TA.Bump(Self mut) :
+    Self.FX += 1
+;
+Change(P TA) :
+    with P
+        .FX := 5
+    ;
+;
+Main :
+    A TA
+    Change(A)
+;

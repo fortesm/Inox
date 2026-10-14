@@ -241,10 +241,18 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
             bool isReceiver = false;
             if (isAssociatedMethod && parameters.empty() && equalsIgnoreCase(parameterName, "Self")) {
                 isReceiver = true;
+                bool receiverMut = false;
                 if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
                     ++index;
+                    receiverMut = true;
                 }
                 parameterType = receiverType;
+                // CANON-9: `Self mut` of a built-in type is the caller's
+                // variable, passed like `ref mut`; `Self` is a copy. A
+                // struct receiver is always passed by address.
+                if (receiverMut && findStruct(structs, receiverType) == nullptr) {
+                    byReference = true;
+                }
             } else {
                 if (index >= tokens.size() || tokens[index] == "," || tokens[index] == ")") {
                     throw CodegenUnsupported("unsupported function signature: " + function.name());

@@ -148,7 +148,17 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
             mainFunction = &function;
         } else {
             const std::string normalizedName = normalize(function.name());
-            signatures.emplace(normalizedName, parseFunctionSignature(function, structs, semantics));
+            FunctionSignature signature = parseFunctionSignature(function, structs, semantics);
+            // CANON-9: a method of a built-in type is also found under the
+            // type's canonical name (`Integer.Twice` on an Int64 value).
+            if (const std::size_t dot = function.name().find('.'); dot != std::string::npos) {
+                const std::string receiver = function.name().substr(0, dot);
+                const std::string canonical = semantics.canonicalTypeName(receiver);
+                if (findStruct(structs, receiver) == nullptr && normalize(canonical) != normalize(receiver)) {
+                    signatures.emplace(normalize(canonical + function.name().substr(dot)), signature);
+                }
+            }
+            signatures.emplace(normalizedName, std::move(signature));
         }
     }
 
