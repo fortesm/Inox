@@ -79,7 +79,8 @@ than at the previous iteration.
 A contract SHALL not change the program's state: a Self mut method, a ref mut
 argument, a file function or input in a contract is an error. A broken
 contract SHALL be a trap (CANON-19, exit status 70): try, except and ensure
-never see it; contracts are always checked.
+never see it. Contracts SHALL be checked in every build through 1.0;
+monitoring levels per module (Eiffel style) come after 1.0.
 
 #### Scenario: Read-only
 - **WHEN** a contract calls a Self mut method or a routine with a ref mut parameter

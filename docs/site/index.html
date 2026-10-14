@@ -526,7 +526,7 @@ TPilha.Desempilhar(Self mut) Integer :
 ;</code></pre>
 <p>A contract only reads: it cannot call a <code>Self mut</code> method, pass a <code>ref mut</code> argument, assign, or use files. A broken contract is a bug, not an exception: the program stops as a runtime trap (exit code 70, CANON-19), like an overflow, and <code>try</code> does not catch it. The message names the clause and the routine:</p>
 <pre><code>Inox runtime error: precondition violated: TPilha.Empilhar: Self.FQuantidade < 5: a pilha não está cheia</code></pre>
-<p>The checks are always on in 0.1; Eiffel's per-class monitoring levels and a static proof (as in SPARK) are future work. <code>examples/contracts.inox</code> is a complete program.</p>
+<p>The checks are always on, in every build, through Inox 1.0: no switch turns them off. Eiffel-style monitoring levels, chosen per module (which kinds of contract a module checks), and proving contracts at compile time (as SPARK does) are future work after 1.0. <code>examples/contracts.inox</code> is a complete program.</p>
 </section>
 <section id="control-flow"><h2>Control flow</h2>
 <p><code>if</code> uses no <code>then</code> and no <code>:</code>:</p>

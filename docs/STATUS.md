@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-14 against Inox 0.2.0 pre-alpha, canon r3.67.
+Verified on 2026-10-14 against Inox 0.2.0 pre-alpha, canon r3.68.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -36,7 +36,8 @@ each version added.
 - Design by contract (CANON-24): `pre`/`pos` with `old` and `Result`,
   struct `invariant` (also of reused parts), `pre else`/`pos then` in an
   `Override`, loop `invariant`/`variant`; violations are runtime traps
-  (exit status 70); always on (no monitoring levels yet).
+  (exit status 70); always on through 1.0 (monitoring levels per module
+  are FUTURE, after 1.0).
 - Strings: reference-counted UTF-8 values everywhere a value lives,
   equality and ordering, `GetLn(S)`.
 - Exceptions: try/except/On/Else/ensure/Raise/Retry with the standard

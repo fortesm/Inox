@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.67
+Canon revision: r3.68
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -114,3 +114,9 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   "implemente design by contract exatamente igual eiffel a diferença é que
   as palavras reservadas pre para precondições e pos para poscondições".
   Change `design-by-contract`.
+- r3.68 — 2026-10-14 — Contracts are checked in every build through 1.0,
+  with no switch that turns them off (CANON-24); Eiffel-style monitoring
+  levels chosen per module are FUTURE work after 1.0, next to static proof.
+  Marcelo Fortes: "Adicionar estilo de níveis de monitoramento Eiffel-style
+  [...] per módulo mais tarde (implementação futura) e manter os checks
+  always on [...] para a versão 1.0". Change `design-by-contract`.
