@@ -129,6 +129,7 @@ spec.md#FUTURE Concurrency	7e4363bb408956d2	constitution
 spec.md#FUTURE Generics and static proof	db2a01e6fa8bdbd6	design-by-contract
 spec.md#FUTURE Ownership, absence and failure	076b1bfa29ef29af	constitution
 spec.md#FUTURE Modules, variants and numbers	f597e0a3e66810ce	variant-structs
+spec.md#FUTURE Encapsulation, routine types and lifecycle	3686397c32ddfc3b	encapsulation
 engineering.md#preamble	60703a2fce444e01	constitution
 engineering.md#Sources of influence	32a192c5bf83b9ac	constitution
 engineering.md#E1. Shallow control flow	0af555ce8718f759	constitution

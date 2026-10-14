@@ -57,5 +57,11 @@ whether concurrency or contracts are in it) is the maintainer's decision.
   `binary-streams` (binary files, positions; streams after generics),
   `variant-structs` (one collection of several kinds, examined with `case`;
   direction recorded in r3.69, design after `enum-range-set`).
+- Directions recorded in r3.70, designs to write: `encapsulation` (close to
+  Object Pascal and Rust), `routine-types` (Pascal procedural types: named
+  routines first, closures after `safe-pointers`), `lifecycle`
+  (constructors and destructors: the maintainer's analysis).
+  `docs/OOP_COMPARISON.md` lists what object orientation gives and Inox's
+  answer to each point.
 - Then the rest of 0.2: Char values and output; Float conversions and Float
   `Const`.
