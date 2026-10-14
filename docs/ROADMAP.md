@@ -54,6 +54,8 @@ whether concurrency or contracts are in it) is the maintainer's decision.
   Eiffel-style monitoring levels per module, and static proof of contracts
   (SPARK style), FUTURE.
 - Designs awaiting decisions: `generics` (simplest form), `safe-pointers`,
-  `binary-streams` (binary files, positions; streams after generics).
+  `binary-streams` (binary files, positions; streams after generics),
+  `variant-structs` (one collection of several kinds, examined with `case`;
+  direction recorded in r3.69, design after `enum-range-set`).
 - Then the rest of 0.2: Char values and output; Float conversions and Float
   `Const`.
