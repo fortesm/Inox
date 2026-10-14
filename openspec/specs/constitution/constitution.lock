@@ -128,7 +128,7 @@ spec.md#VERSIONING Canon revision	7325a37130b8e81e	constitution
 spec.md#FUTURE Concurrency	7e4363bb408956d2	constitution
 spec.md#FUTURE Generics and static proof	db2a01e6fa8bdbd6	design-by-contract
 spec.md#FUTURE Ownership, absence and failure	076b1bfa29ef29af	constitution
-spec.md#FUTURE Modules, variants and numbers	90ca5a0360a10d21	constitution
+spec.md#FUTURE Modules, variants and numbers	f597e0a3e66810ce	variant-structs
 engineering.md#preamble	60703a2fce444e01	constitution
 engineering.md#Sources of influence	32a192c5bf83b9ac	constitution
 engineering.md#E1. Shallow control flow	0af555ce8718f759	constitution

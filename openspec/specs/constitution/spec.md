@@ -1517,9 +1517,11 @@ boundaries, `Pointer<T>` and C interop stay outside the safe core.
 
 ### Requirement: FUTURE Modules, variants and numbers
 `Export` visibility, interface/body separation and a package manager SHALL
-extend modules; variant structs, metadata tags (JSON, databases),
-BigCurrency with a big-integer runtime and symbolic mathematics are later
-directions. Each needs an approved design.
+extend modules. Variant structs (a value that is one of several structs,
+examined with `case`) are how a collection mixes kinds without subtyping
+(Marcelo Fortes, 2026-10-14: "Sim, registre isso"). Metadata tags (JSON,
+databases), BigCurrency with a big-integer runtime and symbolic
+mathematics are later directions. Each needs an approved design.
 
 #### Scenario: All symbols public today
 - **WHEN** a module uses another

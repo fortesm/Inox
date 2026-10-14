@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.68
+Canon revision: r3.69
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -120,3 +120,9 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   Marcelo Fortes: "Adicionar estilo de níveis de monitoramento Eiffel-style
   [...] per módulo mais tarde (implementação futura) e manter os checks
   always on [...] para a versão 1.0". Change `design-by-contract`.
+- r3.69 — 2026-10-14 — Variant structs (a value that is one of several
+  structs, examined with `case`) are recorded in FUTURE as the way a
+  collection mixes kinds without subtyping; behavior stays written once per
+  type through method reuse (`examples/reuse-army.inox`). Marcelo Fortes:
+  "Sim, registre isso". Change `variant-structs` (direction; design after
+  `enum-range-set`).
