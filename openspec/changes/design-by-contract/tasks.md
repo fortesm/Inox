@@ -14,3 +14,7 @@
 
 - [x] 3.1 Runtime tests (contracts, every violation), diagnostics, example
 - [x] 3.2 Constitution CANON-19, CANON-24, FUTURE (relock); spec delta; grammar; manual; STATUS; CHANGELOG; ROADMAP; revisions r3.67
+
+## 4. Monitoring levels
+
+- [x] 4.1 Decision (r3.68): checks always on through 1.0; Eiffel-style monitoring levels per module are FUTURE, after 1.0

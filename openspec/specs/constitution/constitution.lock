@@ -121,12 +121,12 @@ spec.md#CANON-24 Old and Result	ae9cb1852f6c7ede	design-by-contract
 spec.md#CANON-24 Struct invariants	98e810a4ab5089d2	design-by-contract
 spec.md#CANON-24 Contracts of an Override	b8caf27d3082c3f8	design-by-contract
 spec.md#CANON-24 Loop contracts	07f43b682ba43010	design-by-contract
-spec.md#CANON-24 A broken contract is a trap	77530e0d059fc1d5	design-by-contract
+spec.md#CANON-24 A broken contract is a trap	63aeaccab75ee7d1	design-by-contract
 spec.md#VERSIONING The version number	4913b3727284db7b	constitution
 spec.md#VERSIONING Who changes the version	59a96df0746489b0	constitution
 spec.md#VERSIONING Canon revision	7325a37130b8e81e	constitution
 spec.md#FUTURE Concurrency	7e4363bb408956d2	constitution
-spec.md#FUTURE Generics and static proof	c38cb888900fd3b7	design-by-contract
+spec.md#FUTURE Generics and static proof	db2a01e6fa8bdbd6	design-by-contract
 spec.md#FUTURE Ownership, absence and failure	076b1bfa29ef29af	constitution
 spec.md#FUTURE Modules, variants and numbers	90ca5a0360a10d21	constitution
 engineering.md#preamble	60703a2fce444e01	constitution

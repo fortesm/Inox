@@ -35,9 +35,13 @@ checks at call sites); every rule has a test.
    `rescue`/`retry` may handle. Inox's law separates bugs (traps, CANON-19)
    from expected failures (exceptions, CANON-15: "contract violations stay a
    distinct concept"), as for Assert (decided 2026-10-13, option A).
-2. **Always checked.** Eiffel lets each class choose a monitoring level (by
-   default only `require`). Inox checks every contract, like Assert, which is
-   never compiled out. A switch for production builds is a later decision.
+2. **Always checked through 1.0.** Eiffel lets each class choose a
+   monitoring level (by default only `require`). Inox checks every contract,
+   like Assert, which is never compiled out. Marcelo Fortes, 2026-10-14:
+   "Adicionar estilo de níveis de monitoramento Eiffel-style [...] per
+   módulo mais tarde (implementação futura) e manter os checks always on
+   [...] para a versão 1.0". Monitoring levels per module are a FUTURE
+   change after 1.0.
 3. **Invariants after outside writes.** Eiffel forbids writing another
    object's attributes; Inox has no visibility yet, so a field write or a ref
    mut argument from outside a struct's methods is followed by its invariant.

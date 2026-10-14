@@ -1443,8 +1443,9 @@ A broken contract SHALL be a bug, never an exception: a CANON-19 trap
 (`precondition violated`, `postcondition violated`, `invariant violated`,
 `loop invariant violated`, `loop variant violated`) naming the routine or
 struct, the condition as written and its message (`pre X > 0, "message"`).
-Contracts are always checked and only read: no Self mut method, ref mut
-argument, file or input.
+Contracts are checked in every build through 1.0, with no switch that
+turns them off, and only read: no Self mut method, ref mut argument, file
+or input.
 
 #### Scenario: Not catchable, read-only
 - **WHEN** a pre fails inside try, or a contract calls a Self mut method or a ref mut routine
@@ -1496,8 +1497,9 @@ No decision SHALL introduce traits, protocols, interfaces or behaviors as
 nominal entities: behavior is reused by method reuse (CANON-9) and
 contracts (CANON-24) are checks, never types. Generics come first in their
 simplest form (Marcelo Fortes, 2026-10-13: "da forma mais simples possível
-e depois podemos evoluir"). Proving contracts at compile time (as SPARK
-does) is a later change. Each needs an approved design.
+e depois podemos evoluir"). After 1.0: contract monitoring levels per
+module (Eiffel style) and static proof (SPARK style). Each needs an
+approved design.
 
 #### Scenario: Generics not yet in the language
 - **WHEN** a program declares a generic routine
