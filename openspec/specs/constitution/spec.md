@@ -1526,3 +1526,17 @@ mathematics are later directions. Each needs an approved design.
 #### Scenario: All symbols public today
 - **WHEN** a module uses another
 - **THEN** every symbol is visible without `Export` (tests/integration/modules/Main.inox)
+
+### Requirement: FUTURE Encapsulation, routine types and lifecycle
+Encapsulation SHALL come from an approved design close to Object Pascal
+and Rust (Marcelo Fortes, 2026-10-14: "algo bem semelhante a do
+ObjectPascal + Rust mas precisamos desenhar ainda"). Routine types (a
+routine kept in a variable, field or parameter, as Pascal's procedural
+types) are recorded with the recommendation: named routines without
+captured variables first, closures only after safe pointers. Whether Inox needs constructors and destructors is
+the maintainer's open analysis.
+
+#### Scenario: Not yet in the language
+- **WHEN** a program declares a private field or a routine type
+- **THEN** it is not accepted until the design is approved (test to add)
+

@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.69
+Canon revision: r3.70
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -126,3 +126,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   type through method reuse (`examples/reuse-army.inox`). Marcelo Fortes:
   "Sim, registre isso". Change `variant-structs` (direction; design after
   `enum-range-set`).
+- r3.70 — 2026-10-14 — New FUTURE "Encapsulation, routine types and
+  lifecycle": encapsulation from a design close to Object Pascal and Rust
+  ("algo bem semelhante a do ObjectPascal + Rust mas precisamos desenhar
+  ainda"); routine types (Pascal procedural types) recorded with the
+  recommendation of named routines first and closures after safe pointers;
+  constructors and destructors left to the maintainer's analysis
+  ("preciso analisar o caso dos construtores e destrutores, e se
+  precisaremos"). Marcelo Fortes: "Sim registre no future para não nos
+  perdermos a questão do encapsulamento. Registre tudo isso para eu não me
+  perder ou esquecer". Changes `encapsulation`, `routine-types`,
+  `lifecycle` (directions); `docs/OOP_COMPARISON.md`.
