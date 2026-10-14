@@ -35,7 +35,9 @@ from pathlib import Path
 
 # Words used as terminals that are not reserved by the lexer: they are
 # identifiers with a meaning in one position only.
-CONTEXTUAL_WORDS = {"self", "range", "array", "override"}
+CONTEXTUAL_WORDS = {"self", "range", "array", "override",
+                    # design by contract (CANON-24)
+                    "pre", "pos", "old", "invariant", "variant"}
 
 # Reserved by the lexer but not part of any production (reserved for the
 # future or kept reserved to reject old syntax with a diagnostic).

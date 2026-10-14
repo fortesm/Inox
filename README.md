@@ -18,6 +18,7 @@ Core safety defaults include:
 - Mutating methods require an explicit `Self mut` receiver
 - Strong nominal typing with no implicit narrowing
 - Composition instead of inheritance: `TAssinatura Struct (TPessoa)` reuses the fields and methods of `TPessoa`, at every level, with `Override` to replace a reused method
+- Design by contract as in Eiffel: `pre` and `pos` (with `old` and `Result`) on routines, `invariant` on structs, `invariant` and `variant` on loops; a broken contract stops the program
 
 The language draws carefully from several traditions (Ada/SPARK robustness, Rust ownership and mutability discipline, Modula/Oberon modular clarity, modern Pascal ergonomics, C/C++ performance realism, and others) while rejecting defaults that introduce undefined behavior or ambiguity.
 

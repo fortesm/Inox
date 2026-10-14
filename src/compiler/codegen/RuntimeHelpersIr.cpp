@@ -292,6 +292,45 @@ std::string assertMessageHelper()
     return ir.str();
 }
 
+// CANON-24: a broken contract stops the program like any trap (CANON-19):
+// "Inox runtime error: <text>", where the text (built by the compiler) names
+// the category, the routine or struct, the condition and its message.
+std::string contractMessageHelper()
+{
+    const support::NativeErrorWriter writer = support::nativeErrorWriter();
+    const std::string lengthType = "i" + std::to_string(writer.lengthBits);
+    const std::string resultType = "i" + std::to_string(writer.resultBits);
+    const std::string prefix = "Inox runtime error: ";
+
+    std::ostringstream ir;
+    ir << "; A broken contract (pre, pos, invariant, loop invariant or variant): a trap\n"
+       << "; whose text is read from the String block { count, length, bytes }.\n"
+       << "@.inox.contract.prefix = private unnamed_addr constant [" << prefix.size() << " x i8] c\""
+       << llvmByteString(prefix) << "\"\n"
+       << "@.inox.contract.newline = private unnamed_addr constant [1 x i8] c\"\\0A\"\n"
+       << "define internal void @__inox_contract_fault(ptr %text) noreturn nounwind cold noinline {\n"
+       << "entry:\n"
+       << "  %flushed = call i32 @fflush(ptr null)\n"
+       << "  %prefix = call " << resultType << " @" << writer.symbol << "(i32 2, ptr @.inox.contract.prefix, "
+       << lengthType << " " << prefix.size() << ")\n"
+       << "  %lengthPointer = getelementptr { i64, i64 }, ptr %text, i32 0, i32 1\n"
+       << "  %length = load i64, ptr %lengthPointer\n";
+    std::string length = "%length";
+    if (writer.lengthBits != 64) {
+        ir << "  %lengthNarrow = trunc i64 %length to " << lengthType << "\n";
+        length = "%lengthNarrow";
+    }
+    ir << "  %bytes = getelementptr i8, ptr %text, i64 16\n"
+       << "  %written = call " << resultType << " @" << writer.symbol << "(i32 2, ptr %bytes, " << lengthType
+       << " " << length << ")\n"
+       << "  %newline = call " << resultType << " @" << writer.symbol << "(i32 2, ptr @.inox.contract.newline, "
+       << lengthType << " 1)\n"
+       << "  call void @_exit(i32 " << kRuntimeFaultExitStatus << ")\n"
+       << "  unreachable\n"
+       << "}";
+    return ir.str();
+}
+
 std::string mathRuntimeHelpers()
 {
     return R"llvm(declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64)

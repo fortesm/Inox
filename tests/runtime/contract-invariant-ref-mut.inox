@@ -1,0 +1,45 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24: a field changed through a ref mut argument keeps the invariant.
+Module Runtime.ContractInvariantRefMut
+
+Type
+    TConta Struct
+        FSaldo Integer := 0
+        invariant Self.FSaldo >= 0, "saldo nunca negativo"
+    ;
+
+TConta.Depositar(Self mut, Valor Integer) :
+    pre Valor > 0, "depósito positivo"
+    pos Self.FSaldo = old Self.FSaldo + Valor
+    Self.FSaldo += Valor
+;
+
+TConta.DepositarErrado(Self mut, Valor Integer) :
+    pos Self.FSaldo = old Self.FSaldo + Valor
+    Self.FSaldo += Valor + 1
+;
+
+TConta.Zerar(Self mut) :
+    Self.FSaldo := -1
+;
+
+Dobro(N Integer) Integer :
+    pos Result = 2 * N
+    Return N + N + 1
+;
+
+Ajustar(ref mut Valor Integer, Novo Integer) :
+    Valor := Novo
+;
+
+Main :
+    C TConta
+    Ajustar(C.FSaldo, -2)
+    PutLn(C.FSaldo)
+;

@@ -55,6 +55,7 @@ void FunctionEmitter::emitStatementKind(const ast::Statement& statement)
                     "LLVM emission currently requires local variable initialization");
             }
             emitTypedLocalVariable(variable.name(), variable.typeName());
+            emitNewValueInvariant(variable);
         } else if (!variable.typeName().empty()) {
             emitTypedLocalVariable(variable.name(), variable.typeName(), variable.initializer());
         } else {
@@ -164,6 +165,7 @@ void FunctionEmitter::emitVarBlockDeclaration(const ast::Statement& statement)
         const auto& variable = static_cast<const ast::VarStatement&>(statement);
         if (variable.initializer() == nullptr) {
             emitTypedLocalVariable(variable.name(), variable.typeName());
+            emitNewValueInvariant(variable);
         } else if (!variable.typeName().empty()) {
             emitTypedLocalVariable(variable.name(), variable.typeName(), variable.initializer());
         } else {
@@ -354,6 +356,10 @@ void FunctionEmitter::emitExpressionStatement(const ast::Expression& expression)
         emitAssertCall(call);
         return;
     }
+    if (isContractCheck(call)) {
+        emitContractCheck(call);
+        return;
+    }
     if (isFileCall(call)) {
         emitFileCall(call);
         return;
@@ -497,6 +503,7 @@ void FunctionEmitter::emitSubroutineCall(const ast::CallExpression& call, std::s
 
     const std::vector<std::string> arguments = emitArguments(signature->second, call.arguments(), 0);
     emitUserCall(signature->second, arguments, false);
+    emitInvariantChecks(call, true);
 }
 
 } // namespace inox::compiler::codegen::detail

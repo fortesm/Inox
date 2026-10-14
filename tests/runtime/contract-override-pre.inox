@@ -1,0 +1,36 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24: an Override's precondition is the inherited one or else its own
+== pre else (Eiffel's require else).
+Module Runtime.ContractOverridePre
+
+Type
+    TPessoa Struct
+        FIdade Integer := 0
+    ;
+    TCliente Struct (TPessoa)
+        FLimite Integer := 0
+    ;
+
+TPessoa.Aniversario(Self mut, Anos Integer) :
+    pre Anos > 0 and Anos < 5
+    Self.FIdade += Anos
+;
+
+TCliente.Aniversario(Self mut, Anos Integer) Override :
+    pre else Anos >= 5 and Anos < 100
+    Self.TPessoa.FIdade += Anos
+;
+
+Main :
+    C TCliente
+    C.Aniversario(3)
+    C.Aniversario(50)
+    PutLn(C.FIdade)
+    C.Aniversario(200)
+;

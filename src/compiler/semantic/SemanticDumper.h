@@ -349,6 +349,8 @@ private:
             return "not";
         case ast::UnaryOperator::BitNot:
             return "bitnot";
+        case ast::UnaryOperator::Old:
+            return "old";
         }
         return "?";
     }

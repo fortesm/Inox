@@ -36,7 +36,7 @@ constexpr const char* kOldForStepMessage =
 // also when a ParseError propagates.
 class FlagScope {
 public:
-    explicit FlagScope(bool& flag) : flag_(flag), saved_(flag) { flag_ = true; }
+    explicit FlagScope(bool& flag, bool value = true) : flag_(flag), saved_(flag) { flag_ = value; }
     ~FlagScope() { flag_ = saved_; }
     FlagScope(const FlagScope&) = delete;
     FlagScope& operator=(const FlagScope&) = delete;
@@ -277,6 +277,13 @@ ast::StatementPtr Parser::parseStatement()
     if (checkKeyword("var") || checkKeyword("mut")) {
         errorAtCurrent(kVarRemovedMessage);
     }
+    if (atContractWord("pre") || atContractWord("pos")) {
+        errorAtCurrent("'pre' and 'pos' go on the first lines of a routine, before its statements (CANON-24)");
+    }
+    if (atContractWord("invariant") || atContractWord("variant")) {
+        errorAtCurrent("'invariant' and 'variant' go on the first lines of a loop, or 'invariant' in a "
+                       "Struct (CANON-24)");
+    }
 
     if (matchKeyword("if")) {
         return parseIfStatement();
@@ -333,7 +340,12 @@ ast::StatementPtr Parser::parseStatement()
 
 void Parser::appendStatement(std::vector<ast::StatementPtr>& statements)
 {
-    statements.push_back(parseStatement());
+    ast::StatementPtr statement = parseStatement();
+    for (auto& preceding : precedingStatements_) {
+        statements.push_back(std::move(preceding));
+    }
+    precedingStatements_.clear();
+    statements.push_back(std::move(statement));
     for (auto& pending : pendingStatements_) {
         statements.push_back(std::move(pending));
     }
@@ -673,6 +685,24 @@ ast::ExpressionPtr Parser::parseMultiplicative()
 ast::ExpressionPtr Parser::parseUnary()
 {
     DepthGuard guard(*this, expressionNesting_, kMaxExpressionNesting, "expression");
+    // CANON-24: `old X` in a `pos` clause is X as it was when the routine
+    // started; it binds to one operand (`old Count + 1` is `(old Count) + 1`).
+    if (inPosClause_ && check(TokenKind::Identifier) && peek().normalized == "old" &&
+        current_ + 1 < tokens_.size() && tokens_[current_ + 1].location.line == peek().location.line &&
+        (tokens_[current_ + 1].kind == TokenKind::Identifier || tokens_[current_ + 1].kind == TokenKind::LeftParen)) {
+        advance();
+        if (check(TokenKind::Identifier) && peek().normalized == "old") {
+            errorAtCurrent("'old old X' is not Inox (CANON-24): old is taken once, on entry");
+        }
+        auto operand = parsePostfix();
+        return makeExpr<ast::UnaryExpression>(ast::UnaryOperator::Old, std::move(operand));
+    }
+    if (inContractClause_ && check(TokenKind::Identifier) && peek().normalized == "old" &&
+        current_ + 1 < tokens_.size() && tokens_[current_ + 1].location.line == peek().location.line &&
+        tokens_[current_ + 1].kind == TokenKind::Identifier) {
+        errorAtCurrent("'old' is valid only in a 'pos' clause: a precondition, an invariant or a variant "
+                       "is checked now (CANON-24)");
+    }
     if (check(TokenKind::Plus) || check(TokenKind::Minus) ||
         checkKeyword("not") || checkKeyword("bitnot")) {
         const lexer::Token& op = advance();
@@ -1118,15 +1148,21 @@ ast::StatementPtr Parser::parseWithStatement()
 ast::StatementPtr Parser::parseWhileStatement()
 {
     auto condition = parseValue();
-    auto body = parseHeaderDelimitedBlock();
+    requireHeaderLineBreak();
+    auto contracts = parseLoopContracts(true);
+    auto body = parseBlockBody();
+    consumeBlockClose();
+    lowerLoopContracts(std::move(contracts), body, true);
     return std::make_unique<ast::WhileStatement>(
         std::move(condition), std::move(body));
 }
 
 ast::StatementPtr Parser::parseRepeatStatement()
 {
+    auto contracts = parseLoopContracts(true);
     auto body = parseBlockBody();
     consumeBlockClose();
+    lowerLoopContracts(std::move(contracts), body, true);
     return std::make_unique<ast::RepeatStatement>(std::move(body));
 }
 
@@ -1161,7 +1197,11 @@ ast::StatementPtr Parser::parseForInStatement()
         step = parseValue();
     }
 
-    auto body = parseHeaderDelimitedBlock();
+    requireHeaderLineBreak();
+    auto contracts = parseLoopContracts(false);
+    auto body = parseBlockBody();
+    consumeBlockClose();
+    lowerLoopContracts(std::move(contracts), body, false);
     return std::make_unique<ast::ForInStatement>(
         iterator.lexeme,
         std::move(iterable),
@@ -1631,6 +1671,11 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
         }
         expectEndOfDeclarationLine(name.location.line, "'Struct'");
         while (!isAtEnd() && !check(TokenKind::Semicolon)) {
+            if (atContractWord("invariant")) {
+                advance();
+                declaration.invariants.push_back(parseContractClause(ast::ContractClause::Kind::Invariant));
+                continue;
+            }
             declaration.fields.push_back(parseStructField());
         }
         consumeBlockClose();
@@ -1848,6 +1893,21 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
     }
 
     consume(TokenKind::Colon, "expected ':' after function signature");
+    // CANON-24: `pre` and `pos` lines open the body; `pre else` and
+    // `pos then` are for an Override (Eiffel's require else / ensure then).
+    currentRoutine_ = functionName;
+    std::vector<ast::ContractClause> contracts;
+    while (atContractWord("pre") || atContractWord("pos")) {
+        const bool isPre = peek().normalized == "pre";
+        advance();
+        ast::ContractClause::Kind kind = isPre ? ast::ContractClause::Kind::Pre : ast::ContractClause::Kind::Pos;
+        if (isPre && matchKeyword("else")) {
+            kind = ast::ContractClause::Kind::PreElse;
+        } else if (!isPre && matchKeyword("then")) {
+            kind = ast::ContractClause::Kind::PosThen;
+        }
+        contracts.push_back(parseContractClause(kind));
+    }
     auto body = parseBlockBody();
     consumeBlockClose();
 
@@ -1855,7 +1915,185 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
         std::move(functionName),
         std::move(signatureTokens),
         std::move(body),
-        isOverride);
+        isOverride,
+        std::move(contracts));
+}
+
+// ---------- Design by contract (CANON-24) ----------
+
+// A contract line starts with the contextual word followed by more on the
+// same line, never by `:=` (so `Pos := 3` stays an assignment).
+bool Parser::atContractWord(std::string_view word) const
+{
+    if (isAtEnd() || peek().kind != TokenKind::Identifier || peek().normalized != word ||
+        current_ + 1 >= tokens_.size()) {
+        return false;
+    }
+    const lexer::Token& next = tokens_[current_ + 1];
+    return next.location.line == peek().location.line && next.kind != TokenKind::ColonEqual &&
+           next.kind != TokenKind::Dot && next.kind != TokenKind::Semicolon;
+}
+
+// The condition as written, for the run-time message.
+std::string Parser::sourceText(std::size_t first, std::size_t last) const
+{
+    std::string text;
+    for (std::size_t index = first; index < last && index < tokens_.size(); ++index) {
+        const lexer::Token& token = tokens_[index];
+        std::string piece = token.kind == TokenKind::StringLiteral ? '"' + token.lexeme + '"' : token.lexeme;
+        const bool glueLeft = token.kind == TokenKind::Dot || token.kind == TokenKind::Comma ||
+                              token.kind == TokenKind::RightParen || token.kind == TokenKind::RightBracket ||
+                              (token.kind == TokenKind::LeftParen && index > first &&
+                               tokens_[index - 1].kind == TokenKind::Identifier) ||
+                              token.kind == TokenKind::LeftBracket;
+        const bool previousGlues = index > first && (tokens_[index - 1].kind == TokenKind::Dot ||
+                                                     tokens_[index - 1].kind == TokenKind::LeftParen ||
+                                                     tokens_[index - 1].kind == TokenKind::LeftBracket);
+        if (!text.empty() && !glueLeft && !previousGlues) {
+            text += ' ';
+        }
+        text += piece;
+    }
+    return text;
+}
+
+// `Condition` or `Condition, "message"`, alone on its line.
+ast::ContractClause Parser::parseContractClause(ast::ContractClause::Kind kind)
+{
+    ast::ContractClause clause;
+    clause.kind = kind;
+    clause.line = previous().location.line;
+    if (isAtEnd() || peek().location.line != clause.line) {
+        errorAtCurrent("expected a condition on the same line (CANON-24)");
+    }
+    const std::size_t first = current_;
+    const bool isPos = kind == ast::ContractClause::Kind::Pos || kind == ast::ContractClause::Kind::PosThen;
+    {
+        FlagScope posScope(inPosClause_, isPos);
+        FlagScope clauseScope(inContractClause_);
+        clause.condition = parseValue();
+    }
+    clause.text = sourceText(first, current_);
+    if (match(TokenKind::Comma)) {
+        const lexer::Token& message = consume(TokenKind::StringLiteral,
+                                              "a contract's message is a String literal (CANON-24)");
+        clause.message = message.lexeme;
+    }
+    expectEndOfDeclarationLine(clause.line, "a contract clause");
+    return clause;
+}
+
+std::vector<ast::ContractClause> Parser::parseLoopContracts(bool allowVariant)
+{
+    std::vector<ast::ContractClause> contracts;
+    bool sawVariant = false;
+    while (atContractWord("invariant") || atContractWord("variant")) {
+        const bool isVariant = peek().normalized == "variant";
+        if (isVariant && !allowVariant) {
+            errorAtCurrent("a 'for' loop always ends: it has no 'variant' (CANON-24)");
+        }
+        if (isVariant && sawVariant) {
+            errorAtCurrent("a loop has one 'variant' (CANON-24)");
+        }
+        sawVariant = sawVariant || isVariant;
+        advance();
+        contracts.push_back(parseContractClause(isVariant ? ast::ContractClause::Kind::LoopVariant
+                                                          : ast::ContractClause::Kind::LoopInvariant));
+    }
+    return contracts;
+}
+
+namespace {
+
+ast::ExpressionPtr contractCheck(int kind, ast::ExpressionPtr condition, const std::string& message)
+{
+    std::vector<ast::ExpressionPtr> arguments;
+    arguments.push_back(std::make_unique<ast::LiteralExpression>(ast::LiteralKind::Integer, std::to_string(kind)));
+    arguments.push_back(std::move(condition));
+    arguments.push_back(std::make_unique<ast::LiteralExpression>(ast::LiteralKind::String, message));
+    return std::make_unique<ast::CallExpression>(makeSyntheticIdentifier("__check"), std::move(arguments));
+}
+
+std::string clauseMessage(const std::string& category, const std::string& routine, const ast::ContractClause& clause,
+                          const std::string& extra = {})
+{
+    std::string message = category + ": " + routine + ": " + clause.text + extra;
+    if (!clause.message.empty()) {
+        message += ": " + clause.message;
+    }
+    return message;
+}
+
+ast::StatementPtr statementOf(ast::ExpressionPtr expression)
+{
+    return std::make_unique<ast::ExpressionStatement>(std::move(expression));
+}
+
+ast::ExpressionPtr assignment(const std::string& name, ast::ExpressionPtr value)
+{
+    return std::make_unique<ast::BinaryExpression>(ast::BinaryOperator::Assign, makeSyntheticIdentifier(name),
+                                                   std::move(value));
+}
+
+} // namespace
+
+// A loop's `invariant` is checked at the start of every iteration and, for
+// while and repeat, once more when the loop ends; its `variant` (an integer)
+// must be >= 0 at the start of every iteration and smaller than at the
+// start of the previous one (Eiffel; CANON-24). The checks are statements
+// put into the body; the variant's previous value lives before the loop.
+void Parser::lowerLoopContracts(std::vector<ast::ContractClause> contracts,
+                                std::vector<ast::StatementPtr>& body,
+                                bool checkAfterLoop)
+{
+    if (contracts.empty()) {
+        return;
+    }
+    const std::string id = std::to_string(++contractCounter_);
+    std::vector<ast::StatementPtr> top;
+    for (ast::ContractClause& clause : contracts) {
+        if (clause.kind == ast::ContractClause::Kind::LoopInvariant) {
+            if (checkAfterLoop) {
+                // The same condition once more, right after the loop.
+                pendingStatements_.push_back(statementOf(contractCheck(
+                    4, ast::cloneExpression(*clause.condition), clauseMessage("loop invariant violated", currentRoutine_, clause, " (at the end)"))));
+            }
+            top.push_back(statementOf(
+                contractCheck(4, std::move(clause.condition), clauseMessage("loop invariant violated", currentRoutine_, clause))));
+            continue;
+        }
+        const std::string current = "__variant_" + id;
+        const std::string previousName = "__variant_previous_" + id;
+        precedingStatements_.push_back(statementOf(assignment(
+            previousName, std::make_unique<ast::UnaryExpression>(
+                              ast::UnaryOperator::Minus,
+                              std::make_unique<ast::LiteralExpression>(ast::LiteralKind::Integer, "1")))));
+        std::vector<ast::ExpressionPtr> conversion;
+        conversion.push_back(std::move(clause.condition));
+        std::vector<ast::ExpressionPtr> pure;
+        pure.push_back(std::make_unique<ast::CallExpression>(makeSyntheticIdentifier("Integer"), std::move(conversion)));
+        top.push_back(statementOf(assignment(
+            current, std::make_unique<ast::CallExpression>(makeSyntheticIdentifier("__pure"), std::move(pure)))));
+        top.push_back(statementOf(contractCheck(
+            5,
+            std::make_unique<ast::BinaryExpression>(ast::BinaryOperator::GreaterEqual, makeSyntheticIdentifier(current),
+                                                    std::make_unique<ast::LiteralExpression>(ast::LiteralKind::Integer, "0")),
+            clauseMessage("loop variant violated", currentRoutine_, clause, " is negative"))));
+        top.push_back(statementOf(contractCheck(
+            5,
+            std::make_unique<ast::BinaryExpression>(
+                ast::BinaryOperator::Or,
+                std::make_unique<ast::BinaryExpression>(ast::BinaryOperator::Less, makeSyntheticIdentifier(previousName),
+                                                        std::make_unique<ast::LiteralExpression>(ast::LiteralKind::Integer, "0")),
+                std::make_unique<ast::BinaryExpression>(ast::BinaryOperator::Less, makeSyntheticIdentifier(current),
+                                                        makeSyntheticIdentifier(previousName))),
+            clauseMessage("loop variant violated", currentRoutine_, clause, " did not decrease"))));
+        top.push_back(statementOf(assignment(previousName, makeSyntheticIdentifier(current))));
+    }
+    for (auto& statement : body) {
+        top.push_back(std::move(statement));
+    }
+    body = std::move(top);
 }
 
 std::string Parser::parseQualifiedName(std::string_view message)

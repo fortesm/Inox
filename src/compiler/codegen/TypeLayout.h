@@ -51,6 +51,7 @@ struct StructFieldInfo {
     std::string llvmType;
     std::size_t index = 0;
     bool isStruct = false;  // a nested struct value, embedded by value
+    bool isPart = false;    // a reused struct (CANON-9): its invariant is the struct's too
     bool hasDefault = false;
     std::string defaultValue;
 };

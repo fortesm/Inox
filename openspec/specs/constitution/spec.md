@@ -30,7 +30,7 @@ Reading order for anyone without context: this file, `engineering.md`,
 capability spec of the topic at hand, then `AGENTS.md` (how to work in this
 repository).
 
-Each requirement starts with a stable anchor (G1–G8, CANON-1 to CANON-23,
+Each requirement starts with a stable anchor (G1–G8, CANON-1 to CANON-24,
 VERSIONING, FUTURE) that code comments, diagnostics and tests cite; one
 anchor may span several requirements. Each scenario names the test that
 proves it, or says "test to add" (a recorded gap). Everything in this file
@@ -1243,8 +1243,8 @@ The category texts SHALL be: `integer overflow`, `division by zero`,
 exponent`, `invalid integer input`, `value out of range for Natural`,
 `integer conversion out of range`, `array index out of bounds`, `slice
 bounds out of range`, `out of memory`, `invalid UTF-8 input`, `assertion
-failed` (followed by `: Message` when given), and `value out of range`
-(Range types).
+failed` (followed by `: Message` when given), the contract categories of
+CANON-24, and `value out of range` (Range types).
 
 #### Scenario: Categories
 - **WHEN** each kind of fault happens at run time
@@ -1380,6 +1380,76 @@ developer switches.
 - **WHEN** a program is run with `inox file`, `inox run` and `--run`, checked with `inox check`, and `inox help`, `inox version` and `inox run` without a file are called
 - **THEN** each behaves as stated (scripts/run-tests.sh, scripts/run-tests.ps1: "inox check <file>", "inox help", "inox version = inox --version", "inox run without a file is an error", tests/integration/run-hello.inox)
 
+### Requirement: CANON-24 Design by contract
+Routines and structs SHALL carry Eiffel's contracts (Marcelo Fortes,
+2026-10-14: "implemente design by contract exatamente igual eiffel a
+diferença é que as palavras reservadas pre para precondições e pos para
+poscondições"): `pre` (Eiffel require) on the first lines of a routine,
+checked on every call; `pos` (Eiffel ensure), checked on every normal
+return; `invariant` in a Struct. Details: `language/contracts`.
+
+#### Scenario: Contracts that hold
+- **WHEN** routines with pre and pos, a struct invariant, an Override and loop contracts run within their contracts
+- **THEN** the program runs normally (tests/runtime/contracts.inox, examples/contracts.inox)
+
+### Requirement: CANON-24 Old and Result
+In a `pos`, `old X` SHALL be X evaluated when the routine started (after
+its `pre`), and `Result` the value a function returns. `old` exists only in
+a `pos`; `Result` only in a function's `pos`. A `pos` is not checked when
+the routine ends by an exception.
+
+#### Scenario: Old and Result misused
+- **WHEN** old appears in a pre, or Result in a pre or in a subroutine's pos
+- **THEN** it is rejected (tests/diagnostics/contract-old-in-pre.inox, tests/diagnostics/contract-result-in-pre.inox, tests/diagnostics/contract-result-in-subroutine.inox)
+
+### Requirement: CANON-24 Struct invariants
+A struct's `invariant` SHALL hold, together with the invariants of the
+structs it reuses, on every new value (construction or defaults), before
+and after every method called on it from outside (`Self` calls excepted),
+and after a field or a ref mut argument is changed from outside its own
+methods.
+
+#### Scenario: Broken invariants
+- **WHEN** a method, a field write, a ref mut argument or a construction breaks an invariant
+- **THEN** the program traps (tests/runtime/contract-invariant-method.inox, tests/runtime/contract-invariant-field.inox, tests/runtime/contract-invariant-ref-mut.inox, tests/runtime/contract-invariant-construction.inox)
+
+### Requirement: CANON-24 Contracts of an Override
+An Override SHALL inherit the contracts of the methods it replaces, as
+Eiffel redeclaration: its precondition is the inherited one `or else` its
+own `pre else`, its postcondition the inherited one `and then` its own
+`pos then`. A plain `pre` or `pos` in an Override, or `pre else`/`pos then`
+elsewhere, is an error.
+
+#### Scenario: Weakened precondition
+- **WHEN** an Override accepts calls its part refuses, and a call satisfies neither
+- **THEN** the first runs and the second traps naming both alternatives (tests/runtime/contract-override-pre.inox)
+
+#### Scenario: Override keywords
+- **WHEN** an Override writes `pre`, or a routine that is not one writes `pre else`
+- **THEN** it is rejected (tests/diagnostics/contract-plain-pre-in-override.inox, tests/diagnostics/contract-pre-else-not-override.inox)
+
+### Requirement: CANON-24 Loop contracts
+The first lines of a `while`, `repeat` or `for` body MAY hold `invariant`
+lines, checked at the start of every iteration and, for while and repeat,
+when the loop ends; `while` and `repeat` MAY hold one `variant`, an integer
+that SHALL be >= 0 and smaller at every iteration than at the previous one.
+
+#### Scenario: Loops
+- **WHEN** a loop invariant fails, or a variant does not decrease or turns negative
+- **THEN** the program traps (tests/runtime/contract-loop-invariant.inox, tests/runtime/contract-loop-variant.inox, tests/runtime/contract-loop-variant-negative.inox)
+
+### Requirement: CANON-24 A broken contract is a trap
+A broken contract SHALL be a bug, never an exception: a CANON-19 trap
+(`precondition violated`, `postcondition violated`, `invariant violated`,
+`loop invariant violated`, `loop variant violated`) naming the routine or
+struct, the condition as written and its message (`pre X > 0, "message"`).
+Contracts are always checked and only read: no Self mut method, ref mut
+argument, file or input.
+
+#### Scenario: Not catchable, read-only
+- **WHEN** a pre fails inside try, or a contract calls a Self mut method or a ref mut routine
+- **THEN** the program traps (tests/runtime/contract-pre-violated.inox), or the contract is rejected (tests/diagnostics/contract-calls-self-mut.inox, tests/diagnostics/contract-calls-ref-mut.inox)
+
 ### Requirement: VERSIONING The version number
 Inox SHALL have one version for the language and its compiler,
 `MAJOR.MINOR.RELEASE.BUILD` plus a stage: MAJOR 0..99 (a generation; 1 is
@@ -1421,16 +1491,16 @@ idea is not decided. It needs an approved design before implementation.
 - **WHEN** a program uses `do` as a name
 - **THEN** it is rejected (tests/diagnostics/do-reserved.inox)
 
-### Requirement: FUTURE Contracts and generics
-Contracts (`Pre`, `Pos`, `Invariant`) SHALL be static checks, never
-interfaces, subtyping, mixins or duck typing. No decision introduces traits,
-protocols, interfaces or behaviors as nominal entities: behavior is reused
-by method reuse (CANON-9). Generics come first in their simplest form (Marcelo
-Fortes, 2026-10-13: "da forma mais simples possível e depois podemos
-evoluir"). Each needs an approved design.
+### Requirement: FUTURE Generics and static proof
+No decision SHALL introduce traits, protocols, interfaces or behaviors as
+nominal entities: behavior is reused by method reuse (CANON-9) and
+contracts (CANON-24) are checks, never types. Generics come first in their
+simplest form (Marcelo Fortes, 2026-10-13: "da forma mais simples possível
+e depois podemos evoluir"). Proving contracts at compile time (as SPARK
+does) is a later change. Each needs an approved design.
 
-#### Scenario: Not yet in the language
-- **WHEN** a program writes a contract
+#### Scenario: Generics not yet in the language
+- **WHEN** a program declares a generic routine
 - **THEN** it is not accepted until the design is approved (test to add)
 
 ### Requirement: FUTURE Ownership, absence and failure

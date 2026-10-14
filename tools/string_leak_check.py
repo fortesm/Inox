@@ -10,7 +10,7 @@ String and File values are reference counted by code the compiler inserts
 (OpenSpec changes string-runtime and file-io). A missing release leaks (and
 leaves a file open); an extra one frees twice or reads freed memory. The
 regular suite only compares output, so it sees neither. For each
-tests/runtime/string*.inox and files-*.inox (and examples/file_io.inox) this tool emits LLVM IR with
+tests/runtime/string*.inox, files-*.inox and contracts*.inox (and some examples) this tool emits LLVM IR with
 inox, links it with AddressSanitizer against libinoxrt, runs it with the
 NAME.in input, and requires:
 
@@ -82,7 +82,9 @@ def main(argv):
 
     programs = sorted(glob.glob(os.path.join(ROOT, "tests", "runtime", "string*.inox")) +
                       glob.glob(os.path.join(ROOT, "tests", "runtime", "files-*.inox")) +
-                      [os.path.join(ROOT, "examples", name) for name in ("file_io.inox", "bank-atm.inox")])
+                      glob.glob(os.path.join(ROOT, "tests", "runtime", "contracts*.inox")) +
+                      [os.path.join(ROOT, "examples", name)
+                       for name in ("file_io.inox", "bank-atm.inox", "contracts.inox")])
     if not programs:
         print("FAIL string_leak_check: no String test programs found")
         return 1

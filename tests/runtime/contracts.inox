@@ -1,0 +1,128 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24 design by contract, the contracts that hold: pre and pos with
+== old and Result, a struct invariant with a reused part, an Override that
+== inherits and extends the contracts it replaces, loop invariant and
+== variant, contracts on a method of a built-in type, recursion, a body that
+== raises (its pos is not checked) and a String in old.
+Module Runtime.Contracts
+
+Type
+    TPessoa Struct
+        FNome String := ""
+        FIdade Integer := 0
+        invariant Self.FIdade >= 0, "idade não negativa"
+    ;
+    TCliente Struct (TPessoa)
+        FLimite Integer := 0
+        invariant Self.FLimite <= 1000
+    ;
+
+TPessoa.Aniversario(Self mut, Anos Integer) :
+    pre Anos > 0 and Anos < 5
+    pos Self.FIdade = old Self.FIdade + Anos
+    Self.FIdade += Anos
+;
+
+TPessoa.Renomear(Self mut, Nome String) :
+    pre Nome # ""
+    pos Self.FNome = Nome
+    pos Self.FNome # old Self.FNome or Nome = old Self.FNome
+    Self.FNome := Nome
+;
+
+TPessoa.Idade(Self) Integer :
+    pos Result = Self.FIdade
+    Return Self.FIdade
+;
+
+TCliente.Aniversario(Self mut, Anos Integer) Override :
+    pre else Anos >= 5 and Anos < 100
+    pos then Self.FLimite = old Self.FLimite
+    Self.TPessoa.FIdade += Anos
+;
+
+String.Trocar(Self mut, Novo String) :
+    pre Novo # ""
+    pos Self = Novo
+    Self := Novo
+;
+
+Fatorial(N Integer) Integer :
+    pre N >= 0 and N <= 20
+    pos Result >= 1
+    if N = 0
+        Return 1
+    ;
+    Return N * Fatorial(N - 1)
+;
+
+Raiz(N Integer) Integer :
+    pre N >= 0
+    pos Result * Result <= N and (Result + 1) * (Result + 1) > N
+    R := 0
+    while (R + 1) * (R + 1) <= N
+        invariant R * R <= N
+        variant N - R * R
+        R += 1
+    ;
+    Return R
+;
+
+Somar(N Integer) Integer :
+    pre N >= 0
+    pos Result = N * (N + 1) div 2
+    Total := 0
+    for I in 1..N
+        invariant Total = (I - 1) * I div 2
+        Total += I
+    ;
+    Return Total
+;
+
+Contar(N Integer) Integer :
+    I := N
+    Passos := 0
+    repeat
+        invariant I >= 0
+        variant I
+        if I = 0
+            leave
+        ;
+        I -= 1
+        Passos += 1
+    ;
+    Return Passos
+;
+
+Falhar(N Integer) Integer :
+    pos Result = N + 1
+    if N > 0
+        Raise RangeError
+    ;
+    Return N
+;
+
+Main :
+    C TCliente
+    C.Renomear("Ana")
+    C.Aniversario(3)                == pre of TPessoa (inherited)
+    C.Aniversario(40)               == pre else of TCliente
+    PutLn(C.FNome, " ", C.Idade, " ", C.FLimite)
+    C.FLimite := 1000
+    S := "x"
+    S.Trocar("y")
+    PutLn(S, " ", Fatorial(10), " ", Raiz(99), " ", Raiz(100), " ", Somar(10), " ", Contar(4))
+    try
+        PutLn(Falhar(1))
+    except
+        On RangeError
+            PutLn("RangeError: o pos de Falhar não é verificado")
+        ;
+    ;
+;

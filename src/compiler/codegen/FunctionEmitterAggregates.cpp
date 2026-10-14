@@ -189,6 +189,10 @@ std::string FunctionEmitter::emitConstruction(const ast::CallExpression& call, c
                 << ", i32 0, i32 " << field->index << '\n';
         output_ << "  store " << field->llvmType << ' ' << value << ", ptr " << fieldPointer << '\n';
     }
+    // CANON-24: the new value satisfies its invariant.
+    if (const std::string* invariantType = semantics_.newValueInvariant(call)) {
+        emitInvariantOf(*invariantType, slot);
+    }
     const std::string result = "%tmp" + std::to_string(nextTemporary_++);
     output_ << "  " << result << " = load " << structType.llvmName << ", ptr " << slot << '\n';
     return result;
@@ -364,14 +368,18 @@ FunctionEmitter::MethodCallTarget FunctionEmitter::resolveNoArgumentMethodAccess
 
 std::string FunctionEmitter::emitNoArgumentMethodCall(const ast::CallExpression& member, bool requireValue)
 {
+    emitInvariantChecks(member, false);
     const MethodCallTarget target = resolveNoArgumentMethodAccess(member);
     const FunctionSignature& signature = *target.signature;
 
-    return emitUserCall(signature, {target.receiverPointer}, requireValue);
+    const std::string result = emitUserCall(signature, {target.receiverPointer}, requireValue);
+    emitInvariantChecks(member, true);
+    return result;
 }
 
 std::string FunctionEmitter::emitMethodCall(const ast::CallExpression& call, bool requireValue)
 {
+    emitInvariantChecks(call, false);
     const MethodCallTarget target = resolveMethodCall(call);
     const FunctionSignature& signature = *target.signature;
 
@@ -382,7 +390,9 @@ std::string FunctionEmitter::emitMethodCall(const ast::CallExpression& call, boo
         arguments.push_back(std::move(value));
     }
 
-    return emitUserCall(signature, arguments, requireValue);
+    const std::string result = emitUserCall(signature, arguments, requireValue);
+    emitInvariantChecks(call, true);
+    return result;
 }
 
 void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression)
@@ -422,6 +432,7 @@ void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression)
         const std::string value = emitExpression(assignment.right());
         const std::string stored = narrowForStorage(value, element);
         emitOwningStore(element.pointer, element.elementType, element.storage, stored);
+        emitInvariantChecks(assignment, true);
         return;
     }
 
@@ -431,6 +442,7 @@ void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression)
         const std::string value = emitExpression(assignment.right());
         const auto info = memberField(member);
         emitOwningStore(field.pointer, info ? info->second->inoxType : std::string{}, field.llvmType, value);
+        emitInvariantChecks(assignment, true);
         return;
     }
 

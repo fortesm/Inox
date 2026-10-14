@@ -288,6 +288,13 @@ private:
     };
 
     MethodCallTarget resolveMethodCall(const ast::CallExpression& call);
+
+    // Design by contract (CANON-24; FunctionEmitterContracts.cpp).
+    bool isContractCheck(const ast::CallExpression& call) const;
+    void emitContractCheck(const ast::CallExpression& call);
+    void emitInvariantChecks(const ast::AstNode& site, bool after);
+    void emitInvariantOf(const std::string& typeName, const std::string& pointer);
+    void emitNewValueInvariant(const ast::VarStatement& declaration);
     const FunctionSignature* findMethodSignature(const ast::Expression& receiver, const std::string& method) const;
     std::string emitReceiver(const FunctionSignature& signature, const ast::Expression& receiver);
 

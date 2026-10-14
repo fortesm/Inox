@@ -1,0 +1,1 @@
+Inox runtime error: invariant violated: TConta: Self.FSaldo >= 0: saldo nunca negativo
