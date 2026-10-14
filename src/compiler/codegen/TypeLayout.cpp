@@ -203,6 +203,7 @@ void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefi
             }
             field.hasDefault = fieldDeclaration.hasDefault;
             field.defaultValue = fieldDeclaration.defaultValue;
+            field.isPart = fieldDeclaration.isPart;
             definition.fields.push_back(std::move(field));
         }
         structs.emplace(normalize(definition.inoxName), std::move(definition));

@@ -116,6 +116,7 @@ bool SemanticAnalyzer::isFileFunction(std::string_view name, std::size_t argumen
 
 std::string SemanticAnalyzer::analyzeFileCall(std::string_view name, const ast::CallExpression& call)
 {
+    rejectInContract("the file function " + std::string(name));
     const FileFunction& function = *findFileFunction(name);
     const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
     const std::string functionName(function.name);

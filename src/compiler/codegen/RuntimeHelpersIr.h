@@ -21,6 +21,7 @@ std::string inputRuntimeHelpers();
 std::string runtimeFaultSeam();
 // `@__inox_assert_message(ptr)`: a failed Assert with a message (Std.Debug);
 // emitted only by a module that needs it.
+std::string contractMessageHelper();
 std::string assertMessageHelper();
 // Checked Integer arithmetic helpers (`__inox_add_i64`, ...).
 std::string mathRuntimeHelpers();

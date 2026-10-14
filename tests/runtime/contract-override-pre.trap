@@ -1,0 +1,1 @@
+Inox runtime error: precondition violated: TCliente.Aniversario: (Anos > 0 and Anos < 5) or else (Anos >= 5 and Anos < 100)

@@ -117,6 +117,9 @@ std::string FunctionEmitter::expressionLlvmType(const ast::Expression& expressio
             if (equalsIgnoreCase(callee.name(), "Abs") && call.arguments().size() == 1) {
                 return expressionLlvmType(*call.arguments().front());
             }
+            if (callee.name() == "__pure" && call.arguments().size() == 1) {
+                return expressionLlvmType(*call.arguments().front());
+            }
             if (isFileCall(call)) {
                 return fileCallLlvmType(call);
             }
@@ -529,6 +532,11 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             }
         }
 
+        // CANON-24: `old X` and a loop variant, evaluated where they stand.
+        if (callee.name() == "__pure" && call.arguments().size() == 1) {
+            return emitExpression(*call.arguments().front());
+        }
+
         if (equalsIgnoreCase(callee.name(), "Abs") && call.arguments().size() == 1 &&
             expressionLlvmType(*call.arguments().front()) == "i64") {
             const std::string value = emitExpression(*call.arguments().front());
@@ -576,7 +584,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         }
 
         const std::vector<std::string> arguments = emitArguments(signature->second, call.arguments(), 0);
-        return emitUserCall(signature->second, arguments, true);
+        const std::string result = emitUserCall(signature->second, arguments, true);
+        emitInvariantChecks(call, true);
+        return result;
     }
     default:
         break;

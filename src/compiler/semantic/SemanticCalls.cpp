@@ -31,6 +31,17 @@ using namespace detail;
 
 std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
 {
+    // CANON-24: the intrinsics written by the contract lowering.
+    if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
+        const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
+        if (name == "__check") {
+            return analyzeContractCheck(call);
+        }
+        if (name == "__pure") {
+            return analyzePureCall(call);
+        }
+    }
+
     // `Name := Value` inside an argument list is named struct construction
     // (CANON-9). It is not an assignment, and only a struct constructor takes it.
     const bool calleeIsType =
@@ -165,6 +176,10 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
                         type->name + "." + field.name);
                 }
             }
+            // CANON-24: a new value satisfies its invariant.
+            if (hasInvariant(type->name) && invariantChecksOn()) {
+                result_.requireNewValueInvariant(call, structType->name);
+            }
             return canonicalTypeName(type->name);
         }
 
@@ -210,7 +225,15 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
             const Symbol& symbol = resolveOrThrow(callee.name());
             result_.bind(callee, symbol);
             result_.bind(call, symbol);
-            return analyzeUserFunctionCall(*signature, call.arguments());
+            const std::string type = analyzeUserFunctionCall(*signature, call.arguments());
+            // CANON-24: a ref mut argument may break its struct's invariant.
+            for (std::size_t index = 0; index < call.arguments().size(); ++index) {
+                if (signature->parameters[index].mode == PassMode::RefMut) {
+                    rejectInContract("calling " + signature->name + ", which changes a ref mut argument,");
+                    recordInvariantPlaces(call, *call.arguments()[index], false, true);
+                }
+            }
+            return type;
         }
     }
 
@@ -268,6 +291,11 @@ std::string SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression&
                 signature->parameters.front().typeName + ", got " + baseType);
         }
         requireWritableReceiver(*signature, *call.arguments()[0]);
+        if (signature->parameters.front().mode == PassMode::RefMut) {
+            rejectInContract("calling " + signature->name + ", which changes its receiver (Self mut),");
+        }
+        recordInvariantPlaces(call, *call.arguments()[0], true,
+                              signature->parameters.front().mode == PassMode::RefMut);
         const Symbol& symbol = resolveOrThrow(signature->name);
         result_.bind(fieldIdentifier, symbol);
         result_.bind(call, symbol);
@@ -311,6 +339,9 @@ std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpress
             signature->parameters.front().typeName + ", got " + receiverType);
     }
     requireWritableReceiver(*signature, *member.arguments()[0]);
+    if (signature->parameters.front().mode == PassMode::RefMut) {
+        rejectInContract("calling " + signature->name + ", which changes its receiver (Self mut),");
+    }
     if (call.arguments().size() + 1 != signature->parameters.size()) {
         throw SemanticError(
             "method " + signature->name + " expects " +
@@ -335,6 +366,16 @@ std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpress
         }
     }
     checkReferenceArguments(signature->name, signature->parameters, 1, call.arguments());
+    // CANON-24: the receiver's invariant before and (Self mut) after the
+    // call; a ref mut argument's after it.
+    recordInvariantPlaces(call, *member.arguments()[0], true,
+                          signature->parameters.front().mode == PassMode::RefMut);
+    for (std::size_t index = 0; index < call.arguments().size(); ++index) {
+        if (signature->parameters[index + 1].mode == PassMode::RefMut) {
+            rejectInContract("calling " + signature->name + ", which changes a ref mut argument,");
+            recordInvariantPlaces(call, *call.arguments()[index], false, true);
+        }
+    }
     // ADR-0016: the receiver is an argument too; a `ref mut` argument may
     // not reach the receiver's variable through another name.
     std::vector<std::string> receiverNames;

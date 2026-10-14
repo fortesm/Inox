@@ -372,6 +372,11 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
                                     : "")
                          : std::string("a field of a value that is not a variable")));
             }
+            // CANON-24: a write from outside the struct's own methods keeps
+            // its invariant (and the invariants of the structs around it).
+            recordInvariantPlaces(expression,
+                                  *static_cast<const ast::CallExpression&>(expression.left()).arguments()[0], false,
+                                  true);
         } else if (isIndexTarget(expression.left())) {
             // CANON-13: `A[I] := X` writes an element. The root must be a
             // mutable variable; writing it is not reading it (OPEN-4).
@@ -395,6 +400,9 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
             if (!rootWasRead) {
                 readSymbols_.erase(rootSymbol);
             }
+            recordInvariantPlaces(expression,
+                                  *static_cast<const ast::CallExpression&>(expression.left()).arguments()[0], false,
+                                  true);
             // ADR-0017: a slice is a read-only view.
             for (const ast::Expression* base = &expression.left();
                  base->kind() == ast::AstNodeKind::CallExpression;
@@ -581,6 +589,10 @@ std::string SemanticAnalyzer::analyzeUnaryExpression(const ast::UnaryExpression&
             return "Int64";
         }
         return operandType;
+    case ast::UnaryOperator::Old:
+        // The contract pass turns every `old X` of a `pos` into a value
+        // saved on entry; one left here is outside a pos (CANON-24).
+        throw SemanticError("'old' is valid only in a 'pos' clause (CANON-24)");
     }
 
     return {};

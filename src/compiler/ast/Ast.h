@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -85,7 +86,8 @@ enum class UnaryOperator {
     Plus,
     Minus,
     Not,
-    BitNot
+    BitNot,
+    Old  // `old X` in a `pos` clause (CANON-24): X as it was on entry
 };
 
 enum class SectionKind {
@@ -195,6 +197,26 @@ struct StructFieldDeclaration {
     bool isPart = false;
 };
 
+// Design by contract (CANON-24): one `pre`, `pos`, `invariant` or `variant`
+// line. `text` is the condition as written, for the run-time message;
+// `message` is the optional String literal after a comma.
+struct ContractClause {
+    enum class Kind {
+        Pre,            // pre Condition
+        PreElse,        // pre else Condition (an Override weakens)
+        Pos,            // pos Condition
+        PosThen,        // pos then Condition (an Override strengthens)
+        Invariant,      // invariant Condition, in a Struct
+        LoopInvariant,  // invariant Condition, first lines of a loop
+        LoopVariant     // variant IntegerExpression, first lines of a loop
+    };
+    Kind kind = Kind::Pre;
+    ExpressionPtr condition;
+    std::string text;
+    std::string message;
+    std::size_t line = 0;
+};
+
 enum class TypeDeclarationKind {
     Struct,
     Range,
@@ -210,6 +232,7 @@ struct TypeDeclaration {
     std::vector<StructFieldDeclaration> fields;
     ExpressionPtr bounds;  // Range: the `Low..High` expression
     std::vector<std::string> literals;
+    std::vector<ContractClause> invariants;  // Struct: `invariant` lines (CANON-24)
 };
 
 // One Const or State declaration (CANON-5). `typeName` is empty for the
@@ -257,19 +280,26 @@ public:
     FunctionDeclaration(std::string name,
                         std::vector<std::string> signatureTokens,
                         std::vector<StatementPtr> body,
-                        bool isOverride = false);
+                        bool isOverride = false,
+                        std::vector<ContractClause> contracts = {});
 
     const std::string& name() const;
     const std::vector<std::string>& signatureTokens() const;
     const std::vector<StatementPtr>& body() const;
     // `TName.Method(...) [Type] Override :` replaces a reused method (CANON-9).
     bool isOverride() const;
+    // `pre` / `pos` lines (CANON-24); the contract lowering pass moves them
+    // into checks and leaves this empty.
+    const std::vector<ContractClause>& contracts() const;
+    std::vector<ContractClause> takeContracts();
+    std::vector<StatementPtr> takeBody();
 
 private:
     std::string name_;
     std::vector<std::string> signatureTokens_;
     std::vector<StatementPtr> body_;
     bool isOverride_ = false;
+    std::vector<ContractClause> contracts_;
 };
 
 class LiteralExpression final : public Expression {
@@ -612,5 +642,12 @@ private:
     std::vector<StatementPtr> body_;
     std::string bindingName_;
 };
+
+// A deep copy of an expression (CANON-24: the contract pass checks one
+// condition in two places, and an Override inherits the replaced method's
+// clauses). `rewrite`, when given, may return a replacement for any node
+// (it is asked before the node is copied); nullptr keeps the copy.
+using ExpressionRewriter = std::function<ExpressionPtr(const Expression&)>;
+ExpressionPtr cloneExpression(const Expression& expression, const ExpressionRewriter& rewrite = {});
 
 } // namespace inox::compiler::ast

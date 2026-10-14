@@ -1,0 +1,32 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24: a for loop always ends, so it has no variant.
+Module Diagnostics.ContractVariantInFor
+Type
+    TA Struct
+        FX Integer := 0
+    ;
+    TB Struct (TA)
+        FY Integer := 0
+    ;
+TA.Bump(Self mut) :
+    Self.FX += 1
+;
+TA.Show(Self) Integer :
+    pre Self.FX >= 0
+    Return Self.FX
+;
+Inc(ref mut N Integer) :
+    N += 1
+;
+Main :
+    for I in 1..3
+        variant 3 - I
+        PutLn(I)
+    ;
+;

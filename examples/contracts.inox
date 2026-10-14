@@ -1,0 +1,90 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Design by contract (CANON-24), as in Eiffel:
+==   pre        what the caller must guarantee (Eiffel require)
+==   pos        what the routine guarantees on return (Eiffel ensure);
+==              old X is X on entry, Result the returned value
+==   invariant  what is always true of a struct, between calls
+==   pre else / pos then   an Override weakens / strengthens what it inherits
+==   invariant / variant   on the first lines of a loop
+== A broken contract stops the program with "Inox runtime error: ...", like
+== an overflow: it is a bug, not an exception.
+Module Contracts
+
+Const Capacidade := 5
+
+Type
+    TPilha Struct
+        FItens Array[1..Capacidade] Integer
+        FQuantidade Integer := 0
+        invariant Self.FQuantidade >= 0 and Self.FQuantidade <= Capacidade, "quantidade na faixa"
+    ;
+    TPilhaContada Struct (TPilha)
+        FOperacoes Integer := 0
+    ;
+
+TPilha.Vazia(Self) Bool :
+    Return Self.FQuantidade = 0
+;
+
+TPilha.Cheia(Self) Bool :
+    Return Self.FQuantidade = Capacidade
+;
+
+TPilha.Empilhar(Self mut, X Integer) :
+    pre not Self.Cheia, "a pilha não está cheia"
+    pos Self.FQuantidade = old Self.FQuantidade + 1
+    pos Self.Topo = X
+    Self.FQuantidade += 1
+    Self.FItens[Self.FQuantidade] := X
+;
+
+TPilha.Desempilhar(Self mut) Integer :
+    pre not Self.Vazia, "a pilha não está vazia"
+    pos Self.FQuantidade = old Self.FQuantidade - 1
+    pos Result = old Self.Topo
+    X := Self.FItens[Self.FQuantidade]
+    Self.FQuantidade -= 1
+    Return X
+;
+
+TPilha.Topo(Self) Integer :
+    pre not Self.Vazia
+    Return Self.FItens[Self.FQuantidade]
+;
+
+== The counted stack keeps the contract of Empilhar and promises more.
+TPilhaContada.Empilhar(Self mut, X Integer) Override :
+    pos then Self.FOperacoes = old Self.FOperacoes + 1
+    Self.TPilha.Empilhar(X)
+    Self.FOperacoes += 1
+;
+
+Soma(N Integer) Integer :
+    pre N >= 0
+    pos Result = N * (N + 1) div 2
+    Total := 0
+    I := 0
+    while I < N
+        invariant Total = I * (I + 1) div 2
+        variant N - I
+        I += 1
+        Total += I
+    ;
+    Return Total
+;
+
+Main :
+    P TPilhaContada
+    for I in 1..3
+        P.Empilhar(I * 10)
+    ;
+    PutLn("topo ", P.Topo, ", quantidade ", P.FQuantidade, ", operações ", P.FOperacoes)
+    PutLn("desempilhado ", P.Desempilhar, ", topo agora ", P.Topo)
+    PutLn("soma de 1 a 100: ", Soma(100))
+;

@@ -90,8 +90,11 @@ std::vector<std::string> SemanticAnalyzer::ownMethodNames(std::string_view typeN
     const std::string prefix = normalizeName(typeName) + ".";
     std::vector<std::string> names;
     for (const auto& [key, signature] : functions_) {
+        // Hidden methods (`__invariant`, a contract's `__Name_body`) belong
+        // to their own struct and are never reused (CANON-24).
         if (key.size() > prefix.size() && key.compare(0, prefix.size(), prefix) == 0 &&
-            normalizeName(signature.name).compare(0, prefix.size(), prefix) == 0) {
+            normalizeName(signature.name).compare(0, prefix.size(), prefix) == 0 &&
+            key.compare(prefix.size(), 2, "__") != 0) {
             names.push_back(signature.name.substr(signature.name.find('.') + 1));
         }
     }

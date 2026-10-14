@@ -2,7 +2,7 @@
 # One line per locked unit: unit <TAB> sha256 prefix <TAB> approving OpenSpec change.
 # A unit changes only through relock --approval <change>, where <change> quotes
 # Marcelo Fortes's approval (constitution G2, G8).
-spec.md#preamble	6cc937eec9722a1b	state-without-colon
+spec.md#preamble	e5bcaf30ee27c664	design-by-contract
 spec.md#G1 The law wins on design, the code on status	3cd4e7bd04e698d5	constitution
 spec.md#G1 Disagreements are reported, never resolved silently	8ccfa1ba6f382aff	constitution
 spec.md#G2 Authority	ba32846a762fe307	constitution
@@ -103,7 +103,7 @@ spec.md#CANON-18 Library modules	54d79e37d75eb991	debug-assert
 spec.md#CANON-18 Planned modules	4955763ea05c20f2	constitution
 spec.md#CANON-19 Run-time faults are traps	b35d7570f0992acd	constitution
 spec.md#CANON-19 Compile-time faults	bf1622e491bf380a	constitution
-spec.md#CANON-19 Trap categories	e67598fd00dbc996	debug-assert
+spec.md#CANON-19 Trap categories	e1a2c2f3eea510fb	design-by-contract
 spec.md#CANON-19 What traps	11389ad5bbf19f0c	constitution
 spec.md#CANON-19 Compiler, library and runtime	558fa5d9a67425f8	constitution
 spec.md#CANON-19 Compiler limits	2ea229dba96e0ae7	constitution
@@ -116,11 +116,17 @@ spec.md#CANON-23 LLVM backend and the clang driver	7017ebec86d19fdf	constitution
 spec.md#CANON-23 Lowering rules	a2d41e406c3ccf63	constitution
 spec.md#CANON-23 Valid IR or a clear stop	b65face9199b56ba	constitution
 spec.md#CANON-23 Driver commands	c12adc30bfb52519	driver-commands
+spec.md#CANON-24 Design by contract	44eb53736bce7681	design-by-contract
+spec.md#CANON-24 Old and Result	ae9cb1852f6c7ede	design-by-contract
+spec.md#CANON-24 Struct invariants	98e810a4ab5089d2	design-by-contract
+spec.md#CANON-24 Contracts of an Override	b8caf27d3082c3f8	design-by-contract
+spec.md#CANON-24 Loop contracts	07f43b682ba43010	design-by-contract
+spec.md#CANON-24 A broken contract is a trap	77530e0d059fc1d5	design-by-contract
 spec.md#VERSIONING The version number	4913b3727284db7b	constitution
 spec.md#VERSIONING Who changes the version	59a96df0746489b0	constitution
 spec.md#VERSIONING Canon revision	7325a37130b8e81e	constitution
 spec.md#FUTURE Concurrency	7e4363bb408956d2	constitution
-spec.md#FUTURE Contracts and generics	1127ffe454d9b537	method-reuse
+spec.md#FUTURE Generics and static proof	c38cb888900fd3b7	design-by-contract
 spec.md#FUTURE Ownership, absence and failure	076b1bfa29ef29af	constitution
 spec.md#FUTURE Modules, variants and numbers	90ca5a0360a10d21	constitution
 engineering.md#preamble	60703a2fce444e01	constitution

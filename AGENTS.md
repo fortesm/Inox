@@ -76,7 +76,9 @@ module that owns a concern instead of searching the whole emitter.
   - `FunctionEmitterArrays.cpp` — indexing, bounds, slices;
   - `FunctionEmitterExpressions.cpp` — expression types and lowering;
   - `FunctionEmitterFiles.cpp` — the Std.IOUtils file functions (calls into
-    libinoxrt with `invoke` inside protected regions).
+    libinoxrt with `invoke` inside protected regions);
+  - `FunctionEmitterContracts.cpp` — contract checks (`llvm.expect.i1`
+    branch, cold noreturn `__inox_contract_fault`) and struct invariants.
 - `codegen/TypeLayout.*` — LLVM types of scalars, arrays, slices, structs;
   routine signatures; State globals.
 - `codegen/AstQueries.*` — read-only AST walks (`forEachStatement`, "uses
@@ -121,6 +123,14 @@ module that owns a concern instead of searching the whole emitter.
     members a struct offers through its parts, the declaration errors, and
     the one AST rewrite of the analyzer (`A.FNome` becomes
     `A.TPessoa.FNome`, so codegen sees ordinary field access);
+  - `SemanticContracts.cpp` — design by contract (CANON-24): the
+    `__check`/`__pure` intrinsics, read-only contracts, and the places where
+    a struct invariant is checked;
+  - `ContractLowering.cpp` — runs once on the merged program before the
+    analyzer: each routine with `pre`/`pos` (own or inherited through
+    `Override`) becomes a checking wrapper plus a hidden `__Name_body`, and
+    each struct with `invariant` lines gets `TName.__invariant(Self)`; the
+    parser lowers loop `invariant`/`variant` itself;
   - `SemanticDebug.cpp` — Std.Debug: Assert;
   - `SemanticSupport.*` — shared helpers (`semantic::detail`).
 

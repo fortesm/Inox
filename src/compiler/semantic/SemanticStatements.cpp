@@ -33,6 +33,7 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
 {
     const std::string previousReturnType = std::move(currentFunctionReturnType_);
     const bool previousSawReturn = currentFunctionSawReturn_;
+    const std::string previousRoutine = std::exchange(currentRoutine_, function.name());
     const FunctionSignature* signature = resolveFunctionSignature(function.name());
     currentFunctionReturnType_ = signature != nullptr ? signature->returnType : std::string{};
     currentFunctionSawReturn_ = false;
@@ -55,6 +56,7 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
     }
     currentFunctionReturnType_ = previousReturnType;
     currentFunctionSawReturn_ = previousSawReturn;
+    currentRoutine_ = previousRoutine;
 }
 
 bool SemanticAnalyzer::cannotFallThrough(const std::vector<ast::StatementPtr>& statements)
@@ -241,6 +243,10 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         if (var.initializer() == nullptr && resolveStruct(typeName) == nullptr &&
             !support::isArrayTypeName(typeName)) {
             throw SemanticError("scalar declaration requires initializer: " + var.name());
+        }
+        // CANON-24: a struct born with its defaults satisfies its invariant.
+        if (var.initializer() == nullptr && hasInvariant(typeName) && invariantChecksOn()) {
+            result_.requireNewValueInvariant(var, resolveStruct(typeName)->name);
         }
         declareOrThrow(var.name(), SymbolKind::Variable, std::move(typeName), true);
         trackLocal(var.name());

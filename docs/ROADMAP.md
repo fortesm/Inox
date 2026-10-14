@@ -49,6 +49,9 @@ whether concurrency or contracts are in it) is the maintainer's decision.
 - `std-strings` — Std.Strings / Std.StrUtils, String concatenation (design approved, r3.65).
 - `method-reuse` — `Struct (TPart)`, Override, methods of built-in types
   (done, r3.66).
+- `design-by-contract` — Eiffel's contracts with `pre`/`pos`/`invariant`/
+  `variant` (done, r3.67). Later: monitoring levels per module, and static
+  proof of contracts (SPARK style), CANON-24 FUTURE.
 - Designs awaiting decisions: `generics` (simplest form), `safe-pointers`,
   `binary-streams` (binary files, positions; streams after generics).
 - Then the rest of 0.2: Char values and output; Float conversions and Float

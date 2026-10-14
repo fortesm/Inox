@@ -1,0 +1,49 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Contracts over Strings: old copies of Strings, a String Result and an
+== invariant on a String field; checked for leaks by string_leak_check.
+Module ContractsStrings
+
+Type
+    TNome Struct
+        FNome String := "anônimo"
+        FAnterior String := ""
+        invariant Self.FNome # "", "o nome nunca é vazio"
+    ;
+
+TNome.Trocar(Self mut, Novo String) :
+    pre Novo # "", "novo nome"
+    pos Self.FAnterior = old Self.FNome
+    pos Self.FNome = Novo
+    Self.FAnterior := Self.FNome
+    Self.FNome := Novo
+;
+
+TNome.Atual(Self) String :
+    pos Result = Self.FNome
+    Return Self.FNome
+;
+
+Escolher(A String, B String, PrimeiroA Bool) String :
+    pos Result = A or Result = B
+    if PrimeiroA
+        Return A
+    ;
+    Return B
+;
+
+Main :
+    N TNome
+    for I in 1..3
+        N.Trocar(Escolher("Ana", "Bia", I mod 2 = 1))
+        PutLn(N.FAnterior, " -> ", N.Atual)
+    ;
+    M TNome := TNome(FNome := "Caio")
+    M.Trocar(N.Atual)
+    PutLn(M.FAnterior, " -> ", M.FNome)
+;

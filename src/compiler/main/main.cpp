@@ -8,6 +8,7 @@
 #include "../codegen/LlvmIrEmitter.h"
 #include "../lexer/Lexer.h"
 #include "../parser/Parser.h"
+#include "../semantic/ContractLowering.h"
 #include "../semantic/SemanticAnalyzer.h"
 #include "../semantic/SemanticDumper.h"
 #include "../support/Environment.h"
@@ -148,6 +149,9 @@ public:
                 }
             }
         }
+        // CANON-24: contracts become checks once the whole program is known
+        // (an Override inherits the contracts of methods in other modules).
+        inox::compiler::semantic::lowerContracts(*program);
         return program;
     }
 

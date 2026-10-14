@@ -126,6 +126,18 @@ private:
     void validateReuse(const ast::TypeDeclaration& declaration) const;
     void routeThroughParts(const ast::CallExpression& member, const std::vector<std::string>& path);
     void requireWritableReceiver(const FunctionSignature& signature, const ast::Expression& receiver) const;
+
+    // Design by contract (CANON-24; SemanticContracts.cpp). `__check` and
+    // `__pure` are the intrinsics the contract lowering writes; a contract
+    // only reads (no Self mut method, ref mut argument, file or input).
+    std::string analyzeContractCheck(const ast::CallExpression& call);
+    std::string analyzePureCall(const ast::CallExpression& call);
+    void rejectInContract(const std::string& what) const;
+    bool hasInvariant(std::string_view typeName) const;
+    void recordInvariantPlaces(const ast::AstNode& site, const ast::Expression& place, bool before, bool after);
+    bool invariantChecksOn() const;
+    bool inContract_ = false;
+    std::string currentRoutine_;
     void analyzeFunction(const ast::FunctionDeclaration& function);
 
     void analyzeStatements(const std::vector<ast::StatementPtr>& statements, bool createScope);

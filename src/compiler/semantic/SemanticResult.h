@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -43,6 +44,9 @@ public:
         callSymbols_.clear();
         constantValues_.clear();
         naturalChecks_.clear();
+        invariantBefore_.clear();
+        invariantAfter_.clear();
+        newValueInvariants_.clear();
         canonicalTypes_.clear();
     }
 
@@ -116,7 +120,38 @@ public:
         return naturalChecks_.count(&expression) != 0;
     }
 
+    // CANON-24: where a struct invariant must hold. At a site (a qualified
+    // method call, a field write, a call with ref mut arguments) the backend
+    // checks the invariant of each listed place before or after the site;
+    // a construction or a declaration with defaults checks its new value.
+    struct InvariantCheck {
+        const ast::Expression* place = nullptr;
+        std::string typeName;
+    };
+    void addInvariantCheck(const ast::AstNode& site, bool after, InvariantCheck check)
+    {
+        (after ? invariantAfter_ : invariantBefore_)[&site].push_back(std::move(check));
+    }
+    const std::vector<InvariantCheck>* invariantChecks(const ast::AstNode& site, bool after) const
+    {
+        const auto& checks = after ? invariantAfter_ : invariantBefore_;
+        const auto found = checks.find(&site);
+        return found != checks.end() ? &found->second : nullptr;
+    }
+    void requireNewValueInvariant(const ast::AstNode& site, std::string typeName)
+    {
+        newValueInvariants_[&site] = std::move(typeName);
+    }
+    const std::string* newValueInvariant(const ast::AstNode& site) const
+    {
+        const auto found = newValueInvariants_.find(&site);
+        return found != newValueInvariants_.end() ? &found->second : nullptr;
+    }
+
 private:
+    std::unordered_map<const ast::AstNode*, std::vector<InvariantCheck>> invariantBefore_;
+    std::unordered_map<const ast::AstNode*, std::vector<InvariantCheck>> invariantAfter_;
+    std::unordered_map<const ast::AstNode*, std::string> newValueInvariants_;
     std::unordered_set<const ast::Expression*> naturalChecks_;
     std::unordered_map<std::string, std::string> canonicalTypes_;
     std::unordered_map<const ast::Expression*, ResolvedType> expressionTypes_;

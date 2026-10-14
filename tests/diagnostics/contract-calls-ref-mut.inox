@@ -1,0 +1,25 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24: a contract only reads; a ref mut argument would change state.
+Module Diagnostics.ContractCallsRefMut
+Type
+    TA Struct
+        FX Integer := 0
+    ;
+Grow(ref mut N Integer) Bool :
+    N += 1
+    Return true
+;
+TA.Check(Self mut) :
+    pre Grow(Self.FX)
+    Self.FX += 1
+;
+Main :
+    A TA
+    A.Check
+;

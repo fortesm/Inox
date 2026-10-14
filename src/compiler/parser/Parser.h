@@ -196,6 +196,24 @@ private:
     bool headerExpression_ = false;
     std::vector<std::string> withTargetStack_;
     std::size_t withCounter_ = 0;
+
+    // Design by contract (CANON-24). `pre`, `pos`, `invariant`, `variant`,
+    // `old` and `Result` are contextual words: a line that starts with one of
+    // them (not followed by `:=`) is a clause where clauses are allowed.
+    bool atContractWord(std::string_view word) const;
+    ast::ContractClause parseContractClause(ast::ContractClause::Kind kind);
+    std::string sourceText(std::size_t first, std::size_t last) const;
+    std::vector<ast::ContractClause> parseLoopContracts(bool allowVariant);
+    void lowerLoopContracts(std::vector<ast::ContractClause> contracts,
+                            std::vector<ast::StatementPtr>& body,
+                            bool checkAfterLoop);
+    bool inPosClause_ = false;
+    bool inContractClause_ = false;
+    std::string currentRoutine_;  // for the messages of loop contracts
+    std::size_t contractCounter_ = 0;
+    // Statements a loop contract puts before the loop (the variant's start
+    // value); appendStatement() emits them before the statement just parsed.
+    std::vector<ast::StatementPtr> precedingStatements_;
 };
 
 } // namespace inox::compiler::parser

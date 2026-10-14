@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.66
+Canon revision: r3.67
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -103,3 +103,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   (embedding, protocols) is replaced. Marcelo Fortes: "troque herança por
   reaproveitamento de métodos isso já satifaz!"; "Aprovo tudo como você
   sugeriu 1a, 2a, 3b e 4a+b". Change `method-reuse`.
+- r3.67 — 2026-10-14 — Design by contract, as in Eiffel (CANON-24): `pre`
+  and `pos` on the first lines of a routine (`old X`, `Result`), `invariant`
+  in a Struct (with the invariants of the structs it reuses), `pre else` and
+  `pos then` in an Override, `invariant` and `variant` in loops. A broken
+  contract is a CANON-19 trap; contracts are always checked and only read.
+  Differences from Eiffel recorded in the change (trap instead of exception,
+  no monitoring levels, invariants after outside writes, messages instead of
+  tags). FUTURE now names generics and static proof. Marcelo Fortes:
+  "implemente design by contract exatamente igual eiffel a diferença é que
+  as palavras reservadas pre para precondições e pos para poscondições".
+  Change `design-by-contract`.
