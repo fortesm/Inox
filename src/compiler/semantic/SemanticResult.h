@@ -27,10 +27,11 @@ struct ResolvedType {
 // Later phases read it from here instead of re-parsing the Const section
 // (CANON E11, decision P-C stage 1).
 struct ConstantValue {
-    enum class Kind { Integer, Boolean };
+    enum class Kind { Integer, Boolean, String };
     Kind kind = Kind::Integer;
     std::int64_t integer = 0;
     bool boolean = false;
+    std::string text;  // a String Const: the literal's text
 };
 
 class SemanticResult {

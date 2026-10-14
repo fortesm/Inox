@@ -1,0 +1,179 @@
+Caixa Inox: contas em inox-banco.txt, extrato em inox-banco-extrato.txt
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: Contas reiniciadas.
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: Agência 1, Conta 1 - Marcelo
+  saldo: R$ 1000
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: Valor: R$ Depósito feito. Saldo: R$ 1500
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: Valor: R$ Retire as notas. Saldo: R$ 1300
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: Valor: R$ Saldo insuficiente: R$ 1300
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: Valor: R$ Enviado para Ana. Saldo: R$ 1000
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: Operação cancelada. Saldo: R$ 1300
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: Não há operação para cancelar.
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: Valor: R$ Valor inválido.
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: Contas lidas de inox-banco.txt.
+Agência 1, Conta 1 - Marcelo
+  saldo: R$ 1300
+Agência 1, Conta 2 - Ana
+  saldo: R$ 500
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: Agência 1, Conta 1 - Marcelo
+  saldo: R$ 1300
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: 1. Contas reiniciadas: conta 1 R$ 1000, conta 2 R$ 500
+2. Depósito R$ 500 -> saldo R$ 1500
+3. Saque R$ 200 -> saldo R$ 1300
+4. Envio para a conta 2 R$ 300 -> saldo R$ 1000
+5. Cancelamento R$ 300 -> saldo R$ 1300
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: Opção inexistente.
+
+===== Caixa Inox =====
+1 - Saldo
+2 - Depósito
+3 - Saque
+4 - Envio para a conta 2
+5 - Cancelar a última operação
+6 - Extrato
+7 - Recarregar do arquivo
+9 - Reiniciar as contas
+0 - Sair
+Opção: Obrigado por usar o Caixa Inox.

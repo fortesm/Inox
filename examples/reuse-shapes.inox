@@ -1,0 +1,71 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Method reuse (CANON-9), example 1: one behavior, many structs.
+== TPosicao knows how to move. TCirculo, TRetangulo and TTexto reuse it:
+== none of them writes Mover again, and each one moves itself.
+Module ReuseShapes
+
+Type
+    TPosicao Struct
+        FX Integer := 0
+        FY Integer := 0
+    ;
+    TCirculo Struct (TPosicao)
+        FRaio Integer := 1
+    ;
+    TRetangulo Struct (TPosicao)
+        FLargura Integer := 1
+        FAltura Integer := 1
+    ;
+    TTexto Struct (TPosicao)
+        FConteudo String := ""
+    ;
+
+== The behavior lives in one place.
+TPosicao.Mover(Self mut, DX Integer, DY Integer) :
+    Self.FX += DX
+    Self.FY += DY
+;
+
+TPosicao.Origem(Self) Bool :
+    Return Self.FX = 0 and Self.FY = 0
+;
+
+TPosicao.Onde(Self) :
+    Put("(", Self.FX, ", ", Self.FY, ")")
+;
+
+== Each struct adds only what is its own.
+TCirculo.Area(Self) Integer :
+    Return 3 * Self.FRaio * Self.FRaio          == pi ~ 3, Integer only
+;
+
+TRetangulo.Area(Self) Integer :
+    Return Self.FLargura * Self.FAltura
+;
+
+Main :
+    C := TCirculo(FRaio := 2)
+    R := TRetangulo(FLargura := 4, FAltura := 3)
+    T := TTexto(FConteudo := "Olá")
+
+    C.Mover(10, 5)                 == TPosicao.Mover, on the TPosicao part of C
+    R.Mover(-2, 7)
+    R.Mover(2, -7)                 == back to the origin
+    T.Mover(1, 1)
+
+    Put("círculo em ")
+    C.Onde
+    PutLn(", área ", C.Area)
+    Put("retângulo em ")
+    R.Onde
+    PutLn(", área ", R.Area, ", na origem: ", R.Origem)
+    Put("texto '", T.FConteudo, "' em ")
+    T.Onde
+    PutLn("")
+;

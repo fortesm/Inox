@@ -82,6 +82,9 @@ std::string FunctionEmitter::expressionLlvmType(const ast::Expression& expressio
             return signature->second.llvmReturnType;
         }
         if (const semantic::ConstantValue* constant = resolvedConstant(identifier)) {
+            if (constant->kind == semantic::ConstantValue::Kind::String) {
+                return "ptr";
+            }
             return constant->kind == semantic::ConstantValue::Kind::Boolean ? "i1" : "i64";
         }
         break;
@@ -325,6 +328,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (const semantic::ConstantValue* constant = resolvedConstant(identifier)) {
             if (constant->kind == semantic::ConstantValue::Kind::Boolean) {
                 return constant->boolean ? "1" : "0";
+            }
+            if (constant->kind == semantic::ConstantValue::Kind::String) {
+                return emitStringValue(constant->text);
             }
             return std::to_string(constant->integer);
         }

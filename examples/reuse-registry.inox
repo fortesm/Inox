@@ -1,0 +1,80 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Method reuse (CANON-9), example 2: two parts, and Override.
+== TContato (e-mail, phone) and TAuditoria (who changed, how many times) are
+== small structs with their own methods. TCliente and TFornecedor reuse both.
+== Both parts have Resumo, so each struct that reuses them writes its own
+== Resumo, marked Override; the parts' versions stay reachable by path.
+Module ReuseRegistry
+
+Type
+    TContato Struct
+        FEmail String := ""
+        FTelefone String := ""
+    ;
+    TAuditoria Struct
+        FAlteradoPor String := "ninguém"
+        FAlteracoes Integer := 0
+    ;
+    TCliente Struct (TContato, TAuditoria)
+        FNome String := ""
+        FLimite Integer := 0
+    ;
+    TFornecedor Struct (TContato, TAuditoria)
+        FRazaoSocial String := ""
+    ;
+
+TContato.TrocarEmail(Self mut, Email String) :
+    if Email # ""
+        Self.FEmail := Email
+    ;
+;
+
+TContato.Resumo(Self) :
+    PutLn("  contato: ", Self.FEmail, " / ", Self.FTelefone)
+;
+
+TAuditoria.Registrar(Self mut, Usuario String) :
+    Self.FAlteradoPor := Usuario
+    Self.FAlteracoes += 1
+;
+
+TAuditoria.Resumo(Self) :
+    PutLn("  auditoria: ", Self.FAlteracoes, " alteração(ões), última por ", Self.FAlteradoPor)
+;
+
+== A method of TCliente that combines what the parts know how to do.
+TCliente.AtualizarEmail(Self mut, Email String, Usuario String) :
+    Self.TrocarEmail(Email)
+    Self.Registrar(Usuario)
+;
+
+TCliente.Resumo(Self) Override :
+    PutLn("Cliente ", Self.FNome, " (limite ", Self.FLimite, ")")
+    Self.TContato.Resumo
+    Self.TAuditoria.Resumo
+;
+
+TFornecedor.Resumo(Self) Override :
+    PutLn("Fornecedor ", Self.FRazaoSocial)
+    Self.TContato.Resumo
+    Self.TAuditoria.Resumo
+;
+
+Main :
+    C := TCliente(FNome := "Marcelo", FLimite := 5000)
+    C.FTelefone := "85 99999-0000"           == a field of the TContato part
+    C.AtualizarEmail("marcelo@exemplo.com", "caixa1")
+    C.AtualizarEmail("", "caixa2")            == empty e-mail is ignored, the change is still audited
+    C.Resumo
+
+    F := TFornecedor(FRazaoSocial := "Inox Ltda")
+    F.TrocarEmail("vendas@inox.dev")          == reused directly from TContato
+    F.Registrar("compras")                    == reused directly from TAuditoria
+    F.Resumo
+;

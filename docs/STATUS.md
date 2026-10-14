@@ -21,7 +21,7 @@ each version added.
   recursive loading and cycle rejection; library discovery; toolchain
   failures reported with the tool's own messages.
 - Lexical rules, blocks, declarations (inline, grouped, chained, compound),
-  unread-local rule, Const (also constant expressions), State (scalars,
+  unread-local rule, Const (Integer, Bool, String, constant expressions), State (scalars,
   structs, arrays, Strings), routines, no empty parentheses.
 - Types: Bool, Integer/Int64, Natural, Int8/16/32, Byte/UInt8, UInt16/32,
   Float/Float64 (Float32 partly), String, Char literals as `case`
