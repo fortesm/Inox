@@ -503,6 +503,33 @@ function Invoke-RuntimeTree {
 }
 
 # Each NAME.inox must be rejected, and the error output must contain NAME.err.
+# Every examples\NAME.inox must build and run: its expected output is
+# tests\examples\NAME.out (and its input, if any, tests\examples\NAME.in), so
+# the examples directory holds only programs.
+function Invoke-Examples {
+    $expectedRoot = Join-Path $repoRoot "tests\examples"
+    Get-ChildItem -LiteralPath (Join-Path $repoRoot "examples") -Filter "*.inox" -File | Sort-Object Name | ForEach-Object {
+        $example = $_
+        $name = [System.IO.Path]::GetFileNameWithoutExtension($example.Name)
+        $expectedPath = Join-Path $expectedRoot "$name.out"
+        $inputPath = Join-Path $expectedRoot "$name.in"
+        if (-not (Test-Path -LiteralPath $expectedPath)) {
+            $script:failed++
+            Write-Host "[FAIL] examples\$($example.Name) runs"
+            Write-Host "       missing expected output: $expectedPath"
+        } elseif (Test-Path -LiteralPath $inputPath) {
+            Invoke-RunDriverInputTest `
+                -TestFile $example `
+                -InputFile (Get-Item -LiteralPath $inputPath) `
+                -ExpectedOutputFile (Get-Item -LiteralPath $expectedPath)
+        } else {
+            Invoke-RunDriverTest `
+                -TestFile $example `
+                -ExpectedOutputFile (Get-Item -LiteralPath $expectedPath)
+        }
+    }
+}
+
 function Invoke-DiagnosticTree {
     param([string]$RelativePath)
 
@@ -829,7 +856,7 @@ Invoke-RunDriverTest `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output\variadic-put.out"))
 Invoke-RuntimeTree "tests\integration\input"
 Invoke-RuntimeTree "tests\runtime"
-Invoke-RuntimeTree "examples"          # examples with a NAME.out also run
+Invoke-Examples
 Invoke-DiagnosticTree "tests\diagnostics"
 Invoke-ModeExitTest `
     -Mode "--emit-llvm" `

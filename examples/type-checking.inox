@@ -16,13 +16,11 @@ Main :
     J := 3
     Flag := True
     Text := "Inox"
-    Letter := 'I'
 
     I := J
     Flag := False
     Text := "language"
     PutLn(Text)
-    Letter := 'X'
 
     Sum := I + J
     Difference := I - J
@@ -51,7 +49,6 @@ Main :
     Right := I shr 1
 
     PutLn(Sum)
-    PutLn(Letter = Letter)
     PutLn(Difference)
     PutLn(Product)
     PutLn(Quotient)
