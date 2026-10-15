@@ -53,7 +53,9 @@ whether concurrency or contracts are in it) is the maintainer's decision.
   `variant` (done, r3.67). Checks always on through 1.0 (r3.68). After 1.0:
   Eiffel-style monitoring levels per module, and static proof of contracts
   (SPARK style), FUTURE.
-- Designs awaiting decisions: `generics` (simplest form), `safe-pointers`,
+- Designs awaiting decisions: `generics` (simplest form), `safe-pointers`
+  (rewritten in r3.71: one owner `Own<T>`, checked `Handle<T>`, no
+  counting, no collector),
   `binary-streams` (binary files, positions; streams after generics),
   `variant-structs` (one collection of several kinds, examined with `case`;
   direction recorded in r3.69, design after `enum-range-set`).

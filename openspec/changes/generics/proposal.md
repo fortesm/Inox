@@ -4,8 +4,8 @@ Marcelo Fortes, 2026-10-13: "Talvez já fosse melhor pularmos para o peso
 pesado da linguagem: Ponteiros, Composição com reuso de subrotinas,
 Generics". Composition is decided (change `method-reuse`); what remains is
 generics, "da forma mais simples possível e depois podemos evoluir" (Marcelo
-Fortes, 2026-10-13). Pointers need them: a pointer that may be absent is
-`Option<Ref<T>>`, a list is `Vector<T>`.
+Fortes, 2026-10-13). Pointers use them: a list of owners is `Vector<Own<T>>`
+(change `safe-pointers` builds `Own<T>` and `Handle<T>` in without waiting).
 
 Already law: generic arguments are written `<T>`, and `<...>` is generic only
 in type position (CANON-8: "[T] pode gerar ambiguidade e problemas com

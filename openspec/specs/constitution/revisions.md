@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.70
+Canon revision: r3.71
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -22,9 +22,10 @@ stands.
    mais simples possível e depois podemos evoluir"): no constraints or
    protocols, inference only, one copy per type; three decisions.
 2. **`safe-pointers` design** (Risk: high):
-   `openspec/changes/safe-pointers/design.md`, five decisions (counted
-   `Ref<T>`, mutation through a shared Ref, names, arenas in phase 2, the
-   unsafe layer later). Depends on `generics`.
+   `openspec/changes/safe-pointers/design.md`, rewritten from the decisions
+   of r3.71 (a single owner `Own<T>` and checked `Handle<T>`, no reference
+   counting, no garbage collector, no arena now): approval of the design
+   and one question (how an owner that may be absent is written).
 3. **`binary-streams` design** (Risk: high):
    `openspec/changes/binary-streams/design.md`, six decisions for binary
    files (a `BinaryFile` type, little-endian, `Write`/`Read` sized by the
@@ -137,3 +138,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   perdermos a questão do encapsulamento. Registre tudo isso para eu não me
   perder ou esquecer". Changes `encapsulation`, `routine-types`,
   `lifecycle` (directions); `docs/OOP_COMPARISON.md`.
+- r3.71 — 2026-10-15 — Safe pointers without reference counting, garbage
+  collection or arenas: every heap object has one owner (`Own<T>`, created
+  by `New`, freed at the end of its block or by `Free`, never copied, given
+  away with `Move`), and every other reference is a `Handle<T>` checked by a
+  generation on each use (`Alive` tests it; a dead Handle traps; a Handle
+  is born empty). Arenas may come later as an optional optimization.
+  Marcelo Fortes: "se usarmos contagem por referência, ficamos igual a
+  Delphi e isso tem problemas. então essas estariam descartadas"; "não
+  quero ter de forma alguma, garbage collection"; "depois podemos ter arena
+  no futuro opcionalmente"; "Acatado: um `Handle` pode simplesmente nascer
+  vazio". Change `safe-pointers` (design awaiting approval, no code).
