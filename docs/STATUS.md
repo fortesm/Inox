@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-16 against Inox 0.2.0 pre-alpha, canon r3.73.
+Verified on 2026-10-16 against Inox 0.2.0 pre-alpha, canon r3.74.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -20,6 +20,9 @@ each version added.
   `--dump-types` for development); local `Module`/`Use` with
   recursive loading and cycle rejection; library discovery; toolchain
   failures reported with the tool's own messages.
+- 41 reserved words and 7 predefined names (`True`, `False`, `Exit`,
+  `bitand`, `bitor`, `bitxor`, `bitnot`) that can never be declared;
+  `{` `}` reserved (CANON-2).
 - Lexical rules, blocks, declarations (inline, grouped, chained, compound),
   unread-local rule, Const (Integer, Bool, String, constant expressions), State (scalars,
   structs, arrays, Strings), routines, no empty parentheses.

@@ -177,6 +177,9 @@ export INOX_OUTPUT_DIR=&quot;$HOME/tools/inox-linux-x64/output&quot;</code></pre
 <pre><code>PutLn
 putln
 PUTLN</code></pre>
+<p>Inox has 41 reserved words, which never name anything: <code>Module Use Type Const Var State Struct Enum if then elif else unless while repeat until for in step case try except On do ensure raise retry with mut ref div mod and xor or not shr shl leave continue Return</code>.</p>
+<p><code>True</code>, <code>False</code>, <code>Exit</code>, <code>bitand</code>, <code>bitor</code>, <code>bitxor</code> and <code>bitnot</code> are predefined names: they always keep their meaning and can never be declared (a variable, parameter, routine, type or Const named <code>True</code> is an error), but they may name fields and methods (<code>Porta.Exit</code>). <code>Main</code> is an ordinary name: the program starts at the routine named Main. Words such as <code>pre</code>, <code>pos</code>, <code>old</code>, <code>Self</code> and <code>Override</code> mean something only where they appear.</p>
+<p><code>{</code> and <code>}</code> are reserved for a future construct; blocks close with <code>;</code>.</p>
 <p>Line comments use <code>==</code>:</p>
 <pre><code>X := 10  == comment until end of line</code></pre>
 <p>String literals use double quotes. Character literals use single quotes. <code>Char</code> is a Unicode scalar value, not a byte and not a grapheme cluster.</p>
@@ -679,10 +682,10 @@ Result :=
     3..9
         PutLn(&quot;medium&quot;)
     10 | 20..29 | 40 PutLn(&quot;mixed&quot;)
-    otherwise
+    else
         PutLn(&quot;other&quot;)
 ;</code></pre>
-<p><code>otherwise</code> is required unless the choices cover every value of the selector type. A <code>Bool</code> case that handles <code>True</code> and <code>False</code> needs no <code>otherwise</code>. A case on an <code>Integer</code> code that handles only 404 is rejected. The selector must be discrete: an integer type, <code>Char</code>, <code>Bool</code>, an enum or a range.</p>
+<p>The last arm, <code>else</code>, is required unless the choices cover every value of the selector type (it was spelled <code>otherwise</code> until canon revision 3.74). A <code>Bool</code> case that handles <code>True</code> and <code>False</code> needs no <code>else</code>. A case on an <code>Integer</code> code that handles only 404 is rejected. The selector must be discrete: an integer type, <code>Char</code>, <code>Bool</code>, an enum or a range.</p>
 <h3>Exceptions</h3>
 <p>Inox provides structured exception handling with <code>try</code>, <code>except</code>, typed <code>On</code> handlers, optional <code>Else</code>, <code>ensure</code>, <code>Raise</code>, and bounded <code>Retry(N)</code>. Typed handlers are tested in source order; <code>Else</code> is the catch-all after them. A plain <code>except</code> is itself a catch-all.</p>
 <pre><code>try

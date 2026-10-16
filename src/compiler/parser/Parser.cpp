@@ -291,6 +291,15 @@ ast::StatementPtr Parser::parseStatement()
                        "Struct (CANON-24)");
     }
 
+    // CANON-2 (r3.74): `True := 5`, `Exit Integer := 1`: a predefined name
+    // is never declared or assigned.
+    if (check(TokenKind::Identifier) && lexer::Lexer::isPredefinedName(peek().normalized) &&
+        current_ + 1 < tokens_.size() &&
+        tokens_[current_ + 1].location.line == peek().location.line &&
+        (tokens_[current_ + 1].kind == TokenKind::ColonEqual ||
+         tokens_[current_ + 1].kind == TokenKind::Identifier)) {
+        errorAtCurrent(peek().lexeme + " is a predefined name of Inox and cannot be declared (CANON-2)");
+    }
     if (matchKeyword("if")) {
         return parseIfStatement();
     }
@@ -1229,10 +1238,10 @@ ast::StatementPtr Parser::parseForInStatement()
 //   case Selector
 //       1 | 2          body
 //       3..9           body
-//       otherwise      body
+//       else           body
 //   ;
 // `|` separates the alternatives of an arm; a choice is a static value or a
-// static range `A..B`. `otherwise` is at most one and is the last arm.
+// static range `A..B`. `else` is at most one and is the last arm.
 ast::ExpressionPtr Parser::parseCaseChoice()
 {
     // A choice ends at its line: the arm body on the next line never extends it.
@@ -1279,23 +1288,28 @@ ast::StatementPtr Parser::parseCaseStatement()
     requireHeaderLineBreak();
 
     std::vector<ast::CaseArm> arms;
-    std::vector<ast::StatementPtr> otherwiseBody;
-    bool hasOtherwise = false;
+    std::vector<ast::StatementPtr> elseBody;
+    bool hasElse = false;
 
     while (!isAtEnd() && !check(TokenKind::Semicolon)) {
-        if (checkKeyword("otherwise")) {
-            if (hasOtherwise) {
-                errorAtCurrent("a case has at most one 'otherwise' (ADR-0011)");
+        if (check(TokenKind::Identifier) && peek().normalized == "otherwise" &&
+            current_ + 1 < tokens_.size() && tokens_[current_ + 1].kind != TokenKind::Pipe &&
+            tokens_[current_ + 1].kind != TokenKind::DotDot) {
+            errorAtCurrent("the last arm of a case is 'else', not 'otherwise' (r3.74)");
+        }
+        if (checkKeyword("else")) {
+            if (hasElse) {
+                errorAtCurrent("a case has at most one 'else' (ADR-0011)");
             }
             advance();
             const std::size_t armLine = previous().location.line;
             const std::size_t armColumn = previous().location.column;
-            otherwiseBody = parseCaseArmBody(armLine, armColumn);
-            hasOtherwise = true;
+            elseBody = parseCaseArmBody(armLine, armColumn);
+            hasElse = true;
             continue;
         }
-        if (hasOtherwise) {
-            errorAtCurrent("'otherwise' must be the last arm of a case (ADR-0011)");
+        if (hasElse) {
+            errorAtCurrent("'else' must be the last arm of a case (ADR-0011)");
         }
 
         std::vector<ast::ExpressionPtr> choices;
@@ -1319,8 +1333,8 @@ ast::StatementPtr Parser::parseCaseStatement()
     return std::make_unique<ast::CaseStatement>(
         std::move(expression),
         std::move(arms),
-        std::move(otherwiseBody),
-        hasOtherwise);
+        std::move(elseBody),
+        hasElse);
 }
 
 std::vector<ast::StatementPtr> Parser::parseCaseArmBody(std::size_t armLine, std::size_t armColumn)
@@ -1335,7 +1349,7 @@ std::vector<ast::StatementPtr> Parser::parseCaseArmBody(std::size_t armLine, std
         return statements;
     }
 
-    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("otherwise")) {
+    while (!isAtEnd() && !check(TokenKind::Semicolon) && !checkKeyword("else")) {
         if (!statements.empty() && peek().location.column <= armColumn) {
             break;
         }
@@ -1574,7 +1588,7 @@ ast::AstNodePtr Parser::parseModuleItem()
         errorAtCurrent(kVarRemovedMessage);
     }
 
-    if (checkIdentifierLike() || checkKeyword("main")) {
+    if (checkIdentifierLike()) {
         for (std::size_t index = current_; index < tokens_.size(); ++index) {
             if (tokens_[index].kind == TokenKind::Colon) {
                 return parseFunctionDeclaration();
@@ -2161,8 +2175,7 @@ bool Parser::atStatementBoundary() const
            checkKeyword("except") ||
            checkKeyword("on") ||
            checkKeyword("ensure") ||
-           checkKeyword("until") ||
-           checkKeyword("otherwise");
+           checkKeyword("until");
 }
 
 bool Parser::atSectionBoundary() const
@@ -2306,15 +2319,19 @@ bool Parser::check(TokenKind kind) const
 
 bool Parser::checkKeyword(std::string_view normalized) const
 {
+    // A predefined name (r3.74: True, False, Exit, bitand, bitor, bitxor,
+    // bitnot) is an identifier token that keeps its meaning: it can never be
+    // declared (CANON-2), so where a keyword is expected it is that word.
     return !isAtEnd() &&
-           peek().kind == TokenKind::Keyword &&
+           (peek().kind == TokenKind::Keyword ||
+            (peek().kind == TokenKind::Identifier && lexer::Lexer::isPredefinedName(normalized))) &&
            peek().normalized == normalized;
 }
 
 bool Parser::checkIdentifierLike() const
 {
     return !isAtEnd() &&
-           (peek().kind == TokenKind::Identifier || checkKeyword("main"));
+           peek().kind == TokenKind::Identifier;
 }
 
 bool Parser::match(TokenKind kind)
@@ -2402,6 +2419,7 @@ ast::BinaryOperator Parser::binaryOperatorFor(const lexer::Token& token)
     case TokenKind::GreaterEqual:
         return ast::BinaryOperator::GreaterEqual;
     case TokenKind::Keyword:
+    case TokenKind::Identifier:
         if (token.normalized == "div") {
             return ast::BinaryOperator::IntegerDivide;
         }
@@ -2454,7 +2472,7 @@ ast::UnaryOperator Parser::unaryOperatorFor(const lexer::Token& token)
     if (token.kind == TokenKind::Keyword && token.normalized == "not") {
         return ast::UnaryOperator::Not;
     }
-    if (token.kind == TokenKind::Keyword && token.normalized == "bitnot") {
+    if (token.normalized == "bitnot") {
         return ast::UnaryOperator::BitNot;
     }
 

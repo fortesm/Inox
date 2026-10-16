@@ -22,6 +22,9 @@ public:
     Token nextToken();
     std::vector<Token> tokenize();
 
+    // CANON-2 (r3.74): True, False, Exit, bitand, bitor, bitxor, bitnot.
+    static bool isPredefinedName(std::string_view normalized);
+
 private:
     bool isAtEnd() const;
     char peek() const;

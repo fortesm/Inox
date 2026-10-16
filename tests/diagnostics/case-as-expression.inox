@@ -12,7 +12,7 @@ Main :
     X := 4
     Y := case X
         1 PutLn(1)
-        otherwise PutLn(2)
+        else PutLn(2)
     ;
     PutLn(Y)
 ;

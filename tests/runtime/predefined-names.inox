@@ -1,0 +1,49 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-2 (r3.74): True, False, Exit and the bit operators are predefined
+== names, not reserved words: they keep their meaning in any spelling and
+== may name fields and methods, never a variable, a parameter, a routine, a
+== type or a Const. Main is an ordinary name. A case ends with `else`.
+Module Runtime.PredefinedNames
+
+Type
+    TPorta Struct
+        Exit Integer := 6
+        Main Bool := TRUE
+        True String := "campo"
+    ;
+
+TPorta.BitAnd(Self, Mask Integer) Integer :
+    Return Self.Exit bitand Mask
+;
+
+TPorta.Abrir(Self mut) :
+    if Self.Main
+        Self.Exit += 1
+        Exit
+    ;
+    Self.Exit := 0
+;
+
+Classificar(N Integer) String :
+    case N
+        0 Return "zero"
+        1..9 Return "pequeno"
+        else Return "grande"
+    ;
+;
+
+Main :
+    P TPorta
+    PutLn(P.Exit, " ", P.Main, " ", P.True)
+    P.Abrir
+    PutLn(P.Exit, " ", P.BitAnd(3))
+    PutLn(5 BITOR 2, " ", 6 BitXor 3, " ", bitnot 0)
+    PutLn(true, " ", False, " ", not FALSE)
+    PutLn(Classificar(0), " ", Classificar(7), " ", Classificar(42))
+;

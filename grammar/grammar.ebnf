@@ -28,9 +28,9 @@ module            ::= "Module" qualified_name use_decl* module_item* EOF
 use_decl          ::= "Use" qualified_name
 module_item       ::= type_section | const_decl | state_section | routine_decl
 qualified_name    ::= identifier_like ( "." identifier )*
-identifier_like   ::= identifier | "Main"
-                      (* "Main" is reserved (the entry routine) but may name a
-                         module or a routine: "Module Main", "Main :" *)
+identifier_like   ::= identifier
+                      (* r3.74: "Main" is an ordinary name; the program starts
+                         at the routine named Main *)
 
 (* ---------- Declarations (CANON-5, CANON-9, CANON-13) ---------- *)
 
@@ -159,7 +159,7 @@ with_member       ::= "." identifier
                       (* inside a with body, ".Member" is a member of the innermost
                          with expression; unprefixed names use normal scope *)
 
-case_stmt         ::= "case" expression NEWLINE case_arm* otherwise_arm? ";"
+case_stmt         ::= "case" expression NEWLINE case_arm* case_else_arm? ";"
                       (* ADR-0011: the selector is discrete and ends at the
                          header line *)
 case_arm          ::= choice_list ( simple_stmt NEWLINE | NEWLINE block_body )
@@ -168,8 +168,8 @@ choice_list       ::= choice ( "|" choice )*
 choice            ::= bitor_expr ( ".." bitor_expr )?
                       (* static values only; "A..B" needs A <= B; choices may not
                          overlap anywhere in the case *)
-otherwise_arm     ::= "otherwise" ( simple_stmt NEWLINE | NEWLINE block_body )
-                      (* at most one, last; REQUIRED unless the choices cover every
+case_else_arm     ::= "else" ( simple_stmt NEWLINE | NEWLINE block_body )
+                      (* r3.74: "else", formerly "otherwise"; at most one, last; REQUIRED unless the choices cover every
                          value of the selector type; no "of", "when", "=>", ":"
                          or "do"; no fall-through *)
 
@@ -199,7 +199,8 @@ continue_stmt     ::= "continue"
 return_stmt       ::= "Return" expression
                       (* required in functions, forbidden in subroutines *)
 exit_stmt         ::= "Exit"
-                      (* subroutines and Main only *)
+                      (* subroutines and Main only; "Exit" is a predefined
+                         name, not a reserved word (r3.74) *)
 
 (* ---------- Exceptions (CANON-15) ---------- *)
 
@@ -283,6 +284,8 @@ conditional_expr  ::= "if" expression "then" expression "else" expression
 literal           ::= integer_literal | real_literal | string_literal
                     | char_literal | bool_literal
 bool_literal      ::= "true" | "false"
+                      (* predefined names, not reserved words (r3.74); like
+                         Exit and the bit operators they can never be declared *)
 integer_literal   ::= decimal_digits | "$" hex_digits | ( "0x" | "0X" ) hex_digits
                       (* v3.34: "$FF" and "0xFF" are the same literal; a leading
                          zero never means octal *)

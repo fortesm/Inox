@@ -12,6 +12,6 @@ Main :
     X := 4
     case X
         1..5 | 5..9 PutLn(1)
-        otherwise PutLn(2)
+        else PutLn(2)
     ;
 ;

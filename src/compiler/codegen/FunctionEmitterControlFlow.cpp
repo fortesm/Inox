@@ -259,7 +259,7 @@ void FunctionEmitter::emitUnless(const ast::UnlessStatement& statement)
 // ADR-0011: the selector is evaluated once; arms are tested in order and
 // the first arm whose choices contain the value runs. Semantic analysis
 // has already proven that choices do not overlap and, without
-// `otherwise`, that they cover the selector type, so the fall-through
+// `else`, that they cover the selector type, so the fall-through
 // edge of a total case is unreachable.
 void FunctionEmitter::emitCase(const ast::CaseStatement& statement)
 {
@@ -271,14 +271,14 @@ void FunctionEmitter::emitCase(const ast::CaseStatement& statement)
     const bool unsignedCompare = type == "i1";
     const auto& arms = statement.arms();
     if (arms.empty()) {
-        output_ << "  br label %" << prefix << "otherwise\n\n";
+        output_ << "  br label %" << prefix << "else\n\n";
     }
 
     for (std::size_t armIndex = 0; armIndex < arms.size(); ++armIndex) {
         const std::string bodyTarget = prefix + "arm" + std::to_string(armIndex);
         const std::string nextArm = armIndex + 1 < arms.size()
             ? prefix + "test" + std::to_string(armIndex + 1)
-            : prefix + "otherwise";
+            : prefix + "else";
         const auto& choices = arms[armIndex].choices;
         for (std::size_t choiceIndex = 0; choiceIndex < choices.size(); ++choiceIndex) {
             const ast::Expression& choice = *choices[choiceIndex];
@@ -319,9 +319,9 @@ void FunctionEmitter::emitCase(const ast::CaseStatement& statement)
         }
     }
 
-    output_ << prefix << "otherwise:\n";
-    if (statement.hasOtherwise()) {
-        emitAssignmentBranch(statement.otherwiseBody());
+    output_ << prefix << "else:\n";
+    if (statement.hasElse()) {
+        emitAssignmentBranch(statement.elseBody());
         output_ << "  br label %" << endTarget << "\n\n";
     } else {
         output_ << "  unreachable\n\n";

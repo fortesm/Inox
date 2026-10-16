@@ -41,7 +41,7 @@ bool statementContainsTry(const ast::Statement& statement)
     case ast::AstNodeKind::CaseStatement: {
         const auto& node = static_cast<const ast::CaseStatement&>(statement);
         for (const auto& arm : node.arms()) if (statementsContainTry(arm.body)) return true;
-        return statementsContainTry(node.otherwiseBody());
+        return statementsContainTry(node.elseBody());
     }
     case ast::AstNodeKind::WithStatement:
         return statementsContainTry(static_cast<const ast::WithStatement&>(statement).body());
@@ -91,7 +91,7 @@ void forEachStatement(const std::vector<ast::StatementPtr>& statements,
         case ast::AstNodeKind::CaseStatement: {
             const auto& node = static_cast<const ast::CaseStatement&>(*statement);
             for (const auto& arm : node.arms()) forEachStatement(arm.body, visit);
-            forEachStatement(node.otherwiseBody(), visit);
+            forEachStatement(node.elseBody(), visit);
             break;
         }
         case ast::AstNodeKind::TryStatement: {
@@ -223,7 +223,7 @@ bool statementUsesExceptions(const ast::Statement& statement)
     case ast::AstNodeKind::CaseStatement: {
         const auto& n = static_cast<const ast::CaseStatement&>(statement);
         for (const auto& a : n.arms()) for (const auto& s : a.body) if (statementUsesExceptions(*s)) return true;
-        for (const auto& s : n.otherwiseBody()) if (statementUsesExceptions(*s)) return true;
+        for (const auto& s : n.elseBody()) if (statementUsesExceptions(*s)) return true;
         break;
     }
     case ast::AstNodeKind::WithStatement:

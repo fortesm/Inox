@@ -6,8 +6,8 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0011: case in the Ada style, lowered. Single values, static ranges,
-== `|` alternatives, negative ranges, Const bounds, otherwise, a total case
-== without otherwise (Bool), a function that ends in a total case, and a
+== `|` alternatives, negative ranges, Const bounds, else, a total case
+== without else (Bool), a function that ends in a total case, and a
 == selector that is evaluated exactly once.
 Module Runtime.CaseLowering
 
@@ -19,7 +19,7 @@ Classify(N Integer) Integer :
         1..Limit | 20 Return 1
         -5..-1
             Return 2
-        otherwise
+        else
             Return 3
     ;
 ;
@@ -42,13 +42,13 @@ Main :
     case Next(4)
         1..4 PutLn("low")
         5 | 6 PutLn("five or six")
-        otherwise PutLn("high")
+        else PutLn("high")
     ;
     N Integer := 7
     case N
         7 | 8
             PutLn("seven or eight")
             PutLn("multi-line arm")
-        otherwise
+        else
     ;
 ;

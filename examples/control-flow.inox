@@ -43,6 +43,6 @@ Main :
 
     case I
         0 PutLn("zero")
-        otherwise PutLn("other")
+        else PutLn("other")
     ;
 ;

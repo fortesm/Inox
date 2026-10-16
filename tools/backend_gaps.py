@@ -162,7 +162,7 @@ Main :
     X Integer := 1
     case X
         0 PutLn(0)
-        otherwise PutLn(1)
+        else PutLn(1)
     ;
 ;
 """),
@@ -353,7 +353,7 @@ Main :
     case X
         1 | 2 PutLn(1)
         3..9 PutLn(2)
-        otherwise PutLn(0)
+        else PutLn(0)
     ;
 ;
 """),

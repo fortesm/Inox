@@ -36,6 +36,9 @@ from pathlib import Path
 # Words used as terminals that are not reserved by the lexer: they are
 # identifiers with a meaning in one position only.
 CONTEXTUAL_WORDS = {"self", "range", "array", "override",
+                    # predefined names (CANON-2, r3.74): identifiers that
+                    # keep their meaning and can never be declared
+                    "true", "false", "exit", "bitand", "bitor", "bitxor", "bitnot",
                     # design by contract (CANON-24)
                     "pre", "pos", "old", "invariant", "variant"}
 
@@ -43,7 +46,7 @@ CONTEXTUAL_WORDS = {"self", "range", "array", "override",
 # future or kept reserved to reject old syntax with a diagnostic).
 RESERVED_ONLY = {"do", "var"}
 
-FORBIDDEN_TERMINALS = {"end", "break", "finally", "of", "when", "=>", "var", "elsif"}
+FORBIDDEN_TERMINALS = {"end", "break", "finally", "of", "when", "=>", "var", "elsif", "otherwise"}
 
 # Terminals allowed in the grammar but never in the named productions: `then`
 # belongs to the conditional expression only (ADR-0013); control structures

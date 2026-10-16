@@ -26,7 +26,7 @@ its own unsigned path, keyed by the semantic type of the expression
   input or out of range → kind 6). Both are portable C++ (no `%llu` locale
   issues: written with `std::to_chars`/`std::from_chars`).
 - **case.** Arms compare unsigned; ranges use `icmp uge/ule`. ADR-0011 already
-  requires `otherwise`.
+  requires `else`.
 - **for.** A UInt64 iterator uses unsigned bounds compare; the step check
   (kind 4) is unchanged.
 

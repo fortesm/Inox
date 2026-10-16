@@ -303,20 +303,38 @@ The symbols SHALL be: `:=` declaration and assignment; `=` and `#` equality
 and inequality; `<` `<=` `>` `>=`; `..` range; `:` routine declaration
 (CANON-4); `;` block close; `.` member; `,` separator; `|` between `case`
 alternatives; `^` power, never XOR; `+=` `-=` `*=` `/=` `^=` compound
-assignment.
+assignment. `{` and `}` are reserved until generics and concurrency show
+their use (Marcelo Fortes, 2026-10-16).
 
 #### Scenario: Tokens
 - **WHEN** the lexer reads keywords, literals and symbols
 - **THEN** it produces the expected tokens (tests/lexer/valid/tokens-keywords-literals.inox)
 
+### Requirement: CANON-2 Reserved words and predefined names
+The reserved words SHALL be: Module Use Type Const Var State Struct Enum if
+then elif else unless while repeat until for in step case try except On do
+ensure raise retry with mut ref div mod and xor or not shr shl leave
+continue Return. `True`, `False`, `Exit`, `bitand`, `bitor`, `bitxor` and
+`bitnot` are predefined names: never declared, free as field and method
+names. `Main` is an ordinary name (Marcelo Fortes, 2026-10-16).
+
+#### Scenario: Predefined names
+- **WHEN** a program declares True, Exit, BitAnd or False, or names a field Exit
+- **THEN** the declarations are rejected (tests/diagnostics/predefined-true-declared.inox, tests/diagnostics/predefined-exit-assigned.inox, tests/diagnostics/predefined-bitand-parameter.inox, tests/diagnostics/predefined-false-routine.inox) and the field works (tests/runtime/predefined-names.inox)
+
 ### Requirement: CANON-2 Words Inox does not have
 `End`/`end` SHALL NOT be a keyword and never closes a block. `break` and
 `finally` are ordinary identifiers: the loop exit is `leave` and the try
-cleanup clause is `ensure` (ADR-0007).
+cleanup clause is `ensure` (ADR-0007). `otherwise` is not a word: the last
+arm of a `case` is `else` (r3.74).
+
+#### Scenario: Braces reserved
+- **WHEN** a program writes `{` or `}`
+- **THEN** it is rejected as reserved (tests/diagnostics/braces-reserved.inox)
 
 #### Scenario: Former keywords
 - **WHEN** a program uses `break` or `finally` as names, or closes a block with `end`
-- **THEN** the names are valid (tests/semantic/valid/former-keywords-as-identifiers.inox) and `end` is rejected (tests/semantic/invalid/end-block-close.inox)
+- **THEN** the names are valid (tests/semantic/valid/former-keywords-as-identifiers.inox) and `end` is rejected (tests/semantic/invalid/end-block-close.inox), as is a `case` arm `otherwise` (tests/diagnostics/case-otherwise-removed.inox)
 
 ### Requirement: CANON-3 Modules and Use
 A source file SHALL be one logical module that starts, after optional
@@ -872,12 +890,12 @@ loop never computes past Int64.Min or Int64.Max.
 ### Requirement: CANON-12 case
 `case Selector` SHALL choose one arm (ADR-0011): a discrete selector
 evaluated once; arms of static values or ranges separated by `|`; no overlap
-and no fall-through; `otherwise` at most once, last, and required unless the
+and no fall-through; `else` at most once, last, and required unless the
 choices cover every value; no `of`, `when`, `=>`, `:` or `do`. `case` as an
 expression is reserved. Details: `language/case-statement`.
 
 #### Scenario: case
-- **WHEN** a case runs, or overlaps, or misses values without `otherwise`
+- **WHEN** a case runs, or overlaps, or misses values without `else`
 - **THEN** it picks one arm (tests/runtime/case-lowering.inox) or is rejected (tests/diagnostics/case-overlap-range.inox, tests/diagnostics/case-integer-incomplete.inox)
 
 ### Requirement: CANON-13 Array
@@ -1593,8 +1611,9 @@ values.
 extend modules. Variant structs (a value that is one of several structs,
 examined with `case`) are how a collection mixes kinds without subtyping
 (Marcelo Fortes, 2026-10-14: "Sim, registre isso"). Metadata tags (JSON,
-databases), BigCurrency with a big-integer runtime and symbolic
-mathematics are later directions. Each needs an approved design.
+databases), BigCurrency, symbolic mathematics and `Float(Soma / N)` as the
+exact quotient of two integers (2026-10-16) are later directions. Each
+needs an approved design.
 
 #### Scenario: All symbols public today
 - **WHEN** a module uses another

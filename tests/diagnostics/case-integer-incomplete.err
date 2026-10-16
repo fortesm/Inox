@@ -1,1 +1,1 @@
-case does not cover every value of Int64 (first missing: -9223372036854775808); add 'otherwise' (ADR-0011)
+case does not cover every value of Int64 (first missing: -9223372036854775808); add an 'else' arm (ADR-0011)

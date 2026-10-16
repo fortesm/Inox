@@ -5,9 +5,9 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== ADR-0011: `otherwise` may be omitted when the choices provably cover every
+== ADR-0011: `else` may be omitted when the choices provably cover every
 == value of the selector type: Bool, UInt8 and the whole Int64 range here.
-Module CaseExhaustiveWithoutOtherwise
+Module CaseExhaustiveWithoutElse
 
 Main :
     B := True

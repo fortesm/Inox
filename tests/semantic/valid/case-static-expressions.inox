@@ -21,11 +21,11 @@ Main :
     C := 'A'
     case C
         Letter PutLn(1)
-        otherwise
+        else
     ;
     V UInt8 := UInt8(5)
     case V
         5 | 2 + 3 * 10 PutLn(1)
-        otherwise
+        else
     ;
 ;
