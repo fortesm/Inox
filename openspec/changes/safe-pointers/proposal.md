@@ -37,6 +37,11 @@ ownership, runtime ABI). No code before the design is approved.
   frees at the end of its block, a dead Handle traps and `Alive` tests it,
   a Handle points only to an owned object, the unsafe layer much later,
   destructors decided in change `lifecycle`).
+- **Handles to any variable, field or array element** (2026-10-15/16):
+  "Corretamente! É isso mesmo"; "1 - Com Handle".
+- **Permissive with detection** (2026-10-16): "2 - permissivo com
+  detecção". A Handle may go anywhere; one that outlives its variable is
+  detected (`Alive` false or a trap), never dangling.
 - **An empty Handle:** "Acatado: um `Handle` pode simplesmente nascer vazio
   (`Alive` = false), e então ele mesmo serve como 'sem pai' sem precisar
   de `Option`".
@@ -46,7 +51,8 @@ ownership, runtime ABI). No code before the design is approved.
 - `Own<T>`: the single owner of a heap object. `New(Value)` creates it; it
   is freed when its owner's block ends or by `Free(P)`; it is never copied,
   only moved with `Move(P)` (the rule of File, CANON-17).
-- `Handle<T>`: a reference that does not own. Each use checks a generation
+- `Handle<T>`: a reference that does not own, to an owned object or to any
+  variable, field or array element (`Handle(X)`). Each use checks a generation
   number, so it never reaches a freed or reused object: `Alive(H)` tests
   it, and the use of a dead Handle is a trap. A Handle is born empty.
 - Field access with a dot (`P.FValor`, `H.FValor`), never `^` or `->`;

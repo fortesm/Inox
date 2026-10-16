@@ -22,8 +22,8 @@ with lifetimes are checked here at run time with one comparison.
 | Create | `New(P)` | `malloc(...)` | `P := New(TNo(FValor := 1))` |
 | Field | `P^.FValor` | `p->valor` | `P.FValor` |
 | Whole value | `P^` | `*p` | `Value(P)` |
-| Address of a variable | `@X` | `&x` | lent only: a `ref` parameter |
-| Non-owning reference | — | — | `Handle(P)` |
+| Address of a variable | `@X` | `&x` | `Handle(X)`: any variable, field or array element |
+| Non-owning reference to a heap object | — | — | `Handle(P)` |
 | Free | `Dispose(P)` (unsafe) | `free(p)` (unsafe) | `Free(P)` (safe) |
 | Still there? | — | — | `Alive(H)` |
 | Give ownership away | — | — | `Q := Move(P)` |
@@ -70,6 +70,82 @@ Main :
 ;                                           == anything still owned is freed here
 ```
 
+A navigator over an array of records (Marcelo Fortes's example,
+2026-10-16): a Handle to the array and a Handle to the current record,
+whose fields are read and written in place, with no copy.
+
+```
+Const Tamanho := 5
+
+Type
+    TContato Struct
+        FNome String := ""
+        FTelefone String := ""
+        FIdade Integer := 0
+    ;
+    TNavegador Struct
+        FTabela Handle<Array[1..Tamanho] TContato>
+        FIndice Integer := 1
+    ;
+
+TNavegador.Primeiro(Self mut) :
+    Self.FIndice := 1
+;
+TNavegador.Ultimo(Self mut) :
+    Self.FIndice := Tamanho
+;
+TNavegador.Proximo(Self mut) :
+    pre not Self.NoFim, "não há próximo"
+    Self.FIndice += 1
+;
+TNavegador.Anterior(Self mut) :
+    pre not Self.NoInicio, "não há anterior"
+    Self.FIndice -= 1
+;
+TNavegador.NoInicio(Self) Bool :
+    Return Self.FIndice = 1
+;
+TNavegador.NoFim(Self) Bool :
+    Return Self.FIndice = Tamanho
+;
+TNavegador.Atual(Self) Handle<TContato> :
+    Return Handle(Self.FTabela[Self.FIndice])   == the record inside the array
+;
+
+Main :
+    Contatos Array[1..Tamanho] TContato
+    Contatos[1] := TContato(FNome := "Ana", FTelefone := "1111", FIdade := 30)
+    ...
+    Nav := TNavegador(FTabela := Handle(Contatos))  == Handle of a local: no cost
+    Nav.Primeiro
+    PutLn(Nav.Atual.FNome, " - ", Nav.Atual.FTelefone)
+    Nav.Ultimo
+    Nav.Atual.FIdade += 1                           == writes the record itself
+    PutLn(Contatos[Tamanho].FIdade)
+;
+```
+
+"Next" in an array is the index plus one, never pointer arithmetic; in a
+doubly linked list it is a pointer (`FProximo Option<Own<TNo>>`,
+`FAnterior Handle<TNo>`).
+
+A Handle that outlives its variable compiles, and is detected:
+
+```
+Vazar Handle<Integer> :
+    X Integer := 42
+    Return Handle(X)          == compiles: X is placed in a generation block
+;
+
+Main :
+    H := Vazar
+    if Alive(H)               == false: X ended with Vazar
+        PutLn(Value(H))
+    ;
+    PutLn(Value(H))           == trap: "use of a freed object", never garbage
+;
+```
+
 Moves are explicit; the compiler never guesses:
 
 ```
@@ -90,8 +166,10 @@ Q := P              == error: "an owner is never copied: use Move(P)"
    `Free(P)`, P may only be assigned again.
 5. Freeing an object frees the objects it owns (its `Own` fields), without
    recursion, so a long list cannot overflow the stack.
-6. `Handle(P)` makes a Handle of an owned object. A Handle is copied
-   freely, keeps nothing alive, and is born empty.
+6. `Handle(X)` makes a Handle of an owned object, of any variable (local,
+   parameter, State), of a field or of an array element (Marcelo Fortes,
+   2026-10-15/16: "Corretamente! É isso mesmo"; "1 - Com Handle"). A Handle
+   is copied freely, keeps nothing alive, and is born empty.
 7. Every access through a Handle checks its generation: a dead or empty
    Handle traps (CANON-19, "use of a freed object"); `Alive(H)` asks without
    trapping. The check is removed when the compiler proves no `Free` can
@@ -101,6 +179,17 @@ Q := P              == error: "an owner is never copied: use Move(P)"
    two references reach the same object, and `Value(A) = Value(B)` compares
    contents.
 9. A pointer cannot be printed, converted to a number, or built from one.
+10. **Permissive with detection** (Marcelo Fortes, 2026-10-16: "2 -
+    permissivo com detecção"): a Handle may go anywhere (returned, stored
+    in a field, an array or State), as freely as a Pascal pointer. The
+    compiler chooses the cost: when a Handle provably stays inside the block
+    of the variable it points to, the variable stays on the stack and the
+    Handle costs nothing; when it may escape, the variable is placed in a
+    generation block (as Go moves an escaping variable to the heap, but with
+    no collector) that is freed when the variable's scope ends, and a use
+    after that finds `Alive` false or traps. Never a wrong value (CANON-1).
+    Pascal's freedom without its dangling pointers; Ada's compile-time
+    refusal is not needed.
 
 ## Run time
 
