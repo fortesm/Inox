@@ -17,4 +17,4 @@
 ## 4. Gates
 
 - [x] 4.1 Suite, ASan+UBSan, fuzz, leak check, grammar, openspec, constitution, calc differential, MSVC IR
-- [ ] 4.2 CI on Linux and Windows
+- [x] 4.2 CI on Linux and Windows
