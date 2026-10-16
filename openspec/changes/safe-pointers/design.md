@@ -1,3 +1,6 @@
+Design approved by Marcelo Fortes, 2026-10-16: "Tudo aprovado, prossiga
+como o usual".
+
 ## The rule
 
 Every heap object has exactly one owner (`Own<T>`). Everyone else only

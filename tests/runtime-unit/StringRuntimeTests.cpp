@@ -197,6 +197,7 @@ void testCompare()
 } // namespace
 
 int runFileRuntimeTests();
+int runOwnRuntimeTests();
 
 int main()
 {
@@ -209,5 +210,6 @@ int main()
         std::printf("[PASS] inoxrt string runtime unit tests\n");
     }
     const int fileFailures = runFileRuntimeTests();
-    return failures == 0 && fileFailures == 0 ? 0 : 1;
+    const int ownFailures = runOwnRuntimeTests();
+    return failures == 0 && fileFailures == 0 && ownFailures == 0 ? 0 : 1;
 }
