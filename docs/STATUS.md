@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-14 against Inox 0.2.0 pre-alpha, canon r3.72.
+Verified on 2026-10-16 against Inox 0.2.0 pre-alpha, canon r3.73.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -38,6 +38,15 @@ each version added.
   `Override`, loop `invariant`/`variant`; violations are runtime traps
   (exit status 70); always on through 1.0 (monitoring levels per module
   are FUTURE, after 1.0).
+- Safe pointers (CANON-25): `Own<T>` (one owner, never copied, `Move`),
+  `Option<Own<T>>` and `None`, `Link<T>` to owned objects, locals, fields,
+  array elements and State, checked by a generation on every use;
+  `New`, `Free`, `Move`, `Value` (read and written), `Link`, `Alive`,
+  `Same`; a definite-move analysis over every path; owners freed when
+  overwritten, at `Free`, at routine exit (also by an exception) and when
+  their declaration runs again, without recursion; owner parameters and
+  results; contracts on owner parameters. Runtime `runtime/OwnRuntime.cpp`;
+  the leak check covers the pointer programs.
 - Strings: reference-counted UTF-8 values everywhere a value lives,
   equality and ordering, `GetLn(S)`.
 - Exceptions: try/except/On/Else/ensure/Raise/Retry with the standard
@@ -57,7 +66,17 @@ each version added.
   enums and the enum initializer rule wait for change `enum-range-set`.
 - Currency and Crypto: names registered, no arithmetic or literals;
   BigCurrency absent.
-- Vector, `Option`, `Result`: not implemented.
+- Vector, `Option`, `Result`: not implemented (`Option` exists only as
+  `Option<Own<T>>`).
+- Safe pointers: a Link to a parameter is rejected ("not supported yet");
+  struct invariants are not checked after a write through a pointer;
+  a Link to a local always places the local in a generation block (the
+  escape analysis that keeps it on the stack at no cost is not done); an
+  owner used after Move or Free on a path the analysis does not follow
+  (`leave`/`continue` out of a loop) is caught at run time (trap "use of
+  an owner after Move or Free"), not at compile time; an owner declared
+  inside a loop is freed when its declaration runs again or the routine
+  returns, not at the end of each iteration.
 - Conversions involving Float (`Integer(F)`, `Float(I)`, `Float32(X)`): accepted,
   not lowered ("not yet implemented in the LLVM backend").
 - A Float `Const` is not lowered, so Std.Math exposes `Pi`, `Tau` and `E` as

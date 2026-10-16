@@ -264,3 +264,31 @@ boa conveniência".
 2. `Link<T>`, `Alive`, `Same`, the generation check and its trap.
 3. Constitution (FUTURE "Ownership, absence and failure" becomes law),
    grammar, manual, examples (list, tree with parent, game target).
+
+## As implemented (r3.73)
+
+Where the implementation differs from the text above, or leaves part of it
+for later:
+
+- **Owner access has a backstop check.** An owner reached on a path the
+  move analysis does not follow (`leave` or `continue` out of a loop after
+  a `Move` or `Free`) is caught at run time: one null test, marked
+  expected, traps "use of an owner after Move or Free" (CANON-19). Every
+  other path is a compile error, as rule 3 says.
+- **No Link to a parameter yet** (rule 6 lists parameters): `Link(P)` of a
+  parameter is a compile error, "not supported yet"; a local copy can be
+  linked. Links to locals, fields, elements, State and owned objects work.
+- **No zero-cost Links yet** (rule 10): every linked local is placed in a
+  generation block; the escape analysis that keeps it on the stack comes
+  later. Rule 7's check removal is not done either: every use checks.
+- **Release timing in loops**: an owner, or a linked local, declared inside
+  a loop body is freed when its declaration runs again or when the routine
+  returns, not at the end of each iteration; nothing leaks.
+- **Contracts**: a `pre` may read an owner parameter; a `pos` reads it
+  through `old P.Field` (`old P` of an owner is an error: an owner is never
+  copied). Struct invariants are not checked after a write through a
+  pointer.
+- `New(TNo)` creates an object with its defaults, besides `New(V)`.
+- A function result that is an owner cannot be discarded yet (the backend
+  gap of functions called as statements).
+

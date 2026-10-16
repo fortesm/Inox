@@ -57,6 +57,7 @@ th{background:#eef3fb}
 <li><a href="#structs-methods">Structs and associated methods</a></li>
 <li><a href="#method-reuse">Method reuse: composition without inheritance</a></li>
 <li><a href="#contracts">Design by contract: pre, pos, invariant</a></li>
+<li><a href="#pointers">Safe pointers: Own, Link, New, Free</a></li>
 <li><a href="#control-flow">Control flow</a></li>
 <li><a href="#output">Std.IO and variadic output</a></li>
 <li><a href="#files">Text files: Std.Files and Std.IOUtils</a></li>
@@ -528,6 +529,77 @@ TPilha.Desempilhar(Self mut) Integer :
 <p>A contract only reads: it cannot call a <code>Self mut</code> method, pass a <code>ref mut</code> argument, assign, or use files. A broken contract is a bug, not an exception: the program stops as a runtime trap (exit code 70, CANON-19), like an overflow, and <code>try</code> does not catch it. The message names the clause and the routine:</p>
 <pre><code>Inox runtime error: precondition violated: TPilha.Empilhar: Self.FQuantidade < 5: a pilha não está cheia</code></pre>
 <p>The checks are always on, in every build, through Inox 1.0: no switch turns them off. Eiffel-style monitoring levels, chosen per module (which kinds of contract a module checks), and proving contracts at compile time (as SPARK does) are future work after 1.0. <code>examples/contracts.inox</code> is a complete program.</p>
+</section>
+<section id="pointers"><h2>Safe pointers: Own, Link, New, Free</h2>
+<p>Inox has pointers without reference counting, without a garbage collector and without null (CANON-25). Every heap object has one owner, <code>Own&lt;T&gt;</code>; everything else that points to it is a <code>Link&lt;T&gt;</code>, which owns nothing and is checked every time it is used. There is no pointer arithmetic and no symbol: the operations are routines, as in Pascal's <code>New</code>, and fields are reached with the dot.</p>
+<table>
+<thead><tr><th>Operation</th><th>Pascal</th><th>C</th><th>Inox</th></tr></thead>
+<tbody>
+<tr><td>Pointer type</td><td><code>PNo = ^TNo</code></td><td><code>struct No *</code></td><td><code>Own&lt;TNo&gt;</code>, <code>Link&lt;TNo&gt;</code></td></tr>
+<tr><td>Create</td><td><code>New(P)</code></td><td><code>malloc(...)</code></td><td><code>P := New(TNo(FValor := 1))</code> or <code>New(TNo)</code> (defaults)</td></tr>
+<tr><td>Field</td><td><code>P^.FValor</code></td><td><code>p-&gt;valor</code></td><td><code>P.FValor</code></td></tr>
+<tr><td>Whole value</td><td><code>P^</code></td><td><code>*p</code></td><td><code>Value(P)</code>, read or written</td></tr>
+<tr><td>Address of a variable</td><td><code>@X</code></td><td><code>&amp;x</code></td><td><code>Link(X)</code>: a variable, a field, an element or an object</td></tr>
+<tr><td>Free</td><td><code>Dispose(P)</code> (unsafe)</td><td><code>free(p)</code> (unsafe)</td><td><code>Free(P)</code> (safe, optional)</td></tr>
+<tr><td>Still there?</td><td>—</td><td>—</td><td><code>Alive(L)</code></td></tr>
+<tr><td>Give the owner away</td><td>—</td><td>—</td><td><code>Q := Move(P)</code></td></tr>
+<tr><td>Nothing</td><td><code>nil</code></td><td><code>NULL</code></td><td><code>None</code>: an empty Link, or an absent owner <code>Option&lt;Own&lt;T&gt;&gt;</code></td></tr>
+</tbody>
+</table>
+<pre><code>Type
+    TNo Struct
+        FValor Integer := 0
+        FProximo Option&lt;Own&lt;TNo&gt;&gt;          == None at the end of the list
+    ;
+
+NovaLista(N Integer) Own&lt;TNo&gt; :
+    Lista := New(TNo(FValor := 1))
+    Atual := Link(Lista)
+    for I in 2..N
+        Atual.FProximo := New(TNo(FValor := I))   == an Own becomes the Option as is
+        Atual := Link(Atual.FProximo)
+    ;
+    Return Move(Lista)                          == the caller becomes the owner
+;
+
+Somar(Inicio Link&lt;TNo&gt;) Integer :
+    Total := 0
+    N := Inicio
+    while Alive(N)
+        Total += N.FValor
+        N := Link(N.FProximo)                   == None gives an empty Link: the loop ends
+    ;
+    Return Total
+;
+
+Main :
+    L := NovaLista(4)
+    PutLn(Somar(Link(L)))                       == 10
+;                                               == L and its whole list are freed here</code></pre>
+<h3>Owners</h3>
+<ul>
+<li>An owner is never copied: <code>Q := P</code> is an error; <code>Q := Move(P)</code> gives the object to Q, and using P afterwards is a compile error until P is assigned again, on every path (branches, loops, handlers).</li>
+<li>The object is freed by <code>Free(P)</code>, when the owner is overwritten, when its routine returns (also through an exception), or when its declaration runs again; the objects it owns are freed with it, in a loop (a list of a million nodes frees without recursion).</li>
+<li>A value parameter <code>P Own&lt;T&gt;</code> belongs to the routine: the caller writes <code>Move(X)</code> or a new value. A struct holding an owner moves like one.</li>
+<li><code>Option&lt;Own&lt;T&gt;&gt;</code> may be <code>None</code> (assigning <code>None</code> frees its object); it is reached through <code>Link(X)</code>, which is empty when it is <code>None</code>. An array of owners is <code>Array[...] Option&lt;Own&lt;T&gt;&gt;</code>.</li>
+</ul>
+<h3>Links</h3>
+<ul>
+<li><code>Link(X)</code> reaches an owned object, a variable, a field or an element, and goes anywhere: into fields, arrays, results. A Link is copied freely and is born empty.</li>
+<li>Every use checks a generation stored with the object: when the object was freed, its block reused for another object, or the variable's routine returned, the Link never reaches it. <code>Alive(L)</code> asks; using it stops the program with <code>Inox runtime error: use of a freed object or an empty Link</code>.</li>
+<li><code>Same(A, B)</code> asks whether two pointers reach one object; <code>=</code> on pointers is an error; to compare what they reach, compare <code>Value(A) = Value(B)</code> (for numbers, strings and other comparable values) or the fields.</li>
+</ul>
+<pre><code>Vazar Link&lt;Integer&gt; :
+    X Integer := 42
+    Return Link(X)            == compiles, as in Pascal
+;
+
+Main :
+    H := Vazar
+    PutLn(Alive(H))           == false: X ended with Vazar
+    PutLn(Value(H))           == stops the program; it never reads the old stack
+;</code></pre>
+<p>Owners also work with contracts: a <code>pre</code> reads an owner the routine takes, and a <code>pos</code> reads what it held through <code>old P.Field</code>. A Link to a parameter is not supported yet. <code>examples/pointers-tree.inox</code> (a tree of folders whose children are owned and whose parent is a Link) and <code>examples/pointers-navigator.inox</code> (a navigator over an array of records) are complete programs.</p>
 </section>
 <section id="control-flow"><h2>Control flow</h2>
 <p><code>if</code> uses no <code>then</code> and no <code>:</code>:</p>
