@@ -12,6 +12,7 @@
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
 #include "../support/ArrayType.h"
+#include "../support/PointerType.h"
 
 #include <algorithm>
 #include <array>
@@ -38,13 +39,16 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
     currentFunctionReturnType_ = signature != nullptr ? signature->returnType : std::string{};
     currentFunctionSawReturn_ = false;
     symbols_.pushScope();
+    const auto previousParameters = std::exchange(currentParameters_, {});
     if (signature != nullptr) {
         for (const FunctionParameter& parameter : signature->parameters) {
             declareOrThrow(parameter.name, SymbolKind::Variable, parameter.typeName,
                            parameter.mode == PassMode::RefMut);
+            currentParameters_.insert(symbols_.currentScope().resolve(parameter.name));
         }
     }
     analyzeStatements(function.body(), false);
+    currentParameters_ = previousParameters;
     leaveScope();
     if (!currentFunctionReturnType_.empty() && !currentFunctionSawReturn_) {
         throw SemanticError("function " + function.name() + " must return a value");
@@ -219,7 +223,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         std::string typeName = var.typeName().empty() ? std::string{} : canonicalTypeName(var.typeName());
         if (!var.typeName().empty()) {
             resolveTypeOrThrow(var.typeName());
-            if (support::isArrayTypeName(var.typeName()) || support::isSliceTypeName(var.typeName())) {
+            if (support::isArrayTypeName(var.typeName()) || support::isGenericTypeName(var.typeName())) {
                 result_.setCanonicalTypeName(var.typeName(), typeName);
             }
         }
@@ -229,6 +233,14 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
                 typeName = initializerType;
                 if (isFileType(typeName)) {
                     requireFreshFile(*var.initializer());
+                }
+                if (typeName == "None") {
+                    throw SemanticError("the type of None is not known here: write it, " + var.name() +
+                                        " Link<T> := None");
+                }
+                if (isMoveOnlyType(typeName) && !isFreshOwnerValue(*var.initializer())) {
+                    throw SemanticError("an owner is never copied: give it away with Move(X), or build a "
+                                        "new one with New(...)");
                 }
             } else if (!canAssignValue(typeName, initializerType, *var.initializer())) {
                 throw SemanticError("cannot initialize " + typeName + " with " + initializerType);
@@ -240,9 +252,21 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         // CANON-5 rule 3/4: every variable is born with a value. Only structs and
         // aggregates may omit ":=" (type-default initialization); scalars must be
         // initialized explicitly.
+        // A Link and an Option<Own<T>> are born empty; an Own is born with
+        // New(...) (safe-pointers).
+        const bool bornEmpty = support::isLinkTypeName(typeName) || support::isOptionOwnTypeName(typeName);
         if (var.initializer() == nullptr && resolveStruct(typeName) == nullptr &&
-            !support::isArrayTypeName(typeName)) {
+            !support::isArrayTypeName(typeName) && !bornEmpty) {
+            if (support::isOwnTypeName(typeName)) {
+                throw SemanticError("an owner is born with New(...) or Move(X): " + var.name());
+            }
             throw SemanticError("scalar declaration requires initializer: " + var.name());
+        }
+        if (var.initializer() == nullptr) {
+            if (const std::string owner = ownerFieldWithoutDefault(typeName); !owner.empty()) {
+                throw SemanticError(owner + " is an owner without default: build " + var.name() +
+                                    " with its owners given");
+            }
         }
         // CANON-24: a struct born with its defaults satisfies its invariant.
         if (var.initializer() == nullptr && hasInvariant(typeName) && invariantChecksOn()) {
@@ -256,37 +280,52 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         analyzeVarBlock(static_cast<const ast::VarBlockStatement&>(statement));
         break;
     case ast::AstNodeKind::IfStatement: {
+        // Safe pointers: an owner given away on any branch is given away
+        // after the if (the analysis follows every path).
         const auto& ifStatement = static_cast<const ast::IfStatement&>(statement);
         requireBoolCondition(ifStatement.condition());
+        const auto start = movedOwners_;
         analyzeStatements(ifStatement.thenBody(), true);
+        auto merged = movedOwners_;
         for (const auto& clause : ifStatement.elseIfClauses()) {
+            movedOwners_ = start;
             requireBoolCondition(*clause.condition);
             analyzeStatements(clause.body, true);
+            merged.insert(movedOwners_.begin(), movedOwners_.end());
         }
+        movedOwners_ = start;
         analyzeStatements(ifStatement.elseBody(), true);
+        merged.insert(movedOwners_.begin(), movedOwners_.end());
+        movedOwners_ = std::move(merged);
         break;
     }
     case ast::AstNodeKind::UnlessStatement: {
         const auto& unlessStatement = static_cast<const ast::UnlessStatement&>(statement);
         requireBoolCondition(unlessStatement.condition());
+        const auto start = movedOwners_;
         analyzeStatements(unlessStatement.body(), true);
+        movedOwners_.insert(start.begin(), start.end());
         break;
     }
     case ast::AstNodeKind::WhileStatement: {
         const auto& whileStatement = static_cast<const ast::WhileStatement&>(statement);
         requireBoolCondition(whileStatement.condition());
+        const auto start = movedOwners_;
         ++loopDepth_;
         analyzeStatements(whileStatement.body(), true);
         --loopDepth_;
+        requireOwnersBackAfterLoop(start);
         break;
     }
     case ast::AstNodeKind::RepeatStatement: {
         const auto& repeatStatement = static_cast<const ast::RepeatStatement&>(statement);
+        const auto start = movedOwners_;
         ++loopDepth_;
         ++repeatDepth_;
         analyzeStatements(repeatStatement.body(), true);
         --repeatDepth_;
         --loopDepth_;
+        requireOwnersBackAfterLoop(start);
         break;
     }
     case ast::AstNodeKind::UntilStatement: {
@@ -339,10 +378,12 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
                 "loop iterator conflicts with existing symbol: " + forStatement.iterator());
         }
         declareOrThrow(forStatement.iterator(), SymbolKind::LoopIterator, "Int64", false);
+        const auto start = movedOwners_;
         ++loopDepth_;
         analyzeStatements(forStatement.body(), false);
         --loopDepth_;
         leaveScope();
+        requireOwnersBackAfterLoop(start);
         break;
     }
     case ast::AstNodeKind::CaseStatement:
@@ -351,13 +392,24 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
     case ast::AstNodeKind::TryStatement: {
         const auto& tryStatement = static_cast<const ast::TryStatement&>(statement);
 
+        // Safe pointers: a handler may start after any part of the body, so
+        // it sees the owners given away before the try and in the body.
+        const auto startOfTry = movedOwners_;
         analyzeStatements(tryStatement.body(), true);
+        auto handlerStart = startOfTry;
+        handlerStart.insert(movedOwners_.begin(), movedOwners_.end());
+        auto afterTry = movedOwners_;
+        const auto joinHandler = [&] {
+            afterTry.insert(movedOwners_.begin(), movedOwners_.end());
+        };
 
         if (tryStatement.hasPlainExcept()) {
             // Bare Raise is meaningful here, but Retry is intentionally not:
             // Retry belongs to an explicit On/Else handler for this try.
             ++exceptionHandlerDepth_;
+            movedOwners_ = handlerStart;
             analyzeStatements(tryStatement.exceptBody(), true);
+            joinHandler();
             --exceptionHandlerDepth_;
         }
 
@@ -392,7 +444,9 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             }
             ++exceptionHandlerDepth_;
             ++retryHandlerDepth_;
+            movedOwners_ = handlerStart;
             analyzeStatements(handler.body, false);
+            joinHandler();
             --retryHandlerDepth_;
             --exceptionHandlerDepth_;
             leaveScope();
@@ -404,12 +458,16 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             }
             ++exceptionHandlerDepth_;
             ++retryHandlerDepth_;
+            movedOwners_ = handlerStart;
             analyzeStatements(tryStatement.elseBody(), true);
+            joinHandler();
             --retryHandlerDepth_;
             --exceptionHandlerDepth_;
         }
 
+        movedOwners_ = afterTry;
         if (tryStatement.hasEnsure()) {
+            movedOwners_.insert(handlerStart.begin(), handlerStart.end());
             ++ensureDepth_;
             analyzeStatements(tryStatement.ensureBody(), true);
             --ensureDepth_;
@@ -518,6 +576,12 @@ void SemanticAnalyzer::analyzeVarBlock(const ast::VarBlockStatement& statement)
                     binary.left().kind() == ast::AstNodeKind::IdentifierExpression) {
                     const auto& identifier = static_cast<const ast::IdentifierExpression&>(binary.left());
                     const std::string typeName = analyzeExpression(binary.right());
+                    if (typeName == "None" ||
+                        (isMoveOnlyType(typeName) && !isFreshOwnerValue(binary.right()))) {
+                        throw SemanticError(typeName == "None"
+                                                ? "the type of None is not known here: write it"
+                                                : "an owner is never copied: give it away with Move(X)");
+                    }
                     declareOrThrow(identifier.name(), SymbolKind::Variable, typeName, true);
                     trackLocal(identifier.name());
                     const Symbol& symbol = resolveOrThrow(identifier.name());
@@ -535,6 +599,9 @@ void SemanticAnalyzer::analyzeVarBlock(const ast::VarBlockStatement& statement)
 
 void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
 {
+    // Safe pointers: an owner given away in any arm is given away after it.
+    const auto caseStart = movedOwners_;
+    auto caseMerged = movedOwners_;
     const std::string selectorType =
         canonicalTypeName(analyzeExpression(statement.expression()));
     CaseDomain domain;
@@ -584,11 +651,18 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
             }
             covered.push_back(interval);
         }
+        movedOwners_ = caseStart;
         analyzeStatements(arm.body, true);
+        caseMerged.insert(movedOwners_.begin(), movedOwners_.end());
     }
 
+    movedOwners_ = caseStart;
     if (statement.hasOtherwise()) {
         analyzeStatements(statement.otherwiseBody(), true);
+    }
+    caseMerged.insert(movedOwners_.begin(), movedOwners_.end());
+    movedOwners_ = std::move(caseMerged);
+    if (statement.hasOtherwise()) {
         return;
     }
 
@@ -624,6 +698,25 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
                             " (first missing: " + caseValueText(next, domain) +
                             "); add 'otherwise' (ADR-0011)");
     }
+}
+
+} // namespace inox::compiler::semantic
+
+namespace inox::compiler::semantic {
+
+// Safe pointers: a loop's next round starts where its body ends, so an
+// owner declared before the loop and given away in the body must be given
+// a new value before the body ends. After the loop, the owners given away
+// before it still are.
+void SemanticAnalyzer::requireOwnersBackAfterLoop(const std::unordered_map<const Symbol*, const Scope*>& start)
+{
+    for (const auto& [symbol, scope] : movedOwners_) {
+        if (!start.contains(symbol)) {
+            throw SemanticError(symbol->name + " is given away (Move or Free) inside the loop: assign it again "
+                                "before the next round");
+        }
+    }
+    movedOwners_.insert(start.begin(), start.end());
 }
 
 } // namespace inox::compiler::semantic

@@ -17,6 +17,7 @@
 #include "Operators.h"
 #include "../exceptions/ExceptionTypes.h"
 #include "../support/ArrayType.h"
+#include "../support/PointerType.h"
 #include "../support/Platform.h"
 
 #include <algorithm>
@@ -209,11 +210,15 @@ FunctionEmitter::ElementAddress FunctionEmitter::emitElementAddress(const ast::C
                 << ", i64 " << offset << '\n';
         return ElementAddress{pointer, storage, elementType};
     }
-    const auto layout = arrayLayout(semanticTypeName(base));
+    // Safe pointers: through a pointer, the array is the object it reaches.
+    const std::string baseType = semanticTypeName(base);
+    const bool throughPointer = support::isPointerTypeName(baseType);
+    const auto layout = arrayLayout(throughPointer ? support::pointerTargetTypeName(baseType) : baseType);
     if (!layout) {
         throw CodegenUnsupported("indexing of this value is not lowered yet");
     }
-    const std::string basePointer = emitArrayBaseAddress(base, *layout);
+    const std::string basePointer =
+        throughPointer ? emitPointerTarget(base) : emitArrayBaseAddress(base, *layout);
     const std::string index = emitExpression(*call.arguments()[1]);
     const std::string checked = emitRangeCheck(index, IntegerRange{layout->low, layout->high}, 9);
     std::string offset = checked;

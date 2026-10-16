@@ -30,7 +30,7 @@ Reading order for anyone without context: this file, `engineering.md`,
 capability spec of the topic at hand, then `AGENTS.md` (how to work in this
 repository).
 
-Each requirement starts with a stable anchor (G1–G8, CANON-1 to CANON-24,
+Each requirement starts with a stable anchor (G1–G8, CANON-1 to CANON-25,
 VERSIONING, FUTURE) that code comments, diagnostics and tests cite; one
 anchor may span several requirements. Each scenario names the test that
 proves it, or says "test to add" (a recorded gap). Everything in this file
@@ -1243,8 +1243,8 @@ The category texts SHALL be: `integer overflow`, `division by zero`,
 exponent`, `invalid integer input`, `value out of range for Natural`,
 `integer conversion out of range`, `array index out of bounds`, `slice
 bounds out of range`, `out of memory`, `invalid UTF-8 input`, `assertion
-failed` (followed by `: Message` when given), the contract categories of
-CANON-24, and `value out of range` (Range types).
+failed` (with `: Message` when given), the categories of CANON-24 and
+CANON-25, and `value out of range` (Range types).
 
 #### Scenario: Categories
 - **WHEN** each kind of fault happens at run time
@@ -1451,6 +1451,78 @@ or input.
 - **WHEN** a pre fails inside try, or a contract calls a Self mut method or a ref mut routine
 - **THEN** the program traps (tests/runtime/contract-pre-violated.inox), or the contract is rejected (tests/diagnostics/contract-calls-self-mut.inox, tests/diagnostics/contract-calls-ref-mut.inox)
 
+### Requirement: CANON-25 Owners
+Every heap object SHALL have one owner, `Own<T>`, made by `New(Value)` or
+`New(TStruct)` (its defaults). An owner is never copied; `Move(P)` gives it
+away. Its object is freed by `Free(P)`, when it is overwritten, when its
+routine returns, or when its declaration runs again; the objects it owns are
+freed with it, in a loop. `Option<Own<T>>` may be `None`, and takes an
+`Own<T>` as is. No reference counting, no collector, no null.
+
+#### Scenario: Owners
+- **WHEN** a routine builds a list, returns it, moves owners, frees them, and frees a list of 100000 nodes
+- **THEN** every object is freed once and nothing leaks (tests/runtime/pointers.inox, tests/runtime/pointers-strings.inox)
+
+#### Scenario: Never copied, never empty
+- **WHEN** an owner is copied, declared without New, or left out of a construction
+- **THEN** it is rejected (tests/diagnostics/pointer-owner-copied.inox, tests/diagnostics/pointer-owner-without-new.inox, tests/diagnostics/pointer-construction-without-owner.inox)
+
+### Requirement: CANON-25 Moves are checked
+Using an owner variable after `Move` or `Free` on any path SHALL be a
+compile error until it is assigned again; a loop gives an owner back before
+its next round. Only a variable gives an owner away; a field that may be
+emptied is `Option<Own<T>>`. A path the analysis does not follow traps
+(`use of an owner after Move or Free`).
+
+#### Scenario: Use after Move or Free
+- **WHEN** an owner is used after Move, freed twice, freed on one branch, or moved in a loop
+- **THEN** it is rejected (tests/diagnostics/pointer-use-after-move.inox, tests/diagnostics/pointer-double-free.inox, tests/diagnostics/pointer-moved-on-a-branch.inox, tests/diagnostics/pointer-moved-in-loop.inox), and a path through leave traps (tests/runtime/pointers-moved-owner.inox)
+
+### Requirement: CANON-25 Links
+`Link(X)` SHALL reach an owned object, a variable, a field or an element
+without owning it. A Link is copied freely, born empty, and checked on every
+use: an object freed, a block reused, or a variable whose routine returned
+is never reached; `Alive(L)` asks, the use traps (`use of a freed object or
+an empty Link`). A Link to a variable lives until its routine returns or its
+declaration runs again; to State, always.
+
+#### Scenario: Links
+- **WHEN** Links reach variables, fields, elements and objects, and are written through
+- **THEN** they read and write the same storage (tests/runtime/pointers.inox, tests/runtime/pointers-more.inox)
+
+#### Scenario: Detected, never dangling
+- **WHEN** a Link is used after Free, after its block is reused, after its variable's routine returned, or while empty
+- **THEN** the program traps (tests/runtime/pointers-freed-link.inox, tests/runtime/pointers-reused-block.inox, tests/runtime/pointers-escaped-link.inox, tests/runtime/pointers-empty-link.inox)
+
+### Requirement: CANON-25 Access through pointers
+`P.Field`, `P[I]` and `P.Method` SHALL reach the object of an `Own` or a
+`Link` with the dot; `Value(P)` is the whole object, read or written.
+`Same(A, B)` asks whether two pointers reach one object; `=` on pointers,
+printing them and converting them to numbers are errors. An `Option<Own<T>>`
+is reached through `Link(X)`, empty when it is `None`.
+
+#### Scenario: Through pointers
+- **WHEN** fields, elements, methods and Value are used through owners and Links
+- **THEN** they act on the object (tests/runtime/pointers.inox, tests/runtime/pointers-more.inox)
+
+#### Scenario: Not compared, Option reached through a Link
+- **WHEN** two pointers are compared with `=`, or an Option field is read directly
+- **THEN** it is rejected (tests/diagnostics/pointer-compared.inox, tests/diagnostics/pointer-option-direct.inox)
+
+### Requirement: CANON-25 Owners in routines and contracts
+A value parameter of an owner type SHALL belong to the routine, which frees
+it unless it gives it away; the caller writes `Move(P)` or a new value. A
+`pos` reads an owner parameter only through `old X.Field`; `old` of an
+owner is an error. A Link to a parameter is not supported yet.
+
+#### Scenario: Owner parameters
+- **WHEN** a routine with pre and pos takes an owner and a Link
+- **THEN** the contract holds and the owner is freed (tests/runtime/pointers-contracts.inox)
+
+#### Scenario: Rejected
+- **WHEN** a pos reads an owner parameter, old copies an owner, or a Link reaches a parameter
+- **THEN** it is rejected (tests/diagnostics/pointer-pos-reads-owner.inox, tests/diagnostics/pointer-old-of-owner.inox, tests/diagnostics/pointer-link-to-parameter.inox)
+
 ### Requirement: VERSIONING The version number
 Inox SHALL have one version for the language and its compiler,
 `MAJOR.MINOR.RELEASE.BUILD` plus a stage: MAJOR 0..99 (a generation; 1 is
@@ -1506,10 +1578,11 @@ approved design.
 - **THEN** it is not accepted until the design is approved (test to add)
 
 ### Requirement: FUTURE Ownership, absence and failure
-Ownership beyond `Self`/`Self mut` and `ref`/`ref mut` SHALL come through
-approved designs: `Self owned`, moves, arenas and regions; unsafe
+Ownership beyond CANON-25 (one owner, checked Links) SHALL come through
+approved designs: arenas as an optional optimization, `Self owned`; unsafe
 boundaries, `Pointer<T>` and C interop stay outside the safe core.
-`Option<T>` and `Result<T, E>` express absence and failure as values.
+`Option<T>` for any T and `Result<T, E>` express absence and failure as
+values.
 
 #### Scenario: mut stays reserved
 - **WHEN** a program writes `mut` before a name

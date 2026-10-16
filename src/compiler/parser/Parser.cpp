@@ -20,6 +20,12 @@ namespace inox::compiler::parser {
 
 namespace {
 
+// The words that open a pointer type (change safe-pointers), lower case.
+bool isPointerTypeWord(std::string_view normalized)
+{
+    return normalized == "own" || normalized == "link" || normalized == "option";
+}
+
 constexpr const char* kVarRemovedMessage =
     "the 'Var' block and 'var'/'mut var' declarations were removed (CANON-5); "
     "declare locals inline: 'Name := Value', 'Name Type := Value', or 'Name TStruct'";
@@ -1003,6 +1009,16 @@ std::string Parser::parseTypeName(const char* message)
         consume(TokenKind::Greater, "expected '>' after the slice element type");
         return "Slice<" + element + ">";
     }
+    // Safe pointers (change safe-pointers): `Own<T>`, `Link<T>` and
+    // `Option<Own<T>>`, spelled with their canonical capitals.
+    if (isPointerTypeWord(name.normalized) && check(TokenKind::Less) &&
+        peek().location.line == name.location.line) {
+        advance();
+        std::string target = parseTypeName("expected the type the pointer reaches");
+        consume(TokenKind::Greater, "expected '>' after the type of the pointer");
+        const std::string word = name.normalized == "own" ? "Own" : name.normalized == "link" ? "Link" : "Option";
+        return word + "<" + target + ">";
+    }
     if (!(name.normalized == "array") || !check(TokenKind::LeftBracket) ||
         peek().location.line != name.location.line) {
         return name.lexeme;
@@ -1863,7 +1879,8 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
         // `Array[1..3] Integer`, so later phases read it like any type name.
         if (check(TokenKind::Identifier) && current_ + 1 < tokens_.size() &&
             ((peek().normalized == "array" && tokens_[current_ + 1].kind == TokenKind::LeftBracket) ||
-             (peek().normalized == "slice" && tokens_[current_ + 1].kind == TokenKind::Less))) {
+             ((peek().normalized == "slice" || isPointerTypeWord(peek().normalized)) &&
+              tokens_[current_ + 1].kind == TokenKind::Less))) {
             signatureTokens.push_back(parseTypeName("expected type name"));
             continue;
         }
@@ -2233,7 +2250,8 @@ bool Parser::atTypedLocalStatementStart() const
         tokens_[index].location.line == type.location.line) {
         return true;
     }
-    if (type.normalized == "slice" && tokens_[index].kind == TokenKind::Less &&
+    if ((type.normalized == "slice" || isPointerTypeWord(type.normalized)) &&
+        tokens_[index].kind == TokenKind::Less &&
         tokens_[index].location.line == type.location.line) {
         return true;
     }

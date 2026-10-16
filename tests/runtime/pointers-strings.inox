@@ -1,0 +1,63 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Strings read at run time inside owned objects: moved, replaced, freed,
+== and left by an exception (leak-checked by string_leak_check).
+Module PointersStrings
+
+Type
+    TItem Struct
+        FTexto String := ""
+        FProximo Option<Own<TItem>>
+    ;
+    TPar Struct
+        FA Own<TItem>
+        FB String := ""
+    ;
+
+Ler String :
+    S := ""
+    GetLn(S)
+    Return S
+;
+
+Empilhar(Topo Option<Own<TItem>>, Texto String) Own<TItem> :
+    Novo := New(TItem(FTexto := Texto))
+    Novo.FProximo := Move(Topo)
+    Return Move(Novo)
+;
+
+Falhar(Item Own<TItem>) :
+    PutLn("antes de falhar: ", Item.FTexto)
+    Raise IOError
+;
+
+Main :
+    Pilha Option<Own<TItem>>
+    for I in 1..3
+        Pilha := Empilhar(Move(Pilha), Ler)
+    ;
+    Topo := Link(Pilha)
+    while Alive(Topo)
+        PutLn("item ", Topo.FTexto)
+        Topo := Link(Topo.FProximo)
+    ;
+    Par := TPar(FA := New(TItem(FTexto := Ler)), FB := Ler)
+    Outro := Move(Par)
+    PutLn("par ", Outro.FA.FTexto, " ", Outro.FB)
+    Value(Outro.FA) := TItem(FTexto := Ler)
+    PutLn("trocado ", Outro.FA.FTexto)
+    try
+        Falhar(New(TItem(FTexto := Ler)))
+    except
+        On IOError
+            PutLn("a exceção liberou o item")
+        ;
+    ;
+    Pilha := None
+    PutLn("fim")
+;

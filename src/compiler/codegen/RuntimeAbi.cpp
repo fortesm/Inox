@@ -60,6 +60,10 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
         return "declare void @__inox_file_delete(ptr)";
     case RuntimeFunction::FileRename:
         return "declare void @__inox_file_rename(ptr, ptr)";
+    case RuntimeFunction::OwnAlloc:
+        return "declare ptr @__inox_own_alloc(i64) nounwind";
+    case RuntimeFunction::OwnFree:
+        return "declare void @__inox_own_free(ptr, ptr) nounwind";
     }
     return {};
 }

@@ -1,0 +1,87 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== A tree of folders with safe pointers (CANON-25): every folder is owned by
+== its parent (its first child, then each child its next sibling), and points
+== back to the parent with a Link, which owns nothing, so there is no cycle to
+== leak. Removing a folder frees its whole subtree, and every Link into it
+== sees that (Alive is false) instead of reading freed memory.
+Module PointersTree
+
+Type
+    TPasta Struct
+        FNome String := ""
+        FPai Link<TPasta>                       == the parent: points, does not own
+        FPrimeiroFilho Option<Own<TPasta>>      == owns its first child
+        FProximoIrmao Option<Own<TPasta>>       == each child owns the next one
+    ;
+
+== Adds a child at the front of Pai's children and returns a Link to it.
+Criar(Pai Link<TPasta>, Nome String) Link<TPasta> :
+    Nova := New(TPasta(FNome := Nome, FPai := Pai))
+    Nova.FProximoIrmao := Move(Pai.FPrimeiroFilho)
+    Pai.FPrimeiroFilho := Move(Nova)
+    Return Link(Pai.FPrimeiroFilho)
+;
+
+== The path from the root, printed by walking the parent Links.
+MostrarCaminho(Pasta Link<TPasta>) :
+    if Alive(Pasta.FPai)
+        MostrarCaminho(Pasta.FPai)
+        Put("/")
+    ;
+    Put(Pasta.FNome)
+;
+
+Mostrar(Pasta Link<TPasta>, Nivel Integer) :
+    Recuo := Nivel
+    while Recuo > 0
+        Put("  ")
+        Recuo -= 1
+    ;
+    PutLn(Pasta.FNome)
+    Filho := Link(Pasta.FPrimeiroFilho)
+    while Alive(Filho)
+        Mostrar(Filho, Nivel + 1)
+        Filho := Link(Filho.FProximoIrmao)
+    ;
+;
+
+Contar(Pasta Link<TPasta>) Integer :
+    Total := 1
+    Filho := Link(Pasta.FPrimeiroFilho)
+    while Alive(Filho)
+        Total += Contar(Filho)
+        Filho := Link(Filho.FProximoIrmao)
+    ;
+    Return Total
+;
+
+Main :
+    Raiz := New(TPasta(FNome := "raiz"))
+    R := Link(Raiz)
+    Docs := Criar(R, "docs")
+    Fotos := Criar(R, "fotos")
+    Viagem := Criar(Fotos, "viagem")
+    Praia := Criar(Viagem, "praia")
+    Contratos := Criar(Docs, "contratos")
+    PutLn("A árvore (", Contar(R), " pastas):")
+    Mostrar(R, 0)
+    Put("O caminho de praia: ")
+    MostrarCaminho(Praia)
+    PutLn("")
+    Put("O caminho de contratos: ")
+    MostrarCaminho(Contratos)
+    PutLn("")
+    PutLn("O pai de praia: ", Praia.FPai.FNome, ", o avô: ", Praia.FPai.FPai.FNome)
+
+    == Removing "fotos" (the first child of the root) frees its subtree.
+    R.FPrimeiroFilho := Move(Fotos.FProximoIrmao)
+    PutLn("Depois de remover fotos (", Contar(R), " pastas):")
+    Mostrar(R, 0)
+    PutLn("fotos viva: ", Alive(Fotos), ", praia viva: ", Alive(Praia), ", docs viva: ", Alive(Docs))
+;

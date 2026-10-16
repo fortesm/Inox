@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.72
+Canon revision: r3.73
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -21,12 +21,7 @@ stands.
    rewritten in its simplest form (Marcelo Fortes, 2026-10-13: "da forma
    mais simples possível e depois podemos evoluir"): no constraints or
    protocols, inference only, one copy per type; three decisions.
-2. **`safe-pointers` design** (Risk: high):
-   `openspec/changes/safe-pointers/design.md`, rewritten from the decisions
-   of r3.71 and r3.72 (a single owner `Own<T>` and checked `Link<T>` to
-   any variable, no reference counting, no garbage collector, no arena
-   now): every question answered; only the approval of design.md remains.
-3. **`binary-streams` design** (Risk: high):
+2. **`binary-streams` design** (Risk: high):
    `openspec/changes/binary-streams/design.md`, six decisions for binary
    files (a `BinaryFile` type, little-endian, `Write`/`Read` sized by the
    type, Strings in binary files, reading past the end, 0-based byte
@@ -158,3 +153,13 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   names; an absent owner is `Option<Own<TNo>>` ("acatado o dono com
   Option<Own<TNo>>"). Marcelo Fortes. Change `safe-pointers` (design
   awaiting approval, no code).
+- r3.73 — 2026-10-16 — Safe pointers become law (CANON-25: Owners, Moves
+  are checked, Links, Access through pointers, Owners in routines and
+  contracts; CANON-19 points to the trap categories of CANON-24 and
+  CANON-25; FUTURE Ownership updated) and are implemented: `Own<T>`,
+  `Option<Own<T>>`, `Link<T>`, `None`, `New`, `Free`, `Move`, `Value`,
+  `Link`, `Alive`, `Same`, a definite-move analysis, generation-checked
+  Links to owned objects, locals, fields, elements and State, and the
+  runtime traps "use of a freed object or an empty Link" and "use of an
+  owner after Move or Free". Approval: Marcelo Fortes, 2026-10-16: "Tudo
+  aprovado, prossiga como o usual". Change `safe-pointers`.

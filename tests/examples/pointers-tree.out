@@ -1,0 +1,15 @@
+A árvore (6 pastas):
+raiz
+  fotos
+    viagem
+      praia
+  docs
+    contratos
+O caminho de praia: raiz/fotos/viagem/praia
+O caminho de contratos: raiz/docs/contratos
+O pai de praia: viagem, o avô: fotos
+Depois de remover fotos (3 pastas):
+raiz
+  docs
+    contratos
+fotos viva: false, praia viva: false, docs viva: true

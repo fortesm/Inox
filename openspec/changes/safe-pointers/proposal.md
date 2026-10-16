@@ -15,8 +15,8 @@ pointer arithmetic, keeping the safety of Pascal, Go (without its garbage
 collector) and Ada 2005, and a syntax neither "feia e desajeitada" (Pascal)
 nor "críptica" (C).
 
-Status: **design rewritten 2026-10-15 from the maintainer's decisions;
-awaiting approval of design.md** (no open question left). Risk: high (memory
+Status: **design approved** (Marcelo Fortes, 2026-10-16: "Tudo aprovado,
+prossiga como o usual"); implementation follows tasks.md. Risk: high (memory
 ownership, runtime ABI). No code before the design is approved.
 
 ## Decisions taken (Marcelo Fortes, 2026-10-15)

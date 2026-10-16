@@ -21,6 +21,7 @@
 #include "SemanticAnalyzer.h"
 
 #include "SemanticSupport.h"
+#include "../support/PointerType.h"
 
 #include <cstddef>
 #include <map>
@@ -271,6 +272,11 @@ void SemanticAnalyzer::requireWritableReceiver(const FunctionSignature& signatur
                                                const ast::Expression& receiver) const
 {
     if (signature.parameters.empty() || signature.parameters.front().mode != PassMode::RefMut) {
+        return;
+    }
+    // The object of a pointer is changed through it (safe-pointers).
+    if (const ResolvedType* type = result_.typeOf(receiver);
+        type != nullptr && (support::isOwnTypeName(type->name) || support::isLinkTypeName(type->name))) {
         return;
     }
     if (writableRoot(receiver) == nullptr) {

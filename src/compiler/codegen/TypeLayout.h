@@ -82,6 +82,10 @@ struct ArrayLayout {
 
 // ADR-0017: a slice is { data, low, high }: data points at element `low`.
 inline constexpr std::string_view kSliceLlvmType = "{ ptr, i64, i64 }";
+// Safe pointers: a Link is its object's address, the header of the block
+// that holds the object, and the generation it saw (change safe-pointers).
+// An Own or an Option<Own> is the address of its object (null: None).
+inline constexpr std::string_view kLinkLlvmType = "{ ptr, ptr, i64 }";
 
 // A module `State` variable (CANON-5): a module-level LLVM global, zero at
 // load time and initialized in source order at the start of `main`.

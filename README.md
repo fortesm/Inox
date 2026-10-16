@@ -19,6 +19,7 @@ Core safety defaults include:
 - Strong nominal typing with no implicit narrowing
 - Composition instead of inheritance: `TAssinatura Struct (TPessoa)` reuses the fields and methods of `TPessoa`, at every level, with `Override` to replace a reused method
 - Design by contract as in Eiffel: `pre` and `pos` (with `old` and `Result`) on routines, `invariant` on structs, `invariant` and `variant` on loops; a broken contract stops the program
+- Safe pointers without reference counting or garbage collection: one owner `Own<T>` that is moved, never copied, and frees its object deterministically; checked references `Link<T>` that never reach a freed object
 
 The language draws carefully from several traditions (Ada/SPARK robustness, Rust ownership and mutability discipline, Modula/Oberon modular clarity, modern Pascal ergonomics, C/C++ performance realism, and others) while rejecting defaults that introduce undefined behavior or ambiguity.
 
@@ -36,7 +37,7 @@ Inox is aimed at systems where correctness and predictability matter:
 
 ## Implementation
 
-The reference compiler is written in portable C++20 and targets LLVM. Windows x64 (Clang, MSVC ABI) and Linux x64 are the primary targets; both run the full regression suite in CI, including native exception handling (MSVC funclets on Windows, Itanium landing pads on Linux). The language core does not rely on a tracing garbage collector; memory management favors explicit ownership, moves, arenas, and deterministic resource control.
+The reference compiler is written in portable C++20 and targets LLVM. Windows x64 (Clang, MSVC ABI) and Linux x64 are the primary targets; both run the full regression suite in CI, including native exception handling (MSVC funclets on Windows, Itanium landing pads on Linux). The language core does not rely on a tracing garbage collector; memory management favors explicit ownership, moves, and deterministic resource control (arenas may come later as an option).
 
 Inox is at version 0.2.0, pre-alpha: the complete compiler pipeline (lexer → parser → semantic analysis → LLVM IR → executable) works, and the language and its standard library are growing toward 1.0. What works today and what is still missing is in [`docs/STATUS.md`](docs/STATUS.md).
 

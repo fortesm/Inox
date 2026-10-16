@@ -78,7 +78,11 @@ module that owns a concern instead of searching the whole emitter.
   - `FunctionEmitterFiles.cpp` — the Std.IOUtils file functions (calls into
     libinoxrt with `invoke` inside protected regions);
   - `FunctionEmitterContracts.cpp` — contract checks (`llvm.expect.i1`
-    branch, cold noreturn `__inox_contract_fault`) and struct invariants.
+    branch, cold noreturn `__inox_contract_fault`) and struct invariants;
+  - `FunctionEmitterPointers.cpp` — safe pointers (CANON-25): the pointer
+    built-ins, owner frees through generated drop functions, disarming of
+    fresh values, Link construction and generation checks, tombstone
+    blocks for linked locals.
 - `codegen/TypeLayout.*` — LLVM types of scalars, arrays, slices, structs;
   routine signatures; State globals.
 - `codegen/AstQueries.*` — read-only AST walks (`forEachStatement`, "uses
@@ -101,9 +105,12 @@ module that owns a concern instead of searching the whole emitter.
 - Helpers live in `namespace inox::compiler::codegen::detail`.
 - `src/compiler/support/` — the portability layer, the only compiler code
   that may test the host OS (E12): `Environment`, `FileSystem`, `Platform`,
-  `Process`, and `Version.h` (the version numbers).
+  `Process`, and `Version.h` (the version numbers); also `PointerType.*`,
+  the spelling of `Own<T>`, `Link<T>` and `Option<Own<T>>` type names
+  shared by the parser, the analyzer and codegen.
 - `runtime/` — libinoxrt: exception transport, `StringRuntime.cpp`,
-  `FileRuntime.cpp`, `StringBlock.h` (internal); unit tests in
+  `FileRuntime.cpp`, `OwnRuntime.cpp` (generation blocks and per-size free
+  lists of owned objects), `StringBlock.h` (internal); unit tests in
   `tests/runtime-unit/`.
 - `src/compiler/semantic/SemanticAnalyzer.h` — the analyzer's interface; its
   member functions live by responsibility in:
@@ -131,6 +138,9 @@ module that owns a concern instead of searching the whole emitter.
     `Override`) becomes a checking wrapper plus a hidden `__Name_body`, and
     each struct with `invariant` lines gets `TName.__invariant(Self)`; the
     parser lowers loop `invariant`/`variant` itself;
+  - `SemanticPointers.cpp` — safe pointers (CANON-25): pointer type
+    rules, the pointer built-ins, and the definite-move analysis
+    (`movedOwners_`, merged over every path);
   - `SemanticDebug.cpp` — Std.Debug: Assert;
   - `SemanticSupport.*` — shared helpers (`semantic::detail`).
 

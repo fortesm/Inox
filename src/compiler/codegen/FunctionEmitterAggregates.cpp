@@ -17,6 +17,7 @@
 #include "Operators.h"
 #include "../exceptions/ExceptionTypes.h"
 #include "../support/ArrayType.h"
+#include "../support/PointerType.h"
 #include "../support/Platform.h"
 
 #include <algorithm>
@@ -188,13 +189,26 @@ std::string FunctionEmitter::emitConstruction(const ast::CallExpression& call, c
         output_ << "  " << fieldPointer << " = getelementptr " << structType.llvmName << ", ptr " << slot
                 << ", i32 0, i32 " << field->index << '\n';
         output_ << "  store " << field->llvmType << ' ' << value << ", ptr " << fieldPointer << '\n';
+        // Safe pointers: an owner given to a field moves into the value.
+        if (isMoveOnly(field->inoxType)) {
+            disarmFresh(value);
+        }
     }
     // CANON-24: the new value satisfies its invariant.
     if (const std::string* invariantType = semantics_.newValueInvariant(call)) {
         emitInvariantOf(*invariantType, slot);
     }
+    // Safe pointers: a value that holds owners is fresh: it owns its
+    // Strings (+1) and its owners, held until a store takes it.
+    const bool moveOnly = isMoveOnly(structType.inoxName);
+    if (moveOnly) {
+        emitRetainAt(slot, structType.inoxName);
+    }
     const std::string result = "%tmp" + std::to_string(nextTemporary_++);
     output_ << "  " << result << " = load " << structType.llvmName << ", ptr " << slot << '\n';
+    if (moveOnly) {
+        holdOwnedResult(result, structType.inoxName, structType.llvmName);
+    }
     return result;
 }
 
@@ -210,10 +224,24 @@ FunctionEmitter::Place FunctionEmitter::emitPlace(const ast::Expression& express
         const ElementAddress element = emitElementAddress(static_cast<const ast::CallExpression&>(expression));
         return Place{element.pointer, element.elementType};
     }
+    // Safe pointers: `Value(P)` is the object P reaches.
+    if (expression.kind() == ast::AstNodeKind::CallExpression &&
+        isPointerBuiltin(static_cast<const ast::CallExpression&>(expression)) &&
+        equalsIgnoreCase(static_cast<const ast::IdentifierExpression&>(
+                             static_cast<const ast::CallExpression&>(expression).callee())
+                             .name(),
+                         "Value")) {
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        return Place{emitPointerTarget(*call.arguments()[0]), semanticTypeName(expression)};
+    }
     if (isMemberAccessCall(expression)) {
         const auto& member = static_cast<const ast::CallExpression&>(expression);
         if (const auto field = memberField(member)) {
-            const Place base = emitPlace(*member.arguments()[0]);
+            // Through a pointer, the field is in the object it reaches.
+            const ast::Expression& baseExpression = *member.arguments()[0];
+            const Place base = support::isPointerTypeName(placeTypeName(baseExpression))
+                                   ? Place{emitPointerTarget(baseExpression), {}}
+                                   : emitPlace(baseExpression);
             const std::string pointer = "%tmp" + std::to_string(nextTemporary_++);
             output_ << "  " << pointer << " = getelementptr " << field->first->llvmName << ", ptr "
                     << base.pointer << ", i32 0, i32 " << field->second->index << '\n';
@@ -241,7 +269,11 @@ FunctionEmitter::memberField(const ast::CallExpression& member) const
         member.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
         return std::nullopt;
     }
-    const StructDefinition* structType = findStruct(structs_, placeTypeName(*member.arguments()[0]));
+    std::string baseType = placeTypeName(*member.arguments()[0]);
+    if (support::isPointerTypeName(baseType)) {
+        baseType = support::pointerTargetTypeName(baseType);
+    }
+    const StructDefinition* structType = findStruct(structs_, baseType);
     if (structType == nullptr) {
         return std::nullopt;
     }
@@ -324,7 +356,10 @@ FunctionEmitter::MethodCallTarget FunctionEmitter::resolveMethodCall(const ast::
 const FunctionSignature* FunctionEmitter::findMethodSignature(const ast::Expression& receiver,
                                                               const std::string& method) const
 {
-    for (const std::string& receiverType : {placeTypeName(receiver), semanticTypeName(receiver)}) {
+    for (std::string receiverType : {placeTypeName(receiver), semanticTypeName(receiver)}) {
+        if (support::isPointerTypeName(receiverType)) {
+            receiverType = support::pointerTargetTypeName(receiverType);
+        }
         const auto signature = signatures_.find(normalize(receiverType + "." + method));
         if (signature != signatures_.end() && !signature->second.parameters.empty()) {
             return &signature->second;
@@ -338,6 +373,16 @@ const FunctionSignature* FunctionEmitter::findMethodSignature(const ast::Express
 std::string FunctionEmitter::emitReceiver(const FunctionSignature& signature, const ast::Expression& receiver)
 {
     const FunctionParameter& self = signature.parameters.front();
+    // Safe pointers: the receiver is the object the pointer reaches.
+    if (support::isPointerTypeName(placeTypeName(receiver))) {
+        const std::string target = emitPointerTarget(receiver);
+        if (findStruct(structs_, self.inoxType) != nullptr || self.byReference) {
+            return target;
+        }
+        const std::string value = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << value << " = load " << self.llvmType << ", ptr " << target << '\n';
+        return value;
+    }
     if (findStruct(structs_, self.inoxType) != nullptr) {
         return emitPlace(receiver).pointer;
     }
@@ -433,6 +478,15 @@ void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression)
         const std::string stored = narrowForStorage(value, element);
         emitOwningStore(element.pointer, element.elementType, element.storage, stored);
         emitInvariantChecks(assignment, true);
+        return;
+    }
+
+    // Safe pointers: `Value(P) := X` replaces the object P reaches.
+    if (assignment.left().kind() == ast::AstNodeKind::CallExpression &&
+        isPointerBuiltin(static_cast<const ast::CallExpression&>(assignment.left()))) {
+        const Place place = emitPlace(assignment.left());
+        const std::string value = emitExpression(assignment.right());
+        emitOwningStore(place.pointer, place.inoxType, valueLlvmType(place.inoxType), value);
         return;
     }
 

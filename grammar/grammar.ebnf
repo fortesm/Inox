@@ -100,8 +100,11 @@ array_bound       ::= "-"? integer_literal | identifier
                       (* CANON-13: a bound is static, an integer literal or a
                          Const name; "Array[1..3, 1..4] T" is an array of arrays *)
 generic_type      ::= identifier "<" type_ref ( "," type_ref )* ">"
-                      (* Slice<T> (ADR-0017) is the first generic type the compiler
-                         accepts. Vector<Integer>, Set<TCardSuit>: "<...>" is generic syntax
+                      (* Slice<T> (ADR-0017) and the safe pointers Own<T>, Link<T>
+                         and Option<Own<T>> (CANON-25) are the generic types the
+                         compiler accepts; New, Free, Move, Value, Link, Alive and
+                         Same are built-in routines and None an identifier.
+                         Vector<Integer>, Set<TCardSuit>: "<...>" is generic syntax
                          only in type position; "[...]" stays for indexing and
                          bounds. The compiler still uses "[T]" (conformance gap). *)
 

@@ -66,6 +66,19 @@ FunctionEmitter::FunctionEmitter(std::ostringstream& output,
                             LocalInfo{"%" + parameter.llvmName, parameter.inoxType, parameter.valueType});
             continue;
         }
+        // Safe pointers: a parameter of a move-only type (an owner, or a
+        // value holding one) is owned by the routine, which frees it at
+        // every exit unless it gives it away with Move.
+        if (isMoveOnly(parameter.inoxType) &&
+            !(findStruct(structs_, parameter.inoxType) != nullptr && parameter.llvmType == "ptr")) {
+            const std::string slot = "%" + parameter.llvmName + ".addr";
+            output_ << "  " << slot << " = alloca " << parameter.llvmType << "\n";
+            registerOwnedSlot(slot, parameter.inoxType, parameter.llvmType);
+            output_ << "  store " << parameter.llvmType << " %" << parameter.llvmName << ", ptr " << slot << '\n';
+            locals_.emplace(normalize(parameter.inoxName),
+                            LocalInfo{slot, parameter.inoxType, parameter.llvmType});
+            continue;
+        }
         if (const auto layout = arrayLayout(parameter.inoxType)) {
             const std::string slot = "%" + parameter.llvmName + ".addr";
             output_ << "  " << slot << " = alloca " << layout->llvmType << "\n";
@@ -109,6 +122,7 @@ bool FunctionEmitter::usesStringCleanup() const
 
 void FunctionEmitter::emit()
 {
+    collectTombstoneLocals();
     ownsReferences_ = scanOwnsReferences();
     if (!ownsReferences_) {
         emitBody();

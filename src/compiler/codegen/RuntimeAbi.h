@@ -46,6 +46,9 @@ enum class RuntimeFunction {
     FileExists,
     FileDelete,
     FileRename,
+    // Owned blocks of safe pointers (runtime/OwnRuntime.cpp).
+    OwnAlloc,
+    OwnFree,
 };
 
 // The exception functions, in the order the module declares them.

@@ -1,0 +1,30 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers and CANON-24: old of an owner would copy it.
+Module Diagnostics.PointerOldOfOwner
+
+Type
+    TNo Struct
+        FValor Integer := 0
+    ;
+
+TNo.Trocar(Self mut, P Own<TNo>) :
+    pos Self.FValor = 1
+    Self.FValor := P.FValor
+;
+
+Guardar(ref mut D Option<Own<TNo>>) :
+    pos Alive(old D)
+    D := New(TNo)
+;
+
+Main :
+    O Option<Own<TNo>>
+    Guardar(O)
+    PutLn(Alive(O))
+;

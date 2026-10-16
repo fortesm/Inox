@@ -21,6 +21,8 @@
 #include "ContractLowering.h"
 
 #include "SemanticAnalyzer.h"
+#include "../support/ArrayType.h"
+#include "../support/PointerType.h"
 
 #include <cctype>
 #include <cstddef>
@@ -436,9 +438,24 @@ private:
             statements.push_back(std::move(saved));
         }
 
-        // The call of the body, with the routine's own parameters.
+        // The call of the body, with the routine's own parameters. An owner
+        // (or a value holding one) given to the routine is given on to its
+        // body (safe-pointers), so a pos clause reads it only through old.
         std::vector<ast::ExpressionPtr> arguments;
-        for (const std::string& parameter : parameterNames(function)) {
+        for (const auto& [parameter, type, byReference] : parameterList(function)) {
+            if (!byReference && movesOnly(type)) {
+                for (const Clause& clause : contract.pos) {
+                    if (mentions(*clause.condition, parameter)) {
+                        throw SemanticError("a pos clause of " + name + " cannot read " + parameter +
+                                            ": the routine takes that owner; read what it holds with old (old " + parameter +
+                                            ".Field) (safe pointers)");
+                    }
+                }
+                std::vector<ast::ExpressionPtr> moved;
+                moved.push_back(identifier(parameter));
+                arguments.push_back(std::make_unique<ast::CallExpression>(identifier("Move"), std::move(moved)));
+                continue;
+            }
             arguments.push_back(identifier(parameter));
         }
         ast::ExpressionPtr call;
@@ -476,6 +493,99 @@ private:
     static std::string originNote(const Clause& clause, const std::string& name)
     {
         return lower(clause.origin) == lower(name) ? std::string() : " (from " + clause.origin + ")";
+    }
+
+    // Whether a written type moves (an owner, or a struct or array that
+    // holds one): such a value is never copied (safe-pointers).
+    bool movesOnly(const std::string& type, std::set<std::string> seen = {}) const
+    {
+        if (support::isOwnTypeName(type) || support::isOptionTypeName(type)) {
+            return true;
+        }
+        if (const auto parts = support::splitArrayTypeName(type)) {
+            return movesOnly(parts->element, seen);
+        }
+        const auto info = structs_.find(lower(type));
+        if (info == structs_.end() || !seen.insert(lower(type)).second) {
+            return false;
+        }
+        for (const ast::StructFieldDeclaration& field : info->second.declaration->fields) {
+            if (movesOnly(field.typeName, seen)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Whether an expression reads `name` outside `old`.
+    static bool mentions(const ast::Expression& expression, const std::string& name)
+    {
+        switch (expression.kind()) {
+        case ast::AstNodeKind::IdentifierExpression:
+            return lower(static_cast<const ast::IdentifierExpression&>(expression).name()) == lower(name);
+        case ast::AstNodeKind::UnaryExpression: {
+            const auto& unary = static_cast<const ast::UnaryExpression&>(expression);
+            return unary.op() != ast::UnaryOperator::Old && mentions(unary.operand(), name);
+        }
+        case ast::AstNodeKind::BinaryExpression: {
+            const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
+            return mentions(binary.left(), name) || mentions(binary.right(), name);
+        }
+        case ast::AstNodeKind::ConditionalExpression: {
+            const auto& conditional = static_cast<const ast::ConditionalExpression&>(expression);
+            return mentions(conditional.condition(), name) || mentions(conditional.thenValue(), name) ||
+                   mentions(conditional.elseValue(), name);
+        }
+        case ast::AstNodeKind::CallExpression: {
+            const auto& call = static_cast<const ast::CallExpression&>(expression);
+            bool found = mentions(call.callee(), name);
+            for (const auto& argument : call.arguments()) {
+                found = found || mentions(*argument, name);
+            }
+            return found;
+        }
+        default:
+            return false;
+        }
+    }
+
+    struct Parameter {
+        std::string name;
+        std::string type;
+        bool byReference = false;
+    };
+
+    // The parameters of a routine, without Self, with their written types.
+    static std::vector<Parameter> parameterList(const ast::FunctionDeclaration& function)
+    {
+        std::vector<Parameter> parameters;
+        const auto& tokens = function.signatureTokens();
+        if (tokens.empty() || tokens.front() != "(") {
+            return parameters;
+        }
+        std::size_t index = 1;
+        while (index < tokens.size() && tokens[index] != ")") {
+            bool byReference = false;
+            if (lower(tokens[index]) == "ref") {
+                byReference = true;
+                ++index;
+                if (index < tokens.size() && lower(tokens[index]) == "mut") {
+                    ++index;
+                }
+            }
+            const std::string name = tokens[index++];
+            std::string type;
+            while (index < tokens.size() && tokens[index] != "," && tokens[index] != ")") {
+                type += tokens[index++];  // the type (or `mut` after Self)
+            }
+            if (lower(name) != "self") {
+                parameters.push_back(Parameter{name, type, byReference});
+            }
+            if (index < tokens.size() && tokens[index] == ",") {
+                ++index;
+            }
+        }
+        return parameters;
     }
 
     // The parameter names of a routine, without Self.

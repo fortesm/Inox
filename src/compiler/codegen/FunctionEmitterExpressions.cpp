@@ -17,6 +17,7 @@
 #include "Operators.h"
 #include "../exceptions/ExceptionTypes.h"
 #include "../support/ArrayType.h"
+#include "../support/PointerType.h"
 #include "../support/Platform.h"
 
 #include <algorithm>
@@ -73,6 +74,9 @@ std::string FunctionEmitter::expressionLlvmType(const ast::Expression& expressio
         if (local != locals_.end()) {
             return local->second.llvmType;
         }
+        if (semanticTypeName(expression) == "None") {
+            return "ptr";
+        }
         const auto parameter = parameterTypes_.find(normalizedName);
         if (parameter != parameterTypes_.end()) {
             return parameter->second;
@@ -119,6 +123,10 @@ std::string FunctionEmitter::expressionLlvmType(const ast::Expression& expressio
             }
             if (callee.name() == "__pure" && call.arguments().size() == 1) {
                 return expressionLlvmType(*call.arguments().front());
+            }
+            if (isPointerBuiltin(call)) {
+                return equalsIgnoreCase(callee.name(), "Free") ? std::string("void")
+                                                               : valueLlvmType(semanticTypeName(expression));
             }
             if (isFileCall(call)) {
                 return fileCallLlvmType(call);
@@ -328,6 +336,10 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             // raise) and the ownership of a String result.
             return emitUserCall(signature->second, {}, true);
         }
+        // None: an empty Link or an absent owner (safe-pointers).
+        if (semanticTypeName(expression) == "None") {
+            return "zeroinitializer";
+        }
         if (const semantic::ConstantValue* constant = resolvedConstant(identifier)) {
             if (constant->kind == semantic::ConstantValue::Kind::Boolean) {
                 return constant->boolean ? "1" : "0";
@@ -496,6 +508,12 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         }
         if (callee.name() == "__slice") {
             return emitSlice(call);
+        }
+        if (isPointerBuiltin(call)) {
+            if (equalsIgnoreCase(callee.name(), "Free")) {
+                throw CodegenError("void function call cannot be used as an expression");
+            }
+            return emitPointerBuiltin(call);
         }
         if (const StructDefinition* structType = findStruct(structs_, callee.name())) {
             return emitConstruction(call, *structType);

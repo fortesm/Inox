@@ -82,6 +82,9 @@ std::string SemanticAnalyzer::analyzePureCall(const ast::CallExpression& call)
     if (isFileType(type)) {
         throw SemanticError("'old' of a File would copy it (CANON-24)");
     }
+    if (isMoveOnlyType(type)) {
+        throw SemanticError("'old' of an owner would copy it: read what it holds, old P.Field (CANON-24)");
+    }
     return type;
 }
 
