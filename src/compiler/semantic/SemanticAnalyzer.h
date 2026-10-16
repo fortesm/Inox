@@ -81,6 +81,7 @@ private:
     void declareBuiltins();
     void declareBuiltinTypes();
     void declareOrThrow(std::string_view name, SymbolKind kind, std::string typeName = {}, bool isMutable = false);
+    static void rejectPredefinedName(std::string_view name);
     const Symbol& resolveOrThrow(std::string_view name) const;
     void declareTypeOrThrow(std::string_view name, bool isBuiltin, std::string aliasOf = {});
     void resolveTypeOrThrow(std::string_view name) const;

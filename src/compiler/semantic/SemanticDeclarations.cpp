@@ -13,6 +13,7 @@
 #include "../exceptions/ExceptionTypes.h"
 #include "../support/ArrayType.h"
 #include "../support/PointerType.h"
+#include "../lexer/Lexer.h"
 
 #include <algorithm>
 #include <array>
@@ -186,12 +187,27 @@ const FunctionSignature* SemanticAnalyzer::resolveFunctionSignature(std::string_
     return iterator != functions_.end() ? &iterator->second : nullptr;
 }
 
+// CANON-2 (r3.74): True, False, Exit, bitand, bitor, bitxor and bitnot
+// are predefined names, not reserved words; they keep their meaning and can
+// never be declared.
+void SemanticAnalyzer::rejectPredefinedName(std::string_view name)
+{
+    std::string normalized(name);
+    for (char& ch : normalized) {
+        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    }
+    if (inox::compiler::lexer::Lexer::isPredefinedName(normalized)) {
+        throw SemanticError(std::string(name) + " is a predefined name of Inox and cannot be declared (CANON-2)");
+    }
+}
+
 void SemanticAnalyzer::declareOrThrow(
     std::string_view name,
     SymbolKind kind,
     std::string typeName,
     bool isMutable)
 {
+    rejectPredefinedName(name);
     Scope& scope = symbols_.currentScope();
     if (scope.containsLocal(name)) {
         throw SemanticError("duplicate symbol in same scope: " + std::string(name));

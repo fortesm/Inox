@@ -6,7 +6,7 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0011 / CANON-8: Natural covers exactly 0..Int64.Max, so these choices
-== are total and need no otherwise.
+== are total and need no else.
 Module Semantic.CaseNaturalTotal
 
 Main :

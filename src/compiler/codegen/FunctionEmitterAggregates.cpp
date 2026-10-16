@@ -215,8 +215,10 @@ std::string FunctionEmitter::emitConstruction(const ast::CallExpression& call, c
 FunctionEmitter::Place FunctionEmitter::emitPlace(const ast::Expression& expression)
 {
     if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
-        const auto local = locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(expression).name()));
+        const std::string name = normalize(static_cast<const ast::IdentifierExpression&>(expression).name());
+        const auto local = locals_.find(name);
         if (local != locals_.end()) {
+            emitWithGuard(name);
             return Place{local->second.slot, local->second.inoxType};
         }
     }

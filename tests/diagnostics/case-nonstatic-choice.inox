@@ -13,6 +13,6 @@ Main :
     Y := 2
     case X
         Y PutLn(1)
-        otherwise PutLn(2)
+        else PutLn(2)
     ;
 ;

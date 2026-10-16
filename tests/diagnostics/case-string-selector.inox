@@ -11,6 +11,6 @@ Module Diagnostics.CaseStringSelector
 Main :
     S := "a"
     case S
-        otherwise PutLn(2)
+        else PutLn(2)
     ;
 ;

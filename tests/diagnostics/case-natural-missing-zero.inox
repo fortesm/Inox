@@ -6,7 +6,7 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0011 / CANON-8: the domain of Natural is 0..Int64.Max, so a case that
-== leaves out 0 does not cover every value and needs otherwise.
+== leaves out 0 does not cover every value and needs else.
 Module Diagnostics.CaseNaturalMissingZero
 
 Main :

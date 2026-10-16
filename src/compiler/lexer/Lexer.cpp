@@ -16,13 +16,19 @@ namespace inox::compiler::lexer {
 
 namespace {
 
-constexpr std::array<std::string_view, 50> kKeywords = {
+// CANON-2 reserved words (r3.74: 41).
+constexpr std::array<std::string_view, 41> kKeywords = {
     "module", "use", "type", "const", "var", "state", "struct", "enum",
-    "main", "if", "then", "elif", "else", "unless", "while", "repeat", "until",
-    "for", "in", "step", "case", "otherwise", "try", "except", "on", "do", "ensure", "raise", "retry",
+    "if", "then", "elif", "else", "unless", "while", "repeat", "until",
+    "for", "in", "step", "case", "try", "except", "on", "do", "ensure", "raise", "retry",
     "with", "mut", "ref", "div", "mod", "and", "xor", "or", "not",
-    "bitand", "bitor", "bitxor", "bitnot", "shr", "shl", "leave", "continue",
-    "return", "exit", "true", "false"
+    "shr", "shl", "leave", "continue", "return"
+};
+
+// CANON-2 predefined names (r3.74): identifiers that keep their meaning and
+// can never be declared.
+constexpr std::array<std::string_view, 7> kPredefinedNames = {
+    "true", "false", "exit", "bitand", "bitor", "bitxor", "bitnot"
 };
 
 } // namespace
@@ -108,6 +114,11 @@ Token Lexer::nextToken()
         return makeToken(TokenKind::Comma, start, startOffset);
     case ';':
         return makeToken(TokenKind::Semicolon, start, startOffset);
+    case '{':
+    case '}':
+        return invalidToken(start, startOffset,
+                            "'{' and '}' are reserved for a future construct (CANON-2); "
+                            "blocks close with ';' and comments start with '=='");
     default:
         return invalidToken(start, startOffset, "unexpected character");
     }
@@ -377,6 +388,11 @@ std::string Lexer::normalize(std::string_view text)
             std::tolower(static_cast<unsigned char>(ch))));
     }
     return normalized;
+}
+
+bool Lexer::isPredefinedName(std::string_view normalized)
+{
+    return std::find(kPredefinedNames.begin(), kPredefinedNames.end(), normalized) != kPredefinedNames.end();
 }
 
 bool Lexer::isKeyword(std::string_view normalized)

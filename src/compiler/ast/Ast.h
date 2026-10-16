@@ -531,20 +531,20 @@ class CaseStatement final : public Statement {
 public:
     CaseStatement(ExpressionPtr expression,
                   std::vector<CaseArm> arms,
-                  std::vector<StatementPtr> otherwiseBody,
-                  bool hasOtherwise);
+                  std::vector<StatementPtr> elseBody,
+                  bool hasElse);
 
     const Expression& expression() const;
     const std::vector<CaseArm>& arms() const;
-    const std::vector<StatementPtr>& otherwiseBody() const;
-    // True when the source has an `otherwise` arm, even with an empty body.
-    bool hasOtherwise() const;
+    const std::vector<StatementPtr>& elseBody() const;
+    // True when the source has an `else` arm, even with an empty body.
+    bool hasElse() const;
 
 private:
     ExpressionPtr expression_;
     std::vector<CaseArm> arms_;
-    std::vector<StatementPtr> otherwiseBody_;
-    bool hasOtherwise_ = false;
+    std::vector<StatementPtr> elseBody_;
+    bool hasElse_ = false;
 };
 
 class TryStatement final : public Statement {

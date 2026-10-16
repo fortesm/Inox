@@ -1,0 +1,1 @@
+'with' needs a variable or a value, and TCliente is a type; to build one, write X := TCliente(Field := Value, ...) (CANON-11)

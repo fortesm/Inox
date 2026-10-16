@@ -193,9 +193,9 @@ private:
                 }
                 dumpStatements(arm.body, depth + 2);
             }
-            if (!caseStatement.otherwiseBody().empty()) {
-                line(depth + 1, "Otherwise");
-                dumpStatements(caseStatement.otherwiseBody(), depth + 2);
+            if (!caseStatement.elseBody().empty()) {
+                line(depth + 1, "Else");
+                dumpStatements(caseStatement.elseBody(), depth + 2);
             }
             break;
         }

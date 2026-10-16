@@ -14,7 +14,7 @@ Risk: normal.
 ## What Changes
 
 - UInt64/UInteger values in locals, parameters, results, struct fields, State,
-  array elements, comparisons, `case` selectors (always with `otherwise`,
+  array elements, comparisons, `case` selectors (always with `else`,
   ADR-0011) and printing.
 - Unsigned arithmetic: `+ - *` and `^` trap on overflow (an unsigned result
   below zero is an overflow), `div`/`mod` are unsigned, comparisons are

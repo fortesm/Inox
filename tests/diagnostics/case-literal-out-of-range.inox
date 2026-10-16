@@ -12,6 +12,6 @@ Main :
     V UInt8 := UInt8(5)
     case V
         300 PutLn(1)
-        otherwise
+        else
     ;
 ;

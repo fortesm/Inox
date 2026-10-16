@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.73
+Canon revision: r3.75
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -29,10 +29,8 @@ stands.
 3. **`| |`, `{ }` and annotations** (brainstorm, 2026-10-16):
    `openspec/changes/delimiters-and-annotations/proposal.md` — `| |` as a
    capture clause (`Name`, `Move(X)`, `Link(X)`), `{ }` as an effect or a
-   requirement clause, `@` annotations; no String interpolation (decided).
-4. **Fewer reserved words and integer division** (2026-10-16):
-   `openspec/changes/keyword-review/proposal.md` — 13 candidates (50 → 37)
-   and three options for `div` and `/`.
+   requirement clause, `@` annotations; no String interpolation and `{ }`
+   reserved (decided, r3.74).
 
 ## Revision log
 
@@ -170,3 +168,17 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   runtime traps "use of a freed object or an empty Link" and "use of an
   owner after Move or Free". Approval: Marcelo Fortes, 2026-10-16: "Tudo
   aprovado, prossiga como o usual". Change `safe-pointers`.
+- r3.74 — 2026-10-16 — Fewer reserved words (50 → 41): the last arm of a
+  `case` is `else`, not `otherwise`; `True`, `False`, `Exit`, `bitand`,
+  `bitor`, `bitxor` and `bitnot` are predefined names that keep their
+  meaning and can never be declared (free as field and method names);
+  `Main` is an ordinary name; `step`, `on` and `mut` stay reserved. `{` and
+  `}` are reserved until generics and concurrency show their use. `div` and
+  `/` stay as they are; `Float(Soma / N)` as the exact quotient is a FUTURE
+  direction. Marcelo Fortes, 2026-10-16. Change `keyword-review`.
+- r3.75 — 2026-10-16 — CANON-11 says what `with` does with its target: a
+  variable or a value, never a type, evaluated once on entry; `.Member`
+  acts on its storage and, through a pointer, is checked at each use. Any
+  place is now lowered as a target, and a type as target gets a message
+  naming the problem. Marcelo Fortes, 2026-10-16: "concordo Implemtne".
+  Change `with-places`.

@@ -162,7 +162,7 @@ Main :
     X Integer := 1
     case X
         0 PutLn(0)
-        otherwise PutLn(1)
+        else PutLn(1)
     ;
 ;
 """),
@@ -288,6 +288,24 @@ Main :
     PutLn(R.Width * R.Height)
 ;
 """),
+    ("with-field-path", "with statement on a field of a struct and an array element", """Type
+    TSize Struct
+        Width Integer
+        Height Integer
+    ;
+    TRect Struct
+        Size TSize
+    ;
+
+Main :
+    A Array[1..2] TRect
+    with A[2].Size
+        .Width := 2
+        .Height := 3
+    ;
+    PutLn(A[2].Size.Width * A[2].Size.Height)
+;
+"""),
     ("try-in-for", "try/except inside a loop body", """Main :
     for I in 1..2
         try
@@ -353,7 +371,7 @@ Main :
     case X
         1 | 2 PutLn(1)
         3..9 PutLn(2)
-        otherwise PutLn(0)
+        else PutLn(0)
     ;
 ;
 """),

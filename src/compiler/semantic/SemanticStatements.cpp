@@ -102,12 +102,12 @@ bool SemanticAnalyzer::cannotFallThrough(const ast::Statement& statement)
     }
     case ast::AstNodeKind::CaseStatement: {
         const auto& caseStatement = static_cast<const ast::CaseStatement&>(statement);
-        // ADR-0011: a case accepted without `otherwise` covers every value of
-        // its selector, so only the explicit arms decide. With `otherwise`
+        // ADR-0011: a case accepted without `else` covers every value of
+        // its selector, so only the explicit arms decide. With `else`
         // (even an empty one) that arm must not fall through either.
-        if (caseStatement.hasOtherwise() &&
-            (caseStatement.otherwiseBody().empty() ||
-             !cannotFallThrough(caseStatement.otherwiseBody()))) {
+        if (caseStatement.hasElse() &&
+            (caseStatement.elseBody().empty() ||
+             !cannotFallThrough(caseStatement.elseBody()))) {
             return false;
         }
         if (caseStatement.arms().empty()) {
@@ -541,7 +541,24 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         break;
     case ast::AstNodeKind::WithStatement: {
         const auto& withStatement = static_cast<const ast::WithStatement&>(statement);
+        // CANON-11: the target is a variable or a value, never a type, a
+        // module or a routine without a result.
+        if (withStatement.target().kind() == ast::AstNodeKind::IdentifierExpression) {
+            const auto& name = static_cast<const ast::IdentifierExpression&>(withStatement.target()).name();
+            const Symbol* symbol = symbols_.currentScope().resolve(name);
+            if (symbol != nullptr && symbol->kind == SymbolKind::Type) {
+                throw SemanticError("'with' needs a variable or a value, and " + name +
+                                    " is a type; to build one, write X := " + name +
+                                    "(Field := Value, ...) (CANON-11)");
+            }
+            if (symbol != nullptr && symbol->kind == SymbolKind::Module) {
+                throw SemanticError("'with' needs a variable or a value, and " + name + " is a module (CANON-11)");
+            }
+        }
         const std::string targetType = analyzeExpression(withStatement.target());
+        if (targetType.empty()) {
+            throw SemanticError("'with' needs a variable or a value; this target has no value (CANON-11)");
+        }
         symbols_.pushScope();
         // Declare the synthetic binding directly — no shadowing check needed
         // because the name (__with_N) is compiler-generated and never user-visible.
@@ -657,21 +674,21 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
     }
 
     movedOwners_ = caseStart;
-    if (statement.hasOtherwise()) {
-        analyzeStatements(statement.otherwiseBody(), true);
+    if (statement.hasElse()) {
+        analyzeStatements(statement.elseBody(), true);
     }
     caseMerged.insert(movedOwners_.begin(), movedOwners_.end());
     movedOwners_ = std::move(caseMerged);
-    if (statement.hasOtherwise()) {
+    if (statement.hasElse()) {
         return;
     }
 
-    // Without `otherwise` the choices must cover every value of the selector
-    // type (Marcelo Fortes, 2026-10-09: "otherwise deve ser obrigatório sempre
+    // Without `else` the choices must cover every value of the selector
+    // type (Marcelo Fortes, 2026-10-09, about the arm now spelled `else`: "otherwise deve ser obrigatório sempre
     // que os braços não cobrirem todos os valores possíveis").
     if (!domain.provable) {
         throw SemanticError("case on " + selectorType +
-                            " cannot be proven to cover every value; add 'otherwise' (ADR-0011)");
+                            " cannot be proven to cover every value; add an 'else' arm (ADR-0011)");
     }
     std::sort(covered.begin(), covered.end(),
               [](const Interval& a, const Interval& b) { return a.low < b.low; });
@@ -696,7 +713,7 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
     if (!done) {
         throw SemanticError("case does not cover every value of " + selectorType +
                             " (first missing: " + caseValueText(next, domain) +
-                            "); add 'otherwise' (ADR-0011)");
+                            "); add an 'else' arm (ADR-0011)");
     }
 }
 

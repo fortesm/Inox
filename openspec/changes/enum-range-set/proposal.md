@@ -20,7 +20,7 @@ Implemented in three phases, each its own PR and green gates:
   `Ord(E)`; checked `TEnum(I)`; strict initialization (`Suit TSuit` is an
   error); `=`, `#`, `<`, `<=`, `>`, `>=` between values of one enum type; no
   implicit conversion to or from Integer; enum ranges in `for`; enum `case`
-  without `otherwise` must cover every literal; enums in fields, elements,
+  without `else` must cover every literal; enums in fields, elements,
   State, parameters and results.
 - **Phase B, Range.** `TMonth Range 1..12` (Integer family) and
   `TLetter Range 'A'..'Z'` (Char): a constrained subtype of its base;
@@ -62,7 +62,7 @@ Natural (ADR-0014/0015).
 - `language/sets`: finite sets over ordinal bases.
 
 ### Modified Capabilities
-- `language/case-statement`: enum and range coverage without `otherwise`.
+- `language/case-statement`: enum and range coverage without `else`.
 
 ## Impact
 

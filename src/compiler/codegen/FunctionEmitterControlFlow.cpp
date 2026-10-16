@@ -259,7 +259,7 @@ void FunctionEmitter::emitUnless(const ast::UnlessStatement& statement)
 // ADR-0011: the selector is evaluated once; arms are tested in order and
 // the first arm whose choices contain the value runs. Semantic analysis
 // has already proven that choices do not overlap and, without
-// `otherwise`, that they cover the selector type, so the fall-through
+// `else`, that they cover the selector type, so the fall-through
 // edge of a total case is unreachable.
 void FunctionEmitter::emitCase(const ast::CaseStatement& statement)
 {
@@ -271,14 +271,14 @@ void FunctionEmitter::emitCase(const ast::CaseStatement& statement)
     const bool unsignedCompare = type == "i1";
     const auto& arms = statement.arms();
     if (arms.empty()) {
-        output_ << "  br label %" << prefix << "otherwise\n\n";
+        output_ << "  br label %" << prefix << "else\n\n";
     }
 
     for (std::size_t armIndex = 0; armIndex < arms.size(); ++armIndex) {
         const std::string bodyTarget = prefix + "arm" + std::to_string(armIndex);
         const std::string nextArm = armIndex + 1 < arms.size()
             ? prefix + "test" + std::to_string(armIndex + 1)
-            : prefix + "otherwise";
+            : prefix + "else";
         const auto& choices = arms[armIndex].choices;
         for (std::size_t choiceIndex = 0; choiceIndex < choices.size(); ++choiceIndex) {
             const ast::Expression& choice = *choices[choiceIndex];
@@ -319,9 +319,9 @@ void FunctionEmitter::emitCase(const ast::CaseStatement& statement)
         }
     }
 
-    output_ << prefix << "otherwise:\n";
-    if (statement.hasOtherwise()) {
-        emitAssignmentBranch(statement.otherwiseBody());
+    output_ << prefix << "else:\n";
+    if (statement.hasElse()) {
+        emitAssignmentBranch(statement.elseBody());
         output_ << "  br label %" << endTarget << "\n\n";
     } else {
         output_ << "  unreachable\n\n";
@@ -550,29 +550,44 @@ const FunctionEmitter::LoopTargets& FunctionEmitter::currentLoopTargets() const
 
 void FunctionEmitter::emitWith(const ast::WithStatement& statement)
 {
-    // The target must be an identifier naming an already-declared local.
-    if (statement.target().kind() != ast::AstNodeKind::IdentifierExpression) {
-        throw CodegenUnsupported(
-            "LLVM emission currently supports only local variable targets for 'with'");
-    }
+    // CANON-11: the target is evaluated once, on entry; every `.Member` of
+    // the body acts on that storage, never on a copy. The parser expanded
+    // `.Member` to __member(__with_N, Member), which resolves through the
+    // binding registered here.
+    const std::string binding = normalize(statement.bindingName());
+    const ast::Expression& target = statement.target();
 
-    const auto& targetIdentifier =
-        static_cast<const ast::IdentifierExpression&>(statement.target());
-    const auto targetIt = locals_.find(normalize(targetIdentifier.name()));
-    if (targetIt == locals_.end()) {
-        throw CodegenError(
-            "LLVM emission: 'with' target must be a declared local variable: " +
-            targetIdentifier.name());
+    const auto local = target.kind() == ast::AstNodeKind::IdentifierExpression
+                           ? locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(target).name()))
+                           : locals_.end();
+    if (local != locals_.end()) {
+        // A variable: the binding is an alias of its slot.
+        locals_.insert_or_assign(binding, local->second);
+    } else {
+        // A field, an element, `Value(P)` or a value: its address, computed
+        // once (indices included). Through a pointer, the object holding it
+        // is remembered and checked at every use (CANON-25).
+        withGuardPointer_ = lastPointerOnPath(target);
+        withGuardCaptured_.reset();
+        const Place place = emitPlace(target);
+        withGuardPointer_ = nullptr;
+        const std::string llvmType = llvmTypeForInoxType(place.inoxType, structs_);
+        if (llvmType.empty()) {
+            throw CodegenUnsupported("a 'with' target of this type is not lowered yet");
+        }
+        locals_.insert_or_assign(binding, LocalInfo{place.pointer, place.inoxType, llvmType});
+        if (withGuardCaptured_) {
+            withGuards_.insert_or_assign(binding, *withGuardCaptured_);
+            withGuardCaptured_.reset();
+        }
     }
-
-    // Register the synthetic binding as an alias to the same slot/type.
-    locals_.insert_or_assign(normalize(statement.bindingName()), targetIt->second);
 
     // Emit body statements; dot-prefixed members were already expanded by
     // the parser to __member(__with_N, Field), which resolves via the alias.
     for (const auto& bodyStatement : statement.body()) {
         emitStatement(*bodyStatement);
     }
+    withGuards_.erase(binding);
 }
 
 } // namespace inox::compiler::codegen::detail

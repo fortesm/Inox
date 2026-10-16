@@ -7,7 +7,7 @@
 
 == ADR-0011: Ada/SPARK-style case. `|` separates alternatives, `A..B` is a
 == static range (Const bounds are static), single-line arms are allowed, and
-== `otherwise` covers the rest.
+== `else` covers the rest.
 Module CaseAdaChoices
 
 Const Low := 3
@@ -21,7 +21,7 @@ Main :
         Low..High
             PutLn("medium")
         10 | 20..29 | 40 PutLn("mixed")
-        otherwise
+        else
             PutLn("other")
     ;
 ;

@@ -14,7 +14,7 @@ Main :
     case X
         K PutLn(1)
         Twice | Twice + 1 PutLn(2)
-        otherwise
+        else
     ;
 ;
 

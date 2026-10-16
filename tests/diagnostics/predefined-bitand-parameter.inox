@@ -5,13 +5,13 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== ADR-0011: `otherwise` is the last arm.
-Module Diagnostics.CaseOtherwiseNotLast
+== CANON-2 (r3.74): a parameter cannot be named after a predefined name.
+Module Diagnostics.PredefinedBitandParameter
+
+Twice(BitAnd Integer) Integer :
+    Return BitAnd * 2
+;
 
 Main :
-    X := 4
-    case X
-        otherwise PutLn(2)
-        1 PutLn(1)
-    ;
+    PutLn(Twice(2))
 ;

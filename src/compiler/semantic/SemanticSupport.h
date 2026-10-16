@@ -56,7 +56,7 @@ bool decodeCharLiteral(std::string_view text, std::int64_t& value);
 // ADR-0011: the value domain of a case selector. Values are compared as Int64:
 // Bool is 0/1 and Char is its Unicode scalar value. `provable` is false when the
 // domain does not fit in Int64 (UInt64), so coverage cannot be shown and
-// `otherwise` is required.
+// `else` is required.
 struct CaseDomain {
     std::int64_t low = 0;
     std::int64_t high = 0;

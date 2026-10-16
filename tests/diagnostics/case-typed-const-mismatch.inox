@@ -16,6 +16,6 @@ Main :
     V UInt8 := UInt8(5)
     case V
         K PutLn(1)
-        otherwise
+        else
     ;
 ;

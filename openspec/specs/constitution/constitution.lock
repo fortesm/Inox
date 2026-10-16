@@ -19,8 +19,9 @@ spec.md#CANON-1 Safety defaults	579a8963240512e4	constitution
 spec.md#CANON-2 Names are case-insensitive	34febe6d17f2bbd8	constitution
 spec.md#CANON-2 Comments and literals	5984e594e993a409	constitution
 spec.md#CANON-2 Digit separator	006404ba593459d4	constitution
-spec.md#CANON-2 Symbols	a2a1906d85614427	constitution
-spec.md#CANON-2 Words Inox does not have	f36760beac82b140	constitution
+spec.md#CANON-2 Symbols	4e0baeb201620000	keyword-review
+spec.md#CANON-2 Reserved words and predefined names	bbd62ef0e6f3da72	keyword-review
+spec.md#CANON-2 Words Inox does not have	26d08a59b30da9d4	keyword-review
 spec.md#CANON-3 Modules and Use	2f7fff12bd7cc966	constitution
 spec.md#CANON-3 Module resolution	87deaf60cefa2a59	constitution
 spec.md#CANON-3 Visibility	cc7082a5f84021ec	constitution
@@ -62,14 +63,14 @@ spec.md#CANON-10 Parameters and mutability	4f674605f2f74e7d	method-reuse
 spec.md#CANON-10 Scope of locals	d219e369bba5040a	constitution
 spec.md#CANON-10 No shadowing	374e96362c01e03d	constitution
 spec.md#CANON-10 Loop iterators	29b268cf62e9f413	constitution
-spec.md#CANON-11 The with statement	13a44dc08c560628	constitution
+spec.md#CANON-11 The with statement	d44879b4943cfff3	with-places
 spec.md#CANON-12 if, elif, else and unless	5bb95dc4f0eafe7d	constitution
 spec.md#CANON-12 Conditional expression	093f47656baf1a63	constitution
 spec.md#CANON-12 while, leave and continue	4e5611369f5c405a	constitution
 spec.md#CANON-12 repeat and until	00d3f517f353512d	constitution
 spec.md#CANON-12 for loops	d097122190e2dca7	constitution
 spec.md#CANON-12 for evaluates its header once	1e21a50aec55f675	constitution
-spec.md#CANON-12 case	3a8a3d1314e6aefc	constitution
+spec.md#CANON-12 case	05564fff224e8982	keyword-review
 spec.md#CANON-13 Array	1241a5bd9705ff10	constitution
 spec.md#CANON-13 Slice	b7058d14d22dc286	constitution
 spec.md#CANON-13 Vector	cf3e9c09995b13ef	constitution
@@ -133,7 +134,7 @@ spec.md#VERSIONING Canon revision	7325a37130b8e81e	constitution
 spec.md#FUTURE Concurrency	7e4363bb408956d2	constitution
 spec.md#FUTURE Generics and static proof	db2a01e6fa8bdbd6	design-by-contract
 spec.md#FUTURE Ownership, absence and failure	00a878fdc5ecc9a8	safe-pointers
-spec.md#FUTURE Modules, variants and numbers	f597e0a3e66810ce	variant-structs
+spec.md#FUTURE Modules, variants and numbers	7ea193a9056667f1	keyword-review
 spec.md#FUTURE Encapsulation, routine types and lifecycle	3686397c32ddfc3b	encapsulation
 engineering.md#preamble	60703a2fce444e01	constitution
 engineering.md#Sources of influence	32a192c5bf83b9ac	constitution
