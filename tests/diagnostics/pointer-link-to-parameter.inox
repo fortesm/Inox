@@ -1,0 +1,23 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers: a Link to a parameter is not supported yet.
+Module Diagnostics.PointerLinkToParameter
+
+Type
+    TNo Struct
+        FValor Integer := 0
+        FProximo Option<Own<TNo>>
+    ;
+
+Pega(X Integer) Link<Integer> :
+    Return Link(X)
+;
+
+Main :
+    PutLn(Value(Pega(1)))
+;

@@ -17,6 +17,7 @@
 #include "Operators.h"
 #include "../exceptions/ExceptionTypes.h"
 #include "../support/ArrayType.h"
+#include "../support/PointerType.h"
 #include "../support/Platform.h"
 
 #include <algorithm>
@@ -216,7 +217,8 @@ void FunctionEmitter::emitLocalVariable(std::string_view name, const ast::Expres
     const std::string normalizedName = normalize(name);
     const std::string llvmType = expressionLlvmType(initializer);
     const std::string semanticType = semanticTypeName(initializer);
-    const bool aggregate = findStruct(structs_, semanticType) != nullptr || arrayLayout(semanticType);
+    const bool aggregate = findStruct(structs_, semanticType) != nullptr || arrayLayout(semanticType) ||
+                           support::isPointerTypeName(semanticType);
     const std::string inoxType = aggregate ? semanticType :
                                 isStringType(semanticType) ? "String" :
                                 isFileType(semanticType) ? "File" :
@@ -230,13 +232,14 @@ void FunctionEmitter::emitLocalVariable(std::string_view name, const ast::Expres
     const std::string value = emitExpression(initializer);
     emitOwningStore(slot, inoxType, llvmType, value);
     locals_.insert_or_assign(normalizedName, LocalInfo{slot, inoxType, llvmType});
+    declareTombstone(normalizedName);
 }
 
 void FunctionEmitter::emitTypedLocalVariable(std::string_view name, std::string_view writtenTypeName, const ast::Expression* initializer)
 {
     const std::string canonicalArray = semantics_.canonicalTypeName(std::string(writtenTypeName));
     const std::string_view typeName =
-        support::isArrayTypeName(writtenTypeName) || support::isSliceTypeName(writtenTypeName)
+        support::isArrayTypeName(writtenTypeName) || support::isGenericTypeName(writtenTypeName)
             ? std::string_view(canonicalArray)
             : writtenTypeName;
     const std::string llvmType = llvmTypeForInoxType(typeName, structs_);
@@ -268,6 +271,7 @@ void FunctionEmitter::emitTypedLocalVariable(std::string_view name, std::string_
         }
         locals_.insert_or_assign(normalizedName,
                                  LocalInfo{slot, std::string(typeName), structType->llvmName});
+        declareTombstone(normalizedName);
         return;
     }
 
@@ -284,16 +288,20 @@ void FunctionEmitter::emitTypedLocalVariable(std::string_view name, std::string_
             emitArrayElementDefaults(slot, typeName);
         }
         locals_.insert_or_assign(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
+        declareTombstone(normalizedName);
         return;
     }
 
     // A declared-but-uninitialized scalar starts at its type's zero. LLVM
     // requires a floating-point literal for float and double, so `0` is not
-    // valid there.
-    const std::string zero = isFloatLlvmType(llvmType) ? "0.0" : "0";
+    // valid there; a Link and an Option are born empty (zeroinitializer).
+    const std::string zero = support::isPointerTypeName(typeName) ? "zeroinitializer"
+                             : isFloatLlvmType(llvmType)          ? "0.0"
+                                                                  : "0";
     const std::string value = initializer != nullptr ? emitExpression(*initializer) : zero;
     emitOwningStore(slot, typeName, llvmType, value);
     locals_.insert_or_assign(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
+    declareTombstone(normalizedName);
 }
 
 bool FunctionEmitter::isAssignmentExpression(const ast::Expression& expression)
@@ -360,6 +368,10 @@ void FunctionEmitter::emitExpressionStatement(const ast::Expression& expression)
         emitContractCheck(call);
         return;
     }
+    if (isPointerBuiltin(call)) {
+        emitPointerBuiltin(call);
+        return;
+    }
     if (isFileCall(call)) {
         emitFileCall(call);
         return;
@@ -420,6 +432,11 @@ std::vector<std::string> FunctionEmitter::emitArguments(const FunctionSignature&
         const FunctionParameter& parameter = signature.parameters[index + parameterOffset];
         values.push_back(parameter.byReference ? emitReferenceArgument(*arguments[index], parameter)
                                                : emitExpression(*arguments[index]));
+        // Safe pointers: a move-only argument is given to the routine,
+        // which owns its parameter.
+        if (!parameter.byReference && isMoveOnly(parameter.inoxType)) {
+            disarmFresh(values.back());
+        }
     }
     return values;
 }

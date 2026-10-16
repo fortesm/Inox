@@ -358,6 +358,49 @@ private:
 
     std::string emitMathBuiltinCall(std::string_view name, const std::vector<ast::ExpressionPtr>& arguments);
 
+    // ---- Safe pointers (OpenSpec change safe-pointers; FunctionEmitterPointers.cpp) ----
+    // An owner (Own<T>, Option<Own<T>>) is its object's address in a block
+    // of libinoxrt; a Link is { object, block header, generation }. A value
+    // of a move-only type (an owner, or an aggregate holding one) is moved:
+    // every fresh one (New, Move, a call's result, a construction) is held
+    // by a statement temporary until a store, an argument or a Return takes
+    // it, which disarms the temporary.
+    bool isMoveOnly(std::string_view inoxType) const;
+    bool isPointerBuiltin(const ast::CallExpression& call) const;
+    std::string emitPointerBuiltin(const ast::CallExpression& call);
+    // The address of the object a pointer expression reaches, checked: an
+    // owner given away traps (17), a dead or empty Link traps (16).
+    std::string emitPointerTarget(const ast::Expression& pointer);
+    struct LinkParts {
+        std::string target;
+        std::string header;
+        std::string generation;
+    };
+    LinkParts extractLink(const std::string& link);
+    std::string buildLink(const LinkParts& parts);
+    void emitLinkCheck(const LinkParts& parts);
+    std::string emitLinkAlive(const LinkParts& parts);
+    std::string emitLinkOf(const ast::Expression& argument);
+    LinkParts emitHeaderOfPlace(const ast::Expression& place);
+    LinkParts emitHeaderOfPointer(const ast::Expression& pointer);
+    std::string emitOwnerNullCheck(const std::string& owner);
+    std::string dropFunctionFor(const std::string& targetType);
+    void emitOwnerFreesAt(const std::string& pointer, std::string_view inoxType);
+    void disarmFresh(const std::string& value);
+    std::string emitNewTombstone();
+    void collectTombstoneLocals();
+    void declareTombstone(const std::string& normalizedName);
+    void forEachLeafAt(const std::string& pointer, std::string_view inoxType,
+                       const std::function<bool(std::string_view)>& isLeaf,
+                       const std::function<void(const std::string&, std::string_view)>& action);
+    struct FreshTemp {
+        std::string slot;
+        std::string llvmType;
+    };
+    std::unordered_map<std::string, FreshTemp> freshTemps_;
+    std::unordered_set<std::string> tombstoneLocals_;
+    std::unordered_map<std::string, std::string> tombstoneSlots_;
+
     // ---- Std.IOUtils (OpenSpec change file-io; FunctionEmitterFiles.cpp) ----
     // A call to a file function (and not to a routine of the program).
     bool isFileCall(const ast::CallExpression& call) const;

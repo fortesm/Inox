@@ -14,6 +14,7 @@
 
 #include <cstddef>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace inox::compiler::codegen::detail {
@@ -28,6 +29,8 @@ struct ModuleContext {
     std::size_t nextStringLiteral = 0;
     // Set when the module calls libinoxrt; the driver then links it.
     bool usesInoxRuntime = false;
+    // Safe pointers: the drop function of each owned type, by type name.
+    std::unordered_map<std::string, std::string> dropFunctions;
 };
 
 } // namespace inox::compiler::codegen::detail

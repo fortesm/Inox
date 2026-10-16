@@ -216,6 +216,37 @@ private:
     // program that uses the module.
     std::string analyzeAssertCall(const ast::CallExpression& call);
 
+    // Safe pointers (OpenSpec change safe-pointers; SemanticPointers.cpp).
+    // `Own<T>` is the single owner of a heap object, never copied (only
+    // `Move`d); `Option<Own<T>>` may be `None`; `Link<T>` does not own and is
+    // checked by a generation on each use. A move-only type is an owner or
+    // an aggregate that holds one.
+    std::string canonicalPointerTypeName(std::string_view name) const;
+    bool isMoveOnlyType(std::string_view typeName) const;
+    // A struct that holds an `Own<T>` field (directly, in a part or a struct
+    // field) has no default value: it is built with its owners given.
+    std::string ownerFieldWithoutDefault(std::string_view typeName) const;
+    bool isFreshOwnerValue(const ast::Expression& value) const;
+    // Assignability of pointer values: nullopt when no pointer is involved.
+    std::optional<bool> canAssignPointer(std::string_view targetType, std::string_view valueType,
+                                         const ast::Expression& value) const;
+    bool isPointerBuiltinCall(std::string_view name, std::size_t argumentCount) const;
+    std::string analyzePointerBuiltin(std::string_view name, const ast::CallExpression& call);
+    // The type reached through a pointer for `.Field`, `[I]` and methods.
+    std::string typeThroughPointer(const std::string& typeName) const;
+    void noteOwnerGivenAway(const ast::Expression& owner);
+    void noteOwnerAssigned(const Symbol& symbol);
+    void requireOwnerUsable(const Symbol& symbol) const;
+    void forgetMovedOwnersOf(const Scope* scope);
+    void requireOwnersBackAfterLoop(const std::unordered_map<const Symbol*, const Scope*>& start);
+    // Owner variables given away by Move or Free on the paths analyzed so
+    // far, with the scope that declared them.
+    std::unordered_map<const Symbol*, const Scope*> movedOwners_;
+    std::unordered_set<const Symbol*> currentParameters_;
+    // The root of a place reached through a pointer: writable, owned by no
+    // variable of the routine.
+    Symbol pointerTargetRoot_;
+
     SymbolTable symbols_;
     TypeTable types_;
     SemanticResult result_;

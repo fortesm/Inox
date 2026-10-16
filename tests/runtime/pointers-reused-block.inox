@@ -1,0 +1,24 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== A freed block reused by a new object of the same size: an old Link
+== never matches it (the generation changed).
+Module Runtime.PointersReusedBlock
+
+Type
+    TPeca Struct
+        FPeso Integer := 0
+    ;
+
+Main :
+    A := New(TPeca(FPeso := 1))
+    Velha := Link(A)
+    Free(A)
+    B := New(TPeca(FPeso := 2))
+    PutLn("novo ", B.FPeso, ", velha viva: ", Alive(Velha))
+    PutLn(Velha.FPeso)
+;

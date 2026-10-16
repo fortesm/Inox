@@ -33,6 +33,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/codegen/FunctionEmitterFiles.cpp
     src/compiler/codegen/FunctionEmitterDebug.cpp
     src/compiler/codegen/FunctionEmitterContracts.cpp
+    src/compiler/codegen/FunctionEmitterPointers.cpp
     src/compiler/codegen/FunctionEmitterIo.cpp
     src/compiler/codegen/FunctionEmitterStatements.cpp
     src/compiler/codegen/FunctionEmitterStrings.cpp
@@ -56,6 +57,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticReuse.cpp
     src/compiler/semantic/ContractLowering.cpp
     src/compiler/semantic/SemanticContracts.cpp
+    src/compiler/semantic/SemanticPointers.cpp
     src/compiler/semantic/SemanticStatements.cpp
     src/compiler/semantic/SemanticSupport.cpp
     src/compiler/semantic/SemanticTypes.cpp

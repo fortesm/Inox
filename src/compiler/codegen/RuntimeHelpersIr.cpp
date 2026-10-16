@@ -194,7 +194,7 @@ constexpr RuntimeFaultKind kRuntimeFaultKinds[] = {
     {12, "out of memory"},
     {13, "invalid UTF-8 input"},
     {14, "assertion failed"},
-    {16, "use of a freed object"},
+    {16, "use of a freed object or an empty Link"},
     {17, "use of an owner after Move or Free"},
 };
 

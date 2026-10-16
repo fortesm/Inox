@@ -10,6 +10,7 @@
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
 #include "../support/ArrayType.h"
+#include "../support/PointerType.h"
 
 #include <cctype>
 
@@ -76,6 +77,14 @@ std::string llvmTypeForScalar(std::string_view inoxType)
     // (FileRuntime.cpp), owned like a String.
     if (equalsIgnoreCase(inoxType, "File")) {
         return "ptr";
+    }
+    // Safe pointers (safe-pointers): an owner is its object's address; a
+    // Link carries the object's header and generation too.
+    if (support::isOwnTypeName(inoxType) || support::isOptionOwnTypeName(inoxType)) {
+        return "ptr";
+    }
+    if (support::isLinkTypeName(inoxType)) {
+        return std::string(kLinkLlvmType);
     }
     return {};
 }
@@ -186,6 +195,9 @@ void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefi
             field.inoxType = fieldDeclaration.typeName;
             field.index = definition.fields.size();
             field.llvmType = llvmTypeForScalar(fieldDeclaration.typeName);
+            if (support::isGenericTypeName(fieldDeclaration.typeName)) {
+                field.inoxType = semantics.canonicalTypeName(fieldDeclaration.typeName);
+            }
             if (support::isArrayTypeName(fieldDeclaration.typeName)) {
                 // CANON-13: an array field is embedded by value, [N x T].
                 field.inoxType = semantics.canonicalTypeName(fieldDeclaration.typeName);
@@ -260,7 +272,7 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
                 }
                 parameterType = tokens[index++];
             }
-            if (support::isArrayTypeName(parameterType) || support::isSliceTypeName(parameterType)) {
+            if (support::isArrayTypeName(parameterType) || support::isGenericTypeName(parameterType)) {
                 parameterType = semantics.canonicalTypeName(parameterType);
             }
 
@@ -307,8 +319,9 @@ FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& functio
     std::string llvmReturnType;
     std::string returnInoxType;
     if (index + 1 == tokens.size()) {
-        returnInoxType = support::isArrayTypeName(tokens[index]) ? semantics.canonicalTypeName(tokens[index])
-                                                                  : tokens[index];
+        returnInoxType = support::isArrayTypeName(tokens[index]) || support::isGenericTypeName(tokens[index])
+                             ? semantics.canonicalTypeName(tokens[index])
+                             : tokens[index];
         if (const StructDefinition* structType = findStruct(structs, returnInoxType)) {
             returnInoxType = structType->inoxName;
         }

@@ -12,6 +12,7 @@
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
 #include "../support/ArrayType.h"
+#include "../support/PointerType.h"
 
 #include <algorithm>
 #include <array>
@@ -74,6 +75,10 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
         }
         if (callee.name() == "__slice") {
             return analyzeSliceExpression(call);
+        }
+        // Safe pointers: New, Free, Move, Value, Link, Alive, Same.
+        if (isPointerBuiltinCall(callee.name(), call.arguments().size())) {
+            return analyzePointerBuiltin(callee.name(), call);
         }
         if ((equalsIgnoreCase(callee.name(), "Low") || equalsIgnoreCase(callee.name(), "High") ||
              equalsIgnoreCase(callee.name(), "Length")) &&
@@ -170,10 +175,23 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
                 for (const std::string& seen : namedFields) {
                     named = named || equalsIgnoreCase(seen, field.name);
                 }
-                if (!named && !field.hasDefault && resolveStruct(field.typeName) == nullptr) {
+                // A Link and an Option are born empty; an Own is always given.
+                const bool bornEmpty =
+                    support::isLinkTypeName(field.typeName) || support::isOptionOwnTypeName(field.typeName);
+                if (!named && !field.hasDefault && resolveStruct(field.typeName) == nullptr && !bornEmpty) {
+                    if (support::isOwnTypeName(field.typeName)) {
+                        throw SemanticError("construction omits the owner " + type->name + "." + field.name +
+                                            ": give it, " + field.name + " := New(...)");
+                    }
                     throw SemanticError(
                         "construction omits scalar field without default (CANON-9): " +
                         type->name + "." + field.name);
+                }
+                if (!named) {
+                    if (const std::string owner = ownerFieldWithoutDefault(field.typeName); !owner.empty()) {
+                        throw SemanticError("construction omits " + type->name + "." + field.name +
+                                            ", which holds the owner " + owner + ": give it");
+                    }
                 }
             }
             // CANON-24: a new value satisfies its invariant.
@@ -260,7 +278,8 @@ std::string SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression&
         throw SemanticError("member access requires object and field name");
     }
 
-    const std::string baseType = analyzeExpression(*call.arguments()[0]);
+    // Through a pointer, `P.Field` is a field of its object (safe-pointers).
+    const std::string baseType = typeThroughPointer(canonicalTypeName(analyzeExpression(*call.arguments()[0])));
     const auto& fieldIdentifier =
         static_cast<const ast::IdentifierExpression&>(*call.arguments()[1]);
     const StructField* field = resolveStructField(baseType, fieldIdentifier.name());
@@ -313,7 +332,8 @@ std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpress
         throw SemanticError("method call requires object and method name");
     }
 
-    const std::string receiverType = analyzeExpression(*member.arguments()[0]);
+    const std::string receiverType =
+        typeThroughPointer(canonicalTypeName(analyzeExpression(*member.arguments()[0])));
     const auto& methodIdentifier =
         static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
     const std::string qualifiedName = receiverType + "." + methodIdentifier.name();

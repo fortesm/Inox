@@ -12,6 +12,7 @@
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
 #include "../support/ArrayType.h"
+#include "../support/PointerType.h"
 
 #include <algorithm>
 #include <array>
@@ -119,6 +120,11 @@ bool SemanticAnalyzer::canAssign(std::string_view targetType, std::string_view v
 bool SemanticAnalyzer::canAssignValue(std::string_view targetType, std::string_view valueType,
                                       const ast::Expression& value)
 {
+    // Safe pointers: an owner is never copied; None fills a Link or an
+    // Option; an Own is wrapped into an Option (safe-pointers).
+    if (const std::optional<bool> pointer = canAssignPointer(targetType, valueType, value)) {
+        return *pointer;
+    }
     // F6 (file-io): a File is moved from the call that opened it, never
     // copied from another File.
     if (isFileType(targetType) || isFileType(valueType)) {
@@ -217,8 +223,12 @@ std::string SemanticAnalyzer::canonicalArrayTypeName(std::string_view name) cons
         resolveTypeOrThrow(parts->element);
         element = canonicalTypeName(parts->element);
         rejectFileIn(element, "an array element");
+        if (support::isOwnTypeName(element)) {
+            throw SemanticError("an array of owners is Array[...] Option<Own<T>>: every element is born None");
+        }
         const bool isStruct = structs_.find(normalizeName(element)) != structs_.end();
-        if (!isNumericType(element) && element != "Bool" && element != "String" && !isStruct) {
+        const bool isPointer = support::isLinkTypeName(element) || support::isOptionOwnTypeName(element);
+        if (!isNumericType(element) && element != "Bool" && element != "String" && !isStruct && !isPointer) {
             throw SemanticError("array elements of type " + element +
                                 " are not supported yet; use an integer, Float, Bool, String or struct element");
         }

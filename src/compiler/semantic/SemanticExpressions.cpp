@@ -12,6 +12,7 @@
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
 #include "../support/ArrayType.h"
+#include "../support/PointerType.h"
 
 #include <algorithm>
 #include <array>
@@ -128,10 +129,18 @@ std::string SemanticAnalyzer::inferExpressionType(const ast::Expression& express
             }
             throw SemanticError("function " + identifier.name() + " requires arguments; use parentheses only when passing arguments");
         }
+        // None: the empty Link or the absent owner (safe-pointers).
+        if (equalsIgnoreCase(identifier.name(), "None") &&
+            symbols_.currentScope().resolve(identifier.name()) == nullptr) {
+            return "None";
+        }
         const Symbol& symbol = resolveOrThrow(identifier.name());
         result_.bind(identifier, symbol);
         if (!updateOnlyReads_.contains(&identifier)) {
             readSymbols_.insert(&symbol);
+        }
+        if (symbol.kind == SymbolKind::Variable) {
+            requireOwnerUsable(symbol);
         }
         return symbol.typeName;
     }
@@ -171,7 +180,9 @@ std::string SemanticAnalyzer::inferExpressionType(const ast::Expression& express
 // is checked at run time.
 std::string SemanticAnalyzer::analyzeIndexExpression(const ast::CallExpression& call)
 {
-    const std::string baseType = canonicalTypeName(analyzeExpression(*call.arguments()[0]));
+    // Through a pointer, `P[I]` is an element of its array (safe-pointers).
+    const std::string baseType =
+        typeThroughPointer(canonicalTypeName(analyzeExpression(*call.arguments()[0])));
     if (support::isSliceTypeName(baseType)) {
         const std::string indexType = canonicalTypeName(analyzeExpression(*call.arguments()[1]));
         if (!isIntegerType(indexType)) {
@@ -308,6 +319,14 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
                 if (isFileType(inferredType)) {
                     requireFreshFile(expression.right());
                 }
+                if (inferredType == "None") {
+                    throw SemanticError("the type of None is not known here: write it, " + identifier.name() +
+                                        " Link<T> := None or " + identifier.name() + " Option<Own<T>> := None");
+                }
+                if (isMoveOnlyType(inferredType) && !isFreshOwnerValue(expression.right())) {
+                    throw SemanticError("an owner is never copied: give it away with Move(X), or build a new "
+                                        "one with New(...)");
+                }
                 declareOrThrow(
                     identifier.name(),
                     SymbolKind::Variable,
@@ -391,13 +410,11 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
                     static_cast<const ast::IdentifierExpression&>(*root).name());
                 rootWasRead = rootSymbol != nullptr && readSymbols_.contains(rootSymbol);
             }
-            if (rootSymbol == nullptr ||
-                (rootSymbol->kind != SymbolKind::Variable && rootSymbol->kind != SymbolKind::State) ||
-                !rootSymbol->isMutable) {
+            targetType = analyzeExpression(expression.left());
+            if (writableRoot(expression.left()) == nullptr) {
                 throw SemanticError("array element assignment requires a mutable array variable");
             }
-            targetType = analyzeExpression(expression.left());
-            if (!rootWasRead) {
+            if (rootSymbol != nullptr && !rootWasRead) {
                 readSymbols_.erase(rootSymbol);
             }
             recordInvariantPlaces(expression,
@@ -413,6 +430,18 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
                     throw SemanticError("a slice is read-only: its elements cannot be assigned (ADR-0017)");
                 }
             }
+        } else if (expression.left().kind() == ast::AstNodeKind::CallExpression &&
+                   static_cast<const ast::CallExpression&>(expression.left()).callee().kind() ==
+                       ast::AstNodeKind::IdentifierExpression &&
+                   equalsIgnoreCase(static_cast<const ast::IdentifierExpression&>(
+                                        static_cast<const ast::CallExpression&>(expression.left()).callee())
+                                        .name(),
+                                    "Value") &&
+                   isPointerBuiltinCall("Value", static_cast<const ast::CallExpression&>(expression.left())
+                                                     .arguments()
+                                                     .size())) {
+            // `Value(P) := X` replaces the whole object (safe-pointers).
+            targetType = analyzeExpression(expression.left());
         } else {
             throw SemanticError("assignment target must be an identifier, field or array element");
         }
@@ -420,6 +449,12 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
         const std::string rightType = analyzeExpression(expression.right());
         if (!canAssignValue(targetType, rightType, expression.right())) {
             throw SemanticError("cannot assign " + rightType + " to " + targetType);
+        }
+        if (expression.left().kind() == ast::AstNodeKind::IdentifierExpression) {
+            if (const Symbol* target =
+                    result_.symbolOf(static_cast<const ast::IdentifierExpression&>(expression.left()))) {
+                noteOwnerAssigned(*target);
+            }
         }
         return targetType;
     }
@@ -509,6 +544,12 @@ std::string SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpressio
     case ast::BinaryOperator::Greater:
     case ast::BinaryOperator::LessEqual:
     case ast::BinaryOperator::GreaterEqual:
+        if (support::isPointerTypeName(leftType) || support::isPointerTypeName(rightType) ||
+            leftType == "None" || rightType == "None") {
+            throw SemanticError("pointers are not compared with '" + std::string(binaryOperatorName(op)) +
+                                "': Same(A, B) asks whether they reach one object, Alive(X) whether it "
+                                "exists, and Value(A) = Value(B) compares the values");
+        }
         requireMatchingTypes();
         if (support::isArrayTypeName(leftType) || support::isSliceTypeName(leftType)) {
             throw SemanticError("arrays and slices cannot be compared with '" +
@@ -677,10 +718,20 @@ const Symbol* SemanticAnalyzer::writableRoot(const ast::Expression& expression) 
             return nullptr;
         }
         const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
+        // The object of a pointer is written through it (safe-pointers).
+        if (equalsIgnoreCase(name, "Value") && call.arguments().size() == 1 &&
+            isPointerBuiltinCall(name, 1)) {
+            return &pointerTargetRoot_;
+        }
         if (name != "__index" && name != "__member") {
             return nullptr;
         }
         root = call.arguments()[0].get();
+        if (const ResolvedType* baseType = result_.typeOf(*root);
+            baseType != nullptr && (support::isOwnTypeName(baseType->name) ||
+                                    support::isLinkTypeName(baseType->name))) {
+            return &pointerTargetRoot_;
+        }
     }
     if (root->kind() != ast::AstNodeKind::IdentifierExpression) {
         return nullptr;

@@ -36,6 +36,9 @@ SemanticError::SemanticError(std::string message)
 
 SemanticAnalyzer::SemanticAnalyzer()
 {
+    pointerTargetRoot_.name = "<the object of a pointer>";
+    pointerTargetRoot_.kind = SymbolKind::Variable;
+    pointerTargetRoot_.isMutable = true;
     declareBuiltins();
     declareBuiltinTypes();
 }

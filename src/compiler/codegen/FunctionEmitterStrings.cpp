@@ -17,6 +17,7 @@
 #include "Operators.h"
 #include "../exceptions/ExceptionTypes.h"
 #include "../support/ArrayType.h"
+#include "../support/PointerType.h"
 #include "../support/Platform.h"
 
 #include <algorithm>
@@ -52,6 +53,12 @@ bool FunctionEmitter::isFileType(std::string_view inoxType)
 bool FunctionEmitter::typeOwnsReferences(std::string_view inoxType) const
 {
     if (isStringType(inoxType) || isFileType(inoxType)) {
+        return true;
+    }
+    // Safe pointers: an owner frees its object; a tombstone stands for a
+    // variable some Link points to (FunctionEmitterPointers.cpp).
+    if (support::isOwnTypeName(inoxType) || support::isOptionOwnTypeName(inoxType) ||
+        inoxType == "__Tombstone") {
         return true;
     }
     if (const auto layout = arrayLayout(inoxType)) {
@@ -193,6 +200,10 @@ void FunctionEmitter::emitFileCallAt(const std::string& pointer, RuntimeFunction
 
 void FunctionEmitter::emitRetainAt(const std::string& pointer, std::string_view inoxType)
 {
+    // An owner is never copied, only moved: nothing to retain.
+    if (support::isOwnTypeName(inoxType) || support::isOptionOwnTypeName(inoxType) || inoxType == "__Tombstone") {
+        return;
+    }
     if (isFileType(inoxType)) {
         emitFileCallAt(pointer, RuntimeFunction::FileRetain);
         return;
@@ -207,6 +218,15 @@ void FunctionEmitter::emitReleaseAt(const std::string& pointer, std::string_view
         emitFileCallAt(pointer, RuntimeFunction::FileRelease);
         return;
     }
+    if (isMoveOnly(inoxType) || inoxType == "__Tombstone") {
+        // The Strings it holds, then its owners (their objects are freed).
+        if (!support::isOwnTypeName(inoxType) && !support::isOptionOwnTypeName(inoxType) &&
+            inoxType != "__Tombstone") {
+            emitStringCallAt(pointer, inoxType, "__inox_str_release");
+        }
+        emitOwnerFreesAt(pointer, inoxType);
+        return;
+    }
     emitStringCallAt(pointer, inoxType, "__inox_str_release");
 }
 
@@ -215,6 +235,15 @@ void FunctionEmitter::emitReleaseAt(const std::string& pointer, std::string_view
 void FunctionEmitter::emitOwningStore(const std::string& pointer, std::string_view inoxType, const std::string& llvmType,
                                       const std::string& value)
 {
+    // Safe pointers: a move-only value is moved in. The old value is
+    // released (its owners free their objects), and the temporary that held
+    // the fresh value is disarmed: nothing is copied or retained.
+    if (isMoveOnly(inoxType) || inoxType == "__Tombstone") {
+        emitReleaseAt(pointer, inoxType);
+        output_ << "  store " << llvmType << ' ' << value << ", ptr " << pointer << '\n';
+        disarmFresh(value);
+        return;
+    }
     if (!typeOwnsReferences(inoxType)) {
         output_ << "  store " << llvmType << ' ' << value << ", ptr " << pointer << '\n';
         return;
@@ -270,6 +299,9 @@ void FunctionEmitter::holdOwnedResult(const std::string& value, std::string_view
     emitReleaseAt(slot, inoxType);
     output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
     pendingTemps_.push_back(ownedSlots_.back());
+    if (isMoveOnly(inoxType)) {
+        freshTemps_[value] = FreshTemp{slot, llvmType};
+    }
 }
 
 void FunctionEmitter::emitReleaseOwnedSlots()
@@ -296,6 +328,11 @@ void FunctionEmitter::emitRetainResult(const std::string& value)
     if (!typeOwnsReferences(signature_.returnInoxType)) {
         return;
     }
+    // A move-only result leaves the routine: its temporary lets it go.
+    if (isMoveOnly(signature_.returnInoxType)) {
+        disarmFresh(value);
+        return;
+    }
     requireStringRuntime();
     if (isStringType(signature_.returnInoxType)) {
         output_ << "  call void @__inox_str_retain(ptr " << value << ")\n";
@@ -311,7 +348,8 @@ void FunctionEmitter::emitRetainResult(const std::string& value)
 // a String-holding type, or a call whose result holds Strings.
 bool FunctionEmitter::scanOwnsReferences() const
 {
-    bool owns = false;
+    // Safe pointers: owned parameters and tombstones are released too.
+    bool owns = !tombstoneLocals_.empty() || !ownedSlots_.empty();
     forEachStatement(function_.body(), [&](const ast::Statement& statement) {
         if (owns) {
             return;

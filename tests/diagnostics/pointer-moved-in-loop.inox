@@ -1,0 +1,23 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers: an owner given away in a loop needs a new value before the next round.
+Module Diagnostics.PointerMovedInLoop
+
+Type
+    TNo Struct
+        FValor Integer := 0
+        FProximo Option<Own<TNo>>
+    ;
+
+Main :
+    P := New(TNo)
+    for I in 1..2
+        Q := Move(P)
+        PutLn(Q.FValor, I)
+    ;
+;

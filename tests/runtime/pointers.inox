@@ -1,0 +1,142 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (change safe-pointers): Own, Option<Own>, Link, New, Free,
+== Move, Value, Alive, Same, None; leak-checked by string_leak_check.
+Module Pointers
+
+Type
+    TNo Struct
+        FValor Integer := 0
+        FNome String := ""
+        FProximo Option<Own<TNo>>
+    ;
+    TPasta Struct
+        FNome String := ""
+        FPai Link<TPasta>
+        FFilho Option<Own<TPasta>>
+    ;
+    TCaixa Struct
+        FConteudo Own<TNo>
+        FRotulo String := "caixa"
+    ;
+    TPonto Struct
+        FX Integer := 0
+        FY Integer := 0
+    ;
+
+TPonto.Mover(Self mut, DX Integer) :
+    Self.FX += DX
+;
+
+TPonto.Soma(Self) Integer :
+    Return Self.FX + Self.FY
+;
+
+NovaLista(N Integer) Own<TNo> :
+    Lista := New(TNo(FValor := 1, FNome := "um"))
+    Atual := Link(Lista)
+    for I in 2..N
+        Atual.FProximo := New(TNo(FValor := I))
+        Atual := Link(Atual.FProximo)
+    ;
+    Return Move(Lista)
+;
+
+Somar(Inicio Link<TNo>) Integer :
+    Total := 0
+    N := Inicio
+    while Alive(N)
+        Total += N.FValor
+        N := Link(N.FProximo)
+    ;
+    Return Total
+;
+
+Contar(Lista Own<TNo>) Integer :
+    Return Somar(Link(Lista))
+;
+
+Vazar Link<Integer> :
+    X Integer := 42
+    Return Link(X)
+;
+
+NovaCaixa(Valor Integer) TCaixa :
+    Return TCaixa(FConteudo := New(TNo(FValor := Valor, FNome := "dentro")))
+;
+
+Main :
+    == A list built by a routine, owned by Main.
+    L := NovaLista(4)
+    PutLn("soma ", Somar(Link(L)), ", primeiro ", L.FNome, " ", L.FValor)
+
+    == A Link to a variable, written through it.
+    X Integer := 10
+    Espiao := Link(X)
+    Value(Espiao) := 7
+    PutLn("X ", X, ", espião ", Value(Espiao), ", mesmo ", Same(Espiao, Link(X)))
+
+    == A Link to a field and to an element.
+    Pt TPonto
+    LX := Link(Pt.FX)
+    Value(LX) := 5
+    Pt.Mover(1)
+    Tabela Array[1..3] Integer
+    LE := Link(Tabela[2])
+    Value(LE) := 9
+    PutLn("ponto ", Pt.FX, ", soma ", Pt.Soma, ", tabela ", Tabela[2])
+
+    == Methods through an owner and a Link.
+    P := New(TPonto(FX := 1, FY := 2))
+    P.Mover(10)
+    LP := Link(P)
+    LP.Mover(100)
+    PutLn("P ", P.FX, " ", LP.Soma, " ", Value(P).FY)
+
+    == Free: every Link to the object dies.
+    Free(P)
+    PutLn("vivo depois de Free: ", Alive(LP))
+    P := New(TPonto(FX := 3))
+    PutLn("de novo: ", P.FX, ", o Link antigo continua morto: ", Alive(LP))
+
+    == A Link that outlives its variable is detected.
+    H := Vazar
+    PutLn("vazado vivo: ", Alive(H))
+
+    == Move: the owner changes hands; to a routine, which frees it.
+    Q := Move(L)
+    PutLn("movido ", Q.FValor)
+    PutLn("contado ", Contar(Move(Q)))
+
+    == An Option field: None frees the child; Free empties it.
+    Raiz := New(TPasta(FNome := "raiz"))
+    Raiz.FFilho := New(TPasta(FNome := "docs", FPai := Link(Raiz)))
+    Filho := Link(Raiz.FFilho)
+    PutLn("filho ", Filho.FNome, ", pai ", Filho.FPai.FNome, ", vivo ", Alive(Filho))
+    Raiz.FFilho := None
+    PutLn("depois de None: ", Alive(Filho), " ", Alive(Raiz.FFilho))
+    Raiz.FFilho := New(TPasta(FNome := "fotos"))
+    Free(Raiz.FFilho)
+    PutLn("depois de Free: ", Alive(Raiz.FFilho))
+
+    == A value that holds an owner moves like one.
+    C := NovaCaixa(8)
+    D := Move(C)
+    PutLn(D.FRotulo, " ", D.FConteudo.FValor, " ", D.FConteudo.FNome)
+
+    == Value: a copy of the whole object; replacing it keeps its Links.
+    V := New(TPonto(FX := 4, FY := 6))
+    LV := Link(V)
+    Copia := Value(V)
+    Value(V) := TPonto(FX := 40, FY := 60)
+    PutLn("cópia ", Copia.FX, ", novo ", LV.FX, " ", Alive(LV))
+
+    == A long list is freed without recursion.
+    Longa := NovaLista(100000)
+    PutLn("longa ", Somar(Link(Longa)))
+;
