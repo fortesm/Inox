@@ -57,6 +57,11 @@ whether concurrency or contracts are in it) is the maintainer's decision.
   no counting, no collector (done, r3.73, CANON-25). Later: Links to
   parameters, the escape analysis that keeps linked locals on the stack,
   arenas as an option, destructors (`lifecycle`).
+- `safe-pointers-followups` — where the implementation differs from the
+  `safe-pointers` design and the gaps to close, one task each (Links to
+  parameters, zero-cost Links, moves over `leave`/`continue`, release per
+  loop iteration, invariants through pointers, owner results discarded,
+  `Option<T>` with generics).
 - Designs awaiting decisions: `generics` (simplest form),
   `binary-streams` (binary files, positions; streams after generics),
   `variant-structs` (one collection of several kinds, examined with `case`;

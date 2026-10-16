@@ -76,7 +76,8 @@ each version added.
   (`leave`/`continue` out of a loop) is caught at run time (trap "use of
   an owner after Move or Free"), not at compile time; an owner declared
   inside a loop is freed when its declaration runs again or the routine
-  returns, not at the end of each iteration.
+  returns, not at the end of each iteration. Each is a task of change
+  `safe-pointers-followups`.
 - Conversions involving Float (`Integer(F)`, `Float(I)`, `Float32(X)`): accepted,
   not lowered ("not yet implemented in the LLVM backend").
 - A Float `Const` is not lowered, so Std.Math exposes `Pi`, `Tau` and `E` as
