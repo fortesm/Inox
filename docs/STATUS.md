@@ -84,6 +84,9 @@ each version added.
   functions.
 - Char values: a Char local or comparison is accepted and not lowered, and
   `PutLn(C)` with a Char is rejected ("cannot be printed yet").
+- `with` over a field path (`with Customer.Comments`) passes the analyzer
+  and is "not yet implemented" in the backend, which lowers only a local
+  variable as the target.
 - A function called as a statement (its result unused) passes the analyzer
   and is "not yet implemented" in the backend (left as it is, r3.65).
 - Module exports, visibility and package search beyond local `Use`.
@@ -93,6 +96,13 @@ each version added.
   driver (by design until E22's criteria hold).
 - Quality gates still to come: clang-format, clang-tidy, cppcheck,
   coverage.
+
+## Diagnostics to improve
+
+- `with TCustomer` (a type name, not a value) is rejected at the first
+  `.Member` with "unknown field or zero-argument method Name in", without
+  naming the target; it should say that `with` needs a variable or an
+  expression.
 
 ## Over-acceptance (the code accepts what the law does not define)
 

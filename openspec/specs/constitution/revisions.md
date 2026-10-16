@@ -26,6 +26,13 @@ stands.
    files (a `BinaryFile` type, little-endian, `Write`/`Read` sized by the
    type, Strings in binary files, reading past the end, 0-based byte
    offsets); streams come after `generics`.
+3. **`| |`, `{ }` and annotations** (brainstorm, 2026-10-16):
+   `openspec/changes/delimiters-and-annotations/proposal.md` — `| |` as a
+   capture clause (`Name`, `Move(X)`, `Link(X)`), `{ }` as an effect or a
+   requirement clause, `@` annotations; no String interpolation (decided).
+4. **Fewer reserved words and integer division** (2026-10-16):
+   `openspec/changes/keyword-review/proposal.md` — 13 candidates (50 → 37)
+   and three options for `div` and `/`.
 
 ## Revision log
 
