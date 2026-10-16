@@ -35,7 +35,7 @@ ownership, runtime ABI). No code before the design is approved.
   recomendações" (explicit `Move`, `Value(P)`, types written like
   `Slice<T>`, built-in types without waiting for user generics, the owner
   frees at the end of its block, a dead Handle traps and `Alive` tests it,
-  a Handle points only to an owned object, the unsafe layer much later,
+  the unsafe layer much later,
   destructors decided in change `lifecycle`).
 - **Handles to any variable, field or array element** (2026-10-15/16):
   "Corretamente! É isso mesmo"; "1 - Com Handle".
