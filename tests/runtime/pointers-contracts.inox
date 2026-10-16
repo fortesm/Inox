@@ -1,0 +1,29 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers and contracts (CANON-24): a pre reads an owner the routine
+== takes, a pos reads what it held through old, and a Link parameter.
+Module PointersContracts
+
+Type
+    TNo Struct
+        FValor Integer := 0
+    ;
+
+Somar(P Own<TNo>, L Link<TNo>) Integer :
+    pre P.FValor > 0, "valor positivo"
+    pre Alive(L), "o link vive"
+    pos Result = old P.FValor + old L.FValor
+    Return P.FValor + L.FValor
+;
+
+Main :
+    A := New(TNo(FValor := 2))
+    B := New(TNo(FValor := 3))
+    PutLn(Somar(Move(A), Link(B)))
+    PutLn(Somar(New(TNo(FValor := 10)), Link(B)))
+;

@@ -1,0 +1,64 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers: arrays of optional owners, owned arrays, owned Strings and
+== Integers (with a method), State owners and Links to State, with on an owner.
+Module PointersMore
+
+Const Tamanho := 3
+
+Type
+    TNo Struct
+        FValor Integer := 0
+    ;
+
+State
+    Global Option<Own<TNo>>
+    Contador Integer := 0
+;
+
+Integer.Dobro(Self) Integer :
+    Return Self * 2
+;
+
+Main :
+    == An array of optional owners.
+    A Array[1..Tamanho] Option<Own<TNo>>
+    A[1] := New(TNo(FValor := 11))
+    A[3] := New(TNo(FValor := 33))
+    for I in 1..Tamanho
+        L := Link(A[I])
+        if Alive(L)
+            PutLn(I, ": ", L.FValor)
+        else
+            PutLn(I, ": vazio")
+        ;
+    ;
+    == An owned array, indexed and linked through its owner.
+    T Array[1..Tamanho] Integer
+    T[2] := 20
+    Arr := New(T)
+    Arr[1] := 10
+    E := Link(Arr[2])
+    Value(E) := Value(E) + 1
+    PutLn("arr ", Arr[1], " ", Arr[2], " ", Arr[3])
+    == An owned String and an owned Integer with a method.
+    S := New("texto")
+    N := New(21)
+    PutLn(Value(S), " ", Value(N).Dobro, " ", N.Dobro)
+    == State: an owner and a Link to a State variable.
+    Global := New(TNo(FValor := 7))
+    LC := Link(Contador)
+    Value(LC) := 99
+    PutLn("global ", Link(Global).FValor, ", contador ", Contador)
+    == with on an owner.
+    P := New(TNo(FValor := 1))
+    with P
+        .FValor := .FValor + 1
+    ;
+    PutLn("with ", P.FValor)
+;

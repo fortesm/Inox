@@ -309,6 +309,11 @@ std::string SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const
                 throw SemanticError("Link takes a variable, a field or an element of one");
             }
         }
+        // The place is read twice (its address and its storage's header).
+        if (!isSideEffectFree(argument)) {
+            throw SemanticError("Link of a place whose index calls a routine: store the index in a variable "
+                                "first");
+        }
         return support::makeLinkTypeName(type);
     }
 

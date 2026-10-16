@@ -1,0 +1,23 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers and CANON-24: a pos clause reads an owner the routine takes only through old.
+Module Diagnostics.PointerPosReadsOwner
+
+Type
+    TNo Struct
+        FValor Integer := 0
+    ;
+
+Usar(P Own<TNo>) Integer :
+    pos Result = P.FValor
+    Return P.FValor
+;
+
+Main :
+    PutLn(Usar(New(TNo)))
+;
