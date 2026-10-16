@@ -27,8 +27,8 @@ types and lifecycle", r3.70). Nothing is decided; no code.
    fields (change `encapsulation`), a routine of the module becomes the only
    way to build such a value, as in Rust.
 2. Destructors: they matter when a value owns something the runtime does
-   not know (a texture, a socket, a lock), above all with `Ref<T>` (change
-   `safe-pointers`), where the last owner's departure is the moment to
+   not know (a texture, a socket, a lock), above all with `Own<T>` (change
+   `safe-pointers`), where the owner's release is the moment to
    release it. Options: none; a reserved method (`TName.Finalizar(Self
    mut)`, like Rust's Drop or Delphi's destructor) called exactly once when
    the value dies; or only `ensure` blocks.
