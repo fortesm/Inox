@@ -7,8 +7,6 @@
 
 == CANON-5 rule 3 and string-runtime Q4: a String local needs an initializer,
 == like every scalar local; struct fields and array elements default to "".
-Module Diagnostics.StringWithoutInitializer
-
 Main :
     S String
     PutLn(S)

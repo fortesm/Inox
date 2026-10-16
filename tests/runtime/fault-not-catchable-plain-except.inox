@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Plain except is a catch-all for exceptions, but a runtime fault is not one.
-Module Runtime.FaultNotCatchablePlainExcept
-
 Main :
     M Integer := 9223372036854775807
     try

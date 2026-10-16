@@ -1,5 +1,3 @@
-Module GetIntegerNegative
-
 Main :
     A Integer := 0
     Get(A)

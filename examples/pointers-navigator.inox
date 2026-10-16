@@ -9,8 +9,6 @@
 == first, last, next, previous, and the current record read and written in
 == place through a Link, with no copy. "Next" in an array is the index plus
 == one, never pointer arithmetic; the Link gives the direct access.
-Module PointersNavigator
-
 Const Tamanho := 5
 
 Type

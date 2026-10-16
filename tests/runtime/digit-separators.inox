@@ -7,8 +7,6 @@
 
 == CANON-2 (v3.3): `_` separates digits in integer, real and hexadecimal
 == literals; it is cosmetic.
-Module Runtime.DigitSeparators
-
 Const Big := 1_000_000
 Const Mask := $FF_FF
 

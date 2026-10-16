@@ -7,8 +7,6 @@
 
 == CANON-14: comparing Strings uses the String runtime even when the program
 == owns no String and raises nothing, so the driver must link libinoxrt.
-Module Runtime.StringsLiteralCompare
-
 IsYes(Answer String) Bool :
     Return Answer = "sim"
 ;

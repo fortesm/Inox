@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == A constant negative exponent can never succeed: compile-time error.
-Module Diagnostics.VariablePowerNegativeLiteral
-
 Main :
     A Integer := 2
     PutLn(A ^ (-1))

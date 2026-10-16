@@ -8,8 +8,6 @@
 == ADR-0011: a choice has the selector type. A Const keeps its inferred type
 == (`Const K := 5` is Integer); only a literal-only expression is read in the
 == selector type and range-checked.
-Module Diagnostics.CaseTypedConstMismatch
-
 Const K := 5
 
 Main :

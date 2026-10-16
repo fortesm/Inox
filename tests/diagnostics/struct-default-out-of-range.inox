@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-8 / CANON-9: a field default must fit the field type.
-Module Diagnostics.StructDefaultOutOfRange
-
 Type
     TNode Struct
         FValue Byte := 300

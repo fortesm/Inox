@@ -8,8 +8,6 @@
 == CANON-9 methods of built-in types (OpenSpec change method-reuse): `Self`
 == reads a copy of the value, `Self mut` changes the caller's variable. A
 == method belongs to its exact type (Integer methods are not Byte methods).
-Module Runtime.BuiltinTypeMethods
-
 Integer.Twice(Self) Integer :
     Return Self * 2
 ;
@@ -19,7 +17,7 @@ Integer.Inc(Self mut) :
 ;
 
 Bool.Text(Self) String :
-    Return if Self then "sim" else "não"
+    Return IIf(Self, "sim", "não")
 ;
 
 Float.Half(Self) Float :

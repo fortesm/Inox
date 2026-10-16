@@ -7,8 +7,6 @@
 
 == ADR-0011: a case accepted without `else` covers every value, so a
 == function whose arms all return does not reach its end.
-Module CaseExhaustiveReturns
-
 AsInt(B Bool) Integer :
     case B
         True Return 1

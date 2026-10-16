@@ -22,7 +22,6 @@
 == inox-banco.txt keeps each number one digit per line, closed by "-".
 == Typing something that is not a number at a prompt stops the program
 == (Get reads Integer values).
-Module BankAtm
 Use Std.IOUtils
 
 Const Arquivo := "inox-banco.txt"

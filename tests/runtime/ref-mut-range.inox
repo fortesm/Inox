@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0016: a write through `ref mut` keeps the type's range check.
-Module Runtime.RefMutRange
-
 Bump(ref mut B Byte) :
     B += 1
 ;

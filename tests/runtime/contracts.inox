@@ -10,8 +10,6 @@
 == inherits and extends the contracts it replaces, loop invariant and
 == variant, contracts on a method of a built-in type, recursion, a body that
 == raises (its pos is not checked) and a String in old.
-Module Runtime.Contracts
-
 Type
     TPessoa Struct
         FNome String := ""

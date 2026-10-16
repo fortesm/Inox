@@ -7,8 +7,6 @@
 
 == CANON-12: every path of Classify ends in Return or Raise, so it is accepted
 == even though it has no final top-level Return.
-Module Runtime.FunctionAllPathsReturn
-
 Classify(A Integer) Integer :
     if A > 0
         Return 1

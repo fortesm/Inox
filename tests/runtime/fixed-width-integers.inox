@@ -9,8 +9,6 @@
 == Int16, Int32, UInt16, UInt32) in locals, parameters, returns, struct fields,
 == State, case, comparisons and bitnot. A constant Integer is read in the
 == fixed-width type when it fits (`B += 55`, `P.R + 5`).
-Module Runtime.FixedWidthIntegers
-
 Type
     TPixel Struct
         R Byte

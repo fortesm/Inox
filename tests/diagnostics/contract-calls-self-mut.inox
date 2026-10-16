@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-24: a contract only reads; a Self mut method would change state.
-Module Diagnostics.ContractCallsSelfMut
 Type
     TA Struct
         FX Integer := 0

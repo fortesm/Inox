@@ -10,8 +10,6 @@
 == back to the parent with a Link, which owns nothing, so there is no cycle to
 == leak. Removing a folder frees its whole subtree, and every Link into it
 == sees that (Alive is false) instead of reading freed memory.
-Module PointersTree
-
 Type
     TPasta Struct
         FNome String := ""

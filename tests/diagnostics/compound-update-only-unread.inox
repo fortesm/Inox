@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0012 with OPEN-4: updating a variable is not reading it.
-Module Diagnostics.CompoundUpdateOnlyUnread
-
 Main :
     Total := 0
     Total += 5

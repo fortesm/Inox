@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: only a variable gives an owner away; a field that may be emptied is an Option.
-Module Diagnostics.PointerFreeOfField
-
 Type
     TNo Struct
         FValor Integer := 0

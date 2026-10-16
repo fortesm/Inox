@@ -7,8 +7,6 @@
 
 == CANON-17/19: GetLn checks that the line is well-formed UTF-8 (RFC 3629);
 == invalid input stops the program with a runtime fault (kind 13).
-Module Runtime.StringsInvalidUtf8
-
 Main :
     Line String := ""
     GetLn(Line)

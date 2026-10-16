@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-8: -(-128) does not fit Int8.
-Module Runtime.Int8NegateMin
-
 Main :
     K Int8 := -128
     K := -K

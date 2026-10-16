@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0017: a slice cannot be a State variable.
-Module Diagnostics.StateSlice
-
 State
     View Slice<Integer>
 ;

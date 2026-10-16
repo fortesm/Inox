@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == v3.21: a while loop nested in a for loop; the inner counter is a loop-body local.
-Module Runtime.NestedWhileInFor
-
 Main :
     for I in 1..3
         K Integer := 0

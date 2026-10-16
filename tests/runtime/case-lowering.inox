@@ -9,8 +9,6 @@
 == `|` alternatives, negative ranges, Const bounds, else, a total case
 == without else (Bool), a function that ends in a total case, and a
 == selector that is evaluated exactly once.
-Module Runtime.CaseLowering
-
 Const Limit := 9
 
 Classify(N Integer) Integer :

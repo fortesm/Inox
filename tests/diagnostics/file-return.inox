@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == F6 (file-io): a File cannot be returned.
-Module Diagnostics.FileReturn
 Use Std.IOUtils
 
 OpenLog(Path String) File :

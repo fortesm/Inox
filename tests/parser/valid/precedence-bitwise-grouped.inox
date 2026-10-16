@@ -7,8 +7,6 @@
 
 == Mixed bitwise families are allowed WHEN explicitly parenthesized.
 
-Module PrecedenceBitwiseGrouped
-
 Main :
     A := 12
     B := 10

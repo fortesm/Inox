@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9: a named field value must have the field type.
-Module Diagnostics.ConstructionTypeMismatch
-
 Type
     TPoint Struct
         X Integer

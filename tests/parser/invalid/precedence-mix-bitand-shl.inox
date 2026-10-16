@@ -7,8 +7,6 @@
 
 == Mixing bitwise 'bitand' and shift 'shl' without parentheses is a canonical error.
 
-Module PrecedenceMixBitandShl
-
 Main :
     A := 12
     B := 10

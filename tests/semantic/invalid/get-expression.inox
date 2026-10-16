@@ -1,5 +1,3 @@
-Module GetExpressionInvalid
-
 Main :
     A, B Integer := 0
     Get(A + B)

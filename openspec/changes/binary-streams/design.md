@@ -1,7 +1,6 @@
 ## Phase 1: BinaryFile
 
 ```
-Module BinaryDemo
 Use Std.Files
 
 Main :

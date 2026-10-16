@@ -10,8 +10,6 @@
 == through Own, Link or Value. It is evaluated once, on entry (an index that
 == changes inside the body, or a call in the index, does not move it), and
 == every `.Member` acts on that storage, never on a copy.
-Module Runtime.WithPlaces
-
 Type
     TNotas Struct
         FTotal Integer := 0

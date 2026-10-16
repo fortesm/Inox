@@ -1,5 +1,3 @@
-Module Integration.ExceptionsTaxonomyRange
-
 Main :
     try
         Raise IndexError

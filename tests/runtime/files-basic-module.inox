@@ -10,8 +10,6 @@
 == Std.IOUtils, so without it the name Exists is free for the program.
 == Without Std.IOUtils the file cannot be deleted: it stays in the working
 == directory, truncated by the next run (.gitignore: inox-test-*.txt).
-Module Runtime.FilesBasicModule
-
 Use Std.Files
 
 Exists(N Integer) Bool :

@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-5 (v3.27): a condition is an expression, so it cannot assign.
-Module Diagnostics.AssignmentInCondition
-
 Main :
     A := 1
     if (A := 3) = 3

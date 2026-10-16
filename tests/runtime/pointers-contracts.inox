@@ -7,8 +7,6 @@
 
 == Safe pointers and contracts (CANON-24): a pre reads an owner the routine
 == takes, a pos reads what it held through old, and a Link parameter.
-Module PointersContracts
-
 Type
     TNo Struct
         FValor Integer := 0

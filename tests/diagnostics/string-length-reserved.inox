@@ -7,8 +7,6 @@
 
 == CANON-14: String lengths (ByteLength, CharLength, GraphemeLength) are
 == reserved for Std.StrUtils; Length takes an array or a slice (CANON-13).
-Module Diagnostics.StringLengthReserved
-
 Main :
     S := "Inox"
     PutLn(Length(S))

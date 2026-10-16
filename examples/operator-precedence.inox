@@ -17,8 +17,6 @@
 == and/or/xor, or mixing different bitwise families). This is the Ada/SPARK
 == safety rule applied only to the genuinely ambiguous cases.
 
-Module OperatorPrecedence
-
 Main :
     == Arithmetic: '^' tightest, then * /, then + -. No parentheses needed.
     A := 2 + 3 * 4

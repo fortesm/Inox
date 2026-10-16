@@ -7,8 +7,6 @@
 
 == CANON-8 / CANON-19: Natural(X) of a negative run-time value is a
 == deterministic runtime fault, not a wrap to a large unsigned value.
-Module Runtime.NaturalConversionNegative
-
 Main :
     X Integer := 2
     X := X - 3

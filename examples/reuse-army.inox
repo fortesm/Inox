@@ -14,8 +14,6 @@
 == modern game engines: values of one kind side by side in memory. One
 == array that mixes kinds needs a variant struct (FUTURE, change
 == variant-structs), never subtyping.
-Module ReuseArmy
-
 Const Total := 1000
 
 Type

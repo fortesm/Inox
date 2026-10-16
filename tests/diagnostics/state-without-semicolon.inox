@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-5 (r3.62): the State variables end with ';'.
-Module Diagnostics.StateWithoutSemicolon
-
 State
     Counter Integer := 0
 

@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-24: invariant goes in a Struct or on the first lines of a loop.
-Module Diagnostics.ContractInvariantMisplaced
 Type
     TA Struct
         FX Integer := 0

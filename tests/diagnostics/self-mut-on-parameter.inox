@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9: a Self mut method needs a writable receiver; a parameter is immutable.
-Module Diagnostics.SelfMutOnParameter
 Type
     TA Struct
         FX Integer := 0

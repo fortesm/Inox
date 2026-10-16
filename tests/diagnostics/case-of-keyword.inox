@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0011: a case header has no `of`.
-Module Diagnostics.CaseOfKeyword
-
 Main :
     X := 4
     case X of

@@ -7,8 +7,6 @@
 
 == ADR-0011 / CANON-8: the domain of Natural is 0..Int64.Max, so a case that
 == leaves out 0 does not cover every value and needs else.
-Module Diagnostics.CaseNaturalMissingZero
-
 Main :
     N Natural := Natural(1)
     case N

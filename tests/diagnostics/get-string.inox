@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-17 (v3.50): Get reads Integer values; a line of text is read with GetLn.
-Module Diagnostics.GetString
-
 Main :
     S String := ""
     Get(S)

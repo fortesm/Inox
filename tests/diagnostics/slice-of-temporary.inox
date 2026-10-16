@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0017: only a named array is sliced; a temporary would disappear.
-Module Diagnostics.SliceOfTemporary
-
 Make Array[1..3] Integer :
     A Array[1..3] Integer
     Return A

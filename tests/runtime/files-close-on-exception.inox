@@ -8,7 +8,6 @@
 == Std.Files F1 (OpenSpec change file-io): a File is closed when its routine
 == is left by an exception, so what it wrote is in the file; a File passed
 == as ref mut is written by the callee and still open in the caller.
-Module Runtime.FilesCloseOnException
 Use Std.IOUtils
 
 WriteThenFail(Path String) :

@@ -7,8 +7,6 @@
 
 == CANON-12: functions must not fall through without returning a value.
 == The if has no else, so Sign(0) would reach the end of the function.
-Module Diagnostics.FunctionFallsThroughIf
-
 Sign(A Integer) Integer :
     if A > 0
         Return 1

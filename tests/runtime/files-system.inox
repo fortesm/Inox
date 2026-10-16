@@ -7,7 +7,6 @@
 
 == Std.IOUtils F7 (OpenSpec change file-io): Exists, RenameFile (raising
 == AlreadyExists onto an existing file, on every system) and DeleteFile.
-Module Runtime.FilesSystem
 Use Std.IOUtils
 
 Main :

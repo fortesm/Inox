@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9: Self only reads its receiver; a method that changes it declares Self mut.
-Module Diagnostics.SelfReadonlyAssignment
 Type
     TA Struct
         FX Integer := 0

@@ -8,8 +8,6 @@
 == CANON-5: module State variables are module-level mutable storage, read and
 == written by any routine of the module, initialized in source order before
 == Main runs (an initializer may call a function or use an earlier State).
-Module Runtime.StateLowering
-
 Twice(N Integer) Integer :
     Return N * 2
 ;

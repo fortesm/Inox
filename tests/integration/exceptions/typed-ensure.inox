@@ -1,5 +1,3 @@
-Module Integration.ExceptionsTypedEnsure
-
 Fail :
     Raise OverflowError
 ;

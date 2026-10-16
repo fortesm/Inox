@@ -7,8 +7,6 @@
 
 == ADR-0011: the selector ends at the header line, so an arm that starts
 == with `-` or `(` is a choice, not a continuation (`X - 1`, `X(1)`).
-Module CaseArmOnNextLine
-
 Main :
     X := 4
     case X

@@ -1,5 +1,3 @@
-Module GetStringInvalid
-
 Main :
     S String := ""
     Get(S)

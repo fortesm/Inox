@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0016: a value parameter is immutable, so it cannot be passed as ref mut.
-Module Diagnostics.RefMutFromValueParameter
-
 Set(ref mut A Integer) :
     A := 3
 ;

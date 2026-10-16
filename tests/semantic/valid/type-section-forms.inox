@@ -8,8 +8,6 @@
 == CANON-5 and CANON-13: a Type section holds Struct, Range, short Enum and
 == multi-line Enum declarations. Range and Enum are parsed and checked for
 == shape; their meaning comes with the OpenSpec change enum-range-set.
-Module Semantic.TypeSectionForms
-
 Type
     TPoint Struct
         FX Integer

@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-24: a contract's message is a String literal.
-Module Diagnostics.ContractMessageNotLiteral
 Type
     TA Struct
         FX Integer := 0

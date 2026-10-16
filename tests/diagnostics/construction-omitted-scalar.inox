@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9: a scalar field with no default must be named in a construction.
-Module Diagnostics.ConstructionOmittedScalar
-
 Type
     TPoint Struct
         X Integer

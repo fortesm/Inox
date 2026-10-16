@@ -7,8 +7,6 @@
 
 == CANON-8: the numeric set is closed (ADR-0014): there is no Double; the
 == 64-bit real is Float (Float64).
-Module Diagnostics.DoubleIsNotInox
-
 Main :
     D Double := 1.0
     PutLn(D)

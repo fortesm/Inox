@@ -205,14 +205,11 @@ Parser::Parser(std::string_view source)
 {
 }
 
-std::unique_ptr<ast::ModuleNode> Parser::parseModule()
+// CANON-3 (r3.76): a file is a module named after the file; the driver
+// passes the name. There is no `Module` header.
+std::unique_ptr<ast::ModuleNode> Parser::parseModule(std::string name)
 {
-    if (!matchKeyword("module")) {
-        errorAtCurrent("expected 'Module'");
-    }
-
-    auto module = std::make_unique<ast::ModuleNode>(
-        parseQualifiedName("expected module name"));
+    auto module = std::make_unique<ast::ModuleNode>(std::move(name));
 
     while (!isAtEnd()) {
         module->items().push_back(parseModuleItem());
@@ -280,7 +277,7 @@ ast::StatementPtr Parser::parseStatement()
 
     // CANON-5: the old `Var ... ;` block and `var`/`mut var` declarations were
     // removed. `Var` and `mut` stay reserved; reject them with a migration hint.
-    if (checkKeyword("var") || checkKeyword("mut")) {
+    if (atRemovedVar() || checkKeyword("mut")) {
         errorAtCurrent(kVarRemovedMessage);
     }
     if (atContractWord("pre") || atContractWord("pos")) {
@@ -291,6 +288,11 @@ ast::StatementPtr Parser::parseStatement()
                        "Struct (CANON-24)");
     }
 
+    // CANON-2: `Old := 1`: a reserved word never names a variable.
+    if (check(TokenKind::Keyword) && current_ + 1 < tokens_.size() &&
+        tokens_[current_ + 1].kind == TokenKind::ColonEqual) {
+        errorAtCurrent(peek().lexeme + " is a reserved word of Inox and cannot be declared (CANON-2)");
+    }
     // CANON-2 (r3.74): `True := 5`, `Exit Integer := 1`: a predefined name
     // is never declared or assigned.
     if (check(TokenKind::Identifier) && lexer::Lexer::isPredefinedName(peek().normalized) &&
@@ -702,17 +704,17 @@ ast::ExpressionPtr Parser::parseUnary()
     DepthGuard guard(*this, expressionNesting_, kMaxExpressionNesting, "expression");
     // CANON-24: `old X` in a `pos` clause is X as it was when the routine
     // started; it binds to one operand (`old Count + 1` is `(old Count) + 1`).
-    if (inPosClause_ && check(TokenKind::Identifier) && peek().normalized == "old" &&
+    if (inPosClause_ && checkKeyword("old") &&
         current_ + 1 < tokens_.size() && tokens_[current_ + 1].location.line == peek().location.line &&
         (tokens_[current_ + 1].kind == TokenKind::Identifier || tokens_[current_ + 1].kind == TokenKind::LeftParen)) {
         advance();
-        if (check(TokenKind::Identifier) && peek().normalized == "old") {
+        if (checkKeyword("old")) {
             errorAtCurrent("'old old X' is not Inox (CANON-24): old is taken once, on entry");
         }
         auto operand = parsePostfix();
         return makeExpr<ast::UnaryExpression>(ast::UnaryOperator::Old, std::move(operand));
     }
-    if (inContractClause_ && check(TokenKind::Identifier) && peek().normalized == "old" &&
+    if (inContractClause_ && checkKeyword("old") &&
         current_ + 1 < tokens_.size() && tokens_[current_ + 1].location.line == peek().location.line &&
         tokens_[current_ + 1].kind == TokenKind::Identifier) {
         errorAtCurrent("'old' is valid only in a 'pos' clause: a precondition, an invariant or a variant "
@@ -850,24 +852,30 @@ ast::ExpressionPtr Parser::parsePostfix()
 
 ast::ExpressionPtr Parser::parsePrimary()
 {
-    // ADR-0013: the conditional expression `if C then A else B`. Each branch
-    // is an expression (never a block); `else` is mandatory; a nested
-    // conditional chains through `else if ... then ... else ...`.
+    // CANON-12 (r3.76): the conditional expression is `IIf(C, A, B)`; only
+    // the chosen branch is evaluated. `if C then A else B` is gone.
     if (checkKeyword("if")) {
+        errorAtCurrent("the conditional expression is IIf(Condition, A, B) (r3.76); "
+                       "'if' starts a statement");
+    }
+    if (checkKeyword("iif") && current_ + 1 < tokens_.size() &&
+        tokens_[current_ + 1].kind == TokenKind::LeftParen) {
         advance();
+        advance();
+        if (check(TokenKind::RightParen)) {
+            errorAtCurrent("IIf needs a condition and two values: IIf(Condition, A, B) (CANON-12)");
+        }
         auto condition = parseValue();
-        if (!matchKeyword("then")) {
-            errorAtCurrent("expected 'then' in a conditional expression "
-                           "'if Condition then A else B' (ADR-0013)");
-        }
+        consume(TokenKind::Comma, "IIf needs a condition and two values: IIf(Condition, A, B) (CANON-12)");
         auto thenValue = parseValue();
-        if (!matchKeyword("else")) {
-            errorAtCurrent("a conditional expression needs 'else' (ADR-0013): "
-                           "'if Condition then A else B'");
-        }
+        consume(TokenKind::Comma, "IIf needs a condition and two values: IIf(Condition, A, B) (CANON-12)");
         auto elseValue = parseValue();
+        consume(TokenKind::RightParen, "IIf takes exactly three arguments: IIf(Condition, A, B) (CANON-12)");
         return makeExpr<ast::ConditionalExpression>(
             std::move(condition), std::move(thenValue), std::move(elseValue));
+    }
+    if (checkKeyword("iif")) {
+        errorAtCurrent("IIf is the conditional expression: IIf(Condition, A, B) (CANON-12)");
     }
 
     if (match(TokenKind::IntegerLiteral)) {
@@ -1110,10 +1118,9 @@ ast::StatementPtr Parser::parseTypedLocalStatement()
 ast::StatementPtr Parser::parseIfStatement()
 {
     auto condition = parseValue();
-    if (checkKeyword("then")) {
-        errorAtCurrent("the if statement has no 'then' (CANON-4); "
-                       "'if Condition then A else B' is an expression and needs a target, "
-                       "e.g. 'Result := if Condition then A else B' (ADR-0013)");
+    if (check(TokenKind::Identifier) && peek().normalized == "then") {
+        errorAtCurrent("the if statement has no 'then' (CANON-4); for a value, write "
+                       "IIf(Condition, A, B) (CANON-12)");
     }
     requireHeaderLineBreak();
     auto thenBody = parseDelimitedBody({"elif", "else"});
@@ -1121,7 +1128,7 @@ ast::StatementPtr Parser::parseIfStatement()
     std::vector<ast::ElseIfClause> elseIfClauses;
     while (matchKeyword("elif")) {
         auto elseIfCondition = parseValue();
-        if (checkKeyword("then")) {
+        if (check(TokenKind::Identifier) && peek().normalized == "then") {
             errorAtCurrent("the if statement has no 'then' (CANON-4)");
         }
         requireHeaderLineBreak();
@@ -1584,8 +1591,15 @@ ast::AstNodePtr Parser::parseModuleItem()
         return parseSectionDeclaration(ast::SectionKind::State);
     }
 
-    if (checkKeyword("var")) {
+    if (atRemovedVar()) {
         errorAtCurrent(kVarRemovedMessage);
+    }
+    // CANON-3 (r3.76): a file is a module named after the file.
+    if (check(TokenKind::Identifier) && peek().normalized == "module" && current_ + 1 < tokens_.size() &&
+        tokens_[current_ + 1].location.line == peek().location.line &&
+        tokens_[current_ + 1].kind == TokenKind::Identifier) {
+        errorAtCurrent("Inox has no 'Module' header: a file is a module named after the file (r3.76); "
+                       "remove this line");
     }
 
     if (checkIdentifierLike()) {
@@ -1934,7 +1948,8 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
         ast::ContractClause::Kind kind = isPre ? ast::ContractClause::Kind::Pre : ast::ContractClause::Kind::Pos;
         if (isPre && matchKeyword("else")) {
             kind = ast::ContractClause::Kind::PreElse;
-        } else if (!isPre && matchKeyword("then")) {
+        } else if (!isPre && check(TokenKind::Identifier) && peek().normalized == "then") {
+            advance();
             kind = ast::ContractClause::Kind::PosThen;
         }
         contracts.push_back(parseContractClause(kind));
@@ -1954,9 +1969,24 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
 
 // A contract line starts with the contextual word followed by more on the
 // same line, never by `:=` (so `Pos := 3` stays an assignment).
+// CANON-5: the old `Var` block, alone on its line or before a declaration
+// (`Var X := 1`). `Var` is not reserved (r3.76): `Var := 1` is a variable.
+bool Parser::atRemovedVar() const
+{
+    if (isAtEnd() || peek().kind != TokenKind::Identifier || peek().normalized != "var") {
+        return false;
+    }
+    if (current_ + 1 >= tokens_.size()) {
+        return true;
+    }
+    const lexer::Token& next = tokens_[current_ + 1];
+    return next.location.line != peek().location.line || next.kind == TokenKind::Identifier;
+}
+
 bool Parser::atContractWord(std::string_view word) const
 {
-    if (isAtEnd() || peek().kind != TokenKind::Identifier || peek().normalized != word ||
+    if (isAtEnd() || (peek().kind != TokenKind::Identifier && peek().kind != TokenKind::Keyword) ||
+        peek().normalized != word ||
         current_ + 1 >= tokens_.size()) {
         return false;
     }
@@ -2185,7 +2215,7 @@ bool Parser::atSectionBoundary() const
     }
 
     if (checkKeyword("use") || checkKeyword("type") || checkKeyword("const") ||
-        checkKeyword("state") || checkKeyword("var")) {
+        checkKeyword("state") || atRemovedVar()) {
         return true;
     }
 

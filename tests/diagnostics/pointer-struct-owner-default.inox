@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: a struct holding an Own field has no default value.
-Module Diagnostics.PointerStructOwnerDefault
-
 Type
     TNo Struct
         FValor Integer := 0

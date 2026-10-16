@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-24: Result exists only in a function's pos.
-Module Diagnostics.ContractResultInPre
 Type
     TA Struct
         FX Integer := 0

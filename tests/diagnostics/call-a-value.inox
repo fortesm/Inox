@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Only functions and subroutines can be called; a variable is a value.
-Module Diagnostics.CallAValue
-
 Main :
     N := 3
     X := N(2)

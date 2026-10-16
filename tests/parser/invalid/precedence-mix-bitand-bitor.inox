@@ -7,8 +7,6 @@
 
 == Mixing bitwise 'bitand' and 'bitor' without parentheses is a canonical error.
 
-Module PrecedenceMixBitandBitor
-
 Main :
     A := 12
     B := 10

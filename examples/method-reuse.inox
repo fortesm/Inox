@@ -12,8 +12,6 @@
 ==   A.TPessoa.Title                the part's own method, when an Override replaced it
 ==   Override                       replaces a reused method for callers of A
 ==   String.UpdateStr               a method of a built-in type, for any String field
-Module MethodReuse
-
 Type
     TEndereco Struct
         FRua String := ""

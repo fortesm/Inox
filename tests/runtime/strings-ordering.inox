@@ -10,10 +10,8 @@
 == results combine with not, and, or, xor, unless, elif, loops and the
 == conditional expression like any Bool. Bool values compare with = and #.
 == The lines come from input, so they are heap Strings (leak-checked).
-Module Runtime.StringsOrdering
-
 Larger(A String, B String) String :
-    Return if A > B then A else B
+    Return IIf(A > B, A, B)
 ;
 
 Main :

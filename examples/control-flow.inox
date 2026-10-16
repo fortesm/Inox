@@ -11,8 +11,6 @@
 == NOTE (aspirational): 'unless' is canonical but not yet lowered by the
 == current compiler; it is kept here to document the canonical form.
 
-Module ControlFlow
-
 Main :
     I := 0
 

@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: an Own field is given in the construction.
-Module Diagnostics.PointerConstructionWithoutOwner
-
 Type
     TNo Struct
         FValor Integer := 0

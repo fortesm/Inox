@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9 (method-reuse): Override needs a reused method with that name.
-Module Diagnostics.ReuseOverrideNothing
 Type
     TA Struct
         FX Integer := 0

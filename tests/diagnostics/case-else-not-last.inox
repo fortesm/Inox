@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0011: `else` is the last arm.
-Module Diagnostics.CaseElseNotLast
-
 Main :
     X := 4
     case X

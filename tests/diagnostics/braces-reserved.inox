@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-2 (r3.74): `{` and `}` are reserved for a future construct.
-Module Diagnostics.BracesReserved
-
 Main :
     X := 1
     PutLn({X})

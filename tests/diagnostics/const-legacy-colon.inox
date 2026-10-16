@@ -7,8 +7,6 @@
 
 == CANON-4 (r3.62): ':' only declares a routine; a Const is one line,
 == 'Const Name := Value'.
-Module Diagnostics.ConstLegacyColon
-
 Const Limit : Integer := 3
 
 Main :

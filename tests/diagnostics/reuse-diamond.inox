@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9 (method-reuse): a struct reached twice through two parts is ambiguous.
-Module Diagnostics.ReuseDiamond
 Type
     TA Struct
         FX Integer := 0

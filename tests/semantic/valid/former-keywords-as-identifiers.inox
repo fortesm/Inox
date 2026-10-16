@@ -8,8 +8,6 @@
 == v3.20: `break` and `finally` are no longer keywords; they are ordinary
 == identifiers. `leave` exits a loop and `ensure` is the try cleanup clause.
 
-Module FormerKeywordsAsIdentifiers
-
 Main :
     Break Integer := 1
     Finally Integer := Break + 1

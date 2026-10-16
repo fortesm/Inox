@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0011: a case has at most one `else`.
-Module Diagnostics.CaseTwoElse
-
 Main :
     X := 4
     case X

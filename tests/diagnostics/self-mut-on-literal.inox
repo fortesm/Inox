@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9: a Self mut method of String changes the caller's variable; a literal is not one.
-Module Diagnostics.SelfMutOnLiteral
 Type
     TA Struct
         FX Integer := 0

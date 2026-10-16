@@ -7,8 +7,6 @@
 
 == Strings read at run time inside owned objects: moved, replaced, freed,
 == and left by an exception (leak-checked by string_leak_check).
-Module PointersStrings
-
 Type
     TItem Struct
         FTexto String := ""

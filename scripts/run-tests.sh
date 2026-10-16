@@ -470,7 +470,7 @@ run_test_tree "$repo_root/tests/parser/invalid" 10 false
 run_test_tree "$repo_root/tests/semantic/invalid" 10 false
 
 run_mode_fragment_test --dump-tokens "$repo_root/tests/lexer/valid/tokens-keywords-literals.inox" \
-    'Keyword lexeme="Module" normalized="module"' 'Keyword lexeme="Type" normalized="type"' 'Keyword lexeme="Struct" normalized="struct"' 'Keyword lexeme="Retry" normalized="retry"' 'IntegerLiteral lexeme="$2A"' 'StringLiteral lexeme="hello"' 'CharLiteral lexeme=' 'Identifier lexeme="End" normalized="end"' 'Keyword lexeme="Leave" normalized="leave"' 'Keyword lexeme="Ensure" normalized="ensure"' 'Identifier lexeme="Break" normalized="break"' 'Identifier lexeme="Finally" normalized="finally"'
+    'Identifier lexeme="Main" normalized="main"' 'Keyword lexeme="Type" normalized="type"' 'Keyword lexeme="Struct" normalized="struct"' 'Keyword lexeme="Retry" normalized="retry"' 'IntegerLiteral lexeme="$2A"' 'StringLiteral lexeme="hello"' 'CharLiteral lexeme=' 'Identifier lexeme="End" normalized="end"' 'Identifier lexeme="Leave" normalized="leave"' 'Keyword lexeme="Ensure" normalized="ensure"' 'Identifier lexeme="Break" normalized="break"' 'Identifier lexeme="Finally" normalized="finally"'
 run_mode_exit_test --parse-only "$repo_root/tests/parser/valid/canonical-type-and-var.inox" true
 run_mode_exit_test --parse-only "$repo_root/tests/parser/invalid/var-colon.inox" false
 

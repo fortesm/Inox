@@ -1,5 +1,3 @@
-Module Parser.TryWithoutHandler
-
 Main :
     try
         PutLn("body")

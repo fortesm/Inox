@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-13: Low and High are part of an array type.
-Module Diagnostics.ArrayBoundsPartOfType
-
 Main :
     A Array[1..3] Integer
     B Array[0..2] Integer

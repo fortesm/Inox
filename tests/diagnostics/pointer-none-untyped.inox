@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: None needs a declared type.
-Module Diagnostics.PointerNoneUntyped
-
 Type
     TNo Struct
         FValor Integer := 0

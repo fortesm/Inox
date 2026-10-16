@@ -8,8 +8,6 @@
 == CANON-19: an exception raised by a function called without arguments
 == (`N := Fail`) inside try reaches the handler. Before the String runtime this
 == call was emitted with `call` instead of `invoke`, and the program aborted.
-Module Runtime.ExceptionZeroArgumentCall
-
 Fail Integer :
     Raise RangeError
     Return 1

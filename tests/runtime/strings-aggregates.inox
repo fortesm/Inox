@@ -9,8 +9,6 @@
 == two-dimensional arrays, aggregates passed to and returned from routines and
 == copied whole, ref parameters to elements. The lines come from input (heap
 == Strings); the sanitizer gate runs this test with leak detection.
-Module Runtime.StringsAggregates
-
 Type
     TPet Struct
         FName String := "sem nome"

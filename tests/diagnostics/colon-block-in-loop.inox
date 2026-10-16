@@ -7,8 +7,6 @@
 
 == CANON-4: a bare `:` block is illegal at any depth, including inside a
 == control structure.
-Module Diagnostics.ColonBlockInLoop
-
 Main :
     I Integer := 0
     while I < 3

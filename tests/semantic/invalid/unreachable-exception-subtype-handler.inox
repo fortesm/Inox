@@ -1,5 +1,3 @@
-Module Semantic.UnreachableExceptionSubtypeHandler
-
 Main :
     try
         Raise FileNotFound

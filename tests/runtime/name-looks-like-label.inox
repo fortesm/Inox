@@ -5,8 +5,6 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module Runtime.NameLooksLikeLabel
-
 Main :
     then0 := 5
     if then0 > 1

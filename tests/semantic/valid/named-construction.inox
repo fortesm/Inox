@@ -8,8 +8,6 @@
 == CANON-9: named construction. Order is free, a field with a default may be
 == omitted, and the field names are not variables: `X := 5` afterwards declares a
 == new local X instead of assigning a field name.
-Module NamedConstruction
-
 Type
     TPoint Struct
         X Integer

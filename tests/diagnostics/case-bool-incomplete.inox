@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0011: a Bool case without `else` must cover True and False.
-Module Diagnostics.CaseBoolIncomplete
-
 Main :
     B := True
     case B

@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9 (method-reuse): a name reached through two reused parts is an error at the declaration.
-Module Diagnostics.ReuseNameTwoPaths
 Type
     TA Struct
         FX Integer := 0

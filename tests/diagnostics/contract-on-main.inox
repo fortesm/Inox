@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-24: Main has no contracts.
-Module Diagnostics.ContractOnMain
 Type
     TA Struct
         FX Integer := 0

@@ -8,8 +8,6 @@
 == ADR-0016: `ref X T` passes a read-only reference (no copy of the array);
 == `ref mut X T` lets the routine write the caller's variable, field or array
 == element. Range checks still apply through a reference (Byte).
-Module Runtime.RefParameters
-
 Const N := 5
 
 Type

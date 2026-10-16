@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == v3.21: a for loop nested in a for loop (former backend gap nested-for).
-Module Runtime.NestedForInFor
-
 Main :
     for I in 1..2
         for J in 1..3

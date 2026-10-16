@@ -7,8 +7,6 @@
 
 == CANON-14: a Char is not an ordinal; Ord takes an enum value (CANON-13)
 == (Marcelo Fortes, 2026-10-12).
-Module Diagnostics.OrdOfChar
-
 Main :
     PutLn(Ord('A'))
 ;

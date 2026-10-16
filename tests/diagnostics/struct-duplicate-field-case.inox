@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Field names are case-insensitive (CANON-2): FX and fx are the same field.
-Module Diagnostics.StructDuplicateFieldCase
-
 Type
     TPoint Struct
         FX Integer

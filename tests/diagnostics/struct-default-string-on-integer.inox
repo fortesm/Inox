@@ -7,8 +7,6 @@
 
 == CANON-9: a field default is a literal of the field's type; a String literal
 == is not an Integer default (v3.55).
-Module Diagnostics.StructDefaultStringOnInteger
-
 Type
     TItem Struct
         FCount Integer := "12"

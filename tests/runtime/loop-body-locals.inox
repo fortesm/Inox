@@ -8,8 +8,6 @@
 == v3.21: locals declared in loop bodies are re-initialized on every iteration
 == (scalars always have an explicit initializer, CANON-5). Sibling scopes reuse
 == the same names (former backend gap loop-local-var).
-Module Runtime.LoopBodyLocals
-
 Main :
     for I in 1..3
         X Integer := I * 2

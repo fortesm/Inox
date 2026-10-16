@@ -9,8 +9,6 @@
 == Dot-prefixed members inside the body resolve against the 'with' target.
 == Unprefixed names follow normal scope rules.
 
-Module WithStatement
-
 Type
     TPoint Struct
         FX Integer

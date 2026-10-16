@@ -10,8 +10,6 @@
 == small structs with their own methods. TCliente and TFornecedor reuse both.
 == Both parts have Resumo, so each struct that reuses them writes its own
 == Resumo, marked Override; the parts' versions stay reachable by path.
-Module ReuseRegistry
-
 Type
     TContato Struct
         FEmail String := ""

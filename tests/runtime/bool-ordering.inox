@@ -7,8 +7,6 @@
 
 == v3.57 (Marcelo Fortes, 2026-10-12): Bool is ordered false < true, as in
 == Pascal and Ada, with every comparison operator.
-Module Runtime.BoolOrdering
-
 Main :
     F Bool := false
     T Bool := true

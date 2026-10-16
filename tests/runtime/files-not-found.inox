@@ -8,7 +8,6 @@
 == Std.IOUtils F3 (OpenSpec change file-io): file errors are ordinary Inox
 == exceptions: On FileNotFound, On IOError (its parent), Else, ensure, and
 == Retry after the handler creates the missing file.
-Module Runtime.FilesNotFound
 Use Std.IOUtils
 
 Main :

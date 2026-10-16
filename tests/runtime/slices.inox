@@ -9,8 +9,6 @@
 == the array's indices; Low/High/Length give their bounds; a slice of a slice;
 == a slice sees later writes to its array; slices of Byte arrays and of rows
 == of a multi-dimensional array; Slice<T> parameters.
-Module Runtime.Slices
-
 Const N := 8
 
 Sum(S Slice<Integer>) Integer :

@@ -7,8 +7,6 @@
 
 == CANON-8: an unsigned fixed-width result below zero is an overflow error,
 == never a wrap to a large value.
-Module Runtime.UnsignedUnderflow
-
 Main :
     U UInt8 := 3
     U := U - 4

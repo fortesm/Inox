@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-11: a routine without a result is not a `with` target.
-Module Diagnostics.WithSubroutineTarget
-
 Mostrar :
     PutLn(1)
 ;

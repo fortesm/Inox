@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0009: `:=` is never part of an initializer, also in a Const.
-Module Diagnostics.AssignmentInConstInitializer
-
 Const B := 1
 Const A := B := 3
 

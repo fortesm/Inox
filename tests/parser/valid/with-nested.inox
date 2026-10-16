@@ -7,8 +7,6 @@
 
 == CANON-11: nested 'with' — '.Member' always binds the innermost 'with' target.
 
-Module ParserValidWithNested
-
 Type
     TPoint Struct
         FX Integer

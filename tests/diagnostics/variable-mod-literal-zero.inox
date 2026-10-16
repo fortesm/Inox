@@ -7,8 +7,6 @@
 
 == CANON-8: the divisor is the constant 0, so this is a compile-time error even
 == though the dividend is only known at run time. (Accepted before v3.18.)
-Module Diagnostics.VariableModLiteralZero
-
 Main :
     A Integer := 10
     PutLn(A mod 0)

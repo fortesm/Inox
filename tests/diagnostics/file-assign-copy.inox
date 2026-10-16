@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == F6 (file-io): assigning one File variable to another is a copy.
-Module Diagnostics.FileAssignCopy
 Use Std.IOUtils
 
 Main :

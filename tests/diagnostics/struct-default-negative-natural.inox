@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0014: a Natural field default cannot be negative.
-Module Diagnostics.StructDefaultNegativeNatural
-
 Type
     TNode Struct
         FValue Natural := -1

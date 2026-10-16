@@ -10,8 +10,6 @@
 == be consumed by the rethrow (tools/eh_state_balance.py), also through
 == handlers, ensure, Retry and loops. (tests/runtime/strings-exception-cleanup
 == runs the same program on input lines, under the leak checker.)
-Module EhLifetime.StringCleanup
-
 Type
     TBox Struct
         FText String

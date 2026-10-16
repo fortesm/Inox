@@ -8,8 +8,6 @@
 == CANON-13 and CANON-9: a struct field may be a fixed array (bounds may name
 == a Const). Its elements start at zero or at their struct's defaults, every
 == index is checked, and copying the struct copies the array.
-Module Runtime.StructArrayField
-
 Const Size := 4
 
 Type

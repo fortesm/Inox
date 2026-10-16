@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0011: a literal choice must fit the selector type.
-Module Diagnostics.CaseLiteralOutOfRange
-
 Main :
     V UInt8 := UInt8(5)
     case V

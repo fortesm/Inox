@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == A Const value must fit in Int64 like any other integer literal.
-Module Diagnostics.ConstLiteralTooLarge
-
 Const Big := 9223372036854775808
 
 Main :

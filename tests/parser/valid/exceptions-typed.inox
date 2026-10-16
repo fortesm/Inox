@@ -1,5 +1,3 @@
-Module Parser.ExceptionsTyped
-
 Main :
     try
         Raise OverflowError

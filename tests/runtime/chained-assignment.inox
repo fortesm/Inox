@@ -8,8 +8,6 @@
 == CANON-5 (v3.27): chained assignment. `A := B := C := X` evaluates X once
 == and stores it in C, then B, then A. New names are declared (FORM 1); targets
 == may be variables or fields, including `.Field` inside `with`.
-Module Runtime.ChainedAssignment
-
 Type
     TPoint Struct
         X Integer

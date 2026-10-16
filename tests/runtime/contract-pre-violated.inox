@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-24: a broken precondition is the caller's fault; it traps, even inside try.
-Module Runtime.ContractPreViolated
-
 Type
     TConta Struct
         FSaldo Integer := 0

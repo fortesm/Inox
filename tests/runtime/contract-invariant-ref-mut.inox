@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-24: a field changed through a ref mut argument keeps the invariant.
-Module Runtime.ContractInvariantRefMut
-
 Type
     TConta Struct
         FSaldo Integer := 0

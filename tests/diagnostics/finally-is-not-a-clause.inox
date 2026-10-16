@@ -8,8 +8,6 @@
 == v3.20: `finally` was replaced by `ensure`; `finally` is an ordinary
 == identifier and no longer opens the try cleanup clause.
 
-Module FinallyIsNotAClause
-
 Main :
     try
         PutLn("body")

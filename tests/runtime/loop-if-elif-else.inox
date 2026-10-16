@@ -7,8 +7,6 @@
 
 == v3.21: if/elif/else inside loop bodies (former backend gaps loop-if-elif and
 == loop-if-else).
-Module Runtime.LoopIfElifElse
-
 Main :
     for I in 1..5
         if I = 1

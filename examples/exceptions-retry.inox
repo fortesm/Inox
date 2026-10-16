@@ -4,8 +4,6 @@
 == Retry(N) means N additional executions of this try body. The ensure block
 == runs before every new attempt and also before propagation on exhaustion.
 
-Module ExceptionsRetry
-
 Main :
     Attempts := 0
 

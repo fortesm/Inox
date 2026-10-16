@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == OPEN-4: every unread local of a block is listed, in declaration order.
-Module Diagnostics.UnreadSeveral
-
 Main :
     A := 1
     B := 2

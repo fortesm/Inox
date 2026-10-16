@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-8: a constant that is negative is never a Natural.
-Module Diagnostics.NaturalNegativeConstant
-
 Main :
     N Natural := -1
     PutLn(N)

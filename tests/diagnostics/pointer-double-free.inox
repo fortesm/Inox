@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: freeing an owner twice is a compile error.
-Module Diagnostics.PointerDoubleFree
-
 Type
     TNo Struct
         FValor Integer := 0

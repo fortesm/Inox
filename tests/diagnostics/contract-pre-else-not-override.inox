@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-24: 'pre else' and 'pos then' belong to an Override.
-Module Diagnostics.ContractPreElseNotOverride
 Type
     TA Struct
         FX Integer := 0

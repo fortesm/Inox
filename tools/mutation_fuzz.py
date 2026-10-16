@@ -52,7 +52,7 @@ TOKENS = [
     "shl", "shr", "not", "and", "or", "if", "elif", "else", "while", "repeat",
     "until", "for", "in", "try", "except", "ensure", "On", "Raise", "Retry",
     "leave", "continue", "Return", "Exit", "case", "else", "with", "Type",
-    "Struct", "Const", "State", "Main", "Module", "Use", "Var",
+    "Struct", "Const", "State", "Main", "IIf", "Use", "Var", "pre", "pos", "old",
     "9223372036854775807", "-9223372036854775808", "9223372036854775808",
     "$FFFFFFFFFFFFFFFF", "0", "1.5", "\"s\"", "\n", "    ", "==", "X", "I",
     "Self", ".", ",", "true",
@@ -74,7 +74,7 @@ def mutate(text, rng):
     for _ in range(rng.randint(1, 4)):
         length = len(text)
         if length == 0:
-            text = "Module M\n"
+            text = "Main :\n;\n"
             continue
         position = rng.randrange(length)
         operation = rng.randrange(6)

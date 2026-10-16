@@ -8,8 +8,6 @@
 == CANON-6/CANON-7: a routine that takes arguments cannot be called by its bare
 == name. Found by tools/mutation_fuzz.py (seed 7): the analyzer accepted it
 == and only the LLVM backend rejected it.
-Module Diagnostics.CallMissingArguments
-
 Show(N Integer) :
     PutLn(N)
 ;

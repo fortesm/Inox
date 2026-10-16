@@ -7,8 +7,6 @@
 
 == CANON-9: a struct field may be a struct declared anywhere in the Type
 == section; field paths, methods and ref mut reach nested fields.
-Module Runtime.StructNested
-
 Type
     TLine Struct
         FA TPoint

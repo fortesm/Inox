@@ -311,16 +311,20 @@ their use (Marcelo Fortes, 2026-10-16).
 - **THEN** it produces the expected tokens (tests/lexer/valid/tokens-keywords-literals.inox)
 
 ### Requirement: CANON-2 Reserved words and predefined names
-The reserved words SHALL be: Module Use Type Const Var State Struct Enum if
-then elif else unless while repeat until for in step case try except On do
-ensure raise retry with mut ref div mod and xor or not shr shl leave
-continue Return. `True`, `False`, `Exit`, `bitand`, `bitor`, `bitxor` and
-`bitnot` are predefined names: never declared, free as field and method
-names. `Main` is an ordinary name (Marcelo Fortes, 2026-10-16).
+The reserved words SHALL be: Use Type Const State Struct Enum if elif else
+unless while repeat until for in step case try except On do ensure raise
+retry with mut ref div mod and xor or not shr shl Return pre pos old
+invariant variant Override. Predefined names, never declared but free as
+field and method names: True False Exit leave continue IIf bitand bitor
+bitxor bitnot. `Main`, `Var` and `Module` are ordinary names (2026-10-16).
 
 #### Scenario: Predefined names
-- **WHEN** a program declares True, Exit, BitAnd or False, or names a field Exit
-- **THEN** the declarations are rejected (tests/diagnostics/predefined-true-declared.inox, tests/diagnostics/predefined-exit-assigned.inox, tests/diagnostics/predefined-bitand-parameter.inox, tests/diagnostics/predefined-false-routine.inox) and the field works (tests/runtime/predefined-names.inox)
+- **WHEN** a program declares True, Exit, BitAnd, False or Leave, or names a field Exit
+- **THEN** the declarations are rejected (tests/diagnostics/predefined-true-declared.inox, tests/diagnostics/predefined-exit-assigned.inox, tests/diagnostics/predefined-bitand-parameter.inox, tests/diagnostics/predefined-false-routine.inox, tests/diagnostics/predefined-leave-declared.inox) and the field works (tests/runtime/predefined-names.inox)
+
+#### Scenario: Reserved words
+- **WHEN** a program declares a variable named Old or Do
+- **THEN** it is rejected (tests/diagnostics/old-reserved.inox, tests/diagnostics/do-reserved.inox)
 
 ### Requirement: CANON-2 Words Inox does not have
 `End`/`end` SHALL NOT be a keyword and never closes a block. `break` and
@@ -337,15 +341,19 @@ arm of a `case` is `else` (r3.74).
 - **THEN** the names are valid (tests/semantic/valid/former-keywords-as-identifiers.inox) and `end` is rejected (tests/semantic/invalid/end-block-close.inox), as is a `case` arm `otherwise` (tests/diagnostics/case-otherwise-removed.inox)
 
 ### Requirement: CANON-3 Modules and Use
-A source file SHALL be one logical module that starts, after optional
-comments, with `Module Name` (no `;`; the end of the file closes it). `Use
-Name` declares a semantic dependency: the compiler loads that module's types
-and signatures; it is never textual inclusion or manual linking. The compact
-form `Module Calc.Core Use Std.IO Use Math.Basic` is allowed.
+A source file SHALL be one logical module named after its file, with no
+header (Marcelo Fortes, 2026-10-16): `Calc.Core.inox` or `Calc/Core.inox`
+is the module `Calc.Core`; the entry file may have any name. `Use Name`
+declares a semantic dependency: the compiler loads that module's types and
+signatures; it is never textual inclusion or manual linking.
 
 #### Scenario: Multi-file program
 - **WHEN** `Main` uses `Math.Basic` from its own directory
 - **THEN** it compiles and runs (tests/integration/modules/Main.inox)
+
+#### Scenario: No Module header
+- **WHEN** a file starts with `Module Name`
+- **THEN** it is rejected (tests/diagnostics/module-header-removed.inox)
 
 ### Requirement: CANON-3 Module resolution
 `Use A.B` SHALL look for `A.B.inox`, then `A/B.inox`, first in the directory
@@ -846,14 +854,15 @@ target, a variable or a value (never a type), is evaluated once on entry;
 - **THEN** only the first runs the body (tests/runtime/unless-lowering.inox)
 
 ### Requirement: CANON-12 Conditional expression
-`if C then A else B` SHALL be an expression (ADR-0013): `then` and `else`
-are mandatory; each branch is an expression, never a block; only the chosen
-branch is evaluated; the condition is Bool and the branches have compatible
-types; it chains with `else if`. It is never a statement.
+`IIf(C, A, B)` SHALL be the conditional expression (Marcelo Fortes,
+2026-10-16; formerly `if C then A else B`, ADR-0013): three arguments; each
+branch is an expression, never a block; only the chosen branch is evaluated,
+unlike Visual Basic's IIf; the condition is Bool and the branches have
+compatible types; it nests. It is never a statement.
 
 #### Scenario: Lazy branches
 - **WHEN** the branch not chosen would divide by zero
-- **THEN** it never runs (tests/runtime/conditional-expression-lazy.inox); a missing `else` or a statement use is rejected (tests/diagnostics/conditional-missing-else.inox, tests/diagnostics/conditional-as-statement.inox)
+- **THEN** it never runs (tests/runtime/conditional-expression-lazy.inox); a missing value, a statement use or the old `if C then A else B` is rejected (tests/diagnostics/conditional-missing-else.inox, tests/diagnostics/conditional-as-statement.inox, tests/diagnostics/conditional-if-then-removed.inox)
 
 ### Requirement: CANON-12 while, leave and continue
 `while C` … `;` SHALL repeat while C is true. `leave` exits the nearest loop

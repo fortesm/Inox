@@ -100,14 +100,17 @@ bool equalsIgnoreCase(std::string_view left, std::string_view right)
     return normalize(left) == normalize(right);
 }
 
-std::unique_ptr<ModuleNode> parseSource(const fs::path& sourcePath)
+// CANON-3 (r3.76): a file is a module named after the file: the name its
+// Use gives (`Use Calc.Core` finds Calc.Core.inox or Calc/Core.inox), or the
+// file's stem for the entry file.
+std::unique_ptr<ModuleNode> parseSource(const fs::path& sourcePath, std::string name)
 {
     const std::string source = readFile(sourcePath);
     inox::compiler::lexer::Lexer lexer(source);
     auto tokens = lexer.tokenize();
     throwOnInvalidToken(tokens);
     inox::compiler::parser::Parser parser(std::move(tokens));
-    return parser.parseModule();
+    return parser.parseModule(name.empty() ? sourcePath.stem().string() : std::move(name));
 }
 
 std::string useModuleName(const UseDeclaration& declaration)
@@ -158,12 +161,7 @@ public:
 private:
     void loadModule(const fs::path& sourcePath, std::string_view expectedName)
     {
-        auto module = parseSource(sourcePath);
-        if (!expectedName.empty() && !equalsIgnoreCase(module->name(), expectedName)) {
-            throw std::runtime_error(
-                "module name mismatch: expected " + std::string(expectedName) +
-                ", got " + module->name());
-        }
+        auto module = parseSource(sourcePath, std::string(expectedName));
 
         const std::string key = normalize(module->name());
         if (loading_.contains(key)) {
@@ -528,7 +526,7 @@ int main(int argc, char** argv)
             module = loadProgram(fs::path(sourcePath), executableDir);
         } else {
             inox::compiler::parser::Parser parser(tokens);
-            module = parser.parseModule();
+            module = parser.parseModule(fs::path(sourcePath).stem().string());
         }
 
         if (!emitLlvm && !build && !run) {

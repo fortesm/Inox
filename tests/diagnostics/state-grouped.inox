@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Grouped declarations are not supported in State yet.
-Module Diagnostics.StateGrouped
-
 State
     A, B Integer := 1
 ;

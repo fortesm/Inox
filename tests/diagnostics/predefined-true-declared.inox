@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-2 (r3.74): True is a predefined name; it is never declared.
-Module Diagnostics.PredefinedTrueDeclared
-
 Main :
     True Integer := 5
     PutLn(True)

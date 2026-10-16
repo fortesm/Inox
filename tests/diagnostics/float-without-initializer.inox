@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-5 rule 3: applies to every scalar type, Float included.
-Module Diagnostics.FloatWithoutInitializer
-
 Main :
     for I in 1..2
         F Float

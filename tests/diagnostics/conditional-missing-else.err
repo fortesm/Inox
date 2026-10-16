@@ -1,1 +1,1 @@
-a conditional expression needs 'else' (ADR-0013)
+IIf needs a condition and two values: IIf(Condition, A, B) (CANON-12)

@@ -7,8 +7,6 @@
 
 == CANON-9 / CANON-5 rule 4: a struct without initializer takes its field
 == defaults, or zero; literal defaults exist for every scalar type.
-Module Runtime.StructDefaults
-
 Type
     TConfig Struct
         FPort Integer := 8080

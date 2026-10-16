@@ -7,8 +7,6 @@
 
 == v3.56: structs are not compared (compare their fields); '=' was accepted and
 == then produced invalid IR.
-Module Diagnostics.StructEquality
-
 Type
     TPoint Struct
         FX Integer

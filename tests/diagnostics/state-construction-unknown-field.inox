@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9 applies to State initializers: they are analyzed as expressions.
-Module Diagnostics.StateConstructionUnknownField
-
 Type
     TPoint Struct
         X Integer

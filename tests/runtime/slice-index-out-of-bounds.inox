@@ -7,8 +7,6 @@
 
 == ADR-0017: a slice index outside the slice bounds traps, even when it is
 == inside the array.
-Module Runtime.SliceIndexOutOfBounds
-
 Main :
     A Array[1..5] Integer
     S := A[2..3]

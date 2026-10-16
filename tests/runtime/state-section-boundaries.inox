@@ -7,8 +7,6 @@
 
 == CANON-5 (r3.62): 'State' has no ':' and closes with ';'. A module may
 == have several State sections, between Consts, Type sections and routines.
-Module Runtime.StateSectionBoundaries
-
 State
     Counter Integer := 1
     Origin TPoint

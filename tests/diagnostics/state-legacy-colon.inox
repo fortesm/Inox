@@ -7,8 +7,6 @@
 
 == CANON-4: ':' only declares a routine, so the old State form `Name : Type`
 == is rejected (r3.62); write `Name Type := Value`.
-Module Diagnostics.StateLegacyColon
-
 State
     Counter : Integer
 ;

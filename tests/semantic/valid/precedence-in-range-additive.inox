@@ -9,8 +9,6 @@
 == `X in 1..N + 1` means `X in (1..(N + 1))`. The test is shape-discriminating:
 == the wrong grouping `(X in 1..N) + 1` would add an Integer to a Bool and
 == fail semantic analysis.
-Module PrecedenceInRangeAdditive
-
 Main :
     N Integer := 3
     X Integer := 4

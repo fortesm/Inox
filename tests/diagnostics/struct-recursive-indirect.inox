@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9: a struct cannot contain itself through another struct.
-Module Diagnostics.StructRecursiveIndirect
-
 Type
     TNode Struct
         FValue Integer

@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9 (method-reuse): 'Struct ()' is not Inox; no empty parentheses.
-Module Diagnostics.ReuseEmptyParentheses
 Type
     TA Struct
         FX Integer := 0

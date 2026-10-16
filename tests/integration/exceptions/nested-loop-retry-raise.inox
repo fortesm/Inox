@@ -9,8 +9,6 @@
 == runs the ensure once and restarts the try (not the loop); an exhausted Retry
 == runs the ensure and propagates; a new exception raised by a handler replaces
 == the handled one.
-Module Integration.NestedLoopRetryRaise
-
 Main :
     for I in 1..2
         N Integer := 0

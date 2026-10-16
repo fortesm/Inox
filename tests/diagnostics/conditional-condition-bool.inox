@@ -6,9 +6,7 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0013: the condition is Bool.
-Module Diagnostics.ConditionalConditionBool
-
 Main :
-    X := if 1 then 1 else 2
+    X := IIf(1, 1, 2)
     PutLn(X)
 ;

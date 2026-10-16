@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-24: the invariant is checked when a qualified call returns.
-Module Runtime.ContractInvariantMethod
-
 Type
     TConta Struct
         FSaldo Integer := 0

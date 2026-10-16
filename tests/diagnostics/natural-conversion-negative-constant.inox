@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-8: Natural(X) of a negative constant is rejected at compile time.
-Module Diagnostics.NaturalConversionNegativeConstant
-
 Const Offset := 4
 
 Main :

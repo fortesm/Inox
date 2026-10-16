@@ -7,8 +7,6 @@
 
 == CANON-10: `mut X T` parameters are reserved for a future version and are
 == rejected; a parameter is an immutable copy unless written `ref` or `ref mut`.
-Module Diagnostics.MutParameterReserved
-
 Show(mut X Integer) :
     PutLn(X)
 ;

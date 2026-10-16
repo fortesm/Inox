@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == F6 (file-io): a File parameter is ref mut.
-Module Diagnostics.FileParameterByValue
 Use Std.IOUtils
 
 Log(F File) :

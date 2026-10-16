@@ -16,19 +16,21 @@ namespace inox::compiler::lexer {
 
 namespace {
 
-// CANON-2 reserved words (r3.74: 41).
-constexpr std::array<std::string_view, 41> kKeywords = {
-    "module", "use", "type", "const", "var", "state", "struct", "enum",
-    "if", "then", "elif", "else", "unless", "while", "repeat", "until",
+// CANON-2 reserved words (r3.76: 42).
+constexpr std::array<std::string_view, 42> kKeywords = {
+    "use", "type", "const", "state", "struct", "enum",
+    "if", "elif", "else", "unless", "while", "repeat", "until",
     "for", "in", "step", "case", "try", "except", "on", "do", "ensure", "raise", "retry",
     "with", "mut", "ref", "div", "mod", "and", "xor", "or", "not",
-    "shr", "shl", "leave", "continue", "return"
+    "shr", "shl", "return",
+    "pre", "pos", "old", "invariant", "variant", "override"
 };
 
-// CANON-2 predefined names (r3.74): identifiers that keep their meaning and
+// CANON-2 predefined names (r3.76): identifiers that keep their meaning and
 // can never be declared.
-constexpr std::array<std::string_view, 7> kPredefinedNames = {
-    "true", "false", "exit", "bitand", "bitor", "bitxor", "bitnot"
+constexpr std::array<std::string_view, 10> kPredefinedNames = {
+    "true", "false", "exit", "leave", "continue", "iif",
+    "bitand", "bitor", "bitxor", "bitnot"
 };
 
 } // namespace

@@ -7,8 +7,6 @@
 
 == CANON-8: a constant divisor of zero is a compile-time error, also when the
 == divisor is a named constant.
-Module Diagnostics.ConstZeroDivisor
-
 Const Zero := 0
 
 Main :

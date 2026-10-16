@@ -7,8 +7,6 @@
 
 == CANON-24: an Override's precondition is the inherited one or else its own
 == pre else (Eiffel's require else).
-Module Runtime.ContractOverridePre
-
 Type
     TPessoa Struct
         FIdade Integer := 0

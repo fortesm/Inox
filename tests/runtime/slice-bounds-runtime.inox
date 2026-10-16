@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0017: run-time slice bounds outside the array trap.
-Module Runtime.SliceBoundsRuntime
-
 Main :
     A Array[1..3] Integer
     X Integer := 3

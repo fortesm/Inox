@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-8: a constant operand next to a Byte is read as a Byte and must fit.
-Module Diagnostics.ByteOperandOutOfRange
-
 Main :
     B Byte := 10
     B := B + 300

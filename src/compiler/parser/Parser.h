@@ -38,7 +38,8 @@ public:
     explicit Parser(std::vector<lexer::Token> tokens);
     explicit Parser(std::string_view source);
 
-    std::unique_ptr<ast::ModuleNode> parseModule();
+    // CANON-3 (r3.76): the module's name is its file's name, given by the driver.
+    std::unique_ptr<ast::ModuleNode> parseModule(std::string name);
     ast::ExpressionPtr parseExpression();
     std::vector<ast::StatementPtr> parseStatements();
     std::vector<ast::StatementPtr> parseHeaderDelimitedBlock();
@@ -123,6 +124,7 @@ private:
     const lexer::Token& previous() const;
     bool check(TokenKind kind) const;
     bool checkKeyword(std::string_view normalized) const;
+    bool atRemovedVar() const;
     bool checkIdentifierLike() const;
     bool match(TokenKind kind);
     bool matchKeyword(std::string_view normalized);

@@ -1,5 +1,3 @@
-Module Integration.ExceptionsRetrySuccess
-
 Main :
     Attempts := 0
 

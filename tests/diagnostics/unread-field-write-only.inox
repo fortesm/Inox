@@ -7,8 +7,6 @@
 
 == OPEN-4: writing fields of a struct is not reading it. A struct whose fields
 == are only assigned is never read.
-Module Diagnostics.UnreadFieldWriteOnly
-
 Type
     TPoint Struct
         X Integer

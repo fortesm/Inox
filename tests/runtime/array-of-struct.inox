@@ -7,8 +7,6 @@
 
 == CANON-13: array elements may be structs; each element starts at the
 == struct defaults; element fields and methods are reachable.
-Module Runtime.ArrayOfStruct
-
 Type
     TPoint Struct
         FX Integer := -1

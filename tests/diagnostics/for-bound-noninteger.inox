@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == The bounds of a counted loop are Integer expressions (`..` requires them).
-Module Diagnostics.ForBoundNoninteger
-
 Main :
     for I in 1..2.5
         PutLn(I)

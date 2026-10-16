@@ -7,8 +7,6 @@
 
 == CANON-13 (Layer B): Char elements are not supported yet (String elements
 == are, since the String runtime).
-Module Diagnostics.ArrayElementTypeUnsupported
-
 Main :
     A Array[1..3] Char
     PutLn(Length(A))

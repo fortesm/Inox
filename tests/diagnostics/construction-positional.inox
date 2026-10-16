@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9: positional construction binds to field order and is not canonical.
-Module Diagnostics.ConstructionPositional
-
 Type
     TPoint Struct
         X Integer

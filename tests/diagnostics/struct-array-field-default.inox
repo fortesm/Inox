@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9: only a scalar field has a literal default.
-Module Diagnostics.StructArrayFieldDefault
-
 Type
     TBuffer Struct
         FData Array[1..2] Integer := 1

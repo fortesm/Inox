@@ -8,7 +8,7 @@ Type
     ;
 
 Max<T>(A T, B T) T :
-    Return if A > B then A else B
+    Return IIf(A > B, A, B)
 ;
 
 Swap<T>(ref mut A T, ref mut B T) :

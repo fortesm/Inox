@@ -8,8 +8,6 @@
 == CANON-12: Exit is FORBIDDEN in functions (valid only in subroutines without a
 == return value and in Main). Found by tools/mutation_fuzz.py (seed 31): the
 == semantic analyzer accepted it and only the LLVM backend rejected it.
-Module Diagnostics.ExitInFunction
-
 Compute Integer :
     Exit
     Return 1
