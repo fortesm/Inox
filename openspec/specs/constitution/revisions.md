@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.71
+Canon revision: r3.72
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -23,9 +23,9 @@ stands.
    protocols, inference only, one copy per type; three decisions.
 2. **`safe-pointers` design** (Risk: high):
    `openspec/changes/safe-pointers/design.md`, rewritten from the decisions
-   of r3.71 (a single owner `Own<T>` and checked `Handle<T>`, no reference
-   counting, no garbage collector, no arena now): approval of the design
-   and one question (how an owner that may be absent is written).
+   of r3.71 and r3.72 (a single owner `Own<T>` and checked `Link<T>` to
+   any variable, no reference counting, no garbage collector, no arena
+   now): every question answered; only the approval of design.md remains.
 3. **`binary-streams` design** (Risk: high):
    `openspec/changes/binary-streams/design.md`, six decisions for binary
    files (a `BinaryFile` type, little-endian, `Write`/`Read` sized by the
@@ -149,3 +149,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   quero ter de forma alguma, garbage collection"; "depois podemos ter arena
   no futuro opcionalmente"; "Acatado: um `Handle` pode simplesmente nascer
   vazio". Change `safe-pointers` (design awaiting approval, no code).
+- r3.72 — 2026-10-16 — Safe pointers, completed: a non-owning reference
+  may point to any variable, field or array element, not only to an owned
+  object ("1 - Com Handle"); it may go anywhere, and one that outlives its
+  variable is detected, never dangling ("2 - permissivo com detecção"); it
+  is named `Link<T>`, not Handle ("Trocar para Link e não confundir com o
+  Handle do Delphi ou do Windows"); `Value`, `New` and `Free` keep their
+  names; an absent owner is `Option<Own<TNo>>` ("acatado o dono com
+  Option<Own<TNo>>"). Marcelo Fortes. Change `safe-pointers` (design
+  awaiting approval, no code).

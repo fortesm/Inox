@@ -54,7 +54,7 @@ whether concurrency or contracts are in it) is the maintainer's decision.
   Eiffel-style monitoring levels per module, and static proof of contracts
   (SPARK style), FUTURE.
 - Designs awaiting decisions: `generics` (simplest form), `safe-pointers`
-  (rewritten in r3.71: one owner `Own<T>`, checked `Handle<T>`, no
+  (rewritten in r3.71: one owner `Own<T>`, checked `Link<T>`, no
   counting, no collector),
   `binary-streams` (binary files, positions; streams after generics),
   `variant-structs` (one collection of several kinds, examined with `case`;

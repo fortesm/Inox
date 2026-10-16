@@ -1,36 +1,36 @@
 ## The rule
 
 Every heap object has exactly one owner (`Own<T>`). Everyone else only
-points to it (`Handle<T>`), and every use of a Handle checks that the object
+points to it (`Link<T>`), and every use of a Link checks that the object
 still exists. No reference counting, no garbage collector, no arena, no
 borrow checker: the non-owning references that Rust checks at compile time
 with lifetimes are checked here at run time with one comparison.
 
 | Goal of the maintainer | How it holds |
 |---|---|
-| Freed memory is never used by mistake | a Handle keeps the generation it saw; after a free (or a reuse of the block) the generations differ: `Alive` is false, or the use traps |
+| Freed memory is never used by mistake | a Link keeps the generation it saw; after a free (or a reuse of the block) the generations differ: `Alive` is false, or the use traps |
 | No reference to an invalid address | no arithmetic, no integer-to-pointer conversion; only `New` makes pointers |
-| No variable without a value | no null; an owner's absence is explicit and must be tested; an empty Handle is not Alive |
+| No variable without a value | no null; an owner's absence is explicit and must be tested; an empty Link is not Alive |
 | Nothing freed twice | only the owner frees, and an owner is never copied (`Move` is explicit) |
-| Nothing leaks | an owner that leaves its block frees its object; a Handle keeps nothing alive, so there are no ownership cycles |
+| Nothing leaks | an owner that leaves its block frees its object; a Link keeps nothing alive, so there are no ownership cycles |
 
 ## Syntax
 
 | Operation | Pascal | C | Inox |
 |---|---|---|---|
-| Pointer type | `PNo = ^TNo` | `struct No *` | `Own<TNo>`, `Handle<TNo>` |
+| Pointer type | `PNo = ^TNo` | `struct No *` | `Own<TNo>`, `Link<TNo>` |
 | Create | `New(P)` | `malloc(...)` | `P := New(TNo(FValor := 1))` |
 | Field | `P^.FValor` | `p->valor` | `P.FValor` |
 | Whole value | `P^` | `*p` | `Value(P)` |
-| Address of a variable | `@X` | `&x` | `Handle(X)`: any variable, field or array element |
-| Non-owning reference to a heap object | — | — | `Handle(P)` |
+| Address of a variable | `@X` | `&x` | `Link(X)`: any variable, field or array element |
+| Non-owning reference to a heap object | — | — | `Link(P)` |
 | Free | `Dispose(P)` (unsafe) | `free(p)` (unsafe) | `Free(P)` (safe) |
 | Still there? | — | — | `Alive(H)` |
 | Give ownership away | — | — | `Q := Move(P)` |
-| Nothing | `nil` | `NULL` | an empty Handle; for an owner, open question 1 |
+| Nothing | `nil` | `NULL` | an empty Link (`L := None`); an absent owner is `Option<Own<TNo>>` = `None` |
 
 Types follow `Slice<T>` (CANON-8); operations follow the built-in routines
-(`Length(A)`, `Ord(E)`). `Own`, `Handle`, `New`, `Free`, `Alive`, `Move` and
+(`Length(A)`, `Ord(E)`). `Own`, `Link`, `New`, `Free`, `Alive`, `Move` and
 `Value` are built in, so the change does not wait for user generics.
 
 ## Examples
@@ -47,18 +47,18 @@ Type
         FVida Integer := 100
     ;
     TSoldado Struct
-        FAlvo Handle<TInimigo>              == born empty: Alive(FAlvo) = false
+        FAlvo Link<TInimigo>              == born empty: Alive(FAlvo) = false
     ;
     TPasta Struct
         FNome String := ""
-        FPai Handle<TPasta>                 == points to the parent, does not own it
+        FPai Link<TPasta>                 == points to the parent, does not own it
         FFilhos Vector<Own<TPasta>>         == the parent owns its children (with Vector)
     ;
 
 Main :
     Orc := NovoInimigo(100)                 == Main owns the orc
     S TSoldado
-    S.FAlvo := Handle(Orc)
+    S.FAlvo := Link(Orc)
     S.FAlvo.FVida -= 30                     == checked: alive
     Free(Orc)                               == the orc dies now
     if Alive(S.FAlvo)
@@ -71,7 +71,7 @@ Main :
 ```
 
 A navigator over an array of records (Marcelo Fortes's example,
-2026-10-16): a Handle to the array and a Handle to the current record,
+2026-10-16): a Link to the array and a Link to the current record,
 whose fields are read and written in place, with no copy.
 
 ```
@@ -84,7 +84,7 @@ Type
         FIdade Integer := 0
     ;
     TNavegador Struct
-        FTabela Handle<Array[1..Tamanho] TContato>
+        FTabela Link<Array[1..Tamanho] TContato>
         FIndice Integer := 1
     ;
 
@@ -108,15 +108,15 @@ TNavegador.NoInicio(Self) Bool :
 TNavegador.NoFim(Self) Bool :
     Return Self.FIndice = Tamanho
 ;
-TNavegador.Atual(Self) Handle<TContato> :
-    Return Handle(Self.FTabela[Self.FIndice])   == the record inside the array
+TNavegador.Atual(Self) Link<TContato> :
+    Return Link(Self.FTabela[Self.FIndice])   == the record inside the array
 ;
 
 Main :
     Contatos Array[1..Tamanho] TContato
     Contatos[1] := TContato(FNome := "Ana", FTelefone := "1111", FIdade := 30)
     ...
-    Nav := TNavegador(FTabela := Handle(Contatos))  == Handle of a local: no cost
+    Nav := TNavegador(FTabela := Link(Contatos))  == Link of a local: no cost
     Nav.Primeiro
     PutLn(Nav.Atual.FNome, " - ", Nav.Atual.FTelefone)
     Nav.Ultimo
@@ -127,14 +127,14 @@ Main :
 
 "Next" in an array is the index plus one, never pointer arithmetic; in a
 doubly linked list it is a pointer (`FProximo Option<Own<TNo>>`,
-`FAnterior Handle<TNo>`).
+`FAnterior Link<TNo>`).
 
-A Handle that outlives its variable compiles, and is detected:
+A Link that outlives its variable compiles, and is detected:
 
 ```
-Vazar Handle<Integer> :
+Vazar Link<Integer> :
     X Integer := 42
-    Return Handle(X)          == compiles: X is placed in a generation block
+    Return Link(X)          == compiles: X is placed in a generation block
 ;
 
 Main :
@@ -166,12 +166,12 @@ Q := P              == error: "an owner is never copied: use Move(P)"
    `Free(P)`, P may only be assigned again.
 5. Freeing an object frees the objects it owns (its `Own` fields), without
    recursion, so a long list cannot overflow the stack.
-6. `Handle(X)` makes a Handle of an owned object, of any variable (local,
+6. `Link(X)` makes a Link of an owned object, of any variable (local,
    parameter, State), of a field or of an array element (Marcelo Fortes,
-   2026-10-15/16: "Corretamente! É isso mesmo"; "1 - Com Handle"). A Handle
+   2026-10-15/16: "Corretamente! É isso mesmo"; "1 - Com Handle"). A Link
    is copied freely, keeps nothing alive, and is born empty.
-7. Every access through a Handle checks its generation: a dead or empty
-   Handle traps (CANON-19, "use of a freed object"); `Alive(H)` asks without
+7. Every access through a Link checks its generation: a dead or empty
+   Link traps (CANON-19, "use of a freed object"); `Alive(H)` asks without
    trapping. The check is removed when the compiler proves no `Free` can
    happen in between; a future static proof (FUTURE, SPARK style) can
    remove the rest.
@@ -180,11 +180,11 @@ Q := P              == error: "an owner is never copied: use Move(P)"
    contents.
 9. A pointer cannot be printed, converted to a number, or built from one.
 10. **Permissive with detection** (Marcelo Fortes, 2026-10-16: "2 -
-    permissivo com detecção"): a Handle may go anywhere (returned, stored
+    permissivo com detecção"): a Link may go anywhere (returned, stored
     in a field, an array or State), as freely as a Pascal pointer. The
-    compiler chooses the cost: when a Handle provably stays inside the block
+    compiler chooses the cost: when a Link provably stays inside the block
     of the variable it points to, the variable stays on the stack and the
-    Handle costs nothing; when it may escape, the variable is placed in a
+    Link costs nothing; when it may escape, the variable is placed in a
     generation block (as Go moves an escaping variable to the heap, but with
     no collector) that is freed when the variable's scope ends, and a use
     after that finds `Alive` false or traps. Never a wrong value (CANON-1).
@@ -196,8 +196,8 @@ Q := P              == error: "an owner is never copied: use Move(P)"
 - Each object has a header with a 64-bit generation (8 bytes); it never
   wraps in practice. `Free` increments it and returns the block to a
   per-size free list in libinoxrt; a reused block keeps counting, so an old
-  Handle never matches it.
-- `Own<T>` is one address: owner access costs nothing. `Handle<T>` is an
+  Link never matches it.
+- `Own<T>` is one address: owner access costs nothing. `Link<T>` is an
   address plus a generation: one load and one compare per access.
 - Allocation and release go through libinoxrt only (the Windows rule
   already used for Strings: memory never crosses C runtimes). The owner's
@@ -213,17 +213,37 @@ Q := P              == error: "an owner is never copied: use Move(P)"
 |---|---|---|---|---|
 | Typed pointers, no arithmetic | ✓ | ✓ (outside `unsafe`) | ✓ | ✓ |
 | No null | — | — (`nil` panics) | `not null` optional | ✓ |
-| Pointer cannot outlive its target | — | ✓ (collector) | ✓ accessibility checks | ✓ owner frees, Handles checked |
+| Pointer cannot outlive its target | — | ✓ (collector) | ✓ accessibility checks | ✓ owner frees, Links checked |
 | No use after free | — (`Dispose`) | ✓ (collector) | — (`Unchecked_Deallocation`) | ✓ detected, never a wrong object |
 | No double free | — | ✓ | — | ✓ single owner |
 | Deterministic release, no pauses | ✓ | — | ✓ | ✓ |
 
-## Open question
+## Names and absence (decided 2026-10-16)
 
-1. **An owner that may be absent** (the end of a list, an optional child):
-   a) `Option<Own<TNo>>` (the form FUTURE already names for absence);
-   b) the short form `Own<TNo>?`; c) a word, `optional Own<TNo>`. In every
-   form the compiler requires a test before use.
+Marcelo Fortes, 2026-10-16: "1 Trocar para Link e não confundir com o
+Handle do Delphi ou do Windows / 2 Value / 3 Free e new ficam como estão /
+4 acatado o dono com Option<Own<TNo>> e com a palavra Optional se for uma
+boa conveniência".
+
+- `Link<T>`, `Link(X)` (not "Handle": Delphi's `THandle` and Windows
+  handles are integers; a Link is typed, opaque and checked). `Ref` is
+  impossible: Inox is case-insensitive and `ref` is the parameter word.
+- `Value(P)` stays: read and written (`Value(P) := 7`); recognized only
+  with a pointer argument, so a user routine named `Value` still works.
+- `New` and `Free` stay: `New(V)` copies a ready value to the heap and
+  returns its owner (no constructor; Go's `new`, Rust's `Box::new`);
+  `Free(P)` is optional and safe (P unusable afterwards, every Link to the
+  object not Alive: FreeAndNil for every reference at once).
+- An owner that may be absent is `Option<Own<TNo>>`, born `None`. An `Own`
+  given where an Option is expected is wrapped without `Some(...)`;
+  `Link(X)` of an Option that is `None` is an empty Link; `Alive` tests
+  both.
+- The word `Optional` as a second spelling of `Option<...>` is **not
+  adopted for now**, at the maintainer's condition "se for uma boa
+  conveniência": it would be a second way to write the same type, and with
+  the wrapping above the `Option` appears only in the declaration of the
+  field. To be reconsidered with change `generics`, when `Option<T>` is
+  used everywhere.
 
 ## Later, each its own change
 
@@ -238,6 +258,6 @@ Q := P              == error: "an owner is never copied: use Move(P)"
 
 1. `Own<T>`, `New`, `Free`, `Move`, `Value`, the move analysis, owner
    absence (question 1); leak-checked tests, also with exceptions.
-2. `Handle<T>`, `Alive`, `Same`, the generation check and its trap.
+2. `Link<T>`, `Alive`, `Same`, the generation check and its trap.
 3. Constitution (FUTURE "Ownership, absence and failure" becomes law),
    grammar, manual, examples (list, tree with parent, game target).
