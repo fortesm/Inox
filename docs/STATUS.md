@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-16 against Inox 0.2.0 pre-alpha, canon r3.74.
+Verified on 2026-10-16 against Inox 0.2.0 pre-alpha, canon r3.75.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -31,7 +31,8 @@ each version added.
   choices; checked arithmetic, conversions `T(X)` between
   integer types, runtime faults with exit status 70.
 - Control flow: if/elif/else, unless, conditional expression, while,
-  repeat/until, for with step, leave/continue, case (Ada style), with.
+  repeat/until, for with step, leave/continue, case (Ada style), with
+  (any place as target, evaluated once, checked through pointers).
 - Structs with defaults, named construction, nesting, associated methods;
   method reuse (`Struct (TPart)`, reused fields and methods at every level,
   `Override`); methods of built-in types (`String.UpdateStr`); fixed arrays (multi-dimensional, in fields and State, of structs and
@@ -87,9 +88,6 @@ each version added.
   functions.
 - Char values: a Char local or comparison is accepted and not lowered, and
   `PutLn(C)` with a Char is rejected ("cannot be printed yet").
-- `with` over a field path (`with Customer.Comments`) passes the analyzer
-  and is "not yet implemented" in the backend, which lowers only a local
-  variable as the target.
 - A function called as a statement (its result unused) passes the analyzer
   and is "not yet implemented" in the backend (left as it is, r3.65).
 - Module exports, visibility and package search beyond local `Use`.
@@ -99,13 +97,6 @@ each version added.
   driver (by design until E22's criteria hold).
 - Quality gates still to come: clang-format, clang-tidy, cppcheck,
   coverage.
-
-## Diagnostics to improve
-
-- `with TCustomer` (a type name, not a value) is rejected at the first
-  `.Member` with "unknown field or zero-argument method Name in", without
-  naming the target; it should say that `with` needs a variable or an
-  expression.
 
 ## Over-acceptance (the code accepts what the law does not define)
 

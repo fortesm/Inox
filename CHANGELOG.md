@@ -80,6 +80,7 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 - A `Const` has no written type: `Const Mask UInt8 := $FF` is rejected; write `Const Mask := UInt8($FF)` (OPEN-5).
 
 ### Fixed
+- `with` (canon r3.75, change `with-places`): a target other than a variable (`with Cliente.Comentarios`, `with A[I]`, a field of a `ref mut` parameter, an object through `Own` or `Link`, `Value(L)`) is lowered: evaluated once on entry, every `.Member` acting on its storage, and checked at each use through a pointer, so a `Free` inside the body stops the program. `with TCliente` (a type) is rejected at the `with` line with a message that shows the named construction, instead of a truncated "unknown field" message at the first `.Member`.
 - A String `Const` (`Const Arquivo := "dados.txt"`) passed the analyzer and was not lowered; it is now a value like its literal.
 - `Self` (without `mut`) could write its receiver, and the change reached the caller; a field of a value parameter could be assigned; `with` on a parameter could write it; a `Self mut` method could be called on a parameter or a literal; a `ref mut` argument could reach the receiver of the same call. All are rejected now (CANON-1, CANON-10, ADR-0016).
 - A routine that takes arguments, called by its bare name (`Show` for `Show(N Integer)`), passed the analyzer and stopped in the backend; it is now "Show expects 1 argument, got 0". A function called as a statement is reported as a backend gap instead of a codegen error. Found by mutation fuzzing (seed 7).

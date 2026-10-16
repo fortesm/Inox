@@ -541,7 +541,24 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         break;
     case ast::AstNodeKind::WithStatement: {
         const auto& withStatement = static_cast<const ast::WithStatement&>(statement);
+        // CANON-11: the target is a variable or a value, never a type, a
+        // module or a routine without a result.
+        if (withStatement.target().kind() == ast::AstNodeKind::IdentifierExpression) {
+            const auto& name = static_cast<const ast::IdentifierExpression&>(withStatement.target()).name();
+            const Symbol* symbol = symbols_.currentScope().resolve(name);
+            if (symbol != nullptr && symbol->kind == SymbolKind::Type) {
+                throw SemanticError("'with' needs a variable or a value, and " + name +
+                                    " is a type; to build one, write X := " + name +
+                                    "(Field := Value, ...) (CANON-11)");
+            }
+            if (symbol != nullptr && symbol->kind == SymbolKind::Module) {
+                throw SemanticError("'with' needs a variable or a value, and " + name + " is a module (CANON-11)");
+            }
+        }
         const std::string targetType = analyzeExpression(withStatement.target());
+        if (targetType.empty()) {
+            throw SemanticError("'with' needs a variable or a value; this target has no value (CANON-11)");
+        }
         symbols_.pushScope();
         // Declare the synthetic binding directly — no shadowing check needed
         // because the name (__with_N) is compiler-generated and never user-visible.

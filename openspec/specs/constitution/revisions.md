@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.74
+Canon revision: r3.75
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -176,3 +176,9 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `}` are reserved until generics and concurrency show their use. `div` and
   `/` stay as they are; `Float(Soma / N)` as the exact quotient is a FUTURE
   direction. Marcelo Fortes, 2026-10-16. Change `keyword-review`.
+- r3.75 — 2026-10-16 — CANON-11 says what `with` does with its target: a
+  variable or a value, never a type, evaluated once on entry; `.Member`
+  acts on its storage and, through a pointer, is checked at each use. Any
+  place is now lowered as a target, and a type as target gets a message
+  naming the problem. Marcelo Fortes, 2026-10-16: "concordo Implemtne".
+  Change `with-places`.

@@ -316,6 +316,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             if (local->second.llvmType.empty()) {
                 throw CodegenError("LLVM emission found local value with unknown LLVM type");
             }
+            emitWithGuard(normalizedName);
             output_ << "  " << result << " = load " << local->second.llvmType
                     << ", ptr " << local->second.slot << '\n';
             return result;

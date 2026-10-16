@@ -368,6 +368,11 @@ private:
     bool isMoveOnly(std::string_view inoxType) const;
     bool isPointerBuiltin(const ast::CallExpression& call) const;
     std::string emitPointerBuiltin(const ast::CallExpression& call);
+    // CANON-11 with CANON-25: a `with` whose target is reached through a
+    // pointer keeps the header and generation of the object holding it, and
+    // every `.Member` checks them, so a Free inside the body is detected.
+    const ast::Expression* lastPointerOnPath(const ast::Expression& place) const;
+    void emitWithGuard(const std::string& normalizedName);
     // The address of the object a pointer expression reaches, checked: an
     // owner given away traps (17), a dead or empty Link traps (16).
     std::string emitPointerTarget(const ast::Expression& pointer);
@@ -398,6 +403,10 @@ private:
         std::string llvmType;
     };
     std::unordered_map<std::string, FreshTemp> freshTemps_;
+    // with bindings reached through a pointer (see emitWithGuard).
+    std::unordered_map<std::string, LinkParts> withGuards_;
+    const ast::Expression* withGuardPointer_ = nullptr;
+    std::optional<LinkParts> withGuardCaptured_;
     std::unordered_set<std::string> tombstoneLocals_;
     std::unordered_map<std::string, std::string> tombstoneSlots_;
 

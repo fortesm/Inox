@@ -63,7 +63,7 @@ spec.md#CANON-10 Parameters and mutability	4f674605f2f74e7d	method-reuse
 spec.md#CANON-10 Scope of locals	d219e369bba5040a	constitution
 spec.md#CANON-10 No shadowing	374e96362c01e03d	constitution
 spec.md#CANON-10 Loop iterators	29b268cf62e9f413	constitution
-spec.md#CANON-11 The with statement	13a44dc08c560628	constitution
+spec.md#CANON-11 The with statement	d44879b4943cfff3	with-places
 spec.md#CANON-12 if, elif, else and unless	5bb95dc4f0eafe7d	constitution
 spec.md#CANON-12 Conditional expression	093f47656baf1a63	constitution
 spec.md#CANON-12 while, leave and continue	4e5611369f5c405a	constitution

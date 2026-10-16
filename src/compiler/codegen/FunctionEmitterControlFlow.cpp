@@ -550,29 +550,44 @@ const FunctionEmitter::LoopTargets& FunctionEmitter::currentLoopTargets() const
 
 void FunctionEmitter::emitWith(const ast::WithStatement& statement)
 {
-    // The target must be an identifier naming an already-declared local.
-    if (statement.target().kind() != ast::AstNodeKind::IdentifierExpression) {
-        throw CodegenUnsupported(
-            "LLVM emission currently supports only local variable targets for 'with'");
-    }
+    // CANON-11: the target is evaluated once, on entry; every `.Member` of
+    // the body acts on that storage, never on a copy. The parser expanded
+    // `.Member` to __member(__with_N, Member), which resolves through the
+    // binding registered here.
+    const std::string binding = normalize(statement.bindingName());
+    const ast::Expression& target = statement.target();
 
-    const auto& targetIdentifier =
-        static_cast<const ast::IdentifierExpression&>(statement.target());
-    const auto targetIt = locals_.find(normalize(targetIdentifier.name()));
-    if (targetIt == locals_.end()) {
-        throw CodegenError(
-            "LLVM emission: 'with' target must be a declared local variable: " +
-            targetIdentifier.name());
+    const auto local = target.kind() == ast::AstNodeKind::IdentifierExpression
+                           ? locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(target).name()))
+                           : locals_.end();
+    if (local != locals_.end()) {
+        // A variable: the binding is an alias of its slot.
+        locals_.insert_or_assign(binding, local->second);
+    } else {
+        // A field, an element, `Value(P)` or a value: its address, computed
+        // once (indices included). Through a pointer, the object holding it
+        // is remembered and checked at every use (CANON-25).
+        withGuardPointer_ = lastPointerOnPath(target);
+        withGuardCaptured_.reset();
+        const Place place = emitPlace(target);
+        withGuardPointer_ = nullptr;
+        const std::string llvmType = llvmTypeForInoxType(place.inoxType, structs_);
+        if (llvmType.empty()) {
+            throw CodegenUnsupported("a 'with' target of this type is not lowered yet");
+        }
+        locals_.insert_or_assign(binding, LocalInfo{place.pointer, place.inoxType, llvmType});
+        if (withGuardCaptured_) {
+            withGuards_.insert_or_assign(binding, *withGuardCaptured_);
+            withGuardCaptured_.reset();
+        }
     }
-
-    // Register the synthetic binding as an alias to the same slot/type.
-    locals_.insert_or_assign(normalize(statement.bindingName()), targetIt->second);
 
     // Emit body statements; dot-prefixed members were already expanded by
     // the parser to __member(__with_N, Field), which resolves via the alias.
     for (const auto& bodyStatement : statement.body()) {
         emitStatement(*bodyStatement);
     }
+    withGuards_.erase(binding);
 }
 
 } // namespace inox::compiler::codegen::detail

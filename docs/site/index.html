@@ -686,6 +686,19 @@ Result :=
         PutLn(&quot;other&quot;)
 ;</code></pre>
 <p>The last arm, <code>else</code>, is required unless the choices cover every value of the selector type (it was spelled <code>otherwise</code> until canon revision 3.74). A <code>Bool</code> case that handles <code>True</code> and <code>False</code> needs no <code>else</code>. A case on an <code>Integer</code> code that handles only 404 is rejected. The selector must be discrete: an integer type, <code>Char</code>, <code>Bool</code>, an enum or a range.</p>
+<h3>with</h3>
+<p><code>with Target</code> opens a block where <code>.Member</code> is a member of the target, as in Visual Basic; names without the dot follow the normal scope. Assignment is <code>:=</code>, as everywhere (<code>=</code> compares).</p>
+<pre><code>with Cliente
+    .Nome := &quot;Coho Vineyard&quot;
+    .Cidade := &quot;Redmond&quot;
+;
+
+with Cliente.Comentarios
+    .Add(&quot;Primeiro comentário.&quot;)
+    Pausa
+    .Add(&quot;Segundo comentário.&quot;)
+;</code></pre>
+<p>The target is any variable or value: a field, an array element, a <code>ref mut</code> parameter, State, or an object reached through <code>Own</code> or <code>Link</code>. It is evaluated once, on entry: in <code>with A[I]</code> the element stays the same even if <code>I</code> changes in the body, and a call in the index runs once. Every <code>.Member</code> acts on that storage, never on a copy. Through a pointer, every <code>.Member</code> checks that the object still exists, so a <code>Free</code> inside the body stops the program at the next use. A type is not a target: to build a value, write <code>C := TCliente(Nome := &quot;...&quot;)</code>.</p>
 <h3>Exceptions</h3>
 <p>Inox provides structured exception handling with <code>try</code>, <code>except</code>, typed <code>On</code> handlers, optional <code>Else</code>, <code>ensure</code>, <code>Raise</code>, and bounded <code>Retry(N)</code>. Typed handlers are tested in source order; <code>Else</code> is the catch-all after them. A plain <code>except</code> is itself a catch-all.</p>
 <pre><code>try

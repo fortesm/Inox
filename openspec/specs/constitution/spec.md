@@ -816,7 +816,9 @@ Sequential loops may reuse a name; nested loops may not.
 `with Expression` SHALL open a block where `.Member` names a member of that
 expression (the Visual Basic dot-prefix model) and unprefixed names follow
 normal scope. In nested `with` blocks `.Member` binds to the innermost.
-`with` declares no names, so no shadowing arises; no `:`; `;` closes.
+`with` declares no names, so no shadowing arises; no `:`; `;` closes. The
+target, a variable or a value (never a type), is evaluated once on entry;
+`.Member` acts on its storage, checked at each use through a pointer.
 
 #### Scenario: Dot-prefix members
 - **WHEN** `with P` assigns `.FX` and reads an unprefixed name
@@ -825,6 +827,10 @@ normal scope. In nested `with` blocks `.Member` binds to the innermost.
 #### Scenario: Nested with
 - **WHEN** two `with` blocks nest
 - **THEN** `.Member` binds to the inner one (tests/parser/valid/with-nested.inox)
+
+#### Scenario: Any place, evaluated once
+- **WHEN** the target is a field, an element, a field of a ref mut parameter, State, or reached through Own or Link, or an object is freed inside the body
+- **THEN** `.Member` acts on that storage and the index is evaluated once (tests/runtime/with-places.inox); the freed object traps (tests/runtime/with-freed-target.inox); a type as target is rejected (tests/diagnostics/with-type-target.inox, tests/diagnostics/with-subroutine-target.inox)
 
 ### Requirement: CANON-12 if, elif, else and unless
 `if C` … `elif C` … `else` … `;` SHALL use no `then` and no `:`, with one

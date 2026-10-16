@@ -291,9 +291,51 @@ std::string FunctionEmitter::emitPointerTarget(const ast::Expression& pointer)
     if (support::isLinkTypeName(type)) {
         const LinkParts parts = extractLink(value);
         emitLinkCheck(parts);
+        if (&pointer == withGuardPointer_) {
+            withGuardCaptured_ = parts;
+        }
         return parts.target;
     }
-    return emitOwnerNullCheck(value);
+    const std::string object = emitOwnerNullCheck(value);
+    if (&pointer == withGuardPointer_) {
+        const std::string header = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string generation = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << header << " = getelementptr i8, ptr " << object << ", i64 -16\n";
+        output_ << "  " << generation << " = load i64, ptr " << header << '\n';
+        withGuardCaptured_ = LinkParts{object, header, generation};
+    }
+    return object;
+}
+
+// The pointer nearest to a place on its path (`L.FNotas` -> L,
+// `A[I].FNo.FX` -> A[I].FNo, `Value(P)` -> P), or null when the path
+// crosses none. Index expressions are not on the path.
+const ast::Expression* FunctionEmitter::lastPointerOnPath(const ast::Expression& place) const
+{
+    if (place.kind() != ast::AstNodeKind::CallExpression) {
+        return nullptr;
+    }
+    const auto& call = static_cast<const ast::CallExpression&>(place);
+    if (isPointerBuiltin(call) && equalsIgnoreCase(calleeName(call), "Value")) {
+        return call.arguments()[0].get();
+    }
+    if ((isMemberAccessCall(call) && memberField(call)) || isIndexCall(call)) {
+        const ast::Expression& base = *call.arguments()[0];
+        const std::string baseType =
+            isIndexCall(call) ? semanticTypeName(base) : placeTypeName(base);
+        if (support::isPointerTypeName(baseType)) {
+            return &base;
+        }
+        return lastPointerOnPath(base);
+    }
+    return nullptr;
+}
+
+void FunctionEmitter::emitWithGuard(const std::string& normalizedName)
+{
+    if (const auto guard = withGuards_.find(normalizedName); guard != withGuards_.end()) {
+        emitLinkCheck(guard->second);
+    }
 }
 
 // The header and generation of the storage that holds a place.
