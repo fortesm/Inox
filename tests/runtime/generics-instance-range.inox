@@ -1,0 +1,21 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-8 (r3.77): a literal argument takes the type of the other argument,
+== so Max(B, 1) with B Byte is Max<UInt8> and its result is a Byte: adding
+== 100 to 200 leaves the Byte range and stops the program (CANON-21).
+Max<T>(A T, B T) T :
+    Return IIf(A > B, A, B)
+;
+
+Main :
+    B Byte := 200
+    M := Max(B, 1)
+    PutLn(M)
+    M := M + 100
+    PutLn(M)
+;

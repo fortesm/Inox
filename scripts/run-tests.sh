@@ -601,6 +601,7 @@ run_driver_execution_test "$repo_root/tests/integration/exceptions/nested-loop-r
 run_driver_execution_test "$repo_root/tests/integration/exceptions/until-crossing-ensure.inox" "$repo_root/tests/integration/exceptions/until-crossing-ensure.out"
 run_driver_execution_test "$repo_root/tests/integration/modules/Main.inox" "$repo_root/tests/integration/modules/Main.out"
 run_driver_execution_test "$repo_root/tests/integration/modules/math-showcase.inox" "$repo_root/tests/integration/modules/math-showcase.out"
+run_driver_execution_test "$repo_root/tests/integration/modules/generics-across-modules.inox" "$repo_root/tests/integration/modules/generics-across-modules.out"
 run_driver_execution_test "$repo_root/tests/integration/stdlib/StdMathDemo.inox" "$repo_root/tests/integration/stdlib/StdMathDemo.out"
 run_driver_execution_test "$repo_root/tests/integration/stdlib/StdMathExpanded.inox" "$repo_root/tests/integration/stdlib/StdMathExpanded.out"
 run_driver_execution_test "$repo_root/tests/integration/showcase/account-showcase.inox" "$repo_root/tests/integration/showcase/account-showcase.out"

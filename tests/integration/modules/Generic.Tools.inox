@@ -1,0 +1,22 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== A module with generic routines and a generic struct (CANON-8), used by
+== generics-across-modules.inox: each instance is made in the program that
+== uses it.
+Type
+    TBox<T> Struct
+        FItem T
+    ;
+
+Larger<T>(A T, B T) T :
+    Return IIf(A > B, A, B)
+;
+
+Wrap<T>(X T) TBox<T> :
+    Return TBox(FItem := X)
+;

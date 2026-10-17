@@ -85,9 +85,10 @@ def main(argv):
                       glob.glob(os.path.join(ROOT, "tests", "runtime", "contracts*.inox")) +
                       glob.glob(os.path.join(ROOT, "tests", "runtime", "pointers*.inox")) +
                       glob.glob(os.path.join(ROOT, "tests", "runtime", "with-*.inox")) +
+                      glob.glob(os.path.join(ROOT, "tests", "runtime", "generics-*.inox")) +
                       [os.path.join(ROOT, "examples", name)
                        for name in ("file_io.inox", "bank-atm.inox", "contracts.inox",
-                                    "pointers-tree.inox", "pointers-navigator.inox")])
+                                    "pointers-tree.inox", "pointers-navigator.inox", "generics.inox")])
     if not programs:
         print("FAIL string_leak_check: no String test programs found")
         return 1
