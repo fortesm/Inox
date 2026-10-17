@@ -6,73 +6,73 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Method reuse (CANON-9), example 2: two parts, and Override.
-== TContato (e-mail, phone) and TAuditoria (who changed, how many times) are
-== small structs with their own methods. TCliente and TFornecedor reuse both.
-== Both parts have Resumo, so each struct that reuses them writes its own
-== Resumo, marked Override; the parts' versions stay reachable by path.
+== TContact (e-mail, phone) and TAudit (who changed it, how many times) are
+== small structs with their own methods. TCustomer and TSupplier reuse both.
+== Both parts have Summary, so each struct that reuses them writes its own
+== Summary, marked Override; the parts' versions stay reachable by path.
 Type
-    TContato Struct
+    TContact Struct
         FEmail String := ""
-        FTelefone String := ""
+        FPhone String := ""
     ;
-    TAuditoria Struct
-        FAlteradoPor String := "ninguém"
-        FAlteracoes Integer := 0
+    TAudit Struct
+        FChangedBy String := "nobody"
+        FChanges Integer := 0
     ;
-    TCliente Struct (TContato, TAuditoria)
-        FNome String := ""
-        FLimite Integer := 0
+    TCustomer Struct (TContact, TAudit)
+        FName String := ""
+        FCreditLimit Integer := 0
     ;
-    TFornecedor Struct (TContato, TAuditoria)
-        FRazaoSocial String := ""
+    TSupplier Struct (TContact, TAudit)
+        FCompanyName String := ""
     ;
 
-TContato.TrocarEmail(Self mut, Email String) :
+TContact.ChangeEmail(Self mut, Email String) :
     if Email # ""
         Self.FEmail := Email
     ;
 ;
 
-TContato.Resumo(Self) :
-    PutLn("  contato: ", Self.FEmail, " / ", Self.FTelefone)
+TContact.Summary(Self) :
+    PutLn("  contact: ", Self.FEmail, " / ", Self.FPhone)
 ;
 
-TAuditoria.Registrar(Self mut, Usuario String) :
-    Self.FAlteradoPor := Usuario
-    Self.FAlteracoes += 1
+TAudit.Record(Self mut, User String) :
+    Self.FChangedBy := User
+    Self.FChanges += 1
 ;
 
-TAuditoria.Resumo(Self) :
-    PutLn("  auditoria: ", Self.FAlteracoes, " alteração(ões), última por ", Self.FAlteradoPor)
+TAudit.Summary(Self) :
+    PutLn("  audit: ", Self.FChanges, " change(s), last by ", Self.FChangedBy)
 ;
 
-== A method of TCliente that combines what the parts know how to do.
-TCliente.AtualizarEmail(Self mut, Email String, Usuario String) :
-    Self.TrocarEmail(Email)
-    Self.Registrar(Usuario)
+== A method of TCustomer that combines what the parts know how to do.
+TCustomer.UpdateEmail(Self mut, Email String, User String) :
+    Self.ChangeEmail(Email)
+    Self.Record(User)
 ;
 
-TCliente.Resumo(Self) Override :
-    PutLn("Cliente ", Self.FNome, " (limite ", Self.FLimite, ")")
-    Self.TContato.Resumo
-    Self.TAuditoria.Resumo
+TCustomer.Summary(Self) Override :
+    PutLn("Customer ", Self.FName, " (limit ", Self.FCreditLimit, ")")
+    Self.TContact.Summary
+    Self.TAudit.Summary
 ;
 
-TFornecedor.Resumo(Self) Override :
-    PutLn("Fornecedor ", Self.FRazaoSocial)
-    Self.TContato.Resumo
-    Self.TAuditoria.Resumo
+TSupplier.Summary(Self) Override :
+    PutLn("Supplier ", Self.FCompanyName)
+    Self.TContact.Summary
+    Self.TAudit.Summary
 ;
 
 Main :
-    C := TCliente(FNome := "Marcelo", FLimite := 5000)
-    C.FTelefone := "85 99999-0000"           == a field of the TContato part
-    C.AtualizarEmail("marcelo@exemplo.com", "caixa1")
-    C.AtualizarEmail("", "caixa2")            == empty e-mail is ignored, the change is still audited
-    C.Resumo
+    C := TCustomer(FName := "Marcelo", FCreditLimit := 5000)
+    C.FPhone := "+55 85 99999-0000"          == a field of the TContact part
+    C.UpdateEmail("marcelo@example.com", "teller1")
+    C.UpdateEmail("", "teller2")              == an empty e-mail is ignored, the change is still audited
+    C.Summary
 
-    F := TFornecedor(FRazaoSocial := "Inox Ltda")
-    F.TrocarEmail("vendas@inox.dev")          == reused directly from TContato
-    F.Registrar("compras")                    == reused directly from TAuditoria
-    F.Resumo
+    S := TSupplier(FCompanyName := "Inox Ltd")
+    S.ChangeEmail("sales@inox.dev")           == reused directly from TContact
+    S.Record("purchasing")                    == reused directly from TAudit
+    S.Summary
 ;

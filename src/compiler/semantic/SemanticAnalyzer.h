@@ -54,7 +54,7 @@ private:
     static void rejectPredefinedName(std::string_view name);
     const Symbol& resolveOrThrow(std::string_view name) const;
     void declareTypeName(std::string_view name, TypeRef type);
-    // The type a written type denotes (`Array[1..Size] Byte`, `Own<TNo>`),
+    // The type a written type denotes (`Array[1..Size] Byte`, `Own<TNode>`),
     // with the language's rules and messages; "unknown type" when a name is
     // not a type.
     TypeRef resolveWrittenType(std::string_view written);

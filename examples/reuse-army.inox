@@ -7,8 +7,8 @@
 
 == One behavior for thousands of soldiers (CANON-9). A behavior is written
 == once per TYPE, never per value: the 1000 soldiers of an array share
-== TSoldado.Correr. TArqueiro reuses Correr without writing it again;
-== TCavaleiro replaces it with an Override.
+== TSoldier.Run. TArcher reuses Run without writing it again; TKnight
+== replaces it with an Override.
 ==
 == Each kind lives in its own array, as in the Entity Component System of
 == modern game engines: values of one kind side by side in memory. One
@@ -17,49 +17,49 @@
 Const Total := 1000
 
 Type
-    TSoldado Struct
+    TSoldier Struct
         FX Integer := 0
-        FVelocidade Integer := 1
+        FSpeed Integer := 1
     ;
-    TArqueiro Struct (TSoldado)
-        FFlechas Integer := 20
+    TArcher Struct (TSoldier)
+        FArrows Integer := 20
     ;
-    TCavaleiro Struct (TSoldado)
-        FCavalo String := "Tordilho"
+    TKnight Struct (TSoldier)
+        FHorse String := "Dapple"
     ;
 
-== Written once, for every soldier and for every struct that reuses TSoldado.
-TSoldado.Correr(Self mut) :
-    Self.FX += Self.FVelocidade
+== Written once, for every soldier and for every struct that reuses TSoldier.
+TSoldier.Run(Self mut) :
+    Self.FX += Self.FSpeed
 ;
 
-TArqueiro.Atirar(Self mut) :
-    if Self.FFlechas > 0
-        Self.FFlechas -= 1
+TArcher.Shoot(Self mut) :
+    if Self.FArrows > 0
+        Self.FArrows -= 1
     ;
 ;
 
 == A knight runs twice as far: the soldier's step, twice.
-TCavaleiro.Correr(Self mut) Override :
-    Self.TSoldado.Correr
-    Self.TSoldado.Correr
+TKnight.Run(Self mut) Override :
+    Self.TSoldier.Run
+    Self.TSoldier.Run
 ;
 
 Main :
-    Infantaria Array[1..Total] TSoldado
-    Arqueiros Array[1..Total] TArqueiro
-    Cavaleiros Array[1..Total] TCavaleiro
-    for Turno in 1..10
+    Infantry Array[1..Total] TSoldier
+    Archers Array[1..Total] TArcher
+    Knights Array[1..Total] TKnight
+    for Turn in 1..10
         for I in 1..Total
-            Infantaria[I].Correr                   == TSoldado.Correr
-            Arqueiros[I].Correr                    == TSoldado.Correr, reused
-            Cavaleiros[I].Correr                   == TCavaleiro.Correr (Override)
+            Infantry[I].Run                        == TSoldier.Run
+            Archers[I].Run                         == TSoldier.Run, reused
+            Knights[I].Run                         == TKnight.Run (Override)
         ;
-        Arqueiros[Turno].Atirar
+        Archers[Turn].Shoot
     ;
-    PutLn("Após 10 turnos, ", Total, " de cada tipo:")
-    PutLn("  soldado:   posição ", Infantaria[1].FX)
-    PutLn("  arqueiro:  posição ", Arqueiros[1].FX, ", flechas ", Arqueiros[1].FFlechas,
-          " (o arqueiro ", Total, " tem ", Arqueiros[Total].FFlechas, ")")
-    PutLn("  cavaleiro: posição ", Cavaleiros[Total].FX, " no cavalo ", Cavaleiros[Total].FCavalo)
+    PutLn("After 10 turns, ", Total, " of each kind:")
+    PutLn("  soldier: position ", Infantry[1].FX)
+    PutLn("  archer:  position ", Archers[1].FX, ", arrows ", Archers[1].FArrows,
+          " (archer ", Total, " has ", Archers[Total].FArrows, ")")
+    PutLn("  knight:  position ", Knights[Total].FX, " on the horse ", Knights[Total].FHorse)
 ;

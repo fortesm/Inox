@@ -16,14 +16,14 @@ Use Std.Files
 ==   RenameFile(From String, To String)  == AlreadyExists when To exists
 ==
 ==   try
-==       F := OpenRead("dados.txt")
+==       F := OpenRead("data.txt")
 ==       while not Eof(F)
 ==           PutLn(ReadLn(F))
 ==       ;
 ==   except
 ==       On FileNotFound
-==           PutLn("dados.txt não existe")
+==           PutLn("data.txt does not exist")
 ==       ;
 ==   ensure
-==       PutLn("fim")
+==       PutLn("done")
 ==   ;

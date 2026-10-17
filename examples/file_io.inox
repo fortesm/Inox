@@ -20,7 +20,7 @@ Use Std.IOUtils                 == Std.Files (File and the basics) plus Exists, 
 == never copied (CANON-17).
 WriteNumbers(ref mut Target File, First Integer, Last Integer) :
     for N in First..Last
-        WriteLn(Target, "linha ", N)
+        WriteLn(Target, "line ", N)
     ;
 ;
 
@@ -32,7 +32,7 @@ CountLines(ref mut Source File) Integer :
         Last := ReadLn(Source)
         Lines += 1
     ;
-    PutLn("  última lida: [", Last, "]")
+    PutLn("  last read: [", Last, "]")
     Return Lines
 ;
 
@@ -71,66 +71,66 @@ Show(Title String, Path String) :
 == closed (and flushed) on the way out.
 WriteThenFail(Path String) :
     F := Create(Path)
-    WriteLn(F, "escrita antes da exceção")
+    WriteLn(F, "written before the exception")
     Raise RangeError
 ;
 
 Main :
-    Notes String := "inox-file-io-notas.txt"
-    Copy String := "inox-file-io-copia.txt"
-    Moved String := "inox-file-io-movido.txt"
-    Missing String := "inox-file-io-nao-existe.txt"
-    Big String := "inox-file-io-grande.txt"
+    Notes String := "inox-file-io-notes.txt"
+    Copy String := "inox-file-io-copy.txt"
+    Moved String := "inox-file-io-moved.txt"
+    Missing String := "inox-file-io-missing.txt"
+    Big String := "inox-file-io-big.txt"
 
     try
         == 1. Create writes a new file (or truncates an existing one).
         PutLn("== 1. Create, Write, WriteLn")
         Out := Create(Notes)
-        WriteLn(Out, "Olá, Inox!")
-        WriteLn(Out, "Integer ", 42, ", Bool ", true, ", Float ", 2.5, ", negativo ", -7)
-        Write(Out, "Write não quebra a linha; ")
-        Write(Out, "continua aqui")
+        WriteLn(Out, "Hello, Inox!")
+        WriteLn(Out, "Integer ", 42, ", Bool ", true, ", Float ", 2.5, ", negative ", -7)
+        Write(Out, "Write does not end the line; ")
+        Write(Out, "it goes on here")
         WriteLn(Out)                                    == only the line end
-        WriteLn(Out, "UTF-8: ação, coração, 日本語, ✓")
+        WriteLn(Out, "UTF-8: café, naïve, 日本語, ✓")
         WriteLn(Out, "")                                == an empty line
         Close(Out)
         Close(Out)                                      == closing twice does nothing
-        Show("depois de Create", Notes)
+        Show("after Create", Notes)
 
         == 2. OpenAppend writes at the end of an existing file.
         PutLn("== 2. OpenAppend")
         More := OpenAppend(Notes)
-        WriteLn(More, "linha anexada")
+        WriteLn(More, "appended line")
         Close(More)
-        Show("depois de OpenAppend", Notes)
+        Show("after OpenAppend", Notes)
 
         == 3. Reading: ReadLn and Eof; past the end ReadLn gives "".
         PutLn("== 3. OpenRead, ReadLn, Eof")
         Input := OpenRead(Notes)
-        PutLn("primeira: [", ReadLn(Input), "] Eof=", Eof(Input))
+        PutLn("first: [", ReadLn(Input), "] Eof=", Eof(Input))
         Rest := CountLines(Input)
-        PutLn("restantes: ", Rest)
-        PutLn("depois do fim: [", ReadLn(Input), "] Eof=", Eof(Input))
+        PutLn("remaining: ", Rest)
+        PutLn("after the end: [", ReadLn(Input), "] Eof=", Eof(Input))
         Close(Input)
 
         == 4. Files in routines: ref mut parameters, and a function that
         == opens, reads and returns (its file closes on Return).
-        PutLn("== 4. Arquivos em rotinas")
+        PutLn("== 4. Files in routines")
         Numbers := Create(Big)
         WriteNumbers(Numbers, 1, 1000)
-        WriteLn(Numbers, "fim")
+        WriteLn(Numbers, "end")
         Close(Numbers)
         Counter := OpenRead(Big)
         Total := CountLines(Counter)
-        PutLn("linhas em ", Big, ": ", Total)
+        PutLn("lines in ", Big, ": ", Total)
         Close(Counter)
-        PutLn("primeira linha: ", FirstLine(Big))
-        PutLn("copiadas: ", CopyText(Notes, Copy))
-        Show("cópia", Copy)
+        PutLn("first line: ", FirstLine(Big))
+        PutLn("copied: ", CopyText(Notes, Copy))
+        Show("copy", Copy)
 
         == 5. One variable, several files: storing a new file closes the
         == old one; a File declared in a loop closes at the next round.
-        PutLn("== 5. Reabrir")
+        PutLn("== 5. Reopening")
         Again := OpenRead(Notes)
         PutLn("A: ", ReadLn(Again))
         Again := OpenRead(Big)                          == closes the first
@@ -138,26 +138,26 @@ Main :
         Close(Again)
         for Round in 1..3
             Each := OpenRead(Big)
-            PutLn("volta ", Round, ": ", ReadLn(Each))
+            PutLn("round ", Round, ": ", ReadLn(Each))
             Close(Each)                                 == Windows does not delete an open file
         ;
 
         == 6. Std.IOUtils: Exists, RenameFile, DeleteFile.
         PutLn("== 6. Exists, RenameFile, DeleteFile")
-        PutLn("Exists(cópia)=", Exists(Copy), " Exists(movido)=", Exists(Moved))
+        PutLn("Exists(copy)=", Exists(Copy), " Exists(moved)=", Exists(Moved))
         RenameFile(Copy, Moved)
-        PutLn("depois de RenameFile: Exists(cópia)=", Exists(Copy), " Exists(movido)=", Exists(Moved))
-        PutLn("Exists(.)=", Exists("."), " (um diretório não é um arquivo)")
+        PutLn("after RenameFile: Exists(copy)=", Exists(Copy), " Exists(moved)=", Exists(Moved))
+        PutLn("Exists(.)=", Exists("."), " (a directory is not a file)")
         DeleteFile(Moved)
-        PutLn("depois de DeleteFile: Exists(movido)=", Exists(Moved))
+        PutLn("after DeleteFile: Exists(moved)=", Exists(Moved))
 
         == 7. Failures are exceptions (CANON-17).
-        PutLn("== 7. Erros com try")
+        PutLn("== 7. Errors with try")
 
         == 7a. A missing file: FileNotFound, and ensure always runs.
         try
             F := OpenRead(Missing)
-            PutLn("inesperado: ", ReadLn(F))
+            PutLn("unexpected: ", ReadLn(F))
         except
             On FileNotFound
                 PutLn("7a. FileNotFound: ", Missing)
@@ -171,7 +171,7 @@ Main :
             DeleteFile(Missing)
         except
             On IOError
-                PutLn("7b. On IOError pega FileNotFound")
+                PutLn("7b. On IOError catches FileNotFound")
             ;
         ;
 
@@ -182,10 +182,10 @@ Main :
             RenameFile(Notes, Copy)
         except
             On AlreadyExists
-                PutLn("7c. AlreadyExists: ", Copy, " já existe")
+                PutLn("7c. AlreadyExists: ", Copy, " already exists")
             ;
         ;
-        PutLn("7c. a origem continua: ", Exists(Notes))
+        PutLn("7c. the source is still there: ", Exists(Notes))
 
         == 7d. Retry: the handler creates the missing file and runs the try
         == block once more.
@@ -193,13 +193,13 @@ Main :
         try
             Attempts += 1
             Late := OpenRead(Missing)
-            PutLn("7d. tentativa ", Attempts, ": ", ReadLn(Late))
+            PutLn("7d. attempt ", Attempts, ": ", ReadLn(Late))
             Close(Late)
         except
             On FileNotFound
-                PutLn("7d. tentativa ", Attempts, ": não existe, criando")
+                PutLn("7d. attempt ", Attempts, ": missing, creating it")
                 Fresh := Create(Missing)
-                WriteLn(Fresh, "criado pelo handler")
+                WriteLn(Fresh, "created by the handler")
                 Close(Fresh)
                 Retry(1)
             ;
@@ -210,23 +210,23 @@ Main :
         Writer := Create(Copy)
         try
             Line := ReadLn(Writer)
-            PutLn("inesperado: ", Line)
+            PutLn("unexpected: ", Line)
         except
             On FileNotFound
-                PutLn("inesperado")
+                PutLn("unexpected")
             ;
             Else
-                PutLn("7e. Else: ler um arquivo aberto para escrita")
+                PutLn("7e. Else: reading a file opened for writing")
             ;
         ;
 
         == 7f. Writing to a closed file: IOError.
         Close(Writer)
         try
-            WriteLn(Writer, "depois de Close")
+            WriteLn(Writer, "after Close")
         except
             On IOError
-                PutLn("7f. IOError: arquivo fechado")
+                PutLn("7f. IOError: closed file")
             ;
         ;
 
@@ -237,24 +237,24 @@ Main :
             WriteLn(Dir, "x")
         except
             On IOError
-                PutLn("7g. IOError: Create de um diretório")
+                PutLn("7g. IOError: Create of a directory")
             ;
         ;
         try
             DeleteFile(".")
         except
             On IOError
-                PutLn("7g. IOError: DeleteFile nunca apaga um diretório")
+                PutLn("7g. IOError: DeleteFile never deletes a directory")
             ;
         ;
 
         == 7h. A missing directory in the path: FileNotFound.
         try
-            Nowhere := Create("inox-file-io-sem-pasta/arquivo.txt")
+            Nowhere := Create("inox-file-io-no-folder/file.txt")
             WriteLn(Nowhere, "x")
         except
             On FileNotFound
-                PutLn("7h. FileNotFound: a pasta não existe")
+                PutLn("7h. FileNotFound: the folder does not exist")
             ;
         ;
 
@@ -264,26 +264,26 @@ Main :
             WriteThenFail(Copy)
         except
             On RangeError
-                PutLn("7i. RangeError capturada; no arquivo: ", FirstLine(Copy))
+                PutLn("7i. RangeError caught; in the file: ", FirstLine(Copy))
             ;
         ;
 
         == 7j. Nested try: the inner handler cleans up and raises again.
         try
             try
-                Gone := OpenRead("inox-file-io-sumiu.txt")
-                PutLn("inesperado: ", ReadLn(Gone))
+                Gone := OpenRead("inox-file-io-gone.txt")
+                PutLn("unexpected: ", ReadLn(Gone))
             except
                 On FileNotFound
-                    PutLn("7j. interno: FileNotFound, repassando")
+                    PutLn("7j. inner: FileNotFound, raising again")
                     Raise
                 ;
             ensure
-                PutLn("7j. ensure interno")
+                PutLn("7j. inner ensure")
             ;
         except
             On IOError
-                PutLn("7j. externo: IOError")
+                PutLn("7j. outer: IOError")
             ;
         ;
     ensure
@@ -294,6 +294,6 @@ Main :
                 DeleteFile(Path)
             ;
         ;
-        PutLn("== limpeza: ", Exists(Notes), " ", Exists(Copy), " ", Exists(Moved), " ", Exists(Missing), " ", Exists(Big))
+        PutLn("== cleanup: ", Exists(Notes), " ", Exists(Copy), " ", Exists(Moved), " ", Exists(Missing), " ", Exists(Big))
     ;
 ;

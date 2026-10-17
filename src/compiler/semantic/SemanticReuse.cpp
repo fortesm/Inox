@@ -9,14 +9,14 @@
 // Marcelo Fortes, 2026-10-13: "Aprovo tudo como você sugeriu 1a, 2a, 3b e
 // 4a+b").
 //
-// `TAssinatura Struct (TPessoa)` reuses TPessoa: the part is a field named
-// TPessoa, and TAssinatura also offers TPessoa's fields and methods directly,
-// at every level (TPessoa's own parts too). A reused method runs on its part
-// (delegation): `A.UpdateNome(X)` is `A.TPessoa.UpdateNome(X)`. Nothing is
+// `TSubscriber Struct (TPerson)` reuses TPerson: the part is a field named
+// TPerson, and TSubscriber also offers TPerson's fields and methods directly,
+// at every level (TPerson's own parts too). A reused method runs on its part
+// (delegation): `S.UpdateName(X)` is `S.TPerson.UpdateName(X)`. Nothing is
 // chosen silently: a name reachable by two paths, or a struct's own field or
 // method with a reused name, is an error at the struct's declaration, except
 // a method marked `Override`, which replaces the reused ones for callers of
-// the outer struct. There is no subtyping: a TAssinatura is never a TPessoa.
+// the outer struct. There is no subtyping: a TSubscriber is never a TPerson.
 
 #include "SemanticAnalyzer.h"
 
@@ -245,7 +245,7 @@ void SemanticAnalyzer::validateReuse(const ast::TypeDeclaration& declaration) co
 }
 
 // Rewrites the receiver of `member` (`X.Name`) into the explicit path
-// through the parts (`X.TPessoa.Name`); the caller analyzes it again.
+// through the parts (`X.TPerson.Name`); the caller analyzes it again.
 void SemanticAnalyzer::routeThroughParts(const ast::CallExpression& member, const std::vector<std::string>& path)
 {
     // The analyzer otherwise only reads the tree; this is its one rewrite,

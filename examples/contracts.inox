@@ -14,56 +14,56 @@
 ==   invariant / variant   on the first lines of a loop
 == A broken contract stops the program with "Inox runtime error: ...", like
 == an overflow: it is a bug, not an exception.
-Const Capacidade := 5
+Const Capacity := 5
 
 Type
-    TPilha Struct
-        FItens Array[1..Capacidade] Integer
-        FQuantidade Integer := 0
-        invariant Self.FQuantidade >= 0 and Self.FQuantidade <= Capacidade, "quantidade na faixa"
+    TStack Struct
+        FItems Array[1..Capacity] Integer
+        FCount Integer := 0
+        invariant Self.FCount >= 0 and Self.FCount <= Capacity, "count in range"
     ;
-    TPilhaContada Struct (TPilha)
-        FOperacoes Integer := 0
+    TCountedStack Struct (TStack)
+        FOperations Integer := 0
     ;
 
-TPilha.Vazia(Self) Bool :
-    Return Self.FQuantidade = 0
+TStack.IsEmpty(Self) Bool :
+    Return Self.FCount = 0
 ;
 
-TPilha.Cheia(Self) Bool :
-    Return Self.FQuantidade = Capacidade
+TStack.IsFull(Self) Bool :
+    Return Self.FCount = Capacity
 ;
 
-TPilha.Empilhar(Self mut, X Integer) :
-    pre not Self.Cheia, "a pilha não está cheia"
-    pos Self.FQuantidade = old Self.FQuantidade + 1
-    pos Self.Topo = X
-    Self.FQuantidade += 1
-    Self.FItens[Self.FQuantidade] := X
+TStack.Push(Self mut, X Integer) :
+    pre not Self.IsFull, "the stack is not full"
+    pos Self.FCount = old Self.FCount + 1
+    pos Self.Top = X
+    Self.FCount += 1
+    Self.FItems[Self.FCount] := X
 ;
 
-TPilha.Desempilhar(Self mut) Integer :
-    pre not Self.Vazia, "a pilha não está vazia"
-    pos Self.FQuantidade = old Self.FQuantidade - 1
-    pos Result = old Self.Topo
-    X := Self.FItens[Self.FQuantidade]
-    Self.FQuantidade -= 1
+TStack.Pop(Self mut) Integer :
+    pre not Self.IsEmpty, "the stack is not empty"
+    pos Self.FCount = old Self.FCount - 1
+    pos Result = old Self.Top
+    X := Self.FItems[Self.FCount]
+    Self.FCount -= 1
     Return X
 ;
 
-TPilha.Topo(Self) Integer :
-    pre not Self.Vazia
-    Return Self.FItens[Self.FQuantidade]
+TStack.Top(Self) Integer :
+    pre not Self.IsEmpty
+    Return Self.FItems[Self.FCount]
 ;
 
-== The counted stack keeps the contract of Empilhar and promises more.
-TPilhaContada.Empilhar(Self mut, X Integer) Override :
-    pos then Self.FOperacoes = old Self.FOperacoes + 1
-    Self.TPilha.Empilhar(X)
-    Self.FOperacoes += 1
+== The counted stack keeps the contract of Push and promises more.
+TCountedStack.Push(Self mut, X Integer) Override :
+    pos then Self.FOperations = old Self.FOperations + 1
+    Self.TStack.Push(X)
+    Self.FOperations += 1
 ;
 
-Soma(N Integer) Integer :
+Sum(N Integer) Integer :
     pre N >= 0
     pos Result = N * (N + 1) div 2
     Total := 0
@@ -78,11 +78,11 @@ Soma(N Integer) Integer :
 ;
 
 Main :
-    P TPilhaContada
+    S TCountedStack
     for I in 1..3
-        P.Empilhar(I * 10)
+        S.Push(I * 10)
     ;
-    PutLn("topo ", P.Topo, ", quantidade ", P.FQuantidade, ", operações ", P.FOperacoes)
-    PutLn("desempilhado ", P.Desempilhar, ", topo agora ", P.Topo)
-    PutLn("soma de 1 a 100: ", Soma(100))
+    PutLn("top ", S.Top, ", count ", S.FCount, ", operations ", S.FOperations)
+    PutLn("popped ", S.Pop, ", top now ", S.Top)
+    PutLn("sum of 1 to 100: ", Sum(100))
 ;

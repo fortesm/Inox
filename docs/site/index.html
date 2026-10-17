@@ -325,7 +325,7 @@ Swap(ref mut A Integer, ref mut B Integer) :    == writes the caller's variables
 <p>A <code>String</code> holds UTF-8 text and never changes: assigning or passing a String gives a copy of the value, so changing one variable never changes another. Strings work everywhere a value can live: locals, parameters and results, struct fields, array elements, <code>State</code> and <code>ref</code> parameters. A String local or <code>State</code> variable needs an initializer; a struct field without default and an array element start as <code>""</code>. <code>=</code> and <code>#</code> compare the bytes.</p>
 <pre><code>Type
     TPet Struct
-        FName String := &quot;sem nome&quot;
+        FName String := &quot;no name&quot;
         FKind String
     ;
 
@@ -337,7 +337,7 @@ Main :
     P TPet
     Names Array[1..3] String
     Names[2] := P.FName
-    PutLn(&quot;[&quot;, Names[1], &quot;] &quot;, Names[2])  == [] sem nome
+    PutLn(&quot;[&quot;, Names[1], &quot;] &quot;, Names[2])  == [] no name
 ;</code></pre>
 <p>Strings are ordered with <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code> and <code>&gt;=</code>, as in Pascal: byte by byte, and a String that is the beginning of another comes first. On UTF-8 text this is the order of the Unicode code points, so upper case comes before lower case and accented letters after unaccented ones: <code>"Z" &lt; "a" &lt; "á"</code>, <code>"ab" &lt; "abc"</code>, <code>"" &lt; "a"</code>. It is not the alphabetical order of a language (that will be a library function). The results combine like any <code>Bool</code>:</p>
 <pre><code>unless Name &gt;= Limit
@@ -433,44 +433,44 @@ C TBuffer := B                      == C has its own copy of FData</code></pre>
 <section id="method-reuse"><h2>Method reuse: composition without inheritance</h2>
 <p>A struct can reuse other structs. It lists them after <code>Struct</code>; each one becomes a part, a field named after its type, and its fields and methods are offered directly by the struct, at every level:</p>
 <pre><code>Type
-    TEndereco Struct
-        FRua String := ""
-        FCidade String := ""
+    TAddress Struct
+        FStreet String := ""
+        FCity String := ""
     ;
-    TPessoa Struct (TEndereco)          == reuses TEndereco
-        FNome String := ""
+    TPerson Struct (TAddress)           == reuses TAddress
+        FName String := ""
     ;
-    TAssinatura Struct (TPessoa)        == reuses TPessoa, and through it TEndereco
-        FPlano String := ""
+    TSubscriber Struct (TPerson)        == reuses TPerson, and through it TAddress
+        FPlan String := ""
     ;
 
-TEndereco.Mudar(Self mut, Rua String, Cidade String) :
-    Self.FRua := Rua
-    Self.FCidade := Cidade
+TAddress.Relocate(Self mut, Street String, City String) :
+    Self.FStreet := Street
+    Self.FCity := City
 ;
 
-TPessoa.UpdateNome(Self mut, Nome String) :
-    if Nome # ""
-        Self.FNome := Nome
+TPerson.UpdateName(Self mut, Name String) :
+    if Name # ""
+        Self.FName := Name
     ;
 ;
 
-A TAssinatura
-A.UpdateNome("Marcelo")                      == TPessoa.UpdateNome on the TPessoa part of A
-A.Mudar("Rua A", "Recife")                   == two levels down, no forwarding methods
-PutLn(A.FNome, " ", A.FCidade)</code></pre>
-<p>The short name is the normal way. The path through the parts (<code>A.TPessoa.Title</code>) is needed only to reach a method that an <code>Override</code> replaced, or to use the part itself as a value (<code>Imprimir(A.TPessoa)</code>).</p>
+S TSubscriber
+S.UpdateName("Marcelo")                      == TPerson.UpdateName on the TPerson part of S
+S.Relocate("1 Main Street", "Recife")        == two levels down, no forwarding methods
+PutLn(S.FName, " ", S.FCity)</code></pre>
+<p>The short name is the normal way. The path through the parts (<code>S.TPerson.Title</code>) is needed only to reach a method that an <code>Override</code> replaced, or to use the part itself as a value (<code>Print(S.TPerson)</code>).</p>
 <p>A reused method runs on its part: it behaves the same wherever it is reused. A struct may replace a reused method by declaring one with the same name and signature, marked <code>Override</code>; callers of the struct get it, and the part's method stays reachable by its path:</p>
-<pre><code>TPessoa.Title(Self) String :
-    Return "Pessoa"
+<pre><code>TPerson.Title(Self) String :
+    Return "Person"
 ;
-TAssinatura.Title(Self) String Override :
-    Return "Assinante"
+TSubscriber.Title(Self) String Override :
+    Return "Subscriber"
 ;
 
-PutLn(A.Title, " ", A.TPessoa.Title)     == Assinante Pessoa</code></pre>
-<p>Nothing is chosen silently. These are errors where the struct is declared: a name reached through two parts (<code>TC Struct (TA, TB)</code> when both have <code>FX</code>), a field of the struct with a reused name, a method with a reused name without <code>Override</code>, an <code>Override</code> that replaces nothing or changes the signature, and reusing something that is not a struct. Two parts with the same method are resolved with an <code>Override</code> in the struct; two parts with the same field, by making one of them a named field. There is no subtyping: a <code>TAssinatura</code> is never passed where a <code>TPessoa</code> is expected; <code>A.TPessoa</code> is the part. Construction names the part: <code>TAssinatura(TPessoa := P, FPlano := "Ouro")</code>.</p>
-<p>A behavior is written once per type, never per value: a thousand soldiers in an <code>Array[1..1000] TSoldado</code> share <code>TSoldado.Correr</code>, a <code>TArqueiro Struct (TSoldado)</code> reuses it without writing it again, and a <code>TCavaleiro</code> may replace it with an <code>Override</code>. Each kind lives in its own array, as in the Entity Component System of modern game engines (<code>examples/reuse-army.inox</code>). One array that mixes archers and knights, where one call runs each element's own version, needs subtyping, which Inox does not have; the future answer is a variant struct, a value that is one of several structs, examined with <code>case</code> (change <code>variant-structs</code>, after enums).</p>
+PutLn(S.Title, " ", S.TPerson.Title)     == Subscriber Person</code></pre>
+<p>Nothing is chosen silently. These are errors where the struct is declared: a name reached through two parts (<code>TC Struct (TA, TB)</code> when both have <code>FX</code>), a field of the struct with a reused name, a method with a reused name without <code>Override</code>, an <code>Override</code> that replaces nothing or changes the signature, and reusing something that is not a struct. Two parts with the same method are resolved with an <code>Override</code> in the struct; two parts with the same field, by making one of them a named field. There is no subtyping: a <code>TSubscriber</code> is never passed where a <code>TPerson</code> is expected; <code>S.TPerson</code> is the part. Construction names the part: <code>TSubscriber(TPerson := P, FPlan := "Gold")</code>.</p>
+<p>A behavior is written once per type, never per value: a thousand soldiers in an <code>Array[1..1000] TSoldier</code> share <code>TSoldier.Run</code>, a <code>TArcher Struct (TSoldier)</code> reuses it without writing it again, and a <code>TKnight</code> may replace it with an <code>Override</code>. Each kind lives in its own array, as in the Entity Component System of modern game engines (<code>examples/reuse-army.inox</code>). One array that mixes archers and knights, where one call runs each element's own version, needs subtyping, which Inox does not have; the future answer is a variant struct, a value that is one of several structs, examined with <code>case</code> (change <code>variant-structs</code>, after enums).</p>
 <p>Built-in value types accept methods too, which serve every variable and field of that type (like Delphi helpers). <code>Self</code> is a copy; <code>Self mut</code> is the caller's variable:</p>
 <pre><code>String.UpdateStr(Self mut, Value String) :
     if Value # ""
@@ -481,44 +481,44 @@ Integer.Twice(Self) Integer :
     Return Self * 2
 ;
 
-A.FPlano.UpdateStr("Plano9")
-PutLn(A.FPlano, " ", 21.Twice)</code></pre>
-<p>A routine with a <code>ref mut</code> parameter works on any field as well: <code>UpdateStr(A.FPlano, "Plano9")</code>, also from a <code>Self mut</code> method (<code>UpdateStr(Self.FNome, Nome)</code>). <code>examples/method-reuse.inox</code> is a complete program.</p>
+S.FPlan.UpdateStr("Plan9")
+PutLn(S.FPlan, " ", 21.Twice)</code></pre>
+<p>A routine with a <code>ref mut</code> parameter works on any field as well: <code>UpdateStr(S.FPlan, "Plan9")</code>, also from a <code>Self mut</code> method (<code>UpdateStr(Self.FName, Name)</code>). <code>examples/method-reuse.inox</code> is a complete program.</p>
 </section>
 <section id="contracts"><h2>Design by contract: pre, pos, invariant</h2>
 <p>Inox has Eiffel's design by contract (CANON-24). A routine states what the caller must guarantee and what it guarantees in return; a struct states what is always true of its values. The words are <code>pre</code> (Eiffel <code>require</code>), <code>pos</code> (Eiffel <code>ensure</code>; <code>ensure</code> is the cleanup clause of <code>try</code>), <code>old</code>, <code>Result</code>, <code>invariant</code> and <code>variant</code>. They are contextual: outside these places they are ordinary names.</p>
 <pre><code>Type
-    TPilha Struct
-        FItens Array[1..5] Integer
-        FQuantidade Integer := 0
-        invariant Self.FQuantidade >= 0 and Self.FQuantidade <= 5, "quantidade na faixa"
+    TStack Struct
+        FItems Array[1..5] Integer
+        FCount Integer := 0
+        invariant Self.FCount >= 0 and Self.FCount <= 5, "count in range"
     ;
 
-TPilha.Empilhar(Self mut, X Integer) :
-    pre Self.FQuantidade < 5, "a pilha não está cheia"
-    pos Self.FQuantidade = old Self.FQuantidade + 1
-    pos Self.FItens[Self.FQuantidade] = X
-    Self.FQuantidade += 1
-    Self.FItens[Self.FQuantidade] := X
+TStack.Push(Self mut, X Integer) :
+    pre Self.FCount < 5, "the stack is not full"
+    pos Self.FCount = old Self.FCount + 1
+    pos Self.FItems[Self.FCount] = X
+    Self.FCount += 1
+    Self.FItems[Self.FCount] := X
 ;
 
-TPilha.Desempilhar(Self mut) Integer :
-    pre Self.FQuantidade > 0
-    pos Result = old Self.FItens[Self.FQuantidade]
-    X := Self.FItens[Self.FQuantidade]
-    Self.FQuantidade -= 1
+TStack.Pop(Self mut) Integer :
+    pre Self.FCount > 0
+    pos Result = old Self.FItems[Self.FCount]
+    X := Self.FItems[Self.FCount]
+    Self.FCount -= 1
     Return X
 ;</code></pre>
 <ul>
 <li><code>pre Condition</code> and <code>pos Condition</code> are the first lines of a routine, before any statement; each may end with <code>, "message"</code>. Several lines are joined with <code>and</code>.</li>
 <li>The preconditions are checked on every call, before the body; the postconditions on every normal return. A raised exception leaves without checking them.</li>
 <li>In a <code>pos</code>, <code>old Expression</code> is the value of the expression on entry, and <code>Result</code> is the value being returned (functions only).</li>
-<li>A struct's <code>invariant</code> lines go among its fields. The invariant holds after a value is built, before and after every qualified method call (<code>P.Empilhar(1)</code>), after a field is written from outside the struct (<code>P.FQuantidade := 9</code>) and after a call that changes a <code>ref mut</code> argument. Inside the struct's own methods, the calls through bare <code>Self</code> may pass through states that break it.</li>
+<li>A struct's <code>invariant</code> lines go among its fields. The invariant holds after a value is built, before and after every qualified method call (<code>P.Push(1)</code>), after a field is written from outside the struct (<code>P.FCount := 9</code>) and after a call that changes a <code>ref mut</code> argument. Inside the struct's own methods, the calls through bare <code>Self</code> may pass through states that break it.</li>
 <li>A struct that reuses another (<a href="#method-reuse">CANON-9</a>) has its parts' invariants too.</li>
 <li>An <code>Override</code> inherits the contract of the method it replaces. It may weaken the precondition with <code>pre else</code> (the call is accepted if the inherited one <em>or else</em> its own holds) and strengthen the postcondition with <code>pos then</code> (both must hold); a plain <code>pre</code>/<code>pos</code> in an <code>Override</code> is an error.</li>
 <li>Loops take <code>invariant</code> and, in <code>while</code> and <code>repeat</code>, <code>variant</code> on their first lines. The invariant holds on every iteration and when the loop ends; the variant is an Integer expression that stays non-negative and decreases on every iteration, so the loop ends.</li>
 </ul>
-<pre><code>Soma(N Integer) Integer :
+<pre><code>Sum(N Integer) Integer :
     pre N >= 0
     pos Result = N * (N + 1) div 2
     Total := 0
@@ -532,7 +532,7 @@ TPilha.Desempilhar(Self mut) Integer :
     Return Total
 ;</code></pre>
 <p>A contract only reads: it cannot call a <code>Self mut</code> method, pass a <code>ref mut</code> argument, assign, or use files. A broken contract is a bug, not an exception: the program stops as a runtime trap (exit code 70, CANON-19), like an overflow, and <code>try</code> does not catch it. The message names the clause and the routine:</p>
-<pre><code>Inox runtime error: precondition violated: TPilha.Empilhar: Self.FQuantidade < 5: a pilha não está cheia</code></pre>
+<pre><code>Inox runtime error: precondition violated: TStack.Push: Self.FCount < 5: the stack is not full</code></pre>
 <p>The checks are always on, in every build, through Inox 1.0: no switch turns them off. Eiffel-style monitoring levels, chosen per module (which kinds of contract a module checks), and proving contracts at compile time (as SPARK does) are future work after 1.0. <code>examples/contracts.inox</code> is a complete program.</p>
 </section>
 <section id="pointers"><h2>Safe pointers: Own, Link, New, Free</h2>
@@ -540,9 +540,9 @@ TPilha.Desempilhar(Self mut) Integer :
 <table>
 <thead><tr><th>Operation</th><th>Pascal</th><th>C</th><th>Inox</th></tr></thead>
 <tbody>
-<tr><td>Pointer type</td><td><code>PNo = ^TNo</code></td><td><code>struct No *</code></td><td><code>Own&lt;TNo&gt;</code>, <code>Link&lt;TNo&gt;</code></td></tr>
-<tr><td>Create</td><td><code>New(P)</code></td><td><code>malloc(...)</code></td><td><code>P := New(TNo(FValor := 1))</code> or <code>New(TNo)</code> (defaults)</td></tr>
-<tr><td>Field</td><td><code>P^.FValor</code></td><td><code>p-&gt;valor</code></td><td><code>P.FValor</code></td></tr>
+<tr><td>Pointer type</td><td><code>PNode = ^TNode</code></td><td><code>struct node *</code></td><td><code>Own&lt;TNode&gt;</code>, <code>Link&lt;TNode&gt;</code></td></tr>
+<tr><td>Create</td><td><code>New(P)</code></td><td><code>malloc(...)</code></td><td><code>P := New(TNode(FValue := 1))</code> or <code>New(TNode)</code> (defaults)</td></tr>
+<tr><td>Field</td><td><code>P^.FValue</code></td><td><code>p-&gt;value</code></td><td><code>P.FValue</code></td></tr>
 <tr><td>Whole value</td><td><code>P^</code></td><td><code>*p</code></td><td><code>Value(P)</code>, read or written</td></tr>
 <tr><td>Address of a variable</td><td><code>@X</code></td><td><code>&amp;x</code></td><td><code>Link(X)</code>: a variable, a field, an element or an object</td></tr>
 <tr><td>Free</td><td><code>Dispose(P)</code> (unsafe)</td><td><code>free(p)</code> (unsafe)</td><td><code>Free(P)</code> (safe, optional)</td></tr>
@@ -552,34 +552,34 @@ TPilha.Desempilhar(Self mut) Integer :
 </tbody>
 </table>
 <pre><code>Type
-    TNo Struct
-        FValor Integer := 0
-        FProximo Option&lt;Own&lt;TNo&gt;&gt;          == None at the end of the list
+    TNode Struct
+        FValue Integer := 0
+        FNext Option&lt;Own&lt;TNode&gt;&gt;            == None at the end of the list
     ;
 
-NovaLista(N Integer) Own&lt;TNo&gt; :
-    Lista := New(TNo(FValor := 1))
-    Atual := Link(Lista)
+NewList(N Integer) Own&lt;TNode&gt; :
+    Head := New(TNode(FValue := 1))
+    Current := Link(Head)
     for I in 2..N
-        Atual.FProximo := New(TNo(FValor := I))   == an Own becomes the Option as is
-        Atual := Link(Atual.FProximo)
+        Current.FNext := New(TNode(FValue := I))  == an Own becomes the Option as is
+        Current := Link(Current.FNext)
     ;
-    Return Move(Lista)                          == the caller becomes the owner
+    Return Move(Head)                           == the caller becomes the owner
 ;
 
-Somar(Inicio Link&lt;TNo&gt;) Integer :
+SumList(First Link&lt;TNode&gt;) Integer :
     Total := 0
-    N := Inicio
+    N := First
     while Alive(N)
-        Total += N.FValor
-        N := Link(N.FProximo)                   == None gives an empty Link: the loop ends
+        Total += N.FValue
+        N := Link(N.FNext)                      == None gives an empty Link: the loop ends
     ;
     Return Total
 ;
 
 Main :
-    L := NovaLista(4)
-    PutLn(Somar(Link(L)))                       == 10
+    L := NewList(4)
+    PutLn(SumList(Link(L)))                     == 10
 ;                                               == L and its whole list are freed here</code></pre>
 <h3>Owners</h3>
 <ul>
@@ -594,14 +594,14 @@ Main :
 <li>Every use checks a generation stored with the object: when the object was freed, its block reused for another object, or the variable's routine returned, the Link never reaches it. <code>Alive(L)</code> asks; using it stops the program with <code>Inox runtime error: use of a freed object or an empty Link</code>.</li>
 <li><code>Same(A, B)</code> asks whether two pointers reach one object; <code>=</code> on pointers is an error; to compare what they reach, compare <code>Value(A) = Value(B)</code> (for numbers, strings and other comparable values) or the fields.</li>
 </ul>
-<pre><code>Vazar Link&lt;Integer&gt; :
+<pre><code>Leak Link&lt;Integer&gt; :
     X Integer := 42
     Return Link(X)            == compiles, as in Pascal
 ;
 
 Main :
-    H := Vazar
-    PutLn(Alive(H))           == false: X ended with Vazar
+    H := Leak
+    PutLn(Alive(H))           == false: X ended with Leak
     PutLn(Value(H))           == stops the program; it never reads the old stack
 ;</code></pre>
 <p>Owners also work with contracts: a <code>pre</code> reads an owner the routine takes, and a <code>pos</code> reads what it held through <code>old P.Field</code>. A Link to a parameter is not supported yet. <code>examples/pointers-tree.inox</code> (a tree of folders whose children are owned and whose parent is a Link) and <code>examples/pointers-navigator.inox</code> (a navigator over an array of records) are complete programs.</p>
@@ -669,8 +669,8 @@ for I in 1..N + 1 step 3
 <h3>Conditional expression</h3>
 <p><code>IIf(Condition, A, B)</code> selects a value. Each branch is an expression, never a block, and only the chosen branch is evaluated (unlike the IIf of Visual Basic, which evaluates both). Chains nest:</p>
 <pre><code>Max := IIf(A &gt; B, A, B)
-Taxa := IIf(Idade &gt;= 60, 0.5, 1.0)
-Faixa := IIf(N &lt; 10, &quot;baixa&quot;, IIf(N &lt; 100, &quot;média&quot;, &quot;alta&quot;))</code></pre>
+Fee := IIf(Age &gt;= 60, 0.5, 1.0)
+Band := IIf(N &lt; 10, &quot;low&quot;, IIf(N &lt; 100, &quot;medium&quot;, &quot;high&quot;))</code></pre>
 <p>The <code>if</code> statement keeps its own form, without <code>then</code>.</p>
 <h3>case</h3>
 <p><code>case</code> follows Ada/SPARK, adapted to Inox. Alternatives are separated by <code>|</code>. A choice is a constant value or a constant range <code>A..B</code>. Choices may not overlap, and there is no fall-through:</p>
@@ -686,17 +686,17 @@ Faixa := IIf(N &lt; 10, &quot;baixa&quot;, IIf(N &lt; 100, &quot;média&quot;, &
 <p>The last arm, <code>else</code>, is required unless the choices cover every value of the selector type (it was spelled <code>otherwise</code> until canon revision 3.74). A <code>Bool</code> case that handles <code>True</code> and <code>False</code> needs no <code>else</code>. A case on an <code>Integer</code> code that handles only 404 is rejected. The selector must be discrete: an integer type, <code>Char</code>, <code>Bool</code>, an enum or a range.</p>
 <h3>with</h3>
 <p><code>with Target</code> opens a block where <code>.Member</code> is a member of the target, as in Visual Basic; names without the dot follow the normal scope. Assignment is <code>:=</code>, as everywhere (<code>=</code> compares).</p>
-<pre><code>with Cliente
-    .Nome := &quot;Coho Vineyard&quot;
-    .Cidade := &quot;Redmond&quot;
+<pre><code>with Customer
+    .Name := &quot;Coho Vineyard&quot;
+    .City := &quot;Redmond&quot;
 ;
 
-with Cliente.Comentarios
-    .Add(&quot;Primeiro comentário.&quot;)
-    Pausa
-    .Add(&quot;Segundo comentário.&quot;)
+with Customer.Comments
+    .Add(&quot;First comment.&quot;)
+    Pause
+    .Add(&quot;Second comment.&quot;)
 ;</code></pre>
-<p>The target is any variable or value: a field, an array element, a <code>ref mut</code> parameter, State, or an object reached through <code>Own</code> or <code>Link</code>. It is evaluated once, on entry: in <code>with A[I]</code> the element stays the same even if <code>I</code> changes in the body, and a call in the index runs once. Every <code>.Member</code> acts on that storage, never on a copy. Through a pointer, every <code>.Member</code> checks that the object still exists, so a <code>Free</code> inside the body stops the program at the next use. A type is not a target: to build a value, write <code>C := TCliente(Nome := &quot;...&quot;)</code>.</p>
+<p>The target is any variable or value: a field, an array element, a <code>ref mut</code> parameter, State, or an object reached through <code>Own</code> or <code>Link</code>. It is evaluated once, on entry: in <code>with A[I]</code> the element stays the same even if <code>I</code> changes in the body, and a call in the index runs once. Every <code>.Member</code> acts on that storage, never on a copy. Through a pointer, every <code>.Member</code> checks that the object still exists, so a <code>Free</code> inside the body stops the program at the next use. A type is not a target: to build a value, write <code>C := TCustomer(Name := &quot;...&quot;)</code>.</p>
 <h3>Exceptions</h3>
 <p>Inox provides structured exception handling with <code>try</code>, <code>except</code>, typed <code>On</code> handlers, optional <code>Else</code>, <code>ensure</code>, <code>Raise</code>, and bounded <code>Retry(N)</code>. Typed handlers are tested in source order; <code>Else</code> is the catch-all after them. A plain <code>except</code> is itself a catch-all.</p>
 <pre><code>try
@@ -725,14 +725,14 @@ ensure
 <section id="output"><h2>Std.IO and variadic output</h2>
 <p><code>Put</code> and <code>PutLn</code> accept one or more arguments. Arguments are emitted sequentially; this is not string concatenation and does not allocate a combined intermediate string. <code>PutLn</code> appends exactly one newline after the final argument.</p>
 <pre><code>Put(&quot;J=&quot;, J)
-PutLn(&quot;Ciclo numero &quot;, J)
+PutLn(&quot;Cycle number &quot;, J)
 PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
 <p><code>GetLn(S)</code> with a String variable reads the rest of the input line into <code>S</code>, without the line break (a carriage return before it is dropped too). At the end of the input <code>S</code> is <code>""</code>. The line must be valid UTF-8; otherwise the program stops with "invalid UTF-8 input". <code>Get</code> reads Integer values only.</p>
 <pre><code>Main :
     Name String := &quot;&quot;
-    Put(&quot;Nome: &quot;)
+    Put(&quot;Name: &quot;)
     GetLn(Name)
-    PutLn(&quot;Olá, &quot;, Name)
+    PutLn(&quot;Hello, &quot;, Name)
 ;</code></pre>
 <p>The current backend lowers these facilities through the runtime/compiler path used by the LLVM smoke-test backend. This is not the final language ABI.</p>
 </section>

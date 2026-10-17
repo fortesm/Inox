@@ -1,6 +1,6 @@
-Cliente Marcelo (limite 5000)
-  contato: marcelo@exemplo.com / 85 99999-0000
-  auditoria: 2 alteração(ões), última por caixa2
-Fornecedor Inox Ltda
-  contato: vendas@inox.dev / 
-  auditoria: 1 alteração(ões), última por compras
+Customer Marcelo (limit 5000)
+  contact: marcelo@example.com / +55 85 99999-0000
+  audit: 2 change(s), last by teller2
+Supplier Inox Ltd
+  contact: sales@inox.dev / 
+  audit: 1 change(s), last by purchasing

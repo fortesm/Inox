@@ -1,15 +1,15 @@
-A árvore (6 pastas):
-raiz
-  fotos
-    viagem
-      praia
+The tree (6 folders):
+root
+  photos
+    trip
+      beach
   docs
-    contratos
-O caminho de praia: raiz/fotos/viagem/praia
-O caminho de contratos: raiz/docs/contratos
-O pai de praia: viagem, o avô: fotos
-Depois de remover fotos (3 pastas):
-raiz
+    contracts
+The path of beach: root/photos/trip/beach
+The path of contracts: root/docs/contracts
+The parent of beach: trip, the grandparent: photos
+After removing photos (3 folders):
+root
   docs
-    contratos
-fotos viva: false, praia viva: false, docs viva: true
+    contracts
+photos alive: false, beach alive: false, docs alive: true

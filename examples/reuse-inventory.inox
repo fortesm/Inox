@@ -7,75 +7,75 @@
 
 == Method reuse (CANON-9), example 3: three levels, arrays and methods of
 == built-in types.
-==   TPreco          the price and its discounts
-==   TItem (TPreco)  a priced thing with a stock count
-==   TProduto (TItem) a product with a name; it gets TItem's and TPreco's
-==                    methods without forwarding them
-== Integer.Porcento and String.Rotulo are methods of built-in types: they
+==   TPrice            the price and its discounts
+==   TItem (TPrice)    a priced thing with a stock count
+==   TProduct (TItem)  a product with a name; it gets TItem's and TPrice's
+==                     methods without forwarding them
+== Integer.Percent and String.Label are methods of built-in types: they
 == work on any Integer or String, fields included.
 Type
-    TPreco Struct
-        FCentavos Integer := 0
+    TPrice Struct
+        FCents Integer := 0
     ;
-    TItem Struct (TPreco)
-        FQuantidade Integer := 0
+    TItem Struct (TPrice)
+        FQuantity Integer := 0
     ;
-    TProduto Struct (TItem)
-        FNome String := ""
+    TProduct Struct (TItem)
+        FName String := ""
     ;
 
-Integer.Porcento(Self, P Integer) Integer :
+Integer.Percent(Self, P Integer) Integer :
     Return Self * P div 100
 ;
 
-String.Rotulo(Self mut, Padrao String) :
+String.Label(Self mut, Default String) :
     if Self = ""
-        Self := Padrao
+        Self := Default
     ;
 ;
 
-TPreco.Descontar(Self mut, P Integer) :
-    Self.FCentavos -= Self.FCentavos.Porcento(P)
+TPrice.Discount(Self mut, P Integer) :
+    Self.FCents -= Self.FCents.Percent(P)
 ;
 
-TItem.Entrada(Self mut, N Integer) :
-    Self.FQuantidade += N
+TItem.Receive(Self mut, N Integer) :
+    Self.FQuantity += N
 ;
 
-TItem.Saida(Self mut, N Integer) Bool :
-    if N > Self.FQuantidade
+TItem.Ship(Self mut, N Integer) Bool :
+    if N > Self.FQuantity
         Return false
     ;
-    Self.FQuantidade -= N
+    Self.FQuantity -= N
     Return true
 ;
 
-TItem.ValorEmEstoque(Self) Integer :
-    Return Self.FCentavos * Self.FQuantidade
+TItem.StockValue(Self) Integer :
+    Return Self.FCents * Self.FQuantity
 ;
 
 Main :
-    Estoque Array[1..3] TProduto
-    Estoque[1] := TProduto(FNome := "Parafuso")
-    Estoque[2] := TProduto(FNome := "Porca")
-    Estoque[1].FCentavos := 50
-    Estoque[2].FCentavos := 30
-    Estoque[3].FCentavos := 1000
-    Estoque[3].FNome.Rotulo("(sem nome)")    == String helper on a field
-    Estoque[1].FNome.Rotulo("(sem nome)")    == already has a name: unchanged
+    Stock Array[1..3] TProduct
+    Stock[1] := TProduct(FName := "Screw")
+    Stock[2] := TProduct(FName := "Nut")
+    Stock[1].FCents := 50
+    Stock[2].FCents := 30
+    Stock[3].FCents := 1000
+    Stock[3].FName.Label("(no name)")        == String helper on a field
+    Stock[1].FName.Label("(no name)")        == already has a name: unchanged
 
     for I in 1..3
-        Estoque[I].Entrada(100)              == TItem.Entrada, one level down
+        Stock[I].Receive(100)                == TItem.Receive, one level down
     ;
-    Estoque[3].Descontar(10)                 == TPreco.Descontar, two levels down
-    PutLn("venda de 30 porcas: ", Estoque[2].Saida(30))
-    PutLn("venda de 500 parafusos: ", Estoque[1].Saida(500))
+    Stock[3].Discount(10)                    == TPrice.Discount, two levels down
+    PutLn("sale of 30 nuts: ", Stock[2].Ship(30))
+    PutLn("sale of 500 screws: ", Stock[1].Ship(500))
 
     Total Integer := 0
     for I in 1..3
-        PutLn(Estoque[I].FNome, ": ", Estoque[I].FQuantidade, " x ", Estoque[I].FCentavos,
-              " centavos = ", Estoque[I].ValorEmEstoque)
-        Total += Estoque[I].ValorEmEstoque
+        PutLn(Stock[I].FName, ": ", Stock[I].FQuantity, " x ", Stock[I].FCents,
+              " cents = ", Stock[I].StockValue)
+        Total += Stock[I].StockValue
     ;
-    PutLn("total em estoque: ", Total, " centavos; 15% de imposto: ", Total.Porcento(15))
+    PutLn("total in stock: ", Total, " cents; 15% tax: ", Total.Percent(15))
 ;

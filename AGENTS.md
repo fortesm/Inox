@@ -147,8 +147,8 @@ module that owns a concern instead of searching the whole emitter.
     functions (visible only with `Use`), the never-copied rule;
   - `SemanticReuse.cpp` — method reuse (`Struct (TPart)`, `Override`): the
     members a struct offers through its parts, the declaration errors, and
-    the one AST rewrite of the analyzer (`A.FNome` becomes
-    `A.TPessoa.FNome`, so codegen sees ordinary field access);
+    the one AST rewrite of the analyzer (`S.FName` becomes
+    `S.TPerson.FName`, so codegen sees ordinary field access);
   - `SemanticContracts.cpp` — design by contract (CANON-24): the
     `__check`/`__pure` intrinsics, read-only contracts, and the places where
     a struct invariant is checked;

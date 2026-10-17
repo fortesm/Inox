@@ -11,75 +11,75 @@
 == leak. Removing a folder frees its whole subtree, and every Link into it
 == sees that (Alive is false) instead of reading freed memory.
 Type
-    TPasta Struct
-        FNome String := ""
-        FPai Link<TPasta>                       == the parent: points, does not own
-        FPrimeiroFilho Option<Own<TPasta>>      == owns its first child
-        FProximoIrmao Option<Own<TPasta>>       == each child owns the next one
+    TFolder Struct
+        FName String := ""
+        FParent Link<TFolder>                   == the parent: points, does not own
+        FFirstChild Option<Own<TFolder>>        == owns its first child
+        FNextSibling Option<Own<TFolder>>       == each child owns the next one
     ;
 
-== Adds a child at the front of Pai's children and returns a Link to it.
-Criar(Pai Link<TPasta>, Nome String) Link<TPasta> :
-    Nova := New(TPasta(FNome := Nome, FPai := Pai))
-    Nova.FProximoIrmao := Move(Pai.FPrimeiroFilho)
-    Pai.FPrimeiroFilho := Move(Nova)
-    Return Link(Pai.FPrimeiroFilho)
+== Adds a child at the front of Parent's children and returns a Link to it.
+AddFolder(Parent Link<TFolder>, Name String) Link<TFolder> :
+    Folder := New(TFolder(FName := Name, FParent := Parent))
+    Folder.FNextSibling := Move(Parent.FFirstChild)
+    Parent.FFirstChild := Move(Folder)
+    Return Link(Parent.FFirstChild)
 ;
 
 == The path from the root, printed by walking the parent Links.
-MostrarCaminho(Pasta Link<TPasta>) :
-    if Alive(Pasta.FPai)
-        MostrarCaminho(Pasta.FPai)
+ShowPath(Folder Link<TFolder>) :
+    if Alive(Folder.FParent)
+        ShowPath(Folder.FParent)
         Put("/")
     ;
-    Put(Pasta.FNome)
+    Put(Folder.FName)
 ;
 
-Mostrar(Pasta Link<TPasta>, Nivel Integer) :
-    Recuo := Nivel
-    while Recuo > 0
+Show(Folder Link<TFolder>, Level Integer) :
+    Indent := Level
+    while Indent > 0
         Put("  ")
-        Recuo -= 1
+        Indent -= 1
     ;
-    PutLn(Pasta.FNome)
-    Filho := Link(Pasta.FPrimeiroFilho)
-    while Alive(Filho)
-        Mostrar(Filho, Nivel + 1)
-        Filho := Link(Filho.FProximoIrmao)
+    PutLn(Folder.FName)
+    Child := Link(Folder.FFirstChild)
+    while Alive(Child)
+        Show(Child, Level + 1)
+        Child := Link(Child.FNextSibling)
     ;
 ;
 
-Contar(Pasta Link<TPasta>) Integer :
+CountFolders(Folder Link<TFolder>) Integer :
     Total := 1
-    Filho := Link(Pasta.FPrimeiroFilho)
-    while Alive(Filho)
-        Total += Contar(Filho)
-        Filho := Link(Filho.FProximoIrmao)
+    Child := Link(Folder.FFirstChild)
+    while Alive(Child)
+        Total += CountFolders(Child)
+        Child := Link(Child.FNextSibling)
     ;
     Return Total
 ;
 
 Main :
-    Raiz := New(TPasta(FNome := "raiz"))
-    R := Link(Raiz)
-    Docs := Criar(R, "docs")
-    Fotos := Criar(R, "fotos")
-    Viagem := Criar(Fotos, "viagem")
-    Praia := Criar(Viagem, "praia")
-    Contratos := Criar(Docs, "contratos")
-    PutLn("A árvore (", Contar(R), " pastas):")
-    Mostrar(R, 0)
-    Put("O caminho de praia: ")
-    MostrarCaminho(Praia)
+    Root := New(TFolder(FName := "root"))
+    R := Link(Root)
+    Docs := AddFolder(R, "docs")
+    Photos := AddFolder(R, "photos")
+    Trip := AddFolder(Photos, "trip")
+    Beach := AddFolder(Trip, "beach")
+    Contracts := AddFolder(Docs, "contracts")
+    PutLn("The tree (", CountFolders(R), " folders):")
+    Show(R, 0)
+    Put("The path of beach: ")
+    ShowPath(Beach)
     PutLn("")
-    Put("O caminho de contratos: ")
-    MostrarCaminho(Contratos)
+    Put("The path of contracts: ")
+    ShowPath(Contracts)
     PutLn("")
-    PutLn("O pai de praia: ", Praia.FPai.FNome, ", o avô: ", Praia.FPai.FPai.FNome)
+    PutLn("The parent of beach: ", Beach.FParent.FName, ", the grandparent: ", Beach.FParent.FParent.FName)
 
-    == Removing "fotos" (the first child of the root) frees its subtree.
-    R.FPrimeiroFilho := Move(Fotos.FProximoIrmao)
-    PutLn("Depois de remover fotos (", Contar(R), " pastas):")
-    Mostrar(R, 0)
-    PutLn("fotos viva: ", Alive(Fotos), ", praia viva: ", Alive(Praia), ", docs viva: ", Alive(Docs))
+    == Removing "photos" (the first child of the root) frees its subtree.
+    R.FFirstChild := Move(Photos.FNextSibling)
+    PutLn("After removing photos (", CountFolders(R), " folders):")
+    Show(R, 0)
+    PutLn("photos alive: ", Alive(Photos), ", beach alive: ", Alive(Beach), ", docs alive: ", Alive(Docs))
 ;

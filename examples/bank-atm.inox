@@ -8,73 +8,73 @@
 == A bank teller machine on the terminal, with a numbered menu: balance,
 == deposit, withdrawal, transfer to another account, cancellation of the
 == last operation and the statement. Every change is saved in
-== inox-banco.txt (the accounts) and inox-banco-extrato.txt (the
+== inox-bank.txt (the accounts) and inox-bank-statement.txt (the
 == statement, readable by people), so the next run continues from there.
 ==
 == Composition with method reuse (CANON-9):
-==   TSaldo    knows how to deposit and withdraw
-==   TTitular  knows who owns the account
-==   TConta    Struct (TTitular, TSaldo): an account reuses both, and
-==             overrides Apresentar to add the balance
-==   TCaixa    the machine: two accounts and the last operation
+==   TBalance   knows how to deposit and withdraw
+==   THolder    knows who owns the account
+==   TAccount   Struct (THolder, TBalance): an account reuses both, and
+==              overrides Present to add the balance
+==   TTeller    the machine: two accounts and the last operation
 ==
 == Inox does not convert text to numbers yet (planned with Std.Strings), so
-== inox-banco.txt keeps each number one digit per line, closed by "-".
+== inox-bank.txt keeps each number one digit per line, closed by "-".
 == Typing something that is not a number at a prompt stops the program
 == (Get reads Integer values).
 Use Std.IOUtils
 
-Const Arquivo := "inox-banco.txt"
-Const Extrato := "inox-banco-extrato.txt"
-Const Cabecalho := "Inox Banco: um digito por linha; '-' fecha cada numero"
+Const AccountsFile := "inox-bank.txt"
+Const StatementFile := "inox-bank-statement.txt"
+Const Header := "Inox Bank: one digit per line; '-' closes each number"
 
 Type
-    TSaldo Struct
-        FSaldo Integer := 0
+    TBalance Struct
+        FBalance Integer := 0
     ;
-    TTitular Struct
-        FNumero Integer := 0
-        FNome String := ""
+    THolder Struct
+        FNumber Integer := 0
+        FName String := ""
     ;
-    TConta Struct (TTitular, TSaldo)
-        FAgencia Integer := 1
+    TAccount Struct (THolder, TBalance)
+        FBranch Integer := 1
     ;
-    TCaixa Struct
-        FOrigem TConta
-        FDestino TConta
-        FUltimaOperacao Integer := 0      == 0 nenhuma, 1 depósito, 2 saque, 3 envio
-        FUltimoValor Integer := 0
+    TTeller Struct
+        FSource TAccount
+        FTarget TAccount
+        FLastOperation Integer := 0       == 0 none, 1 deposit, 2 withdrawal, 3 transfer
+        FLastAmount Integer := 0
     ;
 
-== ---------- TSaldo: money in and out ----------
+== ---------- TBalance: money in and out ----------
 
-TSaldo.Depositar(Self mut, Valor Integer) :
-    Self.FSaldo += Valor
+TBalance.Deposit(Self mut, Amount Integer) :
+    Self.FBalance += Amount
 ;
 
-TSaldo.Sacar(Self mut, Valor Integer) Bool :
-    if Valor > Self.FSaldo
+TBalance.Withdraw(Self mut, Amount Integer) Bool :
+    if Amount > Self.FBalance
         Return false
     ;
-    Self.FSaldo -= Valor
+    Self.FBalance -= Amount
     Return true
 ;
 
-== ---------- TTitular and TConta ----------
+== ---------- THolder and TAccount ----------
 
-TTitular.Apresentar(Self) :
-    PutLn("Conta ", Self.FNumero, " - ", Self.FNome)
+THolder.Present(Self) :
+    PutLn("Account ", Self.FNumber, " - ", Self.FName)
 ;
 
-TConta.Apresentar(Self) Override :
-    Put("Agência ", Self.FAgencia, ", ")
-    Self.TTitular.Apresentar
-    PutLn("  saldo: R$ ", Self.FSaldo)
+TAccount.Present(Self) Override :
+    Put("Branch ", Self.FBranch, ", ")
+    Self.THolder.Present
+    PutLn("  balance: $ ", Self.FBalance)
 ;
 
 == ---------- Numbers in the text file ----------
 
-SalvarNumero(ref mut F File, N Integer) :
+SaveNumber(ref mut F File, N Integer) :
     D := 1
     while D <= N div 10
         D *= 10
@@ -87,7 +87,7 @@ SalvarNumero(ref mut F File, N Integer) :
     WriteLn(F, "-")
 ;
 
-Digito(S String) Integer :
+Digit(S String) Integer :
     if S = "0"
         Return 0
     elif S = "1"
@@ -112,224 +112,224 @@ Digito(S String) Integer :
     Raise IOError                         == not a digit: the file is damaged
 ;
 
-LerNumero(ref mut F File) Integer :
+ReadNumber(ref mut F File) Integer :
     N Integer := 0
-    Linha := ReadLn(F)
-    while Linha # "-"
-        N := N * 10 + Digito(Linha)
-        Linha := ReadLn(F)
+    Line := ReadLn(F)
+    while Line # "-"
+        N := N * 10 + Digit(Line)
+        Line := ReadLn(F)
     ;
     Return N
 ;
 
-Registrar(Operacao String, Valor Integer, Saldo Integer) :
+Record(Operation String, Amount Integer, Balance Integer) :
     try
-        G := OpenAppend(Extrato)
-        WriteLn(G, Operacao, " R$ ", Valor, " -> saldo R$ ", Saldo)
+        G := OpenAppend(StatementFile)
+        WriteLn(G, Operation, " $ ", Amount, " -> balance $ ", Balance)
     except
         On IOError
-            PutLn("Aviso: o extrato não pôde ser gravado.")
+            PutLn("Warning: the statement could not be saved.")
         ;
     ;
 ;
 
-== ---------- TCaixa: the machine ----------
+== ---------- TTeller: the machine ----------
 
-TCaixa.Iniciar(Self mut) :
-    Self.FOrigem := TConta(TTitular := TTitular(FNumero := 1, FNome := "Marcelo"),
-                           TSaldo := TSaldo(FSaldo := 1000))
-    Self.FDestino := TConta(TTitular := TTitular(FNumero := 2, FNome := "Ana"),
-                            TSaldo := TSaldo(FSaldo := 500))
-    Self.FUltimaOperacao := 0
-    Self.FUltimoValor := 0
+TTeller.Start(Self mut) :
+    Self.FSource := TAccount(THolder := THolder(FNumber := 1, FName := "Marcelo"),
+                             TBalance := TBalance(FBalance := 1000))
+    Self.FTarget := TAccount(THolder := THolder(FNumber := 2, FName := "Ann"),
+                             TBalance := TBalance(FBalance := 500))
+    Self.FLastOperation := 0
+    Self.FLastAmount := 0
 ;
 
-TCaixa.Salvar(Self) :
+TTeller.Save(Self) :
     try
-        F := Create(Arquivo)
-        WriteLn(F, Cabecalho)
-        SalvarNumero(F, Self.FOrigem.FSaldo)
-        SalvarNumero(F, Self.FDestino.FSaldo)
-        SalvarNumero(F, Self.FUltimaOperacao)
-        SalvarNumero(F, Self.FUltimoValor)
+        F := Create(AccountsFile)
+        WriteLn(F, Header)
+        SaveNumber(F, Self.FSource.FBalance)
+        SaveNumber(F, Self.FTarget.FBalance)
+        SaveNumber(F, Self.FLastOperation)
+        SaveNumber(F, Self.FLastAmount)
     except
         On IOError
-            PutLn("Aviso: as contas não puderam ser gravadas.")
+            PutLn("Warning: the accounts could not be saved.")
         ;
     ;
 ;
 
-TCaixa.Reiniciar(Self mut) :
-    Self.Iniciar
-    Self.Salvar
+TTeller.Reset(Self mut) :
+    Self.Start
+    Self.Save
     try
-        G := Create(Extrato)
-        WriteLn(G, "Contas reiniciadas: conta 1 R$ 1000, conta 2 R$ 500")
+        G := Create(StatementFile)
+        WriteLn(G, "Accounts reset: account 1 $ 1000, account 2 $ 500")
     except
         On IOError
-            PutLn("Aviso: o extrato não pôde ser gravado.")
+            PutLn("Warning: the statement could not be saved.")
         ;
     ;
 ;
 
-TCaixa.Carregar(Self mut) :
-    Self.Iniciar
-    if not Exists(Arquivo)
-        Self.Reiniciar                    == first run: the accounts are created
+TTeller.Load(Self mut) :
+    Self.Start
+    if not Exists(AccountsFile)
+        Self.Reset                        == first run: the accounts are created
         Exit
     ;
     try
-        F := OpenRead(Arquivo)
-        if ReadLn(F) # Cabecalho
+        F := OpenRead(AccountsFile)
+        if ReadLn(F) # Header
             Raise IOError
         ;
-        Self.FOrigem.FSaldo := LerNumero(F)
-        Self.FDestino.FSaldo := LerNumero(F)
-        Self.FUltimaOperacao := LerNumero(F)
-        Self.FUltimoValor := LerNumero(F)
+        Self.FSource.FBalance := ReadNumber(F)
+        Self.FTarget.FBalance := ReadNumber(F)
+        Self.FLastOperation := ReadNumber(F)
+        Self.FLastAmount := ReadNumber(F)
     except
         On IOError
-            PutLn("O arquivo ", Arquivo, " está danificado: contas reiniciadas.")
-            Self.Reiniciar
+            PutLn("The file ", AccountsFile, " is damaged: accounts reset.")
+            Self.Reset
         ;
     ;
 ;
 
-TCaixa.Lembrar(Self mut, Operacao Integer, Valor Integer) :
-    Self.FUltimaOperacao := Operacao
-    Self.FUltimoValor := Valor
-    Self.Salvar
+TTeller.Remember(Self mut, Operation Integer, Amount Integer) :
+    Self.FLastOperation := Operation
+    Self.FLastAmount := Amount
+    Self.Save
 ;
 
-TCaixa.Depositar(Self mut, Valor Integer) :
-    Self.FOrigem.Depositar(Valor)                     == TSaldo.Depositar, through TConta
-    Registrar("Depósito", Valor, Self.FOrigem.FSaldo)
-    Self.Lembrar(1, Valor)
-    PutLn("Depósito feito. Saldo: R$ ", Self.FOrigem.FSaldo)
+TTeller.Deposit(Self mut, Amount Integer) :
+    Self.FSource.Deposit(Amount)                      == TBalance.Deposit, through TAccount
+    Record("Deposit", Amount, Self.FSource.FBalance)
+    Self.Remember(1, Amount)
+    PutLn("Deposit done. Balance: $ ", Self.FSource.FBalance)
 ;
 
-TCaixa.Sacar(Self mut, Valor Integer) :
-    if Self.FOrigem.Sacar(Valor)
-        Registrar("Saque", Valor, Self.FOrigem.FSaldo)
-        Self.Lembrar(2, Valor)
-        PutLn("Retire as notas. Saldo: R$ ", Self.FOrigem.FSaldo)
+TTeller.Withdraw(Self mut, Amount Integer) :
+    if Self.FSource.Withdraw(Amount)
+        Record("Withdrawal", Amount, Self.FSource.FBalance)
+        Self.Remember(2, Amount)
+        PutLn("Take your cash. Balance: $ ", Self.FSource.FBalance)
     else
-        PutLn("Saldo insuficiente: R$ ", Self.FOrigem.FSaldo)
+        PutLn("Insufficient funds: $ ", Self.FSource.FBalance)
     ;
 ;
 
-TCaixa.Enviar(Self mut, Valor Integer) :
-    if Self.FOrigem.Sacar(Valor)
-        Self.FDestino.Depositar(Valor)
-        Registrar("Envio para a conta 2", Valor, Self.FOrigem.FSaldo)
-        Self.Lembrar(3, Valor)
-        PutLn("Enviado para ", Self.FDestino.FNome, ". Saldo: R$ ", Self.FOrigem.FSaldo)
+TTeller.Transfer(Self mut, Amount Integer) :
+    if Self.FSource.Withdraw(Amount)
+        Self.FTarget.Deposit(Amount)
+        Record("Transfer to account 2", Amount, Self.FSource.FBalance)
+        Self.Remember(3, Amount)
+        PutLn("Sent to ", Self.FTarget.FName, ". Balance: $ ", Self.FSource.FBalance)
     else
-        PutLn("Saldo insuficiente: R$ ", Self.FOrigem.FSaldo)
+        PutLn("Insufficient funds: $ ", Self.FSource.FBalance)
     ;
 ;
 
 == Cancels the last operation by doing its opposite.
-TCaixa.Cancelar(Self mut) :
-    Valor := Self.FUltimoValor
-    Feito := false
-    if Self.FUltimaOperacao = 1
-        Feito := Self.FOrigem.Sacar(Valor)
-    elif Self.FUltimaOperacao = 2
-        Self.FOrigem.Depositar(Valor)
-        Feito := true
-    elif Self.FUltimaOperacao = 3
-        if Self.FDestino.Sacar(Valor)
-            Self.FOrigem.Depositar(Valor)
-            Feito := true
+TTeller.Cancel(Self mut) :
+    Amount := Self.FLastAmount
+    Done := false
+    if Self.FLastOperation = 1
+        Done := Self.FSource.Withdraw(Amount)
+    elif Self.FLastOperation = 2
+        Self.FSource.Deposit(Amount)
+        Done := true
+    elif Self.FLastOperation = 3
+        if Self.FTarget.Withdraw(Amount)
+            Self.FSource.Deposit(Amount)
+            Done := true
         ;
     else
-        PutLn("Não há operação para cancelar.")
+        PutLn("There is no operation to cancel.")
         Exit
     ;
-    if Feito
-        Registrar("Cancelamento", Valor, Self.FOrigem.FSaldo)
-        Self.Lembrar(0, 0)
-        PutLn("Operação cancelada. Saldo: R$ ", Self.FOrigem.FSaldo)
+    if Done
+        Record("Cancellation", Amount, Self.FSource.FBalance)
+        Self.Remember(0, 0)
+        PutLn("Operation cancelled. Balance: $ ", Self.FSource.FBalance)
     else
-        PutLn("Não foi possível cancelar: o valor já foi usado.")
+        PutLn("Could not cancel: the money was already used.")
     ;
 ;
 
-MostrarExtrato :
+ShowStatement :
     try
-        F := OpenRead(Extrato)
-        Numero Integer := 0
+        F := OpenRead(StatementFile)
+        Number Integer := 0
         while not Eof(F)
-            Linha := ReadLn(F)
-            Numero += 1
-            PutLn(Numero, ". ", Linha)
+            Line := ReadLn(F)
+            Number += 1
+            PutLn(Number, ". ", Line)
         ;
     except
         On FileNotFound
-            PutLn("Ainda não há extrato.")
+            PutLn("There is no statement yet.")
         ;
     ;
 ;
 
 Menu :
     PutLn("")
-    PutLn("===== Caixa Inox =====")
-    PutLn("1 - Saldo")
-    PutLn("2 - Depósito")
-    PutLn("3 - Saque")
-    PutLn("4 - Envio para a conta 2")
-    PutLn("5 - Cancelar a última operação")
-    PutLn("6 - Extrato")
-    PutLn("7 - Recarregar do arquivo")
-    PutLn("9 - Reiniciar as contas")
-    PutLn("0 - Sair")
-    Put("Opção: ")
+    PutLn("===== Inox Teller =====")
+    PutLn("1 - Balance")
+    PutLn("2 - Deposit")
+    PutLn("3 - Withdrawal")
+    PutLn("4 - Transfer to account 2")
+    PutLn("5 - Cancel the last operation")
+    PutLn("6 - Statement")
+    PutLn("7 - Reload from the file")
+    PutLn("9 - Reset the accounts")
+    PutLn("0 - Quit")
+    Put("Option: ")
 ;
 
-LerValor Integer :
-    Valor Integer := 0
-    Put("Valor: R$ ")
-    Get(Valor)
-    Return Valor
+ReadAmount Integer :
+    Amount Integer := 0
+    Put("Amount: $ ")
+    Get(Amount)
+    Return Amount
 ;
 
 Main :
-    Caixa TCaixa
-    Caixa.Carregar
-    PutLn("Caixa Inox: contas em ", Arquivo, ", extrato em ", Extrato)
-    Opcao Integer := -1
-    while Opcao # 0
+    Teller TTeller
+    Teller.Load
+    PutLn("Inox Teller: accounts in ", AccountsFile, ", statement in ", StatementFile)
+    Option Integer := -1
+    while Option # 0
         Menu
-        Get(Opcao)
-        if Opcao = 1
-            Caixa.FOrigem.Apresentar                    == TConta.Apresentar (Override)
-        elif Opcao = 2 or Opcao = 3 or Opcao = 4
-            Valor := LerValor
-            if Valor <= 0
-                PutLn("Valor inválido.")
-            elif Opcao = 2
-                Caixa.Depositar(Valor)
-            elif Opcao = 3
-                Caixa.Sacar(Valor)
+        Get(Option)
+        if Option = 1
+            Teller.FSource.Present                      == TAccount.Present (Override)
+        elif Option = 2 or Option = 3 or Option = 4
+            Amount := ReadAmount
+            if Amount <= 0
+                PutLn("Invalid amount.")
+            elif Option = 2
+                Teller.Deposit(Amount)
+            elif Option = 3
+                Teller.Withdraw(Amount)
             else
-                Caixa.Enviar(Valor)
+                Teller.Transfer(Amount)
             ;
-        elif Opcao = 5
-            Caixa.Cancelar
-        elif Opcao = 6
-            MostrarExtrato
-        elif Opcao = 7
-            Caixa.Carregar
-            PutLn("Contas lidas de ", Arquivo, ".")
-            Caixa.FOrigem.Apresentar
-            Caixa.FDestino.Apresentar
-        elif Opcao = 9
-            Caixa.Reiniciar
-            PutLn("Contas reiniciadas.")
-        elif Opcao # 0
-            PutLn("Opção inexistente.")
+        elif Option = 5
+            Teller.Cancel
+        elif Option = 6
+            ShowStatement
+        elif Option = 7
+            Teller.Load
+            PutLn("Accounts read from ", AccountsFile, ".")
+            Teller.FSource.Present
+            Teller.FTarget.Present
+        elif Option = 9
+            Teller.Reset
+            PutLn("Accounts reset.")
+        elif Option # 0
+            PutLn("No such option.")
         ;
     ;
-    PutLn("Obrigado por usar o Caixa Inox.")
+    PutLn("Thank you for using the Inox Teller.")
 ;
