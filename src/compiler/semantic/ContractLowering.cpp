@@ -479,10 +479,16 @@ private:
             statements.push_back(std::make_unique<ast::ReturnStatement>(identifier("__result")));
         }
 
+        // A generic routine's wrapper and body are generic too: each instance
+        // of the wrapper calls the instance of the body for the same types.
         added_.push_back(std::make_unique<ast::FunctionDeclaration>(bodyName, function.signatureTokens(),
-                                                                    function.takeBody(), false));
+                                                                    function.takeBody(), false,
+                                                                    std::vector<ast::ContractClause>{},
+                                                                    function.typeParameters()));
         auto wrapper = std::make_unique<ast::FunctionDeclaration>(name, function.signatureTokens(),
-                                                                  std::move(statements), function.isOverride());
+                                                                  std::move(statements), function.isOverride(),
+                                                                  std::vector<ast::ContractClause>{},
+                                                                  function.typeParameters());
         // The old declaration (an empty shell now) stays alive until the pass
         // ends: `routines_` still points at it.
         retired_.push_back(std::move(program_.items()[routine.index]));
@@ -503,7 +509,7 @@ private:
             return true;
         }
         if (const auto syntax = types::readTypeSyntax(type); syntax && syntax->form == types::TypeSyntax::Form::Array) {
-            return movesOnly(syntax->argument->spelling(), seen);
+            return movesOnly(syntax->argument().spelling(), seen);
         }
         const auto info = structs_.find(lower(type));
         if (info == structs_.end() || !seen.insert(lower(type)).second) {

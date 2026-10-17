@@ -74,6 +74,34 @@ public:
         newValueInvariants_.clear();
         signatures_.clear();
         declaredTypes_.clear();
+        instances_.clear();
+        structInstances_.clear();
+        constructions_.clear();
+    }
+
+    // CANON-8 (r3.77): the copy of a generic routine for one list of types
+    // (`Max<Int64>`), made and checked by the analyzer; codegen compiles
+    // each one like a routine of the program. In the order they were made.
+    const ast::FunctionDeclaration& addInstance(std::unique_ptr<ast::FunctionDeclaration> instance)
+    {
+        instances_.push_back(std::move(instance));
+        return *instances_.back();
+    }
+    const std::vector<std::unique_ptr<ast::FunctionDeclaration>>& instances() const { return instances_; }
+
+    // The struct types made from generic structs (`TPair<String, Int64>`).
+    void addStructInstance(const types::Type* type) { structInstances_.push_back(type); }
+    const std::vector<const types::Type*>& structInstances() const { return structInstances_; }
+
+    // The struct a named construction `T(Field := Value, ...)` builds.
+    void setConstructedStruct(const ast::CallExpression& call, const types::Type* type)
+    {
+        constructions_.insert_or_assign(&call, type);
+    }
+    const types::Type* constructedStruct(const ast::CallExpression& call) const
+    {
+        const auto iterator = constructions_.find(&call);
+        return iterator != constructions_.end() ? iterator->second : nullptr;
     }
 
     // What the code generator reads instead of the written text (OpenSpec
@@ -205,6 +233,9 @@ private:
     }
 
     std::unordered_map<const ast::FunctionDeclaration*, FunctionSignature> signatures_;
+    std::vector<std::unique_ptr<ast::FunctionDeclaration>> instances_;
+    std::vector<const types::Type*> structInstances_;
+    std::unordered_map<const ast::CallExpression*, const types::Type*> constructions_;
     // Keyed by a VarStatement or a VariableDeclaration.
     std::unordered_map<const void*, const types::Type*> declaredTypes_;
     std::unordered_map<const ast::AstNode*, std::vector<InvariantCheck>> invariantBefore_;

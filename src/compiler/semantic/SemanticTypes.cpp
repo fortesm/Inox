@@ -187,9 +187,16 @@ TypeRef SemanticAnalyzer::resolveTypeSyntax(const types::TypeSyntax& syntax, std
     case types::TypeSyntax::Form::Array:
         return resolveArrayType(syntax, written);
     case types::TypeSyntax::Form::Generic:
+        if (!detail::equalsIgnoreCase(syntax.name, "Slice") && !detail::equalsIgnoreCase(syntax.name, "Own") &&
+            !detail::equalsIgnoreCase(syntax.name, "Link") && !detail::equalsIgnoreCase(syntax.name, "Option")) {
+            return resolveGenericStructType(syntax, written);  // CANON-8: TPair<String, Integer>
+        }
+        if (syntax.arguments.size() != 1) {
+            throw SemanticError(syntax.name + " takes one type argument: " + std::string(written));
+        }
         if (detail::equalsIgnoreCase(syntax.name, "Slice")) {
-            const std::string elementText = syntax.argument->spelling();
-            const TypeRef element = resolveTypeSyntax(*syntax.argument, elementText);
+            const std::string elementText = syntax.argument().spelling();
+            const TypeRef element = resolveTypeSyntax(syntax.argument(), elementText);
             if (!element->isArray() && !element->isNumeric() && !element->isBool()) {
                 throw SemanticError("slices of " + element->name() +
                                     " are not supported yet; use an integer, Float, Bool or array element");
@@ -202,6 +209,14 @@ TypeRef SemanticAnalyzer::resolveTypeSyntax(const types::TypeSyntax& syntax, std
     }
     if (const TypeRef type = types().lookup(syntax.name)) {
         return type;
+    }
+    if (const ast::TypeDeclaration* generic = genericStruct(syntax.name)) {
+        std::string list;
+        for (const std::string& parameter : generic->typeParameters) {
+            list += (list.empty() ? "" : ", ") + parameter;
+        }
+        throw SemanticError(generic->name + " is generic: write its type arguments, " + generic->name + "<" + list +
+                            "> with the types (CANON-8)");
     }
     if (detail::equalsIgnoreCase(syntax.name, "File")) {
         throw SemanticError("unknown type: File (it is declared in Std.Files: add `Use Std.Files`)");
@@ -243,7 +258,7 @@ TypeRef SemanticAnalyzer::resolveArrayType(const types::TypeSyntax& syntax, std:
     if (low > high) {
         throw SemanticError("empty array bounds: " + std::to_string(low) + ".." + std::to_string(high));
     }
-    const types::TypeSyntax& elementSyntax = *syntax.argument;
+    const types::TypeSyntax& elementSyntax = syntax.argument();
     if (elementSyntax.form == types::TypeSyntax::Form::Array) {
         return types().array(low, high, resolveArrayType(elementSyntax, elementSyntax.spelling()));
     }

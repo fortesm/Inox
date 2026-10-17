@@ -45,7 +45,8 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
     // (CANON-9). It is not an assignment, and only a struct constructor takes it.
     const bool calleeIsType =
         call.callee().kind() == ast::AstNodeKind::IdentifierExpression &&
-        types().isDeclared(static_cast<const ast::IdentifierExpression&>(call.callee()).name());
+        (types().isDeclared(static_cast<const ast::IdentifierExpression&>(call.callee()).name()) ||
+         genericStruct(static_cast<const ast::IdentifierExpression&>(call.callee()).name()) != nullptr);
     if (!calleeIsType) {
         for (const auto& argument : call.arguments()) {
             if (const ast::BinaryExpression* named = namedArgument(*argument)) {
@@ -97,6 +98,9 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
                 return types().int64Type();
             }
         }
+        if (const ast::TypeDeclaration* generic = genericStruct(callee.name())) {
+            return analyzeGenericConstruction(*generic, call);
+        }
         if (const TypeRef type = types().lookup(callee.name())) {
             const Symbol& symbol = resolveOrThrow(callee.name());
             result_.bind(callee, symbol);
@@ -130,73 +134,7 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
                 return type;
             }
 
-            // Named struct construction (CANON-9): every argument is
-            // `Field := Value`. The left side names a field, never a variable;
-            // nothing is declared or assigned.
-            std::vector<std::string> namedFields;
-            for (const auto& argument : call.arguments()) {
-                const ast::BinaryExpression* named = namedArgument(*argument);
-                if (named == nullptr) {
-                    throw SemanticError(
-                        "positional construction is not canonical (CANON-9): write " +
-                        type->name() + "(Field := Value, ...)");
-                }
-                const std::string& fieldName =
-                    static_cast<const ast::IdentifierExpression&>(named->left()).name();
-                const types::StructField* field = resolveStructField(type, fieldName);
-                if (field == nullptr) {
-                    if (const auto reused = findReusedMember(type, fieldName); reused && !reused->isMethod) {
-                        throw SemanticError(fieldName + " belongs to the reused part " + reused->path.front() +
-                                            " (CANON-9): construct the part, " + type->name() + "(" +
-                                            reused->path.front() + " := " + reused->path.front() + "(...))");
-                    }
-                    throw SemanticError("unknown field in construction: " +
-                                        type->name() + "." + fieldName);
-                }
-                for (const std::string& seen : namedFields) {
-                    if (equalsIgnoreCase(seen, fieldName)) {
-                        throw SemanticError("duplicate field in construction: " +
-                                            type->name() + "." + fieldName);
-                    }
-                }
-                namedFields.push_back(fieldName);
-                const TypeRef valueType = analyzeExpression(named->right());
-                if (!canAssignValue(field->type, valueType, named->right())) {
-                    throw SemanticError("field " + type->name() + "." + fieldName +
-                                        " expects " + types::nameOf(field->type));
-                }
-                result_.setExpressionType(*named, field->type);
-            }
-            for (const types::StructField& field : type->fields()) {
-                bool named = false;
-                for (const std::string& seen : namedFields) {
-                    named = named || equalsIgnoreCase(seen, field.name);
-                }
-                // A Link and an Option are born empty; an Own is always given.
-                const bool bornEmpty =
-                    field.type != nullptr && (field.type->isLink() || field.type->isOptionOwn());
-                const bool isStruct = field.type != nullptr && field.type->isStruct();
-                if (!named && !field.hasDefault && !isStruct && !bornEmpty) {
-                    if (field.type != nullptr && field.type->isOwn()) {
-                        throw SemanticError("construction omits the owner " + type->name() + "." + field.name +
-                                            ": give it, " + field.name + " := New(...)");
-                    }
-                    throw SemanticError(
-                        "construction omits scalar field without default (CANON-9): " +
-                        type->name() + "." + field.name);
-                }
-                if (!named) {
-                    if (const std::string owner = ownerFieldWithoutDefault(field.type); !owner.empty()) {
-                        throw SemanticError("construction omits " + type->name() + "." + field.name +
-                                            ", which holds the owner " + owner + ": give it");
-                    }
-                }
-            }
-            // CANON-24: a new value satisfies its invariant.
-            if (hasInvariant(type) && invariantChecksOn()) {
-                result_.requireNewValueInvariant(call, type);
-            }
-            return type;
+            return analyzeConstruction(call, type, nullptr);
         }
 
         // Std.Debug (debug-assert): Assert exists only with `Use Std.Debug`;
@@ -237,6 +175,9 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
             return analyzePreludeCall(callee.name(), argumentTypes);
         }
 
+        if (const ast::FunctionDeclaration* generic = genericRoutine(callee.name())) {
+            return analyzeGenericCall(*generic, callee, &call);
+        }
         if (const FunctionSignature* signature = resolveFunctionSignature(callee.name())) {
             const Symbol& symbol = resolveOrThrow(callee.name());
             result_.bind(callee, symbol);
@@ -416,9 +357,85 @@ TypeRef SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpression&
     return signature->returnType;
 }
 
+// Named struct construction (CANON-9): every argument is `Field := Value`.
+// The left side names a field, never a variable; nothing is declared or
+// assigned. `valueTypes`, when given, holds the types of the values, already
+// analyzed in order (a generic struct infers its arguments from them).
+TypeRef SemanticAnalyzer::analyzeConstruction(const ast::CallExpression& call, TypeRef type,
+                                              const std::vector<TypeRef>* valueTypes)
+{
+    std::vector<std::string> namedFields;
+    for (const auto& argument : call.arguments()) {
+        const ast::BinaryExpression* named = namedArgument(*argument);
+        if (named == nullptr) {
+            throw SemanticError(
+                "positional construction is not canonical (CANON-9): write " +
+                type->name() + "(Field := Value, ...)");
+        }
+        const std::string& fieldName =
+            static_cast<const ast::IdentifierExpression&>(named->left()).name();
+        const types::StructField* field = resolveStructField(type, fieldName);
+        if (field == nullptr) {
+            if (const auto reused = findReusedMember(type, fieldName); reused && !reused->isMethod) {
+                throw SemanticError(fieldName + " belongs to the reused part " + reused->path.front() +
+                                    " (CANON-9): construct the part, " + type->name() + "(" +
+                                    reused->path.front() + " := " + reused->path.front() + "(...))");
+            }
+            throw SemanticError("unknown field in construction: " +
+                                type->name() + "." + fieldName);
+        }
+        for (const std::string& seen : namedFields) {
+            if (equalsIgnoreCase(seen, fieldName)) {
+                throw SemanticError("duplicate field in construction: " +
+                                    type->name() + "." + fieldName);
+            }
+        }
+        namedFields.push_back(fieldName);
+        const TypeRef valueType = valueTypes != nullptr ? (*valueTypes)[namedFields.size() - 1]
+                                                        : analyzeExpressionFor(named->right(), field->type);
+        if (!canAssignValue(field->type, valueType, named->right())) {
+            throw SemanticError("field " + type->name() + "." + fieldName +
+                                " expects " + types::nameOf(field->type));
+        }
+        result_.setExpressionType(*named, field->type);
+    }
+    for (const types::StructField& field : type->fields()) {
+        bool named = false;
+        for (const std::string& seen : namedFields) {
+            named = named || equalsIgnoreCase(seen, field.name);
+        }
+        // A Link and an Option are born empty; an Own is always given.
+        const bool bornEmpty =
+            field.type != nullptr && (field.type->isLink() || field.type->isOptionOwn());
+        const bool isStruct = field.type != nullptr && field.type->isStruct();
+        if (!named && !field.hasDefault && !isStruct && !bornEmpty) {
+            if (field.type != nullptr && field.type->isOwn()) {
+                throw SemanticError("construction omits the owner " + type->name() + "." + field.name +
+                                    ": give it, " + field.name + " := New(...)");
+            }
+            throw SemanticError(
+                "construction omits scalar field without default (CANON-9): " +
+                type->name() + "." + field.name);
+        }
+        if (!named) {
+            if (const std::string owner = ownerFieldWithoutDefault(field.type); !owner.empty()) {
+                throw SemanticError("construction omits " + type->name() + "." + field.name +
+                                    ", which holds the owner " + owner + ": give it");
+            }
+        }
+    }
+    // CANON-24: a new value satisfies its invariant.
+    if (hasInvariant(type) && invariantChecksOn()) {
+        result_.requireNewValueInvariant(call, type);
+    }
+    result_.setConstructedStruct(call, type);
+    return type;
+}
+
 TypeRef SemanticAnalyzer::analyzeUserFunctionCall(
     const FunctionSignature& signature,
-    const std::vector<ast::ExpressionPtr>& arguments)
+    const std::vector<ast::ExpressionPtr>& arguments,
+    const std::vector<TypeRef>* argumentTypes)
 {
     if (arguments.size() != signature.parameters.size()) {
         throw SemanticError(
@@ -428,8 +445,9 @@ TypeRef SemanticAnalyzer::analyzeUserFunctionCall(
     }
 
     for (std::size_t index = 0; index < arguments.size(); ++index) {
-        const TypeRef argumentType = analyzeExpression(*arguments[index]);
         const FunctionParameter& parameter = signature.parameters[index];
+        const TypeRef argumentType = argumentTypes != nullptr ? (*argumentTypes)[index]
+                                                              : analyzeExpressionFor(*arguments[index], parameter.type);
         if (parameter.mode != PassMode::Value) {
             continue;
         }
