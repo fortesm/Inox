@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == F6 (file-io): Files are not compared.
-Module Diagnostics.FileCompare
 Use Std.IOUtils
 
 Main :

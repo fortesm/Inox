@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0017: a slice is already a view; it is passed without ref.
-Module Diagnostics.SliceByRef
-
 Sum(ref S Slice<Integer>) Integer :
     Return S[Low(S)]
 ;

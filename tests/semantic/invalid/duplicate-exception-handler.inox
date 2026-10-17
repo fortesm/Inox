@@ -1,5 +1,3 @@
-Module Semantic.DuplicateExceptionHandler
-
 Main :
     try
         Raise IOError

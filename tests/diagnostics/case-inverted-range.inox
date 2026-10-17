@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0011: a range choice `A..B` needs A <= B.
-Module Diagnostics.CaseInvertedRange
-
 Main :
     X := 4
     case X

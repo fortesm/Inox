@@ -7,8 +7,6 @@
 
 == ADR-0009: a State initializer is an expression; `:=` inside parentheses is
 == still an assignment, not a named argument, and is rejected.
-Module Diagnostics.AssignmentInStateInitializerParenthesized
-
 State
     B Integer := 1
     A Integer := (B := 3)

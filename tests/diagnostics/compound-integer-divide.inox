@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0012: `/=` is valid only where `/` is; Integer division is `div`.
-Module Diagnostics.CompoundIntegerDivide
-
 Main :
     I := 4
     I /= 2

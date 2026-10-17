@@ -8,8 +8,6 @@
 == ADR-0011: static choices include constant expressions: `not False`, a
 == parenthesized comparison of constants, a Char Const, and literal-only Integer
 == expressions read in the selector type.
-Module CaseStaticExpressions
-
 Const Letter := 'A'
 
 Main :

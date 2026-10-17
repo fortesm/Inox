@@ -1,5 +1,3 @@
-Module Semantic.ExceptionTaxonomy
-
 Main :
     try
         Raise FileNotFound

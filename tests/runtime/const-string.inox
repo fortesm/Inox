@@ -7,8 +7,6 @@
 
 == CANON-5: a String Const is a value like a literal: printed, stored,
 == passed and compared.
-Module Runtime.ConstString
-
 Const Nome := "dados.txt"
 Const Vazio := ""
 

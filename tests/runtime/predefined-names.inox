@@ -9,8 +9,6 @@
 == names, not reserved words: they keep their meaning in any spelling and
 == may name fields and methods, never a variable, a parameter, a routine, a
 == type or a Const. Main is an ordinary name. A case ends with `else`.
-Module Runtime.PredefinedNames
-
 Type
     TPorta Struct
         Exit Integer := 6

@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == F2 (file-io): OpenRead takes a String path.
-Module Diagnostics.FileArgumentType
 Use Std.IOUtils
 
 Main :

@@ -7,8 +7,6 @@
 
 == CANON-20 / ADR-0008: `..` is non-associative. A range has exactly two
 == bounds, so `A..B..C` is a parse error.
-Module Diagnostics.RangeNonAssociative
-
 Main :
     X Bool := 4 in 1..5..9
     PutLn(X)

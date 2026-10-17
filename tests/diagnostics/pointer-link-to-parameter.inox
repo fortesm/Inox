@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: a Link to a parameter is not supported yet.
-Module Diagnostics.PointerLinkToParameter
-
 Type
     TNo Struct
         FValor Integer := 0

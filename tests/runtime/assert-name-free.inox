@@ -7,8 +7,6 @@
 
 == CANON-18 (r3.63): without `Use Std.Debug` the name Assert is free for the
 == program's own routines.
-Module Runtime.AssertNameFree
-
 Assert(Value Integer) :
     PutLn("own Assert ", Value)
 ;

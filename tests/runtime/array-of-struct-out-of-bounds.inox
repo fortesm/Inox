@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-13: the index of an array of structs is checked.
-Module Runtime.ArrayOfStructOutOfBounds
-
 Type
     TPoint Struct
         FX Integer

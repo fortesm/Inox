@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0015: storing a negative Integer into a Natural State variable traps.
-Module Runtime.StateNaturalRange
-
 State
     Limit Natural := 3
 ;

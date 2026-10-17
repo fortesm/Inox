@@ -7,8 +7,6 @@
 
 == CANON-20 / ADR-0008: `in` is non-associative. `X in A in B` is a parse
 == error; the programmer must parenthesize the intended grouping.
-Module Diagnostics.InNonAssociative
-
 Main :
     X Integer := 4
     B Bool := X in 1..9 in 1..2

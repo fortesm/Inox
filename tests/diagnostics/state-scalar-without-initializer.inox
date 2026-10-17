@@ -7,8 +7,6 @@
 
 == CANON-5: State scalars still require initializers; only structs may use the
 == type-default form.
-Module Diagnostics.StateScalarWithoutInitializer
-
 State
     Counter Integer
 ;

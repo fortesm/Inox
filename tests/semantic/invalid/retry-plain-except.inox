@@ -1,5 +1,3 @@
-Module Semantic.RetryPlainExcept
-
 Main :
     try
         Raise IOError

@@ -7,8 +7,6 @@
 
 == A Link to a freed object never reaches it: the use traps (kind 16),
 == also inside try (change safe-pointers).
-Module Runtime.PointersFreedLink
-
 Type
     TConta Struct
         FSaldo Integer := 0

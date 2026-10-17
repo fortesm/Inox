@@ -177,19 +177,21 @@ export INOX_OUTPUT_DIR=&quot;$HOME/tools/inox-linux-x64/output&quot;</code></pre
 <pre><code>PutLn
 putln
 PUTLN</code></pre>
-<p>Inox has 41 reserved words, which never name anything: <code>Module Use Type Const Var State Struct Enum if then elif else unless while repeat until for in step case try except On do ensure raise retry with mut ref div mod and xor or not shr shl leave continue Return</code>.</p>
-<p><code>True</code>, <code>False</code>, <code>Exit</code>, <code>bitand</code>, <code>bitor</code>, <code>bitxor</code> and <code>bitnot</code> are predefined names: they always keep their meaning and can never be declared (a variable, parameter, routine, type or Const named <code>True</code> is an error), but they may name fields and methods (<code>Porta.Exit</code>). <code>Main</code> is an ordinary name: the program starts at the routine named Main. Words such as <code>pre</code>, <code>pos</code>, <code>old</code>, <code>Self</code> and <code>Override</code> mean something only where they appear.</p>
+<p>Inox has 42 reserved words, which never name anything: <code>Use Type Const State Struct Enum if elif else unless while repeat until for in step case try except On do ensure raise retry with mut ref div mod and xor or not shr shl Return pre pos old invariant variant Override</code>.</p>
+<p><code>True</code>, <code>False</code>, <code>Exit</code>, <code>leave</code>, <code>continue</code>, <code>IIf</code>, <code>bitand</code>, <code>bitor</code>, <code>bitxor</code> and <code>bitnot</code> are predefined names, as <code>Break</code> and <code>Exit</code> in Pascal: they always keep their meaning and can never be declared (a variable, parameter, routine, type or Const named <code>True</code> is an error), but they may name fields and methods (<code>Porta.Exit</code>). <code>Main</code>, <code>Var</code> and <code>Module</code> are ordinary names: the program starts at the routine named Main. Words such as <code>Self</code>, <code>Result</code> and <code>None</code> mean something only where they appear.</p>
 <p><code>{</code> and <code>}</code> are reserved for a future construct; blocks close with <code>;</code>.</p>
 <p>Line comments use <code>==</code>:</p>
 <pre><code>X := 10  == comment until end of line</code></pre>
 <p>String literals use double quotes. Character literals use single quotes. <code>Char</code> is a Unicode scalar value, not a byte and not a grapheme cluster.</p>
 </section>
 <section id="modules"><h2>Modules and Use</h2>
-<p>A source file may start with a module declaration:</p>
-<pre><code>Module Calc.Core
+<p>A file is a module, named after the file: <code>Calc.Core.inox</code> (or <code>Calc/Core.inox</code>) is the module <code>Calc.Core</code>, and there is no header. The program's own file may have any name. A file starts with the modules it uses:</p>
+<pre><code>Use Std.IO
+Use Calc.Core
 
-Use Std.IO
-Use Std.Math</code></pre>
+Main :
+    PutLn(Sum(1, 2))        == a routine of Calc.Core
+;</code></pre>
 <p><code>Use</code> declares semantic dependencies. It is not textual inclusion and not a C-style <code>#include</code>. Standard modules are resolved through the standard-library search path.</p>
 </section>
 <section id="blocks"><h2>Blocks and statement syntax</h2>
@@ -665,14 +667,10 @@ for I in 1..N + 1 step 3
 ;</code></pre>
 <p>Constructs the semantic analyzer accepts but the LLVM backend does not lower yet are reported as &ldquo;not yet implemented in the LLVM backend&rdquo; and are measured in <code>docs/BACKEND_GAPS.md</code>.</p>
 <h3>Conditional expression</h3>
-<p><code>if ... then ... else</code> selects a value. Each branch is an expression, never a block. <code>else</code> is required, and only the chosen branch is evaluated:</p>
-<pre><code>Max := if A &gt; B then A else B
-Result :=
-    if X &lt; 0
-    then -X
-    else if X &gt; Limit
-         then Limit
-         else X</code></pre>
+<p><code>IIf(Condition, A, B)</code> selects a value. Each branch is an expression, never a block, and only the chosen branch is evaluated (unlike the IIf of Visual Basic, which evaluates both). Chains nest:</p>
+<pre><code>Max := IIf(A &gt; B, A, B)
+Taxa := IIf(Idade &gt;= 60, 0.5, 1.0)
+Faixa := IIf(N &lt; 10, &quot;baixa&quot;, IIf(N &lt; 100, &quot;média&quot;, &quot;alta&quot;))</code></pre>
 <p>The <code>if</code> statement keeps its own form, without <code>then</code>.</p>
 <h3>case</h3>
 <p><code>case</code> follows Ada/SPARK, adapted to Inox. Alternatives are separated by <code>|</code>. A choice is a constant value or a constant range <code>A..B</code>. Choices may not overlap, and there is no fall-through:</p>
@@ -740,8 +738,7 @@ PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
 </section>
 <section id="files"><h2>Text files: Std.Files and Std.IOUtils</h2>
 <p><code>Use Std.Files</code> gives a program the type <code>File</code> and the basic operations: <code>OpenRead</code>, <code>Create</code>, <code>OpenAppend</code>, <code>ReadLn</code>, <code>Eof</code>, <code>Write</code>, <code>WriteLn</code> and <code>Close</code>. <code>Use Std.IOUtils</code> adds the conveniences <code>Exists</code>, <code>DeleteFile</code> and <code>RenameFile</code>, and gives everything of <code>Std.Files</code>. Without them, names such as <code>Create</code>, <code>Close</code> or <code>Exists</code> are free for your own routines.</p>
-<pre><code>Module Notes
-Use Std.Files
+<pre><code>Use Std.Files
 
 Main :
     F := Create(&quot;notes.txt&quot;)              == new or truncated, for writing

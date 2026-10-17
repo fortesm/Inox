@@ -1,5 +1,3 @@
-Module Codegen.ExceptionsRetrySmoke
-
 Main :
     Attempts := 0
     try

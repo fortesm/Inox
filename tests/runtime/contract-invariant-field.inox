@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-24: a field written from outside the struct's methods keeps the invariant.
-Module Runtime.ContractInvariantField
-
 Type
     TConta Struct
         FSaldo Integer := 0

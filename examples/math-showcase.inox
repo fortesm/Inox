@@ -8,8 +8,6 @@
 == Exercises the Std.Math surface end-to-end: integer-exact helpers and
 == Float intrinsics, all called from Main so the module link is really used.
 
-Module MathShowcase
-
 Use Std.Math
 
 Main :

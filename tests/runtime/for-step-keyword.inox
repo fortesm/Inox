@@ -7,8 +7,6 @@
 
 == ADR-0010: `for I in A..B step S` with expression bounds (no parentheses
 == needed) and an expression step; descending with a step.
-Module Runtime.ForStepKeyword
-
 Twice(N Integer) Integer :
     Return N * 2
 ;

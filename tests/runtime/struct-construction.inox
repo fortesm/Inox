@@ -7,8 +7,6 @@
 
 == CANON-9: named construction is an expression; fields are named in any
 == order, omitted fields take their defaults.
-Module Runtime.StructConstruction
-
 Type
     TPoint Struct
         FX Integer

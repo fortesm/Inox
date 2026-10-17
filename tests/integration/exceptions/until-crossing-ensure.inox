@@ -9,8 +9,6 @@
 == it crosses when it exits the repeat (and the ensure runs once per iteration
 == when it does not); across intermediate loops it runs every ensure between it
 == and the repeat, innermost first, and no ensure outside the repeat.
-Module Integration.UntilCrossingEnsure
-
 Main :
     X Integer := 0
     repeat

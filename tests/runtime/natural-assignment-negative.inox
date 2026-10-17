@@ -7,8 +7,6 @@
 
 == ADR-0015: an assignment that would make a Natural negative stops the
 == program with a runtime error; it never wraps.
-Module Runtime.NaturalAssignmentNegative
-
 Main :
     N Natural := 3
     PutLn("before")

@@ -7,8 +7,6 @@
 
 == Mixed and/or is allowed WHEN explicitly parenthesized (canonical Layer A).
 
-Module PrecedenceLogicalGrouped
-
 Main :
     A := True
     B := False

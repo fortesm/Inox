@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: an owner given away on one branch is given away after the if.
-Module Diagnostics.PointerMovedOnABranch
-
 Type
     TNo Struct
         FValor Integer := 0

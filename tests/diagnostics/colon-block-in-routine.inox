@@ -7,8 +7,6 @@
 
 == CANON-4: `:` only declares a function or subroutine. A bare `:` block
 == inside a routine is illegal (Marcelo Fortes, 2026-10-09).
-Module Diagnostics.ColonBlockInRoutine
-
 Main :
     :
         PutLn(1)

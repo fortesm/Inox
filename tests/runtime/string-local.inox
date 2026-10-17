@@ -7,8 +7,6 @@
 
 == CANON-14: a String local (formerly tests/diagnostics/backend-gap-string-local,
 == a backend gap until the String runtime).
-Module Runtime.StringLocal
-
 Main :
     S String := "abc"
     PutLn(S)

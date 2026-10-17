@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0011: every choice has the selector type.
-Module Diagnostics.CaseChoiceTypeMismatch
-
 Main :
     X := 1
     case X

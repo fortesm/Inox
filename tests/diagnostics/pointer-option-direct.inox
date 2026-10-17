@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: an Option is reached through a Link, which is checked.
-Module Diagnostics.PointerOptionDirect
-
 Type
     TNo Struct
         FValor Integer := 0

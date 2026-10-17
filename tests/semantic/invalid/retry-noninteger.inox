@@ -1,5 +1,3 @@
-Module Semantic.RetryNonInteger
-
 Main :
     try
         Raise IOError

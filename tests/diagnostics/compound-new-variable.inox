@@ -7,8 +7,6 @@
 
 == ADR-0012: a compound assignment updates an existing variable; it does not
 == declare one.
-Module Diagnostics.CompoundNewVariable
-
 Main :
     Y += 1
     PutLn(Y)

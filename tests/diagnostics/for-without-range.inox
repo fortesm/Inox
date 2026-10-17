@@ -7,8 +7,6 @@
 
 == ADR-0010: a counted loop iterates over a range `A..B`, with or without a
 == step.
-Module Diagnostics.ForWithoutRange
-
 Main :
     N := 10
     for I in N

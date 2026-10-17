@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0016: the receiver is an argument; a ref mut argument may not reach it again.
-Module Diagnostics.RefMutAliasesReceiver
 Type
     TA Struct
         FX Integer := 0

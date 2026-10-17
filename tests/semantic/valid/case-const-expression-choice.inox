@@ -7,8 +7,6 @@
 
 == ADR-0011: a Const whose value is a constant expression is a static choice,
 == also when the Const is declared after the routine.
-Module CaseConstExpressionChoice
-
 Main :
     X := 5
     case X

@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0010: `step` belongs to a range `A..B`.
-Module Diagnostics.ForStepWithoutRange
-
 Main :
     N := 10
     for I in N step 2

@@ -13,8 +13,6 @@
 ==                    methods without forwarding them
 == Integer.Porcento and String.Rotulo are methods of built-in types: they
 == work on any Integer or String, fields included.
-Module ReuseInventory
-
 Type
     TPreco Struct
         FCentavos Integer := 0

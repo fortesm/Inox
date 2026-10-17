@@ -1,5 +1,3 @@
-Module GetIntegerInvalidToken
-
 Main :
     A Integer := 0
     Get(A)

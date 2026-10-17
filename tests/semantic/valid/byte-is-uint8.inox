@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-8: Byte is the friendly name of UInt8; the two are the same type.
-Module Semantic.ByteIsUInt8
-
 Main :
     B Byte := Byte($FF)
     U UInt8 := B

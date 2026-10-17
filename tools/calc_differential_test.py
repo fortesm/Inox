@@ -103,7 +103,6 @@ def gen_float_expr(depth):
 def build_inox_program(expr, kind):
     """Wrap an expression in a minimal Inox program that prints its value."""
     return (
-        "Module CalcTest\n"
         "Use Std.Math\n"
         "Main :\n"
         f"    R := {expr}\n"

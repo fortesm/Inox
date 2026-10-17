@@ -14,7 +14,6 @@
 == Text files only: binary files, streams, positions (Seek), directories
 == and other encodings are later changes (CANON-17).
 
-Module FileIoTour
 Use Std.IOUtils                 == Std.Files (File and the basics) plus Exists, DeleteFile, RenameFile
 
 == A routine that receives an open file takes it as `ref mut`: a File is
@@ -290,7 +289,7 @@ Main :
     ensure
         == Clean up whatever exists, whatever happened above.
         for Index in 1..5
-            Path String := if Index = 1 then Notes else if Index = 2 then Copy else if Index = 3 then Moved else if Index = 4 then Missing else Big
+            Path String := IIf(Index = 1, Notes, IIf(Index = 2, Copy, IIf(Index = 3, Moved, IIf(Index = 4, Missing, Big))))
             if Exists(Path)
                 DeleteFile(Path)
             ;

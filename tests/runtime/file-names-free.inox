@@ -7,8 +7,6 @@
 
 == file-io: without `Use Std.IOUtils` the file function names are free for
 == the program's own routines.
-Module Runtime.FileNamesFree
-
 Create(N Integer) Integer :
     Return N * 2
 ;

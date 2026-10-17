@@ -23,8 +23,10 @@ call, index or member access.
 ```ebnf
 (* ---------- Module structure (CANON-3) ---------- *)
 
-module            ::= "Module" qualified_name use_decl* module_item* EOF
-                      (* no ";" after Module; EOF closes the module *)
+module            ::= use_decl* module_item* EOF
+                      (* r3.76: a file is a module named after the file (the
+                         name its Use gives, or the entry file's stem); there
+                         is no "Module" header; EOF closes the module *)
 use_decl          ::= "Use" qualified_name
 module_item       ::= type_section | const_decl | state_section | routine_decl
 qualified_name    ::= identifier_like ( "." identifier )*
@@ -191,6 +193,7 @@ for_step          ::= "step" expression
                          shadowing; bounds and step are evaluated once
                          (DECISION P-B) *)
 leave_stmt        ::= "leave"
+                      (* predefined names, as Break and Continue in Pascal (r3.76) *)
 continue_stmt     ::= "continue"
                       (* both act on the nearest enclosing loop *)
 
@@ -272,12 +275,12 @@ slice_range       ::= bitor_expr? ".." bitor_expr?
 member_suffix     ::= "." identifier
 primary           ::= literal | identifier | "(" expression ")" | with_member
                     | conditional_expr
-conditional_expr  ::= "if" expression "then" expression "else" expression
-                      (* ADR-0013: selects a value; each branch is an expression,
-                         never a block; "else" is mandatory and chains through
-                         "else if ... then ... else ..."; only the chosen branch
-                         is evaluated; the branches have compatible types. The
-                         if statement has no "then". *)
+conditional_expr  ::= "IIf" "(" expression "," expression "," expression ")"
+                      (* r3.76 (formerly ADR-0013's "if C then A else B"):
+                         selects a value; each branch is an expression, never a
+                         block; only the chosen branch is evaluated; the
+                         branches have compatible types; it nests. "IIf" is a
+                         predefined name, not a reserved word. *)
 
 (* ---------- Lexical elements (CANON-2) ---------- *)
 

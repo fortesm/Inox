@@ -8,8 +8,6 @@
 == CANON-11 with CANON-25: a `with` target reached through a pointer is
 == checked at every `.Member`; freeing its object inside the body stops the
 == program at the next use, never reading freed memory.
-Module Runtime.WithFreedTarget
-
 Type
     TNotas Struct
         FTotal Integer := 0

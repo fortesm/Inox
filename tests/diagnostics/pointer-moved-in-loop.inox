@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: an owner given away in a loop needs a new value before the next round.
-Module Diagnostics.PointerMovedInLoop
-
 Type
     TNo Struct
         FValor Integer := 0

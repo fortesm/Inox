@@ -7,8 +7,6 @@
 
 == CANON-5 rule 4: a struct in State may omit `:=` (type-default
 == initialization); scalars in the same section keep their initializers.
-Module SemanticStateStructDefault
-
 Type
     TPoint Struct
         FX Integer

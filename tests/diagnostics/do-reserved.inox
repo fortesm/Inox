@@ -7,8 +7,6 @@
 
 == FUTURE: `do` is reserved for the concurrency construct (never `go`); it is
 == not a name.
-Module Diagnostics.DoReserved
-
 Main :
     Do := 1
     PutLn(Do)

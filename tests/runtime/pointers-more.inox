@@ -7,8 +7,6 @@
 
 == Safe pointers: arrays of optional owners, owned arrays, owned Strings and
 == Integers (with a method), State owners and Links to State, with on an owner.
-Module PointersMore
-
 Const Tamanho := 3
 
 Type

@@ -9,8 +9,6 @@
 == also when the handler is left by leave, continue, until, Return or Exit, with
 == and without ensure, from On, Else and plain except handlers, and from nested
 == handlers. Checked by tools/eh_state_balance.py (captures = releases).
-Module EhLifetime.HandlerTransfers
-
 Main :
     while true
         try

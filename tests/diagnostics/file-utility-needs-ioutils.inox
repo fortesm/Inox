@@ -7,8 +7,6 @@
 
 == CANON-17 (r3.64): Exists, DeleteFile and RenameFile are conveniences of
 == Std.IOUtils; Std.Files alone does not declare them.
-Module Diagnostics.FileUtilityNeedsIOUtils
-
 Use Std.Files
 
 Main :

@@ -7,8 +7,6 @@
 
 == CANON-9: named arguments belong to struct construction only; a conversion
 == such as Float32(...) rejects them.
-Module Diagnostics.ConversionNamedArgument
-
 Main :
     F := Float32(X := 0.0)
     PutLn(1)

@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == file-io: with Use Std.IOUtils, a routine cannot reuse a file function name.
-Module Diagnostics.FileNameTaken
 Use Std.IOUtils
 
 Create(N Integer) Integer :

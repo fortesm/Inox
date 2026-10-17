@@ -7,8 +7,6 @@
 
 == CANON-18/CANON-19 (r3.63): Std.Debug.Assert does nothing when its
 == condition holds; the message is evaluated in order with the condition.
-Module Runtime.DebugAssertHolds
-
 Use Std.Debug
 
 Main :

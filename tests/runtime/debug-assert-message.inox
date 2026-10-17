@@ -7,8 +7,6 @@
 
 == CANON-19 (r3.63): Assert(Condition, Message) prints the message after the
 == category when the condition is false.
-Module Runtime.DebugAssertMessage
-
 Use Std.Debug
 
 Check(Total Integer) :

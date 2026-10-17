@@ -9,8 +9,6 @@
 == construction (`X := 1, Y := 2`) are not State declarations (CANON-9). With
 == the old token scanner, `Y` became a phantom State symbol and the explicit
 == local declaration of `Y` below failed as shadowing.
-Module StateNamedConstructionInitializer
-
 Type
     TPoint Struct
         X Integer

@@ -20,9 +20,9 @@ spec.md#CANON-2 Names are case-insensitive	34febe6d17f2bbd8	constitution
 spec.md#CANON-2 Comments and literals	5984e594e993a409	constitution
 spec.md#CANON-2 Digit separator	006404ba593459d4	constitution
 spec.md#CANON-2 Symbols	4e0baeb201620000	keyword-review
-spec.md#CANON-2 Reserved words and predefined names	bbd62ef0e6f3da72	keyword-review
+spec.md#CANON-2 Reserved words and predefined names	71c5be1aa2dacd2a	syntax-review
 spec.md#CANON-2 Words Inox does not have	26d08a59b30da9d4	keyword-review
-spec.md#CANON-3 Modules and Use	2f7fff12bd7cc966	constitution
+spec.md#CANON-3 Modules and Use	a016d047491d856a	syntax-review
 spec.md#CANON-3 Module resolution	87deaf60cefa2a59	constitution
 spec.md#CANON-3 Visibility	cc7082a5f84021ec	constitution
 spec.md#CANON-4 Semicolon closes, colon declares	fa0c21e30dd35647	state-without-colon
@@ -65,7 +65,7 @@ spec.md#CANON-10 No shadowing	374e96362c01e03d	constitution
 spec.md#CANON-10 Loop iterators	29b268cf62e9f413	constitution
 spec.md#CANON-11 The with statement	d44879b4943cfff3	with-places
 spec.md#CANON-12 if, elif, else and unless	5bb95dc4f0eafe7d	constitution
-spec.md#CANON-12 Conditional expression	093f47656baf1a63	constitution
+spec.md#CANON-12 Conditional expression	60b2994d3bb155af	syntax-review
 spec.md#CANON-12 while, leave and continue	4e5611369f5c405a	constitution
 spec.md#CANON-12 repeat and until	00d3f517f353512d	constitution
 spec.md#CANON-12 for loops	d097122190e2dca7	constitution

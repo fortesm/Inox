@@ -7,8 +7,6 @@
 
 == ADR-0016: a reference argument has exactly the parameter type; no conversion
 == is possible through a reference.
-Module Diagnostics.RefTypeExact
-
 Bump(ref mut B Byte) :
     B += 1
 ;

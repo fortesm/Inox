@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == v3.21: a while loop nested in a while loop inside an Integer function.
-Module Runtime.NestedWhileInWhileFunction
-
 Main :
     PutLn(Count(3))
     PutLn(Count(0))

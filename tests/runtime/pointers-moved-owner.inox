@@ -7,8 +7,6 @@
 
 == An owner given away on a path the compile-time analysis does not follow
 == (here through `leave`) is caught at run time: kind 17, never a null access.
-Module Runtime.PointersMovedOwner
-
 Type
     TNo Struct
         FValor Integer := 0

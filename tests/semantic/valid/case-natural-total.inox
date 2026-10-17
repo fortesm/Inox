@@ -7,8 +7,6 @@
 
 == ADR-0011 / CANON-8: Natural covers exactly 0..Int64.Max, so these choices
 == are total and need no else.
-Module Semantic.CaseNaturalTotal
-
 Main :
     N Natural := Natural(1)
     case N

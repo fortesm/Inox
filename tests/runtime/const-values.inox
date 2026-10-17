@@ -7,8 +7,6 @@
 
 == P-C stage 1: module Const values are resolved by semantic analysis and
 == read by the backend from the semantic result.
-Module Runtime.ConstValues
-
 Const Limit := 10
 Const Mask := $FF
 Const Enabled := true

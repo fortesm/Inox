@@ -1,5 +1,3 @@
-Module Semantic.UnknownExceptionHandler
-
 Main :
     try
         Raise IOError

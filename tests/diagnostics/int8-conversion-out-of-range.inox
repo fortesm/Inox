@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-8: Int8 is -128..127; Int8(-129) does not fit.
-Module Diagnostics.Int8ConversionOutOfRange
-
 Main :
     V Int8 := Int8(-129)
     PutLn(V)

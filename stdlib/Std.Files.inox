@@ -5,8 +5,6 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Module Std.Files
-
 == Text files: the File type and the basic operations (canon r3.64 module
 == pairs: Std.X holds a subject's type, data and fundamental operations;
 == Std.XUtils the conveniences). They are compiler intrinsics, visible in a

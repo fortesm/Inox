@@ -1,5 +1,3 @@
-Module Codegen.ExceptionsSmoke
-
 Fail :
     Raise IOError
 ;

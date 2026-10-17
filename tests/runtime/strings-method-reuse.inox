@@ -9,8 +9,6 @@
 == method-reuse): arrays, State, by-value and ref mut parameters, results
 == and an exception keep every String owned once (string_leak_check runs
 == this program). A field of `Self mut` is a writable place for ref mut.
-Module Runtime.StringsMethodReuse
-
 Type
     TEndereco Struct
         FCidade String := ""

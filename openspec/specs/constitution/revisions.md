@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.75
+Canon revision: r3.76
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -182,3 +182,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   place is now lowered as a target, and a type as target gets a message
   naming the problem. Marcelo Fortes, 2026-10-16: "concordo Implemtne".
   Change `with-places`.
+- r3.76 — 2026-10-16 — Second syntax review: no `Module` header, a file is
+  a module named after the file (CANON-3); the conditional expression is
+  `IIf(C, A, B)`, only the chosen branch evaluated, replacing `if C then A
+  else B` (CANON-12, ADR-0013 superseded); `leave`, `continue` and `IIf` are
+  predefined names; `Var`, `Module` and `then` are no longer reserved
+  (`then` keeps its meaning in `pos then`); `pre`, `pos`, `old`,
+  `invariant`, `variant` and `Override` are reserved (CANON-2). 42 reserved
+  words, 10 predefined names. Marcelo Fortes, 2026-10-16. Change
+  `syntax-review`.

@@ -7,8 +7,6 @@
 
 == CANON-8: Byte is UInt8 (0..255). A constant conversion outside the range
 == is a compile-time error; it never wraps.
-Module Diagnostics.ByteConversionOutOfRange
-
 Main :
     B Byte := Byte(300)
     PutLn(B)

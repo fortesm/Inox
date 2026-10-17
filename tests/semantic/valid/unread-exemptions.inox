@@ -7,8 +7,6 @@
 
 == OPEN-4 covers locals only. Parameters, for iterators, exception bindings,
 == State and Const may go unread.
-Module UnreadExemptions
-
 Const Unused := 1
 
 State

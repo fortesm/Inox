@@ -8,8 +8,6 @@
 == CANON-2 (v3.34, decided by Marcelo Fortes): hexadecimal literals may be
 == written `$FF` or `0xFF` (`0X` too), with the digit separator `_`. A leading
 == zero never means octal: `017` is seventeen.
-Module Runtime.HexLiterals
-
 Const Mask := 0xFF_FF
 
 Main :

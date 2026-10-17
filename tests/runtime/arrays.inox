@@ -10,8 +10,6 @@
 == multi-dimensional M[I, J], narrow element storage (Byte, Int8), Float and
 == Bool elements, Low/High/Length as constants, compound assignment on an
 == element, array parameters and results.
-Module Runtime.Arrays
-
 Const Size := 5
 
 Sum(V Array[1..Size] Integer) Integer :

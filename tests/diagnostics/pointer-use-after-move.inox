@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: an owner given away with Move cannot be used until it is assigned again.
-Module Diagnostics.PointerUseAfterMove
-
 Type
     TNo Struct
         FValor Integer := 0

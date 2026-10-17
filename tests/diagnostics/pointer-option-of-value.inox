@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: Option is for an owner that may be absent until generics.
-Module Diagnostics.PointerOptionOfValue
-
 Type
     TNo Struct
         FValor Integer := 0

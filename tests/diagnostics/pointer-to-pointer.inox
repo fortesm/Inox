@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: no pointer to a pointer.
-Module Diagnostics.PointerToPointer
-
 Type
     TNo Struct
         FValor Integer := 0

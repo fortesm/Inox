@@ -7,8 +7,6 @@
 
 == ADR-0012: compound assignment `+=` `-=` `*=` `/=` `^=` on variables and
 == fields (also `.Field` inside `with`). `L op= R` is `L := L op R`.
-Module Runtime.CompoundAssignment
-
 Type
     TPoint Struct
         X Integer

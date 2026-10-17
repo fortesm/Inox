@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-2 (r3.74): a parameter cannot be named after a predefined name.
-Module Diagnostics.PredefinedBitandParameter
-
 Twice(BitAnd Integer) Integer :
     Return BitAnd * 2
 ;

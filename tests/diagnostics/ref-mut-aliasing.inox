@@ -7,8 +7,6 @@
 
 == ADR-0016: a variable passed as ref mut appears in no other argument, so the
 == routine never sees one variable through two names.
-Module Diagnostics.RefMutAliasing
-
 Swap(ref mut A Integer, ref mut B Integer) :
     T Integer := A
     A := B

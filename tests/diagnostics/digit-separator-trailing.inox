@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-2: a trailing `_` (`1_`) or one next to `.` (`1_.5`) is an error.
-Module Diagnostics.DigitSeparatorTrailing
-
 Main :
     F := 1_.5
     PutLn(1)

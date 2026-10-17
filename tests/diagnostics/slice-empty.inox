@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0017: a slice is never empty (L <= H), like an array.
-Module Diagnostics.SliceEmpty
-
 Main :
     A Array[1..3] Integer
     S := A[3..2]

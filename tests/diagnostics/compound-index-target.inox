@@ -7,8 +7,6 @@
 
 == ADR-0012: an element target `V[I] += 1` is allowed only when its indices
 == have no side effects; `V[Next] += 1` would call Next twice.
-Module Diagnostics.CompoundIndexTarget
-
 Next Integer :
     Return 1
 ;

@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-13: an index is an integer.
-Module Diagnostics.ArrayIndexNotInteger
-
 Main :
     A Array[1..3] Integer
     A[1.5] := 2

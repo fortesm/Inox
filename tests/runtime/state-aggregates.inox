@@ -8,8 +8,6 @@
 == CANON-5: State variables may be structs and arrays. Without an
 == initializer they start at their type defaults; initializers run in source
 == order before Main.
-Module Runtime.StateAggregates
-
 Type
     TPoint Struct
         FX Integer := 7

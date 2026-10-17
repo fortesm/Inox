@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-5: `mut var` declarations were removed; `mut` stays reserved.
-Module Diagnostics.MutVarRemoved
-
 Main :
     mut var X := 1
     PutLn(X)

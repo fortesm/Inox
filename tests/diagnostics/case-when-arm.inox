@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0011: an arm has no `when`.
-Module Diagnostics.CaseWhenArm
-
 Main :
     X := 4
     case X

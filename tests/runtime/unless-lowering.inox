@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == `unless C` runs its body when C is false; it composes with loops.
-Module Runtime.UnlessLowering
-
 Main :
     N Integer := 3
     unless N = 0

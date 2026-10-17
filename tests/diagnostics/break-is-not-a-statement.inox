@@ -8,8 +8,6 @@
 == v3.20: `break` was replaced by `leave`; a bare `break` is now just an
 == identifier, and a bare identifier is not a statement (CANON-4).
 
-Module BreakIsNotAStatement
-
 Main :
     while true
         break

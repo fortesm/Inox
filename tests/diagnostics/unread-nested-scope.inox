@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == OPEN-4 applies in every block; the error is reported when the block ends.
-Module Diagnostics.UnreadNestedScope
-
 Main :
     N := 3
     if N > 0

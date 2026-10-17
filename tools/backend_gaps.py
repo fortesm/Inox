@@ -36,7 +36,7 @@ import subprocess
 import sys
 import tempfile
 
-HEADER = "Module Probe\n\n"
+HEADER = ""  # r3.76: a file is a module named after the file
 
 # (name, construct, source) -- sources are complete modules after HEADER.
 PROBES = [
@@ -399,9 +399,9 @@ Main :
     PutLn(X)
 ;
 """),
-    ("conditional-expression", "conditional expression if C then A else B", """Main :
+    ("conditional-expression", "conditional expression IIf(C, A, B)", """Main :
     X := 4
-    Y := if X > 3 then X * 2 else 0
+    Y := IIf(X > 3, X * 2, 0)
     PutLn(Y)
 ;
 """),

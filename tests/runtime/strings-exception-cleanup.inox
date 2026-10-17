@@ -9,8 +9,6 @@
 == leaves it, and when it is left by Return, Exit, leave or continue, also
 == through ensure. The lines come from input, so they are heap Strings and the
 == sanitizer gate proves none leaks and none is freed twice.
-Module Runtime.StringsExceptionCleanup
-
 Type
     TBox Struct
         FText String

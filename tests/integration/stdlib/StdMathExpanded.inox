@@ -1,7 +1,5 @@
 == SPDX-License-Identifier: MPL-2.0
 
-Module StdMathExpanded
-
 Use Std.System
 Use Std.Math
 Use Std.IO

@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0017: a slice never outlives its array, so it cannot be a struct field.
-Module Diagnostics.StructFieldSlice
-
 Type
     TView Struct
         FItems Slice<Integer>

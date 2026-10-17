@@ -1,5 +1,3 @@
-Module GetLnTwoIntegers
-
 Main :
     A, B Integer := 0
     GetLn(A, B)

@@ -1,5 +1,3 @@
-Module GetLiteralInvalid
-
 Main :
     Get(10)
 ;

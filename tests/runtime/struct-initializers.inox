@@ -7,8 +7,6 @@
 
 == CANON-5 / CANON-9: a struct initializer copies the value; a grouped
 == initializer runs once and every name gets its own copy (v3.26).
-Module Runtime.StructInitializers
-
 Type
     TPoint Struct
         FX Integer

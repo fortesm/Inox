@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-5: a Float default is a real literal (no implicit Integer to Float).
-Module Diagnostics.StructFloatDefaultInteger
-
 Type
     TNode Struct
         FValue Float := 1

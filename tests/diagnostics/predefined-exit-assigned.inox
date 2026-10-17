@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-2 (r3.74): Exit is a predefined name; `Exit := 1` does not declare it.
-Module Diagnostics.PredefinedExitAssigned
-
 Main :
     Exit := 1
     PutLn(Exit)

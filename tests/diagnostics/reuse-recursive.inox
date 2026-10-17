@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9 (method-reuse): a part is a field, so a struct cannot reuse itself, even indirectly.
-Module Diagnostics.ReuseRecursive
 Type
     TA Struct
         FX Integer := 0

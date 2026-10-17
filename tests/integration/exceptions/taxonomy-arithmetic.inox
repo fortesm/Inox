@@ -1,5 +1,3 @@
-Module Integration.ExceptionsTaxonomyArithmetic
-
 Main :
     try
         Raise DivisionByZero

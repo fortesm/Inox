@@ -39,14 +39,18 @@ CONTEXTUAL_WORDS = {"self", "range", "array", "override",
                     # predefined names (CANON-2, r3.74): identifiers that
                     # keep their meaning and can never be declared
                     "true", "false", "exit", "bitand", "bitor", "bitxor", "bitnot",
+                    "leave", "continue", "iif",
+                    # meaningful in one position only (r3.76): `pos then`
+                    "then",
                     # design by contract (CANON-24)
                     "pre", "pos", "old", "invariant", "variant"}
 
 # Reserved by the lexer but not part of any production (reserved for the
 # future or kept reserved to reject old syntax with a diagnostic).
-RESERVED_ONLY = {"do", "var"}
+RESERVED_ONLY = {"do"}
 
-FORBIDDEN_TERMINALS = {"end", "break", "finally", "of", "when", "=>", "var", "elsif", "otherwise"}
+FORBIDDEN_TERMINALS = {"end", "break", "finally", "of", "when", "=>", "var", "elsif", "otherwise",
+                       "module"}
 
 # Terminals allowed in the grammar but never in the named productions: `then`
 # belongs to the conditional expression only (ADR-0013); control structures

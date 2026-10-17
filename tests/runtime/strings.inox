@@ -8,8 +8,6 @@
 == CANON-14: String is UTF-8, immutable, never null; a copy is a value. Strings
 == live in locals, parameters, results, struct fields, array elements and
 == State; = and # compare bytes.
-Module Runtime.Strings
-
 Type
     TPerson Struct
         FName String
@@ -42,7 +40,7 @@ Describe(P TPerson) String :
     if P.FAge > 40
         Return P.FName
     ;
-    Return if P.FAge = 30 then "young" else "?"
+    Return IIf(P.FAge = 30, "young", "?")
 ;
 
 Main :

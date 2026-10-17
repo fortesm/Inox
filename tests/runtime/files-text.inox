@@ -9,7 +9,6 @@
 == with values of every printable type, Close, OpenRead, ReadLn until Eof,
 == OpenAppend, a file opened again in a loop (the previous one is closed),
 == and the file is deleted at the end.
-Module Runtime.FilesText
 Use Std.IOUtils
 
 Main :

@@ -7,8 +7,6 @@
 
 == CANON-5 (v3.27): every target of a chained assignment is a variable or
 == a field.
-Module Diagnostics.ChainedAssignmentCallTarget
-
 Twice(N Integer) Integer :
     Return N * 2
 ;

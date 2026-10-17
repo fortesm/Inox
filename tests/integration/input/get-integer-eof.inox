@@ -1,5 +1,3 @@
-Module GetIntegerEof
-
 Main :
     A Integer := 0
     Get(A)

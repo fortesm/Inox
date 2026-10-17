@@ -1,5 +1,3 @@
-Module Semantic.RetryEnsure
-
 Main :
     try
         Raise IOError

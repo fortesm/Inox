@@ -7,8 +7,6 @@
 
 == Contracts over Strings: old copies of Strings, a String Result and an
 == invariant on a String field; checked for leaks by string_leak_check.
-Module ContractsStrings
-
 Type
     TNome Struct
         FNome String := "anônimo"

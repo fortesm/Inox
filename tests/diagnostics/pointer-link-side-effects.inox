@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: the place of a Link is read twice, so its indices have no side effects.
-Module Diagnostics.PointerLinkSideEffects
-
 Type
     TNo Struct
         FValor Integer := 0

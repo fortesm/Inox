@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-5 rule 3: a scalar declaration requires an initializer.
-Module Diagnostics.ScalarWithoutInitializer
-
 Main :
     C Integer
     PutLn(1)

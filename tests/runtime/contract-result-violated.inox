@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-24: Result in a pos is the value the function returns.
-Module Runtime.ContractResultViolated
-
 Type
     TConta Struct
         FSaldo Integer := 0

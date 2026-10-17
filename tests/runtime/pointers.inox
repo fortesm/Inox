@@ -7,8 +7,6 @@
 
 == Safe pointers (change safe-pointers): Own, Option<Own>, Link, New, Free,
 == Move, Value, Alive, Same, None; leak-checked by string_leak_check.
-Module Pointers
-
 Type
     TNo Struct
         FValor Integer := 0

@@ -7,8 +7,6 @@
 
 == ADR-0011 (Marcelo Fortes): without `else` the choices must cover every
 == value of the selector type.
-Module Diagnostics.CaseIntegerIncomplete
-
 Main :
     Code := 404
     case Code

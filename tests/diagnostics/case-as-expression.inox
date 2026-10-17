@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-12: `case` as an expression is reserved for a future version.
-Module Diagnostics.CaseAsExpression
-
 Main :
     X := 4
     Y := case X

@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-5 (v3.27): `:=` is a statement, never an expression.
-Module Diagnostics.AssignmentInExpression
-
 Main :
     A := 1
     X := 2 + (A := 3)

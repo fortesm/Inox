@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-18 (r3.63): Assert exists only in a program that uses Std.Debug.
-Module Diagnostics.AssertWithoutUse
-
 Main :
     Assert(1 = 1)
 ;

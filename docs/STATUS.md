@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-16 against Inox 0.2.0 pre-alpha, canon r3.75.
+Verified on 2026-10-16 against Inox 0.2.0 pre-alpha, canon r3.76.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -17,12 +17,12 @@ each version added.
 
 - Driver: `inox file.inox`, `run`, `build`, `check`, `emit-llvm`, `help`,
   `version` (the `--` switches are aliases; `--parse-only`, `--dump-tokens`,
-  `--dump-types` for development); local `Module`/`Use` with
+  `--dump-types` for development); modules named after their files and local `Use` with
   recursive loading and cycle rejection; library discovery; toolchain
   failures reported with the tool's own messages.
-- 41 reserved words and 7 predefined names (`True`, `False`, `Exit`,
-  `bitand`, `bitor`, `bitxor`, `bitnot`) that can never be declared;
-  `{` `}` reserved (CANON-2).
+- 42 reserved words and 10 predefined names (`True`, `False`, `Exit`,
+  `leave`, `continue`, `IIf`, `bitand`, `bitor`, `bitxor`, `bitnot`) that
+  can never be declared; `{` `}` reserved (CANON-2).
 - Lexical rules, blocks, declarations (inline, grouped, chained, compound),
   unread-local rule, Const (Integer, Bool, String, constant expressions), State (scalars,
   structs, arrays, Strings), routines, no empty parentheses.
@@ -30,7 +30,7 @@ each version added.
   Float/Float64 (Float32 partly), String, Char literals as `case`
   choices; checked arithmetic, conversions `T(X)` between
   integer types, runtime faults with exit status 70.
-- Control flow: if/elif/else, unless, conditional expression, while,
+- Control flow: if/elif/else, unless, conditional expression `IIf(C, A, B)`, while,
   repeat/until, for with step, leave/continue, case (Ada style), with
   (any place as target, evaluated once, checked through pointers).
 - Structs with defaults, named construction, nesting, associated methods;

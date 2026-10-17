@@ -7,8 +7,6 @@
 
 == ADR-0011: `else` may be omitted when the choices provably cover every
 == value of the selector type: Bool, UInt8 and the whole Int64 range here.
-Module CaseExhaustiveWithoutElse
-
 Main :
     B := True
     case B

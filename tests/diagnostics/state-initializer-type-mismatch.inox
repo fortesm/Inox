@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == A State initializer must have the declared type.
-Module Diagnostics.StateInitializerTypeMismatch
-
 State
     N Integer := True
 ;

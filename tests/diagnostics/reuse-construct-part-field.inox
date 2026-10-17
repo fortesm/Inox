@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9 (method-reuse): construction names the part, not the fields it brings.
-Module Diagnostics.ReuseConstructPartField
 Type
     TA Struct
         FX Integer := 0

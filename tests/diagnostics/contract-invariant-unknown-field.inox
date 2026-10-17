@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-24: an invariant is checked like any expression of the struct.
-Module Diagnostics.ContractInvariantUnknownField
 Type
     TA Struct
         FX Integer := 0

@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == OPEN-4: assigning a variable is not reading it.
-Module Diagnostics.UnreadAssignedOnly
-
 Main :
     X := 5
     X := 6

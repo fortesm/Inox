@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-9: a field may be named once in a construction.
-Module Diagnostics.ConstructionDuplicateField
-
 Type
     TPoint Struct
         X Integer

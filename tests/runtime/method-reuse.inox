@@ -10,8 +10,6 @@
 == runs on its part (delegation: TPessoa.Show calls TPessoa.Title), Override
 == replaces a reused method for callers of the outer struct, and the full
 == path always works. Built-in type methods (String.UpdateStr) act on fields.
-Module Runtime.MethodReuse
-
 Type
     TEndereco Struct
         FRua String := ""

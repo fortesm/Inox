@@ -8,8 +8,6 @@
 == v3.21: `until` exits the nearest repeat wherever it appears in the repeat body:
 == at the start, in the middle, more than once, inside if/elif/else, and inside
 == loops nested in the repeat (CANON-12).
-Module Runtime.UntilPositions
-
 Main :
     X Integer := 0
     repeat

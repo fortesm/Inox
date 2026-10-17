@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-8: Byte(X) of a run-time value outside 0..255 is a runtime error.
-Module Runtime.ByteConversionRuntimeRange
-
 Main :
     X Integer := 299
     X += 1

@@ -9,8 +9,6 @@
 == break (a CR before it is dropped too); at end of input S is "". Lines read
 == at run time are heap Strings, so this test moves them through every kind of
 == slot; the sanitizer gate runs it with leak detection.
-Module Runtime.StringsGetLn
-
 Type
     TPerson Struct
         FName String

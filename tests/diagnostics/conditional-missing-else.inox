@@ -5,11 +5,9 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== ADR-0013: a conditional expression needs `else`: it must produce a value
+== CANON-12: IIf needs a condition and two values: it must produce a value
 == on every path.
-Module Diagnostics.ConditionalMissingElse
-
 Main :
-    X := if True then 1
+    X := IIf(True, 1)
     PutLn(X)
 ;

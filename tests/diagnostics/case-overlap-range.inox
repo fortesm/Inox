@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0011: overlapping choices are a compile error, also inside one arm.
-Module Diagnostics.CaseOverlapRange
-
 Main :
     X := 4
     case X

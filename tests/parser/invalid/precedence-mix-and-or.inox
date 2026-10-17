@@ -7,8 +7,6 @@
 
 == Mixing 'and' and 'or' without parentheses is a canonical error.
 
-Module PrecedenceMixAndOr
-
 Main :
     A := True
     B := False

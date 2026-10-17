@@ -7,8 +7,6 @@
 
 == A freed block reused by a new object of the same size: an old Link
 == never matches it (the generation changed).
-Module Runtime.PointersReusedBlock
-
 Type
     TPeca Struct
         FPeso Integer := 0

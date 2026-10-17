@@ -7,8 +7,6 @@
 
 == CANON-4 (r3.62): 'State' has no ':' (':' only declares a routine); it
 == closes with ';'.
-Module Diagnostics.StateWithColon
-
 State :
     Counter Integer := 0
 ;

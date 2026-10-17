@@ -8,8 +8,6 @@
 == v3.21: leave, continue, Return and Exit in if/elif/else branches at two loop
 == levels. leave/continue act on the nearest loop; Return and Exit leave the
 == routine from any depth.
-Module Runtime.NestedLoopTransfers
-
 Main :
     == continue/leave of the inner loop from if/elif/else
     S Integer := 0

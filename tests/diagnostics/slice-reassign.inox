@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == ADR-0017: a slice is bound once.
-Module Diagnostics.SliceReassign
-
 Main :
     A Array[1..3] Integer
     S := A[2..3]

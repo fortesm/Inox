@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == file-io: the file functions exist only with Use Std.IOUtils.
-Module Diagnostics.FileWithoutUse
-
 Main :
     F := OpenRead("x.txt")
     Close(F)

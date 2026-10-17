@@ -7,8 +7,6 @@
 
 == ADR-0010: an identifier followed by `(` is a call, with or without a space,
 == also as the upper bound of a for header: `1..Twice (N)` is `1..Twice(N)`.
-Module Runtime.ForCallBoundSpaced
-
 Twice(N Integer) Integer :
     Return N * 2
 ;

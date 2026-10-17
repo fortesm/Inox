@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-24: old is valid only in a pos.
-Module Diagnostics.ContractOldInPre
 Type
     TA Struct
         FX Integer := 0

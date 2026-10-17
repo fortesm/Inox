@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-18 (r3.63): the condition of Assert is a Bool.
-Module Diagnostics.AssertConditionBool
-
 Use Std.Debug
 
 Main :

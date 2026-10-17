@@ -1,1 +1,1 @@
-parse error at 12:6: grouped declarations in State are not supported yet; declare one name per line
+parse error at 10:6: grouped declarations in State are not supported yet; declare one name per line

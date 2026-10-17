@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-2: `0x` needs at least one hexadecimal digit.
-Module Diagnostics.Hex0xMissingDigit
-
 Main :
     X := 0x
     PutLn(X)

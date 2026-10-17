@@ -1,5 +1,3 @@
-Module Semantic.RetryNegative
-
 Main :
     try
         Raise IOError

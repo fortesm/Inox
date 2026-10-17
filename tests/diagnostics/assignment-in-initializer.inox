@@ -7,8 +7,6 @@
 
 == CANON-5 (v3.27): the initializer of a typed declaration is an expression;
 == a chain must be written as its own statement.
-Module Diagnostics.AssignmentInInitializer
-
 Main :
     B := 1
     A Integer := B := 3

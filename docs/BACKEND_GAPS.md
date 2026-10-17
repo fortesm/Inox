@@ -68,6 +68,7 @@ analysis but not lowered yet.)
 | `loop-in-function` | while loop in an Integer function | **OK** |  |
 | `struct-local` | struct local with field assignment | **OK** |  |
 | `with` | with statement on a struct local | **OK** |  |
+| `with-field-path` | with statement on a field of a struct and an array element | **OK** |  |
 | `try-in-for` | try/except inside a loop body | **OK** |  |
 | `grouped-decl-scalar` | grouped declaration A, B, C T := X (X evaluated once) | **OK** |  |
 | `grouped-decl-struct` | grouped struct declaration P, Q TPoint := Base | **OK** |  |
@@ -78,7 +79,7 @@ analysis but not lowered yet.)
 | `digit-separators` | numeric literals with the digit separator _ | **OK** |  |
 | `compound-assignment` | compound assignment += -= *= /= ^= | **OK** |  |
 | `hex-0x` | hexadecimal literal written 0xFF | **OK** |  |
-| `conditional-expression` | conditional expression if C then A else B | **OK** |  |
+| `conditional-expression` | conditional expression IIf(C, A, B) | **OK** |  |
 | `state-global` | State section variable | **OK** |  |
 | `natural-conversion` | Natural local and checked Natural(X) (ADR-0014) | **OK** |  |
 | `byte-local` | Byte (UInt8) local initialized by conversion | **OK** |  |
@@ -93,7 +94,7 @@ analysis but not lowered yet.)
 | `state-aggregates` | State variables of struct and array type | **OK** |  |
 | `uint64-local` | UInt64 local | **GAP** | unsupported local variable type for LLVM emission |
 
-Summary: GAP=3, OK=48
+Summary: GAP=3, OK=49
 
 ## Reading the table
 

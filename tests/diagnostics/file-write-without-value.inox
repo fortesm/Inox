@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == F4 (file-io): Write needs a value (WriteLn(F) alone writes an empty line).
-Module Diagnostics.FileWriteWithoutValue
 Use Std.IOUtils
 
 Main :

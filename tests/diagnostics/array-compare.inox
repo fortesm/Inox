@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-13: arrays are not compared with relational operators.
-Module Diagnostics.ArrayCompare
-
 Main :
     A Array[1..3] Integer
     B Array[1..3] Integer

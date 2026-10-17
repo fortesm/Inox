@@ -196,7 +196,7 @@ time. Each names where it bit.
 - **Windows does not delete or rename an open file.** A File declared in a
   loop stays open until the next round or the routine's exit; tests that
   delete their files close them first.
-- **`Step` and `In` are keywords** (`for ... step`, `for ... in`), and `True`, `False`, `Exit` and the `bit...` operators are predefined names (r3.74); do not use any of them as test variables.
+- **`Step` and `In` are keywords** (`for ... step`, `for ... in`), as are `Pre`, `Pos`, `Old`, `Invariant`, `Variant` and `Override`; `True`, `False`, `Exit`, `Leave`, `Continue`, `IIf` and the `bit...` operators are predefined names (r3.76); do not use any of them as test variables. A test file has no `Module` line: its name is its module's name.
 - **GitHub GraphQL is blocked here.** Use `gh api` REST routes (`gh pr view`
   and `gh pr create` fail); job logs come from check-run annotations.
 

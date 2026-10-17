@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Parameters are immutable: a field of a value parameter cannot be assigned.
-Module Diagnostics.ParameterFieldAssignment
 Type
     TA Struct
         FX Integer := 0

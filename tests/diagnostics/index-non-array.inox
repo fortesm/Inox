@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-13: only an array can be indexed.
-Module Diagnostics.IndexNonArray
-
 Main :
     X Integer := 3
     PutLn(X[1])

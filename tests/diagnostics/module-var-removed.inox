@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-5: a module-level Var section is not a declaration form.
-Module Diagnostics.ModuleVarRemoved
-
 Var
     X Integer := 1
 ;

@@ -610,7 +610,7 @@ foreach ($rootSpec in $invalidTestRoots) {
 Invoke-ModeFragmentTest `
     -Mode "--dump-tokens" `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\lexer\valid\tokens-keywords-literals.inox")) `
-    -RequiredFragments @('Keyword lexeme="Module" normalized="module"', 'Keyword lexeme="Type" normalized="type"', 'Keyword lexeme="Struct" normalized="struct"', 'Keyword lexeme="Retry" normalized="retry"', 'IntegerLiteral lexeme="$2A"', 'StringLiteral lexeme="hello"', 'CharLiteral lexeme=', 'Identifier lexeme="End" normalized="end"', 'Keyword lexeme="Leave" normalized="leave"', 'Keyword lexeme="Ensure" normalized="ensure"', 'Identifier lexeme="Break" normalized="break"', 'Identifier lexeme="Finally" normalized="finally"')
+    -RequiredFragments @('Identifier lexeme="Main" normalized="main"', 'Keyword lexeme="Type" normalized="type"', 'Keyword lexeme="Struct" normalized="struct"', 'Keyword lexeme="Retry" normalized="retry"', 'IntegerLiteral lexeme="$2A"', 'StringLiteral lexeme="hello"', 'CharLiteral lexeme=', 'Identifier lexeme="End" normalized="end"', 'Identifier lexeme="Leave" normalized="leave"', 'Keyword lexeme="Ensure" normalized="ensure"', 'Identifier lexeme="Break" normalized="break"', 'Identifier lexeme="Finally" normalized="finally"')
 
 Invoke-ModeExitTest `
     -Mode "--parse-only" `

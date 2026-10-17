@@ -8,8 +8,6 @@
 == v3.21: leave, continue and Return crossing ensure inside nested loops. A
 == transfer runs exactly the ensure clauses it crosses: leaving an inner loop
 == does not run the ensure of a try that encloses that inner loop.
-Module Integration.NestedLoopEnsureTransfers
-
 Main :
     for I in 1..2
         for J in 1..3

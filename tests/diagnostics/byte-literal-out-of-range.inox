@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-8: a constant read in a fixed-width type must fit it.
-Module Diagnostics.ByteLiteralOutOfRange
-
 Main :
     B Byte := 256
     PutLn(B)

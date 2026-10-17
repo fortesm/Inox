@@ -6,7 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == A 'with' binding is as writable as its target: a parameter only reads.
-Module Diagnostics.WithParameterAssignment
 Type
     TA Struct
         FX Integer := 0

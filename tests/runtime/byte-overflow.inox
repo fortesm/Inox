@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-8: overflow is an error in every integer type; Byte holds 0..255.
-Module Runtime.ByteOverflow
-
 Main :
     B Byte := 255
     B += 1

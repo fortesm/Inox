@@ -8,8 +8,6 @@
 == CANON-5 grouped declaration (v3.26): `A, B, C T := X` evaluates X exactly
 == once and gives every name that value. `Next` prints once; later changes to
 == one name do not affect the others.
-Module Runtime.GroupedDeclarationOnce
-
 Next(N Integer) Integer :
     PutLn("call")
     Return N + 1

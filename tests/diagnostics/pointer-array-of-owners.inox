@@ -6,8 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Safe pointers: an array of owners holds Option<Own<T>>, born None.
-Module Diagnostics.PointerArrayOfOwners
-
 Type
     TNo Struct
         FValor Integer := 0

@@ -8,8 +8,6 @@
 == Method reuse (CANON-9), example 1: one behavior, many structs.
 == TPosicao knows how to move. TCirculo, TRetangulo and TTexto reuse it:
 == none of them writes Mover again, and each one moves itself.
-Module ReuseShapes
-
 Type
     TPosicao Struct
         FX Integer := 0
