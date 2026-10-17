@@ -79,8 +79,8 @@ void SemanticAnalyzer::declareStandardModuleNames(const ast::ModuleNode& module)
     ioUtilsVisible_ = usesModule(module, "Std.IOUtils");
     // Std.IOUtils uses Std.Files, so it also gives the type and the basics.
     filesVisible_ = ioUtilsVisible_ || usesModule(module, "Std.Files");
-    if (filesVisible_ && types_.resolve("File") == nullptr) {
-        declareTypeOrThrow("File", true);
+    if (filesVisible_ && !types().isDeclared("File")) {
+        declareTypeName("File", types().fileType());
     }
     debugVisible_ = usesModule(module, "Std.Debug");
     if (debugVisible_ && !symbols_.globalScope().containsLocal("Assert")) {
@@ -100,9 +100,9 @@ bool SemanticAnalyzer::fileFunctionVisible(std::string_view name) const
     return function != nullptr && (function->convenience ? ioUtilsVisible_ : filesVisible_);
 }
 
-bool SemanticAnalyzer::isFileType(std::string_view typeName)
+bool SemanticAnalyzer::isFileType(TypeRef type)
 {
-    return equalsIgnoreCase(typeName, "File");
+    return type != nullptr && type->isFile();
 }
 
 bool SemanticAnalyzer::isFileFunction(std::string_view name, std::size_t argumentCount)
@@ -114,7 +114,7 @@ bool SemanticAnalyzer::isFileFunction(std::string_view name, std::size_t argumen
     return !equalsIgnoreCase(name, "ReadLn") || argumentCount == 1;
 }
 
-std::string SemanticAnalyzer::analyzeFileCall(std::string_view name, const ast::CallExpression& call)
+TypeRef SemanticAnalyzer::analyzeFileCall(std::string_view name, const ast::CallExpression& call)
 {
     rejectInContract("the file function " + std::string(name));
     const FileFunction& function = *findFileFunction(name);
@@ -142,22 +142,26 @@ std::string SemanticAnalyzer::analyzeFileCall(std::string_view name, const ast::
                             std::to_string(arguments.size()));
     }
     for (std::size_t index = 0; index < arguments.size(); ++index) {
-        const std::string type = analyzeExpression(*arguments[index]);
+        const TypeRef type = analyzeExpression(*arguments[index]);
         if (index < fixed) {
             const std::string_view expected = function.parameters[index];
-            if (expected == "File" ? !isFileType(type) : type != expected) {
+            if (expected == "File" ? !isFileType(type) : types::nameOf(type) != expected) {
                 throw SemanticError("argument " + std::to_string(index + 1) + " of " + functionName +
-                                    " expects " + std::string(expected) + ", got " + type);
+                                    " expects " + std::string(expected) + ", got " + types::nameOf(type));
             }
             continue;
         }
         // Write and WriteLn take the values PutLn prints.
-        if (type != "String" && type != "Bool" && type != "Float64" && !isIntegerType(type)) {
+        if (type == nullptr ||
+            (!type->isString() && !type->isBool() && type != types().float64Type() && !type->isInteger())) {
             throw SemanticError("argument " + std::to_string(index + 1) + " of " + functionName +
-                                " cannot be written yet: " + type);
+                                " cannot be written yet: " + types::nameOf(type));
         }
     }
-    return std::string(function.result);
+    if (function.result == "File") {
+        return types().fileType();
+    }
+    return types().builtin(function.result) != nullptr ? types().builtin(function.result) : types().voidType();
 }
 
 void SemanticAnalyzer::requireFreshFile(const ast::Expression& value) const
@@ -176,9 +180,9 @@ void SemanticAnalyzer::requireFreshFile(const ast::Expression& value) const
                         "OpenAppend) or pass the File as ref mut");
 }
 
-void SemanticAnalyzer::rejectFileIn(std::string_view typeName, const std::string& what)
+void SemanticAnalyzer::rejectFileIn(TypeRef type, const std::string& what)
 {
-    if (isFileType(typeName)) {
+    if (isFileType(type)) {
         throw SemanticError("a File cannot be " + what +
                             " (a File lives in a local variable or a ref mut parameter and is never copied)");
     }

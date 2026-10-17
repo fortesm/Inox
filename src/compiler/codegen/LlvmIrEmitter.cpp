@@ -123,8 +123,8 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
                 inoxType = semantics.canonicalTypeName(inoxType);
             }
             if (inoxType.empty() && declaration.value != nullptr) {
-                if (const semantic::ResolvedType* resolved = semantics.typeOf(*declaration.value)) {
-                    inoxType = resolved->name;
+                if (const types::Type* resolved = semantics.typeOf(*declaration.value)) {
+                    inoxType = resolved->name();
                 }
             }
             if (const StructDefinition* structType = findStruct(structs, inoxType)) {

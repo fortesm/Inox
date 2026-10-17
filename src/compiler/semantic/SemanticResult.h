@@ -9,8 +9,10 @@
 
 #include "Symbol.h"
 #include "../ast/Ast.h"
+#include "../types/TypeContext.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -19,9 +21,26 @@
 
 namespace inox::compiler::semantic {
 
-struct ResolvedType {
+// ADR-0016: how an argument is passed.
+enum class PassMode {
+    Value,   // a copy; the parameter is immutable
+    Ref,     // `ref X T`: a read-only reference to the caller's storage
+    RefMut   // `ref mut X T`: a writable reference to the caller's variable
+};
+
+struct FunctionParameter {
     std::string name;
-    const TypeSymbol* symbol = nullptr;
+    const types::Type* type = nullptr;
+    PassMode mode = PassMode::Value;
+};
+
+struct FunctionSignature {
+    std::string name;
+    std::vector<FunctionParameter> parameters;
+    // The result's type; null for a subroutine.
+    const types::Type* returnType = nullptr;
+    // A method `T.M(...) Override :` replaces a method T reuses (CANON-9).
+    bool isOverride = false;
 };
 
 // Compile-time value of a module `Const`, resolved by semantic analysis.
@@ -37,6 +56,12 @@ struct ConstantValue {
 
 class SemanticResult {
 public:
+    SemanticResult() : types_(std::make_unique<types::TypeContext>()) {}
+
+    // Every type of the program (OpenSpec change type-representation).
+    types::TypeContext& types() { return *types_; }
+    const types::TypeContext& types() const { return *types_; }
+
     void clear()
     {
         expressionTypes_.clear();
@@ -47,7 +72,7 @@ public:
         invariantBefore_.clear();
         invariantAfter_.clear();
         newValueInvariants_.clear();
-        canonicalTypes_.clear();
+        writtenTypes_.clear();
     }
 
     void setConstantValue(const Symbol& symbol, ConstantValue value)
@@ -61,15 +86,16 @@ public:
         return iterator != constantValues_.end() ? &iterator->second : nullptr;
     }
 
-    void setExpressionType(const ast::Expression& expression, ResolvedType type)
+    void setExpressionType(const ast::Expression& expression, const types::Type* type)
     {
-        expressionTypes_.insert_or_assign(&expression, std::move(type));
+        expressionTypes_.insert_or_assign(&expression, type);
     }
 
-    const ResolvedType* typeOf(const ast::Expression& expression) const
+    // The type of an analyzed expression; null when it has none.
+    const types::Type* typeOf(const ast::Expression& expression) const
     {
         const auto iterator = expressionTypes_.find(&expression);
-        return iterator != expressionTypes_.end() ? &iterator->second : nullptr;
+        return iterator != expressionTypes_.end() ? iterator->second : nullptr;
     }
 
     void bind(const ast::IdentifierExpression& expression, const Symbol& symbol)
@@ -94,17 +120,23 @@ public:
         return iterator != callSymbols_.end() ? iterator->second : nullptr;
     }
 
-    // CANON-13: the canonical spelling of an array type written in source
-    // (Const bounds replaced by their values), for later phases.
-    void setCanonicalTypeName(const std::string& written, const std::string& canonical)
+    // The type a written type text denotes (`Array[1..Size] Byte` with Size
+    // a Const), for later phases.
+    void setWrittenType(const std::string& written, const types::Type* type)
     {
-        canonicalTypes_[written] = canonical;
+        writtenTypes_[written] = type;
+    }
+
+    const types::Type* writtenType(const std::string& written) const
+    {
+        const auto iterator = writtenTypes_.find(written);
+        return iterator != writtenTypes_.end() ? iterator->second : nullptr;
     }
 
     std::string canonicalTypeName(const std::string& written) const
     {
-        const auto iterator = canonicalTypes_.find(written);
-        return iterator != canonicalTypes_.end() ? iterator->second : written;
+        const types::Type* type = writtenType(written);
+        return type != nullptr ? type->name() : written;
     }
 
     // ADR-0015: an Integer value stored into a Natural is range-checked at run
@@ -153,8 +185,9 @@ private:
     std::unordered_map<const ast::AstNode*, std::vector<InvariantCheck>> invariantAfter_;
     std::unordered_map<const ast::AstNode*, std::string> newValueInvariants_;
     std::unordered_set<const ast::Expression*> naturalChecks_;
-    std::unordered_map<std::string, std::string> canonicalTypes_;
-    std::unordered_map<const ast::Expression*, ResolvedType> expressionTypes_;
+    std::unique_ptr<types::TypeContext> types_;
+    std::unordered_map<std::string, const types::Type*> writtenTypes_;
+    std::unordered_map<const ast::Expression*, const types::Type*> expressionTypes_;
     std::unordered_map<const ast::IdentifierExpression*, const Symbol*> identifierSymbols_;
     std::unordered_map<const ast::CallExpression*, const Symbol*> callSymbols_;
     std::unordered_map<const Symbol*, ConstantValue> constantValues_;

@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "../types/Type.h"
+
 #include <memory>
 #include <string>
 #include <string_view>
@@ -30,15 +32,10 @@ struct Symbol {
     std::string name;
     std::string normalizedName;
     SymbolKind kind = SymbolKind::Variable;
-    std::string typeName;
+    // The symbol's type; null while not known (a routine, a module, a Const
+    // whose initializer is analyzed later).
+    const types::Type* type = nullptr;
     bool isMutable = false;
-};
-
-struct TypeSymbol {
-    std::string name;
-    std::string normalizedName;
-    std::string aliasOf;
-    bool isBuiltin = false;
 };
 
 class Scope {
@@ -46,12 +43,13 @@ public:
     explicit Scope(Scope* parent = nullptr);
 
     Scope* parent() const;
-    const Symbol* declare(std::string name, SymbolKind kind, std::string typeName = {}, bool isMutable = false);
+    const Symbol* declare(std::string name, SymbolKind kind, const types::Type* type = nullptr,
+                          bool isMutable = false);
     const Symbol* resolve(std::string_view name) const;
     // Gives a symbol of this scope its inferred type once it is known (a
     // module Const whose initializer is an expression). No effect when the
     // symbol already has a type.
-    void inferTypeName(std::string_view name, std::string typeName);
+    void inferType(std::string_view name, const types::Type* type);
     bool containsLocal(std::string_view name) const;
     bool containsInAncestors(std::string_view name) const;
 
@@ -60,18 +58,6 @@ private:
 
     Scope* parent_ = nullptr;
     std::unordered_map<std::string, Symbol> symbols_;
-};
-
-class TypeTable {
-public:
-    const TypeSymbol* declare(std::string name, bool isBuiltin, std::string aliasOf = {});
-    const TypeSymbol* resolve(std::string_view name) const;
-    bool contains(std::string_view name) const;
-
-private:
-    static std::string normalize(std::string_view name);
-
-    std::unordered_map<std::string, TypeSymbol> types_;
 };
 
 class SymbolTable {

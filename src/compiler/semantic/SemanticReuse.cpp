@@ -21,7 +21,6 @@
 #include "SemanticAnalyzer.h"
 
 #include "SemanticSupport.h"
-#include "../support/PointerType.h"
 
 #include <cstddef>
 #include <map>
@@ -60,11 +59,11 @@ std::string signatureText(const FunctionSignature& signature)
         } else if (parameter.mode == PassMode::RefMut) {
             text += "ref mut ";
         }
-        text += parameter.typeName;
+        text += types::nameOf(parameter.type);
     }
     text += ")";
-    if (!signature.returnType.empty()) {
-        text += " " + signature.returnType;
+    if (signature.returnType != nullptr) {
+        text += " " + signature.returnType->name();
     }
     return text;
 }
@@ -77,7 +76,7 @@ bool sameSignature(const FunctionSignature& left, const FunctionSignature& right
     }
     for (std::size_t index = 1; index < left.parameters.size(); ++index) {
         if (left.parameters[index].mode != right.parameters[index].mode ||
-            left.parameters[index].typeName != right.parameters[index].typeName) {
+            left.parameters[index].type != right.parameters[index].type) {
             return false;
         }
     }
@@ -102,31 +101,30 @@ std::vector<std::string> SemanticAnalyzer::ownMethodNames(std::string_view typeN
     return names;
 }
 
-// The fields and methods `typeName` offers through its parts, each with the
+// The fields and methods a struct offers through its parts, each with the
 // path to it. A part's own Override method hides the members it replaces.
-std::vector<ReusedMember> SemanticAnalyzer::reusedMembers(std::string_view typeName) const
+std::vector<ReusedMember> SemanticAnalyzer::reusedMembers(TypeRef structType) const
 {
     std::vector<ReusedMember> members;
-    const StructType* structType = resolveStruct(typeName);
-    if (structType == nullptr) {
+    if (structType == nullptr || !structType->isStruct()) {
         return members;
     }
-    for (const StructField& part : structType->fields) {
+    for (const types::StructField& part : structType->fields()) {
         if (!part.isPart) {
             continue;
         }
-        const StructType* partType = resolveStruct(part.typeName);
-        if (partType == nullptr) {
+        const TypeRef partType = part.type;
+        if (partType == nullptr || !partType->isStruct()) {
             continue;
         }
-        for (const StructField& field : partType->fields) {
-            members.push_back(ReusedMember{{part.name}, field.name, partType->name, false});
+        for (const types::StructField& field : partType->fields()) {
+            members.push_back(ReusedMember{{part.name}, field.name, partType->name(), false});
         }
-        const std::vector<std::string> partMethods = ownMethodNames(partType->name);
+        const std::vector<std::string> partMethods = ownMethodNames(partType->name());
         for (const std::string& method : partMethods) {
-            members.push_back(ReusedMember{{part.name}, method, partType->name, true});
+            members.push_back(ReusedMember{{part.name}, method, partType->name(), true});
         }
-        for (ReusedMember inner : reusedMembers(partType->name)) {
+        for (ReusedMember inner : reusedMembers(partType)) {
             bool replaced = false;
             for (const std::string& method : partMethods) {
                 replaced = replaced || equalsIgnoreCase(method, inner.name);
@@ -141,13 +139,12 @@ std::vector<ReusedMember> SemanticAnalyzer::reusedMembers(std::string_view typeN
     return members;
 }
 
-// The reused member `name` of `typeName`, when the struct has no field or
+// The reused member `name` of a struct, when the struct has no field or
 // method of its own with that name. Ambiguities were rejected at the
 // struct's declaration (validateReuse).
-std::optional<ReusedMember> SemanticAnalyzer::findReusedMember(std::string_view typeName,
-                                                               std::string_view name) const
+std::optional<ReusedMember> SemanticAnalyzer::findReusedMember(TypeRef structType, std::string_view name) const
 {
-    for (ReusedMember& member : reusedMembers(typeName)) {
+    for (ReusedMember& member : reusedMembers(structType)) {
         if (equalsIgnoreCase(member.name, name)) {
             return std::move(member);
         }
@@ -157,16 +154,16 @@ std::optional<ReusedMember> SemanticAnalyzer::findReusedMember(std::string_view 
 
 void SemanticAnalyzer::validateReuse(const ast::TypeDeclaration& declaration) const
 {
-    const StructType* structType = resolveStruct(declaration.name);
-    const std::string& outer = structType->name;
-    for (const StructField& part : structType->fields) {
-        if (part.isPart && resolveStruct(part.typeName) == nullptr) {
+    const TypeRef structType = resolveStruct(declaration.name);
+    const std::string& outer = structType->name();
+    for (const types::StructField& part : structType->fields()) {
+        if (part.isPart && (part.type == nullptr || !part.type->isStruct())) {
             throw SemanticError("a struct reuses only structs (CANON-9): " + outer + " Struct (" + part.name +
                                 "), and " + part.name + " is not a struct");
         }
     }
 
-    const std::vector<ReusedMember> members = reusedMembers(outer);
+    const std::vector<ReusedMember> members = reusedMembers(structType);
     const std::vector<std::string> ownMethods = ownMethodNames(outer);
     const auto ownMethod = [&](const std::string& name) -> const FunctionSignature* {
         for (const std::string& method : ownMethods) {
@@ -192,7 +189,7 @@ void SemanticAnalyzer::validateReuse(const ast::TypeDeclaration& declaration) co
         const std::vector<const ReusedMember*>& reached = byName[key];
         const ReusedMember& first = *reached.front();
 
-        for (const StructField& field : structType->fields) {
+        for (const types::StructField& field : structType->fields()) {
             if (equalsIgnoreCase(field.name, first.name)) {
                 throw SemanticError(outer + "." + field.name + " has the name of " + pathText(outer, first) +
                                     ", which " + outer + " reuses (CANON-9): rename the field, or make " +
@@ -275,8 +272,7 @@ void SemanticAnalyzer::requireWritableReceiver(const FunctionSignature& signatur
         return;
     }
     // The object of a pointer is changed through it (safe-pointers).
-    if (const ResolvedType* type = result_.typeOf(receiver);
-        type != nullptr && (support::isOwnTypeName(type->name) || support::isLinkTypeName(type->name))) {
+    if (const TypeRef type = result_.typeOf(receiver); type != nullptr && (type->isOwn() || type->isLink())) {
         return;
     }
     if (writableRoot(receiver) == nullptr) {

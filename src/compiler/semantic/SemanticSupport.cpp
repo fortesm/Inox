@@ -134,42 +134,21 @@ const std::vector<PreludeSignature>& preludeSignatures()
 
 // The range of an integer type, clipped to the Int64 constants the compiler
 // folds. UInt64 and Natural share the upper bound Int64.Max for constants.
-bool integerTypeRange(std::string_view type, std::int64_t& low, std::int64_t& high)
+bool integerTypeRange(const types::Type* type, std::int64_t& low, std::int64_t& high)
 {
-    struct Range {
-        std::string_view name;
-        std::int64_t low;
-        std::int64_t high;
-    };
-    constexpr std::int64_t max64 = std::numeric_limits<std::int64_t>::max();
-    constexpr std::int64_t min64 = std::numeric_limits<std::int64_t>::min();
-    constexpr Range ranges[] = {
-        {"Int8", -128, 127},
-        {"Int16", -32768, 32767},
-        {"Int32", -2147483648LL, 2147483647LL},
-        {"Int64", min64, max64},
-        {"UInt8", 0, 255},
-        {"UInt16", 0, 65535},
-        {"UInt32", 0, 4294967295LL},
-        {"UInt64", 0, max64},
-        {"Natural", 0, max64},
-    };
-    for (const Range& range : ranges) {
-        if (type == range.name) {
-            low = range.low;
-            high = range.high;
-            return true;
-        }
+    if (type == nullptr || !type->isInteger()) {
+        return false;
     }
-    return false;
+    low = type->minValue();
+    high = type->maxValue();
+    return true;
 }
 
 // The fixed-width integer types narrower than 64 bits. Their values are
 // computed in the Int64 family and range-checked where a result has the type.
-bool isNarrowIntegerType(std::string_view type)
+bool isNarrowIntegerType(const types::Type* type)
 {
-    return type == "Int8" || type == "Int16" || type == "Int32" ||
-           type == "UInt8" || type == "UInt16" || type == "UInt32";
+    return type != nullptr && type->isNarrowInteger();
 }
 
 // Parses an Inox integer literal (decimal, `0x...` or `$...`). Returns false if
@@ -254,23 +233,23 @@ bool checkedMul(std::int64_t a, std::int64_t b, std::int64_t& out)
                         ": result does not fit in Int64 (integer overflow is never wraparound)");
 }
 
-bool caseDomainFor(std::string_view type, CaseDomain& domain)
+bool caseDomainFor(const types::Type* type, CaseDomain& domain)
 {
-    constexpr std::int64_t kMax = std::numeric_limits<std::int64_t>::max();
-    constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
-    if (type == "Bool") { domain = {0, 1, true, true, false}; return true; }
-    if (type == "Char") { domain = {0, 0x10FFFF, true, false, true}; return true; }
-    if (type == "Int8") { domain = {-128, 127}; return true; }
-    if (type == "Int16") { domain = {-32768, 32767}; return true; }
-    if (type == "Int32") { domain = {-2147483648LL, 2147483647LL}; return true; }
-    if (type == "Int64" || type == "Integer") { domain = {kMin, kMax}; return true; }
-    if (type == "UInt8") { domain = {0, 255}; return true; }
-    if (type == "UInt16") { domain = {0, 65535}; return true; }
-    if (type == "UInt32") { domain = {0, 4294967295LL}; return true; }
-    // ADR-0014 (v3.39): Natural is 0..Int64.Max, so its coverage is provable.
-    if (type == "Natural") { domain = {0, kMax}; return true; }
-    if (type == "UInt64" || type == "UInteger") {
-        domain = {0, kMax, false};
+    if (type == nullptr) {
+        return false;
+    }
+    if (type->isBool()) {
+        domain = {0, 1, true, true, false};
+        return true;
+    }
+    if (type->isChar()) {
+        domain = {0, 0x10FFFF, true, false, true};
+        return true;
+    }
+    if (type->isInteger()) {
+        // ADR-0014 (v3.39): Natural is 0..Int64.Max, so its coverage is
+        // provable; UInt64's range does not fit Int64, so it is not.
+        domain = {type->minValue(), type->maxValue(), type->rangeIsExact()};
         return true;
     }
     return false;

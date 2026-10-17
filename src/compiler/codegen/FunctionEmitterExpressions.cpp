@@ -232,8 +232,7 @@ std::string FunctionEmitter::emitConditional(const ast::ConditionalExpression& e
 // The semantic type name of an expression, or empty.
 std::string FunctionEmitter::semanticTypeName(const ast::Expression& expression) const
 {
-    const semantic::ResolvedType* type = semantics_.typeOf(expression);
-    return type != nullptr ? type->name : std::string{};
+    return types::nameOf(semantics_.typeOf(expression));
 }
 
 // An arithmetic result whose semantic type is a narrow fixed-width integer

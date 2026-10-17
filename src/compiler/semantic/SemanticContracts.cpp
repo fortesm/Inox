@@ -49,36 +49,37 @@ private:
 
 } // namespace
 
-std::string SemanticAnalyzer::analyzeContractCheck(const ast::CallExpression& call)
+TypeRef SemanticAnalyzer::analyzeContractCheck(const ast::CallExpression& call)
 {
     const auto& arguments = call.arguments();
     if (arguments.size() != 3 || arguments[0]->kind() != ast::AstNodeKind::LiteralExpression ||
         arguments[2]->kind() != ast::AstNodeKind::LiteralExpression) {
         throw SemanticError("internal error: malformed contract check");
     }
-    std::string condition;
+    TypeRef condition = nullptr;
     {
         ContractScope scope(inContract_);
         condition = analyzeExpression(*arguments[1]);
     }
-    if (condition != "Bool") {
+    if (condition == nullptr || !condition->isBool()) {
         const auto& text = static_cast<const ast::LiteralExpression&>(*arguments[2]).value();
         const std::size_t where = text.find(": ");
         throw SemanticError("a contract condition is Bool (CANON-24): " +
-                            (where == std::string::npos ? text : text.substr(where + 2)) + " is " + condition);
+                            (where == std::string::npos ? text : text.substr(where + 2)) + " is " +
+                            types::nameOf(condition));
     }
     analyzeExpression(*arguments[0]);
     analyzeExpression(*arguments[2]);
-    return "Void";
+    return types().voidType();
 }
 
-std::string SemanticAnalyzer::analyzePureCall(const ast::CallExpression& call)
+TypeRef SemanticAnalyzer::analyzePureCall(const ast::CallExpression& call)
 {
     if (call.arguments().size() != 1) {
         throw SemanticError("internal error: malformed contract value");
     }
     ContractScope scope(inContract_);
-    const std::string type = analyzeExpression(*call.arguments()[0]);
+    const TypeRef type = analyzeExpression(*call.arguments()[0]);
     if (isFileType(type)) {
         throw SemanticError("'old' of a File would copy it (CANON-24)");
     }
@@ -95,17 +96,16 @@ void SemanticAnalyzer::rejectInContract(const std::string& what) const
     }
 }
 
-bool SemanticAnalyzer::hasInvariant(std::string_view typeName) const
+bool SemanticAnalyzer::hasInvariant(TypeRef type) const
 {
-    const StructType* structType = resolveStruct(typeName);
-    if (structType == nullptr) {
+    if (type == nullptr || !type->isStruct()) {
         return false;
     }
-    if (resolveFunctionSignature(structType->name + ".__invariant") != nullptr) {
+    if (resolveFunctionSignature(type->name() + ".__invariant") != nullptr) {
         return true;
     }
-    for (const StructField& field : structType->fields) {
-        if (field.isPart && hasInvariant(field.typeName)) {
+    for (const types::StructField& field : type->fields()) {
+        if (field.isPart && hasInvariant(field.type)) {
             return true;
         }
     }
@@ -134,17 +134,17 @@ void SemanticAnalyzer::recordInvariantPlaces(const ast::AstNode& site, const ast
     for (const ast::Expression* current = &place;;) {
         const bool bareSelf = current->kind() == ast::AstNodeKind::IdentifierExpression &&
                               equalsIgnoreCase(static_cast<const ast::IdentifierExpression&>(*current).name(), "Self");
-        const ResolvedType* type = result_.typeOf(*current);
-        if (!bareSelf && type != nullptr && hasInvariant(type->name)) {
+        const TypeRef type = result_.typeOf(*current);
+        if (!bareSelf && hasInvariant(type)) {
             if (!isSideEffectFree(*current)) {
-                throw SemanticError("the invariant of " + type->name + " is checked on this place, so it must be "
+                throw SemanticError("the invariant of " + type->name() + " is checked on this place, so it must be "
                                     "computed without side effects (CANON-24): store the index in a variable first");
             }
             if (before) {
-                result_.addInvariantCheck(site, false, {current, type->name});
+                result_.addInvariantCheck(site, false, {current, type->name()});
             }
             if (after) {
-                result_.addInvariantCheck(site, true, {current, type->name});
+                result_.addInvariantCheck(site, true, {current, type->name()});
             }
         }
         if (current->kind() != ast::AstNodeKind::CallExpression) {

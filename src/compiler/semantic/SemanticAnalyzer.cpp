@@ -11,7 +11,6 @@
 
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../support/ArrayType.h"
 
 #include <algorithm>
 #include <array>
@@ -55,6 +54,7 @@ const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
     for (const auto& item : module.items()) {
         declareModuleItem(*item);
     }
+    resolveDeclaredTypeNames();
 
     registerFunctionSignatures(module);
 

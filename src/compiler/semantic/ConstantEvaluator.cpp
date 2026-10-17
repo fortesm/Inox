@@ -11,7 +11,6 @@
 
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../support/ArrayType.h"
 
 #include <algorithm>
 #include <array>
@@ -393,22 +392,21 @@ bool SemanticAnalyzer::staticCharValue(const ast::Expression& expression, std::i
     return false;
 }
 
-std::int64_t SemanticAnalyzer::caseChoiceValue(const ast::Expression& choice,
-                                               const std::string& selectorType)
+std::int64_t SemanticAnalyzer::caseChoiceValue(const ast::Expression& choice, TypeRef selectorType)
 {
     CaseDomain domain;
     caseDomainFor(selectorType, domain);
-    const std::string choiceType = canonicalTypeName(analyzeExpression(choice));
+    const TypeRef choiceType = analyzeExpression(choice);
     const char* kStatic =
         "a case choice must be a static value: a literal, a Const, or a constant "
         "expression (ADR-0011)";
     const auto mismatch = [&]() {
-        return SemanticError("case choice type " + choiceType +
-                             " does not match selector type " + selectorType);
+        return SemanticError("case choice type " + types::nameOf(choiceType) +
+                             " does not match selector type " + types::nameOf(selectorType));
     };
 
     if (domain.isBool) {
-        if (choiceType != "Bool") {
+        if (choiceType == nullptr || !choiceType->isBool()) {
             throw mismatch();
         }
         bool value = false;
@@ -419,7 +417,7 @@ std::int64_t SemanticAnalyzer::caseChoiceValue(const ast::Expression& choice,
     }
 
     if (domain.isChar) {
-        if (choiceType != "Char") {
+        if (choiceType == nullptr || !choiceType->isChar()) {
             throw mismatch();
         }
         std::int64_t code = 0;
