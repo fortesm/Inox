@@ -12,13 +12,19 @@ in type position (CANON-8: "[T] pode gerar ambiguidade e problemas com
 Arrays X[i]"). `Slice<T>` is the one generic type implemented. FUTURE: no
 traits, protocols or interfaces as nominal entities.
 
-Status: **Awaiting approval** of the decisions in design.md. Risk: high (a
-new compiler phase: instantiation). No code before approval.
+Status: **approved and implemented** (canon r3.77). Risk: high (a new
+compiler phase: instantiation). The three decisions of design.md were
+answered with the recommendations:
+Marcelo Fortes, 2026-10-17: "Acato suas recomendações. Para as três perguntas."
+No constraints for now (`{ }` stays reserved), inference only, and T may be
+any type, also one that is only moved, with the error at the instance.
 
-## What Changes (proposed, simplest form)
+## What Changes (simplest form)
 
-- Generic routines: `Max<T>(A T, B T) T :`; generic methods follow.
-- Generic structs: `TPair<K, V> Struct` … `;`.
+- Generic routines: `Max<T>(A T, B T) T :`.
+- Generic structs: `TPair<K, V> Struct` … `;`. Their methods, and
+  invariants and reused parts in them, come in a later change; a generic
+  routine does the job meanwhile (`Push<T>(ref mut S TStack<T>, X T)`).
 - No constraints and no protocols: each use is checked with its real types
   (`Max(3, 7)` checks the body with T = Integer); an error names the use and
   the line of the generic body.

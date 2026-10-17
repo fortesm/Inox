@@ -51,6 +51,11 @@ each version added.
   their declaration runs again, without recursion; owner parameters and
   results; contracts on owner parameters. Runtime `runtime/OwnRuntime.cpp`;
   the leak check covers the pointer programs.
+- Generics (CANON-8, r3.77): generic routines (`Max<T>(A T, B T) T :`) and
+  generic structs (`TPair<K, V> Struct`), one instance per list of types,
+  type arguments inferred from the arguments or the target, no
+  constraints (an error names the instance); across modules, with
+  contracts and exceptions; the leak check covers the generic programs.
 - Strings: reference-counted UTF-8 values everywhere a value lives,
   equality and ordering, `GetLn(S)`.
 - Exceptions: try/except/On/Else/ensure/Raise/Retry with the standard
@@ -124,9 +129,11 @@ they are rejected now.)
 - Exception handlers are matched by the written type name
   (`exceptions/ExceptionTypes`); the exception hierarchy (identifiers,
   parents) is not part of `types::Type` yet.
-- Codegen recognizes a construction `T(Field := ...)` by looking the callee
-  up in the analysis's types; the analyzer could record it, as it records
-  the routine of a call.
+- Generics (change `generics`): methods of generic structs, and invariants
+  and reused parts in a generic struct, are rejected for now; semantic
+  messages carry no line numbers, so an error in an instance names the
+  instance and the routine that used it but not the line of the generic
+  body.
 - The parser's `clonePureExpression` and `cloneChainTarget` duplicate
   `ast::cloneExpression`; `codegen/AstQueries` holds AST walks that are not
   specific to codegen; the parser never builds `BlockStatement`.

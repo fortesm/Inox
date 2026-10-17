@@ -685,11 +685,45 @@ Generic arguments SHALL be written in angle brackets — `Vector<Integer>`,
 `Set<TSuit>`, `Slice<Integer>` — because `[T]` collides with indexing;
 `<...>` is generic only in type position, where `<` and `>` are not
 comparisons. `[...]` is for indexing, slicing and array bounds
-(`Array[1..10] Integer`).
+(`Array[1..10] Integer`). A routine or a struct MAY declare type parameters
+after its name: `Max<T>(A T, B T) T :`, `TPair<K, V> Struct`.
 
 #### Scenario: Slice type
 - **WHEN** a routine takes a `Slice<Integer>`
 - **THEN** it compiles (tests/runtime/slices.inox)
+
+#### Scenario: Generic routines
+- **WHEN** a program calls generic routines with Integers, Floats, Strings, Bools, arrays, slices and ref mut arguments, and one generic routine calls another
+- **THEN** each call runs its own instance (tests/runtime/generics-routines.inox)
+
+#### Scenario: Generic structs
+- **WHEN** a program builds generic structs from written types, from the target and from the values of the fields
+- **THEN** each list of types is a struct of its own (tests/runtime/generics-structs.inox)
+
+### Requirement: CANON-8 Generic instances
+A generic routine or struct SHALL be a template: each use with its types
+makes an instance (`Max<Int64>`, `TPair<String, Int64>`), checked and
+compiled like ordinary code, one compiled copy per list of types. There are
+no constraints: T may be any type, and an operation T lacks is an error of
+the instance that needs it. Marcelo Fortes, 2026-10-17, on the three
+decisions: "Acato suas recomendações."
+
+#### Scenario: No constraints: the instance reports what T lacks
+- **WHEN** a program calls `Max` with two structs
+- **THEN** it is rejected in the instance Max<TPoint>, used in Main (tests/diagnostics/generics-no-operator.inox)
+
+### Requirement: CANON-8 Type arguments are inferred
+Type arguments SHALL come from the arguments of a call, a literal taking the
+type the other arguments fix, or from the type of its target, and SHALL NOT
+be written in an expression.
+
+#### Scenario: Type arguments are never written in an expression
+- **WHEN** a program writes `Max<Integer>(3, 7)`
+- **THEN** it is rejected with the rule (tests/diagnostics/generics-written-arguments.inox)
+
+#### Scenario: A type argument nothing fixes
+- **WHEN** a program calls `Zero` with no argument and no typed target
+- **THEN** it is rejected with how to give the type (tests/diagnostics/generics-unknown-type.inox)
 
 ### Requirement: CANON-9 Structs are nominal value types
 A struct SHALL be declared in a `Type` section as `TName Struct` … `;` and
@@ -1600,15 +1634,15 @@ idea is not decided. It needs an approved design before implementation.
 ### Requirement: FUTURE Generics and static proof
 No decision SHALL introduce traits, protocols, interfaces or behaviors as
 nominal entities: behavior is reused by method reuse (CANON-9) and
-contracts (CANON-24) are checks, never types. Generics come first in their
-simplest form (Marcelo Fortes, 2026-10-13: "da forma mais simples possível
-e depois podemos evoluir"). After 1.0: contract monitoring levels per
-module (Eiffel style) and static proof (SPARK style). Each needs an
-approved design.
+contracts (CANON-24) are checks, never types. Generics came first, in their
+simplest form (CANON-8); written constraints come only if real programs ask
+for them, and methods of generic structs follow. After 1.0: contract
+monitoring levels per module (Eiffel style) and static proof (SPARK
+style). Each needs an approved design.
 
-#### Scenario: Generics not yet in the language
-- **WHEN** a program declares a generic routine
-- **THEN** it is not accepted until the design is approved (test to add)
+#### Scenario: Methods of generic structs not yet in the language
+- **WHEN** a program declares a method of a generic struct
+- **THEN** it is rejected with the generic routine that does the job (tests/diagnostics/generics-method.inox)
 
 ### Requirement: FUTURE Ownership, absence and failure
 Ownership beyond CANON-25 (one owner, checked Links) SHALL come through

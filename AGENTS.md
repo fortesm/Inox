@@ -161,6 +161,11 @@ module that owns a concern instead of searching the whole emitter.
     rules, the pointer built-ins, and the definite-move analysis
     (`movedOwners_`, merged over every path);
   - `SemanticDebug.cpp` — Std.Debug: Assert;
+  - `SemanticGenerics.cpp` — generics (CANON-8): templates, inference of
+    type arguments from the arguments or the target, instances of generic
+    routines (copied with `ast::cloneStatements`, checked after the
+    program's routines) and of generic structs; `SemanticResult` keeps the
+    instances, and codegen compiles them like routines of the program;
   - `SemanticSupport.*` — shared helpers (`semantic::detail`).
 
 ## Known pitfalls (lessons already paid for)

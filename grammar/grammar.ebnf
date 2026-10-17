@@ -39,7 +39,12 @@ identifier_like   ::= identifier
 type_section      ::= "Type" type_decl+
                       (* section: no ":" and no closing ";" of its own *)
 type_decl         ::= struct_decl | range_decl | enum_short_decl | enum_block_decl
-struct_decl       ::= identifier "Struct" reused_parts? NEWLINE ( struct_field | invariant_clause )* ";"
+struct_decl       ::= identifier type_parameters? "Struct" reused_parts? NEWLINE
+                      ( struct_field | invariant_clause )* ";"
+                      (* "TPair<K, V> Struct" is generic (CANON-8, r3.77): no reused
+                         parts and no invariant lines in a generic struct yet *)
+type_parameters   ::= "<" identifier ( "," identifier )* ">"
+                      (* distinct names that are not types; on the line of the name *)
 reused_parts      ::= "(" identifier ( "," identifier )* ")"
                       (* method reuse (CANON-9): each part is a field named after
                          its type that brings its fields and methods; never empty *)
@@ -79,9 +84,11 @@ loop_contract     ::= ( "invariant" | "variant" ) contract_tail
                       (* ":" declares the routine and opens its body (CANON-4);
                          with type_ref it is a function, without it a subroutine;
                          "Override" marks a method that replaces a reused one (CANON-9) *)
-routine_name      ::= identifier_like ( "." identifier )?
+routine_name      ::= identifier_like ( type_parameters | "." identifier )?
                       (* "TPoint.Move" declares an associated method of TPoint;
-                         "String.UpdateStr" a method of a built-in type (CANON-9) *)
+                         "String.UpdateStr" a method of a built-in type (CANON-9);
+                         "Max<T>" a generic routine (CANON-8, r3.77); a method of a
+                         generic struct is not in the language yet *)
 parameter_part    ::= "(" parameter_list ")"
                       (* never empty: zero parameters means no parentheses at all,
                          "Main :", never "Main() :" (CANON-7) *)
@@ -102,13 +109,14 @@ array_bound       ::= "-"? integer_literal | identifier
                       (* CANON-13: a bound is static, an integer literal or a
                          Const name; "Array[1..3, 1..4] T" is an array of arrays *)
 generic_type      ::= identifier "<" type_ref ( "," type_ref )* ">"
-                      (* Slice<T> (ADR-0017) and the safe pointers Own<T>, Link<T>
-                         and Option<Own<T>> (CANON-25) are the generic types the
-                         compiler accepts; New, Free, Move, Value, Link, Alive and
-                         Same are built-in routines and None an identifier.
-                         Vector<Integer>, Set<TCardSuit>: "<...>" is generic syntax
+                      (* Slice<T> (ADR-0017), the safe pointers Own<T>, Link<T>
+                         and Option<Own<T>> (CANON-25) and the generic structs of
+                         the program, TPair<String, Integer> (CANON-8, r3.77);
+                         New, Free, Move, Value, Link, Alive and Same are built-in
+                         routines and None an identifier. "<...>" is generic syntax
                          only in type position; "[...]" stays for indexing and
-                         bounds. The compiler still uses "[T]" (conformance gap). *)
+                         bounds. Type arguments are never written in an
+                         expression: they are inferred (CANON-8). *)
 
 (* ---------- Statements and blocks (CANON-4) ---------- *)
 
@@ -337,8 +345,9 @@ Measured against the parser on 2026-10-12 (canon r3.61). Each item is an
 implementation gap to fix in the parser or the semantic analyzer, not a change
 to the language.
 
-1. Canonical but not parsed: the generic types `Vector<T>` and `Set<T>`
-   (`Slice<T>` is parsed since v3.47). Array types are parsed everywhere a
+1. Canonical but not yet built in: the generic types `Vector<T>` and `Set<T>`
+   (`Slice<T>` is parsed since v3.47, generic structs of the program since
+   r3.77). Array types are parsed everywhere a
    type is written: locals, routine signatures (v3.45), struct fields and
    `State` (v3.53).
 2. Range and Enum entries of a `Type` section are parsed and shape-checked
