@@ -188,7 +188,22 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
         output << '\n';
     }
 
-    for (const auto& [_, structType] : structs) {
+    // Declaration order, so the IR is the same with every standard library
+    // (the map's iteration order is not).
+    std::vector<const StructDefinition*> structOrder;
+    for (const auto& item : module.items()) {
+        if (item->kind() != ast::AstNodeKind::SectionDeclaration) {
+            continue;
+        }
+        for (const ast::TypeDeclaration& declaration : static_cast<const ast::SectionDeclaration&>(*item).types()) {
+            if (const StructDefinition* structType = findStruct(structs, declaration.name);
+                declaration.kind == ast::TypeDeclarationKind::Struct && structType != nullptr) {
+                structOrder.push_back(structType);
+            }
+        }
+    }
+    for (const StructDefinition* structDefinition : structOrder) {
+        const StructDefinition& structType = *structDefinition;
         output << structType.llvmName << " = type { ";
         for (std::size_t index = 0; index < structType.fields.size(); ++index) {
             if (index != 0) {
