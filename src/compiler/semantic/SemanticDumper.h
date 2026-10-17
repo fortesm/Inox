@@ -46,8 +46,8 @@ private:
 
     std::string typeSuffix(const ast::Expression& expression) const
     {
-        const ResolvedType* type = result_.typeOf(expression);
-        return " : " + (type != nullptr && !type->name.empty() ? type->name : "<unknown>");
+        const types::Type* type = result_.typeOf(expression);
+        return " : " + (type != nullptr ? type->name() : std::string("<unknown>"));
     }
 
     static std::string symbolSuffix(const Symbol* symbol)

@@ -9,84 +9,66 @@
 
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
-#include "../support/ArrayType.h"
-#include "../support/PointerType.h"
-
-#include <cctype>
 
 namespace inox::compiler::codegen::detail {
 
-std::string llvmStructName(std::string_view inoxName)
+std::string llvmStructName(TypeRef structType)
 {
-    return "%" + normalize(inoxName);
+    return "%" + normalize(structType->name());
 }
 
-// The range of a fixed-width integer type narrower than 64 bits (Byte is
-// UInt8), or nullopt for any other type.
-std::optional<IntegerRange> narrowIntegerRange(std::string_view type)
+std::optional<IntegerRange> narrowIntegerRange(TypeRef type)
 {
-    struct Entry {
-        std::string_view name;
-        IntegerRange range;
-    };
-    static constexpr Entry entries[] = {
-        {"Int8", {-128, 127}},
-        {"Int16", {-32768, 32767}},
-        {"Int32", {-2147483648LL, 2147483647LL}},
-        {"UInt8", {0, 255}},
-        {"Byte", {0, 255}},
-        {"UInt16", {0, 65535}},
-        {"UInt32", {0, 4294967295LL}},
-    };
-    for (const Entry& entry : entries) {
-        if (equalsIgnoreCase(type, entry.name)) {
-            return entry.range;
-        }
+    if (type == nullptr || !type->isNarrowInteger()) {
+        return std::nullopt;
     }
-    return std::nullopt;
+    return IntegerRange{type->minValue(), type->maxValue()};
 }
 
-std::string llvmTypeForScalar(std::string_view inoxType)
+std::string llvmValueType(TypeRef type)
 {
-    // CANON-8: Natural is the non-negative subtype of Integer and shares its
-    // i64 representation; the range is checked where a value becomes Natural.
-    if (equalsIgnoreCase(inoxType, "Integer") || equalsIgnoreCase(inoxType, "Int64") ||
-        equalsIgnoreCase(inoxType, "Natural")) {
-        return "i64";
+    if (type == nullptr) {
+        return {};
     }
-    // CANON-8 fixed widths narrower than 64 bits are computed as i64 holding
-    // the mathematical value and range-checked where a value takes the type.
-    if (narrowIntegerRange(inoxType)) {
-        return "i64";
-    }
-    if (equalsIgnoreCase(inoxType, "Bool")) {
+    switch (type->kind()) {
+    case types::TypeKind::Bool:
         return "i1";
-    }
-    if (equalsIgnoreCase(inoxType, "Float") || equalsIgnoreCase(inoxType, "Float64")) {
-        return "double";
-    }
-    if (equalsIgnoreCase(inoxType, "Float32")) {
-        return "float";
-    }
-    // CANON-14: a String is a pointer to an immutable, reference-counted
-    // block of the runtime (StringRuntime.cpp).
-    if (equalsIgnoreCase(inoxType, "String")) {
+    case types::TypeKind::Integer:
+        // CANON-8: every integer is computed as i64 holding the mathematical
+        // value; Natural and the narrow widths are range-checked where a
+        // value takes the type.
+        return "i64";
+    case types::TypeKind::Float:
+        return type->bits() == 32 ? "float" : "double";
+    case types::TypeKind::String:  // CANON-14: an immutable, counted block of the runtime
+    case types::TypeKind::File:    // file-io: a handle of the runtime, owned like a String
+    case types::TypeKind::Own:     // safe-pointers: an owner is its object's address
+    case types::TypeKind::Option:
         return "ptr";
-    }
-    // Std.Files (file-io): a File is a pointer to a handle of the runtime
-    // (FileRuntime.cpp), owned like a String.
-    if (equalsIgnoreCase(inoxType, "File")) {
-        return "ptr";
-    }
-    // Safe pointers (safe-pointers): an owner is its object's address; a
-    // Link carries the object's header and generation too.
-    if (support::isOwnTypeName(inoxType) || support::isOptionOwnTypeName(inoxType)) {
-        return "ptr";
-    }
-    if (support::isLinkTypeName(inoxType)) {
+    case types::TypeKind::Link:
         return std::string(kLinkLlvmType);
+    case types::TypeKind::Slice:
+        return std::string(kSliceLlvmType);
+    case types::TypeKind::Array:
+        return arrayLayout(type)->llvmType;
+    case types::TypeKind::Struct:
+        return llvmStructName(type);
+    case types::TypeKind::Void:
+    case types::TypeKind::None:
+    case types::TypeKind::Char:
+    case types::TypeKind::Decimal:
+    case types::TypeKind::Exception:
+        break;
     }
     return {};
+}
+
+std::string llvmStorageType(TypeRef type)
+{
+    if (type != nullptr && type->isNarrowInteger()) {
+        return "i" + std::to_string(type->bits());
+    }
+    return llvmValueType(type);
 }
 
 bool isFloatLlvmType(std::string_view llvmType)
@@ -94,259 +76,95 @@ bool isFloatLlvmType(std::string_view llvmType)
     return llvmType == "double" || llvmType == "float";
 }
 
-std::string llvmTypeForInoxType(std::string_view inoxType, const StructDefinitions& structs)
+std::optional<ArrayLayout> arrayLayout(TypeRef type)
 {
-    if (const std::string scalar = llvmTypeForScalar(inoxType); !scalar.empty()) {
-        return scalar;
-    }
-    if (const auto layout = arrayLayout(inoxType)) {
-        return layout->llvmType;
-    }
-    if (support::isSliceTypeName(inoxType)) {
-        return std::string(kSliceLlvmType);
-    }
-    const auto structType = structs.find(normalize(inoxType));
-    if (structType != structs.end()) {
-        return structType->second.llvmName;
-    }
-    return {};
-}
-
-
-std::string scalarStorageType(std::string_view inoxType)
-{
-    if (const auto range = narrowIntegerRange(inoxType)) {
-        if (range->high <= 255) {
-            return "i8";
-        }
-        if (range->high <= 65535) {
-            return "i16";
-        }
-        return "i32";
-    }
-    return llvmTypeForScalar(inoxType);
-}
-
-std::optional<ArrayLayout> arrayLayout(std::string_view canonicalType)
-{
-    const auto parts = support::splitArrayTypeName(canonicalType);
-    if (!parts) {
+    if (!isArrayType(type)) {
         return std::nullopt;
     }
     ArrayLayout layout;
-    layout.low = std::stoll(parts->low);
-    layout.high = std::stoll(parts->high);
-    layout.elementType = parts->element;
-    if (const auto inner = arrayLayout(parts->element)) {
-        layout.elementStorage = inner->llvmType;
-    } else {
-        layout.elementStorage = scalarStorageType(parts->element);
-    }
-    if (layout.elementStorage.empty() && !parts->element.empty() &&
-        std::isalpha(static_cast<unsigned char>(parts->element.front())) != 0) {
-        // The semantic analyzer accepts only scalar or struct elements.
-        layout.elementStorage = llvmStructName(parts->element);
-    }
+    layout.low = type->low();
+    layout.high = type->high();
+    layout.element = type->element();
+    layout.elementStorage = llvmStorageType(layout.element);
     if (layout.elementStorage.empty()) {
-        return std::nullopt;
+        throw CodegenError("an array element without an LLVM layout: " + type->name());
     }
-    layout.llvmType = "[" + std::to_string(layout.high - layout.low + 1) + " x " +
-                      layout.elementStorage + "]";
+    layout.llvmType = "[" + std::to_string(type->length()) + " x " + layout.elementStorage + "]";
     return layout;
 }
 
-std::string elementStorageType(std::string_view elementType)
+FlatArray flattenArray(TypeRef arrayType)
 {
-    if (const auto inner = arrayLayout(elementType)) {
-        return inner->llvmType;
+    FlatArray flat{1, arrayType};
+    while (isArrayType(flat.element)) {
+        flat.count *= flat.element->length();
+        flat.element = flat.element->element();
     }
-    return scalarStorageType(elementType);
+    return flat;
 }
 
-const StructDefinition* findStruct(const StructDefinitions& structs, std::string_view inoxName)
+std::optional<FieldLayout> fieldLayout(TypeRef structType, std::string_view fieldName)
 {
-    const auto iterator = structs.find(normalize(inoxName));
-    return iterator != structs.end() ? &iterator->second : nullptr;
-}
-
-const StructFieldInfo* findStructField(const StructDefinition& structType, std::string_view fieldName)
-{
-    for (const StructFieldInfo& field : structType.fields) {
-        if (equalsIgnoreCase(field.inoxName, fieldName)) {
-            return &field;
-        }
+    if (!isStructType(structType)) {
+        return std::nullopt;
     }
-    return nullptr;
-}
-
-void collectStructDefinitions(const ast::SectionDeclaration& section, StructDefinitions& structs,
-                              const semantic::SemanticResult& semantics)
-{
-    for (const ast::TypeDeclaration& declaration : section.types()) {
-        if (declaration.kind != ast::TypeDeclarationKind::Struct) {
-            continue;
-        }
-        StructDefinition definition;
-        definition.inoxName = declaration.name;
-        definition.llvmName = llvmStructName(declaration.name);
-        for (const ast::StructFieldDeclaration& fieldDeclaration : declaration.fields) {
-            StructFieldInfo field;
-            field.inoxName = fieldDeclaration.name;
-            field.inoxType = fieldDeclaration.typeName;
-            field.index = definition.fields.size();
-            field.llvmType = llvmTypeForScalar(fieldDeclaration.typeName);
-            if (support::isGenericTypeName(fieldDeclaration.typeName)) {
-                field.inoxType = semantics.canonicalTypeName(fieldDeclaration.typeName);
-            }
-            if (support::isArrayTypeName(fieldDeclaration.typeName)) {
-                // CANON-13: an array field is embedded by value, [N x T].
-                field.inoxType = semantics.canonicalTypeName(fieldDeclaration.typeName);
-                const auto layout = arrayLayout(field.inoxType);
-                if (!layout) {
-                    throw CodegenError("array field without a layout: " + fieldDeclaration.name);
-                }
-                field.llvmType = layout->llvmType;
-            } else if (field.llvmType.empty()) {
-                // The semantic analyzer accepts only scalar, array and struct
-                // field types; a struct may be declared later in the module,
-                // and LLVM allows forward references to named struct types.
-                field.isStruct = true;
-                field.llvmType = llvmStructName(fieldDeclaration.typeName);
-            }
-            field.hasDefault = fieldDeclaration.hasDefault;
-            field.defaultValue = fieldDeclaration.defaultValue;
-            field.isPart = fieldDeclaration.isPart;
-            definition.fields.push_back(std::move(field));
-        }
-        structs.emplace(normalize(definition.inoxName), std::move(definition));
+    const types::StructField* field = structType->field(fieldName);
+    if (field == nullptr) {
+        return std::nullopt;
     }
+    return fieldLayout(structType, structType->fieldIndex(*field));
 }
 
-FunctionSignature parseFunctionSignature(const ast::FunctionDeclaration& function,
-                                         const StructDefinitions& structs,
-                                         const semantic::SemanticResult& semantics)
+FieldLayout fieldLayout(TypeRef structType, std::size_t index)
 {
-    const auto& tokens = function.signatureTokens();
+    const types::StructField& field = structType->fields().at(index);
+    // CANON-13: an array field is embedded by value, [N x T]; a nested
+    // struct too (LLVM allows forward references to named struct types).
+    return FieldLayout{structType, &field, index, llvmValueType(field.type)};
+}
 
-    const std::size_t dot = function.name().find('.');
-    const bool isAssociatedMethod = dot != std::string::npos;
-    const std::string receiverType = isAssociatedMethod ? function.name().substr(0, dot) : std::string{};
-
+FunctionSignature lowerSignature(const ast::FunctionDeclaration& function,
+                                 const semantic::FunctionSignature& signature)
+{
+    const bool isMethod = function.name().find('.') != std::string::npos;
     std::vector<FunctionParameter> parameters;
-    std::size_t index = 0;
-    if (!tokens.empty() && tokens.front() == "(") {
-        index = 1;
-        if (index < tokens.size() && tokens[index] == ")") {
-            throw CodegenError("empty parentheses are not allowed in declarations: " + function.name());
+    for (std::size_t index = 0; index < signature.parameters.size(); ++index) {
+        const semantic::FunctionParameter& parameter = signature.parameters[index];
+        std::string llvmType = llvmValueType(parameter.type);
+        if (llvmType.empty()) {
+            throw CodegenUnsupported("LLVM emission currently supports only scalar and struct parameters");
         }
-
-        while (index < tokens.size() && tokens[index] != ")") {
-            bool byReference = false;
-            if (equalsIgnoreCase(tokens[index], "ref")) {
-                byReference = true;
-                ++index;
-                if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
-                    ++index;
-                }
-            }
-            const std::string parameterName = tokens[index++];
-            std::string parameterType;
-            bool isReceiver = false;
-            if (isAssociatedMethod && parameters.empty() && equalsIgnoreCase(parameterName, "Self")) {
-                isReceiver = true;
-                bool receiverMut = false;
-                if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
-                    ++index;
-                    receiverMut = true;
-                }
-                parameterType = receiverType;
-                // CANON-9: `Self mut` of a built-in type is the caller's
-                // variable, passed like `ref mut`; `Self` is a copy. A
-                // struct receiver is always passed by address.
-                if (receiverMut && findStruct(structs, receiverType) == nullptr) {
-                    byReference = true;
-                }
-            } else {
-                if (index >= tokens.size() || tokens[index] == "," || tokens[index] == ")") {
-                    throw CodegenUnsupported("unsupported function signature: " + function.name());
-                }
-                parameterType = tokens[index++];
-            }
-            if (support::isArrayTypeName(parameterType) || support::isGenericTypeName(parameterType)) {
-                parameterType = semantics.canonicalTypeName(parameterType);
-            }
-
-            std::string llvmParameterType = llvmTypeForScalar(parameterType);
-            if (const auto layout = arrayLayout(parameterType)) {
-                // CANON-13: an array is a value; a by-value parameter is a copy.
-                llvmParameterType = layout->llvmType;
-            } else if (support::isSliceTypeName(parameterType)) {
-                llvmParameterType = std::string(kSliceLlvmType);
-            } else if (llvmParameterType.empty()) {
-                const StructDefinition* structType = findStruct(structs, parameterType);
-                if (structType == nullptr) {
-                    throw CodegenUnsupported(
-                        "LLVM emission currently supports only scalar and struct parameters");
-                }
-                llvmParameterType = isReceiver ? "ptr" : structType->llvmName;
-            }
-
-            std::string valueType;
-            if (byReference) {
-                valueType = llvmParameterType;
-                llvmParameterType = "ptr";
-            }
-            parameters.push_back(FunctionParameter{
-                parameterName,
-                safeLlvmName(normalize(parameterName)),
-                parameterType,
-                llvmParameterType,
-                byReference,
-                valueType});
-            if (index < tokens.size() && tokens[index] == ",") {
-                ++index;
-            } else if (index >= tokens.size() || tokens[index] != ")") {
-                throw CodegenUnsupported("unsupported function signature: " + function.name());
+        const bool isReceiver = isMethod && index == 0 && equalsIgnoreCase(parameter.name, "Self");
+        bool byReference = parameter.mode != semantic::PassMode::Value;
+        if (isReceiver) {
+            // CANON-9: a struct receiver is always passed by address; `Self
+            // mut` of a built-in type is the caller's variable, passed like
+            // `ref mut`; `Self` is a copy.
+            byReference = parameter.mode == semantic::PassMode::RefMut && !parameter.type->isStruct();
+            if (parameter.type->isStruct()) {
+                llvmType = "ptr";
             }
         }
-
-        if (index >= tokens.size() || tokens[index] != ")") {
-            throw CodegenUnsupported("unsupported function signature: " + function.name());
+        std::string valueType;
+        if (byReference) {
+            valueType = llvmType;
+            llvmType = "ptr";
         }
-        ++index;
+        parameters.push_back(FunctionParameter{parameter.name, safeLlvmName(normalize(parameter.name)),
+                                               parameter.type, std::move(llvmType), byReference,
+                                               std::move(valueType)});
     }
 
-    std::string llvmReturnType;
-    std::string returnInoxType;
-    if (index + 1 == tokens.size()) {
-        returnInoxType = support::isArrayTypeName(tokens[index]) || support::isGenericTypeName(tokens[index])
-                             ? semantics.canonicalTypeName(tokens[index])
-                             : tokens[index];
-        if (const StructDefinition* structType = findStruct(structs, returnInoxType)) {
-            returnInoxType = structType->inoxName;
+    std::string llvmReturnType = "void";
+    if (signature.returnType != nullptr) {
+        llvmReturnType = llvmValueType(signature.returnType);
+        if (llvmReturnType.empty() || signature.returnType->isSlice()) {
+            throw CodegenUnsupported(
+                "LLVM emission currently supports scalar, struct return types, or subroutines without return type");
         }
     }
-    if (index == tokens.size()) {
-        llvmReturnType = "void";
-    } else if (index + 1 != tokens.size()) {
-        throw CodegenUnsupported(
-            "LLVM emission currently supports scalar, struct return types, or subroutines without return type");
-    } else if (const std::string scalarReturnType = llvmTypeForScalar(tokens[index]); !scalarReturnType.empty()) {
-        llvmReturnType = scalarReturnType;
-    } else if (const auto layout = arrayLayout(semantics.canonicalTypeName(tokens[index]))) {
-        llvmReturnType = layout->llvmType;
-    } else if (const StructDefinition* structType = findStruct(structs, tokens[index])) {
-        llvmReturnType = structType->llvmName;
-    } else {
-        throw CodegenUnsupported(
-            "LLVM emission currently supports scalar, struct return types, or subroutines without return type");
-    }
-
-    return FunctionSignature{
-        "inox_" + normalize(function.name()),
-        std::move(llvmReturnType),
-        std::move(parameters),
-        std::move(returnInoxType)};
+    return FunctionSignature{"inox_" + normalize(function.name()), std::move(llvmReturnType),
+                             std::move(parameters), signature.returnType};
 }
 
 std::string stateGlobalSymbol(std::string_view name)

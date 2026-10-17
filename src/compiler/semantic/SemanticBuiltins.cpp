@@ -11,7 +11,6 @@
 
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../support/ArrayType.h"
 
 #include <algorithm>
 #include <array>
@@ -50,40 +49,31 @@ void SemanticAnalyzer::declareBuiltins()
 
 void SemanticAnalyzer::declareBuiltinTypes()
 {
-    constexpr std::array<std::string_view, 16> builtinTypes = {
-        "Bool",
-        "Int8", "Int16", "Int32", "Int64",
-        "UInt8", "UInt16", "UInt32", "UInt64",
-        "Natural",
-        "Float32", "Float64",
-        "Currency", "Crypto", "Char", "String"
-    };
-
-    for (std::string_view name : builtinTypes) {
-        declareTypeOrThrow(name, true);
+    for (std::string_view name : types::TypeContext::coreBuiltinNames()) {
+        declareTypeName(name, types().builtin(name));
     }
 
-    declareTypeOrThrow("Integer", true, "Int64");
-    declareTypeOrThrow("UInteger", true, "UInt64");
+    declareTypeName("Integer", types().builtin("Int64"));
+    declareTypeName("UInteger", types().builtin("UInt64"));
     // CANON-8: Byte is the friendly name of UInt8.
-    declareTypeOrThrow("Byte", true, "UInt8");
-    declareTypeOrThrow("Float", true, "Float64");
+    declareTypeName("Byte", types().builtin("UInt8"));
+    declareTypeName("Float", types().builtin("Float64"));
 
     // Exception identifiers are genuine nominal TYPES, not enum constants or
     // ordinary values. Their taxonomy is centralized in ExceptionTypes.h; the
     // stdlib documents the public surface while the compiler owns bootstrap
     // type identity until user-defined Exception declarations are specified.
     for (const auto& info : exceptions::kStandardExceptionTypes) {
-        declareTypeOrThrow(info.name, true);
+        declareTypeName(info.name, types().exception(info.name));
     }
 }
 
-std::string SemanticAnalyzer::analyzeInputCall(
+TypeRef SemanticAnalyzer::analyzeInputCall(
     std::string_view name,
     const std::vector<ast::ExpressionPtr>& arguments)
 {
     if (arguments.empty()) {
-        return "Void";
+        return types().voidType();
     }
 
     for (std::size_t index = 0; index < arguments.size(); ++index) {
@@ -97,7 +87,7 @@ std::string SemanticAnalyzer::analyzeInputCall(
         const auto& identifier = static_cast<const ast::IdentifierExpression&>(argument);
         const Symbol& symbol = resolveOrThrow(identifier.name());
         result_.bind(identifier, symbol);
-        result_.setExpressionType(identifier, resolvedType(symbol.typeName));
+        result_.setExpressionType(identifier, symbol.type);
 
         if (symbol.kind == SymbolKind::LoopIterator) {
             throw SemanticError(std::string(name) + " cannot assign to read-only loop iterator: " + identifier.name());
@@ -107,26 +97,24 @@ std::string SemanticAnalyzer::analyzeInputCall(
             throw SemanticError(std::string(name) + " argument must be an assignable variable: " + identifier.name());
         }
         // CANON-17 (v3.50): GetLn(S) reads the rest of the line into a String.
-        if (canonicalTypeName(symbol.typeName) == "String") {
+        if (symbol.type != nullptr && symbol.type->isString()) {
             if (!equalsIgnoreCase(name, "GetLn")) {
                 throw SemanticError("Get reads Integer values; use GetLn(" + identifier.name() +
                                     ") to read a line of text into a String");
             }
             continue;
         }
-        if (!isIntegerType(symbol.typeName)) {
+        if (!isIntegerType(symbol.type)) {
             throw SemanticError(
                 std::string(name) + " currently supports only Integer/Int64 and String input, got " +
-                symbol.typeName + " for " + identifier.name());
+                types::nameOf(symbol.type) + " for " + identifier.name());
         }
     }
 
-    return "Void";
+    return types().voidType();
 }
 
-std::string SemanticAnalyzer::analyzePreludeCall(
-    std::string_view name,
-    const std::vector<std::string>& argumentTypes) const
+TypeRef SemanticAnalyzer::analyzePreludeCall(std::string_view name, const std::vector<TypeRef>& argumentTypes) const
 {
     if (equalsIgnoreCase(name, "Put") || equalsIgnoreCase(name, "PutLn")) {
         if (argumentTypes.empty()) {
@@ -134,17 +122,18 @@ std::string SemanticAnalyzer::analyzePreludeCall(
         }
 
         for (std::size_t index = 0; index < argumentTypes.size(); ++index) {
-            const std::string& typeName = argumentTypes[index];
-            if (typeName == "String" || typeName == "Bool" || isIntegerType(typeName) || typeName == "Float64") {
+            const TypeRef type = argumentTypes[index];
+            if (type != nullptr &&
+                (type->isString() || type->isBool() || type->isInteger() || type == types().float64Type())) {
                 continue;
             }
 
             throw SemanticError(
                 "argument " + std::to_string(index + 1) + " of " + std::string(name) +
-                " cannot be printed yet: " + typeName);
+                " cannot be printed yet: " + types::nameOf(type));
         }
 
-        return "Void";
+        return types().voidType();
     }
 
     for (const PreludeSignature& signature : preludeSignatures()) {
@@ -156,14 +145,15 @@ std::string SemanticAnalyzer::analyzePreludeCall(
         bool matches = true;
         for (std::size_t index = 0; index < argumentTypes.size(); ++index) {
             const std::string_view expected = signature.parameterTypes[index];
-            if (expected != "*" && argumentTypes[index] != expected) {
+            if (expected != "*" && types::nameOf(argumentTypes[index]) != expected) {
                 matches = false;
                 break;
             }
         }
 
         if (matches) {
-            return std::string(signature.returnType);
+            return types().builtin(signature.returnType) != nullptr ? types().builtin(signature.returnType)
+                                                                    : types().voidType();
         }
     }
 

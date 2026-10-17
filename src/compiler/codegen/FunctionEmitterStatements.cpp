@@ -16,8 +16,6 @@
 #include "MathBuiltins.h"
 #include "Operators.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../support/ArrayType.h"
-#include "../support/PointerType.h"
 #include "../support/Platform.h"
 
 #include <algorithm>
@@ -55,10 +53,10 @@ void FunctionEmitter::emitStatementKind(const ast::Statement& statement)
                 throw CodegenUnsupported(
                     "LLVM emission currently requires local variable initialization");
             }
-            emitTypedLocalVariable(variable.name(), variable.typeName());
+            emitTypedLocalVariable(variable.name(), semantics_.declaredType(variable));
             emitNewValueInvariant(variable);
         } else if (!variable.typeName().empty()) {
-            emitTypedLocalVariable(variable.name(), variable.typeName(), variable.initializer());
+            emitTypedLocalVariable(variable.name(), semantics_.declaredType(variable), variable.initializer());
         } else {
             emitLocalVariable(variable.name(), *variable.initializer());
         }
@@ -165,10 +163,10 @@ void FunctionEmitter::emitVarBlockDeclaration(const ast::Statement& statement)
     if (statement.kind() == ast::AstNodeKind::VarStatement) {
         const auto& variable = static_cast<const ast::VarStatement&>(statement);
         if (variable.initializer() == nullptr) {
-            emitTypedLocalVariable(variable.name(), variable.typeName());
+            emitTypedLocalVariable(variable.name(), semantics_.declaredType(variable));
             emitNewValueInvariant(variable);
         } else if (!variable.typeName().empty()) {
-            emitTypedLocalVariable(variable.name(), variable.typeName(), variable.initializer());
+            emitTypedLocalVariable(variable.name(), semantics_.declaredType(variable), variable.initializer());
         } else {
             emitLocalVariable(variable.name(), *variable.initializer());
         }
@@ -216,33 +214,21 @@ void FunctionEmitter::emitLocalVariable(std::string_view name, const ast::Expres
 {
     const std::string normalizedName = normalize(name);
     const std::string llvmType = expressionLlvmType(initializer);
-    const std::string semanticType = semanticTypeName(initializer);
-    const bool aggregate = findStruct(structs_, semanticType) != nullptr || arrayLayout(semanticType) ||
-                           support::isPointerTypeName(semanticType);
-    const std::string inoxType = aggregate ? semanticType :
-                                isStringType(semanticType) ? "String" :
-                                isFileType(semanticType) ? "File" :
-                                llvmType == "double" ? "Float64" :
-                                llvmType == "i1" ? "Bool" : "Integer";
+    const TypeRef type = typeOf(initializer);
     const std::string slot = newSlot(normalizedName);
     output_ << "  " << slot << " = alloca " << llvmType << "\n";
-    if (typeOwnsReferences(inoxType)) {
-        registerOwnedSlot(slot, inoxType, llvmType);
+    if (typeOwnsReferences(type)) {
+        registerOwnedSlot(slot, type, llvmType);
     }
     const std::string value = emitExpression(initializer);
-    emitOwningStore(slot, inoxType, llvmType, value);
-    locals_.insert_or_assign(normalizedName, LocalInfo{slot, inoxType, llvmType});
+    emitOwningStore(slot, type, llvmType, value);
+    locals_.insert_or_assign(normalizedName, LocalInfo{slot, type, llvmType});
     declareTombstone(normalizedName);
 }
 
-void FunctionEmitter::emitTypedLocalVariable(std::string_view name, std::string_view writtenTypeName, const ast::Expression* initializer)
+void FunctionEmitter::emitTypedLocalVariable(std::string_view name, TypeRef type, const ast::Expression* initializer)
 {
-    const std::string canonicalArray = semantics_.canonicalTypeName(std::string(writtenTypeName));
-    const std::string_view typeName =
-        support::isArrayTypeName(writtenTypeName) || support::isGenericTypeName(writtenTypeName)
-            ? std::string_view(canonicalArray)
-            : writtenTypeName;
-    const std::string llvmType = llvmTypeForInoxType(typeName, structs_);
+    const std::string llvmType = llvmValueType(type);
     if (llvmType.empty()) {
         throw CodegenUnsupported("unsupported local variable type for LLVM emission");
     }
@@ -250,44 +236,43 @@ void FunctionEmitter::emitTypedLocalVariable(std::string_view name, std::string_
     const std::string normalizedName = normalize(name);
     const std::string slot = newSlot(normalizedName);
     output_ << "  " << slot << " = alloca " << llvmType << "\n";
-    const bool owned = typeOwnsReferences(typeName);
+    const bool owned = typeOwnsReferences(type);
     if (owned) {
         // A declaration that runs again (in a loop) first releases the
         // value of the previous run.
-        registerOwnedSlot(slot, typeName, llvmType);
+        registerOwnedSlot(slot, type, llvmType);
     }
 
-    if (const StructDefinition* structType = findStruct(structs_, typeName)) {
+    if (type->isStruct()) {
         // CANON-9: `Q T := Expr` copies the value; `P T` takes the type's
         // field defaults (rule 4).
         if (initializer != nullptr) {
             const std::string value = emitExpression(*initializer);
-            emitOwningStore(slot, typeName, structType->llvmName, value);
+            emitOwningStore(slot, type, llvmType, value);
         } else {
             if (owned) {
-                emitReleaseAt(slot, typeName);
+                emitReleaseAt(slot, type);
             }
-            emitStructDefaults(slot, *structType);
+            emitStructDefaults(slot, type);
         }
-        locals_.insert_or_assign(normalizedName,
-                                 LocalInfo{slot, std::string(typeName), structType->llvmName});
+        locals_.insert_or_assign(normalizedName, LocalInfo{slot, type, llvmType});
         declareTombstone(normalizedName);
         return;
     }
 
-    if (support::isArrayTypeName(typeName)) {
+    if (type->isArray()) {
         // CANON-13: an array is a value; without an initializer every
         // element is its type's zero, or its struct type's defaults.
         if (initializer != nullptr) {
-            emitOwningStore(slot, typeName, llvmType, emitExpression(*initializer));
+            emitOwningStore(slot, type, llvmType, emitExpression(*initializer));
         } else {
             if (owned) {
-                emitReleaseAt(slot, typeName);
+                emitReleaseAt(slot, type);
             }
             output_ << "  store " << llvmType << " zeroinitializer, ptr " << slot << '\n';
-            emitArrayElementDefaults(slot, typeName);
+            emitArrayElementDefaults(slot, type);
         }
-        locals_.insert_or_assign(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
+        locals_.insert_or_assign(normalizedName, LocalInfo{slot, type, llvmType});
         declareTombstone(normalizedName);
         return;
     }
@@ -295,12 +280,10 @@ void FunctionEmitter::emitTypedLocalVariable(std::string_view name, std::string_
     // A declared-but-uninitialized scalar starts at its type's zero. LLVM
     // requires a floating-point literal for float and double, so `0` is not
     // valid there; a Link and an Option are born empty (zeroinitializer).
-    const std::string zero = support::isPointerTypeName(typeName) ? "zeroinitializer"
-                             : isFloatLlvmType(llvmType)          ? "0.0"
-                                                                  : "0";
+    const std::string zero = type->isPointer() ? "zeroinitializer" : isFloatLlvmType(llvmType) ? "0.0" : "0";
     const std::string value = initializer != nullptr ? emitExpression(*initializer) : zero;
-    emitOwningStore(slot, typeName, llvmType, value);
-    locals_.insert_or_assign(normalizedName, LocalInfo{slot, std::string(typeName), llvmType});
+    emitOwningStore(slot, type, llvmType, value);
+    locals_.insert_or_assign(normalizedName, LocalInfo{slot, type, llvmType});
     declareTombstone(normalizedName);
 }
 
@@ -434,7 +417,7 @@ std::vector<std::string> FunctionEmitter::emitArguments(const FunctionSignature&
                                                : emitExpression(*arguments[index]));
         // Safe pointers: a move-only argument is given to the routine,
         // which owns its parameter.
-        if (!parameter.byReference && isMoveOnly(parameter.inoxType)) {
+        if (!parameter.byReference && isMoveOnly(parameter.type)) {
             disarmFresh(values.back());
         }
     }
@@ -476,8 +459,8 @@ std::string FunctionEmitter::emitUserCall(const FunctionSignature& signature,
                 << " unwind label %" << currentUnwindTarget() << "\n\n";
         output_ << continuation << ":\n";
     }
-    if (!result.empty() && typeOwnsReferences(signature.returnInoxType)) {
-        holdOwnedResult(result, signature.returnInoxType, signature.llvmReturnType);
+    if (!result.empty() && typeOwnsReferences(signature.returnType)) {
+        holdOwnedResult(result, signature.returnType, signature.llvmReturnType);
     }
     return result;
 }

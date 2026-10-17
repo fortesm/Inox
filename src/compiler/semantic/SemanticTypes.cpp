@@ -5,14 +5,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// SemanticAnalyzer: type predicates, assignability, canonical type names.
+// SemanticAnalyzer: type predicates, assignability, and the resolution of
+// written types into type objects (OpenSpec change type-representation).
 
 #include "SemanticAnalyzer.h"
 
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../support/ArrayType.h"
-#include "../support/PointerType.h"
+#include "../types/TypeSyntax.h"
 
 #include <algorithm>
 #include <array>
@@ -30,24 +30,15 @@ namespace inox::compiler::semantic {
 
 using namespace detail;
 
-const StructType* SemanticAnalyzer::resolveStruct(std::string_view name) const
+TypeRef SemanticAnalyzer::resolveStruct(std::string_view name) const
 {
-    const auto iterator = structs_.find(normalizeName(name));
-    return iterator != structs_.end() ? &iterator->second : nullptr;
+    const TypeRef type = types().lookup(name);
+    return type != nullptr && type->isStruct() ? type : nullptr;
 }
 
-const StructField* SemanticAnalyzer::resolveStructField(std::string_view structName, std::string_view fieldName) const
+const types::StructField* SemanticAnalyzer::resolveStructField(TypeRef structType, std::string_view fieldName)
 {
-    const StructType* structType = resolveStruct(structName);
-    if (structType == nullptr) {
-        return nullptr;
-    }
-    for (const StructField& field : structType->fields) {
-        if (equalsIgnoreCase(field.name, fieldName)) {
-            return &field;
-        }
-    }
-    return nullptr;
+    return structType != nullptr && structType->isStruct() ? structType->field(fieldName) : nullptr;
 }
 
 bool SemanticAnalyzer::isIndexTarget(const ast::Expression& expression)
@@ -66,26 +57,14 @@ bool SemanticAnalyzer::isInternalSyntheticName(std::string_view name)
     return name == "__index" || name == "__member";
 }
 
-bool SemanticAnalyzer::isNumericType(std::string_view typeName)
+bool SemanticAnalyzer::isNumericType(TypeRef type)
 {
-    return isIntegerType(typeName) ||
-           typeName == "Float32" ||
-           typeName == "Float64";
+    return type != nullptr && type->isNumeric();
 }
 
-bool SemanticAnalyzer::isIntegerType(std::string_view typeName)
+bool SemanticAnalyzer::isIntegerType(TypeRef type)
 {
-    return typeName == "Integer" ||
-           typeName == "UInteger" ||
-           typeName == "Int8" ||
-           typeName == "Int16" ||
-           typeName == "Int32" ||
-           typeName == "Int64" ||
-           typeName == "UInt8" ||
-           typeName == "UInt16" ||
-           typeName == "UInt32" ||
-           typeName == "UInt64" ||
-           typeName == "Natural";
+    return type != nullptr && type->isInteger();
 }
 
 bool SemanticAnalyzer::isExceptionType(std::string_view name)
@@ -104,21 +83,20 @@ std::string SemanticAnalyzer::normalizeName(std::string_view name)
     return normalized;
 }
 
-bool SemanticAnalyzer::canAssign(std::string_view targetType, std::string_view valueType)
+bool SemanticAnalyzer::canAssign(TypeRef targetType, TypeRef valueType) const
 {
     // CANON-8 (v3.39): Natural is the non-negative subtype of Integer; a
     // Natural value is always a valid Integer.
-    if (targetType == "Int64" && valueType == "Natural") {
+    if (targetType == types().int64Type() && valueType == types().naturalType()) {
         return true;
     }
-    return targetType.empty() || (!valueType.empty() && targetType == valueType);
+    return targetType == nullptr || (valueType != nullptr && targetType == valueType);
 }
 
 // CANON-8 (v3.39): an Integer value enters Natural through `Natural(X)`, unless
 // it is a constant expression whose value is >= 0 (statically in range). A
 // negative constant is a compile-time range error.
-bool SemanticAnalyzer::canAssignValue(std::string_view targetType, std::string_view valueType,
-                                      const ast::Expression& value)
+bool SemanticAnalyzer::canAssignValue(TypeRef targetType, TypeRef valueType, const ast::Expression& value)
 {
     // Safe pointers: an owner is never copied; None fills a Link or an
     // Option; an Own is wrapped into an Option (safe-pointers).
@@ -139,21 +117,20 @@ bool SemanticAnalyzer::canAssignValue(std::string_view targetType, std::string_v
     }
     // CANON-8: a constant Integer is read in a fixed-width target type when it
     // fits (`B Byte := 200`); otherwise it is a compile-time range error.
-    if (const std::string canonical = canonicalTypeName(targetType);
-        isNarrowIntegerType(canonical) && valueType == "Int64") {
+    if (isNarrowIntegerType(targetType) && valueType == types().int64Type()) {
         std::int64_t constant = 0;
         std::int64_t low = 0;
         std::int64_t high = 0;
-        if (constantIntegerValue(value, constant) && integerTypeRange(canonical, low, high)) {
+        if (constantIntegerValue(value, constant) && integerTypeRange(targetType, low, high)) {
             if (constant < low || constant > high) {
-                throw SemanticError("value out of range for " + canonical + ": " +
+                throw SemanticError("value out of range for " + targetType->name() + ": " +
                                     std::to_string(constant));
             }
             return true;
         }
         return false;
     }
-    if (targetType == "Natural" && valueType == "Int64") {
+    if (targetType == types().naturalType() && valueType == types().int64Type()) {
         std::int64_t constant = 0;
         if (constantIntegerValue(value, constant)) {
             if (constant < 0) {
@@ -169,25 +146,75 @@ bool SemanticAnalyzer::canAssignValue(std::string_view targetType, std::string_v
     return false;
 }
 
-bool SemanticAnalyzer::typesMatch(std::string_view left, std::string_view right)
+bool SemanticAnalyzer::typesMatch(TypeRef left, TypeRef right)
 {
-    return left.empty() || right.empty() || left == right;
+    return left == nullptr || right == nullptr || left == right;
 }
 
-ResolvedType SemanticAnalyzer::resolvedType(std::string typeName) const
+// A built-in, alias or struct name of the program (`Byte` is UInt8).
+void SemanticAnalyzer::declareTypeName(std::string_view name, TypeRef type)
 {
-    return ResolvedType{typeName, types_.resolve(typeName)};
+    if (types().isDeclared(name)) {
+        throw SemanticError("type already declared: " + std::string(name));
+    }
+    declareOrThrow(name, SymbolKind::Type);
+    types().declareName(name, type);
+}
+
+TypeRef SemanticAnalyzer::resolveWrittenType(std::string_view written)
+{
+    const auto syntax = types::readTypeSyntax(written);
+    if (!syntax) {
+        if (types::isArraySpelling(written)) {
+            throw SemanticError("malformed array type: " + std::string(written));
+        }
+        throw SemanticError("unknown type: " + std::string(written));
+    }
+    return resolveTypeSyntax(*syntax, written);
+}
+
+TypeRef SemanticAnalyzer::lookupWrittenType(std::string_view written)
+{
+    if (!types::isArraySpelling(written) && !types::isGenericSpelling(written)) {
+        return types().lookup(written);
+    }
+    return resolveWrittenType(written);
+}
+
+TypeRef SemanticAnalyzer::resolveTypeSyntax(const types::TypeSyntax& syntax, std::string_view written)
+{
+    switch (syntax.form) {
+    case types::TypeSyntax::Form::Array:
+        return resolveArrayType(syntax, written);
+    case types::TypeSyntax::Form::Generic:
+        if (detail::equalsIgnoreCase(syntax.name, "Slice")) {
+            const std::string elementText = syntax.argument->spelling();
+            const TypeRef element = resolveTypeSyntax(*syntax.argument, elementText);
+            if (!element->isArray() && !element->isNumeric() && !element->isBool()) {
+                throw SemanticError("slices of " + element->name() +
+                                    " are not supported yet; use an integer, Float, Bool or array element");
+            }
+            return types().slice(element);
+        }
+        return resolvePointerType(syntax, written);
+    case types::TypeSyntax::Form::Named:
+        break;
+    }
+    if (const TypeRef type = types().lookup(syntax.name)) {
+        return type;
+    }
+    if (detail::equalsIgnoreCase(syntax.name, "File")) {
+        throw SemanticError("unknown type: File (it is declared in Std.Files: add `Use Std.Files`)");
+    }
+    throw SemanticError("unknown type: " + std::string(written));
 }
 
 // CANON-13: a fixed array type resolves its bounds (literals or Const names)
 // and its element type, so `Array[1..Size] Byte` and `Array[1..10] UInt8`
-// name the same type when Size is 10.
-std::string SemanticAnalyzer::canonicalArrayTypeName(std::string_view name) const
+// are the same type when Size is 10.
+TypeRef SemanticAnalyzer::resolveArrayType(const types::TypeSyntax& syntax, std::string_view written)
 {
-    const auto parts = support::splitArrayTypeName(name);
-    if (!parts) {
-        throw SemanticError("malformed array type: " + std::string(name));
-    }
+    (void)written;
     const auto boundValue = [&](const std::string& text) -> std::int64_t {
         std::uint64_t magnitude = 0;
         const bool negative = !text.empty() && text.front() == '-';
@@ -211,29 +238,26 @@ std::string SemanticAnalyzer::canonicalArrayTypeName(std::string_view name) cons
         }
         return constant->integer;
     };
-    const std::int64_t low = boundValue(parts->low);
-    const std::int64_t high = boundValue(parts->high);
+    const std::int64_t low = boundValue(syntax.low);
+    const std::int64_t high = boundValue(syntax.high);
     if (low > high) {
         throw SemanticError("empty array bounds: " + std::to_string(low) + ".." + std::to_string(high));
     }
-    std::string element;
-    if (support::isArrayTypeName(parts->element)) {
-        element = canonicalArrayTypeName(parts->element);
-    } else {
-        resolveTypeOrThrow(parts->element);
-        element = canonicalTypeName(parts->element);
-        rejectFileIn(element, "an array element");
-        if (support::isOwnTypeName(element)) {
-            throw SemanticError("an array of owners is Array[...] Option<Own<T>>: every element is born None");
-        }
-        const bool isStruct = structs_.find(normalizeName(element)) != structs_.end();
-        const bool isPointer = support::isLinkTypeName(element) || support::isOptionOwnTypeName(element);
-        if (!isNumericType(element) && element != "Bool" && element != "String" && !isStruct && !isPointer) {
-            throw SemanticError("array elements of type " + element +
-                                " are not supported yet; use an integer, Float, Bool, String or struct element");
-        }
+    const types::TypeSyntax& elementSyntax = *syntax.argument;
+    if (elementSyntax.form == types::TypeSyntax::Form::Array) {
+        return types().array(low, high, resolveArrayType(elementSyntax, elementSyntax.spelling()));
     }
-    return support::makeArrayTypeName(std::to_string(low), std::to_string(high), element);
+    const TypeRef element = resolveTypeSyntax(elementSyntax, elementSyntax.spelling());
+    rejectFileIn(element, "an array element");
+    if (element->isOwn()) {
+        throw SemanticError("an array of owners is Array[...] Option<Own<T>>: every element is born None");
+    }
+    const bool isPointer = element->isLink() || element->isOptionOwn();
+    if (!element->isNumeric() && !element->isBool() && !element->isString() && !element->isStruct() && !isPointer) {
+        throw SemanticError("array elements of type " + element->name() +
+                            " are not supported yet; use an integer, Float, Bool, String or struct element");
+    }
+    return types().array(low, high, element);
 }
 
 } // namespace inox::compiler::semantic

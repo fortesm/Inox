@@ -20,8 +20,8 @@ include(InoxWarnings)
 include(InoxSanitizers)
 
 set(INOX_COMPILER_SOURCES
-    src/compiler/main/main.cpp
     src/compiler/ast/Ast.cpp
+    src/compiler/ast/AstClone.cpp
     src/compiler/codegen/AstQueries.cpp
     src/compiler/codegen/ExceptionAbi.cpp
     src/compiler/codegen/FunctionEmitter.cpp
@@ -62,8 +62,8 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticSupport.cpp
     src/compiler/semantic/SemanticTypes.cpp
     src/compiler/semantic/Symbol.cpp
-    src/compiler/support/ArrayType.cpp
-    src/compiler/support/PointerType.cpp
+    src/compiler/types/TypeContext.cpp
+    src/compiler/types/TypeSyntax.cpp
     src/compiler/support/Environment.cpp
     src/compiler/support/FileSystem.cpp
     src/compiler/support/Platform.cpp
@@ -121,16 +121,33 @@ add_custom_target(inox-build-number ALL
     COMMENT "Inox build number"
     VERBATIM)
 
-add_executable(inox ${INOX_COMPILER_SOURCES})
-add_dependencies(inox inox-build-number)
+# The compiler as a library: the `inox` driver and the compiler unit tests
+# (tests/compiler-unit) link the same objects.
+add_library(inox-compiler STATIC ${INOX_COMPILER_SOURCES})
+add_dependencies(inox-compiler inox-build-number)
+inox_apply_compiler_options(inox-compiler)
+inox_apply_warnings(inox-compiler)
+inox_apply_sanitizers(inox-compiler)
+target_include_directories(inox-compiler PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${INOX_GENERATED_DIR}
+)
 
+add_executable(inox src/compiler/main/main.cpp)
+target_link_libraries(inox PRIVATE inox-compiler)
 inox_apply_compiler_options(inox)
 inox_apply_warnings(inox)
 inox_apply_sanitizers(inox)
 
-target_include_directories(inox PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${INOX_GENERATED_DIR}
+add_executable(inox-compiler-tests
+    tests/compiler-unit/main.cpp
+    tests/compiler-unit/TypesTests.cpp
+    tests/compiler-unit/TypeLayoutTests.cpp
+    tests/compiler-unit/AstCloneTests.cpp
 )
+target_link_libraries(inox-compiler-tests PRIVATE inox-compiler)
+inox_apply_compiler_options(inox-compiler-tests)
+inox_apply_warnings(inox-compiler-tests)
+inox_apply_sanitizers(inox-compiler-tests)
 
 include(InoxInstall)

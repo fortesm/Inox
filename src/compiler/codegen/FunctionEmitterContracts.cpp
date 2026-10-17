@@ -59,39 +59,39 @@ void FunctionEmitter::emitInvariantChecks(const ast::AstNode& site, bool after)
         return;
     }
     for (const semantic::SemanticResult::InvariantCheck& check : *checks) {
-        emitInvariantOf(check.typeName, emitPlace(*check.place).pointer);
+        emitInvariantOf(check.type, emitPlace(*check.place).pointer);
     }
 }
 
-// The invariant of `typeName` at `pointer`: its own clauses, then those of
+// The invariant of a struct at `pointer`: its own clauses, then those of
 // every struct it reuses (CANON-9; Eiffel: the parents' invariants apply).
-void FunctionEmitter::emitInvariantOf(const std::string& typeName, const std::string& pointer)
+void FunctionEmitter::emitInvariantOf(TypeRef structType, const std::string& pointer)
 {
-    const auto own = signatures_.find(normalize(typeName + ".__invariant"));
+    const auto own = signatures_.find(normalize(structType->name() + ".__invariant"));
     if (own != signatures_.end()) {
         emitUserCall(own->second, {pointer}, false);
     }
-    const StructDefinition* structType = findStruct(structs_, typeName);
-    if (structType == nullptr) {
+    if (!structType->isStruct()) {
         return;
     }
-    for (const StructFieldInfo& field : structType->fields) {
+    for (std::size_t index = 0; index < structType->fields().size(); ++index) {
+        const types::StructField& field = structType->fields()[index];
         if (!field.isPart) {
             continue;
         }
         const std::string partPointer = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << partPointer << " = getelementptr " << structType->llvmName << ", ptr " << pointer
-                << ", i32 0, i32 " << field.index << '\n';
-        emitInvariantOf(field.inoxType, partPointer);
+        output_ << "  " << partPointer << " = getelementptr " << llvmStructName(structType) << ", ptr " << pointer
+                << ", i32 0, i32 " << index << '\n';
+        emitInvariantOf(field.type, partPointer);
     }
 }
 
 void FunctionEmitter::emitNewValueInvariant(const ast::VarStatement& declaration)
 {
-    if (const std::string* typeName = semantics_.newValueInvariant(declaration)) {
+    if (const TypeRef structType = semantics_.newValueInvariant(declaration)) {
         const auto local = locals_.find(normalize(declaration.name()));
         if (local != locals_.end()) {
-            emitInvariantOf(*typeName, local->second.slot);
+            emitInvariantOf(structType, local->second.slot);
         }
     }
 }

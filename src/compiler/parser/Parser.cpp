@@ -6,7 +6,8 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include "Parser.h"
-#include "../support/ArrayType.h"
+#include "../ast/AstClone.h"
+#include "../types/TypeSyntax.h"
 
 #include "../lexer/Lexer.h"
 
@@ -1014,7 +1015,7 @@ std::vector<ast::ExpressionPtr> Parser::parseArgumentList()
 
 // A type name: an identifier, or a fixed array `Array[L..H, ...] Element`
 // (CANON-13). A bound is an integer literal, optionally negative, or a Const
-// name. The result is the front end's array spelling (support/ArrayType.h).
+// name. The result is the front end's array spelling (types/TypeSyntax.h).
 std::string Parser::parseTypeName(const char* message)
 {
     const lexer::Token& name = consume(TokenKind::Identifier, message);
@@ -1068,7 +1069,7 @@ std::string Parser::parseTypeName(const char* message)
     }
     std::string element = parseTypeName("expected the element type after the array bounds");
     for (auto it = dimensions.rbegin(); it != dimensions.rend(); ++it) {
-        element = support::makeArrayTypeName(it->first, it->second, element);
+        element = types::spellArrayType(it->first, it->second, element);
     }
     return element;
 }

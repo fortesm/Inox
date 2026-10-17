@@ -16,7 +16,6 @@
 #include "MathBuiltins.h"
 #include "Operators.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../support/ArrayType.h"
 #include "../support/Platform.h"
 
 #include <algorithm>
@@ -428,7 +427,7 @@ void FunctionEmitter::emitForIn(const ast::ForInStatement& statement)
     const std::string descending = temporary();
     output_ << "  " << descending << " = icmp sgt i64 " << startValue << ", " << endValue << '\n';
     output_ << "  store i64 " << startValue << ", ptr " << slot << '\n';
-    locals_.insert_or_assign(iteratorName, LocalInfo{slot, "Integer", "i64"});
+    locals_.insert_or_assign(iteratorName, LocalInfo{slot, semantics_.types().int64Type(), "i64"});
 
     output_ << "  br label %" << conditionTarget << "\n\n";
 
@@ -571,11 +570,11 @@ void FunctionEmitter::emitWith(const ast::WithStatement& statement)
         withGuardCaptured_.reset();
         const Place place = emitPlace(target);
         withGuardPointer_ = nullptr;
-        const std::string llvmType = llvmTypeForInoxType(place.inoxType, structs_);
+        const std::string llvmType = llvmValueType(place.type);
         if (llvmType.empty()) {
             throw CodegenUnsupported("a 'with' target of this type is not lowered yet");
         }
-        locals_.insert_or_assign(binding, LocalInfo{place.pointer, place.inoxType, llvmType});
+        locals_.insert_or_assign(binding, LocalInfo{place.pointer, place.type, llvmType});
         if (withGuardCaptured_) {
             withGuards_.insert_or_assign(binding, *withGuardCaptured_);
             withGuardCaptured_.reset();

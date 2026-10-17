@@ -19,10 +19,10 @@
 // Loop `invariant` and `variant` are lowered by the parser.
 
 #include "ContractLowering.h"
+#include "../ast/AstClone.h"
 
 #include "SemanticAnalyzer.h"
-#include "../support/ArrayType.h"
-#include "../support/PointerType.h"
+#include "../types/TypeSyntax.h"
 
 #include <cctype>
 #include <cstddef>
@@ -499,11 +499,11 @@ private:
     // holds one): such a value is never copied (safe-pointers).
     bool movesOnly(const std::string& type, std::set<std::string> seen = {}) const
     {
-        if (support::isOwnTypeName(type) || support::isOptionTypeName(type)) {
+        if (types::isGenericSpelling(type, "Own") || types::isGenericSpelling(type, "Option")) {
             return true;
         }
-        if (const auto parts = support::splitArrayTypeName(type)) {
-            return movesOnly(parts->element, seen);
+        if (const auto syntax = types::readTypeSyntax(type); syntax && syntax->form == types::TypeSyntax::Form::Array) {
+            return movesOnly(syntax->argument->spelling(), seen);
         }
         const auto info = structs_.find(lower(type));
         if (info == structs_.end() || !seen.insert(lower(type)).second) {

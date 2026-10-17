@@ -11,6 +11,7 @@
 #pragma once
 
 #include "ExceptionAbi.h"
+#include "../types/Type.h"
 
 #include <cstddef>
 #include <string>
@@ -29,8 +30,8 @@ struct ModuleContext {
     std::size_t nextStringLiteral = 0;
     // Set when the module calls libinoxrt; the driver then links it.
     bool usesInoxRuntime = false;
-    // Safe pointers: the drop function of each owned type, by type name.
-    std::unordered_map<std::string, std::string> dropFunctions;
+    // Safe pointers: the drop function of each owned type.
+    std::unordered_map<const types::Type*, std::string> dropFunctions;
 };
 
 } // namespace inox::compiler::codegen::detail

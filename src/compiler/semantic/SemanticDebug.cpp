@@ -19,7 +19,7 @@ namespace inox::compiler::semantic {
 
 using namespace detail;
 
-std::string SemanticAnalyzer::analyzeAssertCall(const ast::CallExpression& call)
+TypeRef SemanticAnalyzer::analyzeAssertCall(const ast::CallExpression& call)
 {
     if (!debugVisible_) {
         throw SemanticError("Assert is declared in Std.Debug: add `Use Std.Debug`");
@@ -34,17 +34,17 @@ std::string SemanticAnalyzer::analyzeAssertCall(const ast::CallExpression& call)
         throw SemanticError("Assert expects a Bool condition and an optional String message, got " +
                             std::to_string(arguments.size()) + " arguments");
     }
-    const std::string condition = analyzeExpression(*arguments[0]);
-    if (condition != "Bool") {
-        throw SemanticError("argument 1 of Assert expects Bool, got " + condition);
+    const TypeRef condition = analyzeExpression(*arguments[0]);
+    if (condition == nullptr || !condition->isBool()) {
+        throw SemanticError("argument 1 of Assert expects Bool, got " + types::nameOf(condition));
     }
     if (arguments.size() == 2) {
-        const std::string message = analyzeExpression(*arguments[1]);
-        if (message != "String") {
-            throw SemanticError("argument 2 of Assert expects String, got " + message);
+        const TypeRef message = analyzeExpression(*arguments[1]);
+        if (message == nullptr || !message->isString()) {
+            throw SemanticError("argument 2 of Assert expects String, got " + types::nameOf(message));
         }
     }
-    return "Void";
+    return types().voidType();
 }
 
 } // namespace inox::compiler::semantic

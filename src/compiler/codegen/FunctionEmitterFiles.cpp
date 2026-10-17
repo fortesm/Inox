@@ -135,13 +135,13 @@ std::string FunctionEmitter::emitFileCall(const ast::CallExpression& call)
         const std::string path = value(0);
         const std::string file = emitRuntimeCall(RuntimeFunction::FileOpen, "ptr", "__inox_file_open",
                                                  "ptr " + path + ", i32 " + std::to_string(mode));
-        holdOwnedResult(file, "File", "ptr");
+        holdOwnedResult(file, semantics_.types().fileType(), "ptr");
         return file;
     }
     case FileCall::ReadLn: {
         const std::string file = value(0);
         const std::string line = emitRuntimeCall(RuntimeFunction::FileReadLn, "ptr", "__inox_file_readln", "ptr " + file);
-        holdOwnedResult(line, "String", "ptr");
+        holdOwnedResult(line, semantics_.types().stringType(), "ptr");
         return line;
     }
     case FileCall::Eof:
@@ -155,15 +155,15 @@ std::string FunctionEmitter::emitFileCall(const ast::CallExpression& call)
         // PutLn prints them (CANON-17).
         const std::string file = value(0);
         for (std::size_t index = 1; index < arguments.size(); ++index) {
-            const std::string type = semanticTypeName(*arguments[index]);
+            const TypeRef type = typeOf(*arguments[index]);
             const std::string written = value(index);
             if (isStringType(type)) {
                 emitRuntimeCall(RuntimeFunction::FileWriteString, "void", "__inox_file_write_str",
                                 "ptr " + file + ", ptr " + written);
-            } else if (equalsIgnoreCase(type, "Bool")) {
+            } else if (type->isBool()) {
                 emitRuntimeCall(RuntimeFunction::FileWriteBool, "void", "__inox_file_write_bool",
                                 "ptr " + file + ", i1 zeroext " + written);
-            } else if (equalsIgnoreCase(type, "Float64")) {
+            } else if (type->isFloat() && type->bits() == 64) {
                 emitRuntimeCall(RuntimeFunction::FileWriteFloat, "void", "__inox_file_write_f64",
                                 "ptr " + file + ", double " + written);
             } else {

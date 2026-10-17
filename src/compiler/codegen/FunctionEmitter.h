@@ -37,7 +37,6 @@ public:
                     const ast::FunctionDeclaration& function,
                     const FunctionSignature& signature,
                     const FunctionSignatures& signatures,
-                    const StructDefinitions& structs,
                     ModuleContext& module,
                     const semantic::SemanticResult& semantics,
                     const StateGlobals& stateGlobals);
@@ -81,7 +80,7 @@ private:
 
     struct LocalInfo {
         std::string slot;
-        std::string inoxType;
+        TypeRef type = nullptr;
         std::string llvmType;
     };
 
@@ -158,7 +157,7 @@ private:
 
     void emitLocalVariable(std::string_view name, const ast::Expression& initializer);
 
-    void emitTypedLocalVariable(std::string_view name, std::string_view writtenTypeName, const ast::Expression* initializer = nullptr);
+    void emitTypedLocalVariable(std::string_view name, TypeRef type, const ast::Expression* initializer = nullptr);
 
     static bool isAssignmentExpression(const ast::Expression& expression);
 
@@ -204,11 +203,7 @@ private:
     // statement temporaries) holds one reference each; a routine releases its
     // owned slots at every exit and, on an exception, in one cleanup pad.
 
-    static bool isStringType(std::string_view inoxType);
-
-    static bool isFileType(std::string_view inoxType);
-
-    bool typeOwnsReferences(std::string_view inoxType) const;
+    bool typeOwnsReferences(TypeRef type) const;
 
     void requireModuleLine(const std::string& line);
 
@@ -222,25 +217,25 @@ private:
 
     std::string emitStringValue(std::string_view text);
 
-    void forEachStringAt(const std::string& pointer, std::string_view inoxType,
+    void forEachStringAt(const std::string& pointer, TypeRef type,
                          const std::function<void(const std::string&)>& action);
 
-    void emitStringCallAt(const std::string& pointer, std::string_view inoxType, std::string_view function);
+    void emitStringCallAt(const std::string& pointer, TypeRef type, std::string_view function);
 
     // Retains or releases the File stored at pointer.
     void emitFileCallAt(const std::string& pointer, RuntimeFunction function);
 
-    void emitRetainAt(const std::string& pointer, std::string_view inoxType);
+    void emitRetainAt(const std::string& pointer, TypeRef type);
 
-    void emitReleaseAt(const std::string& pointer, std::string_view inoxType);
+    void emitReleaseAt(const std::string& pointer, TypeRef type);
 
-    void emitOwningStore(const std::string& pointer, std::string_view inoxType, const std::string& llvmType,
+    void emitOwningStore(const std::string& pointer, TypeRef type, const std::string& llvmType,
                          const std::string& value);
 
-    void registerOwnedSlot(const std::string& slot, std::string_view inoxType, const std::string& llvmType,
+    void registerOwnedSlot(const std::string& slot, TypeRef type, const std::string& llvmType,
                            bool initialize = true);
 
-    void holdOwnedResult(const std::string& value, std::string_view inoxType, const std::string& llvmType);
+    void holdOwnedResult(const std::string& value, TypeRef type, const std::string& llvmType);
 
     void emitReleaseOwnedSlots();
 
@@ -250,33 +245,33 @@ private:
 
     bool scanOwnsReferences() const;
 
-    bool structHasDefaults(const StructDefinition& structType) const;
+    static bool structHasDefaults(TypeRef structType);
 
-    static bool stringArray(std::string_view inoxType);
+    static bool stringArray(TypeRef type);
 
-    const StructDefinition* defaultedStruct(std::string_view inoxType) const;
+    static TypeRef defaultedStruct(TypeRef type);
 
-    void emitStructDefaults(const std::string& pointer, const StructDefinition& structType);
+    void emitStructDefaults(const std::string& pointer, TypeRef structType);
 
-    void emitStructFieldDefaults(const std::string& pointer, const StructDefinition& structType);
+    void emitStructFieldDefaults(const std::string& pointer, TypeRef structType);
 
-    void emitArrayElementDefaults(const std::string& pointer, std::string_view arrayType);
+    void emitArrayElementDefaults(const std::string& pointer, TypeRef arrayType);
 
-    std::string emitConstruction(const ast::CallExpression& call, const StructDefinition& structType);
+    std::string emitConstruction(const ast::CallExpression& call, TypeRef structType);
 
     // The storage of a place: a variable, a field of a place or an element.
     // Any other value is copied into a temporary so its fields can be read.
     struct Place {
         std::string pointer;
-        std::string inoxType;
+        TypeRef type = nullptr;
     };
 
     Place emitPlace(const ast::Expression& expression);
 
-    std::optional<std::pair<const StructDefinition*, const StructFieldInfo*>>
-    memberField(const ast::CallExpression& member) const;
+    std::optional<FieldLayout> memberField(const ast::CallExpression& member) const;
 
-    std::string placeTypeName(const ast::Expression& expression) const;
+    // The struct a construction `T(Field := Value, ...)` builds, or null.
+    TypeRef constructedStruct(const ast::CallExpression& call) const;
 
     FieldAddress emitMemberAddress(const ast::CallExpression& call);
 
@@ -293,9 +288,10 @@ private:
     bool isContractCheck(const ast::CallExpression& call) const;
     void emitContractCheck(const ast::CallExpression& call);
     void emitInvariantChecks(const ast::AstNode& site, bool after);
-    void emitInvariantOf(const std::string& typeName, const std::string& pointer);
+    void emitInvariantOf(TypeRef structType, const std::string& pointer);
     void emitNewValueInvariant(const ast::VarStatement& declaration);
-    const FunctionSignature* findMethodSignature(const ast::Expression& receiver, const std::string& method) const;
+    // The routine the analysis bound a call site to (a method, a function).
+    const FunctionSignature* boundSignature(const ast::CallExpression& site) const;
     std::string emitReceiver(const FunctionSignature& signature, const ast::Expression& receiver);
 
     MethodCallTarget resolveNoArgumentMethodAccess(const ast::CallExpression& member);
@@ -312,18 +308,20 @@ private:
 
     bool isNaturalConversion(const ast::CallExpression& call) const;
 
+    TypeRef conversionTarget(const ast::CallExpression& call) const;
+
     std::string emitConditional(const ast::ConditionalExpression& expression);
 
     static bool isIndexCall(const ast::Expression& expression);
 
-    std::string valueLlvmType(const std::string& inoxType) const;
+    static std::string valueLlvmType(TypeRef type);
 
     std::optional<std::int64_t> arrayBoundCall(const ast::CallExpression& call) const;
 
     struct ElementAddress {
         std::string pointer;
-        std::string storage;      // LLVM storage type of the element
-        std::string elementType;  // Inox element type
+        std::string storage;          // LLVM storage type of the element
+        TypeRef elementType = nullptr;
     };
 
     std::string emitArrayBaseAddress(const ast::Expression& base, const ArrayLayout& layout);
@@ -336,7 +334,7 @@ private:
 
     SliceParts extractSlice(const std::string& value);
 
-    SliceParts emitSliceSource(const ast::Expression& base, std::string& storage, std::string& elementType);
+    SliceParts emitSliceSource(const ast::Expression& base, std::string& storage, TypeRef& elementType);
 
     std::string emitSlice(const ast::CallExpression& call);
 
@@ -346,7 +344,8 @@ private:
 
     std::string narrowForStorage(const std::string& value, const ElementAddress& element);
 
-    std::string semanticTypeName(const ast::Expression& expression) const;
+    // The type the analysis gave an expression; null when it has none.
+    TypeRef typeOf(const ast::Expression& expression) const;
 
     static bool isRangeCheckedArithmetic(const ast::Expression& expression);
 
@@ -365,7 +364,7 @@ private:
     // every fresh one (New, Move, a call's result, a construction) is held
     // by a statement temporary until a store, an argument or a Return takes
     // it, which disarms the temporary.
-    bool isMoveOnly(std::string_view inoxType) const;
+    static bool isMoveOnly(TypeRef type);
     bool isPointerBuiltin(const ast::CallExpression& call) const;
     std::string emitPointerBuiltin(const ast::CallExpression& call);
     // CANON-11 with CANON-25: a `with` whose target is reached through a
@@ -389,15 +388,15 @@ private:
     LinkParts emitHeaderOfPlace(const ast::Expression& place);
     LinkParts emitHeaderOfPointer(const ast::Expression& pointer);
     std::string emitOwnerNullCheck(const std::string& owner);
-    std::string dropFunctionFor(const std::string& targetType);
-    void emitOwnerFreesAt(const std::string& pointer, std::string_view inoxType);
+    std::string dropFunctionFor(TypeRef targetType);
+    void emitOwnerFreesAt(const std::string& pointer, TypeRef type);
+    void emitTombstoneFree(const std::string& pointer);
     void disarmFresh(const std::string& value);
     std::string emitNewTombstone();
     void collectTombstoneLocals();
     void declareTombstone(const std::string& normalizedName);
-    void forEachLeafAt(const std::string& pointer, std::string_view inoxType,
-                       const std::function<bool(std::string_view)>& isLeaf,
-                       const std::function<void(const std::string&, std::string_view)>& action);
+    void forEachLeafAt(const std::string& pointer, TypeRef type, const std::function<bool(TypeRef)>& isLeaf,
+                       const std::function<void(const std::string&, TypeRef)>& action);
     struct FreshTemp {
         std::string slot;
         std::string llvmType;
@@ -428,10 +427,8 @@ private:
     const ast::FunctionDeclaration& function_;
     const FunctionSignature& signature_;
     const FunctionSignatures& signatures_;
-    const StructDefinitions& structs_;
     ModuleContext& module_;
     std::unordered_map<std::string, std::string> parameters_;
-    std::unordered_map<std::string, std::string> parameterTypes_;
     std::unordered_map<std::string, LocalInfo> locals_;
     std::unordered_set<std::string> usedSlots_;
     std::size_t slotCounter_ = 0;
@@ -453,12 +450,16 @@ private:
     std::string returnValueSlot_;
     std::size_t nextTemporary_ = 0;
     std::size_t nextLabel_ = 0;
+    // Storage the routine owns: a value that owns references, or the
+    // tombstone of a variable some Link points to (FunctionEmitterPointers.cpp).
     struct OwnedSlot {
         std::string pointer;
-        std::string inoxType;
+        TypeRef type = nullptr;
         std::string llvmType;
         std::size_t depth = 0;
+        bool tombstone = false;
     };
+    void emitReleaseSlot(const OwnedSlot& slot);
     std::vector<OwnedSlot> ownedSlots_;
     std::vector<OwnedSlot> pendingTemps_;
     std::size_t statementDepth_ = 0;

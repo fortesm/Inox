@@ -16,8 +16,6 @@
 #include "MathBuiltins.h"
 #include "Operators.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../support/ArrayType.h"
-#include "../support/PointerType.h"
 #include "../support/Platform.h"
 
 #include <algorithm>
@@ -39,13 +37,13 @@ namespace inox::compiler::codegen::detail {
 
 // CANON-9: whether a struct type, or a struct nested in it, has a field
 // default other than zero (a String field starts as "", not null).
-bool FunctionEmitter::structHasDefaults(const StructDefinition& structType) const
+bool FunctionEmitter::structHasDefaults(TypeRef structType)
 {
-    for (const StructFieldInfo& field : structType.fields) {
-        if (field.hasDefault || isStringType(field.inoxType)) {
+    for (const types::StructField& field : structType->fields()) {
+        if (field.hasDefault || isStringType(field.type)) {
             return true;
         }
-        if (defaultedStruct(field.inoxType) != nullptr || stringArray(field.inoxType)) {
+        if (defaultedStruct(field.type) != nullptr || stringArray(field.type)) {
             return true;
         }
     }
@@ -53,59 +51,50 @@ bool FunctionEmitter::structHasDefaults(const StructDefinition& structType) cons
 }
 
 // Whether an array type's innermost element is a String.
-bool FunctionEmitter::stringArray(std::string_view inoxType)
+bool FunctionEmitter::stringArray(TypeRef type)
 {
-    std::string type(inoxType);
-    bool isArray = false;
-    while (const auto layout = arrayLayout(type)) {
-        type = layout->elementType;
-        isArray = true;
-    }
-    return isArray && isStringType(type);
+    return isArrayType(type) && isStringType(flattenArray(type).element);
 }
 
-// The struct with non-zero defaults that a value of `inoxType` holds: the
-// type itself, or the innermost element of an array type; else null.
-const StructDefinition* FunctionEmitter::defaultedStruct(std::string_view inoxType) const
+// The struct with non-zero defaults that a value of `type` holds: the type
+// itself, or the innermost element of an array type; else null.
+TypeRef FunctionEmitter::defaultedStruct(TypeRef type)
 {
-    std::string type(inoxType);
-    while (const auto layout = arrayLayout(type)) {
-        type = layout->elementType;
-    }
-    const StructDefinition* structType = findStruct(structs_, type);
-    return structType != nullptr && structHasDefaults(*structType) ? structType : nullptr;
+    const TypeRef element = flattenArray(type).element;
+    return isStructType(element) && structHasDefaults(element) ? element : nullptr;
 }
 
 // Writes the type defaults of a struct at `pointer` (CANON-5 rule 4):
 // zero, then each field default, recursively into nested structs.
-void FunctionEmitter::emitStructDefaults(const std::string& pointer, const StructDefinition& structType)
+void FunctionEmitter::emitStructDefaults(const std::string& pointer, TypeRef structType)
 {
-    output_ << "  store " << structType.llvmName << " zeroinitializer, ptr " << pointer << '\n';
+    output_ << "  store " << llvmStructName(structType) << " zeroinitializer, ptr " << pointer << '\n';
     emitStructFieldDefaults(pointer, structType);
 }
 
-void FunctionEmitter::emitStructFieldDefaults(const std::string& pointer, const StructDefinition& structType)
+void FunctionEmitter::emitStructFieldDefaults(const std::string& pointer, TypeRef structType)
 {
-    for (const StructFieldInfo& field : structType.fields) {
-        const StructDefinition* defaulted = field.hasDefault ? nullptr : defaultedStruct(field.inoxType);
-        if (!field.hasDefault && defaulted == nullptr && !isStringType(field.inoxType) &&
-            !stringArray(field.inoxType)) {
+    for (std::size_t index = 0; index < structType->fields().size(); ++index) {
+        const FieldLayout layout = fieldLayout(structType, index);
+        const types::StructField& field = *layout.field;
+        const TypeRef defaulted = field.hasDefault ? nullptr : defaultedStruct(field.type);
+        if (!field.hasDefault && defaulted == nullptr && !isStringType(field.type) && !stringArray(field.type)) {
             continue;
         }
         const std::string fieldPointer = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << fieldPointer << " = getelementptr " << structType.llvmName << ", ptr "
-                << pointer << ", i32 0, i32 " << field.index << '\n';
-        if (field.isStruct) {
-            emitStructFieldDefaults(fieldPointer, *defaulted);
+        output_ << "  " << fieldPointer << " = getelementptr " << llvmStructName(structType) << ", ptr "
+                << pointer << ", i32 0, i32 " << index << '\n';
+        if (field.type->isStruct()) {
+            emitStructFieldDefaults(fieldPointer, defaulted);
             continue;
         }
-        if (defaulted != nullptr || stringArray(field.inoxType)) {
+        if (defaulted != nullptr || stringArray(field.type)) {
             // An array field of structs or Strings: every element gets
             // the defaults.
-            emitArrayElementDefaults(fieldPointer, field.inoxType);
+            emitArrayElementDefaults(fieldPointer, field.type);
             continue;
         }
-        if (isStringType(field.inoxType)) {
+        if (isStringType(field.type)) {
             // A default is an immortal literal (kept quoted by the parser),
             // so storing it needs no retain.
             const std::string& text = field.defaultValue;
@@ -115,99 +104,104 @@ void FunctionEmitter::emitStructFieldDefaults(const std::string& pointer, const 
             output_ << "  store ptr " << value << ", ptr " << fieldPointer << '\n';
             continue;
         }
-        output_ << "  store " << field.llvmType << ' '
-                << llvmDefaultLiteral(field.defaultValue, field.llvmType) << ", ptr " << fieldPointer
-                << '\n';
+        output_ << "  store " << layout.llvmType << ' ' << llvmDefaultLiteral(field.defaultValue, layout.llvmType)
+                << ", ptr " << fieldPointer << '\n';
     }
 }
 
-// An array of structs with defaults starts with every element at its
-// struct's defaults. The array was zeroed; nested arrays are contiguous,
-// so the elements are walked as one flat run.
-void FunctionEmitter::emitArrayElementDefaults(const std::string& pointer, std::string_view arrayType)
+// An array of structs with defaults, or of Strings, starts with every
+// element at its defaults. The array was zeroed; nested arrays are
+// contiguous, so the elements are walked as one flat run. Any other type
+// keeps its zero.
+void FunctionEmitter::emitArrayElementDefaults(const std::string& pointer, TypeRef arrayType)
 {
-    std::optional<ArrayLayout> layout = arrayLayout(arrayType);
-    std::int64_t count = 1;
-    while (layout) {
-        count *= layout->high - layout->low + 1;
-        const std::string element = layout->elementType;
-        if (const auto inner = arrayLayout(element)) {
-            layout = inner;
-            continue;
-        }
-        const StructDefinition* structType = findStruct(structs_, element);
-        if (!isStringType(element) && (structType == nullptr || !structHasDefaults(*structType))) {
-            return;
-        }
-        const std::string label = std::to_string(nextLabel_++);
-        const std::string counter = "%elemdefault.i" + label;
-        output_ << "  " << counter << " = alloca i64\n";
-        output_ << "  store i64 0, ptr " << counter << '\n';
-        output_ << "  br label %elemdefault.cond" << label << "\n\n";
-        output_ << "elemdefault.cond" << label << ":\n";
-        const std::string index = "%tmp" + std::to_string(nextTemporary_++);
-        const std::string more = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << index << " = load i64, ptr " << counter << '\n';
-        output_ << "  " << more << " = icmp slt i64 " << index << ", " << count << '\n';
-        output_ << "  br i1 " << more << ", label %elemdefault.body" << label
-                << ", label %elemdefault.end" << label << "\n\n";
-        output_ << "elemdefault.body" << label << ":\n";
-        const std::string elementPointer = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << elementPointer << " = getelementptr inbounds "
-                << (structType != nullptr ? structType->llvmName : std::string("ptr"))
-                << ", ptr " << pointer << ", i64 " << index << '\n';
-        if (structType != nullptr) {
-            emitStructFieldDefaults(elementPointer, *structType);
-        } else {
-            output_ << "  store ptr " << emptyStringValue() << ", ptr " << elementPointer << '\n';
-        }
-        const std::string next = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << next << " = add i64 " << index << ", 1\n";
-        output_ << "  store i64 " << next << ", ptr " << counter << '\n';
-        output_ << "  br label %elemdefault.cond" << label << "\n\n";
-        output_ << "elemdefault.end" << label << ":\n";
+    if (!isArrayType(arrayType)) {
         return;
     }
+    const FlatArray flat = flattenArray(arrayType);
+    const TypeRef structType = isStructType(flat.element) ? flat.element : nullptr;
+    if (!isStringType(flat.element) && (structType == nullptr || !structHasDefaults(structType))) {
+        return;
+    }
+    const std::string label = std::to_string(nextLabel_++);
+    const std::string counter = "%elemdefault.i" + label;
+    output_ << "  " << counter << " = alloca i64\n";
+    output_ << "  store i64 0, ptr " << counter << '\n';
+    output_ << "  br label %elemdefault.cond" << label << "\n\n";
+    output_ << "elemdefault.cond" << label << ":\n";
+    const std::string index = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string more = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << index << " = load i64, ptr " << counter << '\n';
+    output_ << "  " << more << " = icmp slt i64 " << index << ", " << flat.count << '\n';
+    output_ << "  br i1 " << more << ", label %elemdefault.body" << label << ", label %elemdefault.end" << label
+            << "\n\n";
+    output_ << "elemdefault.body" << label << ":\n";
+    const std::string elementPointer = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << elementPointer << " = getelementptr inbounds "
+            << (structType != nullptr ? llvmStructName(structType) : std::string("ptr")) << ", ptr " << pointer
+            << ", i64 " << index << '\n';
+    if (structType != nullptr) {
+        emitStructFieldDefaults(elementPointer, structType);
+    } else {
+        output_ << "  store ptr " << emptyStringValue() << ", ptr " << elementPointer << '\n';
+    }
+    const std::string next = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << next << " = add i64 " << index << ", 1\n";
+    output_ << "  store i64 " << next << ", ptr " << counter << '\n';
+    output_ << "  br label %elemdefault.cond" << label << "\n\n";
+    output_ << "elemdefault.end" << label << ":\n";
+}
+
+// The struct a construction `T(Field := Value, ...)` builds, or null.
+TypeRef FunctionEmitter::constructedStruct(const ast::CallExpression& call) const
+{
+    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
+        return nullptr;
+    }
+    const TypeRef type =
+        semantics_.types().lookup(static_cast<const ast::IdentifierExpression&>(call.callee()).name());
+    return isStructType(type) ? type : nullptr;
 }
 
 // CANON-9 named construction `T(Field := Value, ...)`: the type defaults,
 // then each named value in source order.
-std::string FunctionEmitter::emitConstruction(const ast::CallExpression& call, const StructDefinition& structType)
+std::string FunctionEmitter::emitConstruction(const ast::CallExpression& call, TypeRef structType)
 {
+    const std::string structName = llvmStructName(structType);
     const std::string slot = "%construct" + std::to_string(nextTemporary_++);
-    output_ << "  " << slot << " = alloca " << structType.llvmName << '\n';
+    output_ << "  " << slot << " = alloca " << structName << '\n';
     emitStructDefaults(slot, structType);
     for (const auto& argument : call.arguments()) {
         const auto& named = static_cast<const ast::BinaryExpression&>(*argument);
         const auto& fieldName = static_cast<const ast::IdentifierExpression&>(named.left());
-        const StructFieldInfo* field = findStructField(structType, fieldName.name());
-        if (field == nullptr) {
+        const auto field = fieldLayout(structType, fieldName.name());
+        if (!field) {
             throw CodegenError("unknown field in construction: " + fieldName.name());
         }
         const std::string value = emitExpression(named.right());
         const std::string fieldPointer = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << fieldPointer << " = getelementptr " << structType.llvmName << ", ptr " << slot
-                << ", i32 0, i32 " << field->index << '\n';
+        output_ << "  " << fieldPointer << " = getelementptr " << structName << ", ptr " << slot << ", i32 0, i32 "
+                << field->index << '\n';
         output_ << "  store " << field->llvmType << ' ' << value << ", ptr " << fieldPointer << '\n';
         // Safe pointers: an owner given to a field moves into the value.
-        if (isMoveOnly(field->inoxType)) {
+        if (isMoveOnly(field->field->type)) {
             disarmFresh(value);
         }
     }
     // CANON-24: the new value satisfies its invariant.
-    if (const std::string* invariantType = semantics_.newValueInvariant(call)) {
-        emitInvariantOf(*invariantType, slot);
+    if (const TypeRef invariantType = semantics_.newValueInvariant(call)) {
+        emitInvariantOf(invariantType, slot);
     }
     // Safe pointers: a value that holds owners is fresh: it owns its
     // Strings (+1) and its owners, held until a store takes it.
-    const bool moveOnly = isMoveOnly(structType.inoxName);
+    const bool moveOnly = isMoveOnly(structType);
     if (moveOnly) {
-        emitRetainAt(slot, structType.inoxName);
+        emitRetainAt(slot, structType);
     }
     const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-    output_ << "  " << result << " = load " << structType.llvmName << ", ptr " << slot << '\n';
+    output_ << "  " << result << " = load " << structName << ", ptr " << slot << '\n';
     if (moveOnly) {
-        holdOwnedResult(result, structType.inoxName, structType.llvmName);
+        holdOwnedResult(result, structType, structName);
     }
     return result;
 }
@@ -219,7 +213,7 @@ FunctionEmitter::Place FunctionEmitter::emitPlace(const ast::Expression& express
         const auto local = locals_.find(name);
         if (local != locals_.end()) {
             emitWithGuard(name);
-            return Place{local->second.slot, local->second.inoxType};
+            return Place{local->second.slot, local->second.type};
         }
     }
     if (isIndexCall(expression)) {
@@ -234,24 +228,24 @@ FunctionEmitter::Place FunctionEmitter::emitPlace(const ast::Expression& express
                              .name(),
                          "Value")) {
         const auto& call = static_cast<const ast::CallExpression&>(expression);
-        return Place{emitPointerTarget(*call.arguments()[0]), semanticTypeName(expression)};
+        return Place{emitPointerTarget(*call.arguments()[0]), typeOf(expression)};
     }
     if (isMemberAccessCall(expression)) {
         const auto& member = static_cast<const ast::CallExpression&>(expression);
         if (const auto field = memberField(member)) {
             // Through a pointer, the field is in the object it reaches.
             const ast::Expression& baseExpression = *member.arguments()[0];
-            const Place base = support::isPointerTypeName(placeTypeName(baseExpression))
-                                   ? Place{emitPointerTarget(baseExpression), {}}
+            const Place base = isPointerType(typeOf(baseExpression))
+                                   ? Place{emitPointerTarget(baseExpression), nullptr}
                                    : emitPlace(baseExpression);
             const std::string pointer = "%tmp" + std::to_string(nextTemporary_++);
-            output_ << "  " << pointer << " = getelementptr " << field->first->llvmName << ", ptr "
-                    << base.pointer << ", i32 0, i32 " << field->second->index << '\n';
-            return Place{pointer, field->second->inoxType};
+            output_ << "  " << pointer << " = getelementptr " << llvmStructName(field->owner) << ", ptr "
+                    << base.pointer << ", i32 0, i32 " << field->index << '\n';
+            return Place{pointer, field->field->type};
         }
     }
-    const std::string type = semanticTypeName(expression);
-    const std::string llvmType = llvmTypeForInoxType(type, structs_);
+    const TypeRef type = typeOf(expression);
+    const std::string llvmType = llvmValueType(type);
     if (llvmType.empty()) {
         throw CodegenUnsupported("this value has no storage in the LLVM backend");
     }
@@ -263,46 +257,19 @@ FunctionEmitter::Place FunctionEmitter::emitPlace(const ast::Expression& express
 }
 
 // The struct and field a `__member(Base, Name)` names, when Base is a
-// struct value and Name one of its fields (otherwise it is a method).
-std::optional<std::pair<const StructDefinition*, const StructFieldInfo*>>
-FunctionEmitter::memberField(const ast::CallExpression& member) const
+// struct value (or a pointer to one) and Name one of its fields (otherwise
+// it is a method).
+std::optional<FieldLayout> FunctionEmitter::memberField(const ast::CallExpression& member) const
 {
     if (member.arguments().size() != 2 ||
         member.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
         return std::nullopt;
     }
-    std::string baseType = placeTypeName(*member.arguments()[0]);
-    if (support::isPointerTypeName(baseType)) {
-        baseType = support::pointerTargetTypeName(baseType);
+    TypeRef baseType = typeOf(*member.arguments()[0]);
+    if (isPointerType(baseType)) {
+        baseType = baseType->pointerTarget();
     }
-    const StructDefinition* structType = findStruct(structs_, baseType);
-    if (structType == nullptr) {
-        return std::nullopt;
-    }
-    const auto& fieldName = static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
-    const StructFieldInfo* field = findStructField(*structType, fieldName.name());
-    if (field == nullptr) {
-        return std::nullopt;
-    }
-    return std::make_pair(structType, field);
-}
-
-// The Inox type of a place or value: a local's declared type, else the
-// semantic type.
-std::string FunctionEmitter::placeTypeName(const ast::Expression& expression) const
-{
-    if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
-        const auto local = locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(expression).name()));
-        if (local != locals_.end()) {
-            return local->second.inoxType;
-        }
-    }
-    if (isMemberAccessCall(expression)) {
-        if (const auto field = memberField(static_cast<const ast::CallExpression&>(expression))) {
-            return field->second->inoxType;
-        }
-    }
-    return semanticTypeName(expression);
+    return fieldLayout(baseType, static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]).name());
 }
 
 FunctionEmitter::FieldAddress FunctionEmitter::emitMemberAddress(const ast::CallExpression& call)
@@ -312,8 +279,7 @@ FunctionEmitter::FieldAddress FunctionEmitter::emitMemberAddress(const ast::Call
         throw CodegenError("not a struct field");
     }
     const Place place = emitPlace(call);
-    const auto field = memberField(call);
-    return FieldAddress{place.pointer, field->second->llvmType};
+    return FieldAddress{place.pointer, memberField(call)->llvmType};
 }
 
 bool FunctionEmitter::isMemberAccessCall(const ast::Expression& expression)
@@ -343,7 +309,7 @@ FunctionEmitter::MethodCallTarget FunctionEmitter::resolveMethodCall(const ast::
 
     const auto& method =
         static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
-    const FunctionSignature* signature = findMethodSignature(*member.arguments()[0], method.name());
+    const FunctionSignature* signature = boundSignature(call);
     if (signature == nullptr) {
         throw CodegenUnsupported("unknown method for LLVM emission: " + method.name());
     }
@@ -353,21 +319,17 @@ FunctionEmitter::MethodCallTarget FunctionEmitter::resolveMethodCall(const ast::
     return MethodCallTarget{signature, emitReceiver(*signature, *member.arguments()[0])};
 }
 
-// A method of the receiver's type: a struct method, or (CANON-9) a method
-// of a built-in type, declared under its written or canonical name.
-const FunctionSignature* FunctionEmitter::findMethodSignature(const ast::Expression& receiver,
-                                                              const std::string& method) const
+// The routine the analysis bound a call site to: a method of the receiver's
+// type (a struct method, or a method of a built-in type, CANON-9) or a
+// routine of the program.
+const FunctionSignature* FunctionEmitter::boundSignature(const ast::CallExpression& site) const
 {
-    for (std::string receiverType : {placeTypeName(receiver), semanticTypeName(receiver)}) {
-        if (support::isPointerTypeName(receiverType)) {
-            receiverType = support::pointerTargetTypeName(receiverType);
-        }
-        const auto signature = signatures_.find(normalize(receiverType + "." + method));
-        if (signature != signatures_.end() && !signature->second.parameters.empty()) {
-            return &signature->second;
-        }
+    const semantic::Symbol* symbol = semantics_.symbolOf(site);
+    if (symbol == nullptr) {
+        return nullptr;
     }
-    return nullptr;
+    const auto signature = signatures_.find(normalize(symbol->name));
+    return signature != signatures_.end() ? &signature->second : nullptr;
 }
 
 // A struct receiver is passed by address; a built-in one as its parameter
@@ -376,16 +338,16 @@ std::string FunctionEmitter::emitReceiver(const FunctionSignature& signature, co
 {
     const FunctionParameter& self = signature.parameters.front();
     // Safe pointers: the receiver is the object the pointer reaches.
-    if (support::isPointerTypeName(placeTypeName(receiver))) {
+    if (isPointerType(typeOf(receiver))) {
         const std::string target = emitPointerTarget(receiver);
-        if (findStruct(structs_, self.inoxType) != nullptr || self.byReference) {
+        if (self.type->isStruct() || self.byReference) {
             return target;
         }
         const std::string value = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << value << " = load " << self.llvmType << ", ptr " << target << '\n';
         return value;
     }
-    if (findStruct(structs_, self.inoxType) != nullptr) {
+    if (self.type->isStruct()) {
         return emitPlace(receiver).pointer;
     }
     return self.byReference ? emitReferenceArgument(receiver, self) : emitExpression(receiver);
@@ -403,7 +365,7 @@ FunctionEmitter::MethodCallTarget FunctionEmitter::resolveNoArgumentMethodAccess
 
     const auto& method =
         static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
-    const FunctionSignature* signature = findMethodSignature(*member.arguments()[0], method.name());
+    const FunctionSignature* signature = boundSignature(member);
     if (signature == nullptr) {
         throw CodegenUnsupported("unknown field or zero-argument method for LLVM emission: " + method.name());
     }
@@ -469,7 +431,7 @@ void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression)
         }
 
         const std::string value = emitExpression(assignment.right());
-        emitOwningStore(local->second.slot, local->second.inoxType, local->second.llvmType, value);
+        emitOwningStore(local->second.slot, local->second.type, local->second.llvmType, value);
         return;
     }
 
@@ -488,7 +450,7 @@ void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression)
         isPointerBuiltin(static_cast<const ast::CallExpression&>(assignment.left()))) {
         const Place place = emitPlace(assignment.left());
         const std::string value = emitExpression(assignment.right());
-        emitOwningStore(place.pointer, place.inoxType, valueLlvmType(place.inoxType), value);
+        emitOwningStore(place.pointer, place.type, valueLlvmType(place.type), value);
         return;
     }
 
@@ -496,8 +458,7 @@ void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression)
         const auto& member = static_cast<const ast::CallExpression&>(assignment.left());
         const FieldAddress field = emitMemberAddress(member);
         const std::string value = emitExpression(assignment.right());
-        const auto info = memberField(member);
-        emitOwningStore(field.pointer, info ? info->second->inoxType : std::string{}, field.llvmType, value);
+        emitOwningStore(field.pointer, memberField(member)->field->type, field.llvmType, value);
         emitInvariantChecks(assignment, true);
         return;
     }

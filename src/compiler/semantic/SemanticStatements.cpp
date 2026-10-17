@@ -11,8 +11,6 @@
 
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../support/ArrayType.h"
-#include "../support/PointerType.h"
 
 #include <algorithm>
 #include <array>
@@ -32,17 +30,17 @@ using namespace detail;
 
 void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
 {
-    const std::string previousReturnType = std::move(currentFunctionReturnType_);
+    const TypeRef previousReturnType = currentFunctionReturnType_;
     const bool previousSawReturn = currentFunctionSawReturn_;
     const std::string previousRoutine = std::exchange(currentRoutine_, function.name());
     const FunctionSignature* signature = resolveFunctionSignature(function.name());
-    currentFunctionReturnType_ = signature != nullptr ? signature->returnType : std::string{};
+    currentFunctionReturnType_ = signature != nullptr ? signature->returnType : nullptr;
     currentFunctionSawReturn_ = false;
     symbols_.pushScope();
     const auto previousParameters = std::exchange(currentParameters_, {});
     if (signature != nullptr) {
         for (const FunctionParameter& parameter : signature->parameters) {
-            declareOrThrow(parameter.name, SymbolKind::Variable, parameter.typeName,
+            declareOrThrow(parameter.name, SymbolKind::Variable, parameter.type,
                            parameter.mode == PassMode::RefMut);
             currentParameters_.insert(symbols_.currentScope().resolve(parameter.name));
         }
@@ -50,10 +48,10 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
     analyzeStatements(function.body(), false);
     currentParameters_ = previousParameters;
     leaveScope();
-    if (!currentFunctionReturnType_.empty() && !currentFunctionSawReturn_) {
+    if (currentFunctionReturnType_ != nullptr && !currentFunctionSawReturn_) {
         throw SemanticError("function " + function.name() + " must return a value");
     }
-    if (!currentFunctionReturnType_.empty() && !cannotFallThrough(function.body())) {
+    if (currentFunctionReturnType_ != nullptr && !cannotFallThrough(function.body())) {
         throw SemanticError("function " + function.name() +
                             " may reach its end without returning a value; every path must end "
                             "in Return or Raise (CANON-12)");
@@ -168,7 +166,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         // CANON-12: `Exit` is valid only in subroutines without a return value
         // and in Main; it is FORBIDDEN in functions. Found by mutation fuzzing:
         // previously only the LLVM backend noticed.
-        if (!currentFunctionReturnType_.empty()) {
+        if (currentFunctionReturnType_ != nullptr) {
             throw SemanticError("Exit is not valid in a function that returns a value; use Return (CANON-12)");
         }
         break;
@@ -220,33 +218,27 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
     }
     case ast::AstNodeKind::VarStatement: {
         const auto& var = static_cast<const ast::VarStatement&>(statement);
-        std::string typeName = var.typeName().empty() ? std::string{} : canonicalTypeName(var.typeName());
-        if (!var.typeName().empty()) {
-            resolveTypeOrThrow(var.typeName());
-            if (support::isArrayTypeName(var.typeName()) || support::isGenericTypeName(var.typeName())) {
-                result_.setCanonicalTypeName(var.typeName(), typeName);
-            }
-        }
+        TypeRef type = var.typeName().empty() ? nullptr : resolveWrittenType(var.typeName());
         if (var.initializer() != nullptr) {
-            const std::string initializerType = analyzeExpression(*var.initializer());
-            if (typeName.empty()) {
-                typeName = initializerType;
-                if (isFileType(typeName)) {
+            const TypeRef initializerType = analyzeExpression(*var.initializer());
+            if (type == nullptr) {
+                type = initializerType;
+                if (isFileType(type)) {
                     requireFreshFile(*var.initializer());
                 }
-                if (typeName == "None") {
+                if (type != nullptr && type->isNone()) {
                     throw SemanticError("the type of None is not known here: write it, " + var.name() +
                                         " Link<T> := None");
                 }
-                if (isMoveOnlyType(typeName) && !isFreshOwnerValue(*var.initializer())) {
+                if (isMoveOnlyType(type) && !isFreshOwnerValue(*var.initializer())) {
                     throw SemanticError("an owner is never copied: give it away with Move(X), or build a "
                                         "new one with New(...)");
                 }
-            } else if (!canAssignValue(typeName, initializerType, *var.initializer())) {
-                throw SemanticError("cannot initialize " + typeName + " with " + initializerType);
+            } else if (!canAssignValue(type, initializerType, *var.initializer())) {
+                throw SemanticError("cannot initialize " + type->name() + " with " + types::nameOf(initializerType));
             }
         }
-        if (typeName.empty()) {
+        if (type == nullptr) {
             throw SemanticError("variable requires a type or initializer: " + var.name());
         }
         // CANON-5 rule 3/4: every variable is born with a value. Only structs and
@@ -254,25 +246,25 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         // initialized explicitly.
         // A Link and an Option<Own<T>> are born empty; an Own is born with
         // New(...) (safe-pointers).
-        const bool bornEmpty = support::isLinkTypeName(typeName) || support::isOptionOwnTypeName(typeName);
-        if (var.initializer() == nullptr && resolveStruct(typeName) == nullptr &&
-            !support::isArrayTypeName(typeName) && !bornEmpty) {
-            if (support::isOwnTypeName(typeName)) {
+        const bool bornEmpty = type->isLink() || type->isOptionOwn();
+        if (var.initializer() == nullptr && !type->isStruct() && !type->isArray() && !bornEmpty) {
+            if (type->isOwn()) {
                 throw SemanticError("an owner is born with New(...) or Move(X): " + var.name());
             }
             throw SemanticError("scalar declaration requires initializer: " + var.name());
         }
         if (var.initializer() == nullptr) {
-            if (const std::string owner = ownerFieldWithoutDefault(typeName); !owner.empty()) {
+            if (const std::string owner = ownerFieldWithoutDefault(type); !owner.empty()) {
                 throw SemanticError(owner + " is an owner without default: build " + var.name() +
                                     " with its owners given");
             }
         }
         // CANON-24: a struct born with its defaults satisfies its invariant.
-        if (var.initializer() == nullptr && hasInvariant(typeName) && invariantChecksOn()) {
-            result_.requireNewValueInvariant(var, resolveStruct(typeName)->name);
+        if (var.initializer() == nullptr && hasInvariant(type) && invariantChecksOn()) {
+            result_.requireNewValueInvariant(var, type);
         }
-        declareOrThrow(var.name(), SymbolKind::Variable, std::move(typeName), true);
+        declareOrThrow(var.name(), SymbolKind::Variable, type, true);
+        result_.setDeclaredType(var, type);
         trackLocal(var.name());
         break;
     }
@@ -360,10 +352,10 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         }
         analyzeExpression(forStatement.iterable());
         if (forStatement.step() != nullptr) {
-            const std::string stepType = canonicalTypeName(analyzeExpression(*forStatement.step()));
+            const TypeRef stepType = analyzeExpression(*forStatement.step());
             if (!isIntegerType(stepType)) {
                 throw SemanticError("for-loop step must be an Integer expression, got " +
-                                    (stepType.empty() ? std::string("<unknown>") : stepType));
+                                    (stepType == nullptr ? std::string("<unknown>") : stepType->name()));
             }
             std::int64_t constantStep = 0;
             if (constantIntegerValue(*forStatement.step(), constantStep) && constantStep <= 0) {
@@ -377,7 +369,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             throw SemanticError(
                 "loop iterator conflicts with existing symbol: " + forStatement.iterator());
         }
-        declareOrThrow(forStatement.iterator(), SymbolKind::LoopIterator, "Int64", false);
+        declareOrThrow(forStatement.iterator(), SymbolKind::LoopIterator, types().int64Type(), false);
         const auto start = movedOwners_;
         ++loopDepth_;
         analyzeStatements(forStatement.body(), false);
@@ -440,7 +432,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
 
             symbols_.pushScope();
             if (!handler.bindingName.empty()) {
-                declareOrThrow(handler.bindingName, SymbolKind::Variable, handler.typeName, false);
+                declareOrThrow(handler.bindingName, SymbolKind::Variable, types().lookup(handler.typeName), false);
             }
             ++exceptionHandlerDepth_;
             ++retryHandlerDepth_;
@@ -498,7 +490,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         if (retryHandlerDepth_ == 0 || ensureDepth_ != 0) {
             throw SemanticError("Retry is only allowed inside an active On/Else exception handler");
         }
-        const std::string countType = analyzeExpression(retryStatement.count());
+        const TypeRef countType = analyzeExpression(retryStatement.count());
         if (!isIntegerType(countType)) {
             throw SemanticError("Retry count must be an Integer expression");
         }
@@ -518,14 +510,14 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         currentFunctionSawReturn_ = true;
         const ast::Expression& returned =
             static_cast<const ast::ReturnStatement&>(statement).expression();
-        const std::string typeName = analyzeExpression(returned);
-        if (currentFunctionReturnType_.empty()) {
+        const TypeRef type = analyzeExpression(returned);
+        if (currentFunctionReturnType_ == nullptr) {
             throw SemanticError("subroutine without return type cannot return a value");
         }
-        if (!canAssignValue(currentFunctionReturnType_, typeName, returned)) {
+        if (!canAssignValue(currentFunctionReturnType_, type, returned)) {
             throw SemanticError(
-                "cannot return " + typeName + " from function returning " +
-                currentFunctionReturnType_);
+                "cannot return " + types::nameOf(type) + " from function returning " +
+                currentFunctionReturnType_->name());
         }
         break;
     }
@@ -555,8 +547,8 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
                 throw SemanticError("'with' needs a variable or a value, and " + name + " is a module (CANON-11)");
             }
         }
-        const std::string targetType = analyzeExpression(withStatement.target());
-        if (targetType.empty()) {
+        const TypeRef targetType = analyzeExpression(withStatement.target());
+        if (targetType == nullptr) {
             throw SemanticError("'with' needs a variable or a value; this target has no value (CANON-11)");
         }
         symbols_.pushScope();
@@ -592,19 +584,18 @@ void SemanticAnalyzer::analyzeVarBlock(const ast::VarBlockStatement& statement)
                 if (binary.op() == ast::BinaryOperator::Assign &&
                     binary.left().kind() == ast::AstNodeKind::IdentifierExpression) {
                     const auto& identifier = static_cast<const ast::IdentifierExpression&>(binary.left());
-                    const std::string typeName = analyzeExpression(binary.right());
-                    if (typeName == "None" ||
-                        (isMoveOnlyType(typeName) && !isFreshOwnerValue(binary.right()))) {
-                        throw SemanticError(typeName == "None"
-                                                ? "the type of None is not known here: write it"
-                                                : "an owner is never copied: give it away with Move(X)");
+                    const TypeRef type = analyzeExpression(binary.right());
+                    const bool isNone = type != nullptr && type->isNone();
+                    if (isNone || (isMoveOnlyType(type) && !isFreshOwnerValue(binary.right()))) {
+                        throw SemanticError(isNone ? "the type of None is not known here: write it"
+                                                   : "an owner is never copied: give it away with Move(X)");
                     }
-                    declareOrThrow(identifier.name(), SymbolKind::Variable, typeName, true);
+                    declareOrThrow(identifier.name(), SymbolKind::Variable, type, true);
                     trackLocal(identifier.name());
                     const Symbol& symbol = resolveOrThrow(identifier.name());
                     result_.bind(identifier, symbol);
-                    result_.setExpressionType(identifier, resolvedType(typeName));
-                    result_.setExpressionType(binary, resolvedType(typeName));
+                    result_.setExpressionType(identifier, type);
+                    result_.setExpressionType(binary, type);
                     continue;
                 }
             }
@@ -619,13 +610,12 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
     // Safe pointers: an owner given away in any arm is given away after it.
     const auto caseStart = movedOwners_;
     auto caseMerged = movedOwners_;
-    const std::string selectorType =
-        canonicalTypeName(analyzeExpression(statement.expression()));
+    const TypeRef selectorType = analyzeExpression(statement.expression());
     CaseDomain domain;
     if (!caseDomainFor(selectorType, domain)) {
         throw SemanticError(
             "case selector must be discrete (Integer family, Char, Bool, Enum or Range), got " +
-            (selectorType.empty() ? std::string("<unknown>") : selectorType) + " (ADR-0011)");
+            (selectorType == nullptr ? std::string("<unknown>") : selectorType->name()) + " (ADR-0011)");
     }
 
     struct Interval {
@@ -655,7 +645,7 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
                 interval.high = interval.low;
             }
             if (interval.low < domain.low || interval.high > domain.high) {
-                throw SemanticError("case choice out of range for " + selectorType + ": " +
+                throw SemanticError("case choice out of range for " + selectorType->name() + ": " +
                                     caseValueText(interval.low < domain.low ? interval.low : interval.high, domain));
             }
             for (const Interval& seen : covered) {
@@ -687,7 +677,7 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
     // type (Marcelo Fortes, 2026-10-09, about the arm now spelled `else`: "otherwise deve ser obrigatório sempre
     // que os braços não cobrirem todos os valores possíveis").
     if (!domain.provable) {
-        throw SemanticError("case on " + selectorType +
+        throw SemanticError("case on " + selectorType->name() +
                             " cannot be proven to cover every value; add an 'else' arm (ADR-0011)");
     }
     std::sort(covered.begin(), covered.end(),
@@ -711,7 +701,7 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
         next = 0xE000;
     }
     if (!done) {
-        throw SemanticError("case does not cover every value of " + selectorType +
+        throw SemanticError("case does not cover every value of " + selectorType->name() +
                             " (first missing: " + caseValueText(next, domain) +
                             "); add an 'else' arm (ADR-0011)");
     }

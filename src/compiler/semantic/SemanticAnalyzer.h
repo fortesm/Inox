@@ -9,6 +9,7 @@
 
 #include "SemanticResult.h"
 #include "../ast/Ast.h"
+#include "../types/TypeSyntax.h"
 
 #include <cstdint>
 #include <stdexcept>
@@ -26,35 +27,9 @@ public:
     explicit SemanticError(std::string message);
 };
 
-// ADR-0016: how an argument is passed.
-enum class PassMode {
-    Value,   // a copy; the parameter is immutable
-    Ref,     // `ref X T`: a read-only reference to the caller's storage
-    RefMut   // `ref mut X T`: a writable reference to the caller's variable
-};
-
-struct FunctionParameter {
-    std::string name;
-    std::string typeName;
-    PassMode mode = PassMode::Value;
-};
-
-struct FunctionSignature {
-    std::string name;
-    std::vector<FunctionParameter> parameters;
-    std::string returnType;
-    // A method `T.M(...) Override :` replaces a method T reuses (CANON-9).
-    bool isOverride = false;
-};
-
-struct StructField {
-    std::string name;
-    std::string typeName;
-    bool hasDefault = false;
-    std::string defaultValue;
-    // A reused struct (`TName Struct (TPart)`): a field named after its type.
-    bool isPart = false;
-};
+// A type of the analysis; null while not known (OpenSpec change
+// type-representation).
+using TypeRef = const types::Type*;
 
 // A field or method a struct offers through its reused parts (CANON-9): the
 // path names the parts from the struct to the member's owner.
@@ -63,11 +38,6 @@ struct ReusedMember {
     std::string name;
     std::string owner;
     bool isMethod = false;
-};
-
-struct StructType {
-    std::string name;
-    std::vector<StructField> fields;
 };
 
 class SemanticAnalyzer {
@@ -80,15 +50,21 @@ public:
 private:
     void declareBuiltins();
     void declareBuiltinTypes();
-    void declareOrThrow(std::string_view name, SymbolKind kind, std::string typeName = {}, bool isMutable = false);
+    void declareOrThrow(std::string_view name, SymbolKind kind, TypeRef type = nullptr, bool isMutable = false);
     static void rejectPredefinedName(std::string_view name);
     const Symbol& resolveOrThrow(std::string_view name) const;
-    void declareTypeOrThrow(std::string_view name, bool isBuiltin, std::string aliasOf = {});
-    void resolveTypeOrThrow(std::string_view name) const;
-    std::string canonicalTypeName(std::string_view name) const;
-    std::string canonicalArrayTypeName(std::string_view name) const;
-    std::string analyzeIndexExpression(const ast::CallExpression& call);
-    std::string analyzeSliceExpression(const ast::CallExpression& call);
+    void declareTypeName(std::string_view name, TypeRef type);
+    // The type a written type denotes (`Array[1..Size] Byte`, `Own<TNo>`),
+    // with the language's rules and messages; "unknown type" when a name is
+    // not a type.
+    TypeRef resolveWrittenType(std::string_view written);
+    // Like resolveWrittenType, but null for an unknown plain name instead
+    // of an error (a field type checked later, CANON-9).
+    TypeRef lookupWrittenType(std::string_view written);
+    TypeRef resolveTypeSyntax(const types::TypeSyntax& syntax, std::string_view written);
+    TypeRef resolveArrayType(const types::TypeSyntax& syntax, std::string_view written);
+    TypeRef analyzeIndexExpression(const ast::CallExpression& call);
+    TypeRef analyzeSliceExpression(const ast::CallExpression& call);
     static bool isIndexTarget(const ast::Expression& expression);
     bool isSideEffectFree(const ast::Expression& expression) const;
     void checkReferenceArguments(const std::string& routine,
@@ -107,14 +83,17 @@ private:
     static void rejectInvalidConstantRightOperand(ast::BinaryOperator op, std::int64_t value);
     void registerTypeSectionSymbols(const ast::SectionDeclaration& section);
     void registerStructDeclaration(const ast::TypeDeclaration& declaration);
+    // Once every Type of the module is declared: struct fields and Const and
+    // State variables whose written type is a type name.
+    void resolveDeclaredTypeNames();
     void completeStructFields(const ast::TypeDeclaration& declaration);
     void validateSectionTypes(const ast::SectionDeclaration& section);
-    void validateStructDeclaration(const ast::TypeDeclaration& declaration) const;
+    void validateStructDeclaration(const ast::TypeDeclaration& declaration);
     static std::string singleTokenText(const ast::Expression& expression);
     void validateStructFieldDefault(const std::string& fieldName,
-                                    const std::string& fieldType,
+                                    TypeRef fieldType,
                                     const std::string& defaultValue) const;
-    void rejectRecursiveStruct(const std::string& typeName) const;
+    void rejectRecursiveStruct(TypeRef structType) const;
 
     // Method reuse (CANON-9; SemanticReuse.cpp). A struct offers the fields
     // and methods of the structs it reuses, at every level, as long as each
@@ -122,8 +101,8 @@ private:
     // method. Access is rewritten to the explicit path, so a reused method
     // runs on its part (delegation).
     std::vector<std::string> ownMethodNames(std::string_view typeName) const;
-    std::vector<ReusedMember> reusedMembers(std::string_view typeName) const;
-    std::optional<ReusedMember> findReusedMember(std::string_view typeName, std::string_view name) const;
+    std::vector<ReusedMember> reusedMembers(TypeRef structType) const;
+    std::optional<ReusedMember> findReusedMember(TypeRef structType, std::string_view name) const;
     void validateReuse(const ast::TypeDeclaration& declaration) const;
     void routeThroughParts(const ast::CallExpression& member, const std::vector<std::string>& path);
     void requireWritableReceiver(const FunctionSignature& signature, const ast::Expression& receiver) const;
@@ -131,10 +110,10 @@ private:
     // Design by contract (CANON-24; SemanticContracts.cpp). `__check` and
     // `__pure` are the intrinsics the contract lowering writes; a contract
     // only reads (no Self mut method, ref mut argument, file or input).
-    std::string analyzeContractCheck(const ast::CallExpression& call);
-    std::string analyzePureCall(const ast::CallExpression& call);
+    TypeRef analyzeContractCheck(const ast::CallExpression& call);
+    TypeRef analyzePureCall(const ast::CallExpression& call);
     void rejectInContract(const std::string& what) const;
-    bool hasInvariant(std::string_view typeName) const;
+    bool hasInvariant(TypeRef type) const;
     void recordInvariantPlaces(const ast::AstNode& site, const ast::Expression& place, bool before, bool after);
     bool invariantChecksOn() const;
     bool inContract_ = false;
@@ -150,44 +129,44 @@ private:
     void analyzeCaseStatement(const ast::CaseStatement& statement);
     void trackLocal(std::string_view name);
     void leaveScope();
-    std::int64_t caseChoiceValue(const ast::Expression& choice, const std::string& selectorType);
+    std::int64_t caseChoiceValue(const ast::Expression& choice, TypeRef selectorType);
     bool staticBoolValue(const ast::Expression& expression, bool& value) const;
     bool staticCharValue(const ast::Expression& expression, std::int64_t& value) const;
     const Symbol* resolveConstant(const ast::Expression& expression) const;
     void recordConstantExpression(const std::string& name, const ast::Expression& value);
     void analyzeVarBlock(const ast::VarBlockStatement& statement);
-    std::string analyzeExpression(const ast::Expression& expression);
-    std::string inferExpressionType(const ast::Expression& expression);
-    std::string analyzeCallExpression(const ast::CallExpression& expression);
-    std::string analyzeMemberExpression(const ast::CallExpression& expression);
-    std::string analyzeMethodCallExpression(const ast::CallExpression& expression);
-    std::string analyzeBinaryExpression(const ast::BinaryExpression& expression);
-    std::string analyzeUnaryExpression(const ast::UnaryExpression& expression);
-    std::string analyzePreludeCall(std::string_view name,
-                                   const std::vector<std::string>& argumentTypes) const;
-    std::string analyzeInputCall(std::string_view name,
-                                 const std::vector<ast::ExpressionPtr>& arguments);
-    std::string analyzeUserFunctionCall(const FunctionSignature& signature,
-                                        const std::vector<ast::ExpressionPtr>& arguments);
+    TypeRef analyzeExpression(const ast::Expression& expression);
+    TypeRef inferExpressionType(const ast::Expression& expression);
+    TypeRef analyzeCallExpression(const ast::CallExpression& expression);
+    TypeRef analyzeMemberExpression(const ast::CallExpression& expression);
+    TypeRef analyzeMethodCallExpression(const ast::CallExpression& expression);
+    TypeRef analyzeBinaryExpression(const ast::BinaryExpression& expression);
+    TypeRef analyzeUnaryExpression(const ast::UnaryExpression& expression);
+    TypeRef analyzePreludeCall(std::string_view name, const std::vector<TypeRef>& argumentTypes) const;
+    TypeRef analyzeInputCall(std::string_view name,
+                             const std::vector<ast::ExpressionPtr>& arguments);
+    TypeRef analyzeUserFunctionCall(const FunctionSignature& signature,
+                                    const std::vector<ast::ExpressionPtr>& arguments);
     void requireBoolCondition(const ast::Expression& expression);
-    std::string inferSectionDeclarationType(const ast::Expression* value) const;
-    const StructType* resolveStruct(std::string_view name) const;
-    const StructField* resolveStructField(std::string_view structName, std::string_view fieldName) const;
+    TypeRef inferSectionDeclarationType(const ast::Expression* value) const;
+    // The struct type named `name`, or null.
+    TypeRef resolveStruct(std::string_view name) const;
+    static const types::StructField* resolveStructField(TypeRef structType, std::string_view fieldName);
 
     static bool looksLikeIdentifier(std::string_view text);
     static bool isInternalSyntheticName(std::string_view name);
-    static bool isNumericType(std::string_view typeName);
-    static bool isIntegerType(std::string_view typeName);
+    static bool isNumericType(TypeRef type);
+    static bool isIntegerType(TypeRef type);
     static bool isPreludeCall(std::string_view name);
     static bool isExceptionType(std::string_view name);
     static bool isMemberCall(const ast::CallExpression& expression);
     static std::string normalizeName(std::string_view name);
-    static bool canAssign(std::string_view targetType, std::string_view valueType);
-    static bool typesMatch(std::string_view left, std::string_view right);
-    bool canAssignValue(std::string_view targetType, std::string_view valueType,
-                        const ast::Expression& value);
+    bool canAssign(TypeRef targetType, TypeRef valueType) const;
+    static bool typesMatch(TypeRef left, TypeRef right);
+    bool canAssignValue(TypeRef targetType, TypeRef valueType, const ast::Expression& value);
 
-    ResolvedType resolvedType(std::string typeName) const;
+    types::TypeContext& types() { return result_.types(); }
+    const types::TypeContext& types() const { return result_.types(); }
 
     // CANON-19: constant integer expressions are evaluated at compile time and
     // any overflow, division by zero or out-of-range shift is a compile error.
@@ -199,42 +178,42 @@ private:
     // The File type and the file functions exist only in a program that uses
     // the module; a File is never copied (F6).
     void declareStandardModuleNames(const ast::ModuleNode& module);
-    static bool isFileType(std::string_view typeName);
+    static bool isFileType(TypeRef type);
     // Whether `name` called with `argumentCount` arguments is a file function
     // (ReadLn with no argument is the console prelude function).
     static bool isFileFunction(std::string_view name, std::size_t argumentCount);
-    std::string analyzeFileCall(std::string_view name, const ast::CallExpression& call);
+    TypeRef analyzeFileCall(std::string_view name, const ast::CallExpression& call);
     // Whether the module that declares this file function is used.
     bool fileFunctionVisible(std::string_view name) const;
     // A value stored into a File must be a file just opened (OpenRead,
     // Create, OpenAppend): anything else would copy a File.
     void requireFreshFile(const ast::Expression& value) const;
     // A File may only be a local or a `ref mut` parameter.
-    static void rejectFileIn(std::string_view typeName, const std::string& what);
+    static void rejectFileIn(TypeRef type, const std::string& what);
 
     // Std.Debug (OpenSpec change debug-assert; SemanticDebug.cpp):
     // `Assert(Condition)` and `Assert(Condition, Message)`, visible only in a
     // program that uses the module.
-    std::string analyzeAssertCall(const ast::CallExpression& call);
+    TypeRef analyzeAssertCall(const ast::CallExpression& call);
 
     // Safe pointers (OpenSpec change safe-pointers; SemanticPointers.cpp).
     // `Own<T>` is the single owner of a heap object, never copied (only
     // `Move`d); `Option<Own<T>>` may be `None`; `Link<T>` does not own and is
     // checked by a generation on each use. A move-only type is an owner or
     // an aggregate that holds one.
-    std::string canonicalPointerTypeName(std::string_view name) const;
-    bool isMoveOnlyType(std::string_view typeName) const;
+    TypeRef resolvePointerType(const types::TypeSyntax& syntax, std::string_view written);
+    static bool isMoveOnlyType(TypeRef type);
     // A struct that holds an `Own<T>` field (directly, in a part or a struct
     // field) has no default value: it is built with its owners given.
-    std::string ownerFieldWithoutDefault(std::string_view typeName) const;
+    static std::string ownerFieldWithoutDefault(TypeRef type);
     bool isFreshOwnerValue(const ast::Expression& value) const;
     // Assignability of pointer values: nullopt when no pointer is involved.
-    std::optional<bool> canAssignPointer(std::string_view targetType, std::string_view valueType,
+    std::optional<bool> canAssignPointer(TypeRef targetType, TypeRef valueType,
                                          const ast::Expression& value) const;
     bool isPointerBuiltinCall(std::string_view name, std::size_t argumentCount) const;
-    std::string analyzePointerBuiltin(std::string_view name, const ast::CallExpression& call);
+    TypeRef analyzePointerBuiltin(std::string_view name, const ast::CallExpression& call);
     // The type reached through a pointer for `.Field`, `[I]` and methods.
-    std::string typeThroughPointer(const std::string& typeName) const;
+    static TypeRef typeThroughPointer(TypeRef type);
     void noteOwnerGivenAway(const ast::Expression& owner);
     void noteOwnerAssigned(const Symbol& symbol);
     void requireOwnerUsable(const Symbol& symbol) const;
@@ -249,14 +228,18 @@ private:
     Symbol pointerTargetRoot_;
 
     SymbolTable symbols_;
-    TypeTable types_;
     SemanticResult result_;
     std::unordered_map<std::string, FunctionSignature> functions_;
-    std::unordered_map<std::string, StructType> structs_;
+    // The written field types of each struct, by struct, in field order: a
+    // field's type is resolved once every Type and Const is declared.
+    std::unordered_map<TypeRef, std::vector<std::string>> writtenFieldTypes_;
+    // Const and State variables declared with a type name not declared yet
+    // (a struct of a later Type section), by variable name.
+    std::vector<std::pair<std::string, std::string>> pendingSectionTypes_;
     // State declarations written `Name Type` without ":=", checked once all
     // types are known: only structs may omit the initializer (CANON-5).
     std::vector<std::pair<std::string, std::string>> stateDeclarationsWithoutInitializer_;
-    std::string currentFunctionReturnType_;
+    TypeRef currentFunctionReturnType_ = nullptr;
     bool currentFunctionSawReturn_ = false;
     std::size_t loopDepth_ = 0;
     std::size_t repeatDepth_ = 0;

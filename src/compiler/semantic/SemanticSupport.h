@@ -13,6 +13,7 @@
 #pragma once
 
 #include "../ast/Ast.h"
+#include "../types/Type.h"
 
 #include <cstdint>
 #include <limits>
@@ -33,9 +34,9 @@ struct PreludeSignature {
 
 const std::vector<PreludeSignature>& preludeSignatures();
 
-// The range of a built-in integer type, or false for any other type.
-bool integerTypeRange(std::string_view type, std::int64_t& low, std::int64_t& high);
-bool isNarrowIntegerType(std::string_view type);
+// The range of an integer type, or false for any other type (or null).
+bool integerTypeRange(const types::Type* type, std::int64_t& low, std::int64_t& high);
+bool isNarrowIntegerType(const types::Type* type);
 
 inline constexpr std::int64_t kInt64Max = std::numeric_limits<std::int64_t>::max();
 inline constexpr std::int64_t kInt64Min = std::numeric_limits<std::int64_t>::min();
@@ -65,7 +66,7 @@ struct CaseDomain {
     bool isChar = false;
 };
 
-bool caseDomainFor(std::string_view type, CaseDomain& domain);
+bool caseDomainFor(const types::Type* type, CaseDomain& domain);
 std::string caseValueText(std::int64_t value, const CaseDomain& domain);
 
 // `Name := Value` in a construction argument list, or null.

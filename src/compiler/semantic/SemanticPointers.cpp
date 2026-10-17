@@ -23,8 +23,7 @@
 #include "SemanticAnalyzer.h"
 
 #include "SemanticSupport.h"
-#include "../support/ArrayType.h"
-#include "../support/PointerType.h"
+#include "../types/TypeSyntax.h"
 
 #include <string>
 #include <iterator>
@@ -47,44 +46,43 @@ const std::string kNeverCopied =
 
 } // namespace
 
-std::string SemanticAnalyzer::canonicalPointerTypeName(std::string_view name) const
+// `Own<T>`, `Link<T>` and `Option<Own<T>>` as written.
+TypeRef SemanticAnalyzer::resolvePointerType(const types::TypeSyntax& syntax, std::string_view written)
 {
-    if (support::isOptionTypeName(name)) {
-        const std::string inner = support::optionInnerTypeName(name);
-        if (!support::isOwnTypeName(inner)) {
+    const types::TypeSyntax& argument = *syntax.argument;
+    if (equalsIgnoreCase(syntax.name, "Option")) {
+        if (argument.form != types::TypeSyntax::Form::Generic || !equalsIgnoreCase(argument.name, "Own")) {
             throw SemanticError("Option holds an owner that may be absent: write Option<Own<T>> (other Option "
-                                "types come with generics), not " + std::string(name));
+                                "types come with generics), not " + std::string(written));
         }
-        return "Option<" + canonicalPointerTypeName(inner) + ">";
+        return types().optionOwn(resolvePointerType(argument, argument.spelling()));
     }
-    const bool own = support::isOwnTypeName(name);
-    const std::string target = support::pointerTargetTypeName(name);
-    if (support::isGenericTypeName(target) && !support::isSliceTypeName(target)) {
-        throw SemanticError("a pointer to a pointer is not supported: " + std::string(name));
+    const bool own = equalsIgnoreCase(syntax.name, "Own");
+    if (argument.form == types::TypeSyntax::Form::Generic) {
+        if (equalsIgnoreCase(argument.name, "Slice")) {
+            throw SemanticError("a pointer to a slice is not supported: " + std::string(written));
+        }
+        throw SemanticError("a pointer to a pointer is not supported: " + std::string(written));
     }
-    if (support::isSliceTypeName(target)) {
-        throw SemanticError("a pointer to a slice is not supported: " + std::string(name));
-    }
-    resolveTypeOrThrow(target);
-    const std::string canonical = canonicalTypeName(target);
-    rejectFileIn(canonical, "reached by a pointer");
-    return own ? support::makeOwnTypeName(canonical) : support::makeLinkTypeName(canonical);
+    const TypeRef target = resolveTypeSyntax(argument, argument.spelling());
+    rejectFileIn(target, "reached by a pointer");
+    return own ? types().own(target) : types().link(target);
 }
 
-bool SemanticAnalyzer::isMoveOnlyType(std::string_view typeName) const
+bool SemanticAnalyzer::isMoveOnlyType(TypeRef type)
 {
-    if (support::isOwnTypeName(typeName) || support::isOptionOwnTypeName(typeName)) {
-        return true;
-    }
-    if (support::isLinkTypeName(typeName) || support::isSliceTypeName(typeName)) {
+    if (type == nullptr) {
         return false;
     }
-    if (const auto parts = support::splitArrayTypeName(typeName)) {
-        return isMoveOnlyType(parts->element);
+    if (type->isOwn() || type->isOptionOwn()) {
+        return true;
     }
-    if (const StructType* structType = resolveStruct(typeName)) {
-        for (const StructField& field : structType->fields) {
-            if (isMoveOnlyType(field.typeName)) {
+    if (type->isArray()) {
+        return isMoveOnlyType(type->element());
+    }
+    if (type->isStruct()) {
+        for (const types::StructField& field : type->fields()) {
+            if (isMoveOnlyType(field.type)) {
                 return true;
             }
         }
@@ -92,20 +90,22 @@ bool SemanticAnalyzer::isMoveOnlyType(std::string_view typeName) const
     return false;
 }
 
-std::string SemanticAnalyzer::ownerFieldWithoutDefault(std::string_view typeName) const
+std::string SemanticAnalyzer::ownerFieldWithoutDefault(TypeRef type)
 {
-    if (const auto parts = support::splitArrayTypeName(typeName)) {
-        return ownerFieldWithoutDefault(parts->element);
-    }
-    const StructType* structType = resolveStruct(typeName);
-    if (structType == nullptr) {
+    if (type == nullptr) {
         return {};
     }
-    for (const StructField& field : structType->fields) {
-        if (support::isOwnTypeName(field.typeName)) {
-            return structType->name + "." + field.name;
+    if (type->isArray()) {
+        return ownerFieldWithoutDefault(type->element());
+    }
+    if (!type->isStruct()) {
+        return {};
+    }
+    for (const types::StructField& field : type->fields()) {
+        if (field.type != nullptr && field.type->isOwn()) {
+            return type->name() + "." + field.name;
         }
-        if (std::string inner = ownerFieldWithoutDefault(field.typeName); !inner.empty()) {
+        if (std::string inner = ownerFieldWithoutDefault(field.type); !inner.empty()) {
             return inner;
         }
     }
@@ -142,38 +142,39 @@ bool SemanticAnalyzer::isFreshOwnerValue(const ast::Expression& value) const
         isPointerBuiltinCall(name, call.arguments().size())) {
         return true;
     }
-    if (types_.resolve(name) != nullptr) {
+    if (types().isDeclared(name)) {
         return true;  // a construction
     }
     const Symbol* symbol = result_.symbolOf(call);
     return symbol != nullptr && symbol->kind == SymbolKind::Function;
 }
 
-std::optional<bool> SemanticAnalyzer::canAssignPointer(std::string_view targetType, std::string_view valueType,
+std::optional<bool> SemanticAnalyzer::canAssignPointer(TypeRef targetType, TypeRef valueType,
                                                        const ast::Expression& value) const
 {
-    const bool valueIsNone = valueType == "None";
-    if (!support::isPointerTypeName(targetType) && !support::isPointerTypeName(valueType) && !valueIsNone &&
-        !isMoveOnlyType(targetType)) {
+    const bool targetIsPointer = targetType != nullptr && targetType->isPointer();
+    const bool valueIsPointer = valueType != nullptr && valueType->isPointer();
+    const bool valueIsNone = valueType != nullptr && valueType->isNone();
+    if (!targetIsPointer && !valueIsPointer && !valueIsNone && !isMoveOnlyType(targetType)) {
         return std::nullopt;
     }
     if (valueIsNone) {
-        return support::isLinkTypeName(targetType) || support::isOptionOwnTypeName(targetType);
+        return targetType != nullptr && (targetType->isLink() || targetType->isOptionOwn());
     }
-    if (support::isLinkTypeName(targetType)) {
+    if (targetType != nullptr && targetType->isLink()) {
         return targetType == valueType;
     }
     const bool sameType = targetType == valueType;
-    const bool wraps = support::isOptionOwnTypeName(targetType) && support::isOwnTypeName(valueType) &&
-                       support::optionInnerTypeName(targetType) == valueType;
+    const bool wraps = targetType != nullptr && targetType->isOptionOwn() && valueType != nullptr &&
+                       valueType->isOwn() && targetType->element() == valueType;
     if (!sameType && !wraps) {
         return false;
     }
     if (!isFreshOwnerValue(value)) {
-        if (support::isPointerTypeName(targetType)) {
+        if (targetIsPointer) {
             throw SemanticError(kNeverCopied);
         }
-        throw SemanticError(std::string(targetType) +
+        throw SemanticError(types::nameOf(targetType) +
                             " holds an owner and is never copied: give it away with Move(X)");
     }
     return true;
@@ -190,88 +191,92 @@ bool SemanticAnalyzer::isPointerBuiltinCall(std::string_view name, std::size_t a
     return known && resolveFunctionSignature(name) == nullptr;
 }
 
-std::string SemanticAnalyzer::typeThroughPointer(const std::string& typeName) const
+TypeRef SemanticAnalyzer::typeThroughPointer(TypeRef type)
 {
-    if (support::isOptionOwnTypeName(typeName)) {
+    if (type != nullptr && type->isOptionOwn()) {
         throw SemanticError("an Option<Own<T>> may be None: reach it through Link(X) and test it with Alive");
     }
-    if (support::isOwnTypeName(typeName) || support::isLinkTypeName(typeName)) {
-        return support::pointerTargetTypeName(typeName);
+    if (type != nullptr && (type->isOwn() || type->isLink())) {
+        return type->pointerTarget();
     }
-    return typeName;
+    return type;
 }
 
-std::string SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const ast::CallExpression& call)
+TypeRef SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const ast::CallExpression& call)
 {
     const ast::Expression& argument = *call.arguments()[0];
     const std::string written(name);
+    const auto noValue = [&](TypeRef type) {
+        return type == nullptr || type->isVoid() || type->isNone();
+    };
+    const auto isPointer = [](TypeRef type) { return type != nullptr && type->isPointer(); };
     if (equalsIgnoreCase(name, "New")) {
-        std::string target;
+        TypeRef target = nullptr;
         if (argument.kind() == ast::AstNodeKind::IdentifierExpression &&
-            types_.resolve(static_cast<const ast::IdentifierExpression&>(argument).name()) != nullptr) {
+            types().isDeclared(static_cast<const ast::IdentifierExpression&>(argument).name())) {
             // New(TName): a new object with the defaults of its type.
             const auto& typeName = static_cast<const ast::IdentifierExpression&>(argument);
-            target = canonicalTypeName(typeName.name());
-            if (resolveStruct(target) == nullptr) {
+            target = types().lookup(typeName.name());
+            if (!target->isStruct()) {
                 throw SemanticError("New(" + typeName.name() + ") builds a struct with its defaults; for a " +
-                                    target + " give a value: New(0)");
+                                    target->name() + " give a value: New(0)");
             }
             if (const std::string owner = ownerFieldWithoutDefault(target); !owner.empty()) {
-                throw SemanticError(owner + " is an owner without default: build the value, New(" + target +
+                throw SemanticError(owner + " is an owner without default: build the value, New(" + target->name() +
                                     "(... := New(...)))");
             }
             result_.bind(typeName, resolveOrThrow(typeName.name()));
-            result_.setExpressionType(typeName, resolvedType(target));
+            result_.setExpressionType(typeName, target);
         } else {
-            target = canonicalTypeName(analyzeExpression(argument));
-            if (target.empty() || target == "Void" || target == "None") {
+            target = analyzeExpression(argument);
+            if (noValue(target)) {
                 throw SemanticError("New takes a value or a type: New(TName(...)) or New(TName)");
             }
-            if (support::isGenericTypeName(target)) {
-                throw SemanticError("New of a pointer or a slice is not supported: " + target);
+            if (target->isSlice() || target->isPointer()) {
+                throw SemanticError("New of a pointer or a slice is not supported: " + target->name());
             }
             rejectFileIn(target, "reached by a pointer");
             if (isMoveOnlyType(target) && !isFreshOwnerValue(argument)) {
-                throw SemanticError(target + " holds an owner and is never copied: give it away with Move(X)");
+                throw SemanticError(target->name() + " holds an owner and is never copied: give it away with Move(X)");
             }
         }
-        return support::makeOwnTypeName(target);
+        return types().own(target);
     }
 
-    const std::string type = canonicalTypeName(analyzeExpression(argument));
+    const TypeRef type = analyzeExpression(argument);
     if (equalsIgnoreCase(name, "Same")) {
-        const std::string other = canonicalTypeName(analyzeExpression(*call.arguments()[1]));
-        if (!support::isPointerTypeName(type) || !support::isPointerTypeName(other) ||
-            support::pointerTargetTypeName(type) != support::pointerTargetTypeName(other)) {
-            throw SemanticError("Same compares two pointers to the same type, got " + type + " and " + other);
+        const TypeRef other = analyzeExpression(*call.arguments()[1]);
+        if (!isPointer(type) || !isPointer(other) || type->pointerTarget() != other->pointerTarget()) {
+            throw SemanticError("Same compares two pointers to the same type, got " + types::nameOf(type) + " and " +
+                                types::nameOf(other));
         }
-        return "Bool";
+        return types().boolType();
     }
     if (equalsIgnoreCase(name, "Alive")) {
-        if (!support::isPointerTypeName(type)) {
+        if (!isPointer(type)) {
             throw SemanticError("Alive asks a pointer (Own, Option<Own> or Link) whether its object exists, got " +
-                                type);
+                                types::nameOf(type));
         }
-        return "Bool";
+        return types().boolType();
     }
     if (equalsIgnoreCase(name, "Value")) {
-        if (support::isOptionOwnTypeName(type)) {
+        if (type != nullptr && type->isOptionOwn()) {
             throw SemanticError("an Option<Own<T>> may be None: reach it through Link(X) and test it with Alive");
         }
-        if (!support::isOwnTypeName(type) && !support::isLinkTypeName(type)) {
-            throw SemanticError("Value takes a pointer (Own or Link), got " + type);
+        if (type == nullptr || (!type->isOwn() && !type->isLink())) {
+            throw SemanticError("Value takes a pointer (Own or Link), got " + types::nameOf(type));
         }
-        return support::pointerTargetTypeName(type);
+        return type->pointerTarget();
     }
     if (equalsIgnoreCase(name, "Link")) {
-        if (support::isPointerTypeName(type)) {
-            return support::makeLinkTypeName(support::pointerTargetTypeName(type));
+        if (isPointer(type)) {
+            return types().link(type->pointerTarget());
         }
-        if (type.empty() || type == "Void" || type == "None") {
+        if (noValue(type)) {
             throw SemanticError("Link takes a variable, a field or an element");
         }
-        if (support::isSliceTypeName(type) || isFileType(type)) {
-            throw SemanticError("a Link to a " + type + " is not supported");
+        if (type->isSlice() || isFileType(type)) {
+            throw SemanticError("a Link to a " + type->name() + " is not supported");
         }
         // The place must be a variable of the routine, a State variable, or
         // a field or element of one, or a place reached through a pointer.
@@ -287,8 +292,7 @@ std::string SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const
                 break;
             }
             root = inner.arguments()[0].get();
-            if (const ResolvedType* baseType = result_.typeOf(*root);
-                baseType != nullptr && support::isPointerTypeName(baseType->name)) {
+            if (isPointer(result_.typeOf(*root))) {
                 throughPointer = true;
                 break;
             }
@@ -314,15 +318,16 @@ std::string SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const
             throw SemanticError("Link of a place whose index calls a routine: store the index in a variable "
                                 "first");
         }
-        return support::makeLinkTypeName(type);
+        return types().link(type);
     }
 
     // Free and Move.
     const bool isFree = equalsIgnoreCase(name, "Free");
-    if (isFree ? !(support::isOwnTypeName(type) || support::isOptionOwnTypeName(type)) : !isMoveOnlyType(type)) {
-        throw SemanticError(written + " takes an owner (Own or Option<Own>), got " + type);
+    const bool ownerOrOption = type != nullptr && (type->isOwn() || type->isOptionOwn());
+    if (isFree ? !ownerOrOption : !isMoveOnlyType(type)) {
+        throw SemanticError(written + " takes an owner (Own or Option<Own>), got " + types::nameOf(type));
     }
-    if (support::isOptionOwnTypeName(type)) {
+    if (type->isOptionOwn()) {
         // The place becomes None.
         const bool isVariable = argument.kind() == ast::AstNodeKind::IdentifierExpression;
         const Symbol* writable = writableRoot(argument);
@@ -330,7 +335,7 @@ std::string SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const
                                          result_.symbolOf(static_cast<const ast::IdentifierExpression&>(argument))))) {
             throw SemanticError(written + " changes its argument: give a mutable variable, a field or an element");
         }
-        return isFree ? "Void" : type;
+        return isFree ? types().voidType() : type;
     }
     // An owner or a struct that holds one: only a variable gives it away,
     // and it cannot be used again until it is assigned.
@@ -343,7 +348,7 @@ std::string SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const
         throw SemanticError("only a variable gives its owner away with " + written);
     }
     noteOwnerGivenAway(argument);
-    return isFree ? "Void" : type;
+    return isFree ? types().voidType() : type;
 }
 
 void SemanticAnalyzer::noteOwnerGivenAway(const ast::Expression& owner)

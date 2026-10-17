@@ -11,8 +11,7 @@
 
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../support/ArrayType.h"
-#include "../support/PointerType.h"
+#include "../types/TypeSyntax.h"
 #include "../lexer/Lexer.h"
 
 #include <algorithm>
@@ -80,7 +79,7 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
                 throw SemanticError("expected parameter name in function: " + function.name());
             }
             const std::string parameterName = tokens[index++];
-            std::string parameterType;
+            TypeRef parameterType = nullptr;
 
             if (isAssociatedMethod && signature.parameters.empty() && equalsIgnoreCase(parameterName, "Self")) {
                 // `Self mut` may change the receiver; `Self` only reads it
@@ -90,10 +89,9 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
                     ++index;
                     mode = PassMode::RefMut;
                 }
-                resolveTypeOrThrow(receiverType);
-                parameterType = canonicalTypeName(receiverType);
-                if (resolveStruct(receiverType) == nullptr &&
-                    (support::isArrayTypeName(receiverType) || isFileType(parameterType))) {
+                parameterType = resolveWrittenType(receiverType);
+                if (!parameterType->isStruct() &&
+                    (types::isArraySpelling(receiverType) || isFileType(parameterType))) {
                     throw SemanticError("methods belong to structs and built-in value types; " +
                                         receiverType + " cannot have methods: " + function.name());
                 }
@@ -102,16 +100,12 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
                     throw SemanticError("mutable parameters are reserved for a future Inox version: use a local variable or return a new value");
                 }
                 if (index >= tokens.size() ||
-                    (!looksLikeIdentifier(tokens[index]) && !support::isArrayTypeName(tokens[index]) &&
-                     !support::isGenericTypeName(tokens[index]))) {
+                    (!looksLikeIdentifier(tokens[index]) && !types::isArraySpelling(tokens[index]) &&
+                     !types::isGenericSpelling(tokens[index]))) {
                     throw SemanticError("expected type for parameter: " + parameterName);
                 }
-                resolveTypeOrThrow(tokens[index]);
-                parameterType = canonicalTypeName(tokens[index]);
-                if (support::isArrayTypeName(tokens[index]) || support::isGenericTypeName(tokens[index])) {
-                    result_.setCanonicalTypeName(tokens[index], parameterType);
-                }
-                if (mode != PassMode::Value && support::isSliceTypeName(parameterType)) {
+                parameterType = resolveWrittenType(tokens[index]);
+                if (mode != PassMode::Value && parameterType->isSlice()) {
                     throw SemanticError("a slice is already a view: pass it without ref (ADR-0017)");
                 }
                 ++index;
@@ -142,18 +136,14 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
 
     if (index < tokens.size()) {
         if (index + 1 != tokens.size() ||
-            (!looksLikeIdentifier(tokens[index]) && !support::isArrayTypeName(tokens[index]) &&
-             !support::isGenericTypeName(tokens[index]))) {
+            (!looksLikeIdentifier(tokens[index]) && !types::isArraySpelling(tokens[index]) &&
+             !types::isGenericSpelling(tokens[index]))) {
             throw SemanticError("invalid return type in function: " + function.name());
         }
-        resolveTypeOrThrow(tokens[index]);
-        signature.returnType = canonicalTypeName(tokens[index]);
+        signature.returnType = resolveWrittenType(tokens[index]);
         rejectFileIn(signature.returnType, "returned by " + function.name());
-        if (support::isSliceTypeName(signature.returnType)) {
+        if (signature.returnType->isSlice()) {
             throw SemanticError("a slice cannot be returned: it would outlive its array (ADR-0017)");
-        }
-        if (support::isArrayTypeName(tokens[index]) || support::isGenericTypeName(tokens[index])) {
-            result_.setCanonicalTypeName(tokens[index], signature.returnType);
         }
     }
 
@@ -164,13 +154,12 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
             throw SemanticError(function.name() + " is marked Override, but " + receiverType +
                                 " reuses no struct: Override replaces a reused method (CANON-9)");
         }
-        const std::string canonical = canonicalTypeName(receiverType);
-        result_.setCanonicalTypeName(receiverType, canonical);
-        const std::string canonicalKey = normalizeName(canonical + function.name().substr(dot));
+        const TypeRef canonical = resolveWrittenType(receiverType);
+        const std::string canonicalKey = normalizeName(canonical->name() + function.name().substr(dot));
         if (canonicalKey != normalizeName(function.name())) {
             if (functions_.contains(canonicalKey)) {
                 throw SemanticError("method " + function.name().substr(dot + 1) + " is declared twice for " +
-                                    canonical + " (" + receiverType + " is " + canonical + ")");
+                                    canonical->name() + " (" + receiverType + " is " + canonical->name() + ")");
             }
             functions_.emplace(canonicalKey, signature);
         }
@@ -178,6 +167,7 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
     if (functions_.contains(normalizeName(function.name()))) {
         throw SemanticError("duplicate routine: " + function.name());
     }
+    result_.setSignature(function, signature);
     functions_.emplace(normalizeName(function.name()), std::move(signature));
 }
 
@@ -204,7 +194,7 @@ void SemanticAnalyzer::rejectPredefinedName(std::string_view name)
 void SemanticAnalyzer::declareOrThrow(
     std::string_view name,
     SymbolKind kind,
-    std::string typeName,
+    TypeRef type,
     bool isMutable)
 {
     rejectPredefinedName(name);
@@ -215,7 +205,7 @@ void SemanticAnalyzer::declareOrThrow(
     if (scope.containsInAncestors(name)) {
         throw SemanticError("shadowing is forbidden: " + std::string(name));
     }
-    scope.declare(std::string(name), kind, std::move(typeName), isMutable);
+    scope.declare(std::string(name), kind, type, isMutable);
 }
 
 // OPEN-4 (decided by Marcelo Fortes, 2026-10-10): a local variable that is
@@ -254,29 +244,6 @@ void SemanticAnalyzer::leaveScope()
     }
 }
 
-void SemanticAnalyzer::declareTypeOrThrow(std::string_view name, bool isBuiltin, std::string aliasOf)
-{
-    if (types_.contains(name)) {
-        throw SemanticError("type already declared: " + std::string(name));
-    }
-    declareOrThrow(name, SymbolKind::Type);
-    types_.declare(std::string(name), isBuiltin, std::move(aliasOf));
-}
-
-void SemanticAnalyzer::resolveTypeOrThrow(std::string_view name) const
-{
-    if (support::isArrayTypeName(name) || support::isGenericTypeName(name)) {
-        (void)canonicalTypeName(name);
-        return;
-    }
-    if (types_.resolve(name) == nullptr) {
-        if (isFileType(name)) {
-            throw SemanticError("unknown type: File (it is declared in Std.Files: add `Use Std.Files`)");
-        }
-        throw SemanticError("unknown type: " + std::string(name));
-    }
-}
-
 const Symbol& SemanticAnalyzer::resolveOrThrow(std::string_view name) const
 {
     if (isInternalSyntheticName(name)) {
@@ -288,34 +255,6 @@ const Symbol& SemanticAnalyzer::resolveOrThrow(std::string_view name) const
         throw SemanticError("unknown symbol: " + std::string(name));
     }
     return *symbol;
-}
-
-std::string SemanticAnalyzer::canonicalTypeName(std::string_view name) const
-{
-    if (support::isArrayTypeName(name)) {
-        return canonicalArrayTypeName(name);
-    }
-    if (support::isOwnTypeName(name) || support::isLinkTypeName(name) || support::isOptionTypeName(name)) {
-        return canonicalPointerTypeName(name);
-    }
-    if (support::isSliceTypeName(name)) {
-        const std::string element = support::sliceElementTypeName(name);
-        resolveTypeOrThrow(element);
-        const std::string canonical = canonicalTypeName(element);
-        if (!support::isArrayTypeName(canonical) && !isNumericType(canonical) && canonical != "Bool") {
-            throw SemanticError("slices of " + canonical +
-                                " are not supported yet; use an integer, Float, Bool or array element");
-        }
-        return support::makeSliceTypeName(canonical);
-    }
-    const TypeSymbol* type = types_.resolve(name);
-    if (type == nullptr) {
-        return std::string(name);
-    }
-    if (!type->aliasOf.empty()) {
-        return canonicalTypeName(type->aliasOf);
-    }
-    return type->name;
 }
 
 void SemanticAnalyzer::declareModuleItem(const ast::AstNode& item)
@@ -348,25 +287,29 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
         // any other (CANON-9 named construction, types), not skipped.
         for (const ast::VariableDeclaration& declaration : section.variables()) {
             if (declaration.value == nullptr) {
+                result_.setDeclaredType(declaration, resolveWrittenType(declaration.typeName));
                 continue;
             }
-            const std::string valueType = canonicalTypeName(analyzeExpression(*declaration.value));
+            const TypeRef valueType = analyzeExpression(*declaration.value);
             rejectFileIn(valueType, std::string(section.sectionKind() == ast::SectionKind::State
                                                     ? "a State variable, "
                                                     : "a Const, ") +
                                         declaration.name);
-            if (declaration.typeName.empty() && !valueType.empty()) {
-                symbols_.currentScope().inferTypeName(declaration.name, valueType);
+            if (declaration.typeName.empty() && valueType != nullptr) {
+                symbols_.currentScope().inferType(declaration.name, valueType);
             }
             if (section.sectionKind() == ast::SectionKind::Const) {
                 recordConstantExpression(declaration.name, *declaration.value);
             }
             if (!declaration.typeName.empty()) {
-                const std::string declared = canonicalTypeName(declaration.typeName);
-                if (!valueType.empty() && !canAssignValue(declared, valueType, *declaration.value)) {
+                const TypeRef declared = resolveWrittenType(declaration.typeName);
+                if (valueType != nullptr && !canAssignValue(declared, valueType, *declaration.value)) {
                     throw SemanticError("initializer of " + declaration.name + " has type " +
-                                        valueType + ", expected " + declared);
+                                        valueType->name() + ", expected " + declared->name());
                 }
+                result_.setDeclaredType(declaration, declared);
+            } else {
+                result_.setDeclaredType(declaration, valueType);
             }
         }
     }
@@ -385,11 +328,14 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
     for (const ast::VariableDeclaration& declaration : section.variables()) {
         // An array type is made canonical when the section is analyzed: its
         // bounds may name a Const declared later in the module.
-        const std::string typeName =
+        const TypeRef type =
             declaration.typeName.empty() ? inferSectionDeclarationType(declaration.value.get())
-            : support::isArrayTypeName(declaration.typeName) ? std::string{}
-                                                              : canonicalTypeName(declaration.typeName);
-        declareOrThrow(declaration.name, kind, typeName, isMutable);
+            : types::isArraySpelling(declaration.typeName) ? nullptr
+                                                           : lookupWrittenType(declaration.typeName);
+        declareOrThrow(declaration.name, kind, type, isMutable);
+        if (type == nullptr && !declaration.typeName.empty() && !types::isArraySpelling(declaration.typeName)) {
+            pendingSectionTypes_.emplace_back(declaration.name, declaration.typeName);
+        }
         if (declaration.value == nullptr) {
             if (kind == SymbolKind::State) {
                 stateDeclarationsWithoutInitializer_.emplace_back(declaration.name, declaration.typeName);
@@ -421,7 +367,7 @@ std::string SemanticAnalyzer::singleTokenText(const ast::Expression& expression)
 // The type of `Name := Expr` known before the section is analyzed: the type of
 // a literal, or of the name or routine the expression starts with. Other
 // initializers get their type when the section is analyzed.
-std::string SemanticAnalyzer::inferSectionDeclarationType(const ast::Expression* value) const
+TypeRef SemanticAnalyzer::inferSectionDeclarationType(const ast::Expression* value) const
 {
     while (value != nullptr && value->kind() == ast::AstNodeKind::BinaryExpression) {
         value = &static_cast<const ast::BinaryExpression*>(value)->left();
@@ -430,30 +376,30 @@ std::string SemanticAnalyzer::inferSectionDeclarationType(const ast::Expression*
         value = &static_cast<const ast::CallExpression*>(value)->callee();
     }
     if (value == nullptr) {
-        return {};
+        return nullptr;
     }
     if (value->kind() == ast::AstNodeKind::LiteralExpression) {
         switch (static_cast<const ast::LiteralExpression*>(value)->literalKind()) {
         case ast::LiteralKind::Boolean:
-            return "Bool";
+            return types().boolType();
         case ast::LiteralKind::String:
-            return "String";
+            return types().stringType();
         case ast::LiteralKind::Char:
-            return "Char";
+            return types().charType();
         case ast::LiteralKind::Integer:
-            return "Int64";
+            return types().int64Type();
         case ast::LiteralKind::Float:
-            return "Float64";
+            return types().float64Type();
         default:
-            return {};
+            return nullptr;
         }
     }
     if (value->kind() == ast::AstNodeKind::IdentifierExpression) {
         const Symbol* symbol =
             symbols_.currentScope().resolve(static_cast<const ast::IdentifierExpression*>(value)->name());
-        return symbol != nullptr ? symbol->typeName : std::string{};
+        return symbol != nullptr ? symbol->type : nullptr;
     }
-    return {};
+    return nullptr;
 }
 
 void SemanticAnalyzer::registerTypeSectionSymbols(const ast::SectionDeclaration& section)
@@ -469,10 +415,14 @@ void SemanticAnalyzer::registerTypeSectionSymbols(const ast::SectionDeclaration&
 
 void SemanticAnalyzer::registerStructDeclaration(const ast::TypeDeclaration& declaration)
 {
-    declareTypeOrThrow(declaration.name, false);
+    if (types().isDeclared(declaration.name)) {
+        throw SemanticError("type already declared: " + declaration.name);
+    }
+    declareOrThrow(declaration.name, SymbolKind::Type);
+    const TypeRef structType = types().declareStruct(declaration.name);
 
-    StructType structType;
-    structType.name = declaration.name;
+    std::vector<types::StructField> fields;
+    std::vector<std::string> written;
     // Duplicate detection by normalized (case-insensitive) name keeps a large
     // struct linear.
     std::unordered_set<std::string> seenFieldNames;
@@ -480,70 +430,84 @@ void SemanticAnalyzer::registerStructDeclaration(const ast::TypeDeclaration& dec
         if (!seenFieldNames.insert(normalizeName(fieldDeclaration.name)).second) {
             throw SemanticError("duplicate struct field: " + fieldDeclaration.name);
         }
-        StructField field;
+        types::StructField field;
         field.name = fieldDeclaration.name;
-        // An array field type is made canonical once every Type and Const is
-        // declared (completeStructFields): its bounds may name a Const and
-        // its element may be a struct declared later.
-        field.typeName = support::isArrayTypeName(fieldDeclaration.typeName) ||
-                                 support::isGenericTypeName(fieldDeclaration.typeName)
-                             ? fieldDeclaration.typeName
-                             : canonicalTypeName(fieldDeclaration.typeName);
+        // A field's type is resolved once every Type is declared (it may name
+        // a later struct); an array or pointer type once every Const is known
+        // too (completeStructFields): its bounds may name a Const.
         field.hasDefault = fieldDeclaration.hasDefault;
         field.defaultValue = fieldDeclaration.defaultValue;
         field.isPart = fieldDeclaration.isPart;
-        structType.fields.push_back(std::move(field));
+        fields.push_back(std::move(field));
+        written.push_back(fieldDeclaration.typeName);
     }
-    structs_.emplace(normalizeName(declaration.name), std::move(structType));
+    types().setStructFields(structType, std::move(fields));
+    writtenFieldTypes_.emplace(structType, std::move(written));
+}
+
+// Once every Type of the module is declared: the types written as a type
+// name (not an array or a pointer, which wait for the Consts).
+void SemanticAnalyzer::resolveDeclaredTypeNames()
+{
+    for (const auto& [name, written] : pendingSectionTypes_) {
+        symbols_.globalScope().inferType(name, types().lookup(written));
+    }
+    for (const auto& [structType, written] : writtenFieldTypes_) {
+        for (std::size_t index = 0; index < written.size(); ++index) {
+            if (!types::isArraySpelling(written[index]) && !types::isGenericSpelling(written[index])) {
+                types().setStructFieldType(structType, index, types().lookup(written[index]));
+            }
+        }
+    }
 }
 
 void SemanticAnalyzer::completeStructFields(const ast::TypeDeclaration& declaration)
 {
-    const auto structType = structs_.find(normalizeName(declaration.name));
-    for (StructField& field : structType->second.fields) {
-        if (support::isArrayTypeName(field.typeName) || support::isGenericTypeName(field.typeName)) {
-            const std::string written = field.typeName;
-            if (support::isSliceTypeName(written)) {
+    const TypeRef structType = resolveStruct(declaration.name);
+    const std::vector<std::string>& written = writtenFieldTypes_.at(structType);
+    for (std::size_t index = 0; index < written.size(); ++index) {
+        if (types::isArraySpelling(written[index]) || types::isGenericSpelling(written[index])) {
+            if (types::isGenericSpelling(written[index], "Slice")) {
                 continue;  // rejected by validateStructDeclaration
             }
-            field.typeName = canonicalTypeName(written);
-            result_.setCanonicalTypeName(written, field.typeName);
+            const TypeRef type = resolveWrittenType(written[index]);
+            types().setStructFieldType(structType, index, type);
         }
     }
 }
 
-void SemanticAnalyzer::validateStructDeclaration(const ast::TypeDeclaration& declaration) const
+void SemanticAnalyzer::validateStructDeclaration(const ast::TypeDeclaration& declaration)
 {
     for (const ast::StructFieldDeclaration& field : declaration.fields) {
-        if (support::isSliceTypeName(field.typeName)) {
+        if (types::isGenericSpelling(field.typeName, "Slice")) {
             throw SemanticError("a slice cannot be a struct field (ADR-0017): " + field.name);
         }
-        resolveTypeOrThrow(field.typeName);
-        rejectFileIn(canonicalTypeName(field.typeName), "a struct field, " + field.name);
+        const TypeRef type = resolveWrittenType(field.typeName);
+        rejectFileIn(type, "a struct field, " + field.name);
         if (field.hasDefault) {
-            if (support::isPointerTypeName(field.typeName) || support::isOptionTypeName(field.typeName)) {
+            if (type->isPointer()) {
                 throw SemanticError("a pointer field has no default literal: a Link and an Option are born "
                                     "empty, an Own is given in the construction (" + field.name + ")");
             }
-            if (support::isArrayTypeName(field.typeName) || resolveStruct(field.typeName) != nullptr) {
+            if (type->isArray() || type->isStruct()) {
                 throw SemanticError("only a scalar struct field has a default (CANON-9): " + field.name);
             }
-            validateStructFieldDefault(field.name, canonicalTypeName(field.typeName), field.defaultValue);
+            validateStructFieldDefault(field.name, type, field.defaultValue);
         }
     }
-    rejectRecursiveStruct(declaration.name);
+    rejectRecursiveStruct(resolveStruct(declaration.name));
     validateReuse(declaration);
 }
 
 void SemanticAnalyzer::validateStructFieldDefault(const std::string& fieldName,
-                                                  const std::string& fieldType,
+                                                  TypeRef fieldType,
                                                   const std::string& defaultValue) const
 {
     const bool quoted = defaultValue.size() >= 2 && defaultValue.front() == '"' && defaultValue.back() == '"';
-    if (equalsIgnoreCase(fieldType, "String") || quoted) {
-        if (!equalsIgnoreCase(fieldType, "String")) {
+    if (fieldType->isString() || quoted) {
+        if (!fieldType->isString()) {
             throw SemanticError("a String literal cannot be the default of struct field " + fieldName +
-                                " of type " + fieldType);
+                                " of type " + fieldType->name());
         }
         if (!quoted) {
             throw SemanticError("String struct field default must be a String literal: " + fieldName);
@@ -553,13 +517,13 @@ void SemanticAnalyzer::validateStructFieldDefault(const std::string& fieldName,
     const bool negative = !defaultValue.empty() && defaultValue.front() == '-';
     const std::string_view magnitudeText = negative ? std::string_view(defaultValue).substr(1)
                                                     : std::string_view(defaultValue);
-    if (equalsIgnoreCase(fieldType, "Bool")) {
+    if (fieldType->isBool()) {
         if (!equalsIgnoreCase(defaultValue, "true") && !equalsIgnoreCase(defaultValue, "false")) {
             throw SemanticError("Bool struct field default must be true or false: " + fieldName);
         }
         return;
     }
-    if (equalsIgnoreCase(fieldType, "Float64") || equalsIgnoreCase(fieldType, "Float32")) {
+    if (fieldType->isFloat()) {
         const bool isReal = !magnitudeText.empty() &&
                             std::isdigit(static_cast<unsigned char>(magnitudeText.front())) != 0 &&
                             magnitudeText.find_first_of(".eE") != std::string_view::npos &&
@@ -572,7 +536,7 @@ void SemanticAnalyzer::validateStructFieldDefault(const std::string& fieldName,
     std::int64_t low = 0;
     std::int64_t high = 0;
     if (!integerTypeRange(fieldType, low, high)) {
-        throw SemanticError("struct field defaults of type " + fieldType +
+        throw SemanticError("struct field defaults of type " + fieldType->name() +
                             " are not supported yet: " + fieldName);
     }
     std::uint64_t magnitude = 0;
@@ -582,32 +546,31 @@ void SemanticAnalyzer::validateStructFieldDefault(const std::string& fieldName,
     const bool fits = negative ? (low < 0 && magnitude <= static_cast<std::uint64_t>(-(low + 1)) + 1U)
                                : magnitude <= static_cast<std::uint64_t>(high);
     if (!fits) {
-        throw SemanticError("struct field default out of range for " + fieldType + ": " + fieldName);
+        throw SemanticError("struct field default out of range for " + fieldType->name() + ": " + fieldName);
     }
 }
 
 // CANON-9: a struct is a value, so it cannot contain itself, directly or
 // through other struct fields.
-void SemanticAnalyzer::rejectRecursiveStruct(const std::string& typeName) const
+void SemanticAnalyzer::rejectRecursiveStruct(TypeRef structType) const
 {
-    std::vector<std::string> path;
-    std::function<void(const std::string&)> visit = [&](const std::string& name) {
-        const auto structType = structs_.find(normalizeName(name));
-        if (structType == structs_.end()) {
+    std::vector<TypeRef> path;
+    std::function<void(TypeRef)> visit = [&](TypeRef type) {
+        if (type == nullptr || !type->isStruct()) {
             return;
         }
-        for (const std::string& seen : path) {
-            if (seen == normalizeName(name)) {
-                throw SemanticError("struct contains itself: " + typeName);
+        for (const TypeRef seen : path) {
+            if (seen == type) {
+                throw SemanticError("struct contains itself: " + structType->name());
             }
         }
-        path.push_back(normalizeName(name));
-        for (const StructField& field : structType->second.fields) {
-            visit(field.typeName);
+        path.push_back(type);
+        for (const types::StructField& field : type->fields()) {
+            visit(field.type);
         }
         path.pop_back();
     };
-    visit(typeName);
+    visit(structType);
 }
 
 void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& section)
@@ -630,20 +593,18 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
         if (declaration.typeName.empty()) {
             continue;
         }
-        if (support::isSliceTypeName(declaration.typeName)) {
+        if (types::isGenericSpelling(declaration.typeName, "Slice")) {
             throw SemanticError("a slice cannot be a " +
                                 std::string(section.sectionKind() == ast::SectionKind::State ? "State variable"
                                                                                                : "Const") +
                                 " (ADR-0017): " + declaration.name);
         }
-        resolveTypeOrThrow(declaration.typeName);
+        const TypeRef type = resolveWrittenType(declaration.typeName);
         if (section.sectionKind() == ast::SectionKind::State) {
-            rejectFileIn(canonicalTypeName(declaration.typeName), "a State variable, " + declaration.name);
+            rejectFileIn(type, "a State variable, " + declaration.name);
         }
-        if (support::isArrayTypeName(declaration.typeName) || support::isGenericTypeName(declaration.typeName)) {
-            const std::string canonical = canonicalTypeName(declaration.typeName);
-            result_.setCanonicalTypeName(declaration.typeName, canonical);
-            symbols_.currentScope().inferTypeName(declaration.name, canonical);
+        if (types::isArraySpelling(declaration.typeName) || types::isGenericSpelling(declaration.typeName)) {
+            symbols_.currentScope().inferType(declaration.name, type);
         }
     }
 
@@ -651,14 +612,15 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
     // structs and arrays may use the type-default form `Name TType`.
     if (section.sectionKind() == ast::SectionKind::State) {
         for (const auto& [name, typeName] : stateDeclarationsWithoutInitializer_) {
+            const TypeRef type = resolveWrittenType(typeName);
             // A Link and an Option<Own<T>> are born empty (safe-pointers).
-            const bool bornEmpty = support::isLinkTypeName(typeName) || support::isOptionTypeName(typeName);
-            if (resolveStruct(typeName) == nullptr && !support::isArrayTypeName(typeName) && !bornEmpty) {
-                throw SemanticError(support::isOwnTypeName(typeName)
+            const bool bornEmpty = type->isLink() || type->isOptionOwn();
+            if (!type->isStruct() && !type->isArray() && !bornEmpty) {
+                throw SemanticError(type->isOwn()
                                         ? "an owner is born with New(...): " + name
                                         : "scalar declaration requires initializer: " + name);
             }
-            if (const std::string owner = ownerFieldWithoutDefault(canonicalTypeName(typeName)); !owner.empty()) {
+            if (const std::string owner = ownerFieldWithoutDefault(type); !owner.empty()) {
                 throw SemanticError(owner + " is an owner without default: give " + name + " a value");
             }
         }

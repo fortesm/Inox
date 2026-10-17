@@ -16,7 +16,6 @@
 #include "MathBuiltins.h"
 #include "Operators.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../support/ArrayType.h"
 #include "../support/Platform.h"
 
 #include <algorithm>
@@ -40,7 +39,6 @@ FunctionEmitter::FunctionEmitter(std::ostringstream& output,
                                  const ast::FunctionDeclaration& function,
                                  const FunctionSignature& signature,
                                  const FunctionSignatures& signatures,
-                                 const StructDefinitions& structs,
                                  ModuleContext& module,
                                  const semantic::SemanticResult& semantics,
                                  const StateGlobals& stateGlobals)
@@ -50,61 +48,53 @@ FunctionEmitter::FunctionEmitter(std::ostringstream& output,
       function_(function),
       signature_(signature),
       signatures_(signatures),
-      structs_(structs),
       module_(module)
 {
     // State variables are addressed like locals whose slot is a global.
     for (const StateGlobal& state : stateGlobals_) {
         locals_.emplace(normalize(state.name),
-                        LocalInfo{stateGlobalSymbol(state.name), state.inoxType, state.llvmType});
+                        LocalInfo{stateGlobalSymbol(state.name), state.type, state.llvmType});
     }
     for (const FunctionParameter& parameter : signature.parameters) {
         if (parameter.byReference) {
             // The pointer itself is the slot: reads and writes of the
             // parameter go to the caller's storage.
             locals_.emplace(normalize(parameter.inoxName),
-                            LocalInfo{"%" + parameter.llvmName, parameter.inoxType, parameter.valueType});
+                            LocalInfo{"%" + parameter.llvmName, parameter.type, parameter.valueType});
             continue;
         }
         // Safe pointers: a parameter of a move-only type (an owner, or a
         // value holding one) is owned by the routine, which frees it at
         // every exit unless it gives it away with Move.
-        if (isMoveOnly(parameter.inoxType) &&
-            !(findStruct(structs_, parameter.inoxType) != nullptr && parameter.llvmType == "ptr")) {
+        if (isMoveOnly(parameter.type) && !(parameter.type->isStruct() && parameter.llvmType == "ptr")) {
             const std::string slot = "%" + parameter.llvmName + ".addr";
             output_ << "  " << slot << " = alloca " << parameter.llvmType << "\n";
-            registerOwnedSlot(slot, parameter.inoxType, parameter.llvmType);
+            registerOwnedSlot(slot, parameter.type, parameter.llvmType);
             output_ << "  store " << parameter.llvmType << " %" << parameter.llvmName << ", ptr " << slot << '\n';
-            locals_.emplace(normalize(parameter.inoxName),
-                            LocalInfo{slot, parameter.inoxType, parameter.llvmType});
+            locals_.emplace(normalize(parameter.inoxName), LocalInfo{slot, parameter.type, parameter.llvmType});
             continue;
         }
-        if (const auto layout = arrayLayout(parameter.inoxType)) {
+        if (const auto layout = arrayLayout(parameter.type)) {
             const std::string slot = "%" + parameter.llvmName + ".addr";
             output_ << "  " << slot << " = alloca " << layout->llvmType << "\n";
             output_ << "  store " << layout->llvmType << " %" << parameter.llvmName
                     << ", ptr " << slot << '\n';
-            locals_.emplace(normalize(parameter.inoxName),
-                            LocalInfo{slot, parameter.inoxType, layout->llvmType});
+            locals_.emplace(normalize(parameter.inoxName), LocalInfo{slot, parameter.type, layout->llvmType});
             continue;
         }
-        if (const StructDefinition* structType = findStruct(structs_, parameter.inoxType)) {
+        if (parameter.type->isStruct()) {
+            const std::string structName = llvmStructName(parameter.type);
             if (parameter.llvmType == "ptr") {
-                locals_.emplace(
-                    normalize(parameter.inoxName),
-                    LocalInfo{"%" + parameter.llvmName, parameter.inoxType, structType->llvmName});
+                locals_.emplace(normalize(parameter.inoxName),
+                                LocalInfo{"%" + parameter.llvmName, parameter.type, structName});
             } else {
                 const std::string slot = "%" + parameter.llvmName + ".addr";
-                output_ << "  " << slot << " = alloca " << structType->llvmName << "\n";
-                output_ << "  store " << structType->llvmName << " %" << parameter.llvmName
-                        << ", ptr " << slot << '\n';
-                locals_.emplace(
-                    normalize(parameter.inoxName),
-                    LocalInfo{slot, parameter.inoxType, structType->llvmName});
+                output_ << "  " << slot << " = alloca " << structName << "\n";
+                output_ << "  store " << structName << " %" << parameter.llvmName << ", ptr " << slot << '\n';
+                locals_.emplace(normalize(parameter.inoxName), LocalInfo{slot, parameter.type, structName});
             }
         } else {
             parameters_.emplace(normalize(parameter.inoxName), "%" + parameter.llvmName);
-            parameterTypes_.emplace(normalize(parameter.inoxName), parameter.llvmType);
         }
     }
 
@@ -136,8 +126,8 @@ void FunctionEmitter::emit()
     output_ << "  " << stateSlot << " = alloca ptr\n";
     if (signature_.llvmName == "main") {
         for (const StateGlobal& state : stateGlobals_) {
-            if (typeOwnsReferences(state.inoxType)) {
-                registerOwnedSlot(stateGlobalSymbol(state.name), state.inoxType, state.llvmType, false);
+            if (typeOwnsReferences(state.type)) {
+                registerOwnedSlot(stateGlobalSymbol(state.name), state.type, state.llvmType, false);
             }
         }
     }
@@ -163,12 +153,12 @@ void FunctionEmitter::emitBody()
             const std::string global = stateGlobalSymbol(state.name);
             if (state.initializer != nullptr) {
                 const std::string value = emitExpression(*state.initializer);
-                emitOwningStore(global, state.inoxType, state.llvmType, value);
+                emitOwningStore(global, state.type, state.llvmType, value);
                 flushStatementTemporaries();
-            } else if (const StructDefinition* structType = findStruct(structs_, state.inoxType)) {
-                emitStructDefaults(global, *structType);
+            } else if (state.type->isStruct()) {
+                emitStructDefaults(global, state.type);
             } else {
-                emitArrayElementDefaults(global, state.inoxType);
+                emitArrayElementDefaults(global, state.type);
             }
         }
     }

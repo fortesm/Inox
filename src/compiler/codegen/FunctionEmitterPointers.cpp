@@ -27,8 +27,6 @@
 #include "AstQueries.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
-#include "../support/ArrayType.h"
-#include "../support/PointerType.h"
 
 #include <cstdint>
 #include <functional>
@@ -40,34 +38,26 @@ namespace inox::compiler::codegen::detail {
 
 namespace {
 
-constexpr std::string_view kTombstoneType = "__Tombstone";
-
 const std::string& calleeName(const ast::CallExpression& call)
 {
     return static_cast<const ast::IdentifierExpression&>(call.callee()).name();
 }
 
-bool isOwnerPointer(std::string_view type)
-{
-    return support::isOwnTypeName(type) || support::isOptionOwnTypeName(type);
-}
-
 } // namespace
 
-bool FunctionEmitter::isMoveOnly(std::string_view inoxType) const
+// A value that holds an owner is moved, never copied: an owner, or an
+// aggregate holding one. A Link and a slice only look at storage.
+bool FunctionEmitter::isMoveOnly(TypeRef type)
 {
-    if (isOwnerPointer(inoxType)) {
+    if (isOwnerType(type)) {
         return true;
     }
-    if (support::isLinkTypeName(inoxType) || support::isSliceTypeName(inoxType)) {
-        return false;
+    if (isArrayType(type)) {
+        return isMoveOnly(type->element());
     }
-    if (const auto layout = arrayLayout(inoxType)) {
-        return isMoveOnly(layout->elementType);
-    }
-    if (const StructDefinition* structType = findStruct(structs_, inoxType)) {
-        for (const StructFieldInfo& field : structType->fields) {
-            if (isMoveOnly(field.inoxType)) {
+    if (isStructType(type)) {
+        for (const types::StructField& field : type->fields()) {
+            if (isMoveOnly(field.type)) {
                 return true;
             }
         }
@@ -90,43 +80,36 @@ bool FunctionEmitter::isPointerBuiltin(const ast::CallExpression& call) const
     return known && signatures_.find(normalize(name)) == signatures_.end();
 }
 
-// Walks a value of `inoxType` stored at `pointer` (struct fields and array
+// Walks a value of `type` stored at `pointer` (struct fields and array
 // elements, recursively) and calls `action` on every leaf `isLeaf` accepts.
-void FunctionEmitter::forEachLeafAt(const std::string& pointer, std::string_view inoxType,
-                                    const std::function<bool(std::string_view)>& isLeaf,
-                                    const std::function<void(const std::string&, std::string_view)>& action)
+void FunctionEmitter::forEachLeafAt(const std::string& pointer, TypeRef type,
+                                    const std::function<bool(TypeRef)>& isLeaf,
+                                    const std::function<void(const std::string&, TypeRef)>& action)
 {
-    if (isLeaf(inoxType)) {
-        action(pointer, inoxType);
+    if (isLeaf(type)) {
+        action(pointer, type);
         return;
     }
-    if (const StructDefinition* structType = findStruct(structs_, inoxType)) {
-        for (const StructFieldInfo& field : structType->fields) {
-            if (!typeOwnsReferences(field.inoxType)) {
+    if (isStructType(type)) {
+        for (std::size_t index = 0; index < type->fields().size(); ++index) {
+            if (!typeOwnsReferences(type->fields()[index].type)) {
                 continue;
             }
             const std::string fieldPointer = "%tmp" + std::to_string(nextTemporary_++);
-            output_ << "  " << fieldPointer << " = getelementptr " << structType->llvmName << ", ptr " << pointer
-                    << ", i32 0, i32 " << field.index << '\n';
-            forEachLeafAt(fieldPointer, field.inoxType, isLeaf, action);
+            output_ << "  " << fieldPointer << " = getelementptr " << llvmStructName(type) << ", ptr " << pointer
+                    << ", i32 0, i32 " << index << '\n';
+            forEachLeafAt(fieldPointer, type->fields()[index].type, isLeaf, action);
         }
         return;
     }
-    std::optional<ArrayLayout> layout = arrayLayout(inoxType);
-    if (!layout) {
+    if (!isArrayType(type)) {
         return;
     }
-    std::int64_t count = 1;
-    std::string element;
-    while (layout) {
-        count *= layout->high - layout->low + 1;
-        element = layout->elementType;
-        layout = arrayLayout(element);
-    }
-    if (!typeOwnsReferences(element)) {
+    const FlatArray flat = flattenArray(type);
+    if (!typeOwnsReferences(flat.element)) {
         return;
     }
-    const std::string storage = llvmTypeForInoxType(element, structs_);
+    const std::string storage = llvmValueType(flat.element);
     const std::string label = std::to_string(nextLabel_++);
     const std::string counter = "%leafwalk.i" + label;
     output_ << "  " << counter << " = alloca i64\n";
@@ -136,14 +119,14 @@ void FunctionEmitter::forEachLeafAt(const std::string& pointer, std::string_view
     const std::string index = "%tmp" + std::to_string(nextTemporary_++);
     const std::string more = "%tmp" + std::to_string(nextTemporary_++);
     output_ << "  " << index << " = load i64, ptr " << counter << '\n';
-    output_ << "  " << more << " = icmp slt i64 " << index << ", " << count << '\n';
+    output_ << "  " << more << " = icmp slt i64 " << index << ", " << flat.count << '\n';
     output_ << "  br i1 " << more << ", label %leafwalk.body" << label << ", label %leafwalk.end" << label
             << "\n\n";
     output_ << "leafwalk.body" << label << ":\n";
     const std::string elementPointer = "%tmp" + std::to_string(nextTemporary_++);
     output_ << "  " << elementPointer << " = getelementptr inbounds " << storage << ", ptr " << pointer << ", i64 "
             << index << '\n';
-    forEachLeafAt(elementPointer, element, isLeaf, action);
+    forEachLeafAt(elementPointer, flat.element, isLeaf, action);
     const std::string next = "%tmp" + std::to_string(nextTemporary_++);
     output_ << "  " << next << " = add i64 " << index << ", 1\n";
     output_ << "  store i64 " << next << ", ptr " << counter << '\n';
@@ -151,41 +134,42 @@ void FunctionEmitter::forEachLeafAt(const std::string& pointer, std::string_view
     output_ << "leafwalk.end" << label << ":\n";
 }
 
-// Frees every owner held by the value at `pointer` (and the tombstone of a
-// tombstone slot).
-void FunctionEmitter::emitOwnerFreesAt(const std::string& pointer, std::string_view inoxType)
+// Frees every owner held by the value at `pointer`.
+void FunctionEmitter::emitOwnerFreesAt(const std::string& pointer, TypeRef type)
 {
-    if (inoxType == kTombstoneType) {
-        requireRuntime(RuntimeFunction::OwnFree);
-        const std::string tombstone = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << tombstone << " = load ptr, ptr " << pointer << '\n';
-        output_ << "  call void @__inox_own_free(ptr " << tombstone << ", ptr null)\n";
-        return;
-    }
     forEachLeafAt(
-        pointer, inoxType, [](std::string_view type) { return isOwnerPointer(type); },
-        [&](const std::string& at, std::string_view type) {
+        pointer, type, [](TypeRef leaf) { return isOwnerType(leaf); },
+        [&](const std::string& at, TypeRef owner) {
             requireRuntime(RuntimeFunction::OwnFree);
-            const std::string drop = dropFunctionFor(support::pointerTargetTypeName(type));
+            const std::string drop = dropFunctionFor(owner->pointerTarget());
             const std::string object = "%tmp" + std::to_string(nextTemporary_++);
             output_ << "  " << object << " = load ptr, ptr " << at << '\n';
             output_ << "  call void @__inox_own_free(ptr " << object << ", ptr " << drop << ")\n";
         });
 }
 
+// A tombstone is a block of the runtime with no object: freeing it makes
+// every Link to the variable it stands for dead.
+void FunctionEmitter::emitTombstoneFree(const std::string& pointer)
+{
+    requireRuntime(RuntimeFunction::OwnFree);
+    const std::string tombstone = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << tombstone << " = load ptr, ptr " << pointer << '\n';
+    output_ << "  call void @__inox_own_free(ptr " << tombstone << ", ptr null)\n";
+}
+
 // The function that releases what an object of `targetType` holds (its
 // Strings and owners) before its block is freed; "null" when it holds none.
-std::string FunctionEmitter::dropFunctionFor(const std::string& targetType)
+std::string FunctionEmitter::dropFunctionFor(TypeRef targetType)
 {
     if (!typeOwnsReferences(targetType)) {
         return "null";
     }
-    const std::string key = normalize(targetType);
-    if (const auto existing = module_.dropFunctions.find(key); existing != module_.dropFunctions.end()) {
+    if (const auto existing = module_.dropFunctions.find(targetType); existing != module_.dropFunctions.end()) {
         return existing->second;
     }
     const std::string name = "@__inox_drop." + std::to_string(module_.dropFunctions.size());
-    module_.dropFunctions.emplace(key, name);
+    module_.dropFunctions.emplace(targetType, name);
     // The drop function is emitted with this emitter's helpers into a
     // separate text, then added to the module.
     const std::string saved = output_.str();
@@ -198,7 +182,7 @@ std::string FunctionEmitter::dropFunctionFor(const std::string& targetType)
     output_.str(saved);
     output_.clear();
     output_.seekp(0, std::ios_base::end);
-    requireModuleLine("; the drop function of " + targetType + " (safe pointers)\n" + definition);
+    requireModuleLine("; the drop function of " + targetType->name() + " (safe pointers)\n" + definition);
     return name;
 }
 
@@ -286,9 +270,9 @@ void FunctionEmitter::emitLinkCheck(const LinkParts& parts)
 
 std::string FunctionEmitter::emitPointerTarget(const ast::Expression& pointer)
 {
-    const std::string type = semanticTypeName(pointer);
+    const TypeRef type = typeOf(pointer);
     const std::string value = emitExpression(pointer);
-    if (support::isLinkTypeName(type)) {
+    if (isLinkType(type)) {
         const LinkParts parts = extractLink(value);
         emitLinkCheck(parts);
         if (&pointer == withGuardPointer_) {
@@ -321,9 +305,7 @@ const ast::Expression* FunctionEmitter::lastPointerOnPath(const ast::Expression&
     }
     if ((isMemberAccessCall(call) && memberField(call)) || isIndexCall(call)) {
         const ast::Expression& base = *call.arguments()[0];
-        const std::string baseType =
-            isIndexCall(call) ? semanticTypeName(base) : placeTypeName(base);
-        if (support::isPointerTypeName(baseType)) {
+        if (isPointerType(typeOf(base))) {
             return &base;
         }
         return lastPointerOnPath(base);
@@ -363,7 +345,7 @@ FunctionEmitter::LinkParts FunctionEmitter::emitHeaderOfPlace(const ast::Express
         }
         if (isMemberAccessCall(call) || isIndexCall(call)) {
             const ast::Expression& base = *call.arguments()[0];
-            if (support::isPointerTypeName(semanticTypeName(base))) {
+            if (isPointerType(typeOf(base))) {
                 return emitHeaderOfPointer(base);
             }
             return emitHeaderOfPlace(base);
@@ -374,9 +356,9 @@ FunctionEmitter::LinkParts FunctionEmitter::emitHeaderOfPlace(const ast::Express
 
 FunctionEmitter::LinkParts FunctionEmitter::emitHeaderOfPointer(const ast::Expression& pointer)
 {
-    const std::string type = semanticTypeName(pointer);
+    const TypeRef type = typeOf(pointer);
     const std::string value = emitExpression(pointer);
-    if (support::isLinkTypeName(type)) {
+    if (isLinkType(type)) {
         return extractLink(value);
     }
     const std::string object = emitOwnerNullCheck(value);
@@ -389,14 +371,14 @@ FunctionEmitter::LinkParts FunctionEmitter::emitHeaderOfPointer(const ast::Expre
 
 std::string FunctionEmitter::emitLinkOf(const ast::Expression& argument)
 {
-    const std::string type = semanticTypeName(argument);
-    if (support::isLinkTypeName(type)) {
+    const TypeRef type = typeOf(argument);
+    if (isLinkType(type)) {
         return emitExpression(argument);
     }
-    if (support::isOwnTypeName(type)) {
+    if (type->isOwn()) {
         return buildLink(emitHeaderOfPointer(argument));
     }
-    if (support::isOptionOwnTypeName(type)) {
+    if (type->isOptionOwn()) {
         // None gives an empty Link.
         const std::string object = emitExpression(argument);
         const std::string label = std::to_string(nextLabel_++);
@@ -459,7 +441,7 @@ void FunctionEmitter::collectTombstoneLocals()
             }
             const auto& call = static_cast<const ast::CallExpression&>(expression);
             if (!isPointerBuiltin(call) || !equalsIgnoreCase(calleeName(call), "Link") ||
-                support::isPointerTypeName(semanticTypeName(*call.arguments()[0]))) {
+                isPointerType(typeOf(*call.arguments()[0]))) {
                 return;
             }
             const ast::Expression* root = call.arguments()[0].get();
@@ -470,7 +452,7 @@ void FunctionEmitter::collectTombstoneLocals()
                     break;
                 }
                 const ast::Expression& base = *inner.arguments()[0];
-                root = support::isPointerTypeName(semanticTypeName(base)) ? nullptr : &base;
+                root = isPointerType(typeOf(base)) ? nullptr : &base;
             }
             if (root != nullptr && root->kind() == ast::AstNodeKind::IdentifierExpression) {
                 const std::string name = normalize(static_cast<const ast::IdentifierExpression&>(*root).name());
@@ -491,9 +473,11 @@ void FunctionEmitter::declareTombstone(const std::string& normalizedName)
     }
     const std::string slot = "%tomb." + safeLlvmName(normalizedName) + "." + std::to_string(nextTemporary_++);
     output_ << "  " << slot << " = alloca ptr\n";
-    registerOwnedSlot(slot, kTombstoneType, "ptr");
+    registerOwnedSlot(slot, nullptr, "ptr");
+    ownedSlots_.back().tombstone = true;
     const std::string block = emitNewTombstone();
-    emitOwningStore(slot, kTombstoneType, "ptr", block);
+    emitTombstoneFree(slot);
+    output_ << "  store ptr " << block << ", ptr " << slot << '\n';
     tombstoneSlots_.insert_or_assign(normalizedName, slot);
 }
 
@@ -503,8 +487,8 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
     const ast::Expression& argument = *call.arguments()[0];
 
     if (equalsIgnoreCase(name, "New")) {
-        const std::string ownType = semanticTypeName(call);
-        const std::string targetType = support::pointerTargetTypeName(ownType);
+        const TypeRef ownType = typeOf(call);
+        const TypeRef targetType = ownType->pointerTarget();
         const std::string llvmType = valueLlvmType(targetType);
         requireRuntime(RuntimeFunction::OwnAlloc);
         const std::string end = "%tmp" + std::to_string(nextTemporary_++);
@@ -524,11 +508,10 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
                 ? semantics_.symbolOf(static_cast<const ast::IdentifierExpression&>(argument))
                 : nullptr;
         if (typeSymbol != nullptr && typeSymbol->kind == semantic::SymbolKind::Type) {
-            const StructDefinition* structType = findStruct(structs_, targetType);
-            if (structType == nullptr) {
+            if (!targetType->isStruct()) {
                 throw CodegenError("New(T) of a type without defaults");
             }
-            emitStructDefaults(object, *structType);
+            emitStructDefaults(object, targetType);
         } else {
             const std::string value = emitExpression(argument);
             emitOwningStore(object, targetType, llvmType, value);
@@ -538,7 +521,7 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
     }
 
     if (equalsIgnoreCase(name, "Move") || equalsIgnoreCase(name, "Free")) {
-        const std::string type = semanticTypeName(argument);
+        const TypeRef type = typeOf(argument);
         const std::string llvmType = valueLlvmType(type);
         const Place place = emitPlace(argument);
         if (equalsIgnoreCase(name, "Free")) {
@@ -554,7 +537,7 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
     }
 
     if (equalsIgnoreCase(name, "Value")) {
-        const std::string type = semanticTypeName(call);
+        const TypeRef type = typeOf(call);
         const std::string target = emitPointerTarget(argument);
         const std::string value = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << value << " = load " << valueLlvmType(type) << ", ptr " << target << '\n';
@@ -567,9 +550,9 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
 
     // Alive and Same: whether each pointer reaches an object, and which.
     const auto aliveAndTarget = [&](const ast::Expression& pointer) {
-        const std::string type = semanticTypeName(pointer);
+        const TypeRef type = typeOf(pointer);
         const std::string value = emitExpression(pointer);
-        if (support::isLinkTypeName(type)) {
+        if (isLinkType(type)) {
             const LinkParts parts = extractLink(value);
             return std::make_pair(emitLinkAlive(parts), parts.target);
         }

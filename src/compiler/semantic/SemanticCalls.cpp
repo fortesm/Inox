@@ -11,8 +11,6 @@
 
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../support/ArrayType.h"
-#include "../support/PointerType.h"
 
 #include <algorithm>
 #include <array>
@@ -30,7 +28,7 @@ namespace inox::compiler::semantic {
 
 using namespace detail;
 
-std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
+TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
 {
     // CANON-24: the intrinsics written by the contract lowering.
     if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
@@ -47,7 +45,7 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
     // (CANON-9). It is not an assignment, and only a struct constructor takes it.
     const bool calleeIsType =
         call.callee().kind() == ast::AstNodeKind::IdentifierExpression &&
-        types_.resolve(static_cast<const ast::IdentifierExpression&>(call.callee()).name()) != nullptr;
+        types().isDeclared(static_cast<const ast::IdentifierExpression&>(call.callee()).name());
     if (!calleeIsType) {
         for (const auto& argument : call.arguments()) {
             if (const ast::BinaryExpression* named = namedArgument(*argument)) {
@@ -83,29 +81,28 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
         if ((equalsIgnoreCase(callee.name(), "Low") || equalsIgnoreCase(callee.name(), "High") ||
              equalsIgnoreCase(callee.name(), "Length")) &&
             call.arguments().size() == 1) {
-            const std::string argumentType = canonicalTypeName(analyzeExpression(*call.arguments()[0]));
-            if (support::isSliceTypeName(argumentType)) {
-                return "Int64";  // ADR-0017: a slice's bounds are known at run time
+            const TypeRef argumentType = analyzeExpression(*call.arguments()[0]);
+            if (argumentType != nullptr && argumentType->isSlice()) {
+                return types().int64Type();  // ADR-0017: a slice's bounds are known at run time
             }
-            if (const auto parts = support::splitArrayTypeName(argumentType)) {
+            if (argumentType != nullptr && argumentType->isArray()) {
                 // CANON-13: Low, High and Length of a fixed array are
                 // compile-time constants of its type.
-                const std::int64_t low = std::stoll(parts->low);
-                const std::int64_t high = std::stoll(parts->high);
+                const std::int64_t low = argumentType->low();
+                const std::int64_t high = argumentType->high();
                 const std::int64_t value = equalsIgnoreCase(callee.name(), "Low")    ? low
                                          : equalsIgnoreCase(callee.name(), "High")   ? high
                                                                                      : high - low + 1;
                 constants_[&call] = value;
-                return "Int64";
+                return types().int64Type();
             }
         }
-        if (const TypeSymbol* type = types_.resolve(callee.name())) {
+        if (const TypeRef type = types().lookup(callee.name())) {
             const Symbol& symbol = resolveOrThrow(callee.name());
             result_.bind(callee, symbol);
             result_.bind(call, symbol);
-            result_.setExpressionType(callee, resolvedType(canonicalTypeName(type->name)));
-            const StructType* structType = resolveStruct(type->name);
-            if (structType == nullptr) {
+            result_.setExpressionType(callee, type);
+            if (!type->isStruct()) {
                 // A conversion such as `Float32(0.0)` or `Currency(19.99)`.
                 for (const auto& argument : call.arguments()) {
                     if (const ast::BinaryExpression* named = namedArgument(*argument)) {
@@ -123,14 +120,14 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
                     std::int64_t constant = 0;
                     std::int64_t low = 0;
                     std::int64_t high = 0;
-                    if (integerTypeRange(canonicalTypeName(type->name), low, high) &&
+                    if (integerTypeRange(type, low, high) &&
                         constantIntegerValue(*call.arguments()[0], constant) &&
                         (constant < low || constant > high)) {
                         throw SemanticError("value out of range for " + callee.name() + ": " +
                                             std::to_string(constant));
                     }
                 }
-                return canonicalTypeName(type->name);
+                return type;
             }
 
             // Named struct construction (CANON-9): every argument is
@@ -142,63 +139,64 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
                 if (named == nullptr) {
                     throw SemanticError(
                         "positional construction is not canonical (CANON-9): write " +
-                        type->name + "(Field := Value, ...)");
+                        type->name() + "(Field := Value, ...)");
                 }
                 const std::string& fieldName =
                     static_cast<const ast::IdentifierExpression&>(named->left()).name();
-                const StructField* field = resolveStructField(type->name, fieldName);
+                const types::StructField* field = resolveStructField(type, fieldName);
                 if (field == nullptr) {
-                    if (const auto reused = findReusedMember(type->name, fieldName); reused && !reused->isMethod) {
+                    if (const auto reused = findReusedMember(type, fieldName); reused && !reused->isMethod) {
                         throw SemanticError(fieldName + " belongs to the reused part " + reused->path.front() +
-                                            " (CANON-9): construct the part, " + type->name + "(" +
+                                            " (CANON-9): construct the part, " + type->name() + "(" +
                                             reused->path.front() + " := " + reused->path.front() + "(...))");
                     }
                     throw SemanticError("unknown field in construction: " +
-                                        type->name + "." + fieldName);
+                                        type->name() + "." + fieldName);
                 }
                 for (const std::string& seen : namedFields) {
                     if (equalsIgnoreCase(seen, fieldName)) {
                         throw SemanticError("duplicate field in construction: " +
-                                            type->name + "." + fieldName);
+                                            type->name() + "." + fieldName);
                     }
                 }
                 namedFields.push_back(fieldName);
-                const std::string valueType = analyzeExpression(named->right());
-                if (!canAssignValue(field->typeName, valueType, named->right())) {
-                    throw SemanticError("field " + type->name + "." + fieldName +
-                                        " expects " + field->typeName);
+                const TypeRef valueType = analyzeExpression(named->right());
+                if (!canAssignValue(field->type, valueType, named->right())) {
+                    throw SemanticError("field " + type->name() + "." + fieldName +
+                                        " expects " + types::nameOf(field->type));
                 }
-                result_.setExpressionType(*named, resolvedType(field->typeName));
+                result_.setExpressionType(*named, field->type);
             }
-            for (const StructField& field : structType->fields) {
+            for (const types::StructField& field : type->fields()) {
                 bool named = false;
                 for (const std::string& seen : namedFields) {
                     named = named || equalsIgnoreCase(seen, field.name);
                 }
                 // A Link and an Option are born empty; an Own is always given.
                 const bool bornEmpty =
-                    support::isLinkTypeName(field.typeName) || support::isOptionOwnTypeName(field.typeName);
-                if (!named && !field.hasDefault && resolveStruct(field.typeName) == nullptr && !bornEmpty) {
-                    if (support::isOwnTypeName(field.typeName)) {
-                        throw SemanticError("construction omits the owner " + type->name + "." + field.name +
+                    field.type != nullptr && (field.type->isLink() || field.type->isOptionOwn());
+                const bool isStruct = field.type != nullptr && field.type->isStruct();
+                if (!named && !field.hasDefault && !isStruct && !bornEmpty) {
+                    if (field.type != nullptr && field.type->isOwn()) {
+                        throw SemanticError("construction omits the owner " + type->name() + "." + field.name +
                                             ": give it, " + field.name + " := New(...)");
                     }
                     throw SemanticError(
                         "construction omits scalar field without default (CANON-9): " +
-                        type->name + "." + field.name);
+                        type->name() + "." + field.name);
                 }
                 if (!named) {
-                    if (const std::string owner = ownerFieldWithoutDefault(field.typeName); !owner.empty()) {
-                        throw SemanticError("construction omits " + type->name + "." + field.name +
+                    if (const std::string owner = ownerFieldWithoutDefault(field.type); !owner.empty()) {
+                        throw SemanticError("construction omits " + type->name() + "." + field.name +
                                             ", which holds the owner " + owner + ": give it");
                     }
                 }
             }
             // CANON-24: a new value satisfies its invariant.
-            if (hasInvariant(type->name) && invariantChecksOn()) {
-                result_.requireNewValueInvariant(call, structType->name);
+            if (hasInvariant(type) && invariantChecksOn()) {
+                result_.requireNewValueInvariant(call, type);
             }
-            return canonicalTypeName(type->name);
+            return type;
         }
 
         // Std.Debug (debug-assert): Assert exists only with `Use Std.Debug`;
@@ -231,7 +229,7 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
             if (equalsIgnoreCase(callee.name(), "Get") || equalsIgnoreCase(callee.name(), "GetLn")) {
                 return analyzeInputCall(callee.name(), call.arguments());
             }
-            std::vector<std::string> argumentTypes;
+            std::vector<TypeRef> argumentTypes;
             argumentTypes.reserve(call.arguments().size());
             for (const auto& argument : call.arguments()) {
                 argumentTypes.push_back(analyzeExpression(*argument));
@@ -243,7 +241,7 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
             const Symbol& symbol = resolveOrThrow(callee.name());
             result_.bind(callee, symbol);
             result_.bind(call, symbol);
-            const std::string type = analyzeUserFunctionCall(*signature, call.arguments());
+            const TypeRef type = analyzeUserFunctionCall(*signature, call.arguments());
             // CANON-24: a ref mut argument may break its struct's invariant.
             for (std::size_t index = 0; index < call.arguments().size(); ++index) {
                 if (signature->parameters[index].mode == PassMode::RefMut) {
@@ -268,10 +266,10 @@ std::string SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& c
     for (const auto& argument : call.arguments()) {
         analyzeExpression(*argument);
     }
-    return {};
+    return nullptr;
 }
 
-std::string SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression& call)
+TypeRef SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression& call)
 {
     if (call.arguments().size() != 2 ||
         call.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
@@ -279,16 +277,16 @@ std::string SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression&
     }
 
     // Through a pointer, `P.Field` is a field of its object (safe-pointers).
-    const std::string baseType = typeThroughPointer(canonicalTypeName(analyzeExpression(*call.arguments()[0])));
+    const TypeRef baseType = typeThroughPointer(analyzeExpression(*call.arguments()[0]));
     const auto& fieldIdentifier =
         static_cast<const ast::IdentifierExpression&>(*call.arguments()[1]);
-    const StructField* field = resolveStructField(baseType, fieldIdentifier.name());
+    const types::StructField* field = resolveStructField(baseType, fieldIdentifier.name());
     if (field != nullptr) {
-        result_.setExpressionType(fieldIdentifier, resolvedType(field->typeName));
-        return field->typeName;
+        result_.setExpressionType(fieldIdentifier, field->type);
+        return field->type;
     }
 
-    const std::string qualifiedName = baseType + "." + fieldIdentifier.name();
+    const std::string qualifiedName = types::nameOf(baseType) + "." + fieldIdentifier.name();
     const FunctionSignature* signature = resolveFunctionSignature(qualifiedName);
     if (signature == nullptr) {
         // CANON-9: a field or method of a reused part, reached through it.
@@ -304,10 +302,10 @@ std::string SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression&
         if (signature->parameters.size() != 1) {
             throw SemanticError("method " + signature->name + " requires arguments; use parentheses only when passing arguments");
         }
-        if (!canAssign(signature->parameters.front().typeName, baseType)) {
+        if (!canAssign(signature->parameters.front().type, baseType)) {
             throw SemanticError(
                 "method " + signature->name + " receiver expects " +
-                signature->parameters.front().typeName + ", got " + baseType);
+                types::nameOf(signature->parameters.front().type) + ", got " + types::nameOf(baseType));
         }
         requireWritableReceiver(*signature, *call.arguments()[0]);
         if (signature->parameters.front().mode == PassMode::RefMut) {
@@ -321,10 +319,11 @@ std::string SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression&
         return signature->returnType;
     }
 
-    throw SemanticError("unknown field or zero-argument method " + fieldIdentifier.name() + " in " + baseType);
+    throw SemanticError("unknown field or zero-argument method " + fieldIdentifier.name() + " in " +
+                        types::nameOf(baseType));
 }
 
-std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpression& call)
+TypeRef SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpression& call)
 {
     const auto& member = static_cast<const ast::CallExpression&>(call.callee());
     if (member.arguments().size() != 2 ||
@@ -332,11 +331,10 @@ std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpress
         throw SemanticError("method call requires object and method name");
     }
 
-    const std::string receiverType =
-        typeThroughPointer(canonicalTypeName(analyzeExpression(*member.arguments()[0])));
+    const TypeRef receiverType = typeThroughPointer(analyzeExpression(*member.arguments()[0]));
     const auto& methodIdentifier =
         static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
-    const std::string qualifiedName = receiverType + "." + methodIdentifier.name();
+    const std::string qualifiedName = types::nameOf(receiverType) + "." + methodIdentifier.name();
     const FunctionSignature* signature = resolveFunctionSignature(qualifiedName);
     if (signature == nullptr && resolveStructField(receiverType, methodIdentifier.name()) == nullptr) {
         // CANON-9: a method of a reused part runs on that part.
@@ -347,16 +345,16 @@ std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpress
         }
     }
     if (signature == nullptr) {
-        throw SemanticError("unknown method " + methodIdentifier.name() + " for " + receiverType);
+        throw SemanticError("unknown method " + methodIdentifier.name() + " for " + types::nameOf(receiverType));
     }
 
     if (signature->parameters.empty()) {
         throw SemanticError("method " + signature->name + " must declare an explicit receiver parameter");
     }
-    if (!canAssign(signature->parameters.front().typeName, receiverType)) {
+    if (!canAssign(signature->parameters.front().type, receiverType)) {
         throw SemanticError(
             "method " + signature->name + " receiver expects " +
-            signature->parameters.front().typeName + ", got " + receiverType);
+            types::nameOf(signature->parameters.front().type) + ", got " + types::nameOf(receiverType));
     }
     requireWritableReceiver(*signature, *member.arguments()[0]);
     if (signature->parameters.front().mode == PassMode::RefMut) {
@@ -374,15 +372,15 @@ std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpress
     result_.bind(call, symbol);
 
     for (std::size_t index = 0; index < call.arguments().size(); ++index) {
-        const std::string argumentType = analyzeExpression(*call.arguments()[index]);
+        const TypeRef argumentType = analyzeExpression(*call.arguments()[index]);
         const FunctionParameter& parameter = signature->parameters[index + 1];
         if (parameter.mode != PassMode::Value) {
             continue;
         }
-        if (!canAssignValue(parameter.typeName, argumentType, *call.arguments()[index])) {
+        if (!canAssignValue(parameter.type, argumentType, *call.arguments()[index])) {
             throw SemanticError(
                 "argument " + std::to_string(index + 1) + " of " + signature->name +
-                " expects " + parameter.typeName + ", got " + argumentType);
+                " expects " + types::nameOf(parameter.type) + ", got " + types::nameOf(argumentType));
         }
     }
     checkReferenceArguments(signature->name, signature->parameters, 1, call.arguments());
@@ -418,7 +416,7 @@ std::string SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpress
     return signature->returnType;
 }
 
-std::string SemanticAnalyzer::analyzeUserFunctionCall(
+TypeRef SemanticAnalyzer::analyzeUserFunctionCall(
     const FunctionSignature& signature,
     const std::vector<ast::ExpressionPtr>& arguments)
 {
@@ -430,15 +428,15 @@ std::string SemanticAnalyzer::analyzeUserFunctionCall(
     }
 
     for (std::size_t index = 0; index < arguments.size(); ++index) {
-        const std::string argumentType = analyzeExpression(*arguments[index]);
+        const TypeRef argumentType = analyzeExpression(*arguments[index]);
         const FunctionParameter& parameter = signature.parameters[index];
         if (parameter.mode != PassMode::Value) {
             continue;
         }
-        if (!canAssignValue(parameter.typeName, argumentType, *arguments[index])) {
+        if (!canAssignValue(parameter.type, argumentType, *arguments[index])) {
             throw SemanticError(
                 "argument " + std::to_string(index + 1) + " of " + signature.name +
-                " expects " + parameter.typeName + ", got " + argumentType);
+                " expects " + types::nameOf(parameter.type) + ", got " + types::nameOf(argumentType));
         }
     }
     checkReferenceArguments(signature.name, signature.parameters, 0, arguments);
@@ -461,12 +459,11 @@ void SemanticAnalyzer::checkReferenceArguments(const std::string& routine,
         if (parameter.mode == PassMode::Value) {
             continue;
         }
-        const ResolvedType* resolved = result_.typeOf(*arguments[index]);
-        const std::string argumentType = resolved != nullptr ? canonicalTypeName(resolved->name) : std::string{};
-        if (argumentType != canonicalTypeName(parameter.typeName)) {
+        const TypeRef argumentType = result_.typeOf(*arguments[index]);
+        if (argumentType != parameter.type) {
             throw SemanticError("argument " + std::to_string(index + 1) + " of " + routine +
-                                " is passed by reference and must have type " + parameter.typeName +
-                                " exactly, got " + argumentType + " (ADR-0016)");
+                                " is passed by reference and must have type " + types::nameOf(parameter.type) +
+                                " exactly, got " + types::nameOf(argumentType) + " (ADR-0016)");
         }
         if (parameter.mode != PassMode::RefMut) {
             continue;
