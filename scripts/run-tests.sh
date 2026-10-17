@@ -658,27 +658,31 @@ run_version_check() {
 }
 run_version_check
 
-# Unit tests of the runtime library (inoxrt-tests, built next to the compiler).
-run_runtime_unit_tests() {
+# Unit tests built next to the compiler: the runtime library (inoxrt-tests)
+# and the compiler's own modules (inox-compiler-tests).
+run_unit_tests() {
+    local name="$1"
+    local label="$2"
     local unit_exe
-    unit_exe="$(dirname "$inox_exe")/inoxrt-tests"
+    unit_exe="$(dirname "$inox_exe")/$name"
     if [[ ! -x "$unit_exe" ]]; then
-        echo "[SKIP] inoxrt unit tests (inoxrt-tests not built next to $inox_exe)"
+        echo "[SKIP] $label ($name not built next to $inox_exe)"
         return
     fi
     local output
     output="$("$unit_exe" 2>&1)"
     if [[ $? -eq 0 ]]; then
-        record_pass "inoxrt unit tests"
+        record_pass "$label"
     else
         local details=()
         while IFS= read -r line; do
             details+=("$line")
         done <<< "$output"
-        record_fail "inoxrt unit tests" "${details[@]}"
+        record_fail "$label" "${details[@]}"
     fi
 }
-run_runtime_unit_tests
+run_unit_tests inoxrt-tests "inoxrt unit tests"
+run_unit_tests inox-compiler-tests "compiler unit tests"
 
 total=$((passed + failed))
 echo ""

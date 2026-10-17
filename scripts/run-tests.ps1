@@ -902,18 +902,21 @@ if ($languageMatch.Success -and $revisionMatch.Success -and $actualVersion -matc
     Write-Host "       actual: $actualVersion"
 }
 
-# Unit tests of the runtime library (inoxrt-tests, built next to the compiler).
-$unitExe = Join-Path (Split-Path -Parent $InoxExe) "inoxrt-tests.exe"
-if (-not (Test-Path -LiteralPath $unitExe -PathType Leaf)) {
-    Write-Host "[SKIP] inoxrt unit tests (inoxrt-tests.exe not built next to $InoxExe)"
-} else {
+# Unit tests built next to the compiler: the runtime library (inoxrt-tests)
+# and the compiler's own modules (inox-compiler-tests).
+foreach ($unit in @(@("inoxrt-tests", "inoxrt unit tests"), @("inox-compiler-tests", "compiler unit tests"))) {
+    $unitExe = Join-Path (Split-Path -Parent $InoxExe) ($unit[0] + ".exe")
+    if (-not (Test-Path -LiteralPath $unitExe -PathType Leaf)) {
+        Write-Host "[SKIP] $($unit[1]) ($($unit[0]).exe not built next to $InoxExe)"
+        continue
+    }
     $unitOutput = & $unitExe 2>&1
     if ($LASTEXITCODE -eq 0) {
         $passed++
-        Write-Host "[PASS] inoxrt unit tests"
+        Write-Host "[PASS] $($unit[1])"
     } else {
         $failed++
-        Write-Host "[FAIL] inoxrt unit tests"
+        Write-Host "[FAIL] $($unit[1])"
         $unitOutput | ForEach-Object { Write-Host "       $_" }
     }
 }
