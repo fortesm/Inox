@@ -17,7 +17,7 @@ Fortes: "Registre tudo isso para eu não me perder ou esquecer". The law is
 
 | What OO gives | Inox | Where |
 |---|---|---|
-| A behavior written once and shared by many types | Method reuse: `TArqueiro Struct (TSoldado)` offers `TSoldado.Correr` without writing it again | CANON-9; `examples/reuse-army.inox` |
+| A behavior written once and shared by many types | Method reuse: `TArcher Struct (TSoldier)` offers `TSoldier.Run` without writing it again | CANON-9; `examples/reuse-army.inox` |
 | A type that runs a shared behavior differently | `Override` | CANON-9 |
 | Contracts | `pre`, `pos`, `invariant`, `variant`, as in Eiffel (most OO languages have none) | CANON-24; `examples/contracts.inox` |
 

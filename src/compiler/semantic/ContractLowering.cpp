@@ -88,7 +88,7 @@ ast::StatementPtr declare(const std::string& name, ast::ExpressionPtr value)
 }
 
 // One clause as an Override sees it: the condition is a copy in which Self
-// names the part the replaced method runs on (`Self.TPessoa`).
+// names the part the replaced method runs on (`Self.TPerson`).
 struct Clause {
     ContractClause::Kind kind = ContractClause::Kind::Pre;
     const ast::Expression* condition = nullptr;  // owned by the routine that wrote it

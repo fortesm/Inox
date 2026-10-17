@@ -75,24 +75,24 @@ void testInterning()
 void testPointersAndStructs()
 {
     TypeContext context;
-    const Type* node = context.declareStruct("TNo");
+    const Type* node = context.declareStruct("TNode");
     const Type* owner = context.own(node);
     const Type* option = context.optionOwn(owner);
     const Type* link = context.link(node);
-    checkEqual(owner->name(), "Own<TNo>", "Own spelling");
-    checkEqual(option->name(), "Option<Own<TNo>>", "Option spelling");
-    checkEqual(link->name(), "Link<TNo>", "Link spelling");
+    checkEqual(owner->name(), "Own<TNode>", "Own spelling");
+    checkEqual(option->name(), "Option<Own<TNode>>", "Option spelling");
+    checkEqual(link->name(), "Link<TNode>", "Link spelling");
     check(owner->isPointer() && option->isPointer() && link->isPointer(), "the three pointers");
     check(owner->pointerTarget() == node && option->pointerTarget() == node && link->pointerTarget() == node,
-          "every pointer reaches TNo");
+          "every pointer reaches TNode");
     check(context.own(node) == owner && context.link(node) == link, "pointers are interned");
-    check(context.lookup("tno") == node, "a struct declares its name");
+    check(context.lookup("tnode") == node, "a struct declares its name");
 
     // A struct may reach itself through a pointer, so its fields come later.
-    context.setStructFields(node, {types::StructField{"FValor", context.int64Type(), false, true, "0"},
-                                   types::StructField{"FProximo", option, false, false, ""}});
+    context.setStructFields(node, {types::StructField{"FValue", context.int64Type(), false, true, "0"},
+                                   types::StructField{"FNext", option, false, false, ""}});
     check(node->fields().size() == 2, "two fields");
-    const types::StructField* next = node->field("fproximo");
+    const types::StructField* next = node->field("fnext");
     check(next != nullptr && next->type == option && node->fieldIndex(*next) == 1,
           "a field by name, case-insensitive, with its index");
     context.setStructFieldType(node, 0, context.naturalType());
@@ -118,15 +118,15 @@ void testSyntax()
     check(link && link->form == types::TypeSyntax::Form::Generic && link->name == "Link" &&
               link->argument->form == types::TypeSyntax::Form::Array,
           "a Link to an array");
-    const auto nested = types::readTypeSyntax("Option<Own<TNo>>");
-    check(nested && nested->argument->name == "Own" && nested->argument->argument->name == "TNo",
-          "Option<Own<TNo>>");
-    checkEqual(nested->spelling(), "Option<Own<TNo>>", "spelling round trip");
+    const auto nested = types::readTypeSyntax("Option<Own<TNode>>");
+    check(nested && nested->argument->name == "Own" && nested->argument->argument->name == "TNode",
+          "Option<Own<TNode>>");
+    checkEqual(nested->spelling(), "Option<Own<TNode>>", "spelling round trip");
     checkEqual(types::spellArrayType("1", "3", types::spellArrayType("1", "4", "Int64")),
                "Array[1..3] Array[1..4] Int64", "the parser's array spelling");
     check(!types::readTypeSyntax("Array[1..] Int64"), "an array without a bound");
     check(!types::readTypeSyntax(""), "an empty type");
-    check(types::isGenericSpelling("own<TNo>", "Own") && !types::isGenericSpelling("Owner"),
+    check(types::isGenericSpelling("own<TNode>", "Own") && !types::isGenericSpelling("Owner"),
           "generic shape tests");
     check(types::isArraySpelling("array[1..2] Bool"), "array shape test");
 }

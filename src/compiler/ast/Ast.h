@@ -361,8 +361,8 @@ public:
     ExpressionPtr takeCallee();
     std::vector<ExpressionPtr> takeArguments();
     // Method reuse (CANON-9): the analyzer replaces the receiver of a member
-    // access that reaches a reused part (`A.FNome`) with the explicit path
-    // (`A.TPessoa.FNome`), so every later phase sees ordinary field access.
+    // access that reaches a reused part (`S.FName`) with the explicit path
+    // (`S.TPerson.FName`), so every later phase sees ordinary field access.
     ExpressionPtr takeArgument(std::size_t index);
     void setArgument(std::size_t index, ExpressionPtr argument);
 

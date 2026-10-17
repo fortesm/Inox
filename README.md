@@ -17,7 +17,7 @@ Core safety defaults include:
 - Parameters immutable by default
 - Mutating methods require an explicit `Self mut` receiver
 - Strong nominal typing with no implicit narrowing
-- Composition instead of inheritance: `TAssinatura Struct (TPessoa)` reuses the fields and methods of `TPessoa`, at every level, with `Override` to replace a reused method
+- Composition instead of inheritance: `TSubscriber Struct (TPerson)` reuses the fields and methods of `TPerson`, at every level, with `Override` to replace a reused method
 - Design by contract as in Eiffel: `pre` and `pos` (with `old` and `Result`) on routines, `invariant` on structs, `invariant` and `variant` on loops; a broken contract stops the program
 - Safe pointers without reference counting or garbage collection: one owner `Own<T>` that is moved, never copied, and frees its object deterministically; checked references `Link<T>` that never reach a freed object
 

@@ -1,61 +1,61 @@
 == 1. Create, Write, WriteLn
---- depois de Create (inox-file-io-notas.txt)
-1: [Olá, Inox!]
-2: [Integer 42, Bool true, Float 2.500000, negativo -7]
-3: [Write não quebra a linha; continua aqui]
-4: [UTF-8: ação, coração, 日本語, ✓]
+--- after Create (inox-file-io-notes.txt)
+1: [Hello, Inox!]
+2: [Integer 42, Bool true, Float 2.500000, negative -7]
+3: [Write does not end the line; it goes on here]
+4: [UTF-8: café, naïve, 日本語, ✓]
 5: []
 == 2. OpenAppend
---- depois de OpenAppend (inox-file-io-notas.txt)
-1: [Olá, Inox!]
-2: [Integer 42, Bool true, Float 2.500000, negativo -7]
-3: [Write não quebra a linha; continua aqui]
-4: [UTF-8: ação, coração, 日本語, ✓]
+--- after OpenAppend (inox-file-io-notes.txt)
+1: [Hello, Inox!]
+2: [Integer 42, Bool true, Float 2.500000, negative -7]
+3: [Write does not end the line; it goes on here]
+4: [UTF-8: café, naïve, 日本語, ✓]
 5: []
-6: [linha anexada]
+6: [appended line]
 == 3. OpenRead, ReadLn, Eof
-primeira: [Olá, Inox!] Eof=false
-  última lida: [linha anexada]
-restantes: 5
-depois do fim: [] Eof=true
-== 4. Arquivos em rotinas
-  última lida: [fim]
-linhas em inox-file-io-grande.txt: 1001
-primeira linha: linha 1
-copiadas: 6
---- cópia (inox-file-io-copia.txt)
-1: [Olá, Inox!]
-2: [Integer 42, Bool true, Float 2.500000, negativo -7]
-3: [Write não quebra a linha; continua aqui]
-4: [UTF-8: ação, coração, 日本語, ✓]
+first: [Hello, Inox!] Eof=false
+  last read: [appended line]
+remaining: 5
+after the end: [] Eof=true
+== 4. Files in routines
+  last read: [end]
+lines in inox-file-io-big.txt: 1001
+first line: line 1
+copied: 6
+--- copy (inox-file-io-copy.txt)
+1: [Hello, Inox!]
+2: [Integer 42, Bool true, Float 2.500000, negative -7]
+3: [Write does not end the line; it goes on here]
+4: [UTF-8: café, naïve, 日本語, ✓]
 5: []
-6: [linha anexada]
-== 5. Reabrir
-A: Olá, Inox!
-B: linha 1
-volta 1: linha 1
-volta 2: linha 1
-volta 3: linha 1
+6: [appended line]
+== 5. Reopening
+A: Hello, Inox!
+B: line 1
+round 1: line 1
+round 2: line 1
+round 3: line 1
 == 6. Exists, RenameFile, DeleteFile
-Exists(cópia)=true Exists(movido)=false
-depois de RenameFile: Exists(cópia)=false Exists(movido)=true
-Exists(.)=false (um diretório não é um arquivo)
-depois de DeleteFile: Exists(movido)=false
-== 7. Erros com try
-7a. FileNotFound: inox-file-io-nao-existe.txt
+Exists(copy)=true Exists(moved)=false
+after RenameFile: Exists(copy)=false Exists(moved)=true
+Exists(.)=false (a directory is not a file)
+after DeleteFile: Exists(moved)=false
+== 7. Errors with try
+7a. FileNotFound: inox-file-io-missing.txt
 7a. ensure
-7b. On IOError pega FileNotFound
-7c. AlreadyExists: inox-file-io-copia.txt já existe
-7c. a origem continua: true
-7d. tentativa 1: não existe, criando
-7d. tentativa 2: criado pelo handler
-7e. Else: ler um arquivo aberto para escrita
-7f. IOError: arquivo fechado
-7g. IOError: Create de um diretório
-7g. IOError: DeleteFile nunca apaga um diretório
-7h. FileNotFound: a pasta não existe
-7i. RangeError capturada; no arquivo: escrita antes da exceção
-7j. interno: FileNotFound, repassando
-7j. ensure interno
-7j. externo: IOError
-== limpeza: false false false false false
+7b. On IOError catches FileNotFound
+7c. AlreadyExists: inox-file-io-copy.txt already exists
+7c. the source is still there: true
+7d. attempt 1: missing, creating it
+7d. attempt 2: created by the handler
+7e. Else: reading a file opened for writing
+7f. IOError: closed file
+7g. IOError: Create of a directory
+7g. IOError: DeleteFile never deletes a directory
+7h. FileNotFound: the folder does not exist
+7i. RangeError caught; in the file: written before the exception
+7j. inner: FileNotFound, raising again
+7j. inner ensure
+7j. outer: IOError
+== cleanup: false false false false false

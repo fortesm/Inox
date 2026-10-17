@@ -77,39 +77,39 @@ void testArrays()
 void testPointersAndStructs()
 {
     TypeContext context;
-    const Type* node = context.declareStruct("TNo");
+    const Type* node = context.declareStruct("TNode");
     const Type* owner = context.own(node);
-    context.setStructFields(node, {types::StructField{"FValor", context.builtin("Int16"), false, false, ""},
-                                   types::StructField{"FNome", context.stringType(), false, false, ""},
-                                   types::StructField{"FProximo", context.optionOwn(owner), false, false, ""},
-                                   types::StructField{"FPai", context.link(node), false, false, ""}});
+    context.setStructFields(node, {types::StructField{"FValue", context.builtin("Int16"), false, false, ""},
+                                   types::StructField{"FName", context.stringType(), false, false, ""},
+                                   types::StructField{"FNext", context.optionOwn(owner), false, false, ""},
+                                   types::StructField{"FParent", context.link(node), false, false, ""}});
     checkEqual(llvmValueType(owner), "ptr", "an owner is its object's address");
     checkEqual(llvmValueType(context.optionOwn(owner)), "ptr", "an Option<Own> is a nullable address");
     checkEqual(llvmValueType(context.link(node)), "{ ptr, ptr, i64 }", "a Link carries header and generation");
-    checkEqual(llvmValueType(node), "%tno", "a struct is its named LLVM type");
-    const auto value = fieldLayout(node, "fvalor");
+    checkEqual(llvmValueType(node), "%tnode", "a struct is its named LLVM type");
+    const auto value = fieldLayout(node, "fvalue");
     check(value && value->index == 0 && value->llvmType == "i64", "a narrow field is an i64 in its struct");
-    const auto parent = fieldLayout(node, "FPai");
+    const auto parent = fieldLayout(node, "FParent");
     check(parent && parent->index == 3 && parent->owner == node && parent->llvmType == "{ ptr, ptr, i64 }",
           "a field by name, case-insensitive, with its index");
-    check(!fieldLayout(node, "FNada"), "an unknown field");
-    check(!fieldLayout(context.int64Type(), "FValor"), "only a struct has fields");
+    check(!fieldLayout(node, "FNothing"), "an unknown field");
+    check(!fieldLayout(context.int64Type(), "FValue"), "only a struct has fields");
 }
 
 void testSignatures()
 {
     TypeContext context;
-    const Type* point = context.declareStruct("TPonto");
+    const Type* point = context.declareStruct("TPoint");
     context.setStructFields(point, {types::StructField{"FX", context.int64Type(), false, false, ""}});
 
-    const ast::FunctionDeclaration move("TPonto.Mover", {}, {});
+    const ast::FunctionDeclaration moveBy("TPoint.Move", {}, {});
     semantic::FunctionSignature analyzed;
-    analyzed.name = "TPonto.Mover";
+    analyzed.name = "TPoint.Move";
     analyzed.parameters = {{"Self", point, semantic::PassMode::RefMut},
-                           {"Passo", context.int64Type(), semantic::PassMode::Value},
+                           {"Step", context.int64Type(), semantic::PassMode::Value},
                            {"Total", context.int64Type(), semantic::PassMode::RefMut}};
-    const auto lowered = codegen::detail::lowerSignature(move, analyzed);
-    checkEqual(lowered.llvmName, "inox_tponto.mover", "the LLVM name of a method");
+    const auto lowered = codegen::detail::lowerSignature(moveBy, analyzed);
+    checkEqual(lowered.llvmName, "inox_tpoint.move", "the LLVM name of a method");
     checkEqual(lowered.llvmReturnType, "void", "a subroutine returns void");
     check(lowered.parameters.size() == 3, "three parameters");
     check(lowered.parameters[0].llvmType == "ptr" && !lowered.parameters[0].byReference,

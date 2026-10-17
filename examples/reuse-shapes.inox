@@ -6,64 +6,64 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == Method reuse (CANON-9), example 1: one behavior, many structs.
-== TPosicao knows how to move. TCirculo, TRetangulo and TTexto reuse it:
-== none of them writes Mover again, and each one moves itself.
+== TPosition knows how to move. TCircle, TRectangle and TText reuse it:
+== none of them writes MoveBy again, and each one moves itself.
 Type
-    TPosicao Struct
+    TPosition Struct
         FX Integer := 0
         FY Integer := 0
     ;
-    TCirculo Struct (TPosicao)
-        FRaio Integer := 1
+    TCircle Struct (TPosition)
+        FRadius Integer := 1
     ;
-    TRetangulo Struct (TPosicao)
-        FLargura Integer := 1
-        FAltura Integer := 1
+    TRectangle Struct (TPosition)
+        FWidth Integer := 1
+        FHeight Integer := 1
     ;
-    TTexto Struct (TPosicao)
-        FConteudo String := ""
+    TText Struct (TPosition)
+        FContent String := ""
     ;
 
 == The behavior lives in one place.
-TPosicao.Mover(Self mut, DX Integer, DY Integer) :
+TPosition.MoveBy(Self mut, DX Integer, DY Integer) :
     Self.FX += DX
     Self.FY += DY
 ;
 
-TPosicao.Origem(Self) Bool :
+TPosition.AtOrigin(Self) Bool :
     Return Self.FX = 0 and Self.FY = 0
 ;
 
-TPosicao.Onde(Self) :
+TPosition.Where(Self) :
     Put("(", Self.FX, ", ", Self.FY, ")")
 ;
 
 == Each struct adds only what is its own.
-TCirculo.Area(Self) Integer :
-    Return 3 * Self.FRaio * Self.FRaio          == pi ~ 3, Integer only
+TCircle.Area(Self) Integer :
+    Return 3 * Self.FRadius * Self.FRadius      == pi ~ 3, Integer only
 ;
 
-TRetangulo.Area(Self) Integer :
-    Return Self.FLargura * Self.FAltura
+TRectangle.Area(Self) Integer :
+    Return Self.FWidth * Self.FHeight
 ;
 
 Main :
-    C := TCirculo(FRaio := 2)
-    R := TRetangulo(FLargura := 4, FAltura := 3)
-    T := TTexto(FConteudo := "Olá")
+    C := TCircle(FRadius := 2)
+    R := TRectangle(FWidth := 4, FHeight := 3)
+    T := TText(FContent := "Hello")
 
-    C.Mover(10, 5)                 == TPosicao.Mover, on the TPosicao part of C
-    R.Mover(-2, 7)
-    R.Mover(2, -7)                 == back to the origin
-    T.Mover(1, 1)
+    C.MoveBy(10, 5)                == TPosition.MoveBy, on the TPosition part of C
+    R.MoveBy(-2, 7)
+    R.MoveBy(2, -7)                == back to the origin
+    T.MoveBy(1, 1)
 
-    Put("círculo em ")
-    C.Onde
-    PutLn(", área ", C.Area)
-    Put("retângulo em ")
-    R.Onde
-    PutLn(", área ", R.Area, ", na origem: ", R.Origem)
-    Put("texto '", T.FConteudo, "' em ")
-    T.Onde
+    Put("circle at ")
+    C.Where
+    PutLn(", area ", C.Area)
+    Put("rectangle at ")
+    R.Where
+    PutLn(", area ", R.Area, ", at the origin: ", R.AtOrigin)
+    Put("text '", T.FContent, "' at ")
+    T.Where
     PutLn("")
 ;

@@ -9,84 +9,84 @@
 == first, last, next, previous, and the current record read and written in
 == place through a Link, with no copy. "Next" in an array is the index plus
 == one, never pointer arithmetic; the Link gives the direct access.
-Const Tamanho := 5
+Const Size := 5
 
 Type
-    TContato Struct
-        FNome String := ""
-        FTelefone String := ""
-        FIdade Integer := 0
+    TContact Struct
+        FName String := ""
+        FPhone String := ""
+        FAge Integer := 0
     ;
-    TNavegador Struct
-        FTabela Link<Array[1..Tamanho] TContato>    == points to the array, owns nothing
-        FIndice Integer := 1
+    TNavigator Struct
+        FTable Link<Array[1..Size] TContact>    == points to the array, owns nothing
+        FIndex Integer := 1
     ;
 
-TNavegador.Primeiro(Self mut) :
-    Self.FIndice := 1
+TNavigator.First(Self mut) :
+    Self.FIndex := 1
 ;
 
-TNavegador.Ultimo(Self mut) :
-    Self.FIndice := Tamanho
+TNavigator.Last(Self mut) :
+    Self.FIndex := Size
 ;
 
-TNavegador.Proximo(Self mut) :
-    pre not Self.NoFim, "não há próximo"
-    Self.FIndice += 1
+TNavigator.Next(Self mut) :
+    pre not Self.AtEnd, "there is no next record"
+    Self.FIndex += 1
 ;
 
-TNavegador.Anterior(Self mut) :
-    pre not Self.NoInicio, "não há anterior"
-    Self.FIndice -= 1
+TNavigator.Previous(Self mut) :
+    pre not Self.AtStart, "there is no previous record"
+    Self.FIndex -= 1
 ;
 
-TNavegador.NoInicio(Self) Bool :
-    Return Self.FIndice = 1
+TNavigator.AtStart(Self) Bool :
+    Return Self.FIndex = 1
 ;
 
-TNavegador.NoFim(Self) Bool :
-    Return Self.FIndice = Tamanho
+TNavigator.AtEnd(Self) Bool :
+    Return Self.FIndex = Size
 ;
 
 == The current record, inside the array: nothing is copied.
-TNavegador.Atual(Self) Link<TContato> :
-    Return Link(Self.FTabela[Self.FIndice])
+TNavigator.Current(Self) Link<TContact> :
+    Return Link(Self.FTable[Self.FIndex])
 ;
 
-TNavegador.Mostrar(Self) :
-    C := Self.Atual
-    PutLn(Self.FIndice, ". ", C.FNome, " - ", C.FTelefone, " (", C.FIdade, " anos)")
+TNavigator.Show(Self) :
+    C := Self.Current
+    PutLn(Self.FIndex, ". ", C.FName, " - ", C.FPhone, " (", C.FAge, " years)")
 ;
 
 Main :
-    Contatos Array[1..Tamanho] TContato
-    Contatos[1] := TContato(FNome := "Ana", FTelefone := "1111", FIdade := 30)
-    Contatos[2] := TContato(FNome := "Bia", FTelefone := "2222", FIdade := 25)
-    Contatos[3] := TContato(FNome := "Caio", FTelefone := "3333", FIdade := 41)
-    Contatos[4] := TContato(FNome := "Davi", FTelefone := "4444", FIdade := 19)
-    Contatos[5] := TContato(FNome := "Eva", FTelefone := "5555", FIdade := 52)
+    Contacts Array[1..Size] TContact
+    Contacts[1] := TContact(FName := "Ann", FPhone := "1111", FAge := 30)
+    Contacts[2] := TContact(FName := "Ben", FPhone := "2222", FAge := 25)
+    Contacts[3] := TContact(FName := "Carl", FPhone := "3333", FAge := 41)
+    Contacts[4] := TContact(FName := "Dave", FPhone := "4444", FAge := 19)
+    Contacts[5] := TContact(FName := "Eve", FPhone := "5555", FAge := 52)
 
-    Nav := TNavegador(FTabela := Link(Contatos))
+    Nav := TNavigator(FTable := Link(Contacts))
 
-    PutLn("Do primeiro ao último:")
-    Nav.Primeiro
-    Nav.Mostrar
-    while not Nav.NoFim
-        Nav.Proximo
-        Nav.Mostrar
+    PutLn("From first to last:")
+    Nav.First
+    Nav.Show
+    while not Nav.AtEnd
+        Nav.Next
+        Nav.Show
     ;
 
-    PutLn("Do último ao primeiro:")
-    Nav.Ultimo
-    Nav.Mostrar
-    while not Nav.NoInicio
-        Nav.Anterior
-        Nav.Mostrar
+    PutLn("From last to first:")
+    Nav.Last
+    Nav.Show
+    while not Nav.AtStart
+        Nav.Previous
+        Nav.Show
     ;
 
     == Writing through the navigator changes the array itself.
-    Nav.Ultimo
-    Nav.Atual.FIdade += 1
-    Nav.Atual.FTelefone := "5556"
-    PutLn("Eva no array: ", Contatos[Tamanho].FIdade, " anos, telefone ", Contatos[Tamanho].FTelefone)
+    Nav.Last
+    Nav.Current.FAge += 1
+    Nav.Current.FPhone := "5556"
+    PutLn("Eve in the array: ", Contacts[Size].FAge, " years, phone ", Contacts[Size].FPhone)
 ;

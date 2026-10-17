@@ -1,179 +1,179 @@
-Caixa Inox: contas em inox-banco.txt, extrato em inox-banco-extrato.txt
+Inox Teller: accounts in inox-bank.txt, statement in inox-bank-statement.txt
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: Contas reiniciadas.
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: Accounts reset.
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: Agência 1, Conta 1 - Marcelo
-  saldo: R$ 1000
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: Branch 1, Account 1 - Marcelo
+  balance: $ 1000
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: Valor: R$ Depósito feito. Saldo: R$ 1500
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: Amount: $ Deposit done. Balance: $ 1500
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: Valor: R$ Retire as notas. Saldo: R$ 1300
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: Amount: $ Take your cash. Balance: $ 1300
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: Valor: R$ Saldo insuficiente: R$ 1300
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: Amount: $ Insufficient funds: $ 1300
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: Valor: R$ Enviado para Ana. Saldo: R$ 1000
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: Amount: $ Sent to Ann. Balance: $ 1000
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: Operação cancelada. Saldo: R$ 1300
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: Operation cancelled. Balance: $ 1300
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: Não há operação para cancelar.
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: There is no operation to cancel.
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: Valor: R$ Valor inválido.
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: Amount: $ Invalid amount.
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: Contas lidas de inox-banco.txt.
-Agência 1, Conta 1 - Marcelo
-  saldo: R$ 1300
-Agência 1, Conta 2 - Ana
-  saldo: R$ 500
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: Accounts read from inox-bank.txt.
+Branch 1, Account 1 - Marcelo
+  balance: $ 1300
+Branch 1, Account 2 - Ann
+  balance: $ 500
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: Agência 1, Conta 1 - Marcelo
-  saldo: R$ 1300
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: Branch 1, Account 1 - Marcelo
+  balance: $ 1300
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: 1. Contas reiniciadas: conta 1 R$ 1000, conta 2 R$ 500
-2. Depósito R$ 500 -> saldo R$ 1500
-3. Saque R$ 200 -> saldo R$ 1300
-4. Envio para a conta 2 R$ 300 -> saldo R$ 1000
-5. Cancelamento R$ 300 -> saldo R$ 1300
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: 1. Accounts reset: account 1 $ 1000, account 2 $ 500
+2. Deposit $ 500 -> balance $ 1500
+3. Withdrawal $ 200 -> balance $ 1300
+4. Transfer to account 2 $ 300 -> balance $ 1000
+5. Cancellation $ 300 -> balance $ 1300
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: Opção inexistente.
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: No such option.
 
-===== Caixa Inox =====
-1 - Saldo
-2 - Depósito
-3 - Saque
-4 - Envio para a conta 2
-5 - Cancelar a última operação
-6 - Extrato
-7 - Recarregar do arquivo
-9 - Reiniciar as contas
-0 - Sair
-Opção: Obrigado por usar o Caixa Inox.
+===== Inox Teller =====
+1 - Balance
+2 - Deposit
+3 - Withdrawal
+4 - Transfer to account 2
+5 - Cancel the last operation
+6 - Statement
+7 - Reload from the file
+9 - Reset the accounts
+0 - Quit
+Option: Thank you for using the Inox Teller.

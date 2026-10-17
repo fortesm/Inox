@@ -1,3 +1,3 @@
-círculo em (10, 5), área 12
-retângulo em (0, 0), área 12, na origem: true
-texto 'Olá' em (1, 1)
+circle at (10, 5), area 12
+rectangle at (0, 0), area 12, at the origin: true
+text 'Hello' at (1, 1)

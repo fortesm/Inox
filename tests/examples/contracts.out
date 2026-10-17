@@ -1,3 +1,3 @@
-topo 30, quantidade 3, operações 3
-desempilhado 30, topo agora 20
-soma de 1 a 100: 5050
+top 30, count 3, operations 3
+popped 30, top now 20
+sum of 1 to 100: 5050
