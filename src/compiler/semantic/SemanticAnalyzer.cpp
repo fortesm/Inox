@@ -51,6 +51,7 @@ const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
     }
     declareStandardModuleNames(module);
 
+    registerGenericTemplates(module);
     for (const auto& item : module.items()) {
         declareModuleItem(*item);
     }
@@ -74,6 +75,8 @@ const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
             analyzeModuleItem(*item);
         }
     }
+    // CANON-8: the instances of generic routines the program uses.
+    analyzePendingInstances();
 
     return result_;
 }

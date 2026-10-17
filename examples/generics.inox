@@ -1,0 +1,88 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Generics (CANON-8): one stack, written once, for Integers and Strings.
+== `TStack<T>` is a template; `TStack<Integer>` and `TStack<String>` are two
+== structs the compiler makes from it, each with its own copy of Push, Pop
+== and Peek. The types are never written in a call: they come from the
+== arguments (`Push(Numbers, 3)`) or from the target (`Top Integer := ...`).
+== There are no constraints: Max works for any type with `>`, and using it
+== on a struct is an error that names the instance (Max<TPoint>).
+Const Capacity := 8
+
+Type
+    TStack<T> Struct
+        FItems Array[1..Capacity] T
+        FCount Integer := 0
+    ;
+    TPair<K, V> Struct
+        FKey K
+        FValue V
+    ;
+
+Push<T>(ref mut S TStack<T>, X T) :
+    if S.FCount = Capacity
+        PutLn("stack full")
+        Exit
+    ;
+    S.FCount += 1
+    S.FItems[S.FCount] := X
+;
+
+Pop<T>(ref mut S TStack<T>) T :
+    Top := S.FItems[S.FCount]
+    S.FCount -= 1
+    Return Top
+;
+
+Peek<T>(S TStack<T>) T :
+    Return S.FItems[S.FCount]
+;
+
+IsEmpty<T>(S TStack<T>) Bool :
+    Return S.FCount = 0
+;
+
+Max<T>(A T, B T) T :
+    Return IIf(A > B, A, B)
+;
+
+Main :
+    Numbers TStack<Integer>
+    for I in 1..5
+        Push(Numbers, I * I)
+    ;
+    PutLn("top: ", Peek(Numbers))
+    Total := 0
+    while not IsEmpty(Numbers)
+        Total += Pop(Numbers)
+    ;
+    PutLn("sum of squares: ", Total)
+
+    Words TStack<String>
+    Push(Words, "first")
+    Push(Words, "second")
+    Push(Words, "third")
+    while not IsEmpty(Words)
+        Put(Pop(Words), " ")
+    ;
+    PutLn("")
+
+    Best := TPair(FKey := "none", FValue := 0)
+    Scores TStack<TPair<String, Integer>>
+    Push(Scores, TPair(FKey := "ana", FValue := 7))
+    Push(Scores, TPair(FKey := "bia", FValue := 9))
+    Push(Scores, TPair(FKey := "caio", FValue := 4))
+    while not IsEmpty(Scores)
+        Score := Pop(Scores)
+        if Score.FValue > Best.FValue
+            Best := Score
+        ;
+    ;
+    PutLn("best: ", Best.FKey, " with ", Best.FValue)
+    PutLn(Max(3, 8), " ", Max("pear", "apple"), " ", Max(2.5, 1.5))
+;

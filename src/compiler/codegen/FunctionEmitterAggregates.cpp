@@ -152,15 +152,12 @@ void FunctionEmitter::emitArrayElementDefaults(const std::string& pointer, TypeR
     output_ << "elemdefault.end" << label << ":\n";
 }
 
-// The struct a construction `T(Field := Value, ...)` builds, or null.
+// The struct a construction `T(Field := Value, ...)` builds, as the analysis
+// recorded it (`TPair(...)` builds an instance, `TPair<String, Int64>`), or
+// null when the call is not a construction.
 TypeRef FunctionEmitter::constructedStruct(const ast::CallExpression& call) const
 {
-    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
-        return nullptr;
-    }
-    const TypeRef type =
-        semantics_.types().lookup(static_cast<const ast::IdentifierExpression&>(call.callee()).name());
-    return isStructType(type) ? type : nullptr;
+    return semantics_.constructedStruct(call);
 }
 
 // CANON-9 named construction `T(Field := Value, ...)`: the type defaults,
@@ -329,6 +326,15 @@ const FunctionSignature* FunctionEmitter::boundSignature(const ast::CallExpressi
         return nullptr;
     }
     const auto signature = signatures_.find(normalize(symbol->name));
+    return signature != signatures_.end() ? &signature->second : nullptr;
+}
+
+const FunctionSignature* FunctionEmitter::calledRoutine(const ast::IdentifierExpression& callee) const
+{
+    const semantic::Symbol* symbol = semantics_.symbolOf(callee);
+    const std::string& name =
+        symbol != nullptr && symbol->kind == semantic::SymbolKind::Function ? symbol->name : callee.name();
+    const auto signature = signatures_.find(normalize(name));
     return signature != signatures_.end() ? &signature->second : nullptr;
 }
 

@@ -14,7 +14,7 @@ namespace inox::compiler::codegen::detail {
 
 std::string llvmStructName(TypeRef structType)
 {
-    return "%" + normalize(structType->name());
+    return "%" + llvmGlobalName(normalize(structType->name()));
 }
 
 std::optional<IntegerRange> narrowIntegerRange(TypeRef type)
@@ -126,7 +126,7 @@ FieldLayout fieldLayout(TypeRef structType, std::size_t index)
 FunctionSignature lowerSignature(const ast::FunctionDeclaration& function,
                                  const semantic::FunctionSignature& signature)
 {
-    const bool isMethod = function.name().find('.') != std::string::npos;
+    const bool isMethod = ast::methodDot(function.name()) != std::string::npos;
     std::vector<FunctionParameter> parameters;
     for (std::size_t index = 0; index < signature.parameters.size(); ++index) {
         const semantic::FunctionParameter& parameter = signature.parameters[index];
@@ -163,7 +163,7 @@ FunctionSignature lowerSignature(const ast::FunctionDeclaration& function,
                 "LLVM emission currently supports scalar, struct return types, or subroutines without return type");
         }
     }
-    return FunctionSignature{"inox_" + normalize(function.name()), std::move(llvmReturnType),
+    return FunctionSignature{llvmGlobalName("inox_" + normalize(function.name())), std::move(llvmReturnType),
                              std::move(parameters), signature.returnType};
 }
 

@@ -34,7 +34,10 @@ void SemanticAnalyzer::registerFunctionSignatures(const ast::ModuleNode& module)
 {
     for (const auto& item : module.items()) {
         if (item->kind() == ast::AstNodeKind::FunctionDeclaration) {
-            registerFunctionSignature(static_cast<const ast::FunctionDeclaration&>(*item));
+            const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
+            if (!function.isGeneric()) {  // a template: its instances get signatures
+                registerFunctionSignature(function);
+            }
         }
     }
 }
@@ -47,7 +50,7 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
     signature.name = function.name();
     signature.isOverride = function.isOverride();
 
-    const std::size_t dot = function.name().find('.');
+    const std::size_t dot = ast::methodDot(function.name());
     const bool isAssociatedMethod = dot != std::string::npos;
     const std::string receiverType = isAssociatedMethod ? function.name().substr(0, dot) : std::string{};
 
@@ -279,7 +282,10 @@ void SemanticAnalyzer::declareModuleItem(const ast::AstNode& item)
 void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
 {
     if (item.kind() == ast::AstNodeKind::FunctionDeclaration) {
-        analyzeFunction(static_cast<const ast::FunctionDeclaration&>(item));
+        const auto& function = static_cast<const ast::FunctionDeclaration&>(item);
+        if (!function.isGeneric()) {  // a template is checked in each instance
+            analyzeFunction(function);
+        }
     } else if (item.kind() == ast::AstNodeKind::SectionDeclaration) {
         const auto& section = static_cast<const ast::SectionDeclaration&>(item);
         validateSectionTypes(section);
@@ -290,7 +296,9 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
                 result_.setDeclaredType(declaration, resolveWrittenType(declaration.typeName));
                 continue;
             }
-            const TypeRef valueType = analyzeExpression(*declaration.value);
+            const TypeRef declaredType =
+                declaration.typeName.empty() ? nullptr : resolveWrittenType(declaration.typeName);
+            const TypeRef valueType = analyzeExpressionFor(*declaration.value, declaredType);
             rejectFileIn(valueType, std::string(section.sectionKind() == ast::SectionKind::State
                                                     ? "a State variable, "
                                                     : "a Const, ") +
@@ -407,7 +415,7 @@ void SemanticAnalyzer::registerTypeSectionSymbols(const ast::SectionDeclaration&
     // Range and Enum declarations are parsed and shape-checked; their types
     // come with the OpenSpec change enum-range-set.
     for (const ast::TypeDeclaration& declaration : section.types()) {
-        if (declaration.kind == ast::TypeDeclarationKind::Struct) {
+        if (declaration.kind == ast::TypeDeclarationKind::Struct && declaration.typeParameters.empty()) {
             registerStructDeclaration(declaration);
         }
     }
@@ -577,12 +585,12 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
 {
     if (section.sectionKind() == ast::SectionKind::Type) {
         for (const ast::TypeDeclaration& declaration : section.types()) {
-            if (declaration.kind == ast::TypeDeclarationKind::Struct) {
+            if (declaration.kind == ast::TypeDeclarationKind::Struct && declaration.typeParameters.empty()) {
                 completeStructFields(declaration);
             }
         }
         for (const ast::TypeDeclaration& declaration : section.types()) {
-            if (declaration.kind == ast::TypeDeclarationKind::Struct) {
+            if (declaration.kind == ast::TypeDeclarationKind::Struct && declaration.typeParameters.empty()) {
                 validateStructDeclaration(declaration);
             }
         }

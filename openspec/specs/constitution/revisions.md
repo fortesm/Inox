@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.76
+Canon revision: r3.77
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -17,16 +17,12 @@ maintainer answers them, and the answer becomes a revision.
 None of these is permission to choose (G4); until answered, the current text
 stands.
 
-1. **`generics` design** (Risk: high): `openspec/changes/generics/design.md`,
-   rewritten in its simplest form (Marcelo Fortes, 2026-10-13: "da forma
-   mais simples possível e depois podemos evoluir"): no constraints or
-   protocols, inference only, one copy per type; three decisions.
-2. **`binary-streams` design** (Risk: high):
+1. **`binary-streams` design** (Risk: high):
    `openspec/changes/binary-streams/design.md`, six decisions for binary
    files (a `BinaryFile` type, little-endian, `Write`/`Read` sized by the
    type, Strings in binary files, reading past the end, 0-based byte
    offsets); streams come after `generics`.
-3. **`| |`, `{ }` and annotations** (brainstorm, 2026-10-16):
+2. **`| |`, `{ }` and annotations** (brainstorm, 2026-10-16):
    `openspec/changes/delimiters-and-annotations/proposal.md` — `| |` as a
    capture clause (`Name`, `Move(X)`, `Link(X)`), `{ }` as an effect or a
    requirement clause, `@` annotations; no String interpolation and `{ }`
@@ -191,3 +187,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `invariant`, `variant` and `Override` are reserved (CANON-2). 42 reserved
   words, 10 predefined names. Marcelo Fortes, 2026-10-16. Change
   `syntax-review`.
+- r3.77 — 2026-10-17 — Generics in their simplest form (CANON-8, FUTURE):
+  a routine or a struct may declare type parameters (`Max<T>(A T, B T) T
+  :`, `TPair<K, V> Struct`); each use with its types makes an instance,
+  checked and compiled like ordinary code, one copy per list of types. The
+  three decisions: no constraints for now (`{ }` stays reserved), type
+  arguments inferred from the arguments or the target and never written in
+  an expression, and T may be any type, also one that is only moved, with
+  the error at the instance ("in Max<TPoint>, used in Main"). Methods of
+  generic structs, and invariants and reused parts in them, come later.
+  Marcelo Fortes, 2026-10-17: "Acato suas recomendações. Para as três
+  perguntas." Change `generics`.

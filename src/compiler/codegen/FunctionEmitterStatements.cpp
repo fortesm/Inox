@@ -318,7 +318,7 @@ void FunctionEmitter::emitExpressionStatement(const ast::Expression& expression)
             emitInputDiscardLine();
             return;
         }
-        emitNoArgumentSubroutineCall(identifier.name());
+        emitNoArgumentSubroutineCall(identifier);
         return;
     }
 
@@ -373,7 +373,7 @@ void FunctionEmitter::emitExpressionStatement(const ast::Expression& expression)
         return;
     }
 
-    emitSubroutineCall(call, callee.name());
+    emitSubroutineCall(call, callee);
 }
 
 // ADR-0016: a reference argument passes the address of the caller's
@@ -465,44 +465,44 @@ std::string FunctionEmitter::emitUserCall(const FunctionSignature& signature,
     return result;
 }
 
-void FunctionEmitter::emitNoArgumentSubroutineCall(std::string_view calleeName)
+void FunctionEmitter::emitNoArgumentSubroutineCall(const ast::IdentifierExpression& callee)
 {
-    const auto signature = signatures_.find(normalize(calleeName));
-    if (signature == signatures_.end()) {
+    const FunctionSignature* routine = calledRoutine(callee);
+    if (routine == nullptr) {
         throw CodegenUnsupported(
-            "LLVM emission could not resolve zero-argument subroutine call: " + std::string(calleeName));
+            "LLVM emission could not resolve zero-argument subroutine call: " + callee.name());
     }
-    if (!signature->second.parameters.empty()) {
+    if (!routine->parameters.empty()) {
         throw CodegenError(
             "subroutine requires arguments; use parentheses only when passing arguments");
     }
-    if (signature->second.llvmReturnType != "void") {
+    if (routine->llvmReturnType != "void") {
         // The same backend gap as a call with arguments whose result is not
         // used (`Twice(2)` as a statement); whether Inox allows discarding a
         // function result is an open question (revisions.md).
         throw CodegenUnsupported(
             "LLVM emission currently supports only subroutine calls as expression statements");
     }
-    emitUserCall(signature->second, {}, false);
+    emitUserCall(*routine, {}, false);
 }
 
-void FunctionEmitter::emitSubroutineCall(const ast::CallExpression& call, std::string_view calleeName)
+void FunctionEmitter::emitSubroutineCall(const ast::CallExpression& call, const ast::IdentifierExpression& callee)
 {
-    const auto signature = signatures_.find(normalize(calleeName));
-    if (signature == signatures_.end()) {
+    const FunctionSignature* routine = calledRoutine(callee);
+    if (routine == nullptr) {
         throw CodegenUnsupported(
             "LLVM emission currently supports only Put/PutLn and user subroutine calls as statements");
     }
-    if (signature->second.llvmReturnType != "void") {
+    if (routine->llvmReturnType != "void") {
         throw CodegenUnsupported(
             "LLVM emission currently supports only subroutine calls as expression statements");
     }
-    if (call.arguments().size() != signature->second.parameters.size()) {
+    if (call.arguments().size() != routine->parameters.size()) {
         throw CodegenUnsupported("unsupported subroutine argument count: " + function_.name());
     }
 
-    const std::vector<std::string> arguments = emitArguments(signature->second, call.arguments(), 0);
-    emitUserCall(signature->second, arguments, false);
+    const std::vector<std::string> arguments = emitArguments(*routine, call.arguments(), 0);
+    emitUserCall(*routine, arguments, false);
     emitInvariantChecks(call, true);
 }
 

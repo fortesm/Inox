@@ -227,17 +227,16 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (parameter != parameters_.end()) {
             return parameter->second;
         }
-        const auto signature = signatures_.find(normalizedName);
-        if (signature != signatures_.end()) {
-            if (!signature->second.parameters.empty()) {
+        if (const FunctionSignature* routine = calledRoutine(identifier)) {
+            if (!routine->parameters.empty()) {
                 throw CodegenError("function requires arguments; use parentheses only when passing arguments: " + identifier.name());
             }
-            if (signature->second.llvmReturnType == "void") {
+            if (routine->llvmReturnType == "void") {
                 throw CodegenError("void function call cannot be used as an expression");
             }
             // Through emitUserCall: an `invoke` inside try (the call may
             // raise) and the ownership of a String result.
-            return emitUserCall(signature->second, {}, true);
+            return emitUserCall(*routine, {}, true);
         }
         // None: an empty Link or an absent owner (safe-pointers).
         if (const TypeRef type = typeOf(expression); type != nullptr && type->isNone()) {
@@ -493,19 +492,19 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return result;
         }
 
-        const auto signature = signatures_.find(normalize(callee.name()));
-        if (signature == signatures_.end()) {
+        const FunctionSignature* routine = calledRoutine(callee);
+        if (routine == nullptr) {
             break;
         }
-        if (signature->second.llvmReturnType == "void") {
+        if (routine->llvmReturnType == "void") {
             throw CodegenError("void function call cannot be used as an expression");
         }
-        if (call.arguments().size() != signature->second.parameters.size()) {
+        if (call.arguments().size() != routine->parameters.size()) {
             throw CodegenUnsupported("unsupported call argument count in function: " + function_.name());
         }
 
-        const std::vector<std::string> arguments = emitArguments(signature->second, call.arguments(), 0);
-        const std::string result = emitUserCall(signature->second, arguments, true);
+        const std::vector<std::string> arguments = emitArguments(*routine, call.arguments(), 0);
+        const std::string result = emitUserCall(*routine, arguments, true);
         emitInvariantChecks(call, true);
         return result;
     }

@@ -1,0 +1,76 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-8 (r3.77): generic routines. Each use makes an instance with the
+== types of its arguments (`Max(3, 7)` is Max<Int64>), or with the type of
+== its target when the arguments do not fix them (`Z Integer := Zero`).
+== Instances for Integer, Float, String and Bool; a generic routine that
+== calls another; ref mut parameters; arrays and slices of T; recursion; a
+== literal that takes the type of the other argument (`Max(B, 1)` is
+== Max<UInt8>, so the result keeps B's range).
+Max<T>(A T, B T) T :
+    Return IIf(A > B, A, B)
+;
+
+Max3<T>(A T, B T, C T) T :
+    Return Max(Max(A, B), C)
+;
+
+Swap<T>(ref mut A T, ref mut B T) :
+    C := A
+    A := B
+    B := C
+;
+
+Zero<T> T :
+    Return 0
+;
+
+First<T>(A Array[1..3] T) T :
+    Return A[1]
+;
+
+Total<T>(S Slice<T>) T :
+    Sum := S[Low(S)]
+    for I in Low(S) + 1..High(S)
+        Sum := Sum + S[I]
+    ;
+    Return Sum
+;
+
+Count<T>(N Integer, X T) Integer :
+    if N = 0
+        Return 0
+    ;
+    Return 1 + Count(N - 1, X)
+;
+
+Main :
+    PutLn(Max(3, 7), " ", Max(2.5, 1.5), " ", Max("pear", "apple"), " ", Max(False, True))
+    PutLn(Max3(4, 9, 2), " ", Max3("b", "c", "a"))
+    X := 1
+    Y := 2
+    Swap(X, Y)
+    S := "left"
+    R := "right"
+    Swap(S, R)
+    PutLn(X, " ", Y, " ", S, " ", R)
+    Z Integer := Zero
+    B Byte := 200
+    M := Max(B, 1)
+    PutLn(Z, " ", M)
+    Names Array[1..3] String
+    Names[1] := "ana"
+    Names[2] := "bia"
+    Names[3] := "caio"
+    Values Array[1..3] Integer
+    for I in 1..3
+        Values[I] := I * 10
+    ;
+    PutLn(First(Names), " ", First(Values), " ", Total(Values[..]), " ", Total(Values[2..3]))
+    PutLn(Count(5, "x"), " ", Count(3, 1.5))
+;

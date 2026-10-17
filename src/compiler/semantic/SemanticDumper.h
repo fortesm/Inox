@@ -28,9 +28,22 @@ public:
         for (const auto& item : module.items()) {
             if (item->kind() == ast::AstNodeKind::FunctionDeclaration) {
                 const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
+                if (function.isGeneric()) {
+                    // CANON-8: a template has no types; its instances follow.
+                    std::string parameters;
+                    for (const std::string& parameter : function.typeParameters()) {
+                        parameters += (parameters.empty() ? "" : ", ") + parameter;
+                    }
+                    line(1, "Generic " + function.name() + "<" + parameters + ">");
+                    continue;
+                }
                 line(1, "Function " + function.name());
                 dumpStatements(function.body(), 2);
             }
+        }
+        for (const auto& instance : result_.instances()) {
+            line(1, "Function " + instance->name());
+            dumpStatements(instance->body(), 2);
         }
         dumpStatements(module.statements(), 1);
     }

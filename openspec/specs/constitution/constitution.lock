@@ -51,7 +51,9 @@ spec.md#CANON-8 Exact decimals	9ad292af3a271504	constitution
 spec.md#CANON-8 Operators	89dad5646c88f097	constitution
 spec.md#CANON-8 Overflow is never silent	614aba4ebbefff21	constitution
 spec.md#CANON-8 Division by zero and power	048fec166105c948	constitution
-spec.md#CANON-8 Generic syntax	a940aa804615980f	constitution
+spec.md#CANON-8 Generic syntax	86290950744f92d4	generics
+spec.md#CANON-8 Generic instances	f1cb99e31378061c	generics
+spec.md#CANON-8 Type arguments are inferred	e820ebe2b699c413	generics
 spec.md#CANON-9 Structs are nominal value types	dc875c23516647e8	method-reuse
 spec.md#CANON-9 Fields	1e7fbb70bed7cf50	constitution
 spec.md#CANON-9 Associated methods	fad873f99ec30d01	constitution
@@ -132,7 +134,7 @@ spec.md#VERSIONING The version number	4913b3727284db7b	constitution
 spec.md#VERSIONING Who changes the version	59a96df0746489b0	constitution
 spec.md#VERSIONING Canon revision	7325a37130b8e81e	constitution
 spec.md#FUTURE Concurrency	7e4363bb408956d2	constitution
-spec.md#FUTURE Generics and static proof	db2a01e6fa8bdbd6	design-by-contract
+spec.md#FUTURE Generics and static proof	110e927eff28ea2f	generics
 spec.md#FUTURE Ownership, absence and failure	00a878fdc5ecc9a8	safe-pointers
 spec.md#FUTURE Modules, variants and numbers	7ea193a9056667f1	keyword-review
 spec.md#FUTURE Encapsulation, routine types and lifecycle	3686397c32ddfc3b	encapsulation

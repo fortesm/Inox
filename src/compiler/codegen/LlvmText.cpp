@@ -183,4 +183,15 @@ std::string llvmByteString(const std::string& text)
     return encoded;
 }
 
+std::string llvmGlobalName(const std::string& name)
+{
+    // LLVM: [-a-zA-Z$._][-a-zA-Z$._0-9]* is written bare.
+    bool bare = !name.empty() && std::isdigit(static_cast<unsigned char>(name.front())) == 0;
+    for (const char ch : name) {
+        bare = bare && (std::isalnum(static_cast<unsigned char>(ch)) != 0 || ch == '-' || ch == '$' || ch == '.' ||
+                        ch == '_');
+    }
+    return bare ? name : "\"" + name + "\"";
+}
+
 } // namespace inox::compiler::codegen::detail

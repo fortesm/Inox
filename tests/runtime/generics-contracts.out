@@ -1,0 +1,5 @@
+3
+0 3
+0 y
+Inox runtime error: precondition violated: Ratio: B # 0: B must not be zero
+inox: program stopped by an Inox runtime error (exit code 70)
