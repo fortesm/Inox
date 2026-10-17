@@ -56,6 +56,25 @@ silently: fix the mismatch explicitly or ask Marcelo for a decision
 Kept current by the OpenSpec change `compiler-modularization`; read the
 module that owns a concern instead of searching the whole emitter.
 
+- The compiler is the static library `inox-compiler`; the `inox` driver
+  (`main/main.cpp`) and `inox-compiler-tests` (`tests/compiler-unit/`, unit
+  tests of modules that need no whole program, run by both runners) link it.
+- `src/compiler/types/` — the types of a program (OpenSpec change
+  type-representation); depends only on the C++ standard library:
+  - `Type.h` — one immutable type: its kind (Bool, Integer with bits and
+    range, Float, Char, Decimal, String, File, Exception, Struct with
+    fields, Array, Slice, Own, Option, Link, None, Void) and predicates;
+  - `TypeContext.*` — creates and interns every type (equal types are one
+    object, compared by pointer), the built-ins and their aliases, struct
+    declaration and late completion;
+  - `TypeSyntax.*` — reads the written form the parser keeps (`Array[1..N]
+    T`, `Link<T>`) into a tree, for the analyzer to resolve.
+  The analyzer produces types; codegen only reads them (`typeOf`,
+  `declaredType`, `signatureOf` of `SemanticResult`) and never derives one.
+- `src/compiler/ast/AstClone.*` — deep copies of expressions and statements,
+  with an expression rewriter and a type-name rewriter (contracts, generic
+  instances).
+
 - `src/compiler/codegen/LlvmIrEmitter.cpp` — the module: globals,
   declarations, internal helpers, `main` (`LlvmIrEmitter::emit`,
   `emitFunction`).
@@ -83,8 +102,9 @@ module that owns a concern instead of searching the whole emitter.
     built-ins, owner frees through generated drop functions, disarming of
     fresh values, Link construction and generation checks, tombstone
     blocks for linked locals.
-- `codegen/TypeLayout.*` — LLVM types of scalars, arrays, slices, structs;
-  routine signatures; State globals.
+- `codegen/TypeLayout.*` — the LLVM type of each kind of `types::Type` (the
+  one place an LLVM type is spelled from an Inox type), array storage, struct
+  fields, routine signatures lowered from the analysis, State globals.
 - `codegen/AstQueries.*` — read-only AST walks (`forEachStatement`, "uses
   try / exceptions").
 - `codegen/LlvmText.*` — names, literals, string constants in IR text.
@@ -105,9 +125,7 @@ module that owns a concern instead of searching the whole emitter.
 - Helpers live in `namespace inox::compiler::codegen::detail`.
 - `src/compiler/support/` — the portability layer, the only compiler code
   that may test the host OS (E12): `Environment`, `FileSystem`, `Platform`,
-  `Process`, and `Version.h` (the version numbers); also `PointerType.*`,
-  the spelling of `Own<T>`, `Link<T>` and `Option<Own<T>>` type names
-  shared by the parser, the analyzer and codegen.
+  `Process`, and `Version.h` (the version numbers).
 - `runtime/` — libinoxrt: exception transport, `StringRuntime.cpp`,
   `FileRuntime.cpp`, `OwnRuntime.cpp` (generation blocks and per-size free
   lists of owned objects), `StringBlock.h` (internal); unit tests in
@@ -123,7 +141,8 @@ module that owns a concern instead of searching the whole emitter.
   - `SemanticExpressions.cpp` — expression typing (operators, indexing,
     slices, members, side effects);
   - `SemanticCalls.cpp` — calls, methods, construction, `ref` arguments;
-  - `SemanticTypes.cpp` — type predicates, assignability, canonical names;
+  - `SemanticTypes.cpp` — written types resolved into `types::Type`, type
+    predicates, assignability;
   - `SemanticFiles.cpp` — Std.Files / Std.IOUtils: the File type and file
     functions (visible only with `Use`), the never-copied rule;
   - `SemanticReuse.cpp` — method reuse (`Struct (TPart)`, `Override`): the
@@ -172,6 +191,13 @@ time. Each names where it bit.
   run the suite with `ulimit -s 1024`.
 - **Two C runtimes on Windows break typed exception handlers.** libinoxrt
   links the static release CRT (commit 6773ee8); keep it that way.
+- **Codegen does not infer types.** It once re-derived types from written
+  text and from the shape of expressions; the two disagreed silently. Every
+  type comes from the analysis; a missing one is a bug of the analysis
+  (type-representation, 2026-10-17).
+- **Never print in the iteration order of an unordered container.** Struct
+  types came out in `unordered_map` order, which differs between standard
+  libraries, so Linux and Windows produced different IR (2026-10-17).
 - **The token scanners are gone.** Type/Const/State are typed declarations
   (v3.53); never re-scan tokens of a section — extend the parser instead.
 - **Console I/O stays in the program, memory stays in libinoxrt.** On Windows

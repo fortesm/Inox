@@ -79,3 +79,39 @@ tests check that a cloned routine body prints the same as the original.
 
 The parser keeps producing written type text (a typed AST for types is a
 later step); generics themselves are stage 2.
+
+## Implementation notes (where the code differs from this design)
+
+- **One intended IR difference.** Struct types were printed in the iteration
+  order of an `unordered_map`, which differs between standard libraries; they
+  now follow the declarations (its own commit, before the conversion). 19
+  programs differ, each only in the order of those lines, on both ABIs; the
+  snapshot was recorded again after it, and every later step compared 0
+  differences.
+- **Cloning signature.** `cloneStatement(statement, rewriters)` takes one
+  `CloneRewriters { expression, typeName }` instead of two arguments, and
+  lives in its own module `ast/AstClone` with `cloneExpression`, which left
+  `Ast.h`. There is no AST printer, so the unit tests print trees with their
+  own printer and also check that a copy shares no node with its original.
+- **Exports of the analysis.** `SemanticResult` gives the signature of each
+  routine (`signatureOf`), the type of each declared variable (a local, a
+  State, a Const: `declaredType`) and invariant sites with the struct's type.
+  The struct types are not exported as a list: codegen takes them, in
+  declaration order, from the module's struct declarations through the
+  analysis's `TypeContext`.
+- **Method calls** use the routine the analysis bound the call to
+  (`symbolOf(call)`), instead of searching by receiver type name.
+- **Char** has no LLVM value type (`llvmValueType` gives none); only a Char
+  literal is `i32`, as before.
+- **Tombstones** (the blocks that kill Links to a local) were an owned slot
+  of the fake type `"__Tombstone"`; they are now a flag of the owned slot.
+- **`expressionLlvmType`** was replaced only after a cross-check over all 633
+  programs printed every disagreement between the old inference and the
+  analysis type: one, `X in 1..9 = Flag`, a path the backend does not lower
+  yet (BACKEND_GAPS), so no output changed.
+
+Gaps left for later (also in `docs/STATUS.md`, implementation debt): the
+parser still keeps written type text; exception handlers are matched by
+name and the exception hierarchy is not in `types::Type`; codegen finds a
+construction's struct by name in the analysis's types; the parser has two
+private copies of `cloneExpression`.

@@ -9,19 +9,19 @@
 
 ## 3. Analyzer
 
-- [ ] 3.1 Analyzer works with `const types::Type*`; predicates on type objects; support/ArrayType and PointerType removed
-- [ ] 3.2 `SemanticResult` exports expression and declaration types, signatures and struct types
+- [x] 3.1 Analyzer works with `const types::Type*`; predicates on type objects; support/ArrayType and PointerType removed
+- [x] 3.2 `SemanticResult` exports expression and declaration types, signatures and struct types
 
 ## 4. Code generator
 
-- [ ] 4.1 LLVM types by kind; struct layouts and signatures from the analysis
-- [ ] 4.2 Locals, parameters and expressions carry their Type
+- [x] 4.1 LLVM types by kind; struct layouts and signatures from the analysis
+- [x] 4.2 Locals, parameters and expressions carry their Type
 
 ## 5. Statement cloning
 
-- [ ] 5.1 `ast::cloneStatement` with unit tests
+- [x] 5.1 `ast::cloneStatement` with unit tests
 
 ## 6. Gates
 
-- [ ] 6.1 ir_snapshot identical; suite, ASan+UBSan, leak check, fuzz, backend_gaps, eh_state_balance, grammar, openspec, constitution, MSVC IR
+- [x] 6.1 ir_snapshot identical; suite, ASan+UBSan, leak check, fuzz, backend_gaps, eh_state_balance, grammar, openspec, constitution, MSVC IR
 - [ ] 6.2 AGENTS file map, STATUS (debt), CHANGELOG; PR; CI on Linux and Windows

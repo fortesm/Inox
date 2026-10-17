@@ -118,3 +118,15 @@ they are rejected now.)
   declarations.
 - Reference counts of Strings and Files are not atomic (Inox has no
   threads yet).
+- Types (change `type-representation`): the parser keeps written type text
+  (`Array[1..N] T`, `Link<T>`), which the analyzer reads with
+  `types::TypeSyntax` and resolves; a typed AST for types is a later step.
+- Exception handlers are matched by the written type name
+  (`exceptions/ExceptionTypes`); the exception hierarchy (identifiers,
+  parents) is not part of `types::Type` yet.
+- Codegen recognizes a construction `T(Field := ...)` by looking the callee
+  up in the analysis's types; the analyzer could record it, as it records
+  the routine of a call.
+- The parser's `clonePureExpression` and `cloneChainTarget` duplicate
+  `ast::cloneExpression`; `codegen/AstQueries` holds AST walks that are not
+  specific to codegen; the parser never builds `BlockStatement`.
