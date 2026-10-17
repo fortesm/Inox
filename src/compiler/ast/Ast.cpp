@@ -7,7 +7,6 @@
 
 #include "Ast.h"
 
-#include <stdexcept>
 
 #include <algorithm>
 #include <utility>
@@ -707,49 +706,6 @@ const std::vector<StatementPtr>& WithStatement::body() const
 const std::string& WithStatement::bindingName() const
 {
     return bindingName_;
-}
-
-ExpressionPtr cloneExpression(const Expression& expression, const ExpressionRewriter& rewrite)
-{
-    if (rewrite) {
-        if (ExpressionPtr replacement = rewrite(expression)) {
-            return replacement;
-        }
-    }
-    switch (expression.kind()) {
-    case AstNodeKind::LiteralExpression: {
-        const auto& literal = static_cast<const LiteralExpression&>(expression);
-        return std::make_unique<LiteralExpression>(literal.literalKind(), literal.value());
-    }
-    case AstNodeKind::IdentifierExpression:
-        return std::make_unique<IdentifierExpression>(static_cast<const IdentifierExpression&>(expression).name());
-    case AstNodeKind::BinaryExpression: {
-        const auto& binary = static_cast<const BinaryExpression&>(expression);
-        return std::make_unique<BinaryExpression>(binary.op(), cloneExpression(binary.left(), rewrite),
-                                                  cloneExpression(binary.right(), rewrite));
-    }
-    case AstNodeKind::UnaryExpression: {
-        const auto& unary = static_cast<const UnaryExpression&>(expression);
-        return std::make_unique<UnaryExpression>(unary.op(), cloneExpression(unary.operand(), rewrite));
-    }
-    case AstNodeKind::CallExpression: {
-        const auto& call = static_cast<const CallExpression&>(expression);
-        std::vector<ExpressionPtr> arguments;
-        for (const auto& argument : call.arguments()) {
-            arguments.push_back(cloneExpression(*argument, rewrite));
-        }
-        return std::make_unique<CallExpression>(cloneExpression(call.callee(), rewrite), std::move(arguments));
-    }
-    case AstNodeKind::ConditionalExpression: {
-        const auto& conditional = static_cast<const ConditionalExpression&>(expression);
-        return std::make_unique<ConditionalExpression>(cloneExpression(conditional.condition(), rewrite),
-                                                       cloneExpression(conditional.thenValue(), rewrite),
-                                                       cloneExpression(conditional.elseValue(), rewrite));
-    }
-    default:
-        break;
-    }
-    throw std::logic_error("cloneExpression: not an expression");
 }
 
 } // namespace inox::compiler::ast

@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -642,12 +641,5 @@ private:
     std::vector<StatementPtr> body_;
     std::string bindingName_;
 };
-
-// A deep copy of an expression (CANON-24: the contract pass checks one
-// condition in two places, and an Override inherits the replaced method's
-// clauses). `rewrite`, when given, may return a replacement for any node
-// (it is asked before the node is copied); nullptr keeps the copy.
-using ExpressionRewriter = std::function<ExpressionPtr(const Expression&)>;
-ExpressionPtr cloneExpression(const Expression& expression, const ExpressionRewriter& rewrite = {});
 
 } // namespace inox::compiler::ast

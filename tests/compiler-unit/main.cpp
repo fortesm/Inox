@@ -14,14 +14,19 @@
 
 namespace inox::compiler::unit {
 int runTypesTests();
+int runTypeLayoutTests();
+int runAstCloneTests();
 } // namespace inox::compiler::unit
 
 int main()
 {
     using namespace inox::compiler::unit;
-    const int typeFailures = runTypesTests();
-    if (failureCount() == 0) {
-        std::printf("[PASS] compiler unit tests\n");
+    runTypesTests();
+    runTypeLayoutTests();
+    runAstCloneTests();
+    if (failureCount() != 0) {
+        return 1;
     }
-    return typeFailures == 0 && failureCount() == 0 ? 0 : 1;
+    std::printf("[PASS] compiler unit tests\n");
+    return 0;
 }

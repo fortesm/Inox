@@ -21,6 +21,7 @@ include(InoxSanitizers)
 
 set(INOX_COMPILER_SOURCES
     src/compiler/ast/Ast.cpp
+    src/compiler/ast/AstClone.cpp
     src/compiler/codegen/AstQueries.cpp
     src/compiler/codegen/ExceptionAbi.cpp
     src/compiler/codegen/FunctionEmitter.cpp
@@ -141,6 +142,8 @@ inox_apply_sanitizers(inox)
 add_executable(inox-compiler-tests
     tests/compiler-unit/main.cpp
     tests/compiler-unit/TypesTests.cpp
+    tests/compiler-unit/TypeLayoutTests.cpp
+    tests/compiler-unit/AstCloneTests.cpp
 )
 target_link_libraries(inox-compiler-tests PRIVATE inox-compiler)
 inox_apply_compiler_options(inox-compiler-tests)

@@ -6,6 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include "Parser.h"
+#include "../ast/AstClone.h"
 #include "../types/TypeSyntax.h"
 
 #include "../lexer/Lexer.h"

@@ -19,6 +19,7 @@
 // Loop `invariant` and `variant` are lowered by the parser.
 
 #include "ContractLowering.h"
+#include "../ast/AstClone.h"
 
 #include "SemanticAnalyzer.h"
 #include "../types/TypeSyntax.h"
