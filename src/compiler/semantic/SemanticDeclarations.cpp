@@ -105,9 +105,6 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
                     throw SemanticError("expected type for parameter: " + parameterName);
                 }
                 parameterType = resolveWrittenType(tokens[index]);
-                if (types::isArraySpelling(tokens[index]) || types::isGenericSpelling(tokens[index])) {
-                    result_.setWrittenType(tokens[index], parameterType);
-                }
                 if (mode != PassMode::Value && parameterType->isSlice()) {
                     throw SemanticError("a slice is already a view: pass it without ref (ADR-0017)");
                 }
@@ -148,9 +145,6 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
         if (signature.returnType->isSlice()) {
             throw SemanticError("a slice cannot be returned: it would outlive its array (ADR-0017)");
         }
-        if (types::isArraySpelling(tokens[index]) || types::isGenericSpelling(tokens[index])) {
-            result_.setWrittenType(tokens[index], signature.returnType);
-        }
     }
 
     if (isAssociatedMethod && resolveStruct(receiverType) == nullptr) {
@@ -161,7 +155,6 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
                                 " reuses no struct: Override replaces a reused method (CANON-9)");
         }
         const TypeRef canonical = resolveWrittenType(receiverType);
-        result_.setWrittenType(receiverType, canonical);
         const std::string canonicalKey = normalizeName(canonical->name() + function.name().substr(dot));
         if (canonicalKey != normalizeName(function.name())) {
             if (functions_.contains(canonicalKey)) {
@@ -174,6 +167,7 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
     if (functions_.contains(normalizeName(function.name()))) {
         throw SemanticError("duplicate routine: " + function.name());
     }
+    result_.setSignature(function, signature);
     functions_.emplace(normalizeName(function.name()), std::move(signature));
 }
 
@@ -293,6 +287,7 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
         // any other (CANON-9 named construction, types), not skipped.
         for (const ast::VariableDeclaration& declaration : section.variables()) {
             if (declaration.value == nullptr) {
+                result_.setDeclaredType(declaration, resolveWrittenType(declaration.typeName));
                 continue;
             }
             const TypeRef valueType = analyzeExpression(*declaration.value);
@@ -312,6 +307,9 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
                     throw SemanticError("initializer of " + declaration.name + " has type " +
                                         valueType->name() + ", expected " + declared->name());
                 }
+                result_.setDeclaredType(declaration, declared);
+            } else {
+                result_.setDeclaredType(declaration, valueType);
             }
         }
     }
@@ -474,7 +472,6 @@ void SemanticAnalyzer::completeStructFields(const ast::TypeDeclaration& declarat
             }
             const TypeRef type = resolveWrittenType(written[index]);
             types().setStructFieldType(structType, index, type);
-            result_.setWrittenType(written[index], type);
         }
     }
 }
@@ -607,7 +604,6 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
             rejectFileIn(type, "a State variable, " + declaration.name);
         }
         if (types::isArraySpelling(declaration.typeName) || types::isGenericSpelling(declaration.typeName)) {
-            result_.setWrittenType(declaration.typeName, type);
             symbols_.currentScope().inferType(declaration.name, type);
         }
     }

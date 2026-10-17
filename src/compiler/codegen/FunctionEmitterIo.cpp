@@ -16,7 +16,6 @@
 #include "MathBuiltins.h"
 #include "Operators.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../support/ArrayType.h"
 #include "../support/Platform.h"
 
 #include <algorithm>
@@ -44,7 +43,7 @@ void FunctionEmitter::emitInputCallSequence(const std::vector<ast::ExpressionPtr
 
     bool lastReadLine = false;
     for (const auto& argument : arguments) {
-        lastReadLine = isStringType(semanticTypeName(*argument));
+        lastReadLine = isStringType(typeOf(*argument));
         if (lastReadLine) {
             emitInputReadLine(*argument);
         } else {
@@ -106,7 +105,7 @@ void FunctionEmitter::emitInputReadInteger(const ast::Expression& argument)
     }
 
     output_ << "  call void @__inox_read_i64(ptr " << local->second.slot << ")\n";
-    if (const auto range = narrowIntegerRange(local->second.inoxType)) {
+    if (const auto range = narrowIntegerRange(local->second.type)) {
         const std::string read = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << read << " = load i64, ptr " << local->second.slot << "\n";
         const std::string checked = emitRangeCheck(read, *range, 6);
@@ -148,7 +147,7 @@ void FunctionEmitter::emitOutputCall(const ast::Expression& argument, bool newli
         }
     }
 
-    if (isStringType(semanticTypeName(argument))) {
+    if (isStringType(typeOf(argument))) {
         // The bytes of the block, printed by the program's printf so the
         // output stays in order with every other Put (StringRuntime.cpp).
         requireModuleLine("@.inox.fmt.strv = private unnamed_addr constant [5 x i8] c\"%.*s\\00\"");

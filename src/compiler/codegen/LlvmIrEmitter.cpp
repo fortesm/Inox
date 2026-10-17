@@ -15,7 +15,6 @@
 #include "RuntimeAbi.h"
 #include "RuntimeHelpersIr.h"
 #include "TypeLayout.h"
-#include "../support/ArrayType.h"
 
 #include <cstddef>
 #include <sstream>
@@ -33,14 +32,13 @@ void emitFunction(std::ostringstream& output,
                   const ast::FunctionDeclaration& function,
                   const FunctionSignature& signature,
                   const FunctionSignatures& signatures,
-                  const StructDefinitions& structs,
                   ModuleContext& moduleContext,
                   const semantic::SemanticResult& semantics,
                   const StateGlobals& stateGlobals,
                   bool& usesStringCleanup)
 {
     std::ostringstream body;
-    FunctionEmitter emitter(body, function, signature, signatures, structs, moduleContext, semantics, stateGlobals);
+    FunctionEmitter emitter(body, function, signature, signatures, moduleContext, semantics, stateGlobals);
     emitter.emit();
     usesStringCleanup = usesStringCleanup || emitter.usesStringCleanup();
 
@@ -95,46 +93,40 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
 {
     const ast::FunctionDeclaration* mainFunction = nullptr;
     FunctionSignatures signatures;
-    StructDefinitions structs;
     std::ostringstream functionOutput;
     std::ostringstream output;
     ModuleContext moduleContext(hostExceptionAbi());
     const bool usesExceptions = moduleUsesExceptions(module);
     bool usesStringCleanup = false;
 
-    for (const auto& item : module.items()) {
-        if (item->kind() == ast::AstNodeKind::SectionDeclaration) {
-            collectStructDefinitions(static_cast<const ast::SectionDeclaration&>(*item), structs, semantics);
-        }
-    }
-
+    // The struct types in declaration order, so the IR is the same with every
+    // standard library; State globals in source order.
+    std::vector<TypeRef> structTypes;
     StateGlobals stateGlobals;
     for (const auto& item : module.items()) {
         if (item->kind() != ast::AstNodeKind::SectionDeclaration) {
             continue;
         }
         const auto& section = static_cast<const ast::SectionDeclaration&>(*item);
+        for (const ast::TypeDeclaration& declaration : section.types()) {
+            if (declaration.kind == ast::TypeDeclarationKind::Struct) {
+                const TypeRef type = semantics.types().lookup(declaration.name);
+                if (!isStructType(type)) {
+                    throw CodegenError("struct without a type: " + declaration.name);
+                }
+                structTypes.push_back(type);
+            }
+        }
         if (section.sectionKind() != ast::SectionKind::State) {
             continue;
         }
         for (const ast::VariableDeclaration& declaration : section.variables()) {
-            std::string inoxType = declaration.typeName;
-            if (support::isArrayTypeName(inoxType)) {
-                inoxType = semantics.canonicalTypeName(inoxType);
-            }
-            if (inoxType.empty() && declaration.value != nullptr) {
-                if (const types::Type* resolved = semantics.typeOf(*declaration.value)) {
-                    inoxType = resolved->name();
-                }
-            }
-            if (const StructDefinition* structType = findStruct(structs, inoxType)) {
-                inoxType = structType->inoxName;
-            }
-            const std::string llvmType = llvmTypeForInoxType(inoxType, structs);
+            const TypeRef type = semantics.declaredType(declaration);
+            const std::string llvmType = llvmValueType(type);
             if (llvmType.empty()) {
-                throw CodegenUnsupported("State variables of type " + inoxType + " are not lowered yet");
+                throw CodegenUnsupported("State variables of type " + types::nameOf(type) + " are not lowered yet");
             }
-            stateGlobals.push_back(StateGlobal{declaration.name, inoxType, llvmType, declaration.value.get()});
+            stateGlobals.push_back(StateGlobal{declaration.name, type, llvmType, declaration.value.get()});
         }
     }
 
@@ -146,20 +138,24 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
         const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
         if (equalsIgnoreCase(function.name(), "Main")) {
             mainFunction = &function;
-        } else {
-            const std::string normalizedName = normalize(function.name());
-            FunctionSignature signature = parseFunctionSignature(function, structs, semantics);
-            // CANON-9: a method of a built-in type is also found under the
-            // type's canonical name (`Integer.Twice` on an Int64 value).
-            if (const std::size_t dot = function.name().find('.'); dot != std::string::npos) {
-                const std::string receiver = function.name().substr(0, dot);
-                const std::string canonical = semantics.canonicalTypeName(receiver);
-                if (findStruct(structs, receiver) == nullptr && normalize(canonical) != normalize(receiver)) {
-                    signatures.emplace(normalize(canonical + function.name().substr(dot)), signature);
-                }
-            }
-            signatures.emplace(normalizedName, std::move(signature));
+            continue;
         }
+        const semantic::FunctionSignature* analyzed = semantics.signatureOf(function);
+        if (analyzed == nullptr) {
+            throw CodegenError("routine without an analyzed signature: " + function.name());
+        }
+        FunctionSignature signature = lowerSignature(function, *analyzed);
+        // CANON-9: a method of a built-in type is also found under the
+        // type's canonical name (`Integer.Twice` on an Int64 value).
+        if (const std::size_t dot = function.name().find('.'); dot != std::string::npos) {
+            const std::string receiver = function.name().substr(0, dot);
+            const TypeRef receiverType = semantics.types().lookup(receiver);
+            if (receiverType != nullptr && !receiverType->isStruct() &&
+                normalize(receiverType->name()) != normalize(receiver)) {
+                signatures.emplace(normalize(receiverType->name() + function.name().substr(dot)), signature);
+            }
+        }
+        signatures.emplace(normalize(function.name()), std::move(signature));
     }
 
     for (const auto& item : module.items()) {
@@ -170,15 +166,17 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
         const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
         if (!equalsIgnoreCase(function.name(), "Main")) {
             const auto signature = signatures.find(normalize(function.name()));
-            emitFunction(functionOutput, function, signature->second, signatures, structs, moduleContext, semantics, stateGlobals, usesStringCleanup);
+            emitFunction(functionOutput, function, signature->second, signatures, moduleContext, semantics,
+                         stateGlobals, usesStringCleanup);
         }
     }
 
     if (mainFunction == nullptr) {
         throw CodegenError("LLVM emission requires Main");
     }
-    const FunctionSignature mainSignature{"main", "i32", {}, {}};
-    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, structs, moduleContext, semantics, stateGlobals, usesStringCleanup);
+    const FunctionSignature mainSignature{"main", "i32", {}, nullptr};
+    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, moduleContext, semantics, stateGlobals,
+                 usesStringCleanup);
 
     for (const StateGlobal& state : stateGlobals) {
         output << stateGlobalSymbol(state.name) << " = internal global " << state.llvmType
@@ -188,32 +186,17 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
         output << '\n';
     }
 
-    // Declaration order, so the IR is the same with every standard library
-    // (the map's iteration order is not).
-    std::vector<const StructDefinition*> structOrder;
-    for (const auto& item : module.items()) {
-        if (item->kind() != ast::AstNodeKind::SectionDeclaration) {
-            continue;
-        }
-        for (const ast::TypeDeclaration& declaration : static_cast<const ast::SectionDeclaration&>(*item).types()) {
-            if (const StructDefinition* structType = findStruct(structs, declaration.name);
-                declaration.kind == ast::TypeDeclarationKind::Struct && structType != nullptr) {
-                structOrder.push_back(structType);
-            }
-        }
-    }
-    for (const StructDefinition* structDefinition : structOrder) {
-        const StructDefinition& structType = *structDefinition;
-        output << structType.llvmName << " = type { ";
-        for (std::size_t index = 0; index < structType.fields.size(); ++index) {
+    for (const TypeRef structType : structTypes) {
+        output << llvmStructName(structType) << " = type { ";
+        for (std::size_t index = 0; index < structType->fields().size(); ++index) {
             if (index != 0) {
                 output << ", ";
             }
-            output << structType.fields[index].llvmType;
+            output << fieldLayout(structType, index).llvmType;
         }
         output << " }\n";
     }
-    if (!structs.empty()) {
+    if (!structTypes.empty()) {
         output << '\n';
     }
 

@@ -72,7 +72,42 @@ public:
         invariantBefore_.clear();
         invariantAfter_.clear();
         newValueInvariants_.clear();
-        writtenTypes_.clear();
+        signatures_.clear();
+        declaredTypes_.clear();
+    }
+
+    // What the code generator reads instead of the written text (OpenSpec
+    // change type-representation): each routine's signature and the type of
+    // each declared variable (a local, a State or a Const).
+    void setSignature(const ast::FunctionDeclaration& function, FunctionSignature signature)
+    {
+        signatures_.insert_or_assign(&function, std::move(signature));
+    }
+
+    const FunctionSignature* signatureOf(const ast::FunctionDeclaration& function) const
+    {
+        const auto iterator = signatures_.find(&function);
+        return iterator != signatures_.end() ? &iterator->second : nullptr;
+    }
+
+    void setDeclaredType(const ast::VarStatement& declaration, const types::Type* type)
+    {
+        declaredTypes_.insert_or_assign(&declaration, type);
+    }
+
+    void setDeclaredType(const ast::VariableDeclaration& declaration, const types::Type* type)
+    {
+        declaredTypes_.insert_or_assign(&declaration, type);
+    }
+
+    const types::Type* declaredType(const ast::VarStatement& declaration) const
+    {
+        return findDeclaredType(&declaration);
+    }
+
+    const types::Type* declaredType(const ast::VariableDeclaration& declaration) const
+    {
+        return findDeclaredType(&declaration);
     }
 
     void setConstantValue(const Symbol& symbol, ConstantValue value)
@@ -120,25 +155,6 @@ public:
         return iterator != callSymbols_.end() ? iterator->second : nullptr;
     }
 
-    // The type a written type text denotes (`Array[1..Size] Byte` with Size
-    // a Const), for later phases.
-    void setWrittenType(const std::string& written, const types::Type* type)
-    {
-        writtenTypes_[written] = type;
-    }
-
-    const types::Type* writtenType(const std::string& written) const
-    {
-        const auto iterator = writtenTypes_.find(written);
-        return iterator != writtenTypes_.end() ? iterator->second : nullptr;
-    }
-
-    std::string canonicalTypeName(const std::string& written) const
-    {
-        const types::Type* type = writtenType(written);
-        return type != nullptr ? type->name() : written;
-    }
-
     // ADR-0015: an Integer value stored into a Natural is range-checked at run
     // time, implicitly (Ada subtype semantics). The emitter wraps every marked
     // expression in the check.
@@ -158,7 +174,7 @@ public:
     // a construction or a declaration with defaults checks its new value.
     struct InvariantCheck {
         const ast::Expression* place = nullptr;
-        std::string typeName;
+        const types::Type* type = nullptr;  // a struct with an invariant
     };
     void addInvariantCheck(const ast::AstNode& site, bool after, InvariantCheck check)
     {
@@ -170,23 +186,32 @@ public:
         const auto found = checks.find(&site);
         return found != checks.end() ? &found->second : nullptr;
     }
-    void requireNewValueInvariant(const ast::AstNode& site, std::string typeName)
+    void requireNewValueInvariant(const ast::AstNode& site, const types::Type* type)
     {
-        newValueInvariants_[&site] = std::move(typeName);
+        newValueInvariants_[&site] = type;
     }
-    const std::string* newValueInvariant(const ast::AstNode& site) const
+    // The struct whose invariant the new value at `site` must satisfy, or null.
+    const types::Type* newValueInvariant(const ast::AstNode& site) const
     {
         const auto found = newValueInvariants_.find(&site);
-        return found != newValueInvariants_.end() ? &found->second : nullptr;
+        return found != newValueInvariants_.end() ? found->second : nullptr;
     }
 
 private:
+    const types::Type* findDeclaredType(const void* declaration) const
+    {
+        const auto iterator = declaredTypes_.find(declaration);
+        return iterator != declaredTypes_.end() ? iterator->second : nullptr;
+    }
+
+    std::unordered_map<const ast::FunctionDeclaration*, FunctionSignature> signatures_;
+    // Keyed by a VarStatement or a VariableDeclaration.
+    std::unordered_map<const void*, const types::Type*> declaredTypes_;
     std::unordered_map<const ast::AstNode*, std::vector<InvariantCheck>> invariantBefore_;
     std::unordered_map<const ast::AstNode*, std::vector<InvariantCheck>> invariantAfter_;
-    std::unordered_map<const ast::AstNode*, std::string> newValueInvariants_;
+    std::unordered_map<const ast::AstNode*, const types::Type*> newValueInvariants_;
     std::unordered_set<const ast::Expression*> naturalChecks_;
     std::unique_ptr<types::TypeContext> types_;
-    std::unordered_map<std::string, const types::Type*> writtenTypes_;
     std::unordered_map<const ast::Expression*, const types::Type*> expressionTypes_;
     std::unordered_map<const ast::IdentifierExpression*, const Symbol*> identifierSymbols_;
     std::unordered_map<const ast::CallExpression*, const Symbol*> callSymbols_;

@@ -219,10 +219,6 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
     case ast::AstNodeKind::VarStatement: {
         const auto& var = static_cast<const ast::VarStatement&>(statement);
         TypeRef type = var.typeName().empty() ? nullptr : resolveWrittenType(var.typeName());
-        if (!var.typeName().empty() &&
-            (types::isArraySpelling(var.typeName()) || types::isGenericSpelling(var.typeName()))) {
-            result_.setWrittenType(var.typeName(), type);
-        }
         if (var.initializer() != nullptr) {
             const TypeRef initializerType = analyzeExpression(*var.initializer());
             if (type == nullptr) {
@@ -265,9 +261,10 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         }
         // CANON-24: a struct born with its defaults satisfies its invariant.
         if (var.initializer() == nullptr && hasInvariant(type) && invariantChecksOn()) {
-            result_.requireNewValueInvariant(var, type->name());
+            result_.requireNewValueInvariant(var, type);
         }
         declareOrThrow(var.name(), SymbolKind::Variable, type, true);
+        result_.setDeclaredType(var, type);
         trackLocal(var.name());
         break;
     }

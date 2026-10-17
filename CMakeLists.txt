@@ -61,8 +61,6 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticSupport.cpp
     src/compiler/semantic/SemanticTypes.cpp
     src/compiler/semantic/Symbol.cpp
-    src/compiler/support/ArrayType.cpp
-    src/compiler/support/PointerType.cpp
     src/compiler/types/TypeContext.cpp
     src/compiler/types/TypeSyntax.cpp
     src/compiler/support/Environment.cpp

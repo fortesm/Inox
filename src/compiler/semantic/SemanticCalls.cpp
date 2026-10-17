@@ -194,7 +194,7 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
             }
             // CANON-24: a new value satisfies its invariant.
             if (hasInvariant(type) && invariantChecksOn()) {
-                result_.requireNewValueInvariant(call, type->name());
+                result_.requireNewValueInvariant(call, type);
             }
             return type;
         }

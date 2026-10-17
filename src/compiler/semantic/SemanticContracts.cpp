@@ -141,10 +141,10 @@ void SemanticAnalyzer::recordInvariantPlaces(const ast::AstNode& site, const ast
                                     "computed without side effects (CANON-24): store the index in a variable first");
             }
             if (before) {
-                result_.addInvariantCheck(site, false, {current, type->name()});
+                result_.addInvariantCheck(site, false, {current, type});
             }
             if (after) {
-                result_.addInvariantCheck(site, true, {current, type->name()});
+                result_.addInvariantCheck(site, true, {current, type});
             }
         }
         if (current->kind() != ast::AstNodeKind::CallExpression) {

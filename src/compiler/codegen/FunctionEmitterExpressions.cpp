@@ -16,8 +16,6 @@
 #include "MathBuiltins.h"
 #include "Operators.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../support/ArrayType.h"
-#include "../support/PointerType.h"
 #include "../support/Platform.h"
 
 #include <algorithm>
@@ -48,138 +46,30 @@ const semantic::ConstantValue* FunctionEmitter::resolvedConstant(const ast::Iden
     return semantics_.constantValueOf(*symbol);
 }
 
+// The LLVM type of an expression's value: the LLVM type of the type the
+// analysis gave it. A Char literal is its code point (i32); Free and the
+// file calls without a result are void; None is a null pointer.
 std::string FunctionEmitter::expressionLlvmType(const ast::Expression& expression) const
 {
-    switch (expression.kind()) {
-    case ast::AstNodeKind::LiteralExpression: {
-        const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
-        switch (literal.literalKind()) {
-        case ast::LiteralKind::Integer:
-            return "i64";
-        case ast::LiteralKind::Float:
-            return "double";
-        case ast::LiteralKind::Boolean:
-            return "i1";
-        case ast::LiteralKind::String:
-            return "ptr";
-        case ast::LiteralKind::Char:
-            return "i32";
-        }
-        break;
+    if (expression.kind() == ast::AstNodeKind::LiteralExpression &&
+        static_cast<const ast::LiteralExpression&>(expression).literalKind() == ast::LiteralKind::Char) {
+        return "i32";
     }
-    case ast::AstNodeKind::IdentifierExpression: {
-        const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
-        const std::string normalizedName = normalize(identifier.name());
-        const auto local = locals_.find(normalizedName);
-        if (local != locals_.end()) {
-            return local->second.llvmType;
-        }
-        if (semanticTypeName(expression) == "None") {
-            return "ptr";
-        }
-        const auto parameter = parameterTypes_.find(normalizedName);
-        if (parameter != parameterTypes_.end()) {
-            return parameter->second;
-        }
-        const auto signature = signatures_.find(normalizedName);
-        if (signature != signatures_.end()) {
-            return signature->second.llvmReturnType;
-        }
-        if (const semantic::ConstantValue* constant = resolvedConstant(identifier)) {
-            if (constant->kind == semantic::ConstantValue::Kind::String) {
-                return "ptr";
-            }
-            return constant->kind == semantic::ConstantValue::Kind::Boolean ? "i1" : "i64";
-        }
-        break;
-    }
-    case ast::AstNodeKind::UnaryExpression: {
-        const auto& unary = static_cast<const ast::UnaryExpression&>(expression);
-        if (unary.op() == ast::UnaryOperator::Not) {
-            return "i1";
-        }
-        return expressionLlvmType(unary.operand());
-    }
-    case ast::AstNodeKind::BinaryExpression: {
-        const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
-        if (llvmComparisonPredicate(binary.op()).size() != 0 || fcmpPredicate(binary.op()).size() != 0) {
-            return "i1";
-        }
-        if (llvmBooleanOperation(binary.op()).size() != 0) {
-            return "i1";
-        }
-        return expressionLlvmType(binary.left());
-    }
-    case ast::AstNodeKind::ConditionalExpression:
-        // ADR-0013: semantic analysis guarantees compatible branch types.
-        return expressionLlvmType(
-            static_cast<const ast::ConditionalExpression&>(expression).thenValue());
-    case ast::AstNodeKind::CallExpression: {
+    if (expression.kind() == ast::AstNodeKind::CallExpression) {
         const auto& call = static_cast<const ast::CallExpression&>(expression);
-        if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
-            const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
-            if (equalsIgnoreCase(callee.name(), "Abs") && call.arguments().size() == 1) {
-                return expressionLlvmType(*call.arguments().front());
-            }
-            if (callee.name() == "__pure" && call.arguments().size() == 1) {
-                return expressionLlvmType(*call.arguments().front());
-            }
-            if (isPointerBuiltin(call)) {
-                return equalsIgnoreCase(callee.name(), "Free") ? std::string("void")
-                                                               : valueLlvmType(semanticTypeName(expression));
-            }
-            if (isFileCall(call)) {
-                return fileCallLlvmType(call);
-            }
-            if (isMathBuiltin(callee.name())) {
-                return "double";
-            }
-            if (isNaturalConversion(call)) {
-                return "i64";
-            }
-            if (callee.name() == "__index" || callee.name() == "__slice") {
-                return valueLlvmType(semanticTypeName(expression));
-            }
-            if (const StructDefinition* structType = findStruct(structs_, callee.name())) {
-                return structType->llvmName;
-            }
-            if (equalsIgnoreCase(callee.name(), "__member")) {
-                if (const auto field = memberField(call)) {
-                    return field->second->llvmType;
-                }
-                if (call.arguments().size() == 2 &&
-                    call.arguments()[1]->kind() == ast::AstNodeKind::IdentifierExpression) {
-                    const auto& method = static_cast<const ast::IdentifierExpression&>(*call.arguments()[1]);
-                    if (const FunctionSignature* signature = findMethodSignature(*call.arguments()[0], method.name())) {
-                        return signature->llvmReturnType;
-                    }
-                }
-            }
-            if (arrayBoundCall(call)) {
-                return "i64";
-            }
-            const auto signature = signatures_.find(normalize(callee.name()));
-            if (signature != signatures_.end()) {
-                return signature->second.llvmReturnType;
-            }
+        if (isPointerBuiltin(call) &&
+            equalsIgnoreCase(static_cast<const ast::IdentifierExpression&>(call.callee()).name(), "Free")) {
+            return "void";
         }
-        if (isMemberAccessCall(call.callee())) {
-            const auto& member = static_cast<const ast::CallExpression&>(call.callee());
-            if (member.arguments().size() == 2 && member.arguments()[0]) {
-                if (member.arguments()[1]->kind() == ast::AstNodeKind::IdentifierExpression) {
-                    const auto& method = static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
-                    if (const FunctionSignature* signature = findMethodSignature(*member.arguments()[0], method.name())) {
-                        return signature->llvmReturnType;
-                    }
-                }
-            }
+        if (isFileCall(call)) {
+            return fileCallLlvmType(call);
         }
-        break;
     }
-    default:
-        break;
+    const TypeRef type = typeOf(expression);
+    if (type != nullptr && type->isNone()) {
+        return "ptr";
     }
-    return "i64";
+    return valueLlvmType(type);
 }
 
 // Natural(X), Integer(X) or Int64(X) applied to one i64 value.
@@ -188,9 +78,8 @@ bool FunctionEmitter::isNaturalConversion(const ast::CallExpression& call) const
     if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().size() != 1) {
         return false;
     }
-    const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
-    if (!equalsIgnoreCase(callee.name(), "Natural") && !equalsIgnoreCase(callee.name(), "Integer") &&
-        !equalsIgnoreCase(callee.name(), "Int64") && !narrowIntegerRange(callee.name())) {
+    const TypeRef target = conversionTarget(call);
+    if (target == nullptr) {
         return false;
     }
     return expressionLlvmType(*call.arguments().front()) == "i64";
@@ -229,10 +118,24 @@ std::string FunctionEmitter::emitConditional(const ast::ConditionalExpression& e
     return result;
 }
 
-// The semantic type name of an expression, or empty.
-std::string FunctionEmitter::semanticTypeName(const ast::Expression& expression) const
+TypeRef FunctionEmitter::typeOf(const ast::Expression& expression) const
 {
-    return types::nameOf(semantics_.typeOf(expression));
+    return semantics_.typeOf(expression);
+}
+
+// The integer type of a conversion `T(X)` lowered as a range check: Natural,
+// Integer (Int64) or a fixed width narrower than 64 bits; else null.
+TypeRef FunctionEmitter::conversionTarget(const ast::CallExpression& call) const
+{
+    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().size() != 1) {
+        return nullptr;
+    }
+    const TypeRef target =
+        semantics_.types().lookup(static_cast<const ast::IdentifierExpression&>(call.callee()).name());
+    const bool lowered = target != nullptr && (target == semantics_.types().naturalType() ||
+                                               target == semantics_.types().int64Type() ||
+                                               target->isNarrowInteger());
+    return lowered ? target : nullptr;
 }
 
 // An arithmetic result whose semantic type is a narrow fixed-width integer
@@ -275,7 +178,7 @@ std::string FunctionEmitter::emitExpression(const ast::Expression& expression)
 {
     std::string value = emitExpressionValue(expression);
     if (isRangeCheckedArithmetic(expression)) {
-        if (const auto range = narrowIntegerRange(semanticTypeName(expression))) {
+        if (const auto range = narrowIntegerRange(typeOf(expression))) {
             value = emitRangeCheck(value, *range, 1);
         }
     }
@@ -337,7 +240,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return emitUserCall(signature->second, {}, true);
         }
         // None: an empty Link or an absent owner (safe-pointers).
-        if (semanticTypeName(expression) == "None") {
+        if (const TypeRef type = typeOf(expression); type != nullptr && type->isNone()) {
             return "zeroinitializer";
         }
         if (const semantic::ConstantValue* constant = resolvedConstant(identifier)) {
@@ -362,7 +265,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         // CANON-8: the shift count of a fixed-width type is 0..width-1.
         if (binary.op() == ast::BinaryOperator::ShiftLeft ||
             binary.op() == ast::BinaryOperator::ShiftRight) {
-            if (const auto range = narrowIntegerRange(semanticTypeName(expression))) {
+            if (const auto range = narrowIntegerRange(typeOf(expression))) {
                 int bits = 0;
                 for (std::int64_t span = range->high; span > 0; span >>= 1) {
                     ++bits;
@@ -375,7 +278,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         }
 
         // CANON-14: `=` and `#` compare the UTF-8 bytes of two Strings.
-        if (isStringType(semanticTypeName(binary.left())) &&
+        if (isStringType(typeOf(binary.left())) &&
             (binary.op() == ast::BinaryOperator::Equal || binary.op() == ast::BinaryOperator::NotEqual)) {
             requireRuntime(RuntimeFunction::StringEqual);
             const std::string equal = binary.op() == ast::BinaryOperator::Equal
@@ -389,7 +292,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return result;
         }
         // CANON-14 (v3.56): `<` `>` `<=` `>=` order Strings byte by byte.
-        if (isStringType(semanticTypeName(binary.left()))) {
+        if (isStringType(typeOf(binary.left()))) {
             if (const std::string predicate = llvmComparisonPredicate(binary.op()); !predicate.empty()) {
                 requireRuntime(RuntimeFunction::StringCompare);
                 const std::string order = "%tmp" + std::to_string(nextTemporary_++);
@@ -461,7 +364,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             const std::string operand = emitExpression(unary.operand());
             const std::string result = "%tmp" + std::to_string(nextTemporary_++);
             std::int64_t mask = -1;
-            if (const auto range = narrowIntegerRange(semanticTypeName(unary.operand()));
+            if (const auto range = narrowIntegerRange(typeOf(unary.operand()));
                 range && range->low == 0) {
                 mask = range->high;
             }
@@ -515,11 +418,10 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             }
             return emitPointerBuiltin(call);
         }
-        if (const StructDefinition* structType = findStruct(structs_, callee.name())) {
-            return emitConstruction(call, *structType);
+        if (const TypeRef structType = constructedStruct(call)) {
+            return emitConstruction(call, structType);
         }
-        if (call.arguments().size() == 1 &&
-            support::isSliceTypeName(semanticTypeName(*call.arguments()[0])) &&
+        if (call.arguments().size() == 1 && isSliceType(typeOf(*call.arguments()[0])) &&
             (equalsIgnoreCase(callee.name(), "Low") || equalsIgnoreCase(callee.name(), "High") ||
              equalsIgnoreCase(callee.name(), "Length"))) {
             const SliceParts slice = extractSlice(emitExpression(*call.arguments()[0]));
@@ -579,10 +481,11 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         // because Natural shares Integer's i64 representation.
         if (isNaturalConversion(call)) {
             const std::string value = emitExpression(*call.arguments().front());
-            if (const auto range = narrowIntegerRange(callee.name())) {
+            const TypeRef target = conversionTarget(call);
+            if (const auto range = narrowIntegerRange(target)) {
                 return emitRangeCheck(value, *range, 8);
             }
-            if (!equalsIgnoreCase(callee.name(), "Natural")) {
+            if (target != semantics_.types().naturalType()) {
                 return value;
             }
             const std::string result = "%tmp" + std::to_string(nextTemporary_++);
