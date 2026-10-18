@@ -32,6 +32,32 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
         return "declare i32 @__inox_str_compare(ptr, ptr) nounwind";
     case RuntimeFunction::StringGetLn:
         return "declare ptr @__inox_str_getln(ptr, ptr) nounwind";
+    case RuntimeFunction::StringConcat:
+        return "declare ptr @__inox_str_concat(i64, ptr, ptr) nounwind";
+    case RuntimeFunction::StringAppend:
+        return "declare void @__inox_str_append(ptr, i64, ptr, ptr) nounwind";
+    case RuntimeFunction::StringLength:
+        return "declare i64 @__inox_str_length(ptr) nounwind";
+    case RuntimeFunction::StringSubstr:
+        return "declare ptr @__inox_str_substr(ptr, i64, i64, ptr) nounwind";
+    case RuntimeFunction::StringEdge:
+        return "declare ptr @__inox_str_edge(ptr, i64, i32, ptr) nounwind";
+    case RuntimeFunction::StringPosition:
+        return "declare i64 @__inox_str_pos(ptr, ptr) nounwind";
+    case RuntimeFunction::StringCase:
+        return "declare ptr @__inox_str_case(ptr, i32, ptr) nounwind";
+    case RuntimeFunction::StringTrim:
+        return "declare ptr @__inox_str_trim(ptr, i32, ptr) nounwind";
+    case RuntimeFunction::StringPad:
+        return "declare ptr @__inox_str_pad(ptr, i64, i32, ptr) nounwind";
+    case RuntimeFunction::StringReplicate:
+        return "declare ptr @__inox_str_replicate(ptr, i64, ptr) nounwind";
+    case RuntimeFunction::StringReplace:
+        return "declare ptr @__inox_str_replace(ptr, ptr, ptr, ptr) nounwind";
+    case RuntimeFunction::StringFind:
+        return "declare zeroext i1 @__inox_str_find(ptr, ptr, i32) nounwind";
+    case RuntimeFunction::StringCompareText:
+        return "declare i32 @__inox_str_compare_text(ptr, ptr) nounwind";
     case RuntimeFunction::FileOpen:
         return "declare ptr @__inox_file_open(ptr, i32)";
     case RuntimeFunction::FileRetain:

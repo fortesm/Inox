@@ -26,9 +26,7 @@ namespace inox::runtime {
 
 namespace {
 
-constexpr std::int64_t kImmortal = -1;
-
-InoxString kEmpty = {kImmortal, 0, {'\0'}};
+InoxString kEmpty = {kImmortalCount, 0, {'\0'}};
 
 } // namespace
 
@@ -37,17 +35,51 @@ InoxString* emptyString() noexcept
     return &kEmpty;
 }
 
-InoxString* allocateString(std::int64_t length) noexcept
+InoxString* allocateString(std::int64_t length, std::int64_t capacity) noexcept
 {
-    const std::size_t size = offsetof(InoxString, bytes) + static_cast<std::size_t>(length) + 1;
-    auto* block = static_cast<InoxString*>(std::malloc(size));
-    if (block == nullptr) {
+    if (capacity < length) {
+        capacity = length;
+    }
+    const std::size_t size =
+        sizeof(StringHeader) + offsetof(InoxString, bytes) + static_cast<std::size_t>(capacity) + 1;
+    auto* header = static_cast<StringHeader*>(std::malloc(size));
+    if (header == nullptr) {
         return nullptr;
     }
+    header->capacity = capacity;
+    header->characters = -1;
+    auto* block = reinterpret_cast<InoxString*>(header + 1);
     block->count = 1;
     block->length = length;
     block->bytes[length] = '\0';
     return block;
+}
+
+void freeString(InoxString* string) noexcept
+{
+    std::free(headerOf(string));
+}
+
+std::int64_t countCharacters(const char* bytes, std::int64_t length) noexcept
+{
+    // Every byte that is not a continuation byte (10xxxxxx) starts a code point.
+    std::int64_t characters = 0;
+    for (std::int64_t index = 0; index < length; ++index) {
+        characters += (static_cast<unsigned char>(bytes[index]) & 0xC0) != 0x80 ? 1 : 0;
+    }
+    return characters;
+}
+
+std::int64_t characterCount(InoxString* string) noexcept
+{
+    if (isImmortal(string)) {
+        return countCharacters(string->bytes, string->length);
+    }
+    StringHeader* header = headerOf(string);
+    if (header->characters < 0) {
+        header->characters = countCharacters(string->bytes, string->length);
+    }
+    return header->characters;
 }
 
 bool isValidUtf8(const unsigned char* text, std::int64_t length) noexcept
@@ -156,8 +188,7 @@ InoxString* readLine(int (*readByte)(void* context), void* context, LineStatus& 
 namespace {
 
 using inox::runtime::InoxString;
-
-constexpr std::int64_t kImmortal = -1;
+using inox::runtime::kImmortalCount;
 
 int readThroughProgram(void* context)
 {
@@ -180,7 +211,7 @@ void* __inox_str_empty() noexcept
 void __inox_str_retain(void* value) noexcept
 {
     auto* string = static_cast<InoxString*>(value);
-    if (string != nullptr && string->count != kImmortal) {
+    if (string != nullptr && string->count != kImmortalCount) {
         ++string->count;
     }
 }
@@ -188,11 +219,11 @@ void __inox_str_retain(void* value) noexcept
 void __inox_str_release(void* value) noexcept
 {
     auto* string = static_cast<InoxString*>(value);
-    if (string == nullptr || string->count == kImmortal) {
+    if (string == nullptr || string->count == kImmortalCount) {
         return;
     }
     if (--string->count == 0) {
-        std::free(string);
+        inox::runtime::freeString(string);
     }
 }
 

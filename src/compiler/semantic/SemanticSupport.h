@@ -24,6 +24,8 @@
 namespace inox::compiler::semantic::detail {
 
 bool equalsIgnoreCase(std::string_view left, std::string_view right);
+// Whether the program loaded the module `name` (directly or through Use).
+bool usesModule(const ast::ModuleNode& module, std::string_view name);
 std::string_view binaryOperatorName(ast::BinaryOperator op);
 
 struct PreludeSignature {

@@ -191,6 +191,9 @@ TypeRef SemanticAnalyzer::analyzeIndexExpression(const ast::CallExpression& call
         }
         return baseType->element();
     }
+    if (baseType != nullptr && baseType->isString()) {
+        throw SemanticError("S[I] on a String is reserved (CANON-14): use Substr(S, I, 1) of Std.Strings");
+    }
     if (baseType == nullptr || !baseType->isArray()) {
         throw SemanticError("only an array can be indexed (CANON-13); this value has type " +
                             types::nameOf(baseType));
@@ -527,6 +530,18 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
         }
         requireMatchingTypes();
     };
+
+    // CANON-14 (std-strings): `+` joins two Strings, never a String and a
+    // value of another type (no implicit conversion).
+    if (op == ast::BinaryOperator::Add && ((leftType != nullptr && leftType->isString()) ||
+                                           (rightType != nullptr && rightType->isString()))) {
+        const TypeRef other = leftType != nullptr && leftType->isString() ? rightType : leftType;
+        if (other == nullptr || !other->isString()) {
+            throw SemanticError("'+' joins two Strings (CANON-14), and the other operand is " +
+                                types::nameOf(other) + ": there is no implicit conversion to String");
+        }
+        return types().stringType();
+    }
 
     switch (op) {
     case ast::BinaryOperator::Add:

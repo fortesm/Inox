@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+// The functions of Std.Strings and Std.StrUtils (OpenSpec change
+// std-strings): compiler intrinsics visible in a program that uses the
+// module, so their names stay free elsewhere. One table, read by the
+// analyzer (types, visibility) and by the code generator (the runtime
+// function of each), so the two never disagree.
+
+#pragma once
+
+#include <array>
+#include <string_view>
+
+namespace inox::compiler::semantic {
+
+enum class StringFunction {
+    // Std.Strings
+    Length,
+    ByteLength,
+    Substr,
+    Position,
+    UpperCase,
+    LowerCase,
+    // Std.StrUtils
+    Trim,
+    LTrim,
+    RTrim,
+    Left,
+    Right,
+    PadLeft,
+    PadRight,
+    Replicate,
+    Replace,
+    Contains,
+    StartsWith,
+    EndsWith,
+    SameText,
+    CompareText,
+};
+
+struct StringFunctionInfo {
+    std::string_view name;
+    StringFunction function;
+    // One letter per parameter: S a String, I an integer.
+    std::string_view parameters;
+    // S a String, I an Integer, B a Bool.
+    char result;
+    bool convenience;  // declared in Std.StrUtils, not Std.Strings
+};
+
+inline constexpr std::array<StringFunctionInfo, 20> kStringFunctions{{
+    {"Length", StringFunction::Length, "S", 'I', false},
+    {"ByteLength", StringFunction::ByteLength, "S", 'I', false},
+    {"Substr", StringFunction::Substr, "SII", 'S', false},
+    {"Position", StringFunction::Position, "SS", 'I', false},
+    {"UpperCase", StringFunction::UpperCase, "S", 'S', false},
+    {"LowerCase", StringFunction::LowerCase, "S", 'S', false},
+    {"Trim", StringFunction::Trim, "S", 'S', true},
+    {"LTrim", StringFunction::LTrim, "S", 'S', true},
+    {"RTrim", StringFunction::RTrim, "S", 'S', true},
+    {"Left", StringFunction::Left, "SI", 'S', true},
+    {"Right", StringFunction::Right, "SI", 'S', true},
+    {"PadLeft", StringFunction::PadLeft, "SI", 'S', true},
+    {"PadRight", StringFunction::PadRight, "SI", 'S', true},
+    {"Replicate", StringFunction::Replicate, "SI", 'S', true},
+    {"Replace", StringFunction::Replace, "SSS", 'S', true},
+    {"Contains", StringFunction::Contains, "SS", 'B', true},
+    {"StartsWith", StringFunction::StartsWith, "SS", 'B', true},
+    {"EndsWith", StringFunction::EndsWith, "SS", 'B', true},
+    {"SameText", StringFunction::SameText, "SS", 'B', true},
+    {"CompareText", StringFunction::CompareText, "SS", 'I', true},
+}};
+
+// The function named `name` (case-insensitive), or null.
+const StringFunctionInfo* findStringFunction(std::string_view name) noexcept;
+const StringFunctionInfo& stringFunctionInfo(StringFunction function) noexcept;
+
+} // namespace inox::compiler::semantic

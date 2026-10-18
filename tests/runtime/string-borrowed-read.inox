@@ -1,0 +1,54 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-14, CANON-19 (change std-strings): a String read from State, a ref
+== parameter or a field is held for the whole statement, so a routine
+== called later in the same statement that replaces it does not free the
+== value already read. Leak-checked (instrumented, so a read of a freed
+== block stops the check).
+Use Std.Strings
+
+Type
+    TBox Struct
+        FText String
+    ;
+
+State
+    Log String := ""
+    Box TBox
+;
+
+Mark String :
+    Log := "changed"
+    Box.FText := "replaced"
+    Return "x"
+;
+
+Show(A String, B String) :
+    PutLn(A, " ", B)
+;
+
+Twice(ref mut S String) :
+    Show(S, Reset(S))
+;
+
+Reset(ref mut S String) String :
+    S := "reset"
+    Return "r"
+;
+
+Main :
+    Log := "start" + "!"
+    PutLn(Log = Mark)
+    Log := "again" + "!"
+    Show(Log, Mark)
+    Box.FText := "box" + "!"
+    Show(Box.FText, Mark)
+    Local := "own" + "!"
+    Twice(Local)
+    PutLn(Log, " ", Box.FText, " ", Local, " ", Length(Log))
+;

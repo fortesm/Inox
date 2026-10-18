@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.77
+Canon revision: r3.78
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -198,3 +198,15 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   generic structs, and invariants and reused parts in them, come later.
   Marcelo Fortes, 2026-10-17: "Acato suas recomendações. Para as três
   perguntas." Change `generics`.
+- r3.78 — 2026-10-17 — Std.Strings and Std.StrUtils implemented (CANON-14,
+  CANON-18, CANON-19): `+` joins Strings and `+=` appends, in place when
+  the String alone holds its block; no implicit conversion to String.
+  Std.Strings gives Length, ByteLength, Substr, Position, UpperCase and
+  LowerCase; Std.StrUtils adds Trim, LTrim, RTrim, Left, Right, PadLeft,
+  PadRight, Replicate, Replace, Contains, StartsWith, EndsWith, SameText and
+  CompareText. Positions count code points from 1; case and white space
+  follow Unicode. A position outside a String traps with "string index out
+  of range" (fault kind 15). `S[I]` and `GraphemeLength` stay reserved.
+  `Pos` is a reserved word since r3.76, so the search function is
+  `Position`: Marcelo Fortes, 2026-10-17: "Position(Sub, S) (Recommended)".
+  Design approved in r3.65. Change `std-strings`.

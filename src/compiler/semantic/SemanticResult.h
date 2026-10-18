@@ -9,6 +9,7 @@
 
 #include "Symbol.h"
 #include "../ast/Ast.h"
+#include "StdStrings.h"
 #include "../types/TypeContext.h"
 
 #include <cstdint>
@@ -77,6 +78,19 @@ public:
         instances_.clear();
         structInstances_.clear();
         constructions_.clear();
+        stringCalls_.clear();
+    }
+
+    // Std.Strings / Std.StrUtils (change std-strings): the function a call
+    // of the module runs, or null when the call is not one.
+    void setStringCall(const ast::CallExpression& call, StringFunction function)
+    {
+        stringCalls_.insert_or_assign(&call, function);
+    }
+    const StringFunction* stringCall(const ast::CallExpression& call) const
+    {
+        const auto iterator = stringCalls_.find(&call);
+        return iterator != stringCalls_.end() ? &iterator->second : nullptr;
     }
 
     // CANON-8 (r3.77): the copy of a generic routine for one list of types
@@ -236,6 +250,7 @@ private:
     std::vector<std::unique_ptr<ast::FunctionDeclaration>> instances_;
     std::vector<const types::Type*> structInstances_;
     std::unordered_map<const ast::CallExpression*, const types::Type*> constructions_;
+    std::unordered_map<const ast::CallExpression*, StringFunction> stringCalls_;
     // Keyed by a VarStatement or a VariableDeclaration.
     std::unordered_map<const void*, const types::Type*> declaredTypes_;
     std::unordered_map<const ast::AstNode*, std::vector<InvariantCheck>> invariantBefore_;

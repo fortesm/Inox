@@ -295,23 +295,8 @@ Token Lexer::dollarHexNumber(SourceLocation start, std::size_t startOffset)
 
 Token Lexer::stringLiteral(SourceLocation start, std::size_t startOffset)
 {
-    bool doubledDelimiter = false;
-    if (peek() == '"') {
-        for (std::size_t index = current_ + 1; index + 1 < source_.size(); ++index) {
-            if (source_[index] == '\n') {
-                break;
-            }
-            if (source_[index] == '"' && source_[index + 1] == '"') {
-                doubledDelimiter = true;
-                break;
-            }
-        }
-    }
-
-    if (doubledDelimiter) {
-        advance();
-    }
-
+    // CANON-2: a String is delimited by double quotes; `""` is the empty
+    // String, also when another `""` follows on the line (`F("", "")`).
     const std::size_t contentStart = current_;
     bool escaped = false;
 
@@ -333,9 +318,6 @@ Token Lexer::stringLiteral(SourceLocation start, std::size_t startOffset)
 
     const auto content = source_.substr(contentStart, current_ - contentStart);
     advance();
-    if (doubledDelimiter && peek() == '"') {
-        advance();
-    }
 
     return Token{
         TokenKind::StringLiteral,

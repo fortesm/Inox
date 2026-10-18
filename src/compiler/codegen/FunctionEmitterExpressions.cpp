@@ -177,6 +177,9 @@ std::string FunctionEmitter::emitRangeCheck(const std::string& value, IntegerRan
 std::string FunctionEmitter::emitExpression(const ast::Expression& expression)
 {
     std::string value = emitExpressionValue(expression);
+    if (statementRunsRoutine_ && isBorrowedRead(expression)) {
+        value = protectBorrowed(expression, value);
+    }
     if (isRangeCheckedArithmetic(expression)) {
         if (const auto range = narrowIntegerRange(typeOf(expression))) {
             value = emitRangeCheck(value, *range, 1);
@@ -255,6 +258,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
     }
     case ast::AstNodeKind::BinaryExpression: {
         const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
+        if (isStringConcatenation(binary)) {
+            return emitConcatenation(binary);
+        }
         const std::string leftType = expressionLlvmType(binary.left());
         const std::string rightType = expressionLlvmType(binary.right());
         const std::string result = "%tmp" + std::to_string(nextTemporary_++);
@@ -404,6 +410,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         }
 
         const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
+        if (const semantic::StringFunction* function = semantics_.stringCall(call)) {
+            return emitStringCall(call, *function);
+        }
         if (callee.name() == "__index") {
             const ElementAddress element = emitElementAddress(call);
             return loadElement(element);

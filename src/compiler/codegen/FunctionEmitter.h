@@ -413,6 +413,33 @@ private:
     std::unordered_set<std::string> tombstoneLocals_;
     std::unordered_map<std::string, std::string> tombstoneSlots_;
 
+    // ---- Strings: `+` and Std.Strings / Std.StrUtils (change std-strings;
+    // FunctionEmitterStringFunctions.cpp) ----
+    bool isStringConcatenation(const ast::Expression& expression) const;
+    std::string emitConcatenation(const ast::BinaryExpression& expression);
+    // `S := S + X ...`: false when the assignment is not of that form.
+    bool emitStringAppend(const ast::BinaryExpression& assignment);
+    std::string emitStringCall(const ast::CallExpression& call, semantic::StringFunction function);
+    std::string emitStringParts(const std::vector<const ast::Expression*>& parts);
+    std::string newStringStatus();
+    void emitStringStatusCheck(const std::string& status);
+    bool samePlace(const ast::Expression& first, const ast::Expression& second) const;
+    bool mayRunRoutine(const ast::Expression& expression) const;
+
+    // ---- Borrowed values a routine could free (FunctionEmitterStrings.cpp) ----
+    // A String read from storage is borrowed until the end of its statement.
+    // When the statement may run a routine of the program, and the storage is
+    // one a routine can change (State, a ref parameter, a path through a
+    // pointer, a with binding), the value read is retained into a statement
+    // temporary: the routine cannot free it while the statement still uses it.
+    bool runsRoutine(const ast::Expression& node) const;
+    bool statementMayRunRoutine(const ast::Statement& statement) const;
+    bool placeMayChange(const ast::Expression& place) const;
+    bool isBorrowedRead(const ast::Expression& expression) const;
+    std::string protectBorrowed(const ast::Expression& expression, const std::string& value);
+    bool statementRunsRoutine_ = false;
+    std::unordered_set<std::string> referenceParameters_;
+
     // ---- Std.IOUtils (OpenSpec change file-io; FunctionEmitterFiles.cpp) ----
     // A call to a file function (and not to a routine of the program).
     bool isFileCall(const ast::CallExpression& call) const;

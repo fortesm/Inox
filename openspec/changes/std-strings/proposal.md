@@ -20,13 +20,18 @@ registered the modules (canon v3.57, r3.58) and decided their shape on
   idioma específico".
 
 Risk: high (new runtime ABI functions; in-place append changes how String
-blocks are owned). Design approved 2026-10-13 (canon r3.65); implementation follows tasks.md.
+blocks are owned). Design approved 2026-10-13 (canon r3.65).
+
+Status: **implemented** (canon r3.78). `Pos` became a reserved word in
+r3.76, so the search function is named `Position`:
+Marcelo Fortes, 2026-10-17: "Position(Sub, S) (Recommended)"
 
 ## What Changes
 
 **Language (CANON-14):** `A + B` concatenates Strings (`+=` with it,
 ADR-0012). No implicit conversion: `"N=" + 5` is an error. String
-concatenation and `Length` stop being reserved.
+concatenation and `Length` stop being reserved; `S[I]` and
+`GraphemeLength` stay reserved.
 
 **Std.Strings** (`Use Std.Strings`) — what nearly every program needs:
 
@@ -35,7 +40,7 @@ concatenation and `Length` stop being reserved.
 | `Length(S)` | number of characters (code points) |
 | `ByteLength(S)` | number of UTF-8 bytes |
 | `Substr(S, Start, Count)` | `Count` characters from position `Start` (1 = first) |
-| `Pos(Sub, S)` | position of the first `Sub` in `S`, 0 when absent |
+| `Position(Sub, S)` | position of the first `Sub` in `S`, 0 when absent or empty |
 | `UpperCase(S)`, `LowerCase(S)` | Unicode default case mapping, any language |
 
 **Std.StrUtils** (`Use Std.StrUtils`, which gives everything of

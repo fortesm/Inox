@@ -423,6 +423,11 @@ void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression)
             "LLVM emission currently supports only simple local assignments");
     }
 
+    // CANON-14: `S := S + X` and `S += X` append to S in place.
+    if (emitStringAppend(assignment)) {
+        return;
+    }
+
     if (assignment.left().kind() == ast::AstNodeKind::IdentifierExpression) {
         const auto& identifier =
             static_cast<const ast::IdentifierExpression&>(assignment.left());

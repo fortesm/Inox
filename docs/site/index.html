@@ -61,6 +61,7 @@ th{background:#eef3fb}
 <li><a href="#generics">Generics: one routine for many types</a></li>
 <li><a href="#control-flow">Control flow</a></li>
 <li><a href="#output">Std.IO and variadic output</a></li>
+<li><a href="#string-functions">String functions: Std.Strings and Std.StrUtils</a></li>
 <li><a href="#files">Text files: Std.Files and Std.IOUtils</a></li>
 <li><a href="#arrays-sets-future">Arrays, vectors, ranges, enums, and sets</a></li>
 <li><a href="#runtime-status">Runtime and implementation status</a></li>
@@ -146,7 +147,7 @@ inox version               print the version</code></pre>
 <p>Checking and IR emission do not require Clang when using a prebuilt compiler. Building and running currently require <code>clang</code> in <code>PATH</code>.</p>
 </section>
 <section id="stdlib-output"><h2>Standard library discovery and output directory</h2>
-<p>The standard library has <code>Std.System</code> (the prelude, always available, formerly <code>Std.Core</code>), <code>Std.IO</code>, <code>Std.Math</code>, <code>Std.Errors</code> (the exception types), <code>Std.Debug</code> and the pair <code>Std.Files</code> / <code>Std.IOUtils</code>. Modules come in pairs: <code>Std.X</code> holds a subject's types and fundamental operations, and <code>Std.XUtils</code> the conveniences built on them (using <code>Std.XUtils</code> also gives everything of <code>Std.X</code>). Planned: <code>Std.Strings</code> / <code>Std.StrUtils</code>, <code>Std.DateTime</code> / <code>Std.DateUtils</code>, and <code>Std.SystemUtils</code> for system functions.</p>
+<p>The standard library has <code>Std.System</code> (the prelude, always available, formerly <code>Std.Core</code>), <code>Std.IO</code>, <code>Std.Math</code>, <code>Std.Errors</code> (the exception types), <code>Std.Debug</code> and the pairs <code>Std.Files</code> / <code>Std.IOUtils</code> and <code>Std.Strings</code> / <code>Std.StrUtils</code>. Modules come in pairs: <code>Std.X</code> holds a subject's types and fundamental operations, and <code>Std.XUtils</code> the conveniences built on them (using <code>Std.XUtils</code> also gives everything of <code>Std.X</code>). Planned: <code>Std.DateTime</code> / <code>Std.DateUtils</code>, and <code>Std.SystemUtils</code> for system functions.</p>
 <p><code>Use Std.Debug</code> gives <code>Assert(Condition)</code> and <code>Assert(Condition, Message)</code>. When the condition is false the program stops at once, like an overflow: no handler catches it and no <code>ensure</code> runs. Assert is never compiled out.</p>
 <pre><code>Use Std.Debug
 
@@ -348,7 +349,7 @@ if not (A = B) and (A &lt; C or C = &quot;&quot;)
     PutLn(&quot;ok&quot;)
 ;</code></pre>
 <p><code>Bool</code> values are ordered as in Pascal and Ada: <code>false &lt; true</code>. Structs are never compared, also as in Pascal: compare their fields.</p>
-<p>Joining Strings (concatenation), indexing <code>S[I]</code> and length functions are reserved; the String functions are planned in <code>Std.StrUtils</code>. The compiler frees every String when it is no longer used, also when an exception leaves a routine; there is nothing to free by hand.</p>
+<p><code>+</code> joins Strings and <code>+=</code> appends; the String functions (length, slicing, search, case, trimming) come with <code>Use Std.Strings</code> and <code>Use Std.StrUtils</code>, see <a href="#string-functions">String functions</a>. Indexing <code>S[I]</code> is reserved: <code>Substr(S, I, 1)</code> gives the character at position I. The compiler frees every String when it is no longer used, also when an exception leaves a routine; there is nothing to free by hand.</p>
 </section>
 <section id="operators"><h2>Operators and precedence</h2>
 <p>Precedence follows mathematical convention. Relational operators bind tighter than the logical operators, and bitwise operators bind tighter than the relational ones. Strongest binding first:</p>
@@ -775,6 +776,47 @@ PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
     PutLn(&quot;Hello, &quot;, Name)
 ;</code></pre>
 <p>The current backend lowers these facilities through the runtime/compiler path used by the LLVM smoke-test backend. This is not the final language ABI.</p>
+</section>
+<section id="string-functions"><h2>String functions: Std.Strings and Std.StrUtils</h2>
+<p><code>+</code> joins two Strings and <code>+=</code> appends, with no <code>Use</code>. There is no implicit conversion: <code>"N=" + N</code> with an Integer N is an error, and <code>PutLn("N=", N)</code> prints both without building a String. A chain such as <code>A + " " + B + "!"</code> makes one String in one step, and <code>S += X</code> (or <code>S := S + X</code>) writes X at the end of S in place when no other variable holds the same text, so a loop of appends takes linear time, as with a string builder. A copy taken before the append keeps its value.</p>
+<p><code>Use Std.Strings</code> gives the functions nearly every program needs; <code>Use Std.StrUtils</code> adds the conveniences, in the style of Delphi, and gives everything of <code>Std.Strings</code>. Without the <code>Use</code>, the names are free for your own routines.</p>
+<table>
+<tr><th>Std.Strings</th><th>Result</th></tr>
+<tr><td><code>Length(S)</code></td><td>the number of characters (Unicode code points)</td></tr>
+<tr><td><code>ByteLength(S)</code></td><td>the number of UTF-8 bytes</td></tr>
+<tr><td><code>Substr(S, Start, Count)</code></td><td>Count characters from position Start (the first is 1)</td></tr>
+<tr><td><code>Position(Sub, S)</code></td><td>the position of the first Sub in S; 0 when absent or empty</td></tr>
+<tr><td><code>UpperCase(S)</code>, <code>LowerCase(S)</code></td><td>the case changed by Unicode rules, one character to one</td></tr>
+</table>
+<table>
+<tr><th>Std.StrUtils</th><th>Result</th></tr>
+<tr><td><code>Trim(S)</code>, <code>LTrim(S)</code>, <code>RTrim(S)</code></td><td>without Unicode white space at both ends, the start, the end</td></tr>
+<tr><td><code>Left(S, N)</code>, <code>Right(S, N)</code></td><td>the first, the last N characters</td></tr>
+<tr><td><code>PadLeft(S, Width)</code>, <code>PadRight(S, Width)</code></td><td>spaces added up to Width characters; a longer S is unchanged</td></tr>
+<tr><td><code>Replicate(S, N)</code></td><td>S repeated N times</td></tr>
+<tr><td><code>Replace(S, Old, New)</code></td><td>every Old replaced, left to right</td></tr>
+<tr><td><code>Contains(S, Sub)</code>, <code>StartsWith(S, P)</code>, <code>EndsWith(S, P)</code></td><td>Bool</td></tr>
+<tr><td><code>SameText(A, B)</code></td><td>equal ignoring case</td></tr>
+<tr><td><code>CompareText(A, B)</code></td><td>-1, 0 or 1 ignoring case</td></tr>
+</table>
+<p>Positions and lengths count characters, never bytes: in <code>"água😀"</code> Length is 5, ByteLength is 9 and <code>Substr(W, 2, 3)</code> is <code>"gua"</code>. Case, case-insensitive comparison and white space follow Unicode (version 15.1), the same for every language and with no locale: <code>SameText("ÁGUA", "água")</code> is true everywhere. A position or count outside the String is a bug, not a value: <code>Substr</code> past the end, <code>Left(S, N)</code> with N above Length(S), a negative width or count stop the program with "string index out of range" (exit status 70), as an array index does.</p>
+<pre><code>== Counts the words of S, separated by single spaces.
+Words(S String) Integer :
+    Text := Trim(S)
+    if Text = &quot;&quot;
+        Return 0
+    ;
+    Count := 1
+    Rest := Text
+    P := Position(&quot; &quot;, Rest)
+    while P &gt; 0
+        Count += 1
+        Rest := Substr(Rest, P + 1, Length(Rest) - P)
+        P := Position(&quot; &quot;, Rest)
+    ;
+    Return Count
+;</code></pre>
+<p><code>examples/strings.inox</code> prints a padded table, cleans up a line and counts its words. Not in the language yet: <code>S[I]</code>, grapheme lengths (what a reader sees as one letter), alphabetical order of a language, normalization, Split and Join, and conversions between numbers and text.</p>
 </section>
 <section id="files"><h2>Text files: Std.Files and Std.IOUtils</h2>
 <p><code>Use Std.Files</code> gives a program the type <code>File</code> and the basic operations: <code>OpenRead</code>, <code>Create</code>, <code>OpenAppend</code>, <code>ReadLn</code>, <code>Eof</code>, <code>Write</code>, <code>WriteLn</code> and <code>Close</code>. <code>Use Std.IOUtils</code> adds the conveniences <code>Exists</code>, <code>DeleteFile</code> and <code>RenameFile</code>, and gives everything of <code>Std.Files</code>. Without them, names such as <code>Create</code>, <code>Close</code> or <code>Exists</code> are free for your own routines.</p>

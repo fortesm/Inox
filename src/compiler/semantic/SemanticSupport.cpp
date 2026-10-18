@@ -32,6 +32,16 @@ bool equalsIgnoreCase(std::string_view left, std::string_view right)
     return true;
 }
 
+bool usesModule(const ast::ModuleNode& module, std::string_view name)
+{
+    for (const std::string& loaded : module.loadedModules()) {
+        if (equalsIgnoreCase(loaded, name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string_view binaryOperatorName(ast::BinaryOperator op)
 {
     switch (op) {

@@ -23,7 +23,8 @@ NAME.in input, and requires:
 Usage: python tools/string_leak_check.py path/to/inox [path/to/libinoxrt.a]
 
 The program is instrumented with clang's AddressSanitizer when clang has its
-runtime; otherwise it is compiled plainly and linked with g++ -fsanitize=address,
+runtime; otherwise it is instrumented by clang and linked with g++'s ASan
+runtime; failing that, compiled plainly and linked with g++ -fsanitize=address,
 which still catches leaks and double frees through the allocator. Linux only;
 elsewhere it prints SKIP and exits 0.
 """
@@ -50,6 +51,11 @@ def link_modes(clang, gxx):
         modes.append(("clang-asan", lambda ll, obj, runtime, exe: [
             ["clang++", "-fsanitize=address", "-Wno-override-module", ll, runtime, "-o", exe]]))
     if clang and gxx:
+        # The generated code instrumented by clang, linked with gcc's ASan
+        # runtime: a read of a freed String in generated code is caught too.
+        modes.append(("clang-instrument-gcc-link", lambda ll, obj, runtime, exe: [
+            [clang, "-c", "-fsanitize=address", "-Wno-override-module", ll, "-o", obj],
+            [gxx, "-fsanitize=address", obj, runtime, "-o", exe]]))
         modes.append(("gcc-asan-link", lambda ll, obj, runtime, exe: [
             [clang, "-c", "-Wno-override-module", ll, "-o", obj],
             [gxx, "-fsanitize=address", obj, runtime, "-o", exe]]))

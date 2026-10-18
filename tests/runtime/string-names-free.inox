@@ -1,0 +1,24 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-14, CANON-18 (change std-strings): without `Use Std.StrUtils` the
+== names of its functions are free. A program declares its own Trim and
+== Left, and a variable named Contains; two empty literals in one call lex
+== as two Strings.
+Trim(S String) String :
+    Return "[" + S + "]"
+;
+
+Left(A String, B String) String :
+    Return A + "|" + B
+;
+
+Main :
+    Contains := 3
+    PutLn(Trim(" x "), " ", Left("", ""), " ", Contains)
+    PutLn(Left("", "b"), Left("a", ""), "" + "")
+;

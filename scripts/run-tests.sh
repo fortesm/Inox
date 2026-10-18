@@ -543,6 +543,7 @@ run_llvm_emission_test "$repo_root/examples/struct-values.inox" \
 
 
 run_llvm_emission_test "$repo_root/tests/codegen/llvm-struct-value-smoke.inox"     "%tpair = type { i64, i64 }" "define %tpair @inox_makepair" "define i64 @inox_sumpair" "call %tpair @inox_makepair" "call i64 @inox_sumpair" "ret i32 0"
+run_llvm_emission_test "$repo_root/tests/codegen/llvm-string-append-smoke.inox" "call ptr @__inox_str_concat(i64 3" "call void @__inox_str_append(ptr %s, i64 1" "call void @__inox_str_append(ptr %s, i64 2" "call ptr @__inox_str_concat(i64 2" "ret i32 0"
 run_llvm_emission_test "$repo_root/tests/codegen/llvm-exceptions-smoke.inox"     "personality ptr @__gxx_personality_v0" "invoke void @inox_fail()" "landingpad { ptr, i32 } catch ptr null" "call i64 @__inox_exception_type" "call void @__inox_exception_release" "call void @__inox_exception_rethrow"
 run_llvm_emission_test "$repo_root/tests/codegen/llvm-exceptions-retry-smoke.inox" \
     "%eh.retry.slot" "%eh.action.slot" "icmp slt i64" "store i32 2" "switch i32" "eh.retry.perform"

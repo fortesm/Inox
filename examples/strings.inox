@@ -1,0 +1,66 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Strings (CANON-14): `+` joins, `+=` appends, and Std.StrUtils (which gives
+== Std.Strings too) measures, cuts, searches and formats. Positions count
+== characters from 1, also in accented or emoji text; case and white space
+== follow Unicode, the same in every language. A small report: a padded
+== table of names, a cleaned-up input line, and a word count.
+Use Std.StrUtils
+
+Type
+    TItem Struct
+        FName String
+        FPrice Integer
+    ;
+
+Line(Name String, Price Integer) String :
+    Return PadRight(Name, 14) + "| " + Replicate("*", Price)
+;
+
+== Counts the words of S, separated by single spaces.
+Words(S String) Integer :
+    Text := Trim(S)
+    if Text = ""
+        Return 0
+    ;
+    Count := 1
+    Rest := Text
+    P := Position(" ", Rest)
+    while P > 0
+        Count += 1
+        Rest := Substr(Rest, P + 1, Length(Rest) - P)
+        P := Position(" ", Rest)
+    ;
+    Return Count
+;
+
+Main :
+    Items Array[1..3] TItem
+    Items[1] := TItem(FName := "Café", FPrice := 3)
+    Items[2] := TItem(FName := "Crème brûlée", FPrice := 5)
+    Items[3] := TItem(FName := "Água", FPrice := 1)
+    for I in 1..3
+        PutLn(Line(Items[I].FName, Items[I].FPrice))
+    ;
+    Input := "   Inox  speaks every language 😀  "
+    Clean := Trim(Input)
+    PutLn("[", Clean, "] ", Length(Clean), " characters, ", ByteLength(Clean), " bytes")
+    PutLn(UpperCase(Left(Clean, 4)), " ", Words(Replace(Clean, "  ", " ")), " words")
+    if StartsWith(Clean, "Inox") and EndsWith(Clean, "😀")
+        PutLn("starts with ", Substr(Clean, 1, 4), ", ends with ", Right(Clean, 1))
+    ;
+    Report := ""
+    for I in 1..3
+        Report += LowerCase(Items[I].FName)
+        if I < 3
+            Report += ", "
+        ;
+    ;
+    PutLn(Report)
+    PutLn(SameText("CAFÉ", Items[1].FName), " ", CompareText("abc", "ABD"))
+;

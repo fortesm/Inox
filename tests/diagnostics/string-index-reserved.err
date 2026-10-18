@@ -1,0 +1,1 @@
+S[I] on a String is reserved (CANON-14): use Substr(S, I, 1) of Std.Strings

@@ -68,11 +68,17 @@ otherwise the program SHALL stop with the runtime fault "invalid UTF-8 input"
 Every String created at run time SHALL be released exactly once when its last
 owner goes away, including when a routine is left by `Return`, `Exit`,
 `leave`, `continue`, `Retry` or an exception, and when a statement that holds
-a call result is abandoned by an exception.
+a call result is abandoned by an exception. A String a statement has read
+SHALL stay valid until the statement ends, even when a routine it calls
+replaces the place it was read from.
 
 #### Scenario: Scope exits under the leak checker
 - **WHEN** the String test programs run under AddressSanitizer with leak detection
 - **THEN** no leak, double free or use after free is reported (tools/string_leak_check.py over tests/runtime/string*.inox; Linux CI)
+
+#### Scenario: A value read is held for its statement
+- **WHEN** a statement reads a String from State, a field of State or a `ref mut` parameter and then calls a routine that replaces it
+- **THEN** the value read is used as it was, with no use after free (tests/runtime/string-borrowed-read.inox, leak-checked with the generated code instrumented)
 
 #### Scenario: Cleanup pads balance exception states
 - **WHEN** exceptions unwind through routines holding Strings

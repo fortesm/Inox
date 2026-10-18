@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-16 against Inox 0.2.0 pre-alpha, canon r3.76.
+Verified on 2026-10-17 against Inox 0.2.0 pre-alpha, canon r3.78.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -57,19 +57,28 @@ each version added.
   constraints (an error names the instance); across modules, with
   contracts and exceptions; the leak check covers the generic programs.
 - Strings: reference-counted UTF-8 values everywhere a value lives,
-  equality and ordering, `GetLn(S)`.
+  equality and ordering, `GetLn(S)`; `+` and `+=` (one allocation per
+  chain, appends in place when the String alone holds its block);
+  Std.Strings (Length, ByteLength, Substr, Position, UpperCase, LowerCase)
+  and Std.StrUtils (Trim, LTrim, RTrim, Left, Right, PadLeft, PadRight,
+  Replicate, Replace, Contains, StartsWith, EndsWith, SameText,
+  CompareText) by Unicode 15.1 rules (r3.78); a String read from State, a
+  `ref` parameter or through a pointer is held for its statement.
 - Exceptions: try/except/On/Else/ensure/Raise/Retry with the standard
   taxonomy, Itanium landing pads on Linux and MSVC funclets on Windows.
 - Text files: Std.Files (type and basic operations) / Std.IOUtils
   (conveniences).
 - Standard library: Std.System, Std.IO, Std.Math, Std.Errors, Std.Debug
-  (Assert), Std.Files, Std.IOUtils.
+  (Assert), Std.Files, Std.IOUtils, Std.Strings, Std.StrUtils.
 - Windows x64 and Linux x64 run the full suite in CI
   (`ci/windows-known-failures.txt` is empty).
 
 ## Conformance gaps (the law is ahead of the code)
 
 - UInt64/UInteger values (change `uint64`).
+- Strings: `S[I]` and `GraphemeLength` are reserved; collation,
+  normalization, Split/Join and conversions between numbers and text come
+  in later changes; case mapping is one code point to one (`ß` stays `ß`).
 - Enum, Range and Set: parsed and shape-checked only; enum types are not
   declared yet, so enum `case` coverage, enum `for`, `Ord`/`Succ`/`Pred` on
   enums and the enum initializer rule wait for change `enum-range-set`.
@@ -123,6 +132,9 @@ they are rejected now.)
   declarations.
 - Reference counts of Strings and Files are not atomic (Inox has no
   threads yet).
+- Std.Strings: a statement that calls a routine and names a State or `ref`
+  String may get an empty cleanup pad when the String is passed by address
+  rather than read (the scan that decides is conservative).
 - Types (change `type-representation`): the parser keeps written type text
   (`Array[1..N] T`, `Link<T>`), which the analyzer reads with
   `types::TypeSyntax` and resolves; a typed AST for types is a later step.

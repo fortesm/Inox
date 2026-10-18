@@ -62,16 +62,6 @@ const FileFunction* findFileFunction(std::string_view name)
     return nullptr;
 }
 
-bool usesModule(const ast::ModuleNode& module, std::string_view name)
-{
-    for (const std::string& loaded : module.loadedModules()) {
-        if (equalsIgnoreCase(loaded, name)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 } // namespace
 
 void SemanticAnalyzer::declareStandardModuleNames(const ast::ModuleNode& module)
@@ -86,6 +76,7 @@ void SemanticAnalyzer::declareStandardModuleNames(const ast::ModuleNode& module)
     if (debugVisible_ && !symbols_.globalScope().containsLocal("Assert")) {
         symbols_.globalScope().declare("Assert", SymbolKind::Builtin);
     }
+    declareStringFunctionNames(module);
     for (const FileFunction& function : kFileFunctions) {
         // ReadLn is also the console prelude function (no argument).
         if (fileFunctionVisible(function.name) && !symbols_.globalScope().containsLocal(function.name)) {
