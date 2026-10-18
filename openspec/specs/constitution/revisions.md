@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.78
+Canon revision: r3.79
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -210,3 +210,13 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `Pos` is a reserved word since r3.76, so the search function is
   `Position`: Marcelo Fortes, 2026-10-17: "Position(Sub, S) (Recommended)".
   Design approved in r3.65. Change `std-strings`.
+- r3.79 — 2026-10-18 — UInt64 implemented (CANON-8): UInt64/UInteger holds
+  0..2^64-1 everywhere an integer lives; arithmetic, power and shifts trap on
+  overflow and below 0, `div`, `mod`, `shr` and comparisons are unsigned,
+  `case` orders its choices unsigned (with `else`) and `for` reaches 2^64-1;
+  conversions into and out of UInt64 are checked (kind 8); Get, PutLn and
+  files print and read it unsigned. Q1 to Q3 as decided in r3.50: a literal
+  up to 2^64-1 only in a UInt64 context, no unary minus, no mixing without a
+  written conversion. A UInt64 Const is written `Const K := UInt64(...)`.
+  Marcelo Fortes, 2026-10-12: "Todas as tomadas de decisão dos pontos 1 a 5
+  foram verificadas e eleitas para serem acatadas." Change `uint64`.
