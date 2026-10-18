@@ -56,6 +56,7 @@ enum class RuntimeFunction {
     FileEof,
     FileWriteString,
     FileWriteInteger,
+    FileWriteUnsigned,
     FileWriteFloat,
     FileWriteBool,
     FileWriteNewline,

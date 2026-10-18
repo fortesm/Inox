@@ -75,6 +75,31 @@ std::string checkedIntegerHelper(ast::BinaryOperator op)
     }
 }
 
+// Change uint64: the UInt64 helpers of the same operators.
+std::string llvmUnsignedHelper(ast::BinaryOperator op)
+{
+    switch (op) {
+    case ast::BinaryOperator::Add:
+        return "__inox_addu_i64";
+    case ast::BinaryOperator::Subtract:
+        return "__inox_subu_i64";
+    case ast::BinaryOperator::Multiply:
+        return "__inox_mulu_i64";
+    case ast::BinaryOperator::IntegerDivide:
+        return "__inox_divu_i64";
+    case ast::BinaryOperator::Modulo:
+        return "__inox_modu_i64";
+    case ast::BinaryOperator::ShiftLeft:
+        return "__inox_shlu_i64";
+    case ast::BinaryOperator::ShiftRight:
+        return "__inox_shru_i64";
+    case ast::BinaryOperator::Power:
+        return "__inox_ipowu_i64";
+    default:
+        return {};
+    }
+}
+
 std::string llvmOperation(ast::BinaryOperator op)
 {
     switch (op) {

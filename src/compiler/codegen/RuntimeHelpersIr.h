@@ -25,5 +25,10 @@ std::string contractMessageHelper();
 std::string assertMessageHelper();
 // Checked Integer arithmetic helpers (`__inox_add_i64`, ...).
 std::string mathRuntimeHelpers();
+// UInt64 arithmetic (`__inox_addu_i64`, ...), emitted only by a module that
+// computes with UInt64 values (change uint64).
+std::string unsignedRuntimeHelpers();
+// `__inox_read_u64`: Get into a UInt64 (change uint64).
+std::string unsignedInputHelper();
 
 } // namespace inox::compiler::codegen::detail

@@ -15,6 +15,7 @@
 #include "LlvmText.h"
 #include "MathBuiltins.h"
 #include "Operators.h"
+#include "RuntimeHelpersIr.h"
 #include "../exceptions/ExceptionTypes.h"
 #include "../support/Platform.h"
 
@@ -104,6 +105,13 @@ void FunctionEmitter::emitInputReadInteger(const ast::Expression& argument)
         throw CodegenUnsupported("Get/GetLn LLVM emission currently supports only Integer/Int64 variables");
     }
 
+    // Change uint64: a UInt64 reads 0..18446744073709551615.
+    if (isUInt64Type(local->second.type)) {
+        requireUnsignedHelpers();
+        requireModuleLine(unsignedInputHelper());
+        output_ << "  call void @__inox_read_u64(ptr " << local->second.slot << ")\n";
+        return;
+    }
     output_ << "  call void @__inox_read_i64(ptr " << local->second.slot << ")\n";
     if (const auto range = narrowIntegerRange(local->second.type)) {
         const std::string read = "%tmp" + std::to_string(nextTemporary_++);
@@ -187,6 +195,14 @@ void FunctionEmitter::emitOutputCall(const ast::Expression& argument, bool newli
         return;
     }
 
+    // Change uint64: a UInt64 is printed unsigned.
+    if (isUInt64Type(typeOf(argument))) {
+        requireModuleLine("@.inox.fmt.u64 = private unnamed_addr constant [5 x i8] c\"%llu\\00\"");
+        requireModuleLine("@.inox.fmt.u64.nl = private unnamed_addr constant [6 x i8] c\"%llu\\0A\\00\"");
+        output_ << "  call i32 (ptr, ...) @printf(ptr " << (newline ? "@.inox.fmt.u64.nl" : "@.inox.fmt.u64")
+                << ", i64 " << value << ")\n";
+        return;
+    }
     output_ << "  call i32 (ptr, ...) @printf(ptr "
             << (newline ? "@.inox.fmt.i64.nl" : "@.inox.fmt.i64")
             << ", i64 " << value << ")\n";

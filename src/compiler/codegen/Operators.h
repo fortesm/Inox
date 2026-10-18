@@ -20,6 +20,7 @@ std::string fcmpPredicate(ast::BinaryOperator op);
 std::string llvmFloatOperation(ast::BinaryOperator op);
 // The internal helper (`__inox_add_i64`, ...) of a checked Integer operator.
 std::string checkedIntegerHelper(ast::BinaryOperator op);
+std::string llvmUnsignedHelper(ast::BinaryOperator op);
 std::string llvmOperation(ast::BinaryOperator op);
 std::string llvmComparisonPredicate(ast::BinaryOperator op);
 std::string llvmBooleanOperation(ast::BinaryOperator op);

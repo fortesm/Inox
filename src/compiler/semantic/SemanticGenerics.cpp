@@ -192,7 +192,8 @@ TypeRef SemanticAnalyzer::analyzeExpressionFor(const ast::Expression& expression
     const ast::Expression* previousExpression = std::exchange(targetExpression_, &expression);
     const TypeRef previousType = std::exchange(targetType_, target);
     try {
-        const TypeRef type = analyzeExpression(expression);
+        // A UInt64 target makes its literals UInt64 (change uint64).
+        const TypeRef type = analyzeWithIntegerContext(expression, target);
         targetExpression_ = previousExpression;
         targetType_ = previousType;
         return type;
@@ -289,10 +290,13 @@ TypeRef SemanticAnalyzer::analyzeGenericCall(const ast::FunctionDeclaration& gen
     // written type of its parameter. A literal fixes a type only when nothing
     // else does (`Max(B, 1)` with B Byte is Max<UInt8>), as `B + 1` reads 1
     // in B's type (CANON-8).
-    std::vector<TypeRef> argumentTypes;
-    argumentTypes.reserve(count);
+    // The literals are analyzed after the other arguments: a literal whose
+    // parameter is a T that they made UInt64 is a UInt64 (change uint64).
+    std::vector<TypeRef> argumentTypes(count, nullptr);
     for (std::size_t index = 0; index < count; ++index) {
-        argumentTypes.push_back(analyzeExpression(*call->arguments()[index]));
+        if (!isLiteralArgument(*call->arguments()[index])) {
+            argumentTypes[index] = analyzeExpression(*call->arguments()[index]);
+        }
     }
     std::vector<TypeRef> bound(parameters.size(), nullptr);
     std::vector<TypeRef> fixedByValues;
@@ -304,7 +308,19 @@ TypeRef SemanticAnalyzer::analyzeGenericCall(const ast::FunctionDeclaration& gen
             if (isLiteralArgument(*call->arguments()[index]) != literals) {
                 continue;
             }
-            if (const auto pattern = types::readTypeSyntax(written[index].type)) {
+            const auto pattern = types::readTypeSyntax(written[index].type);
+            if (literals) {
+                TypeRef context = nullptr;
+                if (pattern && pattern->form == types::TypeSyntax::Form::Named) {
+                    for (std::size_t parameter = 0; parameter < parameters.size(); ++parameter) {
+                        if (equalsIgnoreCase(pattern->name, parameters[parameter])) {
+                            context = bound[parameter];
+                        }
+                    }
+                }
+                argumentTypes[index] = analyzeWithIntegerContext(*call->arguments()[index], context);
+            }
+            if (pattern) {
                 unifyTypeSyntax(*pattern, argumentTypes[index], parameters, bound, generic.name(),
                                 "argument " + std::to_string(index + 1), literals ? &fixedByValues : nullptr);
             }

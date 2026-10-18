@@ -15,6 +15,7 @@
 #include "LlvmText.h"
 #include "MathBuiltins.h"
 #include "Operators.h"
+#include "RuntimeHelpersIr.h"
 #include "../exceptions/ExceptionTypes.h"
 #include "../support/Platform.h"
 
@@ -55,6 +56,11 @@ bool FunctionEmitter::typeOwnsReferences(TypeRef type) const
         }
     }
     return false;
+}
+
+void FunctionEmitter::requireUnsignedHelpers()
+{
+    requireModuleLine(unsignedRuntimeHelpers());
 }
 
 void FunctionEmitter::requireModuleLine(const std::string& line)

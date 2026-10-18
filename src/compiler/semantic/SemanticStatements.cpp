@@ -350,15 +350,19 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
                 }
             }
         }
-        analyzeExpression(forStatement.iterable());
+        const TypeRef rangeType = analyzeExpression(forStatement.iterable());
+        // Change uint64: a range of UInt64 values gives a UInt64 iterator;
+        // every other integer range gives an Integer one.
+        const TypeRef iteratorType = isUInt64Type(rangeType) ? rangeType : types().int64Type();
         if (forStatement.step() != nullptr) {
-            const TypeRef stepType = analyzeExpression(*forStatement.step());
+            const TypeRef stepType = analyzeWithIntegerContext(*forStatement.step(), iteratorType);
             if (!isIntegerType(stepType)) {
                 throw SemanticError("for-loop step must be an Integer expression, got " +
                                     (stepType == nullptr ? std::string("<unknown>") : stepType->name()));
             }
-            std::int64_t constantStep = 0;
-            if (constantIntegerValue(*forStatement.step(), constantStep) && constantStep <= 0) {
+            IntegerConstant constantStep;
+            if (integerConstant(*forStatement.step(), constantStep) &&
+                (constantStep.bits == 0 || (constantStep.bits < 0 && !constantStep.isUnsigned))) {
                 throw SemanticError("for-loop step must be a positive integer");
             }
         }
@@ -369,7 +373,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             throw SemanticError(
                 "loop iterator conflicts with existing symbol: " + forStatement.iterator());
         }
-        declareOrThrow(forStatement.iterator(), SymbolKind::LoopIterator, types().int64Type(), false);
+        declareOrThrow(forStatement.iterator(), SymbolKind::LoopIterator, iteratorType, false);
         const auto start = movedOwners_;
         ++loopDepth_;
         analyzeStatements(forStatement.body(), false);

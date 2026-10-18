@@ -74,6 +74,8 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
         return "declare void @__inox_file_write_str(ptr, ptr)";
     case RuntimeFunction::FileWriteInteger:
         return "declare void @__inox_file_write_i64(ptr, i64)";
+    case RuntimeFunction::FileWriteUnsigned:
+        return "declare void @__inox_file_write_u64(ptr, i64)";
     case RuntimeFunction::FileWriteFloat:
         return "declare void @__inox_file_write_f64(ptr, double)";
     case RuntimeFunction::FileWriteBool:

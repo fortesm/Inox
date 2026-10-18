@@ -67,9 +67,80 @@ void SemanticAnalyzer::requireStatementExpression(const ast::Expression& express
     }
 }
 
+// Whether the UInt64 context of a target reaches into this expression's
+// operands (change uint64): only through arithmetic and bitwise operators,
+// unary + and bitnot, and the branches of IIf.
+static bool carriesIntegerContext(const ast::Expression& expression)
+{
+    switch (expression.kind()) {
+    case ast::AstNodeKind::LiteralExpression:
+    case ast::AstNodeKind::ConditionalExpression:
+        return true;
+    case ast::AstNodeKind::UnaryExpression: {
+        const ast::UnaryOperator op = static_cast<const ast::UnaryExpression&>(expression).op();
+        return op == ast::UnaryOperator::Plus || op == ast::UnaryOperator::BitNot;
+    }
+    case ast::AstNodeKind::BinaryExpression:
+        switch (static_cast<const ast::BinaryExpression&>(expression).op()) {
+        case ast::BinaryOperator::Add:
+        case ast::BinaryOperator::Subtract:
+        case ast::BinaryOperator::Multiply:
+        case ast::BinaryOperator::Power:
+        case ast::BinaryOperator::IntegerDivide:
+        case ast::BinaryOperator::Modulo:
+        case ast::BinaryOperator::ShiftLeft:
+        case ast::BinaryOperator::ShiftRight:
+        case ast::BinaryOperator::BitAnd:
+        case ast::BinaryOperator::BitOr:
+        case ast::BinaryOperator::BitXor:
+            return true;
+        default:
+            return false;
+        }
+    default:
+        return false;
+    }
+}
+
+// An integer literal whose magnitude does not fit Int64 (only a UInt64 holds it).
+static bool isLiteralAboveInt64(const ast::Expression& expression)
+{
+    if (expression.kind() != ast::AstNodeKind::LiteralExpression) {
+        return false;
+    }
+    const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
+    std::uint64_t magnitude = 0;
+    return literal.literalKind() == ast::LiteralKind::Integer &&
+           parseIntegerLiteralMagnitude(literal.value(), magnitude) && magnitude >= kInt64MagnitudeOfMin;
+}
+
+TypeRef SemanticAnalyzer::analyzeWithIntegerContext(const ast::Expression& expression, TypeRef context)
+{
+    const TypeRef previous = std::exchange(integerContext_, isUInt64Type(context) ? context : nullptr);
+    try {
+        const TypeRef type = analyzeExpression(expression);
+        integerContext_ = previous;
+        return type;
+    } catch (...) {
+        integerContext_ = previous;
+        throw;
+    }
+}
+
 TypeRef SemanticAnalyzer::analyzeExpression(const ast::Expression& expression)
 {
-    const TypeRef type = inferExpressionType(expression);
+    const TypeRef context = integerContext_;
+    if (!carriesIntegerContext(expression)) {
+        integerContext_ = nullptr;
+    }
+    TypeRef type = nullptr;
+    try {
+        type = inferExpressionType(expression);
+    } catch (...) {
+        integerContext_ = context;
+        throw;
+    }
+    integerContext_ = context;
     result_.setExpressionType(expression, type);
     foldConstantExpression(expression);
     // CANON-8: constant overflow is a compile-time error in every integer type.
@@ -95,10 +166,20 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
         case ast::LiteralKind::Integer: {
             std::uint64_t magnitude = 0;
             const auto& integerLiteral = static_cast<const ast::LiteralExpression&>(expression);
-            if (!parseIntegerLiteralMagnitude(integerLiteral.value(), magnitude) ||
-                magnitude >= kInt64MagnitudeOfMin) {
+            if (!parseIntegerLiteralMagnitude(integerLiteral.value(), magnitude)) {
                 throw SemanticError("integer literal out of range for Int64: " +
                                     std::string(integerLiteral.value()));
+            }
+            // Change uint64 (Q1): where a UInt64 is expected, a literal is a
+            // UInt64 and may reach 2^64-1; elsewhere it must fit Int64.
+            if (isUInt64Type(integerContext_)) {
+                return integerContext_;
+            }
+            if (magnitude >= kInt64MagnitudeOfMin) {
+                throw SemanticError("integer literal out of range for Int64: " +
+                                    std::string(integerLiteral.value()) +
+                                    " (a literal above Int64.Max is a UInt64 where a UInt64 is expected: "
+                                    "X UInt64 := " + std::string(integerLiteral.value()) + ")");
             }
             return types().int64Type();
         }
@@ -157,13 +238,22 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
         // ADR-0013: the condition is Bool; both branches have compatible
         // types, which is the type of the expression.
         const auto& conditional = static_cast<const ast::ConditionalExpression&>(expression);
-        const TypeRef conditionType = analyzeExpression(conditional.condition());
+        const TypeRef conditionType = analyzeWithIntegerContext(conditional.condition(), nullptr);
         if (conditionType == nullptr || !conditionType->isBool()) {
             throw SemanticError("the condition of a conditional expression must be Bool, got " +
                                 (conditionType == nullptr ? std::string("<unknown>") : conditionType->name()));
         }
         const TypeRef thenType = analyzeExpression(conditional.thenValue());
-        const TypeRef elseType = analyzeExpression(conditional.elseValue());
+        // A UInt64 branch makes the other a UInt64 context (change uint64).
+        const TypeRef elseType = analyzeWithIntegerContext(
+            conditional.elseValue(), integerContext_ != nullptr ? integerContext_ : thenType);
+        // `IIf(C, 7, U)`: a constant branch that is not negative is a UInt64
+        // next to a UInt64 one.
+        std::int64_t constant = 0;
+        if (isUInt64Type(elseType) && thenType == types().int64Type() &&
+            constantIntegerValue(conditional.thenValue(), constant) && constant >= 0) {
+            return elseType;
+        }
         if (!typesMatch(thenType, elseType)) {
             throw SemanticError("the branches of a conditional expression have different types: " +
                                 types::nameOf(thenType) + " and " + types::nameOf(elseType) + " (ADR-0013)");
@@ -481,13 +571,33 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
     const auto integerFamily = [this](TypeRef type) {
         return type == types().naturalType() ? types().int64Type() : type;
     };
-    TypeRef leftType = integerFamily(analyzeExpression(expression.left()));
-    TypeRef rightType = integerFamily(analyzeExpression(expression.right()));
+    // Change uint64: a UInt64 operand makes the other one a UInt64 context,
+    // so `U = 18446744073709551615` and `U + 1` read the literal as a UInt64.
+    TypeRef leftType = nullptr;
+    TypeRef rightType = nullptr;
+    if (isLiteralAboveInt64(expression.left()) && !isUInt64Type(integerContext_)) {
+        rightType = integerFamily(analyzeExpression(expression.right()));
+        leftType = integerFamily(analyzeWithIntegerContext(expression.left(), rightType));
+    } else {
+        leftType = integerFamily(analyzeExpression(expression.left()));
+        rightType = integerFamily(analyzeWithIntegerContext(
+            expression.right(), integerContext_ != nullptr ? integerContext_ : leftType));
+    }
 
     // CANON-8 (universal integer literal, as in Ada): a constant Integer
     // operand next to a fixed-width integer is read in that type and must fit
     // it (`B + 1` with B Byte); a value that does not fit is a compile error.
     const auto adaptConstant = [&](TypeRef narrowType, const ast::Expression& other, TypeRef& otherType) {
+        if (isUInt64Type(narrowType) && otherType == types().int64Type()) {
+            std::int64_t value = 0;
+            if (constantIntegerValue(other, value)) {
+                if (value < 0) {
+                    throw SemanticError("value out of range for UInt64: " + std::to_string(value));
+                }
+                otherType = narrowType;
+            }
+            return;
+        }
         if (!isNarrowIntegerType(narrowType) || otherType != types().int64Type()) {
             return;
         }
@@ -506,6 +616,16 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
     adaptConstant(rightType, expression.left(), leftType);
 
     const auto requireMatchingTypes = [&] {
+        // Change uint64 (Q3): UInt64 and another integer type never mix; the
+        // conversion is written.
+        if (!typesMatch(leftType, rightType) && (isUInt64Type(leftType) || isUInt64Type(rightType)) &&
+            isIntegerType(leftType) && isIntegerType(rightType)) {
+            const bool leftUnsigned = isUInt64Type(leftType);
+            const TypeRef other = leftUnsigned ? rightType : leftType;
+            throw SemanticError("operator '" + std::string(binaryOperatorName(op)) + "' mixes UInt64 and " +
+                                other->name() + ": write the conversion, UInt64(X) or " + other->name() +
+                                "(U) (a conversion outside the target's range stops the program)");
+        }
         if (!typesMatch(leftType, rightType)) {
             throw SemanticError(
                 "operator '" + std::string(binaryOperatorName(op)) +
@@ -638,6 +758,11 @@ TypeRef SemanticAnalyzer::analyzeUnaryExpression(const ast::UnaryExpression& exp
     case ast::UnaryOperator::Minus:
         if (operandType != nullptr && !isNumericType(operandType)) {
             throw SemanticError("unary arithmetic operator requires a numeric operand");
+        }
+        // Change uint64 (Q2): no signed type holds every negated UInt64.
+        if (expression.op() == ast::UnaryOperator::Minus && isUInt64Type(operandType)) {
+            throw SemanticError("unary minus is not defined for UInt64: write -Integer(U), which stops the "
+                                "program when U is above Int64.Max");
         }
         // CANON-8: negating a Natural leaves the subtype; the result is Integer.
         if (expression.op() == ast::UnaryOperator::Minus && operandType == types().naturalType()) {

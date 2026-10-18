@@ -105,6 +105,12 @@ inline bool isLinkType(TypeRef type) { return type != nullptr && type->isLink();
 inline bool isPointerType(TypeRef type) { return type != nullptr && type->isPointer(); }
 // An owner frees its object: an Own or an Option<Own>.
 inline bool isOwnerType(TypeRef type) { return type != nullptr && (type->isOwn() || type->isOptionOwn()); }
+// UInt64 (change uint64): an i64 whose 64 bits are read unsigned; every
+// other integer type is carried as its signed mathematical value.
+inline bool isUInt64Type(TypeRef type)
+{
+    return type != nullptr && type->isInteger() && type->bits() == 64 && !type->isSigned();
+}
 
 std::string llvmStructName(TypeRef structType);
 // The range of a fixed-width integer type narrower than 64 bits, or nullopt

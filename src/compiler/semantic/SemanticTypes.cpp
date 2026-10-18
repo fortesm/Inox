@@ -130,6 +130,17 @@ bool SemanticAnalyzer::canAssignValue(TypeRef targetType, TypeRef valueType, con
         }
         return false;
     }
+    // Change uint64: a constant Integer that is not negative is a UInt64.
+    if (isUInt64Type(targetType) && valueType == types().int64Type()) {
+        std::int64_t constant = 0;
+        if (constantIntegerValue(value, constant)) {
+            if (constant < 0) {
+                throw SemanticError("value out of range for UInt64: " + std::to_string(constant));
+            }
+            return true;
+        }
+        return false;
+    }
     if (targetType == types().naturalType() && valueType == types().int64Type()) {
         std::int64_t constant = 0;
         if (constantIntegerValue(value, constant)) {
