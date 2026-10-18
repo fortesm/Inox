@@ -1,0 +1,30 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-13, ADR-0011 (change enum-range-set): a case on an enum that
+== names every literal needs no else; ranges and alternatives of literals.
+Type
+    TSuit (Club, Diamond, Heart, Spade)
+
+Color(S TSuit) String :
+    case S
+        Club | Spade
+            Return "black"
+        Diamond..Heart
+            Return "red"
+    ;
+;
+
+Main :
+    for S in Club..Spade
+        case S
+            Club PutLn(S, " ", Color(S))
+            Diamond PutLn(S, " ", Color(S))
+            Heart..Spade PutLn(S, " ", Color(S), " high")
+        ;
+    ;
+;

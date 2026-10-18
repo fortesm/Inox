@@ -64,6 +64,7 @@ th{background:#eef3fb}
 <li><a href="#string-functions">String functions: Std.Strings and Std.StrUtils</a></li>
 <li><a href="#files">Text files: Std.Files and Std.IOUtils</a></li>
 <li><a href="#arrays-sets-future">Arrays, vectors, ranges, enums, and sets</a></li>
+<li><a href="#enums-ranges-sets">Enums, ranges and sets</a></li>
 <li><a href="#runtime-status">Runtime and implementation status</a></li>
 <li><a href="#design-stance">Design stance</a></li>
 <li><a href="#build-from-source">Building the compiler from source</a></li></ol></nav>
@@ -908,11 +909,42 @@ PutLn(Sum(A[2..4]), " ", Sum(A[..]))</code></pre>
 <ul>
 <li>Vectors are planned as dynamic, 0-based, bounds-checked collections.</li>
 <li>Generic types are written with angle brackets: <code>Vector&lt;Integer&gt;</code>, <code>Set&lt;TCardSuit&gt;</code>. Square brackets stay for indexing and bounds: <code>Values[I]</code>, <code>Array[1..10] Integer</code>. The generic structs of a program are written the same way (<a href="#generics">Generics</a>); <code>Vector</code> and <code>Set</code> are not built in yet.</li>
-<li>Ranges are finite ordinal declarations.</li>
-<li>Enums are nominal and ordinal, with no implicit conversion to/from <code>Integer</code>.</li>
-<li>Sets are planned as finite sets over ordinal base types, inspired by Pascal and Ada discipline.</li>
 </ul>
-<p>Some of these features are language direction rather than complete current compiler implementation.</p>
+<p>Enums, Ranges and Sets work today; see <a href="#enums-ranges-sets">Enums, ranges and sets</a>. Vectors are language direction, not yet implemented.</p>
+</section>
+<section id="enums-ranges-sets"><h2>Enums, ranges and sets</h2>
+<p>An <strong>enum</strong> names a few values: short, <code>TSuit (Club, Diamond, Heart, Spade)</code>, or one literal per line between <code>TDay Enum</code> and <code>;</code>. It is never an Integer: <code>Ord(Heart)</code> is 2, <code>TSuit(I)</code> converts back and stops the program with "integer conversion out of range" when I is not 0..3, and <code>Heart + 1</code> is an error; <code>Succ</code> and <code>Pred</code> step to the next and previous literal and stop the program past the ends. Values of one enum compare by order (<code>Club &lt; Spade</code>), <code>Low(TSuit)</code> and <code>High(TSuit)</code> are the first and last literal, <code>for S in Diamond..Spade</code> walks them, and <code>PutLn(S)</code> prints the literal's name as declared. A literal belongs to one enum only. An enum variable needs an initializer; a struct field may default to a literal, and one without a default or an array element starts at the first literal.</p>
+<p>A <strong>Range</strong>, <code>TScore Range 0..100</code>, is an Integer that never leaves its bounds: storing a value outside them stops the program with "value out of range", and a constant outside them is a compile error. Its arithmetic is Integer arithmetic, so <code>Total := Total + 11</code> is checked only when it is stored. A <code>case</code> on an enum or a Range without <code>else</code> must cover every value, and the error names the first one missing:</p>
+<pre><code>Type
+    TSuit (Club, Diamond, Heart, Spade)
+    TRank (Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King, Ace)
+    TScore Range 0..100
+    TCard Struct
+        FSuit TSuit := Club
+        FRank TRank := Two
+    ;
+
+Points(R TRank) Integer :
+    case R
+        Two..Ten
+            Return Ord(R) + 2
+        Jack | Queen | King
+            Return 10
+        Ace
+            Return 11
+    ;
+;
+
+Color(S TSuit) String :
+    case S
+        Club | Spade
+            Return &quot;black&quot;
+        Diamond | Heart
+            Return &quot;red&quot;
+    ;
+;</code></pre>
+<p>A <strong>Set</strong>, <code>Set&lt;TSuit&gt;</code>, is a set over an enum or a Range of at most 256 values, a value that starts empty. <code>[Club, Heart]</code> writes one where a Set is expected; <code>X in S</code> tests membership; <code>=</code> and <code>#</code> compare, <code>&lt;=</code> and <code>&gt;=</code> test subset and superset; <code>Union</code>, <code>Intersection</code>, <code>Difference</code>, <code>SymmetricDifference</code>, <code>With(S, X)</code> and <code>Without(S, X)</code> return new sets. It costs one bit per value, with no allocation. <code>X in A..B</code> also tests a value against two bounds.</p>
+<p><code>examples/cards.inox</code> scores a hand of cards with all three. A Range over Char (<code>TLetter Range 'A'..'Z'</code>) is declared and waits for Char values.</p>
 </section>
 <section id="runtime-status"><h2>Runtime and implementation status</h2>
 <p>Inox does not yet provide a complete standalone language runtime. The <code>stdlib/Std.*.inox</code> files remain early standard-library modules and documentation anchors. The minimal static <code>libinoxrt</code> component (canon revision 3.17) provides exception transport and unwinding; since revision 3.55 it also holds the String runtime (reference-counted immutable blocks and line input), and since revision 3.59 the text-file runtime. It is not yet a general-purpose language runtime or RTTI system.</p>

@@ -75,6 +75,21 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
         if (callee.name() == "__slice") {
             return analyzeSliceExpression(call);
         }
+        // Sets (CANON-13): a literal, and the six set functions.
+        if (callee.name() == "__set") {
+            return analyzeSetLiteral(call);
+        }
+        if (isSetFunctionCall(call)) {
+            const Symbol* symbol = symbols_.currentScope().resolve(callee.name());
+            if (symbol != nullptr) {
+                result_.bind(callee, *symbol);
+            }
+            return analyzeSetFunction(call);
+        }
+        // Enums: Ord, Succ, Pred, and Low and High of an enum type.
+        if (const TypeRef ordinal = analyzeOrdinalBuiltin(call)) {
+            return ordinal;
+        }
         // Safe pointers: New, Free, Move, Value, Link, Alive, Same.
         if (isPointerBuiltinCall(callee.name(), call.arguments().size())) {
             return analyzePointerBuiltin(callee.name(), call);
@@ -128,6 +143,16 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
                 // CANON-8 (v3.39): an integer conversion checks the range of
                 // its target. A constant argument outside it, such as
                 // Natural(-1) or Byte(300), is a compile-time error.
+                if (type->isEnum()) {
+                    checkEnumConversion(call, type);
+                    return type;
+                }
+                // An enum becomes an integer only through Ord (CANON-13).
+                if (call.arguments().size() == 1 && type->isInteger()) {
+                    if (const TypeRef from = result_.typeOf(*call.arguments()[0]); from != nullptr && from->isEnum()) {
+                        throw SemanticError(callee.name() + "(E) of an enum value is written Ord(E) (CANON-13)");
+                    }
+                }
                 if (call.arguments().size() == 1 && type->isInteger()) {
                     IntegerConstant constant;
                     if (integerConstant(*call.arguments()[0], constant) && !constantFits(constant, type)) {

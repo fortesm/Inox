@@ -963,11 +963,33 @@ ast::ExpressionPtr Parser::parsePrimary()
         return std::make_unique<ast::IdentifierExpression>(token.lexeme);
     }
 
+    // CANON-13 (Q6): `With(S, X)` is the set function; the reserved word
+    // `with` starts a statement, never an expression, so a `with` followed by
+    // `(` in an expression can only be the function.
+    if (checkKeyword("with") && current_ + 1 < tokens_.size() &&
+        tokens_[current_ + 1].kind == TokenKind::LeftParen) {
+        const lexer::Token& token = advance();
+        return std::make_unique<ast::IdentifierExpression>(token.lexeme);
+    }
+
     if (match(TokenKind::LeftParen)) {
         auto expression = parseValue();
         consume(TokenKind::RightParen, "expected ')' after expression");
         markParenthesized(expression.get());
         return expression;
+    }
+
+    // CANON-13: `[Club, Heart]` is a set literal, `[]` the empty set; the
+    // analyzer gives it the Set type its place expects.
+    if (match(TokenKind::LeftBracket)) {
+        std::vector<ast::ExpressionPtr> elements;
+        if (!check(TokenKind::RightBracket)) {
+            do {
+                elements.push_back(parseValue());
+            } while (match(TokenKind::Comma));
+        }
+        consume(TokenKind::RightBracket, "expected ']' after the elements of a set literal");
+        return makeExpr<ast::CallExpression>(makeSyntheticIdentifier("__set"), std::move(elements));
     }
 
     // Leading '.' inside a 'with' body: expand to __member(__with_N, Member)
@@ -1902,6 +1924,11 @@ std::string Parser::parseStructFieldDefault(const std::string& fieldName)
     // number or a Bool (`FAge Integer := "12"` is a type error).
     if (sign.empty() && match(TokenKind::StringLiteral)) {
         return '"' + previous().lexeme + '"';
+    }
+    // An enum literal (`FSuit TSuit := Heart`); the analyzer checks that it
+    // belongs to the field's enum (CANON-13).
+    if (sign.empty() && match(TokenKind::Identifier)) {
+        return previous().lexeme;
     }
     throw ParseError("the default of struct field " + fieldName + " must be one literal (CANON-9)",
                      isAtEnd() ? previous().location : peek().location);

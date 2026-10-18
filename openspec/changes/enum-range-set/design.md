@@ -46,3 +46,34 @@ Integer-family choices (ADR-0011) and has a hook for Enum.
 
 Kind 8 (or a dedicated kind, per Q2) for `TEnum(I)`; new kind 11 "value out of
 range" for Range stores (Q1); kind 9 unchanged.
+
+## Where the implementation differs
+
+Recorded at implementation (canon r3.80); the decisions above stand
+otherwise.
+
+- **One PR.** The three phases went in one PR, each phase its own commit
+  in the history of the branch.
+- **Enums are i64.** An enum value is its ordinal in an i64, like every
+  integer type, so no widening or narrowing happens at calls, fields or
+  array elements; the language does not see the width.
+- **Kind 11 for Succ and Pred.** Past the ends they stop with "value out of
+  range", the Range fault (Q1), not kind 8 (Q2 is for `TEnum(I)`).
+- **Aggregates.** An enum struct field may have a literal default; a field
+  without one and an array element start at the first literal, the zero
+  every aggregate starts from (CANON-5: aggregates take their type's
+  defaults). Recorded as an open question for the maintainer.
+- **Range bounds** are literals or Consts (as array bounds are); the grammar
+  says so now.
+- **A Range over Char** (`TLetter Range 'A'..'Z'`) is declared and its
+  bounds checked, but Char values are not lowered yet, so its values and
+  Sets over it come with that item of 0.2.
+- **`With(S, X)`.** `with` is a reserved word; in an expression, followed by
+  `(`, it can only be the set function (a `with` statement never starts an
+  expression), so the parser reads it so. `Without` is an ordinary name.
+- **Sets** are integers of whole bytes (`i8` to `i256`); a value outside a
+  Range base is in no set (`101 in Seen` is false), and `X in A..B` is
+  lowered too.
+- **Messages.** An enum and an Integer never stand for each other, each way
+  with a message that shows `Ord(E)` or `TEnum(I)`; enum arithmetic points
+  to Succ, Pred and Ord.

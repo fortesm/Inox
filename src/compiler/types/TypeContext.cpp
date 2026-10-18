@@ -133,6 +133,34 @@ const Type* TypeContext::declareStruct(std::string_view name)
     return type;
 }
 
+const Type* TypeContext::declareEnum(std::string_view name, std::vector<std::string> literals)
+{
+    Type* type = create(TypeKind::Enum, std::string(name));
+    type->low_ = 0;
+    type->high_ = static_cast<std::int64_t>(literals.size()) - 1;
+    type->literals_ = std::move(literals);
+    declareName(name, type);
+    return type;
+}
+
+const Type* TypeContext::declareRange(std::string_view name, bool ofChar)
+{
+    Type* type = create(ofChar ? TypeKind::Char : TypeKind::Integer, std::string(name));
+    type->bits_ = 64;
+    type->signed_ = true;
+    type->element_ = ofChar ? char_ : int64_;
+    ranges_.emplace(type, type);
+    declareName(name, type);
+    return type;
+}
+
+void TypeContext::setRangeBounds(const Type* rangeType, std::int64_t low, std::int64_t high)
+{
+    Type* type = ranges_.at(rangeType);
+    type->low_ = low;
+    type->high_ = high;
+}
+
 void TypeContext::setStructFields(const Type* structType, std::vector<StructField> fields)
 {
     mutableStruct(structType)->fields_ = std::move(fields);
@@ -161,6 +189,11 @@ const Type* TypeContext::array(std::int64_t low, std::int64_t high, const Type* 
 const Type* TypeContext::slice(const Type* element)
 {
     return unary(TypeKind::Slice, element, "Slice<" + element->name() + ">");
+}
+
+const Type* TypeContext::set(const Type* base)
+{
+    return unary(TypeKind::Set, base, "Set<" + base->name() + ">");
 }
 
 const Type* TypeContext::own(const Type* target)

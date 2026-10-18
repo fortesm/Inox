@@ -308,6 +308,12 @@ bool caseDomainFor(const types::Type* type, CaseDomain& domain)
         domain = {0, 0x10FFFF, true, false, true};
         return true;
     }
+    if (type->isEnum()) {
+        // Every literal is a value: coverage is provable (CANON-13).
+        domain = {type->minValue(), type->maxValue(), true};
+        domain.enumType = type;
+        return true;
+    }
     if (isUInt64Type(type)) {
         // Every value of UInt64 has a key in Int64 (caseKey); a case on it
         // still needs `else` (change uint64).
@@ -335,6 +341,10 @@ std::string caseValueText(std::int64_t value, const CaseDomain& domain)
     }
     if (domain.isUnsigned64) {
         return std::to_string(static_cast<std::uint64_t>(caseKey(value)));
+    }
+    if (domain.enumType != nullptr && value >= 0 &&
+        static_cast<std::size_t>(value) < domain.enumType->literals().size()) {
+        return domain.enumType->literals()[static_cast<std::size_t>(value)];
     }
     return std::to_string(value);
 }

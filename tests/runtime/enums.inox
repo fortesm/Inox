@@ -1,0 +1,66 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-13 Enum (change enum-range-set): short and multi-line enums,
+== ordinals from 0, comparison by ordinal, Ord, TEnum(I), Low, High, Succ,
+== Pred, enum ranges in for, PutLn prints the name as declared (Q3: with
+== TNaipe, PutLn(Naipe) prints Copas), WriteLn writes it, and enums in
+== fields with a default, array elements (born at the first literal), State,
+== parameters, results and a generic routine.
+Use Std.IOUtils
+
+Type
+    TSuit (Club, Diamond, Heart, Spade)
+    TNaipe (Paus, Ouros, Copas, Espadas)
+    TDay Enum
+        Monday
+        Tuesday
+        Wednesday
+    ;
+    TCard Struct
+        FSuit TSuit := Heart
+        FRank Integer := 1
+    ;
+
+State
+    Trump TSuit := Spade
+;
+
+Next(D TDay) TDay :
+    Return IIf(D = High(TDay), Low(TDay), Succ(D))
+;
+
+Max<T>(A T, B T) T :
+    Return IIf(A > B, A, B)
+;
+
+Main :
+    PutLn(Ord(Heart), " ", Club < Spade, " ", Heart = Heart, " ", Heart # Club, " ", Spade >= Spade)
+    Naipe TNaipe := Copas
+    PutLn(Naipe)
+    PutLn(Ord(Naipe))
+    for S in Diamond..Spade
+        PutLn(Ord(S), " ", S)
+    ;
+    PutLn(Ord(Low(TSuit)), " ", Ord(High(TSuit)), " ", Ord(Succ(Club)), " ", Pred(Spade), " ", Low(TDay))
+    I := 2
+    PutLn(TSuit(I), " ", TSuit(I + 1), " ", TSuit(0) = Club)
+    D := Wednesday
+    PutLn(Next(D), " ", Next(Next(D)), " ", Max(Club, Heart), " ", Max(D, Monday))
+    C TCard
+    Hand Array[1..3] TSuit
+    Hand[3] := Trump
+    Trump := Pred(Trump)
+    PutLn(C.FSuit, " ", Hand[1], " ", Hand[3], " ", Trump)
+    F := Create("enums.txt")
+    WriteLn(F, Naipe, " ", Ord(D), " ", D)
+    Close(F)
+    R := OpenRead("enums.txt")
+    PutLn(ReadLn(R))
+    Close(R)
+    DeleteFile("enums.txt")
+;

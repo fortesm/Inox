@@ -1,0 +1,1 @@
+an integer is not a TSuit: convert it with TSuit(I), which checks the ordinal (CANON-13)

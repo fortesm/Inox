@@ -119,6 +119,9 @@ std::optional<IntegerRange> narrowIntegerRange(TypeRef type);
 // The LLVM type of a value in SSA form: every integer is i64; empty when the
 // type has no LLVM representation (Char, Decimal, an exception, unknown).
 std::string llvmValueType(TypeRef type);
+// Set<T> (CANON-13): one bit per value of T, in an integer of a whole number
+// of bytes (`i8` for 1..8 values, ... `i256`).
+std::string llvmSetType(TypeRef setType);
 // The LLVM type of an array element: a narrow integer in its own width.
 std::string llvmStorageType(TypeRef type);
 bool isFloatLlvmType(std::string_view llvmType);

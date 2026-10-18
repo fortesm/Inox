@@ -412,12 +412,79 @@ TypeRef SemanticAnalyzer::inferSectionDeclarationType(const ast::Expression* val
 
 void SemanticAnalyzer::registerTypeSectionSymbols(const ast::SectionDeclaration& section)
 {
-    // Range and Enum declarations are parsed and shape-checked; their types
-    // come with the OpenSpec change enum-range-set.
     for (const ast::TypeDeclaration& declaration : section.types()) {
         if (declaration.kind == ast::TypeDeclarationKind::Struct && declaration.typeParameters.empty()) {
             registerStructDeclaration(declaration);
+        } else if (declaration.kind == ast::TypeDeclarationKind::Enum) {
+            registerEnumDeclaration(declaration);
+        } else if (declaration.kind == ast::TypeDeclarationKind::Range) {
+            if (types().isDeclared(declaration.name)) {
+                throw SemanticError("type already declared: " + declaration.name);
+            }
+            declareOrThrow(declaration.name, SymbolKind::Type);
+            const auto& bounds = static_cast<const ast::BinaryExpression&>(*declaration.bounds);
+            const bool ofChar = bounds.left().kind() == ast::AstNodeKind::LiteralExpression &&
+                                static_cast<const ast::LiteralExpression&>(bounds.left()).literalKind() ==
+                                    ast::LiteralKind::Char;
+            types().declareRange(declaration.name, ofChar);
         }
+    }
+}
+
+// CANON-13 Range: `TMonth Range 1..12`, its bounds static values (literals or
+// Consts) with Low <= High. A Char range keeps its bounds as code points.
+void SemanticAnalyzer::resolveRangeBounds(const ast::TypeDeclaration& declaration)
+{
+    const TypeRef rangeType = types().lookup(declaration.name);
+    const auto& bounds = static_cast<const ast::BinaryExpression&>(*declaration.bounds);
+    std::int64_t low = 0;
+    std::int64_t high = 0;
+    if (rangeType->isChar()) {
+        analyzeExpression(bounds.left());
+        analyzeExpression(bounds.right());
+        if (!staticCharValue(bounds.left(), low) || !staticCharValue(bounds.right(), high)) {
+            throw SemanticError("the bounds of Range " + declaration.name + " must be static Char values");
+        }
+    } else {
+        const TypeRef lowType = analyzeExpression(bounds.left());
+        const TypeRef highType = analyzeExpression(bounds.right());
+        if (!isIntegerType(lowType) || !isIntegerType(highType) || isUInt64Type(lowType) || isUInt64Type(highType) ||
+            !constantIntegerValue(bounds.left(), low) || !constantIntegerValue(bounds.right(), high)) {
+            throw SemanticError("the bounds of Range " + declaration.name +
+                                " must be static Integer values: literals or Consts (CANON-13)");
+        }
+    }
+    if (low > high) {
+        throw SemanticError("Range " + declaration.name + " is empty: its low bound " + std::to_string(low) +
+                            " is above its high bound " + std::to_string(high) + " (CANON-13)");
+    }
+    types().setRangeBounds(rangeType, low, high);
+}
+
+// CANON-13 (change enum-range-set): an enum is a nominal type; each literal
+// is a constant of that type whose value is its ordinal, 0..N-1. A literal
+// belongs to one enum and shares the module's namespace.
+void SemanticAnalyzer::registerEnumDeclaration(const ast::TypeDeclaration& declaration)
+{
+    if (types().isDeclared(declaration.name)) {
+        throw SemanticError("type already declared: " + declaration.name);
+    }
+    declareOrThrow(declaration.name, SymbolKind::Type);
+    const TypeRef enumType = types().declareEnum(declaration.name, declaration.literals);
+    for (std::size_t ordinal = 0; ordinal < declaration.literals.size(); ++ordinal) {
+        const std::string& literal = declaration.literals[ordinal];
+        if (const Symbol* existing = symbols_.currentScope().resolve(literal)) {
+            if (existing->kind == SymbolKind::Constant && existing->type != nullptr && existing->type->isEnum()) {
+                throw SemanticError("enum literal " + literal + " is already a literal of " +
+                                    existing->type->name() +
+                                    ": a literal belongs to one enum (CANON-13)");
+            }
+        }
+        declareOrThrow(literal, SymbolKind::Constant, enumType, false);
+        ConstantValue value;
+        value.kind = ConstantValue::Kind::Integer;
+        value.integer = static_cast<std::int64_t>(ordinal);
+        result_.setConstantValue(*symbols_.currentScope().resolve(literal), value);
     }
 }
 
@@ -522,6 +589,16 @@ void SemanticAnalyzer::validateStructFieldDefault(const std::string& fieldName,
         }
         return;
     }
+    // An enum field defaults to one of its literals (CANON-13).
+    if (fieldType->isEnum()) {
+        for (const std::string& literal : fieldType->literals()) {
+            if (equalsIgnoreCase(literal, defaultValue)) {
+                return;
+            }
+        }
+        throw SemanticError("the default of struct field " + fieldName + " must be a literal of " +
+                            fieldType->name() + ", got " + defaultValue);
+    }
     const bool negative = !defaultValue.empty() && defaultValue.front() == '-';
     const std::string_view magnitudeText = negative ? std::string_view(defaultValue).substr(1)
                                                     : std::string_view(defaultValue);
@@ -587,6 +664,11 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
 {
     if (section.sectionKind() == ast::SectionKind::Type) {
         for (const ast::TypeDeclaration& declaration : section.types()) {
+            if (declaration.kind == ast::TypeDeclarationKind::Range) {
+                resolveRangeBounds(declaration);
+            }
+        }
+        for (const ast::TypeDeclaration& declaration : section.types()) {
             if (declaration.kind == ast::TypeDeclarationKind::Struct && declaration.typeParameters.empty()) {
                 completeStructFields(declaration);
             }
@@ -625,10 +707,12 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
             const TypeRef type = resolveWrittenType(typeName);
             // A Link and an Option<Own<T>> are born empty (safe-pointers).
             const bool bornEmpty = type->isLink() || type->isOptionOwn();
-            if (!type->isStruct() && !type->isArray() && !bornEmpty) {
+            if (!type->isStruct() && !type->isArray() && !type->isSet() && !bornEmpty) {
                 throw SemanticError(type->isOwn()
                                         ? "an owner is born with New(...): " + name
-                                        : "scalar declaration requires initializer: " + name);
+                                    : type->isEnum() ? "an enum variable needs an initializer (CANON-5): " + name + " " +
+                                                           type->name() + " := " + type->literals().front()
+                                                     : "scalar declaration requires initializer: " + name);
             }
             if (const std::string owner = ownerFieldWithoutDefault(type); !owner.empty()) {
                 throw SemanticError(owner + " is an owner without default: give " + name + " a value");

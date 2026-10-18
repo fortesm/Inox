@@ -104,6 +104,16 @@ void FunctionEmitter::emitStructFieldDefaults(const std::string& pointer, TypeRe
             output_ << "  store ptr " << value << ", ptr " << fieldPointer << '\n';
             continue;
         }
+        if (field.type->isEnum()) {
+            // The ordinal of the default literal (CANON-13).
+            std::size_t ordinal = 0;
+            while (ordinal < field.type->literals().size() &&
+                   !equalsIgnoreCase(field.type->literals()[ordinal], field.defaultValue)) {
+                ++ordinal;
+            }
+            output_ << "  store i64 " << ordinal << ", ptr " << fieldPointer << '\n';
+            continue;
+        }
         output_ << "  store " << layout.llvmType << ' ' << llvmDefaultLiteral(field.defaultValue, layout.llvmType)
                 << ", ptr " << fieldPointer << '\n';
     }

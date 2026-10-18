@@ -92,6 +92,10 @@ module that owns a concern instead of searching the whole emitter.
     slots, statement temporaries) and borrowed reads: in a statement that
     calls a routine, a String read from State, a `ref` parameter, a pointer
     path or a `with` binding is retained for the statement;
+  - `FunctionEmitterEnums.cpp` — enum and Range built-ins, and the table of
+    literal names each enum prints from;
+  - `FunctionEmitterSets.cpp` — sets as whole-byte integers, `in` (also
+    `X in A..B`), the set comparisons and functions;
   - `FunctionEmitterStringFunctions.cpp` — `+` on Strings (one
     `__inox_str_concat` per chain, `__inox_str_append` in place) and the
     Std.Strings / Std.StrUtils calls, with their status out-parameter and
@@ -169,6 +173,10 @@ module that owns a concern instead of searching the whole emitter.
     rules, the pointer built-ins, and the definite-move analysis
     (`movedOwners_`, merged over every path);
   - `SemanticDebug.cpp` — Std.Debug: Assert;
+  - `SemanticEnums.cpp` — the ordinal built-ins of enums and Ranges (Ord,
+    Succ, Pred, Low and High of a type) and `TEnum(I)` (CANON-13);
+  - `SemanticSets.cpp` — Set<T>: its base, the literal `[A, B]`, `in`, the
+    six set functions (CANON-13);
   - `SemanticStrings.cpp` — Std.Strings / Std.StrUtils (CANON-14): the
     names visible with their `Use`, argument checks; the table of the
     functions is `StdStrings.h`, shared with codegen;

@@ -113,7 +113,11 @@ void FunctionEmitter::emitInputReadInteger(const ast::Expression& argument)
         return;
     }
     output_ << "  call void @__inox_read_i64(ptr " << local->second.slot << ")\n";
-    if (const auto range = narrowIntegerRange(local->second.type)) {
+    std::optional<IntegerRange> range = narrowIntegerRange(local->second.type);
+    if (local->second.type != nullptr && local->second.type->isRange()) {
+        range = IntegerRange{local->second.type->minValue(), local->second.type->maxValue()};
+    }
+    if (range) {
         const std::string read = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << read << " = load i64, ptr " << local->second.slot << "\n";
         const std::string checked = emitRangeCheck(read, *range, 6);
@@ -155,12 +159,15 @@ void FunctionEmitter::emitOutputCall(const ast::Expression& argument, bool newli
         }
     }
 
-    if (isStringType(typeOf(argument))) {
+    const TypeRef printedType = typeOf(argument);
+    if (isStringType(printedType) || (printedType != nullptr && printedType->isEnum())) {
         // The bytes of the block, printed by the program's printf so the
         // output stays in order with every other Put (StringRuntime.cpp).
+        // An enum prints its literal's name (CANON-13).
         requireModuleLine("@.inox.fmt.strv = private unnamed_addr constant [5 x i8] c\"%.*s\\00\"");
         requireModuleLine("@.inox.fmt.strv.nl = private unnamed_addr constant [6 x i8] c\"%.*s\\0A\\00\"");
-        const std::string value = emitExpression(argument);
+        const std::string value = printedType->isEnum() ? emitEnumName(emitExpression(argument), printedType)
+                                                        : emitExpression(argument);
         const std::string lengthPointer = "%tmp" + std::to_string(nextTemporary_++);
         const std::string length = "%tmp" + std::to_string(nextTemporary_++);
         const std::string length32 = "%tmp" + std::to_string(nextTemporary_++);
@@ -234,7 +241,7 @@ bool FunctionEmitter::isBoolExpression(const ast::Expression& expression) const
     if (expression.kind() == ast::AstNodeKind::BinaryExpression) {
         const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
         return !llvmComparisonPredicate(binary.op()).empty() ||
-               !llvmBooleanOperation(binary.op()).empty();
+               !llvmBooleanOperation(binary.op()).empty() || binary.op() == ast::BinaryOperator::In;
     }
 
     return expressionLlvmType(expression) == "i1";

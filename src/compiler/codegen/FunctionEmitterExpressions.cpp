@@ -155,7 +155,8 @@ TypeRef FunctionEmitter::conversionTarget(const ast::CallExpression& call) const
         semantics_.types().lookup(static_cast<const ast::IdentifierExpression&>(call.callee()).name());
     const bool lowered = target != nullptr && (target == semantics_.types().naturalType() ||
                                                target == semantics_.types().int64Type() ||
-                                               target->isNarrowInteger() || isUInt64Type(target));
+                                               target->isNarrowInteger() || isUInt64Type(target) ||
+                                               target->isEnum() || target->isRange());
     return lowered ? target : nullptr;
 }
 
@@ -205,6 +206,10 @@ std::string FunctionEmitter::emitExpression(const ast::Expression& expression)
         if (const auto range = narrowIntegerRange(typeOf(expression))) {
             value = emitRangeCheck(value, *range, 1);
         }
+    }
+    // CANON-13 Range (Q1): a value stored into a Range is checked (kind 11).
+    if (const TypeRef range = semantics_.rangeCheck(expression)) {
+        value = emitRangeCheck(value, IntegerRange{range->minValue(), range->maxValue()}, 11);
     }
     if (!semantics_.needsNaturalCheck(expression)) {
         return value;
@@ -281,6 +286,12 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
         if (isStringConcatenation(binary)) {
             return emitConcatenation(binary);
+        }
+        if (binary.op() == ast::BinaryOperator::In) {
+            return emitMembership(binary);
+        }
+        if (const TypeRef leftSet = typeOf(binary.left()); leftSet != nullptr && leftSet->isSet()) {
+            return emitSetComparison(binary);
         }
         const std::string leftType = expressionLlvmType(binary.left());
         const std::string rightType = expressionLlvmType(binary.right());
@@ -448,6 +459,12 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (callee.name() == "__slice") {
             return emitSlice(call);
         }
+        if (isOrdinalBuiltin(call)) {
+            return emitOrdinalBuiltin(call);
+        }
+        if (isSetCall(call)) {
+            return emitSetCall(call);
+        }
         if (isPointerBuiltin(call)) {
             if (equalsIgnoreCase(callee.name(), "Free")) {
                 throw CodegenError("void function call cannot be used as an expression");
@@ -524,6 +541,14 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             const TypeRef source = typeOf(*call.arguments().front());
             if (isUInt64Type(source) || isUInt64Type(target)) {
                 return emitUnsignedConversion(value, source, target);
+            }
+            // TSuit(I): an ordinal 0..N-1 (CANON-13 Q2: kind 8); TMonth(I):
+            // one of its values.
+            if (target->isEnum() || target->isRange()) {
+                if (source == target) {
+                    return value;
+                }
+                return emitRangeCheck(value, IntegerRange{target->minValue(), target->maxValue()}, 8);
             }
             if (const auto range = narrowIntegerRange(target)) {
                 return emitRangeCheck(value, *range, 8);

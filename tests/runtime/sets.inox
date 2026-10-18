@@ -1,0 +1,71 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-13 Set (change enum-range-set): Set<T> over an Enum or a Range of
+== at most 256 values, a value type, empty by default. `in` tests
+== membership (a value outside a Range base is in no set), = and # compare,
+== <= and >= test subset and superset; Union, Intersection, Difference,
+== SymmetricDifference, With and Without return new sets (Q6); [A, B] is a
+== literal where a Set is expected. Sets in fields, State, array elements,
+== parameters and results; a Set of 200 values (an i200).
+Type
+    TSuit (Club, Diamond, Heart, Spade)
+    TPercent Range 0..100
+    TFlags Range 1..200
+    THand Struct
+        FSuits Set<TSuit>
+        FCount Integer := 0
+    ;
+
+State
+    Seen Set<TPercent>
+;
+
+Show(S Set<TSuit>) :
+    for X in Club..Spade
+        if X in S
+            Put(X, " ")
+        ;
+    ;
+    PutLn("|")
+;
+
+Reds Set<TSuit> :
+    Return [Diamond, Heart]
+;
+
+Main :
+    Red := Reds
+    Black Set<TSuit> := [Club, Spade]
+    Empty Set<TSuit>
+    All := Union(Red, Black)
+    Show(Red)
+    Show(All)
+    Show(Intersection(All, Red))
+    Show(Difference(All, Red))
+    Show(SymmetricDifference(Red, [Heart, Spade]))
+    Show(With(Empty, Spade))
+    Show(Without(All, Club))
+    PutLn(Red <= All, " ", All >= Black, " ", Red <= Black, " ", Red = [Heart, Diamond], " ", Empty # [], " ", Heart in [Club, Heart])
+    Copy := Empty
+    Copy := With(Copy, Club)
+    Pair Set<TSuit> := [Club, Heart]
+    PutLn(Club in Empty, " ", Club in Copy, " ", Club in Pair, " ", Heart in Pair, " ", Spade in Pair)
+    H THand
+    H.FSuits := With(H.FSuits, Heart)
+    Show(H.FSuits)
+    Seen := With(Seen, 100)
+    Seen := With(Seen, 0)
+    N := 50
+    PutLn(100 in Seen, " ", 0 in Seen, " ", N in Seen, " ", 101 in Seen, " ", -1 in Seen)
+    Big Set<TFlags> := [1, 200, 129]
+    PutLn(200 in Big, " ", 129 in Big, " ", 128 in Big, " ", 1 in Big, " ", Big = [1, 129, 200])
+    Hands Array[1..2] Set<TSuit>
+    Hands[2] := Red
+    Show(Hands[1])
+    Show(Hands[2])
+;

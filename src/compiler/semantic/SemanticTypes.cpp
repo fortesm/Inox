@@ -90,6 +90,10 @@ bool SemanticAnalyzer::canAssign(TypeRef targetType, TypeRef valueType) const
     if (targetType == types().int64Type() && valueType == types().naturalType()) {
         return true;
     }
+    // CANON-13: a Range value is always a valid value of its base.
+    if (valueType != nullptr && valueType->isRange() && targetType == valueType->rangeBase()) {
+        return true;
+    }
     return targetType == nullptr || (valueType != nullptr && targetType == valueType);
 }
 
@@ -115,6 +119,14 @@ bool SemanticAnalyzer::canAssignValue(TypeRef targetType, TypeRef valueType, con
     if (canAssign(targetType, valueType)) {
         return true;
     }
+    // CANON-13: an enum and an Integer never stand for each other.
+    if (targetType != nullptr && valueType != nullptr && targetType->isEnum() && valueType->isInteger()) {
+        throw SemanticError("an integer is not a " + targetType->name() + ": convert it with " +
+                            targetType->name() + "(I), which checks the ordinal (CANON-13)");
+    }
+    if (targetType != nullptr && valueType != nullptr && targetType->isInteger() && valueType->isEnum()) {
+        throw SemanticError("a " + valueType->name() + " is not an integer: its ordinal is Ord(E) (CANON-13)");
+    }
     // CANON-8: a constant Integer is read in a fixed-width target type when it
     // fits (`B Byte := 200`); otherwise it is a compile-time range error.
     if (isNarrowIntegerType(targetType) && valueType == types().int64Type()) {
@@ -129,6 +141,24 @@ bool SemanticAnalyzer::canAssignValue(TypeRef targetType, TypeRef valueType, con
             return true;
         }
         return false;
+    }
+    // CANON-13 Range (Q1): an Integer-family value enters a Range checked
+    // against its bounds; a constant outside them is a compile error.
+    if (targetType != nullptr && targetType->isRange() && valueType != nullptr && valueType->isInteger() &&
+        (valueType == types().int64Type() || valueType == types().naturalType() ||
+         valueType->rangeBase() == types().int64Type())) {
+        std::int64_t constant = 0;
+        if (constantIntegerValue(value, constant)) {
+            if (constant < targetType->minValue() || constant > targetType->maxValue()) {
+                throw SemanticError("value out of range for " + targetType->name() + ": " +
+                                    std::to_string(constant) + " (it holds " +
+                                    std::to_string(targetType->minValue()) + ".." +
+                                    std::to_string(targetType->maxValue()) + ")");
+            }
+            return true;
+        }
+        result_.requireRangeCheck(value, targetType);
+        return true;
     }
     // Change uint64: a constant Integer that is not negative is a UInt64.
     if (isUInt64Type(targetType) && valueType == types().int64Type()) {
@@ -198,6 +228,9 @@ TypeRef SemanticAnalyzer::resolveTypeSyntax(const types::TypeSyntax& syntax, std
     case types::TypeSyntax::Form::Array:
         return resolveArrayType(syntax, written);
     case types::TypeSyntax::Form::Generic:
+        if (detail::equalsIgnoreCase(syntax.name, "Set") && syntax.arguments.size() == 1) {
+            return resolveSetType(syntax, written);  // CANON-13
+        }
         if (!detail::equalsIgnoreCase(syntax.name, "Slice") && !detail::equalsIgnoreCase(syntax.name, "Own") &&
             !detail::equalsIgnoreCase(syntax.name, "Link") && !detail::equalsIgnoreCase(syntax.name, "Option")) {
             return resolveGenericStructType(syntax, written);  // CANON-8: TPair<String, Integer>
@@ -208,7 +241,7 @@ TypeRef SemanticAnalyzer::resolveTypeSyntax(const types::TypeSyntax& syntax, std
         if (detail::equalsIgnoreCase(syntax.name, "Slice")) {
             const std::string elementText = syntax.argument().spelling();
             const TypeRef element = resolveTypeSyntax(syntax.argument(), elementText);
-            if (!element->isArray() && !element->isNumeric() && !element->isBool()) {
+            if (!element->isArray() && !element->isNumeric() && !element->isBool() && !element->isEnum()) {
                 throw SemanticError("slices of " + element->name() +
                                     " are not supported yet; use an integer, Float, Bool or array element");
             }
@@ -279,9 +312,10 @@ TypeRef SemanticAnalyzer::resolveArrayType(const types::TypeSyntax& syntax, std:
         throw SemanticError("an array of owners is Array[...] Option<Own<T>>: every element is born None");
     }
     const bool isPointer = element->isLink() || element->isOptionOwn();
-    if (!element->isNumeric() && !element->isBool() && !element->isString() && !element->isStruct() && !isPointer) {
+    if (!element->isNumeric() && !element->isBool() && !element->isString() && !element->isStruct() && !isPointer &&
+        !element->isEnum() && !element->isSet()) {
         throw SemanticError("array elements of type " + element->name() +
-                            " are not supported yet; use an integer, Float, Bool, String or struct element");
+                            " are not supported yet; use an integer, Float, Bool, enum, Set, String or struct element");
     }
     return types().array(low, high, element);
 }

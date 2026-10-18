@@ -1,0 +1,20 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-13 Q1: an Integer value outside a Range, stored into it, stops the
+== program with "value out of range" (kind 11).
+Type
+    TMonth Range 1..12
+
+Main :
+    I := 12
+    M TMonth := I
+    PutLn(M)
+    I += 1
+    M := I
+    PutLn(M)
+;

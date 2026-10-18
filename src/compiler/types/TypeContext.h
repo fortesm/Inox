@@ -59,12 +59,20 @@ public:
     // type it may use is declared (a field may name a later struct, or the
     // struct itself through a pointer).
     const Type* declareStruct(std::string_view name);
+    // An Enum (CANON-13) with its literals; ordinals 0..N-1.
+    const Type* declareEnum(std::string_view name, std::vector<std::string> literals);
+    // A Range (CANON-13) of Int64, or of Char when `ofChar`; its bounds are
+    // set once its Consts are known.
+    const Type* declareRange(std::string_view name, bool ofChar = false);
+    void setRangeBounds(const Type* rangeType, std::int64_t low, std::int64_t high);
     void setStructFields(const Type* structType, std::vector<StructField> fields);
     void setStructFieldType(const Type* structType, std::size_t index, const Type* fieldType);
 
     // Constructed types, interned.
     const Type* array(std::int64_t low, std::int64_t high, const Type* element);
     const Type* slice(const Type* element);
+    // Set<Base> (CANON-13); the analyzer checks the base.
+    const Type* set(const Type* base);
     const Type* own(const Type* target);
     const Type* link(const Type* target);
     // An Option holds an owner (CANON-25): `owner` is an Own.
@@ -87,6 +95,7 @@ private:
     std::map<std::pair<TypeKind, const Type*>, const Type*> unaries_;
     std::unordered_map<std::string, const Type*> exceptions_;  // by normalized name
     std::unordered_map<const Type*, Type*> structs_;            // the only types completed later
+    std::unordered_map<const Type*, Type*> ranges_;             // and the bounds of a Range
 
     const Type* void_ = nullptr;
     const Type* none_ = nullptr;

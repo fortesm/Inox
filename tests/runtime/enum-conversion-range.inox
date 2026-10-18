@@ -1,0 +1,18 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-13 Q2: TSuit(I) of an I outside 0..3 stops the program with
+== "integer conversion out of range".
+Type
+    TSuit (Club, Diamond, Heart, Spade)
+
+Main :
+    I := 3
+    PutLn(TSuit(I))
+    I += 1
+    PutLn(TSuit(I))
+;

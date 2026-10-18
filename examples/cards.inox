@@ -1,0 +1,64 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Enums, Ranges and Sets (CANON-13): a small card game. TSuit and TRank are
+== enums, TScore a Range that refuses impossible scores, and a Set records
+== which suits a hand holds. Every case on an enum names each literal, so
+== adding a literal is a compile error until every case handles it.
+Type
+    TSuit (Club, Diamond, Heart, Spade)
+    TRank (Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King, Ace)
+    TScore Range 0..100
+    TCard Struct
+        FSuit TSuit := Club
+        FRank TRank := Two
+    ;
+
+Points(R TRank) Integer :
+    case R
+        Two..Ten
+            Return Ord(R) + 2
+        Jack | Queen | King
+            Return 10
+        Ace
+            Return 11
+    ;
+;
+
+Color(S TSuit) String :
+    case S
+        Club | Spade
+            Return "black"
+        Diamond | Heart
+            Return "red"
+    ;
+;
+
+Main :
+    Hand Array[1..4] TCard
+    Hand[1] := TCard(FSuit := Heart, FRank := Ace)
+    Hand[2] := TCard(FSuit := Spade, FRank := King)
+    Hand[3] := TCard(FSuit := Heart, FRank := Seven)
+    Hand[4] := TCard(FSuit := Diamond, FRank := Succ(Two))
+    Total TScore := 0
+    Suits Set<TSuit>
+    for I in 1..4
+        Total := Total + Points(Hand[I].FRank)
+        Suits := With(Suits, Hand[I].FSuit)
+        PutLn(Hand[I].FRank, " of ", Hand[I].FSuit, " (", Color(Hand[I].FSuit), "): ", Points(Hand[I].FRank))
+    ;
+    PutLn("Total: ", Total, " of at most ", High(TScore))
+    Put("Suits held:")
+    for S in Low(TSuit)..High(TSuit)
+        if S in Suits
+            Put(" ", S)
+        ;
+    ;
+    PutLn("")
+    Missing := Difference([Club, Diamond, Heart, Spade], Suits)
+    PutLn("Without clubs? ", Suits <= [Diamond, Heart, Spade], ", clubs missing? ", Club in Missing)
+;

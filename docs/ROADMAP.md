@@ -18,8 +18,8 @@ may still move.
                subset, checked arithmetic, exceptions on Linux and Windows
 0.2     now    the imperative core: structs, fixed arrays, slices, ref
                parameters, case, Strings, text files, Std.Strings /
-               Std.StrUtils with concatenation, UInt64 (done); Enum, Range
-               and Set; Char values; Float conversions and Float Const
+               Std.StrUtils with concatenation, UInt64, Enum, Range and Set
+               (done); Char values; Float conversions and Float Const
 0.3            exact decimals (Currency, Crypto); Std.DateTime /
                Std.DateUtils; Std.SystemUtils; Std.Debug.Assert; console I/O
                moved into libinoxrt (the final I/O ABI)
@@ -45,7 +45,7 @@ whether concurrency or contracts are in it) is the maintainer's decision.
 
 - `uint64` — UInt64/UInteger values (done, r3.79).
 - `enum-range-set` — Enum, Range and Set with `Ord`, `Low`/`High`,
-  `Succ`/`Pred`, enum `for` and `case` coverage.
+  `Succ`/`Pred`, enum `for` and `case` coverage (done, r3.80).
 - `std-strings` — Std.Strings / Std.StrUtils, String concatenation (done,
   r3.78). Later: grapheme lengths, collation, normalization, Split/Join,
   conversions between numbers and text.

@@ -12,6 +12,10 @@ and Set.
 
 Risk: normal.
 
+Status: **implemented** (canon r3.80), the three phases in one PR (the
+maintainer prefers consolidated PRs); design.md records where the code
+differs. A Range over Char is declared and waits for Char values.
+
 ## What Changes
 
 Implemented in three phases, each its own PR and green gates:

@@ -520,6 +520,16 @@ std::int64_t SemanticAnalyzer::caseChoiceValue(const ast::Expression& choice, Ty
         return code;
     }
 
+    if (domain.enumType != nullptr) {
+        if (choiceType != selectorType) {
+            throw mismatch();
+        }
+        std::int64_t ordinal = 0;
+        if (!constantIntegerValue(choice, ordinal)) {
+            throw SemanticError(kStatic);
+        }
+        return ordinal;
+    }
     if (!isIntegerType(choiceType)) {
         throw mismatch();
     }

@@ -1,1 +1,1 @@
-array elements of type Char are not supported yet; use an integer, Float, Bool, String or struct element
+array elements of type Char are not supported yet; use an integer, Float, Bool, enum, Set, String or struct element

@@ -70,6 +70,7 @@ public:
         callSymbols_.clear();
         constantValues_.clear();
         naturalChecks_.clear();
+        rangeChecks_.clear();
         invariantBefore_.clear();
         invariantAfter_.clear();
         newValueInvariants_.clear();
@@ -210,6 +211,19 @@ public:
         return naturalChecks_.count(&expression) != 0;
     }
 
+    // CANON-13 Range (Q1): an Integer value stored into a Range is checked
+    // against its bounds at run time, implicitly, as for Natural.
+    void requireRangeCheck(const ast::Expression& expression, const types::Type* rangeType)
+    {
+        rangeChecks_[&expression] = rangeType;
+    }
+
+    const types::Type* rangeCheck(const ast::Expression& expression) const
+    {
+        const auto found = rangeChecks_.find(&expression);
+        return found != rangeChecks_.end() ? found->second : nullptr;
+    }
+
     // CANON-24: where a struct invariant must hold. At a site (a qualified
     // method call, a field write, a call with ref mut arguments) the backend
     // checks the invariant of each listed place before or after the site;
@@ -257,6 +271,7 @@ private:
     std::unordered_map<const ast::AstNode*, std::vector<InvariantCheck>> invariantAfter_;
     std::unordered_map<const ast::AstNode*, const types::Type*> newValueInvariants_;
     std::unordered_set<const ast::Expression*> naturalChecks_;
+    std::unordered_map<const ast::Expression*, const types::Type*> rangeChecks_;
     std::unique_ptr<types::TypeContext> types_;
     std::unordered_map<const ast::Expression*, const types::Type*> expressionTypes_;
     std::unordered_map<const ast::IdentifierExpression*, const Symbol*> identifierSymbols_;

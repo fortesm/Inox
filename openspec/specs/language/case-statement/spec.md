@@ -99,3 +99,16 @@ and SHALL fit it. A non-discrete selector such as String SHALL be an error.
 #### Scenario: Unless inside a loop
 - **WHEN** `unless I mod 2 = 0` guards a body inside a for loop
 - **THEN** the body runs for odd I only (tests/runtime/unless-lowering.inox)
+
+### Requirement: Enum and Range coverage
+A `case` on an Enum or Range selector SHALL compile without `else` exactly
+when its choices cover every value of the type. A missing value SHALL be a
+compile error that names it.
+
+#### Scenario: Complete enum case
+- **WHEN** a case on a TSuit names Club, Diamond, Heart and Spade without else
+- **THEN** it compiles and runs (tests/runtime/enum-case.inox)
+
+#### Scenario: Incomplete enum case
+- **WHEN** a case on a TSuit omits Spade and has no else
+- **THEN** the compiler rejects it naming Spade (tests/diagnostics/enum-case-incomplete.inox); a Range case missing 7..12 is rejected too (tests/diagnostics/range-case-incomplete.inox)
