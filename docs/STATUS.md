@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-18 against Inox 0.2.0 pre-alpha, canon r3.79.
+Verified on 2026-10-18 against Inox 0.2.0 pre-alpha, canon r3.80.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -57,6 +57,10 @@ each version added.
   type arguments inferred from the arguments or the target, no
   constraints (an error names the instance); across modules, with
   contracts and exceptions; the leak check covers the generic programs.
+- Enum, Range and Set (CANON-13, r3.80): enums with Ord, checked TEnum(I),
+  Low/High, checked Succ/Pred, `for` and `case` coverage, printed by name;
+  Ranges of Integer checked when stored (kind 11); Set<T> with `in`, the
+  comparisons, the six functions and `[A, B]`; `X in A..B`.
 - Strings: reference-counted UTF-8 values everywhere a value lives,
   equality and ordering, `GetLn(S)`; `+` and `+=` (one allocation per
   chain, appends in place when the String alone holds its block);
@@ -79,9 +83,8 @@ each version added.
 - Strings: `S[I]` and `GraphemeLength` are reserved; collation,
   normalization, Split/Join and conversions between numbers and text come
   in later changes; case mapping is one code point to one (`ß` stays `ß`).
-- Enum, Range and Set: parsed and shape-checked only; enum types are not
-  declared yet, so enum `case` coverage, enum `for`, `Ord`/`Succ`/`Pred` on
-  enums and the enum initializer rule wait for change `enum-range-set`.
+- A Range over Char is declared and its bounds checked; its values, and
+  Sets over it, wait for Char values.
 - Currency and Crypto: names registered, no arithmetic or literals;
   BigCurrency absent.
 - Vector, `Option`, `Result`: not implemented (`Option` exists only as

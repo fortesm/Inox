@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.79
+Canon revision: r3.80
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -22,7 +22,12 @@ stands.
    files (a `BinaryFile` type, little-endian, `Write`/`Read` sized by the
    type, Strings in binary files, reading past the end, 0-based byte
    offsets); streams come after `generics`.
-2. **`| |`, `{ }` and annotations** (brainstorm, 2026-10-16):
+2. **Enums in aggregates** (change `enum-range-set`, r3.80): a struct field
+   of an enum type without a default, and an array element of an enum
+   type, start at the first literal (implemented, as every aggregate starts
+   at its type's defaults); the alternative is to require a default for
+   enum fields and to forbid enum arrays until array literals exist.
+3. **`| |`, `{ }` and annotations** (brainstorm, 2026-10-16):
    `openspec/changes/delimiters-and-annotations/proposal.md` — `| |` as a
    capture clause (`Name`, `Move(X)`, `Link(X)`), `{ }` as an effect or a
    requirement clause, `@` annotations; no String interpolation and `{ }`
@@ -220,3 +225,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   written conversion. A UInt64 Const is written `Const K := UInt64(...)`.
   Marcelo Fortes, 2026-10-12: "Todas as tomadas de decisão dos pontos 1 a 5
   foram verificadas e eleitas para serem acatadas." Change `uint64`.
+- r3.80 — 2026-10-18 — Enum, Range and Set implemented (CANON-5, CANON-13,
+  CANON-19): enums are nominal ordinals with Ord, checked TEnum(I), Low,
+  High, checked Succ/Pred, comparison, enum `for` and `case` coverage, and
+  print their literal's name; a Range of Integer is a subtype checked when a
+  value is stored ("value out of range", kind 11) and computes as Integer;
+  Set<T> over an Enum or Range of at most 256 values with `in`, =, #, <=,
+  >=, the six functions and the literal `[A, B]`. The decisions of
+  2026-10-12 (Q1–Q7, r3.50 and r3.51). Enums in aggregates start at the
+  first literal (open question 2). Marcelo Fortes, 2026-10-12: "Todas as
+  tomadas de decisão dos pontos 1 a 5 foram verificadas e eleitas para
+  serem acatadas." Change `enum-range-set`.

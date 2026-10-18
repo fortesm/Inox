@@ -452,7 +452,7 @@ variable needs an initializer (strict Ada rule).
 
 #### Scenario: Enum initializer
 - **WHEN** an enum variable is declared without `:=`
-- **THEN** it is rejected (test to add with the Enum implementation)
+- **THEN** it is rejected (tests/diagnostics/enum-without-initializer.inox)
 
 ### Requirement: CANON-5 Unread locals are errors
 A local that is never read SHALL be a compile error ("local variable never
@@ -988,7 +988,7 @@ Range arithmetic yields the base type.
 
 #### Scenario: Range declarations
 - **WHEN** a Range has no `Low..High`
-- **THEN** it is rejected (tests/diagnostics/range-without-bounds.inox); range values are tested with change `enum-range-set` (test to add)
+- **THEN** it is rejected (tests/diagnostics/range-without-bounds.inox); a Range value is checked when stored, at run time and for a constant (tests/runtime/ranges.inox, tests/runtime/range-runtime-out-of-range.inox, tests/diagnostics/range-constant-out-of-range.inox)
 
 ### Requirement: CANON-13 Enum
 An enum SHALL be short `TSuit (Club, Diamond)` or multi-line `TDay Enum` …
@@ -999,7 +999,7 @@ string.
 
 #### Scenario: Enum declarations
 - **WHEN** a multi-line enum puts two literals on one line
-- **THEN** it is rejected (tests/diagnostics/enum-literals-per-line.inox); enum values are tested with change `enum-range-set` (test to add)
+- **THEN** it is rejected (tests/diagnostics/enum-literals-per-line.inox); enum values are ordinals that never mix with Integer (tests/runtime/enums.inox, tests/diagnostics/enum-implicit-integer.inox, tests/runtime/enum-conversion-range.inox)
 
 ### Requirement: CANON-13 Enum operations
 `Low(T)`, `High(T)`, `Succ` and `Pred` (checked) SHALL apply to enum and
@@ -1009,7 +1009,7 @@ initializer (CANON-5).
 
 #### Scenario: Printing an enum
 - **WHEN** `PutLn(E)` runs with E = Copas
-- **THEN** it prints `Copas` (test to add with change `enum-range-set`)
+- **THEN** it prints `Copas` (tests/runtime/enums.inox); Succ past the last literal stops the program (tests/runtime/enum-succ-past-end.inox)
 
 ### Requirement: CANON-13 Set
 `Set<T>` SHALL be a finite mathematical set over an Enum or finite Range
@@ -1021,7 +1021,7 @@ literal in a Set context.
 
 #### Scenario: Sets
 - **WHEN** a program builds and tests sets
-- **THEN** the results follow set algebra (test to add with change `enum-range-set`)
+- **THEN** the results follow set algebra (tests/runtime/sets.inox); a base that is not an Enum or a Range of at most 256 values is rejected (tests/diagnostics/set-invalid-base.inox, tests/diagnostics/set-too-large.inox)
 
 ### Requirement: CANON-14 String values
 `String` SHALL be UTF-8, immutable and never null, with `""` as its default;
@@ -1354,9 +1354,9 @@ The category texts SHALL be: `integer overflow`, `division by zero`,
 exponent`, `invalid integer input`, `value out of range for Natural`,
 `integer conversion out of range`, `array index out of bounds`, `slice
 bounds out of range`, `out of memory`, `invalid UTF-8 input`, `assertion
-failed` (with `: Message` when given), `string index out of range`, the
-categories of CANON-24 and CANON-25, and `value out of range` (Range
-types).
+failed` (`: Message` when given), `string index out of range`, the
+categories of CANON-24 and CANON-25, and `value out of range` (Range,
+Succ, Pred).
 
 #### Scenario: Categories
 - **WHEN** each kind of fault happens at run time

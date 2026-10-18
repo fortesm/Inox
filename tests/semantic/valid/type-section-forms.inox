@@ -6,8 +6,8 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-5 and CANON-13: a Type section holds Struct, Range, short Enum and
-== multi-line Enum declarations. Range and Enum are parsed and checked for
-== shape; their meaning comes with the OpenSpec change enum-range-set.
+== multi-line Enum declarations (their values: tests/runtime/enums.inox,
+== tests/runtime/ranges.inox; a Char Range waits for Char values).
 Type
     TPoint Struct
         FX Integer
