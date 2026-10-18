@@ -36,6 +36,9 @@ void SemanticAnalyzer::requireStatementExpression(const ast::Expression& express
         if (equalsIgnoreCase(identifier.name(), "Get") || equalsIgnoreCase(identifier.name(), "GetLn")) {
             return;
         }
+        if (genericRoutine(identifier.name()) != nullptr) {
+            return;  // analyzed as a call: its types must be known there
+        }
         if (const FunctionSignature* signature = resolveFunctionSignature(identifier.name())) {
             // `Report` calls a routine without arguments (CANON-7); a routine
             // that takes arguments needs them.
@@ -116,6 +119,9 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
             const Symbol& symbol = resolveOrThrow(identifier.name());
             result_.bind(identifier, symbol);
             return types().voidType();
+        }
+        if (const ast::FunctionDeclaration* generic = genericRoutine(identifier.name())) {
+            return analyzeGenericCall(*generic, identifier, nullptr);
         }
         if (const FunctionSignature* signature = resolveFunctionSignature(identifier.name())) {
             if (signature->parameters.empty()) {
@@ -295,6 +301,19 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
 {
     const ast::BinaryOperator op = expression.op();
 
+    // CANON-8 (r3.77): `Max<Integer>(3)` reads as `Max < Integer > (3)`; a
+    // generic routine or struct compared with a type is written type arguments.
+    if (op == ast::BinaryOperator::Less && expression.left().kind() == ast::AstNodeKind::IdentifierExpression &&
+        expression.right().kind() == ast::AstNodeKind::IdentifierExpression) {
+        const std::string& name = static_cast<const ast::IdentifierExpression&>(expression.left()).name();
+        const std::string& argument = static_cast<const ast::IdentifierExpression&>(expression.right()).name();
+        if ((genericRoutine(name) != nullptr || genericStruct(name) != nullptr) &&
+            (types().lookup(argument) != nullptr || genericStruct(argument) != nullptr)) {
+            throw SemanticError("type arguments are not written in an expression (CANON-8): they come from the "
+                                "arguments, " + name + "(...), or from the type of the target");
+        }
+    }
+
     if (op == ast::BinaryOperator::Assign) {
         TypeRef targetType = nullptr;
 
@@ -441,7 +460,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             throw SemanticError("assignment target must be an identifier, field or array element");
         }
 
-        const TypeRef rightType = analyzeExpression(expression.right());
+        const TypeRef rightType = analyzeExpressionFor(expression.right(), targetType);
         if (!canAssignValue(targetType, rightType, expression.right())) {
             throw SemanticError("cannot assign " + types::nameOf(rightType) + " to " + types::nameOf(targetType));
         }

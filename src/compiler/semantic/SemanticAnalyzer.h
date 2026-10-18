@@ -145,8 +145,48 @@ private:
     TypeRef analyzePreludeCall(std::string_view name, const std::vector<TypeRef>& argumentTypes) const;
     TypeRef analyzeInputCall(std::string_view name,
                              const std::vector<ast::ExpressionPtr>& arguments);
+    // `argumentTypes`, when given, holds the types of the arguments, already
+    // analyzed (a generic call infers its types from them first).
     TypeRef analyzeUserFunctionCall(const FunctionSignature& signature,
-                                    const std::vector<ast::ExpressionPtr>& arguments);
+                                    const std::vector<ast::ExpressionPtr>& arguments,
+                                    const std::vector<TypeRef>* argumentTypes = nullptr);
+    TypeRef analyzeConstruction(const ast::CallExpression& call, TypeRef type,
+                                const std::vector<TypeRef>* valueTypes);
+
+    // ---- Generics (CANON-8, r3.77; SemanticGenerics.cpp) ----
+    // A generic routine or struct is a template: each use with its types
+    // gets a copy (an instance), checked and compiled like ordinary code.
+    // Type arguments are inferred, never written in an expression; there
+    // are no constraints, so an operation T lacks is an error of the
+    // instance that needs it.
+    void registerGenericTemplates(const ast::ModuleNode& module);
+    const ast::FunctionDeclaration* genericRoutine(std::string_view name) const;
+    const ast::TypeDeclaration* genericStruct(std::string_view name) const;
+    // Analyzes `expression` knowing the type its value goes to (a typed
+    // declaration, an assignment, a Return, a field): a generic call whose
+    // types the arguments do not fix takes them from there.
+    TypeRef analyzeExpressionFor(const ast::Expression& expression, TypeRef target);
+    // A call of a generic routine, `Max(3, 7)`, or `Zero` without arguments.
+    TypeRef analyzeGenericCall(const ast::FunctionDeclaration& generic, const ast::IdentifierExpression& callee,
+                               const ast::CallExpression* call);
+    // A construction of a generic struct, `TPair(FKey := "a", FValue := 1)`.
+    TypeRef analyzeGenericConstruction(const ast::TypeDeclaration& generic, const ast::CallExpression& call);
+    // `TPair<String, Integer>` written as a type.
+    TypeRef resolveGenericStructType(const types::TypeSyntax& syntax, std::string_view written);
+    // Binds the type parameters that `pattern` (a written type) names to the
+    // parts of `actual`; a parameter already bound to another type is an error.
+    // `fixed`, for a literal argument, holds what the other arguments fixed:
+    // a literal never contradicts them (`Max(B, 1)` with B Byte is Max<UInt8>).
+    void unifyTypeSyntax(const types::TypeSyntax& pattern, TypeRef actual, const std::vector<std::string>& parameters,
+                         std::vector<TypeRef>& bound, const std::string& owner, const std::string& from,
+                         const std::vector<TypeRef>* fixed);
+    const FunctionSignature& instantiateRoutine(const ast::FunctionDeclaration& generic,
+                                                const std::vector<TypeRef>& arguments);
+    TypeRef instantiateStruct(const ast::TypeDeclaration& generic, const std::vector<TypeRef>& arguments);
+    void analyzePendingInstances();
+    static std::string instanceName(std::string_view name, const std::vector<TypeRef>& arguments);
+    std::size_t instanceNesting(TypeRef type) const;
+    void requireBoundedNesting(std::string_view generic, const std::vector<TypeRef>& arguments) const;
     void requireBoolCondition(const ast::Expression& expression);
     TypeRef inferSectionDeclarationType(const ast::Expression* value) const;
     // The struct type named `name`, or null.
@@ -265,6 +305,24 @@ private:
     // ADR-0012: the copy of the target inside a desugared `X += R`; analyzing
     // it is not a read of X.
     std::unordered_set<const ast::IdentifierExpression*> updateOnlyReads_;
+
+    // Generics: the templates by normalized name, the struct instances and
+    // what each was made from, and the routine instances still to check.
+    std::unordered_map<std::string, const ast::FunctionDeclaration*> genericRoutines_;
+    std::unordered_map<std::string, const ast::TypeDeclaration*> genericStructs_;
+    struct StructInstance {
+        const ast::TypeDeclaration* generic = nullptr;
+        std::vector<TypeRef> arguments;
+    };
+    std::unordered_map<TypeRef, StructInstance> structInstanceOf_;
+    struct PendingInstance {
+        const ast::FunctionDeclaration* declaration = nullptr;
+        std::string origin;  // the routine whose call made it
+    };
+    std::vector<PendingInstance> pendingInstances_;
+    // The expression analyzed for a known target type (analyzeExpressionFor).
+    const ast::Expression* targetExpression_ = nullptr;
+    TypeRef targetType_ = nullptr;
 };
 
 } // namespace inox::compiler::semantic

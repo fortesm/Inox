@@ -109,7 +109,8 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
         }
         const auto& section = static_cast<const ast::SectionDeclaration&>(*item);
         for (const ast::TypeDeclaration& declaration : section.types()) {
-            if (declaration.kind == ast::TypeDeclarationKind::Struct) {
+            // A generic struct is a template: its instances are added below.
+            if (declaration.kind == ast::TypeDeclarationKind::Struct && declaration.typeParameters.empty()) {
                 const TypeRef type = semantics.types().lookup(declaration.name);
                 if (!isStructType(type)) {
                     throw CodegenError("struct without a type: " + declaration.name);
@@ -130,16 +131,32 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
         }
     }
 
+    // CANON-8: the struct types made from generic structs, in the order the
+    // analysis made them.
+    for (const TypeRef instance : semantics.structInstances()) {
+        structTypes.push_back(instance);
+    }
+
+    // The routines to compile: the program's own (a generic routine is a
+    // template, never compiled), then the instances of generic routines.
+    std::vector<const ast::FunctionDeclaration*> routines;
     for (const auto& item : module.items()) {
         if (item->kind() != ast::AstNodeKind::FunctionDeclaration) {
             continue;
         }
-
         const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
         if (equalsIgnoreCase(function.name(), "Main")) {
             mainFunction = &function;
-            continue;
+        } else if (!function.isGeneric()) {
+            routines.push_back(&function);
         }
+    }
+    for (const auto& instance : semantics.instances()) {
+        routines.push_back(instance.get());
+    }
+
+    for (const ast::FunctionDeclaration* routine : routines) {
+        const ast::FunctionDeclaration& function = *routine;
         const semantic::FunctionSignature* analyzed = semantics.signatureOf(function);
         if (analyzed == nullptr) {
             throw CodegenError("routine without an analyzed signature: " + function.name());
@@ -147,7 +164,7 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
         FunctionSignature signature = lowerSignature(function, *analyzed);
         // CANON-9: a method of a built-in type is also found under the
         // type's canonical name (`Integer.Twice` on an Int64 value).
-        if (const std::size_t dot = function.name().find('.'); dot != std::string::npos) {
+        if (const std::size_t dot = ast::methodDot(function.name()); dot != std::string::npos) {
             const std::string receiver = function.name().substr(0, dot);
             const TypeRef receiverType = semantics.types().lookup(receiver);
             if (receiverType != nullptr && !receiverType->isStruct() &&
@@ -158,17 +175,10 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
         signatures.emplace(normalize(function.name()), std::move(signature));
     }
 
-    for (const auto& item : module.items()) {
-        if (item->kind() != ast::AstNodeKind::FunctionDeclaration) {
-            continue;
-        }
-
-        const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
-        if (!equalsIgnoreCase(function.name(), "Main")) {
-            const auto signature = signatures.find(normalize(function.name()));
-            emitFunction(functionOutput, function, signature->second, signatures, moduleContext, semantics,
-                         stateGlobals, usesStringCleanup);
-        }
+    for (const ast::FunctionDeclaration* routine : routines) {
+        const auto signature = signatures.find(normalize(routine->name()));
+        emitFunction(functionOutput, *routine, signature->second, signatures, moduleContext, semantics, stateGlobals,
+                     usesStringCleanup);
     }
 
     if (mainFunction == nullptr) {

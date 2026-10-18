@@ -22,6 +22,9 @@ std::string normalize(std::string_view name);
 // A user identifier as an LLVM local name that cannot collide with the
 // emitter's own temporaries and labels.
 std::string safeLlvmName(const std::string& name);
+// A global or type name as LLVM text: as is when LLVM accepts it bare,
+// quoted otherwise (the name of a generic instance, `inox_max<int64>`).
+std::string llvmGlobalName(const std::string& name);
 std::string llvmIntegerLiteral(std::string_view value);
 std::string llvmDefaultLiteral(std::string_view value, std::string_view llvmType);
 

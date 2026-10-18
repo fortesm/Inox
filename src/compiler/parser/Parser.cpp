@@ -552,6 +552,7 @@ ast::ExpressionPtr Parser::parseAnd()
 
 ast::ExpressionPtr Parser::parseRelational()
 {
+    rejectWrittenTypeArguments();
     auto expression = parseMembership();
 
     while (check(TokenKind::Equal) || check(TokenKind::Hash) ||
@@ -564,6 +565,58 @@ ast::ExpressionPtr Parser::parseRelational()
     }
 
     return expression;
+}
+
+// CANON-8 (r3.77): type arguments are inferred, never written in an
+// expression. `Max<Integer>(3, 7)` would read as the comparisons `Max <
+// Integer > (3, 7)`; when a comma shows it cannot be (inside `<...>` or in the
+// parentheses after it), the reader gets the rule instead of a parse error.
+// `Max<Integer>(3)` reads as comparisons; the analyzer names the rule there.
+void Parser::rejectWrittenTypeArguments() const
+{
+    if (current_ + 2 >= tokens_.size() || tokens_[current_].kind != TokenKind::Identifier ||
+        tokens_[current_ + 1].kind != TokenKind::Less) {
+        return;
+    }
+    const std::size_t line = tokens_[current_].location.line;
+    std::size_t index = current_ + 1;
+    int depth = 0;
+    bool comma = false;
+    for (; index < tokens_.size() && tokens_[index].location.line == line; ++index) {
+        const TokenKind kind = tokens_[index].kind;
+        if (kind == TokenKind::Less || kind == TokenKind::LeftBracket) {
+            ++depth;
+        } else if (kind == TokenKind::Greater || kind == TokenKind::RightBracket) {
+            if (--depth == 0) {
+                break;
+            }
+        } else if (kind == TokenKind::Comma) {
+            comma = comma || depth == 1;
+        } else if (kind != TokenKind::Identifier && kind != TokenKind::IntegerLiteral && kind != TokenKind::DotDot) {
+            return;  // not the shape of type arguments
+        }
+    }
+    if (index >= tokens_.size() || depth != 0 || tokens_[index].kind != TokenKind::Greater) {
+        return;
+    }
+    ++index;
+    if (index < tokens_.size() && tokens_[index].kind == TokenKind::LeftParen && tokens_[index].location.line == line) {
+        int parens = 0;
+        for (; index < tokens_.size() && tokens_[index].location.line == line; ++index) {
+            const TokenKind kind = tokens_[index].kind;
+            parens += kind == TokenKind::LeftParen ? 1 : kind == TokenKind::RightParen ? -1 : 0;
+            if (parens == 0) {
+                break;
+            }
+            comma = comma || (kind == TokenKind::Comma && parens == 1);
+        }
+    }
+    if (comma) {
+        const std::string& name = tokens_[current_].lexeme;
+        throw ParseError("type arguments are not written in an expression (CANON-8): they come from the "
+                         "arguments, " + name + "(...), or from the type of the target",
+                         tokens_[current_ + 1].location);
+    }
 }
 
 ast::ExpressionPtr Parser::parseMembership()
@@ -1036,6 +1089,19 @@ std::string Parser::parseTypeName(const char* message)
         consume(TokenKind::Greater, "expected '>' after the type of the pointer");
         const std::string word = name.normalized == "own" ? "Own" : name.normalized == "link" ? "Link" : "Option";
         return word + "<" + target + ">";
+    }
+    // CANON-8 (r3.77): a generic struct of the program, `TPair<String, Integer>`.
+    if (name.normalized != "array" && check(TokenKind::Less) && peek().location.line == name.location.line) {
+        advance();
+        std::string text = name.lexeme + "<";
+        do {
+            if (text.back() != '<') {
+                text += ", ";
+            }
+            text += parseTypeName("expected a type argument");
+        } while (match(TokenKind::Comma));
+        consume(TokenKind::Greater, "expected '>' after the type arguments of " + name.lexeme);
+        return text + ">";
     }
     if (!(name.normalized == "array") || !check(TokenKind::LeftBracket) ||
         peek().location.line != name.location.line) {
@@ -1690,6 +1756,13 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
     const lexer::Token& name = consume(TokenKind::Identifier, "expected a type name in the Type section");
     declaration.name = name.lexeme;
     declaration.line = name.location.line;
+    if (check(TokenKind::Less) && peek().location.line == name.location.line) {
+        declaration.typeParameters = parseTypeParameters(name);
+        if (!checkKeyword("struct")) {
+            throw ParseError("only a Struct takes type parameters (CANON-8): " + declaration.name,
+                             isAtEnd() ? name.location : peek().location);
+        }
+    }
 
     if (matchKeyword("struct")) {
         declaration.kind = ast::TypeDeclarationKind::Struct;
@@ -1724,6 +1797,17 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
             declaration.fields.push_back(parseStructField());
         }
         consumeBlockClose();
+        if (!declaration.typeParameters.empty()) {
+            for (const ast::StructFieldDeclaration& field : declaration.fields) {
+                if (field.isPart) {
+                    throw ParseError("a generic struct cannot reuse parts yet: " + declaration.name, name.location);
+                }
+            }
+            if (!declaration.invariants.empty()) {
+                throw ParseError("a generic struct cannot have invariant lines yet: " + declaration.name,
+                                 name.location);
+            }
+        }
         return declaration;
     }
 
@@ -1894,22 +1978,39 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
 {
     const lexer::Token& name = consumeIdentifierLike("expected function name");
     std::string functionName = name.lexeme;
+    std::vector<std::string> typeParameters;
+    if (check(TokenKind::Less) && peek().location.line == name.location.line) {
+        typeParameters = parseTypeParameters(name);
+    }
     if (match(TokenKind::Dot)) {
+        if (!typeParameters.empty()) {
+            std::string list;
+            for (const std::string& parameter : typeParameters) {
+                list += (list.empty() ? "" : ", ") + parameter;
+            }
+            errorAt(name, "methods of generic structs are not in Inox yet: write a generic routine, Name<" + list +
+                              ">(X " + functionName + "<" + list + ">)");
+        }
         const lexer::Token& methodName = consume(
             TokenKind::Identifier, "expected method name after '.'");
         functionName += ".";
         functionName += methodName.lexeme;
+        if (check(TokenKind::Less) && peek().location.line == name.location.line) {
+            errorAtCurrent("a method cannot have type parameters yet (CANON-8): write a generic routine, "
+                           "Name<T>(...)");
+        }
     }
 
     std::vector<std::string> signatureTokens;
 
     while (!isAtEnd() && !check(TokenKind::Colon)) {
         // CANON-13: an array type in a signature is one type token,
-        // `Array[1..3] Integer`, so later phases read it like any type name.
+        // `Array[1..3] Integer`, so later phases read it like any type name;
+        // so is a generic type, `Slice<T>`, `Own<T>`, `TPair<K, V>` (CANON-8).
         if (check(TokenKind::Identifier) && current_ + 1 < tokens_.size() &&
+            tokens_[current_ + 1].location.line == peek().location.line &&
             ((peek().normalized == "array" && tokens_[current_ + 1].kind == TokenKind::LeftBracket) ||
-             ((peek().normalized == "slice" || isPointerTypeWord(peek().normalized)) &&
-              tokens_[current_ + 1].kind == TokenKind::Less))) {
+             tokens_[current_ + 1].kind == TokenKind::Less)) {
             signatureTokens.push_back(parseTypeName("expected type name"));
             continue;
         }
@@ -1963,7 +2064,28 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
         std::move(signatureTokens),
         std::move(body),
         isOverride,
-        std::move(contracts));
+        std::move(contracts),
+        std::move(typeParameters));
+}
+
+// `<T, U>`: distinct names, on the line of the name they follow.
+std::vector<std::string> Parser::parseTypeParameters(const lexer::Token& owner)
+{
+    consume(TokenKind::Less, "expected '<'");
+    std::vector<std::string> parameters;
+    std::vector<std::string> normalized;
+    do {
+        const lexer::Token& parameter = consume(TokenKind::Identifier, "expected a type parameter name");
+        for (const std::string& seen : normalized) {
+            if (seen == parameter.normalized) {
+                errorAt(parameter, "duplicate type parameter " + parameter.lexeme + " of " + owner.lexeme);
+            }
+        }
+        parameters.push_back(parameter.lexeme);
+        normalized.push_back(parameter.normalized);
+    } while (match(TokenKind::Comma));
+    consume(TokenKind::Greater, "expected '>' after the type parameters of " + owner.lexeme);
+    return parameters;
 }
 
 // ---------- Design by contract (CANON-24) ----------
@@ -2294,9 +2416,10 @@ bool Parser::atTypedLocalStatementStart() const
         tokens_[index].location.line == type.location.line) {
         return true;
     }
-    if ((type.normalized == "slice" || isPointerTypeWord(type.normalized)) &&
-        tokens_[index].kind == TokenKind::Less &&
-        tokens_[index].location.line == type.location.line) {
+    // `S Slice<Int64>`, `P Own<TNode>`, `P TPair<String, Integer>` (CANON-8):
+    // two names in a row never start an expression, so `<` after the second
+    // opens type arguments.
+    if (tokens_[index].kind == TokenKind::Less && tokens_[index].location.line == type.location.line) {
         return true;
     }
 

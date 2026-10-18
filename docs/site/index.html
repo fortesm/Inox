@@ -58,6 +58,7 @@ th{background:#eef3fb}
 <li><a href="#method-reuse">Method reuse: composition without inheritance</a></li>
 <li><a href="#contracts">Design by contract: pre, pos, invariant</a></li>
 <li><a href="#pointers">Safe pointers: Own, Link, New, Free</a></li>
+<li><a href="#generics">Generics: one routine for many types</a></li>
 <li><a href="#control-flow">Control flow</a></li>
 <li><a href="#output">Std.IO and variadic output</a></li>
 <li><a href="#files">Text files: Std.Files and Std.IOUtils</a></li>
@@ -606,6 +607,45 @@ Main :
 ;</code></pre>
 <p>Owners also work with contracts: a <code>pre</code> reads an owner the routine takes, and a <code>pos</code> reads what it held through <code>old P.Field</code>. A Link to a parameter is not supported yet. <code>examples/pointers-tree.inox</code> (a tree of folders whose children are owned and whose parent is a Link) and <code>examples/pointers-navigator.inox</code> (a navigator over an array of records) are complete programs.</p>
 </section>
+<section id="generics"><h2>Generics: one routine for many types</h2>
+<p>A routine or a struct may declare type parameters after its name (CANON-8). It is a template: each use with its types makes an <em>instance</em>, checked and compiled like code you wrote for those types, so generics cost nothing at run time.</p>
+<pre><code>Type
+    TPair&lt;K, V&gt; Struct
+        FKey K
+        FValue V
+    ;
+
+Max&lt;T&gt;(A T, B T) T :
+    Return IIf(A &gt; B, A, B)
+;
+
+Swap&lt;T&gt;(ref mut A T, ref mut B T) :
+    C := A
+    A := B
+    B := C
+;
+
+Zero&lt;T&gt; T :
+    Return 0
+;
+
+Main :
+    P TPair&lt;String, Integer&gt; := TPair(FKey := &quot;one&quot;, FValue := 1)
+    Q := TPair(FKey := 2.5, FValue := True)       == TPair&lt;Float64, Bool&gt;
+    X := 1
+    Y := 2
+    Swap(X, Y)                                    == Swap&lt;Int64&gt;
+    Z Integer := Zero                             == Zero&lt;Int64&gt;, from the target
+    PutLn(Max(3, 7), &quot; &quot;, Max(&quot;pear&quot;, &quot;apple&quot;)) == Max&lt;Int64&gt;, Max&lt;String&gt;
+    PutLn(P.FKey, &quot; &quot;, Q.FValue, &quot; &quot;, X, &quot; &quot;, Z)            == one true 2 0
+;</code></pre>
+<ul>
+<li><strong>Types are never written in a call.</strong> They come from the arguments (a literal takes the type of the others: <code>Max(B, 1)</code> with <code>B Byte</code> is <code>Max&lt;UInt8&gt;</code>), or from the target when the arguments do not fix them. <code>Max&lt;Integer&gt;(3, 7)</code> is an error that says so.</li>
+<li><strong>No constraints.</strong> T may be any type. What the body does with it is checked in each instance: <code>Max</code> on two structs is &quot;in Max&lt;TPoint&gt;, used in Main: structs cannot be compared with '&gt;'&quot;. An owner or a File as T works when the body moves it or passes it by <code>ref mut</code>.</li>
+<li><strong>Generic structs</strong> take their types from the written type (<code>TPair&lt;String, Integer&gt;</code>), from the target of a construction or from the values of the fields. Their methods are not in the language yet: write a generic routine, <code>Push&lt;T&gt;(ref mut S TStack&lt;T&gt;, X T)</code>.</li>
+</ul>
+<p><code>examples/generics.inox</code> builds one stack and uses it for Integers, Strings and pairs.</p>
+</section>
 <section id="control-flow"><h2>Control flow</h2>
 <p><code>if</code> uses no <code>then</code> and no <code>:</code>:</p>
 <pre><code>if X &gt; 0
@@ -824,7 +864,7 @@ PutLn(Sum(A[2..4]), " ", Sum(A[..]))</code></pre>
 <p>An array is a value: assigning it (<code>B Array[1..Size] Integer := A</code>) or passing it to a routine copies it. Every index is checked: <code>A[I]</code> with <code>I</code> outside <code>Low(A)..High(A)</code> stops the program with "array index out of bounds", and a constant index outside the bounds is a compile error. <code>Low</code>, <code>High</code> and <code>Length</code> are constants. A multi-dimensional array is an array of arrays (<code>M[I, J]</code> is <code>M[I][J]</code>). Bounds are integer literals or Consts; elements are integers, <code>Float</code> or <code>Bool</code> for now.</p>
 <ul>
 <li>Vectors are planned as dynamic, 0-based, bounds-checked collections.</li>
-<li>Generic types are written with angle brackets: <code>Vector&lt;Integer&gt;</code>, <code>Set&lt;TCardSuit&gt;</code>. Square brackets stay for indexing and bounds: <code>Values[I]</code>, <code>Array[1..10] Integer</code>. The compiler still uses the older <code>[T]</code> spelling until it is updated.</li>
+<li>Generic types are written with angle brackets: <code>Vector&lt;Integer&gt;</code>, <code>Set&lt;TCardSuit&gt;</code>. Square brackets stay for indexing and bounds: <code>Values[I]</code>, <code>Array[1..10] Integer</code>. The generic structs of a program are written the same way (<a href="#generics">Generics</a>); <code>Vector</code> and <code>Set</code> are not built in yet.</li>
 <li>Ranges are finite ordinal declarations.</li>
 <li>Enums are nominal and ordinal, with no implicit conversion to/from <code>Integer</code>.</li>
 <li>Sets are planned as finite sets over ordinal base types, inspired by Pascal and Ada discipline.</li>
@@ -847,7 +887,7 @@ PutLn(Sum(A[2..4]), " ", Sum(A[..]))</code></pre>
 <li>inheritance;</li>
 <li>Java-style interfaces.</li>
 </ul>
-<p>Behavior is reused by method reuse, not by traits, protocols or interfaces. Future work includes modules, vectors, sets, generics, contracts, arenas, borrowing, unsafe boundaries, and structured parallelism.</p>
+<p>Behavior is reused by method reuse, not by traits, protocols or interfaces. Future work includes modules, vectors, sets, arenas, borrowing, unsafe boundaries, and structured parallelism.</p>
 </section>
 <section id="build-from-source"><h2>Building the compiler from source</h2>
 <p>Windows development build:</p>

@@ -220,7 +220,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         const auto& var = static_cast<const ast::VarStatement&>(statement);
         TypeRef type = var.typeName().empty() ? nullptr : resolveWrittenType(var.typeName());
         if (var.initializer() != nullptr) {
-            const TypeRef initializerType = analyzeExpression(*var.initializer());
+            const TypeRef initializerType = analyzeExpressionFor(*var.initializer(), type);
             if (type == nullptr) {
                 type = initializerType;
                 if (isFileType(type)) {
@@ -510,7 +510,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         currentFunctionSawReturn_ = true;
         const ast::Expression& returned =
             static_cast<const ast::ReturnStatement&>(statement).expression();
-        const TypeRef type = analyzeExpression(returned);
+        const TypeRef type = analyzeExpressionFor(returned, currentFunctionReturnType_);
         if (currentFunctionReturnType_ == nullptr) {
             throw SemanticError("subroutine without return type cannot return a value");
         }

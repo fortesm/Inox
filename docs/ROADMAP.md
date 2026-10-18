@@ -62,8 +62,11 @@ whether concurrency or contracts are in it) is the maintainer's decision.
   parameters, zero-cost Links, moves over `leave`/`continue`, release per
   loop iteration, invariants through pointers, owner results discarded,
   `Option<T>` with generics).
-- Designs awaiting decisions: `generics` (simplest form),
-  `binary-streams` (binary files, positions; streams after generics),
+- `generics` — generic routines and structs in their simplest form: no
+  constraints, inference only, any type as T (done, r3.77). Next: methods
+  of generic structs, then `Option<T>`, `Result<T, E>` and `Vector<T>`.
+- Designs awaiting decisions: `binary-streams` (binary files, positions;
+  streams after generics),
   `variant-structs` (one collection of several kinds, examined with `case`;
   direction recorded in r3.69, design after `enum-range-set`).
 - Directions recorded in r3.70, designs to write: `encapsulation` (close to

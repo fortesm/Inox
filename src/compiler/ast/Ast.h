@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace inox::compiler::ast {
@@ -232,6 +233,8 @@ struct TypeDeclaration {
     ExpressionPtr bounds;  // Range: the `Low..High` expression
     std::vector<std::string> literals;
     std::vector<ContractClause> invariants;  // Struct: `invariant` lines (CANON-24)
+    // CANON-8 (r3.77): `TPair<K, V> Struct` declares K and V; empty otherwise.
+    std::vector<std::string> typeParameters;
 };
 
 // One Const or State declaration (CANON-5). `typeName` is empty for the
@@ -274,15 +277,26 @@ private:
     std::vector<std::string> tokens_;
 };
 
+// The position of the dot of a method name, `TName.Method`; npos for a
+// routine. The name of a generic instance has dots only inside its type
+// arguments (`Max<Array[1..3] Int64>`), which never make it a method.
+std::size_t methodDot(std::string_view routineName);
+
 class FunctionDeclaration final : public AstNode {
 public:
     FunctionDeclaration(std::string name,
                         std::vector<std::string> signatureTokens,
                         std::vector<StatementPtr> body,
                         bool isOverride = false,
-                        std::vector<ContractClause> contracts = {});
+                        std::vector<ContractClause> contracts = {},
+                        std::vector<std::string> typeParameters = {});
 
     const std::string& name() const;
+    // CANON-8 (r3.77): `Max<T>(A T, B T) T :` declares the type parameter T;
+    // empty for an ordinary routine. A generic routine is a template: the
+    // analyzer checks and compiles a copy per use.
+    const std::vector<std::string>& typeParameters() const;
+    bool isGeneric() const { return !typeParameters_.empty(); }
     const std::vector<std::string>& signatureTokens() const;
     const std::vector<StatementPtr>& body() const;
     // `TName.Method(...) [Type] Override :` replaces a reused method (CANON-9).
@@ -299,6 +313,7 @@ private:
     std::vector<StatementPtr> body_;
     bool isOverride_ = false;
     std::vector<ContractClause> contracts_;
+    std::vector<std::string> typeParameters_;
 };
 
 class LiteralExpression final : public Expression {

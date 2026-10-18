@@ -79,6 +79,9 @@ private:
 
     ast::StatementPtr parseTypedLocalStatement();
     std::string parseTypeName(const char* message);
+    // CANON-8 (r3.77): `<T, U>` after the name of a routine or a struct.
+    std::vector<std::string> parseTypeParameters(const lexer::Token& owner);
+    void rejectWrittenTypeArguments() const;
     ast::StatementPtr parseIfStatement();
     ast::StatementPtr parseUnlessStatement();
     ast::StatementPtr parseWhileStatement();

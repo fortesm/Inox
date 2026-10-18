@@ -1,0 +1,50 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-8 (r3.77) with CANON-24 and exceptions: a generic routine with
+== `pre` and `pos` is checked in every instance; a generic routine with try
+== reaches its handler; a method calls a generic routine. The last call
+== breaks the precondition and stops the program.
+Type
+    TCounter Struct
+        FValue Integer := 0
+    ;
+
+Ratio<T>(A T, B T) T :
+    pre B # 0, "B must not be zero"
+    pos Result * B <= A
+    Return A div B
+;
+
+Larger<T>(A T, B T) T :
+    Return IIf(A > B, A, B)
+;
+
+Safe<T>(A T, B T) T :
+    try
+        if B = 0
+            Raise RangeError
+        ;
+        Return A div B
+    except
+        Return 0
+    ;
+;
+
+TCounter.Bump(Self mut, By Integer) :
+    Self.FValue := Larger(Self.FValue + By, 0)
+;
+
+Main :
+    PutLn(Ratio(10, 3))
+    PutLn(Safe(7, 0), " ", Safe(7, 2))
+    C TCounter
+    C.Bump(5)
+    C.Bump(-9)
+    PutLn(C.FValue, " ", Larger("x", "y"))
+    PutLn(Ratio(1, 0))
+;

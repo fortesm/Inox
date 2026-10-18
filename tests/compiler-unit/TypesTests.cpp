@@ -14,6 +14,8 @@
 
 #include <limits>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 
 namespace inox::compiler::unit {
 
@@ -112,14 +114,14 @@ void testSyntax()
     check(named && named->form == types::TypeSyntax::Form::Named && named->name == "TContato", "a named type");
     const auto array = types::readTypeSyntax("Array[1..Tamanho] TContato");
     check(array && array->form == types::TypeSyntax::Form::Array && array->low == "1" &&
-              array->high == "Tamanho" && array->argument->name == "TContato",
+              array->high == "Tamanho" && array->argument().name == "TContato",
           "an array with a Const bound");
     const auto link = types::readTypeSyntax("Link<Array[1..5] TContato>");
     check(link && link->form == types::TypeSyntax::Form::Generic && link->name == "Link" &&
-              link->argument->form == types::TypeSyntax::Form::Array,
+              link->argument().form == types::TypeSyntax::Form::Array,
           "a Link to an array");
     const auto nested = types::readTypeSyntax("Option<Own<TNode>>");
-    check(nested && nested->argument->name == "Own" && nested->argument->argument->name == "TNode",
+    check(nested && nested->argument().name == "Own" && nested->argument().argument().name == "TNode",
           "Option<Own<TNode>>");
     checkEqual(nested->spelling(), "Option<Own<TNode>>", "spelling round trip");
     checkEqual(types::spellArrayType("1", "3", types::spellArrayType("1", "4", "Int64")),
@@ -129,6 +131,31 @@ void testSyntax()
     check(types::isGenericSpelling("own<TNode>", "Own") && !types::isGenericSpelling("Owner"),
           "generic shape tests");
     check(types::isArraySpelling("array[1..2] Bool"), "array shape test");
+}
+
+// CANON-8 (r3.77): generic structs of the program take several arguments,
+// and an instance replaces its type parameters in written types.
+void testGenericSyntax()
+{
+    const auto pair = types::readTypeSyntax("TPair<String, Array[1..3] TPair<K, V>>");
+    check(pair && pair->form == types::TypeSyntax::Form::Generic && pair->name == "TPair" &&
+              pair->arguments.size() == 2 && pair->arguments[1]->form == types::TypeSyntax::Form::Array &&
+              pair->arguments[1]->argument().arguments.size() == 2,
+          "a generic struct with two arguments, one an array of an instance");
+    checkEqual(types::readTypeSyntax("TPair<String,Integer>")->spelling(), "TPair<String, Integer>",
+               "canonical spacing of type arguments");
+    check(!types::readTypeSyntax("TPair<>") && !types::readTypeSyntax("TPair<A,,B>") &&
+              !types::readTypeSyntax("TPair<A") && !types::readTypeSyntax("A B"),
+          "malformed type arguments are not a type");
+    const auto replace = [](std::string_view name) -> std::string {
+        return name == "T" ? std::string("Int64") : name == "K" ? std::string("Array[1..2] String") : std::string{};
+    };
+    checkEqual(types::substituteTypeNames("Array[1..N] T", replace), "Array[1..N] Int64",
+               "a parameter is replaced, an array bound is not");
+    checkEqual(types::substituteTypeNames("TPair<K, Own<T>>", replace), "TPair<Array[1..2] String, Own<Int64>>",
+               "parameters inside type arguments, replaced by any type");
+    checkEqual(types::substituteTypeNames("Total", replace), "Total", "a name the map does not know stays");
+    checkEqual(types::substituteTypeNames("(", replace), "(", "text that is not a type stays");
 }
 
 } // namespace
@@ -141,6 +168,7 @@ int runTypesTests()
     testInterning();
     testPointersAndStructs();
     testSyntax();
+    testGenericSyntax();
     return failureCount() - before;
 }
 

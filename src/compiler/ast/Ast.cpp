@@ -119,14 +119,27 @@ FunctionDeclaration::FunctionDeclaration(std::string name,
                                          std::vector<std::string> signatureTokens,
                                          std::vector<StatementPtr> body,
                                          bool isOverride,
-                                         std::vector<ContractClause> contracts)
+                                         std::vector<ContractClause> contracts,
+                                         std::vector<std::string> typeParameters)
     : AstNode(AstNodeKind::FunctionDeclaration),
       name_(std::move(name)),
       signatureTokens_(std::move(signatureTokens)),
       body_(std::move(body)),
       isOverride_(isOverride),
-      contracts_(std::move(contracts))
+      contracts_(std::move(contracts)),
+      typeParameters_(std::move(typeParameters))
 {
+}
+
+std::size_t methodDot(std::string_view routineName)
+{
+    const std::size_t dot = routineName.find('.');
+    return dot < routineName.find('<') ? dot : std::string_view::npos;
+}
+
+const std::vector<std::string>& FunctionDeclaration::typeParameters() const
+{
+    return typeParameters_;
 }
 
 bool FunctionDeclaration::isOverride() const

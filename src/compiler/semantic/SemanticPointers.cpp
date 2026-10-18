@@ -49,7 +49,7 @@ const std::string kNeverCopied =
 // `Own<T>`, `Link<T>` and `Option<Own<T>>` as written.
 TypeRef SemanticAnalyzer::resolvePointerType(const types::TypeSyntax& syntax, std::string_view written)
 {
-    const types::TypeSyntax& argument = *syntax.argument;
+    const types::TypeSyntax& argument = syntax.argument();
     if (equalsIgnoreCase(syntax.name, "Option")) {
         if (argument.form != types::TypeSyntax::Form::Generic || !equalsIgnoreCase(argument.name, "Own")) {
             throw SemanticError("Option holds an owner that may be absent: write Option<Own<T>> (other Option "
@@ -58,7 +58,9 @@ TypeRef SemanticAnalyzer::resolvePointerType(const types::TypeSyntax& syntax, st
         return types().optionOwn(resolvePointerType(argument, argument.spelling()));
     }
     const bool own = equalsIgnoreCase(syntax.name, "Own");
-    if (argument.form == types::TypeSyntax::Form::Generic) {
+    if (argument.form == types::TypeSyntax::Form::Generic &&
+        (equalsIgnoreCase(argument.name, "Slice") || equalsIgnoreCase(argument.name, "Own") ||
+         equalsIgnoreCase(argument.name, "Link") || equalsIgnoreCase(argument.name, "Option"))) {
         if (equalsIgnoreCase(argument.name, "Slice")) {
             throw SemanticError("a pointer to a slice is not supported: " + std::string(written));
         }
@@ -142,8 +144,10 @@ bool SemanticAnalyzer::isFreshOwnerValue(const ast::Expression& value) const
         isPointerBuiltinCall(name, call.arguments().size())) {
         return true;
     }
-    if (types().isDeclared(name)) {
-        return true;  // a construction
+    // A construction (`TPair(...)` builds an instance of the generic TPair) or
+    // a conversion `T(X)`.
+    if (result_.constructedStruct(call) != nullptr || types().isDeclared(name)) {
+        return true;
     }
     const Symbol* symbol = result_.symbolOf(call);
     return symbol != nullptr && symbol->kind == SymbolKind::Function;

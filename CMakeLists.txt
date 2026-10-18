@@ -53,6 +53,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticDeclarations.cpp
     src/compiler/semantic/SemanticExpressions.cpp
     src/compiler/semantic/SemanticFiles.cpp
+    src/compiler/semantic/SemanticGenerics.cpp
     src/compiler/semantic/SemanticDebug.cpp
     src/compiler/semantic/SemanticReuse.cpp
     src/compiler/semantic/ContractLowering.cpp

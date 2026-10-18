@@ -175,9 +175,9 @@ private:
                              const std::vector<std::string>& arguments,
                              bool requireValue);
 
-    void emitNoArgumentSubroutineCall(std::string_view calleeName);
+    void emitNoArgumentSubroutineCall(const ast::IdentifierExpression& callee);
 
-    void emitSubroutineCall(const ast::CallExpression& call, std::string_view calleeName);
+    void emitSubroutineCall(const ast::CallExpression& call, const ast::IdentifierExpression& callee);
 
     void emitInputCallSequence(const std::vector<ast::ExpressionPtr>& arguments, bool consumeRestOfLine);
 
@@ -292,6 +292,10 @@ private:
     void emitNewValueInvariant(const ast::VarStatement& declaration);
     // The routine the analysis bound a call site to (a method, a function).
     const FunctionSignature* boundSignature(const ast::CallExpression& site) const;
+    // The routine a callee names: the one the analysis bound it to (a call of
+    // a generic routine names its instance, `Max` is `Max<Int64>`), else the
+    // routine of that name; null when it is not a routine of the program.
+    const FunctionSignature* calledRoutine(const ast::IdentifierExpression& callee) const;
     std::string emitReceiver(const FunctionSignature& signature, const ast::Expression& receiver);
 
     MethodCallTarget resolveNoArgumentMethodAccess(const ast::CallExpression& member);
