@@ -41,7 +41,7 @@ allocated by libinoxrt get a hidden header **before** the count:
 - `capacity`: bytes available for the text (in-place append).
 - `characters`: the number of code points, computed when the block is
   built; `Length(S)` is then O(1), and `characters = length` means the text
-  is ASCII, so `Substr` and `Pos` find positions in O(1) per character.
+  is ASCII, so `Substr` and `Position` find positions in O(1) per character.
 - Immortal blocks (literals from the compiler, `""`) have no header; the
   runtime recognizes them by count -1 and scans them when needed (they are
   short and never appended).
@@ -57,7 +57,7 @@ range"** (fault kind 15), as an array index does. The same holds for
 a String already longer is returned unchanged) and `Replicate` (`N >= 0`).
 The runtime returns null for an invalid range and the emitted code branches
 to the trap, so every fault goes through the one fault function of the
-program (CANON-19). `Pos(Sub, S)` returns 0 when `Sub` is absent or empty.
+program (CANON-19). `Position(Sub, S)` returns 0 when `Sub` is absent or empty.
 
 ## 4. Unicode data
 
@@ -77,7 +77,7 @@ are compact range lists searched by binary search. Full mappings (`ß` →
 | `void __inox_str_append(ptr slot, i64 n, ptr parts)` | replaces `*slot` |
 | `i64 __inox_str_length(ptr)` | code points; `ByteLength` reads offset 8 in IR |
 | `ptr __inox_str_substr(ptr, i64 start, i64 count)` | null: out of range |
-| `i64 __inox_str_pos(ptr sub, ptr s)` | |
+| `i64 __inox_str_pos(ptr sub, ptr s)` | `Position` |
 | `ptr __inox_str_case(ptr, i32 mode)` | upper, lower |
 | `ptr __inox_str_trim(ptr, i32 sides)` | |
 | `ptr __inox_str_pad(ptr, i64 width, i32 side)` | null: width < 0 |
@@ -99,5 +99,44 @@ trap), `S += X` in a loop of 100 000 steps (time bound and memory balance),
 `S := S + S`, appends to a shared block (the other variable unchanged), the
 leak check over every new program, runtime unit tests for the tables and
 the append paths, the MSVC IR check, and every E19 gate.
+
+## 7. Where the implementation differs
+
+Recorded at implementation (canon r3.78); the approved design stands
+otherwise.
+
+- **Position.** `Pos` became a reserved word in r3.76, so the search
+  function is `Position(Sub, S)` (Marcelo Fortes, 2026-10-17: "Position(Sub,
+  S) (Recommended)").
+- **Status out-parameter.** Instead of a null result, every runtime function
+  that can fail takes `ptr status` last and sets it: 0 ok, 1 out of range,
+  2 out of memory. One module helper, `@__inox_str_fault(i32)`, maps 1 to
+  fault kind 15 and 2 to kind 12 ("out of memory"), so a program has one
+  call site per fault as CANON-19 asks.
+- **Growth.** An append that must allocate gives the new block twice the new
+  length, which keeps N appends linear; 1 000 one-character appends need at
+  most 12 blocks (runtime unit test).
+- **Left and Right** share `ptr __inox_str_edge(ptr, i64 n, i32 side, ptr
+  status)`; `SameText` is `CompareText(A, B) = 0` in IR.
+- **When a chain appends.** `S := S + X ...` appends in place only when S is
+  the leftmost part and no other part calls a routine (a routine could
+  change S while the parts are read); otherwise it is an ordinary
+  concatenation.
+- **Character count cached.** The `characters` field starts at -1 and is
+  counted the first time a function needs it, so a block built from bytes
+  (GetLn) costs nothing until measured.
+- **Lexer.** A doubled delimiter inside a literal (`""text""`) was an
+  undocumented form that made `"" + ""` and `F("", "")` lex as one
+  literal; it is gone, and two empty literals are two Strings.
+- **Borrowed reads (a bug found on the way).** A String read from State, a
+  `ref` parameter, a pointer path or a `with` binding was not retained, so a
+  routine called later in the same statement could free it (`PutLn(Log =
+  Mark)` with Mark assigning Log: heap-use-after-free under ASan). In a
+  statement that calls a routine, such a read is now retained and released
+  at the end of the statement (tests/runtime/string-borrowed-read.inox).
+- **Leak check.** `tools/string_leak_check.py` instruments the generated
+  code with clang and links gcc's ASan runtime when clang has no ASan
+  runtime; before, the generated code was not instrumented on such machines
+  and the bug above went unseen.
 
 Design approval: **approved** (Marcelo Fortes, 2026-10-13: "Std.Strings / Std.StrUtils: o design espera a sua aprovação (aprovado)"; canon r3.65).

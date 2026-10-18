@@ -1041,14 +1041,53 @@ orderings are library functions (CANON-18). Details:
 - **WHEN** Strings are compared and ordered
 - **THEN** the results follow code point order (tests/runtime/strings-ordering.inox)
 
+### Requirement: CANON-14 Concatenation
+`A + B` SHALL join two Strings into a new String and `S += X` SHALL append X
+to S; `+` on Strings needs no `Use`. A String and a value of another type
+SHALL NOT be joined: there is no implicit conversion to String. A chain is
+joined with one allocation, and `S := S + X` appends in place when S alone
+holds its block, so N appends take amortized linear time and no other
+String changes. Details: `stdlib/strings`.
+
+#### Scenario: Join and append
+- **WHEN** a program joins literals and variables, appends to a local, a State variable, a field, an element and a `ref mut` parameter, and appends 100 000 times
+- **THEN** it prints the joined text, a copy made before an append keeps its value, and every block is freed (tests/runtime/strings-concat.inox)
+
+#### Scenario: No implicit conversion
+- **WHEN** a program writes `"N=" + N` with N an Integer
+- **THEN** it is rejected (tests/diagnostics/string-plus-integer.inox)
+
+### Requirement: CANON-14 String functions
+`Use Std.Strings` SHALL give `Length`, `ByteLength`, `Substr`, `Position`,
+`UpperCase` and `LowerCase`; `Use Std.StrUtils` SHALL give these and
+`Trim`, `LTrim`, `RTrim`, `Left`, `Right`, `PadLeft`, `PadRight`,
+`Replicate`, `Replace`, `Contains`, `StartsWith`, `EndsWith`, `SameText`
+and `CompareText`. Without the `Use`, these names are free for the
+program. Details: `stdlib/strings`.
+
+#### Scenario: Without Use
+- **WHEN** a program calls Length of a String or Trim without the module that gives it, or declares its own Trim and Left without `Use Std.StrUtils`
+- **THEN** the first two are rejected naming the module, and the own routines are called (tests/diagnostics/string-length-without-use.inox, tests/diagnostics/string-function-without-use.inox, tests/runtime/string-names-free.inox)
+
+### Requirement: CANON-14 Characters, not bytes
+The String functions SHALL count code points: lengths and positions, the
+first position being 1; `ByteLength` alone counts UTF-8 bytes. Case
+mapping, case folding and white space SHALL follow Unicode, never one human
+language or a locale.
+
+#### Scenario: Functions
+- **WHEN** a program calls every function on ASCII, multi-byte and empty Strings
+- **THEN** each gives the result of `stdlib/strings` (tests/runtime/strings-functions.inox)
+
 ### Requirement: CANON-14 Reserved String operations
-`S[I]`, String concatenation, `ByteLength`, `CharLength` and
-`GraphemeLength` SHALL stay reserved until the change `std-strings`
-defines them in `Std.StrUtils`.
+`S[I]` and `GraphemeLength` SHALL stay reserved until a later change
+defines them; meanwhile `Substr(S, I, 1)` gives the character at position
+I. `Pos` is a reserved word (CANON-2), so the search function is named
+`Position`.
 
 #### Scenario: Reserved operations
-- **WHEN** a program asks `Length(S)` of a String
-- **THEN** it is rejected: String lengths come with Std.StrUtils (tests/diagnostics/string-length-reserved.inox)
+- **WHEN** a program writes `S[1]` with S a String
+- **THEN** it is rejected, pointing to Substr (tests/diagnostics/string-index-reserved.inox)
 
 ### Requirement: CANON-14 Char
 `Char` SHALL be a Unicode scalar value, U+0000..U+10FFFF without the
@@ -1260,8 +1299,9 @@ it. No module is a catch-all.
 The library SHALL hold `Std.System` (the implicit prelude), `Std.IO` (Put,
 PutLn, Get, GetLn), `Std.Math` (Integer helpers written in Inox and the
 Float64 elementary functions), `Std.Debug` (`Assert(Condition)` and
-`Assert(Condition, Message)`, a trap when false, CANON-19) and `Std.Files` /
-`Std.IOUtils` (CANON-17). `Assert` exists only with `Use Std.Debug`.
+`Assert(Condition, Message)`, a trap when false, CANON-19), `Std.Files` /
+`Std.IOUtils` (CANON-17) and `Std.Strings` / `Std.StrUtils` (CANON-14).
+`Assert` exists only with `Use Std.Debug`.
 
 #### Scenario: Std.Math through Use
 - **WHEN** a program writes `Use Std.Math` and calls its helpers
@@ -1272,16 +1312,16 @@ Float64 elementary functions), `Std.Debug` (`Assert(Condition)` and
 - **THEN** it does nothing, traps, traps with the message, is rejected, and the own routine is called (tests/runtime/debug-assert-holds.inox, tests/runtime/debug-assert-fails.inox, tests/runtime/debug-assert-message.inox, tests/diagnostics/assert-without-use.inox, tests/runtime/assert-name-free.inox)
 
 ### Requirement: CANON-18 Planned modules
-The planned modules SHALL be `Std.Strings` / `Std.StrUtils` (String functions
-by Unicode rules, never tied to one human language: lengths, trimming, case
-mapping and folding, case-insensitive comparison, root collation, locale
-collation later, normalization, search, slicing, replacing, splitting,
-joining, padding), `Std.DateTime` / `Std.DateUtils`, and `Std.SystemUtils`
-(environment, process, command line).
+The planned modules SHALL be `Std.DateTime` / `Std.DateUtils` and
+`Std.SystemUtils` (environment, process, command line). `Std.Strings` /
+`Std.StrUtils` SHALL grow, by Unicode rules never tied to one human
+language, with grapheme lengths, root collation, locale collation later,
+normalization, splitting, joining, character classes and conversions
+between numbers and text.
 
 #### Scenario: Not yet available
-- **WHEN** a program uses `Std.StrUtils`
-- **THEN** the module is not found until change `std-strings` (test to add)
+- **WHEN** a program uses `Std.DateTime`
+- **THEN** the module is not found (tests/diagnostics/module-planned-not-found.inox)
 
 ### Requirement: CANON-19 Run-time faults are traps
 A run-time fault SHALL stop the program at once with `Inox runtime error:
@@ -1310,18 +1350,20 @@ The category texts SHALL be: `integer overflow`, `division by zero`,
 exponent`, `invalid integer input`, `value out of range for Natural`,
 `integer conversion out of range`, `array index out of bounds`, `slice
 bounds out of range`, `out of memory`, `invalid UTF-8 input`, `assertion
-failed` (with `: Message` when given), the categories of CANON-24 and
-CANON-25, and `value out of range` (Range types).
+failed` (with `: Message` when given), `string index out of range`, the
+categories of CANON-24 and CANON-25, and `value out of range` (Range
+types).
 
 #### Scenario: Categories
 - **WHEN** each kind of fault happens at run time
-- **THEN** the program prints its category and exits with 70 (tests/runtime/mul-overflow.inox, tests/runtime/mod-by-zero.inox, tests/runtime/shl-count-64.inox, tests/runtime/natural-assignment-negative.inox, tests/runtime/slice-bounds-runtime.inox)
+- **THEN** the program prints its category and exits with 70 (tests/runtime/mul-overflow.inox, tests/runtime/mod-by-zero.inox, tests/runtime/shl-count-64.inox, tests/runtime/natural-assignment-negative.inox, tests/runtime/slice-bounds-runtime.inox, tests/runtime/string-substr-out-of-range.inox)
 
 ### Requirement: CANON-19 What traps
 These operations SHALL trap: `+ - *`, unary `-` and `Abs` on overflow;
 `div`/`mod` by zero and `Int64.Min div -1`; a shift outside 0..width-1; `^`
 on overflow or with a negative exponent; a `for` step <= 0; a conversion or
-store outside the target range; an index or slice bound outside its array.
+store outside the target range; an index or slice bound outside its array;
+a String position, count or width outside what the function accepts.
 
 #### Scenario: Edge cases
 - **WHEN** `Int64.Min div -1`, `-Int64.Min` and `Abs(Int64.Min)` run

@@ -2,6 +2,7 @@
 Substr [éllo]
 Substr end []
 Substr all [héllo wörld]
+5 9 gua
 7 0 0 0
 UpperCase [HÉLLO WÖRLD]
 LowerCase [àéî ωmega]
@@ -10,6 +11,7 @@ Trim [x y]
 LTrim [x ]
 RTrim [  x]
 Trim empty []
+Trim no-break space [x]
 Left [hé]
 Right [wörld]
 Left 0 []

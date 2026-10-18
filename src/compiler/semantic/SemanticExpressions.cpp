@@ -191,6 +191,9 @@ TypeRef SemanticAnalyzer::analyzeIndexExpression(const ast::CallExpression& call
         }
         return baseType->element();
     }
+    if (baseType != nullptr && baseType->isString()) {
+        throw SemanticError("S[I] on a String is reserved (CANON-14): use Substr(S, I, 1) of Std.Strings");
+    }
     if (baseType == nullptr || !baseType->isArray()) {
         throw SemanticError("only an array can be indexed (CANON-13); this value has type " +
                             types::nameOf(baseType));

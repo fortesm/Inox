@@ -20,6 +20,7 @@ Core safety defaults include:
 - Composition instead of inheritance: `TSubscriber Struct (TPerson)` reuses the fields and methods of `TPerson`, at every level, with `Override` to replace a reused method
 - Design by contract as in Eiffel: `pre` and `pos` (with `old` and `Result`) on routines, `invariant` on structs, `invariant` and `variant` on loops; a broken contract stops the program
 - Safe pointers without reference counting or garbage collection: one owner `Own<T>` that is moved, never copied, and frees its object deterministically; checked references `Link<T>` that never reach a freed object
+- Unicode Strings with `+` that appends in place, and Std.Strings / Std.StrUtils functions (Substr, Position, Trim, UpperCase, SameText...) that count characters, never bytes, and follow no single human language
 - Generics without constraints or run-time cost: `Max<T>(A T, B T) T` and `TPair<K, V> Struct` get one compiled copy per list of types, inferred from the arguments, never written in a call
 
 The language draws carefully from several traditions (Ada/SPARK robustness, Rust ownership and mutability discipline, Modula/Oberon modular clarity, modern Pascal ergonomics, C/C++ performance realism, and others) while rejecting defaults that introduce undefined behavior or ambiguity.

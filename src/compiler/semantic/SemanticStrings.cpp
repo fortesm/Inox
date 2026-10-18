@@ -7,7 +7,7 @@
 
 // SemanticAnalyzer: Std.Strings and Std.StrUtils (OpenSpec change
 // std-strings, CANON-14, CANON-18). Std.Strings holds what nearly every
-// program needs (Length, ByteLength, Substr, Pos, UpperCase, LowerCase);
+// program needs (Length, ByteLength, Substr, Position, UpperCase, LowerCase);
 // Std.StrUtils, which uses Std.Strings, the Delphi-style conveniences
 // (canon r3.64 module pairs). They are compiler intrinsics that exist only
 // in a program that uses the module, so their names stay free elsewhere.

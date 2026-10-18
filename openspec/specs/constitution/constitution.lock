@@ -82,7 +82,10 @@ spec.md#CANON-13 Enum operations	683f3478756223d3	constitution
 spec.md#CANON-13 Set	92cf72f9b1065b4e	constitution
 spec.md#CANON-14 String values	5d7a5e2811c9ed78	constitution
 spec.md#CANON-14 String comparison	b425efc203c39994	constitution
-spec.md#CANON-14 Reserved String operations	b7ce9ce36769c66f	char-not-ordinal
+spec.md#CANON-14 Concatenation	2db6dbc0e418e839	std-strings
+spec.md#CANON-14 String functions	a22244eff844257b	std-strings
+spec.md#CANON-14 Characters, not bytes	d894458bf1a34c75	std-strings
+spec.md#CANON-14 Reserved String operations	9acf94a61f69a7b0	std-strings
 spec.md#CANON-14 Char	d1c75c6e4e4568df	char-not-ordinal
 spec.md#CANON-15 The try statement	5388bdd6cd1d1c0d	constitution
 spec.md#CANON-15 Typed handlers	f805cb680eaed837	constitution
@@ -102,12 +105,12 @@ spec.md#CANON-17 Text in files	1a59a7ef5bb0ee53	constitution
 spec.md#CANON-17 File system functions	b0aa61e9bafcb323	constitution
 spec.md#CANON-17 File errors are exceptions	bc7b1e4c7018bea9	constitution
 spec.md#CANON-18 Library principles	247dc55ac8637e02	module-pairs
-spec.md#CANON-18 Library modules	54d79e37d75eb991	debug-assert
-spec.md#CANON-18 Planned modules	4955763ea05c20f2	constitution
+spec.md#CANON-18 Library modules	c4ba8dc2998832c3	std-strings
+spec.md#CANON-18 Planned modules	9e2d18b2c60927d4	std-strings
 spec.md#CANON-19 Run-time faults are traps	b35d7570f0992acd	constitution
 spec.md#CANON-19 Compile-time faults	bf1622e491bf380a	constitution
-spec.md#CANON-19 Trap categories	ded9ae401be0d846	safe-pointers
-spec.md#CANON-19 What traps	11389ad5bbf19f0c	constitution
+spec.md#CANON-19 Trap categories	cabff74205f927dc	std-strings
+spec.md#CANON-19 What traps	790accb59d3b394b	std-strings
 spec.md#CANON-19 Compiler, library and runtime	558fa5d9a67425f8	constitution
 spec.md#CANON-19 Compiler limits	2ea229dba96e0ae7	constitution
 spec.md#CANON-20 Operator precedence	1735231177adf8e3	constitution

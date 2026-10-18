@@ -46,7 +46,9 @@ whether concurrency or contracts are in it) is the maintainer's decision.
 - `uint64` — UInt64/UInteger values.
 - `enum-range-set` — Enum, Range and Set with `Ord`, `Low`/`High`,
   `Succ`/`Pred`, enum `for` and `case` coverage.
-- `std-strings` — Std.Strings / Std.StrUtils, String concatenation (design approved, r3.65).
+- `std-strings` — Std.Strings / Std.StrUtils, String concatenation (done,
+  r3.78). Later: grapheme lengths, collation, normalization, Split/Join,
+  conversions between numbers and text.
 - `method-reuse` — `Struct (TPart)`, Override, methods of built-in types
   (done, r3.66).
 - `design-by-contract` — Eiffel's contracts with `pre`/`pos`/`invariant`/

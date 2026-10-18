@@ -6,17 +6,18 @@
 
 ## 1. Runtime
 
-- [ ] 1.1 Block header (capacity, characters) for libinoxrt blocks; immortal blocks unchanged
-- [ ] 1.2 `tools/gen_unicode_tables.py` and `runtime/UnicodeTables.inc`
-- [ ] 1.3 `runtime/StringFunctions.cpp`; unit tests in `inoxrt-tests`
+- [x] 1.1 Block header (capacity, characters) for libinoxrt blocks; immortal blocks unchanged
+- [x] 1.2 `tools/gen_unicode_tables.py` and `runtime/UnicodeTables.inc`
+- [x] 1.3 `runtime/StringFunctions.cpp`; unit tests in `inoxrt-tests`
 
 ## 2. Compiler
 
-- [ ] 2.1 `+` on Strings: chain flattening, in-place append for `S := S + ...` and `S += ...`
-- [ ] 2.2 Std.Strings and Std.StrUtils intrinsics with module visibility; trap kind 15
+- [x] 2.1 `+` on Strings: chain flattening, in-place append for `S := S + ...` and `S += ...`
+- [x] 2.2 Std.Strings and Std.StrUtils intrinsics with module visibility; trap kind 15; `Position` (r3.76 reserved `Pos`)
+- [x] 2.3 Fix found on the way: Strings read from State, `ref` parameters, pointer paths and `with` bindings are held for a statement that calls a routine; lexer: two empty literals
 
 ## 3. Tests, documentation, gates
 
-- [ ] 3.1 Runtime, trap and diagnostic tests per function; leak check; 100 000-append test
-- [ ] 3.2 Constitution CANON-14, CANON-18, CANON-19; spec `stdlib/strings`; manual; STATUS; CHANGELOG
+- [x] 3.1 Runtime, trap and diagnostic tests per function; leak check (now instrumenting the generated code); 100 000-append test
+- [x] 3.2 Constitution CANON-14, CANON-18, CANON-19; spec `stdlib/strings`; manual; STATUS; CHANGELOG
 - [ ] 3.3 E19 gates; MSVC IR check; Linux and Windows CI green
