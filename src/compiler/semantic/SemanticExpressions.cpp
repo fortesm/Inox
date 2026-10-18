@@ -254,6 +254,12 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
             constantIntegerValue(conditional.thenValue(), constant) && constant >= 0) {
             return elseType;
         }
+        // A Range and its base meet in the base (CANON-13).
+        const auto base = [](TypeRef type) { return type != nullptr && type->isRange() ? type->rangeBase() : type; };
+        if (thenType != elseType && (base(thenType) != thenType || base(elseType) != elseType) &&
+            base(thenType) == base(elseType)) {
+            return base(thenType);
+        }
         if (!typesMatch(thenType, elseType)) {
             throw SemanticError("the branches of a conditional expression have different types: " +
                                 types::nameOf(thenType) + " and " + types::nameOf(elseType) + " (ADR-0013)");
@@ -568,9 +574,27 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
 
     // CANON-8 (v3.39): Natural is a subtype of Integer; arithmetic and
     // comparisons on it belong to the Integer family (`A - B` may be negative).
+    // A Range computes in its base type too (CANON-13).
     const auto integerFamily = [this](TypeRef type) {
+        if (type != nullptr && type->isRange()) {
+            return type->rangeBase();
+        }
         return type == types().naturalType() ? types().int64Type() : type;
     };
+    // CANON-13: `X in S` and `X in A..B`; a set literal compared with a set
+    // takes its type.
+    if (op == ast::BinaryOperator::In) {
+        return analyzeMembership(expression);
+    }
+    if ((isSetLiteral(expression.left()) || isSetLiteral(expression.right())) &&
+        (op == ast::BinaryOperator::Equal || op == ast::BinaryOperator::NotEqual ||
+         op == ast::BinaryOperator::LessEqual || op == ast::BinaryOperator::GreaterEqual)) {
+        const bool literalLeft = isSetLiteral(expression.left());
+        const TypeRef other = analyzeExpression(literalLeft ? expression.right() : expression.left());
+        analyzeSetOperand(literalLeft ? expression.left() : expression.right(), other);
+        return types().boolType();
+    }
+
     // Change uint64: a UInt64 operand makes the other one a UInt64 context,
     // so `U = 18446744073709551615` and `U + 1` read the literal as a UInt64.
     TypeRef leftType = nullptr;
@@ -633,6 +657,10 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
         }
     };
     const auto requireNumericOperands = [&] {
+        if ((leftType != nullptr && leftType->isEnum()) || (rightType != nullptr && rightType->isEnum())) {
+            throw SemanticError("an enum has no arithmetic: Succ(E), Pred(E) and Ord(E) step and measure it "
+                                "(CANON-13)");
+        }
         if ((leftType != nullptr && !isNumericType(leftType)) ||
             (rightType != nullptr && !isNumericType(rightType))) {
             throw SemanticError(
@@ -702,6 +730,13 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             throw SemanticError("arrays and slices cannot be compared with '" +
                                 std::string(binaryOperatorName(op)) + "' (CANON-13)");
         }
+        // CANON-13: a set is a subset (<=) or a superset (>=) of another; it
+        // has no order.
+        if (leftType != nullptr && leftType->isSet() &&
+            (op == ast::BinaryOperator::Less || op == ast::BinaryOperator::Greater)) {
+            throw SemanticError("sets are compared with <= (subset) and >= (superset), not '" +
+                                std::string(binaryOperatorName(op)) + "' (CANON-13)");
+        }
         // v3.57: numbers, Strings, Char and Bool (false < true) are compared
         // and ordered; structs are never compared, as in Pascal.
         if (leftType != nullptr && leftType->isStruct()) {
@@ -724,6 +759,10 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
         }
         return types().boolType();
     case ast::BinaryOperator::Range:
+        // `Club..Heart`: a range of literals of one enum (CANON-13).
+        if (leftType != nullptr && leftType->isEnum() && leftType == rightType) {
+            return leftType;
+        }
         requireIntegerOperands();
         return leftType;
     case ast::BinaryOperator::In:
@@ -764,9 +803,13 @@ TypeRef SemanticAnalyzer::analyzeUnaryExpression(const ast::UnaryExpression& exp
             throw SemanticError("unary minus is not defined for UInt64: write -Integer(U), which stops the "
                                 "program when U is above Int64.Max");
         }
-        // CANON-8: negating a Natural leaves the subtype; the result is Integer.
+        // CANON-8: negating a Natural or a Range leaves the subtype; the
+        // result is Integer.
         if (expression.op() == ast::UnaryOperator::Minus && operandType == types().naturalType()) {
             return types().int64Type();
+        }
+        if (operandType != nullptr && operandType->isRange()) {
+            return operandType->rangeBase();
         }
         return operandType;
     case ast::UnaryOperator::Not:
@@ -780,6 +823,9 @@ TypeRef SemanticAnalyzer::analyzeUnaryExpression(const ast::UnaryExpression& exp
         }
         if (operandType == types().naturalType()) {
             return types().int64Type();
+        }
+        if (operandType != nullptr && operandType->isRange()) {
+            return operandType->rangeBase();
         }
         return operandType;
     case ast::UnaryOperator::Old:

@@ -25,6 +25,12 @@ std::optional<IntegerRange> narrowIntegerRange(TypeRef type)
     return IntegerRange{type->minValue(), type->maxValue()};
 }
 
+std::string llvmSetType(TypeRef setType)
+{
+    const std::int64_t bytes = (setType->setSize() + 7) / 8;
+    return "i" + std::to_string(bytes * 8);
+}
+
 std::string llvmValueType(TypeRef type)
 {
     if (type == nullptr) {
@@ -33,6 +39,7 @@ std::string llvmValueType(TypeRef type)
     switch (type->kind()) {
     case types::TypeKind::Bool:
         return "i1";
+    case types::TypeKind::Enum:  // CANON-13: the ordinal, an i64 like every integer
     case types::TypeKind::Integer:
         // CANON-8: every integer is computed as i64 holding the mathematical
         // value; Natural and the narrow widths are range-checked where a
@@ -40,6 +47,8 @@ std::string llvmValueType(TypeRef type)
         return "i64";
     case types::TypeKind::Float:
         return type->bits() == 32 ? "float" : "double";
+    case types::TypeKind::Set:
+        return llvmSetType(type);
     case types::TypeKind::String:  // CANON-14: an immutable, counted block of the runtime
     case types::TypeKind::File:    // file-io: a handle of the runtime, owned like a String
     case types::TypeKind::Own:     // safe-pointers: an owner is its object's address

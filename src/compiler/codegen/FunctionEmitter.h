@@ -206,6 +206,18 @@ private:
     bool typeOwnsReferences(TypeRef type) const;
 
     void requireModuleLine(const std::string& line);
+    // Enums (change enum-range-set; FunctionEmitterEnums.cpp).
+    TypeRef enumTypeNamed(const ast::Expression& expression) const;
+    bool isOrdinalBuiltin(const ast::CallExpression& call) const;
+    std::string emitOrdinalBuiltin(const ast::CallExpression& call);
+    std::string enumNameTable(TypeRef enumType);
+    std::string emitEnumName(const std::string& value, TypeRef enumType);
+    // Sets and `in` (change enum-range-set; FunctionEmitterSets.cpp).
+    bool isSetCall(const ast::CallExpression& call) const;
+    std::string emitSetMask(const std::string& value, TypeRef setType);
+    std::string emitSetCall(const ast::CallExpression& call);
+    std::string emitSetComparison(const ast::BinaryExpression& expression);
+    std::string emitMembership(const ast::BinaryExpression& expression);
     // The UInt64 helpers of RuntimeHelpersIr (change uint64), once per module.
     void requireUnsignedHelpers();
     // `T(X)` between integer types where X or T is a UInt64 (change uint64).

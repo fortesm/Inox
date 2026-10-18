@@ -1,0 +1,1 @@
+an enum has no arithmetic: Succ(E), Pred(E) and Ord(E) step and measure it (CANON-13)

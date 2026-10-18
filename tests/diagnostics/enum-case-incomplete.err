@@ -1,0 +1,1 @@
+case does not cover every value of TSuit (first missing: Spade); add an 'else' arm (ADR-0011)

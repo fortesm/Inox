@@ -1,1 +1,1 @@
-parse error at 10:30: expected expression
+a set literal [...] is written where a Set is expected (CANON-13); array literals are reserved

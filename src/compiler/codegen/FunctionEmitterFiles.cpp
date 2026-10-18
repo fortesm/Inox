@@ -157,9 +157,11 @@ std::string FunctionEmitter::emitFileCall(const ast::CallExpression& call)
         for (std::size_t index = 1; index < arguments.size(); ++index) {
             const TypeRef type = typeOf(*arguments[index]);
             const std::string written = value(index);
-            if (isStringType(type)) {
+            if (isStringType(type) || type->isEnum()) {
+                // An enum is written as its literal's name (CANON-13).
+                const std::string text = type->isEnum() ? emitEnumName(written, type) : written;
                 emitRuntimeCall(RuntimeFunction::FileWriteString, "void", "__inox_file_write_str",
-                                "ptr " + file + ", ptr " + written);
+                                "ptr " + file + ", ptr " + text);
             } else if (type->isBool()) {
                 emitRuntimeCall(RuntimeFunction::FileWriteBool, "void", "__inox_file_write_bool",
                                 "ptr " + file + ", i1 zeroext " + written);

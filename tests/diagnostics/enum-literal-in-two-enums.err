@@ -1,0 +1,1 @@
+enum literal Heart is already a literal of TSuit: a literal belongs to one enum (CANON-13)

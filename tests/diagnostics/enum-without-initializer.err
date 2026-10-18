@@ -1,0 +1,1 @@
+an enum variable needs an initializer (CANON-5): Suit TSuit := Club

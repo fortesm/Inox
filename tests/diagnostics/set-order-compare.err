@@ -1,0 +1,1 @@
+sets are compared with <= (subset) and >= (superset), not '<' (CANON-13)

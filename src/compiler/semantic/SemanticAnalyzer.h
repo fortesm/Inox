@@ -87,6 +87,20 @@ private:
     static void rejectInvalidConstantRightOperand(ast::BinaryOperator op, std::int64_t value, bool isUnsigned);
     void registerTypeSectionSymbols(const ast::SectionDeclaration& section);
     void registerStructDeclaration(const ast::TypeDeclaration& declaration);
+    void registerEnumDeclaration(const ast::TypeDeclaration& declaration);
+    void resolveRangeBounds(const ast::TypeDeclaration& declaration);
+    // Enums (change enum-range-set; SemanticEnums.cpp).
+    TypeRef enumTypeNamed(const ast::Expression& expression) const;
+    TypeRef analyzeOrdinalBuiltin(const ast::CallExpression& call);
+    void checkEnumConversion(const ast::CallExpression& call, TypeRef enumType);
+    // Sets (change enum-range-set; SemanticSets.cpp).
+    TypeRef resolveSetType(const types::TypeSyntax& syntax, std::string_view written);
+    void requireSetElement(const ast::Expression& element, TypeRef setType, const std::string& where);
+    TypeRef analyzeSetOperand(const ast::Expression& expression, TypeRef context);
+    TypeRef analyzeSetLiteral(const ast::CallExpression& call);
+    bool isSetFunctionCall(const ast::CallExpression& call) const;
+    TypeRef analyzeSetFunction(const ast::CallExpression& call);
+    TypeRef analyzeMembership(const ast::BinaryExpression& expression);
     // Once every Type of the module is declared: struct fields and Const and
     // State variables whose written type is a type name.
     void resolveDeclaredTypeNames();

@@ -1,0 +1,55 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-13 Range (change enum-range-set): a Range of Integer is a subtype
+== of its base. Storing into it checks the bounds (Q1, implicitly, as for
+== Natural); a constant inside the bounds needs no check; its arithmetic is
+== Integer; Low, High, Succ and Pred (Q5); a Range in fields with a
+== default, array elements, parameters, results, case without else, for
+== over Low..High, Get, TMonth(I), `in` with A..B, and bounds from a Const.
+Const Last := 12
+
+Type
+    TMonth Range 1..Last
+    TTemp Range -40..50
+    TDate Struct
+        FMonth TMonth := 1
+        FDay Integer := 1
+    ;
+
+Next(M TMonth) TMonth :
+    Return IIf(M = High(TMonth), Low(TMonth), M + 1)
+;
+
+Half(M TMonth) String :
+    case M
+        1..6
+            Return "first"
+        7..12
+            Return "second"
+    ;
+;
+
+Main :
+    M TMonth := 12
+    N := M + 1
+    T TTemp := -40
+    D TDate
+    D.FMonth := Next(M)
+    Months Array[1..2] TMonth
+    Months[1] := 3
+    I := 7
+    Months[2] := I
+    PutLn(M, " ", N, " ", T, " ", D.FMonth, " ", Months[1] + Months[2], " ", Succ(Months[1]), " ", Pred(M))
+    PutLn(Low(TMonth), " ", High(TTemp), " ", TMonth(I - 1), " ", Half(M), " ", Half(Months[1]), " ", -T)
+    for K in Low(TMonth)..High(TMonth) step 4
+        Put(K, " ")
+    ;
+    PutLn(M in 1..12, " ", N in 1..12)
+    Get(M)
+    PutLn(M, " ", Next(M))
+;

@@ -247,9 +247,14 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         // A Link and an Option<Own<T>> are born empty; an Own is born with
         // New(...) (safe-pointers).
         const bool bornEmpty = type->isLink() || type->isOptionOwn();
-        if (var.initializer() == nullptr && !type->isStruct() && !type->isArray() && !bornEmpty) {
+        // A Set is empty by default (CANON-13).
+        if (var.initializer() == nullptr && !type->isStruct() && !type->isArray() && !type->isSet() && !bornEmpty) {
             if (type->isOwn()) {
                 throw SemanticError("an owner is born with New(...) or Move(X): " + var.name());
+            }
+            if (type->isEnum()) {
+                throw SemanticError("an enum variable needs an initializer (CANON-5): " + var.name() + " " +
+                                    type->name() + " := " + type->literals().front());
             }
             throw SemanticError("scalar declaration requires initializer: " + var.name());
         }
@@ -353,7 +358,9 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         const TypeRef rangeType = analyzeExpression(forStatement.iterable());
         // Change uint64: a range of UInt64 values gives a UInt64 iterator;
         // every other integer range gives an Integer one.
-        const TypeRef iteratorType = isUInt64Type(rangeType) ? rangeType : types().int64Type();
+        // An enum range gives an iterator of the enum (CANON-13).
+        const TypeRef iteratorType =
+            isUInt64Type(rangeType) || (rangeType != nullptr && rangeType->isEnum()) ? rangeType : types().int64Type();
         if (forStatement.step() != nullptr) {
             const TypeRef stepType = analyzeWithIntegerContext(*forStatement.step(), iteratorType);
             if (!isIntegerType(stepType)) {

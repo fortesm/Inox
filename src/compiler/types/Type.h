@@ -41,6 +41,8 @@ enum class TypeKind : std::uint8_t {
     Own,        // Own<Target>
     Option,     // Option<Own<Target>>
     Link,       // Link<Target>
+    Enum,       // TSuit (Club, Diamond, Heart, Spade): ordinals 0..N-1
+    Set,        // Set<Base>: a finite set over an Enum or a Range
 };
 
 class Type;
@@ -105,6 +107,21 @@ public:
     bool isOwn() const noexcept { return kind_ == TypeKind::Own; }
     bool isOptionOwn() const noexcept { return kind_ == TypeKind::Option; }
     bool isLink() const noexcept { return kind_ == TypeKind::Link; }
+    // Range (CANON-13): an Integer subtype `TMonth Range 1..12` holding
+    // minValue..maxValue; its arithmetic is its base's (Int64).
+    bool isRange() const noexcept { return kind_ == TypeKind::Integer && element_ != nullptr; }
+    const Type* rangeBase() const noexcept { return isRange() ? element_ : nullptr; }
+    // Enum (CANON-13): nominal, ordinals 0..N-1 (minValue..maxValue).
+    bool isEnum() const noexcept { return kind_ == TypeKind::Enum; }
+    // Set<T> (CANON-13): element() is T, an Enum or a Range of at most 256
+    // values; setSize() is how many values T has.
+    bool isSet() const noexcept { return kind_ == TypeKind::Set; }
+    std::int64_t setSize() const noexcept
+    {
+        return isSet() ? element_->maxValue() - element_->minValue() + 1 : 0;
+    }
+    // Enum: the literals in declaration order, spelled as declared.
+    const std::vector<std::string>& literals() const noexcept { return literals_; }
     // Own, Option<Own> and Link.
     bool isPointer() const noexcept { return isOwn() || isOptionOwn() || isLink(); }
     // The object a pointer reaches (Option<Own<T>> reaches T); null otherwise.
@@ -123,6 +140,7 @@ private:
     std::int64_t high_ = 0;
     const Type* element_ = nullptr;
     std::vector<StructField> fields_;
+    std::vector<std::string> literals_;
 };
 
 // The name of a type, or the empty text for a type not known (null): the

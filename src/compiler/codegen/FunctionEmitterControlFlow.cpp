@@ -444,8 +444,10 @@ void FunctionEmitter::emitForIn(const ast::ForInStatement& statement)
     const std::string descending = temporary();
     output_ << "  " << descending << " = icmp " << greater << " i64 " << startValue << ", " << endValue << '\n';
     output_ << "  store i64 " << startValue << ", ptr " << slot << '\n';
+    // A UInt64 or an enum range has an iterator of its type.
+    const bool keepsType = isUnsigned || (iteratorType != nullptr && iteratorType->isEnum());
     locals_.insert_or_assign(iteratorName,
-                             LocalInfo{slot, isUnsigned ? iteratorType : semantics_.types().int64Type(), "i64"});
+                             LocalInfo{slot, keepsType ? iteratorType : semantics_.types().int64Type(), "i64"});
 
     output_ << "  br label %" << conditionTarget << "\n\n";
 

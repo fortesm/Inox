@@ -32,6 +32,8 @@ struct ModuleContext {
     bool usesInoxRuntime = false;
     // Safe pointers: the drop function of each owned type.
     std::unordered_map<const types::Type*, std::string> dropFunctions;
+    // Enums (CANON-13): the table of literal names of each enum.
+    std::unordered_map<const types::Type*, std::string> enumNameTables;
 };
 
 } // namespace inox::compiler::codegen::detail

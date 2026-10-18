@@ -48,6 +48,8 @@ inline constexpr std::uint64_t kInt64MagnitudeOfMin = static_cast<std::uint64_t>
 // Int64. Its constants are kept as their 64-bit pattern in an std::int64_t
 // and read unsigned.
 bool isUInt64Type(const types::Type* type);
+// `[A, B]`, a set literal (CANON-13): a call of `__set`.
+bool isSetLiteral(const ast::Expression& expression);
 inline constexpr std::uint64_t kUInt64Max = std::numeric_limits<std::uint64_t>::max();
 
 // A constant integer: its 64-bit pattern, read unsigned for a UInt64.
@@ -89,6 +91,8 @@ struct CaseDomain {
     // UInt64: values are compared by a key that keeps their unsigned order
     // in Int64 (the pattern with its top bit flipped, caseKey).
     bool isUnsigned64 = false;
+    // Enum (CANON-13): its literals name the values in messages.
+    const types::Type* enumType = nullptr;
 };
 
 // The Int64 key of a UInt64 pattern that orders like the unsigned value, and back.

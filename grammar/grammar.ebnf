@@ -48,10 +48,12 @@ type_parameters   ::= "<" identifier ( "," identifier )* ">"
 reused_parts      ::= "(" identifier ( "," identifier )* ")"
                       (* method reuse (CANON-9): each part is a field named after
                          its type that brings its fields and methods; never empty *)
-struct_field      ::= identifier type_ref ( ":=" "-"? literal )? NEWLINE
-                      (* the type may be an array (v3.53), never a Slice<T> (ADR-0017) *)
+struct_field      ::= identifier type_ref ( ":=" ( "-"? literal | identifier ) )? NEWLINE
+                      (* the type may be an array (v3.53), never a Slice<T> (ADR-0017);
+                         an identifier default is a literal of the field's enum (CANON-13) *)
 range_decl        ::= identifier "Range" range_bound ".." range_bound
-range_bound       ::= integer_literal | char_literal | "-" integer_literal
+range_bound       ::= integer_literal | char_literal | "-" integer_literal | identifier
+                      (* CANON-13: a static bound, a literal or a Const; Low <= High *)
 enum_short_decl   ::= identifier "(" identifier ( "," identifier )* ")"
 enum_block_decl   ::= identifier "Enum" NEWLINE ( identifier NEWLINE )+ ";"
 
@@ -282,7 +284,14 @@ slice_range       ::= bitor_expr? ".." bitor_expr?
                          views; an omitted bound is the base's own *)
 member_suffix     ::= "." identifier
 primary           ::= literal | identifier | "(" expression ")" | with_member
-                    | conditional_expr
+                    | conditional_expr | set_literal | with_function
+set_literal       ::= "[" ( expression ( "," expression )* )? "]"
+                      (* CANON-13 Q6: a set literal, written where a Set<T> is
+                         expected; array literals are reserved *)
+with_function     ::= "with" "(" expression "," expression ")"
+                      (* CANON-13 Q6: With(S, X), the set function; the reserved
+                         word starts a statement, so in an expression followed
+                         by "(" it can only be the function *)
 conditional_expr  ::= "IIf" "(" expression "," expression "," expression ")"
                       (* r3.76 (formerly ADR-0013's "if C then A else B"):
                          selects a value; each branch is an expression, never a
