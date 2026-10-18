@@ -20,4 +20,4 @@
 
 - [x] 3.1 Runtime, trap and diagnostic tests per function; leak check (now instrumenting the generated code); 100 000-append test
 - [x] 3.2 Constitution CANON-14, CANON-18, CANON-19; spec `stdlib/strings`; manual; STATUS; CHANGELOG
-- [ ] 3.3 E19 gates; MSVC IR check; Linux and Windows CI green
+- [x] 3.3 E19 gates; MSVC IR check; Linux and Windows CI green (PR #66)
