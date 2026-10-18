@@ -34,4 +34,4 @@
 - [x] 5.3 `tools/mutation_fuzz.py` seeds 1 and 7 are clean
 - [x] 5.4 `tools/backend_gaps.py` reports 0 BUG
 - [x] 5.5 `tools/eh_state_balance.py` and `tools/grammar_consistency.py` pass
-- [ ] 5.6 Linux and Windows CI green
+- [x] 5.6 Linux and Windows CI green (PR #67)
