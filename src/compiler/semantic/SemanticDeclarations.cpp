@@ -551,8 +551,10 @@ void SemanticAnalyzer::validateStructFieldDefault(const std::string& fieldName,
     if (!parseIntegerLiteralMagnitude(magnitudeText, magnitude)) {
         throw SemanticError("integer struct field default must be an integer literal: " + fieldName);
     }
+    // A UInt64 field may default to any value up to 2^64-1 (change uint64).
+    const std::uint64_t highMagnitude = isUInt64Type(fieldType) ? kUInt64Max : static_cast<std::uint64_t>(high);
     const bool fits = negative ? (low < 0 && magnitude <= static_cast<std::uint64_t>(-(low + 1)) + 1U)
-                               : magnitude <= static_cast<std::uint64_t>(high);
+                               : magnitude <= highMagnitude;
     if (!fits) {
         throw SemanticError("struct field default out of range for " + fieldType->name() + ": " + fieldName);
     }

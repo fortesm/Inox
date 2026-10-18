@@ -24,6 +24,7 @@
 #include <cstring>
 #include <functional>
 #include <iomanip>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -118,6 +119,26 @@ std::string FunctionEmitter::emitConditional(const ast::ConditionalExpression& e
     return result;
 }
 
+// Change uint64: a conversion into or out of UInt64 checks that the value is
+// one of the target. A UInt64 above Int64.Max is a negative i64, so the
+// signed range check with a low bound of at least 0 rejects it too.
+std::string FunctionEmitter::emitUnsignedConversion(const std::string& value, TypeRef source, TypeRef target)
+{
+    if (isUInt64Type(source) && isUInt64Type(target)) {
+        return value;
+    }
+    if (isUInt64Type(target)) {
+        // From a signed type: a negative value is out of range; Natural and
+        // the narrow unsigned types are never negative.
+        if (!source->isSigned() || source == semantics_.types().naturalType()) {
+            return value;
+        }
+        return emitRangeCheck(value, IntegerRange{0, std::numeric_limits<std::int64_t>::max()}, 8);
+    }
+    const std::int64_t high = target->maxValue();
+    return emitRangeCheck(value, IntegerRange{std::max<std::int64_t>(target->minValue(), 0), high}, 8);
+}
+
 TypeRef FunctionEmitter::typeOf(const ast::Expression& expression) const
 {
     return semantics_.typeOf(expression);
@@ -134,7 +155,7 @@ TypeRef FunctionEmitter::conversionTarget(const ast::CallExpression& call) const
         semantics_.types().lookup(static_cast<const ast::IdentifierExpression&>(call.callee()).name());
     const bool lowered = target != nullptr && (target == semantics_.types().naturalType() ||
                                                target == semantics_.types().int64Type() ||
-                                               target->isNarrowInteger());
+                                               target->isNarrowInteger() || isUInt64Type(target));
     return lowered ? target : nullptr;
 }
 
@@ -330,12 +351,19 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             // is i1 and ordered false < true (v3.57): compared unsigned,
             // since a signed i1 reads true as -1.
             const bool isBool = leftType == "i1";
+            // A UInt64 is ordered by its unsigned value (change uint64).
+            const bool isUnsigned =
+                isBool || isUInt64Type(typeOf(binary.left())) || isUInt64Type(typeOf(binary.right()));
             std::string boolPredicate = predicate;
-            if (isBool && boolPredicate.front() == 's') {
+            if (isUnsigned && boolPredicate.front() == 's') {
                 boolPredicate.front() = 'u';
             }
-            output_ << "  " << result << " = icmp " << (isBool ? boolPredicate : predicate) << ' '
+            output_ << "  " << result << " = icmp " << (isUnsigned ? boolPredicate : predicate) << ' '
                     << (isBool ? "i1" : "i64") << ' ' << left << ", " << right << '\n';
+        } else if (isUInt64Type(typeOf(expression)) && !llvmUnsignedHelper(binary.op()).empty()) {
+            requireUnsignedHelpers();
+            output_ << "  " << result << " = call i64 @" << llvmUnsignedHelper(binary.op()) << "(i64 " << left
+                    << ", i64 " << right << ")\n";
         } else if (const std::string operation = llvmBooleanOperation(binary.op());
                    !operation.empty()) {
             output_ << "  " << result << " = " << operation << " i1 "
@@ -468,6 +496,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (equalsIgnoreCase(callee.name(), "Abs") && call.arguments().size() == 1 &&
             expressionLlvmType(*call.arguments().front()) == "i64") {
             const std::string value = emitExpression(*call.arguments().front());
+            if (isUInt64Type(typeOf(*call.arguments().front()))) {
+                return value;  // never negative
+            }
             const std::string result = "%tmp" + std::to_string(nextTemporary_++);
             output_ << "  " << result << " = call i64 @__inox_abs_i64(i64 " << value << ")\n";
             return result;
@@ -490,6 +521,10 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (isNaturalConversion(call)) {
             const std::string value = emitExpression(*call.arguments().front());
             const TypeRef target = conversionTarget(call);
+            const TypeRef source = typeOf(*call.arguments().front());
+            if (isUInt64Type(source) || isUInt64Type(target)) {
+                return emitUnsignedConversion(value, source, target);
+            }
             if (const auto range = narrowIntegerRange(target)) {
                 return emitRangeCheck(value, *range, 8);
             }

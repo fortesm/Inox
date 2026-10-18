@@ -154,6 +154,58 @@ bool integerTypeRange(const types::Type* type, std::int64_t& low, std::int64_t& 
     return true;
 }
 
+bool isUInt64Type(const types::Type* type)
+{
+    return type != nullptr && type->isInteger() && type->bits() == 64 && !type->isSigned();
+}
+
+bool constantFits(IntegerConstant value, const types::Type* target)
+{
+    if (target == nullptr || !target->isInteger()) {
+        return false;
+    }
+    if (isUInt64Type(target)) {
+        return value.isUnsigned || value.bits >= 0;
+    }
+    if (value.isUnsigned) {
+        return target->maxValue() >= 0 &&
+               static_cast<std::uint64_t>(value.bits) <= static_cast<std::uint64_t>(target->maxValue());
+    }
+    return value.bits >= target->minValue() && value.bits <= target->maxValue();
+}
+
+std::string constantText(IntegerConstant value)
+{
+    return value.isUnsigned ? std::to_string(static_cast<std::uint64_t>(value.bits)) : std::to_string(value.bits);
+}
+
+bool checkedAddUnsigned(std::uint64_t a, std::uint64_t b, std::uint64_t& out)
+{
+    if (a > kUInt64Max - b) {
+        return false;
+    }
+    out = a + b;
+    return true;
+}
+
+bool checkedSubUnsigned(std::uint64_t a, std::uint64_t b, std::uint64_t& out)
+{
+    if (b > a) {
+        return false;
+    }
+    out = a - b;
+    return true;
+}
+
+bool checkedMulUnsigned(std::uint64_t a, std::uint64_t b, std::uint64_t& out)
+{
+    if (a != 0 && b > kUInt64Max / a) {
+        return false;
+    }
+    out = a * b;
+    return true;
+}
+
 // The fixed-width integer types narrower than 64 bits. Their values are
 // computed in the Int64 family and range-checked where a result has the type.
 bool isNarrowIntegerType(const types::Type* type)
@@ -237,10 +289,10 @@ bool checkedMul(std::int64_t a, std::int64_t b, std::int64_t& out)
     return true;
 }
 
-[[noreturn]] void throwConstantOverflow(const char* what)
+[[noreturn]] void throwConstantOverflow(const char* what, const char* type)
 {
-    throw SemanticError(std::string("constant integer overflow in ") + what +
-                        ": result does not fit in Int64 (integer overflow is never wraparound)");
+    throw SemanticError(std::string("constant integer overflow in ") + what + ": result does not fit in " + type +
+                        " (integer overflow is never wraparound)");
 }
 
 bool caseDomainFor(const types::Type* type, CaseDomain& domain)
@@ -256,9 +308,15 @@ bool caseDomainFor(const types::Type* type, CaseDomain& domain)
         domain = {0, 0x10FFFF, true, false, true};
         return true;
     }
+    if (isUInt64Type(type)) {
+        // Every value of UInt64 has a key in Int64 (caseKey); a case on it
+        // still needs `else` (change uint64).
+        domain = {caseKey(0), caseKey(-1), false, false, false, true};
+        return true;
+    }
     if (type->isInteger()) {
         // ADR-0014 (v3.39): Natural is 0..Int64.Max, so its coverage is
-        // provable; UInt64's range does not fit Int64, so it is not.
+        // provable.
         domain = {type->minValue(), type->maxValue(), type->rangeIsExact()};
         return true;
     }
@@ -274,6 +332,9 @@ std::string caseValueText(std::int64_t value, const CaseDomain& domain)
         char buffer[16];
         std::snprintf(buffer, sizeof buffer, "U+%04llX", static_cast<unsigned long long>(value));
         return buffer;
+    }
+    if (domain.isUnsigned64) {
+        return std::to_string(static_cast<std::uint64_t>(caseKey(value)));
     }
     return std::to_string(value);
 }

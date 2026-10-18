@@ -22,6 +22,10 @@
 
 namespace inox::compiler::semantic {
 
+namespace detail {
+struct IntegerConstant;
+}
+
 class SemanticError final : public std::runtime_error {
 public:
     explicit SemanticError(std::string message);
@@ -80,7 +84,7 @@ private:
     void analyzeModuleItem(const ast::AstNode& item);
     void declareSectionSymbols(const ast::SectionDeclaration& section);
     void recordConstantValue(std::string_view name, std::string_view valueToken);
-    static void rejectInvalidConstantRightOperand(ast::BinaryOperator op, std::int64_t value);
+    static void rejectInvalidConstantRightOperand(ast::BinaryOperator op, std::int64_t value, bool isUnsigned);
     void registerTypeSectionSymbols(const ast::SectionDeclaration& section);
     void registerStructDeclaration(const ast::TypeDeclaration& declaration);
     // Once every Type of the module is declared: struct fields and Const and
@@ -212,6 +216,12 @@ private:
     // any overflow, division by zero or out-of-range shift is a compile error.
     void foldConstantExpression(const ast::Expression& expression);
     bool constantIntegerValue(const ast::Expression& expression, std::int64_t& value) const;
+    // The constant with its domain: unsigned when the expression is a UInt64.
+    bool integerConstant(const ast::Expression& expression, detail::IntegerConstant& value) const;
+    void foldUnsignedBinary(const ast::BinaryExpression& binary, std::uint64_t a, std::uint64_t b);
+    // Analyzes `expression` where a value of `context` is expected: a UInt64
+    // context makes integer literals UInt64 (change uint64).
+    TypeRef analyzeWithIntegerContext(const ast::Expression& expression, TypeRef context);
     void requireStatementExpression(const ast::Expression& expression);
 
     // Std.Files / Std.IOUtils (OpenSpec change file-io; SemanticFiles.cpp).
@@ -334,6 +344,10 @@ private:
     // The expression analyzed for a known target type (analyzeExpressionFor).
     const ast::Expression* targetExpression_ = nullptr;
     TypeRef targetType_ = nullptr;
+    // UInt64 where the expression being analyzed is expected to be one
+    // (change uint64): a literal there is a UInt64, up to 2^64-1. It reaches
+    // a literal through operators and IIf branches, never into a call.
+    TypeRef integerContext_ = nullptr;
 };
 
 } // namespace inox::compiler::semantic

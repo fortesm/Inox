@@ -1,0 +1,24 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Change uint64: Get reads 0..18446744073709551615 into a UInt64, PutLn and
+== WriteLn print it unsigned, and a file keeps it.
+Use Std.IOUtils
+
+Main :
+    U UInt64 := 0
+    V UInteger := 0
+    Get(U, V)
+    PutLn(U, " ", V)
+    F := Create("uint64-io.txt")
+    WriteLn(F, U, " ", V + 1)
+    Close(F)
+    R := OpenRead("uint64-io.txt")
+    PutLn(ReadLn(R))
+    Close(R)
+    DeleteFile("uint64-io.txt")
+;

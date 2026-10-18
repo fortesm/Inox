@@ -330,6 +330,14 @@ void __inox_file_write_i64(void* value, std::int64_t number)
     writeBytes(value, text, static_cast<std::size_t>(length));
 }
 
+// A UInt64 (change uint64): the 64 bits read unsigned.
+void __inox_file_write_u64(void* value, std::uint64_t number)
+{
+    char text[32];
+    const int length = std::snprintf(text, sizeof text, "%llu", static_cast<unsigned long long>(number));
+    writeBytes(value, text, static_cast<std::size_t>(length));
+}
+
 void __inox_file_write_f64(void* value, double number)
 {
     char text[512];

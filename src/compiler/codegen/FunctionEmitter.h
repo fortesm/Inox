@@ -206,6 +206,10 @@ private:
     bool typeOwnsReferences(TypeRef type) const;
 
     void requireModuleLine(const std::string& line);
+    // The UInt64 helpers of RuntimeHelpersIr (change uint64), once per module.
+    void requireUnsignedHelpers();
+    // `T(X)` between integer types where X or T is a UInt64 (change uint64).
+    std::string emitUnsignedConversion(const std::string& value, TypeRef source, TypeRef target);
 
     // Declares a libinoxrt function once and marks the module as needing
     // the runtime library.

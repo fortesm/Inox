@@ -92,9 +92,9 @@ analysis but not lowered yet.)
 | `array-of-struct` | array of struct elements with defaults and field access | **OK** |  |
 | `struct-array-field` | struct field of array type, copied with its struct | **OK** |  |
 | `state-aggregates` | State variables of struct and array type | **OK** |  |
-| `uint64-local` | UInt64 local | **GAP** | unsupported local variable type for LLVM emission |
+| `uint64-local` | UInt64 local | **OK** |  |
 
-Summary: GAP=3, OK=49
+Summary: GAP=2, OK=50
 
 ## Reading the table
 
@@ -116,9 +116,9 @@ Summary: GAP=3, OK=49
   lowered since v3.53 (`state-aggregates`); String State since v3.55.
 * `case` and `unless` are lowered since v3.42 (probes `case`, `case-ada-choices`, `unless`).
 * `byte-local`, `fixed-width-arith` (v3.44): integers narrower than 64 bits
-  are lowered as i64 values with range checks. `uint64-local` is a GAP:
-  UInt64/UInteger needs unsigned 64-bit arithmetic. `bitnot` is lowered since
-  v3.44.
+  are lowered as i64 values with range checks. `bitnot` is lowered since
+  v3.44. `uint64-local` is OK since r3.79 (change `uint64`): a UInt64 is an
+  i64 read unsigned, with unsigned helpers and comparisons.
 * `struct-array-field`, `state-aggregates` (v3.53, OpenSpec change
   `declaration-sections`): the Type, Const and State sections are parsed into
   typed declarations, so a struct field may be an array and State may hold

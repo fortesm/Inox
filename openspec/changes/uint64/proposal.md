@@ -11,6 +11,8 @@ Approval (Marcelo Fortes, 2026-10-12): "Todas as tomadas de decisão dos pontos
 
 Risk: normal.
 
+Status: **implemented** (canon r3.79); design.md records where the code differs.
+
 ## What Changes
 
 - UInt64/UInteger values in locals, parameters, results, struct fields, State,

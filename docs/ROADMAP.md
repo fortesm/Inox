@@ -17,9 +17,9 @@ may still move.
 0.1     done   foundation: spec, driver, tests, release packages, LLVM
                subset, checked arithmetic, exceptions on Linux and Windows
 0.2     now    the imperative core: structs, fixed arrays, slices, ref
-               parameters, case, Strings, text files (done); UInt64; Enum,
-               Range and Set; Char values; Float conversions and Float Const;
-               Std.Strings / Std.StrUtils with concatenation
+               parameters, case, Strings, text files, Std.Strings /
+               Std.StrUtils with concatenation, UInt64 (done); Enum, Range
+               and Set; Char values; Float conversions and Float Const
 0.3            exact decimals (Currency, Crypto); Std.DateTime /
                Std.DateUtils; Std.SystemUtils; Std.Debug.Assert; console I/O
                moved into libinoxrt (the final I/O ABI)
@@ -43,7 +43,7 @@ whether concurrency or contracts are in it) is the maintainer's decision.
 
 ## Next work (OpenSpec changes, in the maintainer's order)
 
-- `uint64` — UInt64/UInteger values.
+- `uint64` — UInt64/UInteger values (done, r3.79).
 - `enum-range-set` — Enum, Range and Set with `Ord`, `Low`/`High`,
   `Succ`/`Pred`, enum `for` and `case` coverage.
 - `std-strings` — Std.Strings / Std.StrUtils, String concatenation (done,

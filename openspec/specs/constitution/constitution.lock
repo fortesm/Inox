@@ -46,7 +46,7 @@ spec.md#CANON-8 Built-in types	781016d8d519add9	constitution
 spec.md#CANON-8 The numeric set is closed	41287e2139bf5048	constitution
 spec.md#CANON-8 Conversions	eb495ebb922c23dd	constitution
 spec.md#CANON-8 Constants in fixed-width types	865fe0822fe03457	constitution
-spec.md#CANON-8 UInt64 literals	bf715740aa538738	constitution
+spec.md#CANON-8 UInt64 literals	178ffcfdec0ab8b1	uint64
 spec.md#CANON-8 Exact decimals	9ad292af3a271504	constitution
 spec.md#CANON-8 Operators	89dad5646c88f097	constitution
 spec.md#CANON-8 Overflow is never silent	614aba4ebbefff21	constitution

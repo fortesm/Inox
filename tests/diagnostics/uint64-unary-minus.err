@@ -1,0 +1,1 @@
+unary minus is not defined for UInt64: write -Integer(U), which stops the program when U is above Int64.Max

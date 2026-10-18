@@ -38,7 +38,18 @@ bool SemanticAnalyzer::constantIntegerValue(const ast::Expression& expression, s
     return true;
 }
 
-void SemanticAnalyzer::rejectInvalidConstantRightOperand(ast::BinaryOperator op, std::int64_t value)
+bool SemanticAnalyzer::integerConstant(const ast::Expression& expression, IntegerConstant& value) const
+{
+    if (!constantIntegerValue(expression, value.bits)) {
+        return false;
+    }
+    value.isUnsigned = isUInt64Type(result_.typeOf(expression));
+    return true;
+}
+
+// A constant right operand of a UInt64 operation is read unsigned: a pattern
+// with the top bit set is a huge count or exponent, never a negative one.
+void SemanticAnalyzer::rejectInvalidConstantRightOperand(ast::BinaryOperator op, std::int64_t value, bool isUnsigned)
 {
     switch (op) {
     case ast::BinaryOperator::IntegerDivide:
@@ -53,12 +64,12 @@ void SemanticAnalyzer::rejectInvalidConstantRightOperand(ast::BinaryOperator op,
         return;
     case ast::BinaryOperator::ShiftLeft:
     case ast::BinaryOperator::ShiftRight:
-        if (value < 0 || value > 63) {
+        if (static_cast<std::uint64_t>(value) > 63) {
             throw SemanticError("constant shift count out of range: must be between 0 and 63");
         }
         return;
     case ast::BinaryOperator::Power:
-        if (value < 0) {
+        if (value < 0 && !isUnsigned) {
             throw SemanticError("constant exponent must not be negative");
         }
         return;
@@ -98,8 +109,14 @@ void SemanticAnalyzer::recordConstantValue(std::string_view name, std::string_vi
     }
     std::uint64_t magnitude = 0;
     if (!parseIntegerLiteralMagnitude(valueToken, magnitude) || magnitude >= kInt64MagnitudeOfMin) {
-        throw SemanticError("integer literal does not fit in Int64 in Const " + std::string(name) +
-                            ": " + std::string(valueToken));
+        // A Const takes the type of its value; a UInt64 one is a conversion
+        // (change uint64).
+        throw SemanticError("integer literal does not fit in Int64 in Const " + std::string(name) + ": " +
+                            std::string(valueToken) +
+                            (magnitude >= kInt64MagnitudeOfMin ? " (a UInt64 Const is written Const " +
+                                                                    std::string(name) + " := UInt64(" +
+                                                                    std::string(valueToken) + "))"
+                                                              : std::string()));
     }
     value.kind = ConstantValue::Kind::Integer;
     value.integer = static_cast<std::int64_t>(magnitude);
@@ -128,8 +145,24 @@ void SemanticAnalyzer::foldConstantExpression(const ast::Expression& expression)
             return;
         }
         std::uint64_t magnitude = 0;
-        if (parseIntegerLiteralMagnitude(literal.value(), magnitude) && magnitude < kInt64MagnitudeOfMin) {
+        if (parseIntegerLiteralMagnitude(literal.value(), magnitude) &&
+            (magnitude < kInt64MagnitudeOfMin || isUInt64Type(result_.typeOf(expression)))) {
             constants_[&expression] = static_cast<std::int64_t>(magnitude);
+        }
+        return;
+    }
+    case ast::AstNodeKind::CallExpression: {
+        // `UInt64(18446744073709551615)` of a constant is the constant, so a
+        // UInt64 Const can be written (change uint64); its range was checked
+        // with the call. Other conversions are not folded yet.
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        std::int64_t operand = 0;
+        if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression && call.arguments().size() == 1) {
+            const TypeRef target = types().lookup(static_cast<const ast::IdentifierExpression&>(call.callee()).name());
+            if (isUInt64Type(target) && result_.typeOf(expression) == target &&
+                constantIntegerValue(*call.arguments()[0], operand)) {
+                constants_[&expression] = operand;
+            }
         }
         return;
     }
@@ -160,14 +193,22 @@ void SemanticAnalyzer::foldConstantExpression(const ast::Expression& expression)
         const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
         std::int64_t a = 0;
         std::int64_t b = 0;
+        // A UInt64 operation: a constant next to a UInt64 keeps its Int64
+        // type in the result, so either side (or the result) tells.
+        const bool isUnsigned = isUInt64Type(result_.typeOf(binary)) || isUInt64Type(result_.typeOf(binary.left())) ||
+                                isUInt64Type(result_.typeOf(binary.right()));
         // CANON-8: a CONSTANT divisor of zero is a compile-time error even when the
         // dividend is only known at run time (`A div 0`). The same holds for a
         // constant shift count outside 0..63 and a constant negative exponent:
         // such an operation can never succeed.
         if (constantIntegerValue(binary.right(), b)) {
-            rejectInvalidConstantRightOperand(binary.op(), b);
+            rejectInvalidConstantRightOperand(binary.op(), b, isUnsigned);
         }
         if (!constantIntegerValue(binary.left(), a) || !constantIntegerValue(binary.right(), b)) {
+            return;
+        }
+        if (isUnsigned) {
+            foldUnsignedBinary(binary, static_cast<std::uint64_t>(a), static_cast<std::uint64_t>(b));
             return;
         }
         std::int64_t out = 0;
@@ -242,6 +283,54 @@ void SemanticAnalyzer::foldConstantExpression(const ast::Expression& expression)
         default:
             return;
         }
+    }
+    default:
+        return;
+    }
+}
+
+// UInt64 constants fold in the unsigned domain (change uint64): a result
+// below 0 or above 2^64-1 is a compile-time overflow, never a wraparound.
+void SemanticAnalyzer::foldUnsignedBinary(const ast::BinaryExpression& binary, std::uint64_t a, std::uint64_t b)
+{
+    std::uint64_t out = 0;
+    const auto store = [&](std::uint64_t value) { constants_[&binary] = static_cast<std::int64_t>(value); };
+    switch (binary.op()) {
+    case ast::BinaryOperator::Add:
+        if (!checkedAddUnsigned(a, b, out)) throwConstantOverflow("addition", "UInt64");
+        return store(out);
+    case ast::BinaryOperator::Subtract:
+        if (!checkedSubUnsigned(a, b, out)) throwConstantOverflow("subtraction", "UInt64");
+        return store(out);
+    case ast::BinaryOperator::Multiply:
+        if (!checkedMulUnsigned(a, b, out)) throwConstantOverflow("multiplication", "UInt64");
+        return store(out);
+    case ast::BinaryOperator::IntegerDivide:
+        return store(a / b);  // a zero divisor was rejected above
+    case ast::BinaryOperator::Modulo:
+        return store(a % b);
+    case ast::BinaryOperator::ShiftLeft:
+        if (b > 0 && (a >> (64 - b)) != 0) throwConstantOverflow("shift", "UInt64");
+        return store(a << b);
+    case ast::BinaryOperator::ShiftRight:
+        return store(a >> b);
+    case ast::BinaryOperator::BitAnd:
+        return store(a & b);
+    case ast::BinaryOperator::BitOr:
+        return store(a | b);
+    case ast::BinaryOperator::BitXor:
+        return store(a ^ b);
+    case ast::BinaryOperator::Power: {
+        std::uint64_t result = 1;
+        for (std::uint64_t exponent = b; exponent > 0; exponent >>= 1) {
+            if ((exponent & 1) != 0 && !checkedMulUnsigned(result, a, result)) {
+                throwConstantOverflow("exponentiation", "UInt64");
+            }
+            if (exponent > 1 && !checkedMulUnsigned(a, a, a)) {
+                throwConstantOverflow("exponentiation", "UInt64");
+            }
+        }
+        return store(result);
     }
     default:
         return;
@@ -348,6 +437,10 @@ bool SemanticAnalyzer::staticBoolValue(const ast::Expression& expression, bool& 
             std::int64_t a = 0;
             std::int64_t b = 0;
             if (constantIntegerValue(binary.left(), a) && constantIntegerValue(binary.right(), b)) {
+                if (isUInt64Type(result_.typeOf(binary.left())) || isUInt64Type(result_.typeOf(binary.right()))) {
+                    a = caseKey(a);  // the unsigned order, as Int64
+                    b = caseKey(b);
+                }
                 switch (binary.op()) {
                 case ast::BinaryOperator::Equal: value = a == b; break;
                 case ast::BinaryOperator::NotEqual: value = a != b; break;
@@ -396,7 +489,7 @@ std::int64_t SemanticAnalyzer::caseChoiceValue(const ast::Expression& choice, Ty
 {
     CaseDomain domain;
     caseDomainFor(selectorType, domain);
-    const TypeRef choiceType = analyzeExpression(choice);
+    const TypeRef choiceType = analyzeExpressionFor(choice, selectorType);
     const char* kStatic =
         "a case choice must be a static value: a literal, a Const, or a constant "
         "expression (ADR-0011)";
@@ -441,7 +534,7 @@ std::int64_t SemanticAnalyzer::caseChoiceValue(const ast::Expression& choice, Ty
     if (!constantIntegerValue(choice, value)) {
         throw SemanticError(kStatic);
     }
-    return value;
+    return domain.isUnsigned64 ? caseKey(value) : value;
 }
 
 } // namespace inox::compiler::semantic

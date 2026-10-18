@@ -267,7 +267,8 @@ void FunctionEmitter::emitCase(const ast::CaseStatement& statement)
     const std::string endTarget = prefix + "end";
     const std::string type = expressionLlvmType(statement.expression());
     const std::string selector = emitExpression(statement.expression());
-    const bool unsignedCompare = type == "i1";
+    // Bool and UInt64 (change uint64) are ordered unsigned.
+    const bool unsignedCompare = type == "i1" || isUInt64Type(typeOf(statement.expression()));
     const auto& arms = statement.arms();
     if (arms.empty()) {
         output_ << "  br label %" << prefix << "else\n\n";
@@ -415,6 +416,16 @@ void FunctionEmitter::emitForIn(const ast::ForInStatement& statement)
     // before the first iteration (start, end, step order). The direction comes
     // from the endpoints: A<B ascending, A>B descending, A=B runs once. The step
     // is a positive magnitude; a step <= 0 traps before the loop starts.
+    // Change uint64: a range of UInt64 values is compared and stepped
+    // unsigned, and its iterator is a UInt64.
+    const TypeRef iteratorType = typeOf(statement.iterable());
+    const bool isUnsigned = isUInt64Type(iteratorType);
+    const char* const greater = isUnsigned ? "ugt" : "sgt";
+    const char* const lessEqual = isUnsigned ? "ule" : "sle";
+    const char* const greaterEqual = isUnsigned ? "uge" : "sge";
+    if (isUnsigned) {
+        requireUnsignedHelpers();
+    }
     output_ << "  " << slot << " = alloca i64\n";
     const std::string startValue = emitExpression(range.left());
     const std::string endValue = emitExpression(range.right());
@@ -422,12 +433,19 @@ void FunctionEmitter::emitForIn(const ast::ForInStatement& statement)
     if (statement.step() != nullptr) {
         const std::string rawStep = emitExpression(*statement.step());
         increment = temporary();
-        output_ << "  " << increment << " = call i64 @__inox_for_step_i64(i64 " << rawStep << ")\n";
+        // A UInt64 step is positive unless it is 0.
+        const bool unsignedStep = isUInt64Type(typeOf(*statement.step()));
+        if (unsignedStep) {
+            requireUnsignedHelpers();
+        }
+        output_ << "  " << increment << " = call i64 @" << (unsignedStep ? "__inox_for_stepu_i64" : "__inox_for_step_i64")
+                << "(i64 " << rawStep << ")\n";
     }
     const std::string descending = temporary();
-    output_ << "  " << descending << " = icmp sgt i64 " << startValue << ", " << endValue << '\n';
+    output_ << "  " << descending << " = icmp " << greater << " i64 " << startValue << ", " << endValue << '\n';
     output_ << "  store i64 " << startValue << ", ptr " << slot << '\n';
-    locals_.insert_or_assign(iteratorName, LocalInfo{slot, semantics_.types().int64Type(), "i64"});
+    locals_.insert_or_assign(iteratorName,
+                             LocalInfo{slot, isUnsigned ? iteratorType : semantics_.types().int64Type(), "i64"});
 
     output_ << "  br label %" << conditionTarget << "\n\n";
 
@@ -437,8 +455,10 @@ void FunctionEmitter::emitForIn(const ast::ForInStatement& statement)
     const std::string descendingCondition = temporary();
     const std::string condition = temporary();
     output_ << "  " << iteratorValue << " = load i64, ptr " << slot << '\n';
-    output_ << "  " << ascendingCondition << " = icmp sle i64 " << iteratorValue << ", " << endValue << '\n';
-    output_ << "  " << descendingCondition << " = icmp sge i64 " << iteratorValue << ", " << endValue << '\n';
+    output_ << "  " << ascendingCondition << " = icmp " << lessEqual << " i64 " << iteratorValue << ", " << endValue
+            << '\n';
+    output_ << "  " << descendingCondition << " = icmp " << greaterEqual << " i64 " << iteratorValue << ", "
+            << endValue << '\n';
     output_ << "  " << condition << " = select i1 " << descending << ", i1 " << descendingCondition
             << ", i1 " << ascendingCondition << '\n';
     output_ << "  br i1 " << condition
@@ -468,11 +488,11 @@ void FunctionEmitter::emitForIn(const ast::ForInStatement& statement)
     const std::string nextValue = temporary();
     const std::string nextOverflow = temporary();
     output_ << "  " << current << " = load i64, ptr " << slot << '\n';
-    output_ << "  " << addPair << " = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 "
+    output_ << "  " << addPair << " = call { i64, i1 } @llvm." << (isUnsigned ? 'u' : 's') << "add.with.overflow.i64(i64 "
             << current << ", i64 " << increment << ")\n";
     output_ << "  " << addValue << " = extractvalue { i64, i1 } " << addPair << ", 0\n";
     output_ << "  " << addOverflow << " = extractvalue { i64, i1 } " << addPair << ", 1\n";
-    output_ << "  " << subPair << " = call { i64, i1 } @llvm.ssub.with.overflow.i64(i64 "
+    output_ << "  " << subPair << " = call { i64, i1 } @llvm." << (isUnsigned ? 'u' : 's') << "sub.with.overflow.i64(i64 "
             << current << ", i64 " << increment << ")\n";
     output_ << "  " << subValue << " = extractvalue { i64, i1 } " << subPair << ", 0\n";
     output_ << "  " << subOverflow << " = extractvalue { i64, i1 } " << subPair << ", 1\n";

@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-17 against Inox 0.2.0 pre-alpha, canon r3.78.
+Verified on 2026-10-18 against Inox 0.2.0 pre-alpha, canon r3.79.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -27,9 +27,10 @@ each version added.
   unread-local rule, Const (Integer, Bool, String, constant expressions), State (scalars,
   structs, arrays, Strings), routines, no empty parentheses.
 - Types: Bool, Integer/Int64, Natural, Int8/16/32, Byte/UInt8, UInt16/32,
-  Float/Float64 (Float32 partly), String, Char literals as `case`
-  choices; checked arithmetic, conversions `T(X)` between
-  integer types, runtime faults with exit status 70.
+  UInt64/UInteger (0..2^64-1, unsigned arithmetic, comparisons, `case`,
+  `for`, input and output, r3.79), Float/Float64 (Float32 partly), String,
+  Char literals as `case` choices; checked arithmetic, conversions `T(X)`
+  between integer types, runtime faults with exit status 70.
 - Control flow: if/elif/else, unless, conditional expression `IIf(C, A, B)`, while,
   repeat/until, for with step, leave/continue, case (Ada style), with
   (any place as target, evaluated once, checked through pointers).
@@ -75,7 +76,6 @@ each version added.
 
 ## Conformance gaps (the law is ahead of the code)
 
-- UInt64/UInteger values (change `uint64`).
 - Strings: `S[I]` and `GraphemeLength` are reserved; collation,
   normalization, Split/Join and conversions between numbers and text come
   in later changes; case mapping is one code point to one (`ß` stays `ß`).
@@ -96,8 +96,9 @@ each version added.
   inside a loop is freed when its declaration runs again or the routine
   returns, not at the end of each iteration. Each is a task of change
   `safe-pointers-followups`.
-- Conversions involving Float (`Integer(F)`, `Float(I)`, `Float32(X)`): accepted,
-  not lowered ("not yet implemented in the LLVM backend").
+- Conversions involving Float (`Integer(F)`, `Float(I)`, `Float(U)` with U a
+  UInt64, `Float32(X)`): accepted, not lowered ("not yet implemented in the
+  LLVM backend").
 - A Float `Const` is not lowered, so Std.Math exposes `Pi`, `Tau` and `E` as
   functions.
 - Char values: a Char local or comparison is accepted and not lowered, and

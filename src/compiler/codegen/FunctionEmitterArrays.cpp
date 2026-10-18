@@ -19,6 +19,7 @@
 #include "../support/Platform.h"
 
 #include <algorithm>
+#include <limits>
 #include <cctype>
 #include <cstdint>
 #include <cstring>
@@ -187,7 +188,11 @@ FunctionEmitter::ElementAddress FunctionEmitter::emitElementAddress(const ast::C
         std::string storage;
         TypeRef elementType = nullptr;
         const SliceParts slice = emitSliceSource(base, storage, elementType);
-        const std::string index = emitExpression(*call.arguments()[1]);
+        std::string index = emitExpression(*call.arguments()[1]);
+        if (isUInt64Type(typeOf(*call.arguments()[1]))) {
+            // Above Int64.Max is outside every slice (change uint64).
+            index = emitRangeCheck(index, IntegerRange{0, std::numeric_limits<std::int64_t>::max()}, 9);
+        }
         const std::string checked = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << checked << " = call i64 @__inox_range_i64(i64 " << index << ", i64 "
                 << slice.low << ", i64 " << slice.high << ", i32 9)\n";
@@ -208,7 +213,11 @@ FunctionEmitter::ElementAddress FunctionEmitter::emitElementAddress(const ast::C
     const std::string basePointer =
         throughPointer ? emitPointerTarget(base) : emitArrayBaseAddress(base, *layout);
     const std::string index = emitExpression(*call.arguments()[1]);
-    const std::string checked = emitRangeCheck(index, IntegerRange{layout->low, layout->high}, 9);
+    // A UInt64 index above Int64.Max is a negative i64: a low bound of at
+    // least 0 rejects it (change uint64).
+    const std::int64_t low =
+        isUInt64Type(typeOf(*call.arguments()[1])) ? std::max<std::int64_t>(layout->low, 0) : layout->low;
+    const std::string checked = emitRangeCheck(index, IntegerRange{low, layout->high}, 9);
     std::string offset = checked;
     if (layout->low != 0) {
         offset = "%tmp" + std::to_string(nextTemporary_++);

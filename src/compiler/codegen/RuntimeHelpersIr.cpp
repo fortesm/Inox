@@ -584,4 +584,258 @@ overflow:
 )llvm";
 }
 
+// UInt64 (change uint64): the 64-bit pattern read unsigned. A result below 0
+// or above 2^64-1 is an overflow (kind 1), never a wraparound.
+std::string unsignedRuntimeHelpers()
+{
+    return R"llvm(; UInt64 arithmetic (change uint64): overflow and underflow trap with kind 1.
+declare { i64, i1 } @llvm.uadd.with.overflow.i64(i64, i64)
+declare { i64, i1 } @llvm.usub.with.overflow.i64(i64, i64)
+declare { i64, i1 } @llvm.umul.with.overflow.i64(i64, i64)
+
+define internal i64 @__inox_addu_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %p = call { i64, i1 } @llvm.uadd.with.overflow.i64(i64 %a, i64 %b)
+  %v = extractvalue { i64, i1 } %p, 0
+  %o = extractvalue { i64, i1 } %p, 1
+  br i1 %o, label %trap, label %ok
+
+ok:
+  ret i64 %v
+
+trap:
+  call void @__inox_arith_fault(i32 1)
+  unreachable
+}
+
+define internal i64 @__inox_subu_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %p = call { i64, i1 } @llvm.usub.with.overflow.i64(i64 %a, i64 %b)
+  %v = extractvalue { i64, i1 } %p, 0
+  %o = extractvalue { i64, i1 } %p, 1
+  br i1 %o, label %trap, label %ok
+
+ok:
+  ret i64 %v
+
+trap:
+  call void @__inox_arith_fault(i32 1)
+  unreachable
+}
+
+define internal i64 @__inox_mulu_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %p = call { i64, i1 } @llvm.umul.with.overflow.i64(i64 %a, i64 %b)
+  %v = extractvalue { i64, i1 } %p, 0
+  %o = extractvalue { i64, i1 } %p, 1
+  br i1 %o, label %trap, label %ok
+
+ok:
+  ret i64 %v
+
+trap:
+  call void @__inox_arith_fault(i32 1)
+  unreachable
+}
+
+define internal i64 @__inox_divu_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %z = icmp eq i64 %b, 0
+  br i1 %z, label %trap, label %ok
+
+ok:
+  %r = udiv i64 %a, %b
+  ret i64 %r
+
+trap:
+  call void @__inox_arith_fault(i32 2)
+  unreachable
+}
+
+define internal i64 @__inox_modu_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %z = icmp eq i64 %b, 0
+  br i1 %z, label %trap, label %ok
+
+ok:
+  %r = urem i64 %a, %b
+  ret i64 %r
+
+trap:
+  call void @__inox_arith_fault(i32 2)
+  unreachable
+}
+
+define internal i64 @__inox_shlu_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %bad = icmp ugt i64 %b, 63
+  br i1 %bad, label %count, label %shift
+
+shift:
+  %r = shl i64 %a, %b
+  %back = lshr i64 %r, %b
+  %lost = icmp ne i64 %back, %a
+  br i1 %lost, label %overflow, label %ok
+
+ok:
+  ret i64 %r
+
+count:
+  call void @__inox_arith_fault(i32 3)
+  unreachable
+
+overflow:
+  call void @__inox_arith_fault(i32 1)
+  unreachable
+}
+
+define internal i64 @__inox_shru_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %bad = icmp ugt i64 %b, 63
+  br i1 %bad, label %trap, label %ok
+
+ok:
+  %r = lshr i64 %a, %b
+  ret i64 %r
+
+trap:
+  call void @__inox_arith_fault(i32 3)
+  unreachable
+}
+
+define internal i64 @__inox_for_stepu_i64(i64 %s) alwaysinline nounwind {
+entry:
+  %bad = icmp eq i64 %s, 0
+  br i1 %bad, label %trap, label %ok
+
+ok:
+  ret i64 %s
+
+trap:
+  call void @__inox_arith_fault(i32 4)
+  unreachable
+}
+
+define internal i64 @__inox_ipowu_i64(i64 %base, i64 %exponent) {
+entry:
+  br label %loop
+
+loop:
+  %result.cur = phi i64 [ 1, %entry ], [ %result.next, %continue ]
+  %base.cur = phi i64 [ %base, %entry ], [ %base.next, %continue ]
+  %exp.cur = phi i64 [ %exponent, %entry ], [ %exp.next, %continue ]
+  %done = icmp eq i64 %exp.cur, 0
+  br i1 %done, label %exit, label %body
+
+body:
+  %lowbit = and i64 %exp.cur, 1
+  %is_odd = icmp ne i64 %lowbit, 0
+  br i1 %is_odd, label %mul_result, label %after_mul_result
+
+mul_result:
+  %mul.result.pair = call { i64, i1 } @llvm.umul.with.overflow.i64(i64 %result.cur, i64 %base.cur)
+  %mul.result = extractvalue { i64, i1 } %mul.result.pair, 0
+  %mul.result.overflow = extractvalue { i64, i1 } %mul.result.pair, 1
+  br i1 %mul.result.overflow, label %overflow, label %after_mul_result
+
+after_mul_result:
+  %result.after = phi i64 [ %mul.result, %mul_result ], [ %result.cur, %body ]
+  %exp.next = lshr i64 %exp.cur, 1
+  %need_square = icmp ne i64 %exp.next, 0
+  br i1 %need_square, label %square_base, label %continue
+
+square_base:
+  %square.pair = call { i64, i1 } @llvm.umul.with.overflow.i64(i64 %base.cur, i64 %base.cur)
+  %square = extractvalue { i64, i1 } %square.pair, 0
+  %square.overflow = extractvalue { i64, i1 } %square.pair, 1
+  br i1 %square.overflow, label %overflow, label %continue
+
+continue:
+  %result.next = phi i64 [ %result.after, %after_mul_result ], [ %result.after, %square_base ]
+  %base.next = phi i64 [ %base.cur, %after_mul_result ], [ %square, %square_base ]
+  br label %loop
+
+exit:
+  ret i64 %result.cur
+
+overflow:
+  call void @__inox_arith_fault(i32 1)
+  unreachable
+})llvm";
+}
+
+std::string unsignedInputHelper()
+{
+    return R"llvm(; Get into a UInt64 (change uint64): 0..18446744073709551615, else kind 6.
+define internal void @__inox_read_u64(ptr %out) {
+entry:
+  br label %skip_ws
+
+skip_ws:
+  %c0 = call i32 @getchar()
+  %eof0 = icmp eq i32 %c0, -1
+  br i1 %eof0, label %trap, label %ws_check
+
+ws_check:
+  %is_sp = icmp eq i32 %c0, 32
+  %is_tb = icmp eq i32 %c0, 9
+  %is_lf = icmp eq i32 %c0, 10
+  %is_cr = icmp eq i32 %c0, 13
+  %ws_a = or i1 %is_sp, %is_tb
+  %ws_b = or i1 %is_lf, %is_cr
+  %is_ws = or i1 %ws_a, %ws_b
+  br i1 %is_ws, label %skip_ws, label %first_digit
+
+first_digit:
+  %fge = icmp sge i32 %c0, 48
+  %fle = icmp sle i32 %c0, 57
+  %fis = and i1 %fge, %fle
+  br i1 %fis, label %digits, label %trap
+
+digits:
+  %ch = phi i32 [ %c0, %first_digit ], [ %next_ch, %digit_ok ]
+  %acc = phi i64 [ 0, %first_digit ], [ %add_v, %digit_ok ]
+  %dge = icmp sge i32 %ch, 48
+  %dle = icmp sle i32 %ch, 57
+  %dis = and i1 %dge, %dle
+  br i1 %dis, label %digit_body, label %finish
+
+digit_body:
+  %d32 = sub i32 %ch, 48
+  %d64 = zext i32 %d32 to i64
+  %mul_p = call { i64, i1 } @llvm.umul.with.overflow.i64(i64 %acc, i64 10)
+  %mul_v = extractvalue { i64, i1 } %mul_p, 0
+  %mul_o = extractvalue { i64, i1 } %mul_p, 1
+  %add_p = call { i64, i1 } @llvm.uadd.with.overflow.i64(i64 %mul_v, i64 %d64)
+  %add_v = extractvalue { i64, i1 } %add_p, 0
+  %add_o = extractvalue { i64, i1 } %add_p, 1
+  %ovf = or i1 %mul_o, %add_o
+  br i1 %ovf, label %trap, label %digit_ok
+
+digit_ok:
+  %next_ch = call i32 @getchar()
+  br label %digits
+
+finish:
+  %e_eof = icmp eq i32 %ch, -1
+  %e_sp = icmp eq i32 %ch, 32
+  %e_tb = icmp eq i32 %ch, 9
+  %e_lf = icmp eq i32 %ch, 10
+  %e_cr = icmp eq i32 %ch, 13
+  %e_a = or i1 %e_eof, %e_sp
+  %e_b = or i1 %e_tb, %e_lf
+  %e_c = or i1 %e_a, %e_b
+  %e_ok = or i1 %e_c, %e_cr
+  br i1 %e_ok, label %store, label %trap
+
+store:
+  store i64 %acc, ptr %out
+  ret void
+
+trap:
+  call void @__inox_arith_fault(i32 6)
+  unreachable
+})llvm";
+}
+
 } // namespace inox::compiler::codegen::detail

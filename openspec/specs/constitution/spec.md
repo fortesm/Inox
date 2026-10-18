@@ -629,7 +629,11 @@ conversion.
 
 #### Scenario: UInt64 values
 - **WHEN** a UInt64 holds a literal above Int64.Max
-- **THEN** it compiles and prints it (test to add with change `uint64`)
+- **THEN** it compiles and prints it (tests/runtime/uint64.inox)
+
+#### Scenario: Outside a UInt64 context
+- **WHEN** a program writes `X := 18446744073709551615`, `-U` or `U + I` with an Integer variable I
+- **THEN** each is rejected (tests/diagnostics/uint64-literal-needs-context.inox, tests/diagnostics/uint64-unary-minus.inox, tests/diagnostics/uint64-mixed-integer.inox)
 
 ### Requirement: CANON-8 Exact decimals
 A real literal in a Currency or Crypto context SHALL be read exactly in that

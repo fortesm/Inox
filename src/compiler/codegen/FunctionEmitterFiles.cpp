@@ -166,6 +166,9 @@ std::string FunctionEmitter::emitFileCall(const ast::CallExpression& call)
             } else if (type->isFloat() && type->bits() == 64) {
                 emitRuntimeCall(RuntimeFunction::FileWriteFloat, "void", "__inox_file_write_f64",
                                 "ptr " + file + ", double " + written);
+            } else if (isUInt64Type(type)) {
+                emitRuntimeCall(RuntimeFunction::FileWriteUnsigned, "void", "__inox_file_write_u64",
+                                "ptr " + file + ", i64 " + written);
             } else {
                 emitRuntimeCall(RuntimeFunction::FileWriteInteger, "void", "__inox_file_write_i64",
                                 "ptr " + file + ", i64 " + written);

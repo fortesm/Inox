@@ -121,20 +121,18 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
                             static_cast<const ast::IdentifierExpression&>(named->left()).name() +
                             " := ...' is only allowed in struct construction (CANON-9)");
                     }
-                    analyzeExpression(*argument);
+                    // UInt64(18446744073709551615): the argument of a
+                    // UInt64 conversion is a UInt64 context (change uint64).
+                    analyzeWithIntegerContext(*argument, type);
                 }
                 // CANON-8 (v3.39): an integer conversion checks the range of
                 // its target. A constant argument outside it, such as
                 // Natural(-1) or Byte(300), is a compile-time error.
-                if (call.arguments().size() == 1) {
-                    std::int64_t constant = 0;
-                    std::int64_t low = 0;
-                    std::int64_t high = 0;
-                    if (integerTypeRange(type, low, high) &&
-                        constantIntegerValue(*call.arguments()[0], constant) &&
-                        (constant < low || constant > high)) {
+                if (call.arguments().size() == 1 && type->isInteger()) {
+                    IntegerConstant constant;
+                    if (integerConstant(*call.arguments()[0], constant) && !constantFits(constant, type)) {
                         throw SemanticError("value out of range for " + callee.name() + ": " +
-                                            std::to_string(constant));
+                                            constantText(constant));
                     }
                 }
                 return type;
