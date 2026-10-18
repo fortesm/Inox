@@ -13,18 +13,54 @@
 
 namespace inox::runtime {
 
+// What generated code sees: the String pointer points at `count`, and the
+// count, the length and the bytes are at offsets 0, 8 and 16.
 struct InoxString final {
     std::int64_t count;   // -1: immortal (literals, "")
     std::int64_t length;  // in bytes
     char bytes[1];        // length bytes, then NUL
 };
 
+// A block made by this library has a hidden header before the count (change
+// std-strings, design section 2). Immortal blocks have none.
+//
+//   [ capacity ][ characters ][ count ][ length ][ bytes ... NUL ]
+//                             ^ the String pointer
+struct StringHeader final {
+    std::int64_t capacity;    // bytes available for the text (in-place append)
+    std::int64_t characters;  // code points, or -1 until counted
+};
+
+inline constexpr std::int64_t kImmortalCount = -1;
+
+inline bool isImmortal(const InoxString* string) noexcept
+{
+    return string->count == kImmortalCount;
+}
+
+// The header of a block made by this library (never of an immortal one).
+inline StringHeader* headerOf(InoxString* string) noexcept
+{
+    return reinterpret_cast<StringHeader*>(reinterpret_cast<char*>(string) - sizeof(StringHeader));
+}
+
 // The shared immortal "".
 InoxString* emptyString() noexcept;
 
-// A new block (count 1) for `length` bytes, NUL terminated; null when memory
-// is exhausted.
-InoxString* allocateString(std::int64_t length) noexcept;
+// A new block (count 1) for `length` bytes, NUL terminated, with room for
+// `capacity` bytes (at least `length`); null when memory is exhausted. Its
+// characters are counted when first asked for.
+InoxString* allocateString(std::int64_t length, std::int64_t capacity = 0) noexcept;
+
+// Frees a block made by allocateString.
+void freeString(InoxString* string) noexcept;
+
+// The number of code points: cached in the header of a block of this
+// library, counted every time for an immortal block (short literals).
+std::int64_t characterCount(InoxString* string) noexcept;
+
+// The number of code points of well-formed UTF-8 bytes.
+std::int64_t countCharacters(const char* bytes, std::int64_t length) noexcept;
 
 // RFC 3629: well-formed UTF-8 (no overlong forms, no surrogates, at most
 // U+10FFFF).

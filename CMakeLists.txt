@@ -76,6 +76,7 @@ add_library(inoxrt STATIC
     runtime/FileRuntime.cpp
     runtime/OwnRuntime.cpp
     runtime/StringRuntime.cpp
+    runtime/StringFunctions.cpp
 )
 
 inox_apply_compiler_options(inoxrt)
@@ -97,7 +98,7 @@ endif()
 # Unit tests of the runtime library, run by scripts/run-tests.sh and
 # scripts/run-tests.ps1 when found next to the compiler.
 add_executable(inoxrt-tests tests/runtime-unit/StringRuntimeTests.cpp tests/runtime-unit/FileRuntimeTests.cpp
-    tests/runtime-unit/OwnRuntimeTests.cpp)
+    tests/runtime-unit/OwnRuntimeTests.cpp tests/runtime-unit/StringFunctionsTests.cpp)
 target_link_libraries(inoxrt-tests PRIVATE inoxrt)
 inox_apply_compiler_options(inoxrt-tests)
 inox_apply_warnings(inoxrt-tests)

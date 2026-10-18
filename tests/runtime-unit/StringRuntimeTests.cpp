@@ -198,6 +198,7 @@ void testCompare()
 
 int runFileRuntimeTests();
 int runOwnRuntimeTests();
+int runStringFunctionsTests();
 
 int main()
 {
@@ -211,5 +212,6 @@ int main()
     }
     const int fileFailures = runFileRuntimeTests();
     const int ownFailures = runOwnRuntimeTests();
-    return failures == 0 && fileFailures == 0 && ownFailures == 0 ? 0 : 1;
+    const int functionFailures = runStringFunctionsTests();
+    return failures == 0 && fileFailures == 0 && ownFailures == 0 && functionFailures == 0 ? 0 : 1;
 }
