@@ -1,0 +1,71 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-14 (change std-strings): `+` joins Strings and `+=` appends. A
+== chain is one allocation; `S := S + X` appends in place when S alone holds
+== its block. Appends to a local, a State variable, a field, an element and
+== a ref mut parameter; a copy that shares the block keeps its value;
+== S := S + S; a routine in the parts that changes S keeps the order of
+== evaluation; a concatenation inside try; 100 000 appends. Leak-checked.
+Use Std.Strings
+
+Type
+    TCard Struct
+        FName String
+        FTags Array[1..2] String
+    ;
+
+State
+    Log String := "log:"
+;
+
+Mark String :
+    Log := "changed"
+    Return "!"
+;
+
+Grow(ref mut S String, Times Integer) :
+    for I in 1..Times
+        S += "+"
+    ;
+;
+
+Main :
+    A := "Ino"
+    B := A + "x" + " " + "é" + ""
+    PutLn(B, " [", "" + "", "]")
+    S := "x"
+    Copy := S
+    S += "y"
+    S := S + S + "z"
+    PutLn(S, " ", Copy)
+    C TCard
+    C.FName := "card"
+    C.FName += "-1"
+    C.FTags[2] := "t"
+    C.FTags[2] += "ag"
+    I := 1
+    C.FTags[I] := C.FTags[I] + "first"
+    PutLn(C.FName, " ", C.FTags[1], " ", C.FTags[2])
+    Log += " start"
+    Log := Log + Mark
+    PutLn(Log)
+    Grow(S, 3)
+    PutLn(S)
+    try
+        T := S + " in try"
+        PutLn(T)
+        Raise RangeError
+    except
+        PutLn(IIf(Length(S) > 3, "long " + S, "short"))
+    ;
+    Big := ""
+    for N in 1..100000
+        Big += "ab"
+    ;
+    PutLn(Length(Big), " ", ByteLength(Big))
+;

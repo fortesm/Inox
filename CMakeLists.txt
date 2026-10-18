@@ -37,6 +37,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/codegen/FunctionEmitterIo.cpp
     src/compiler/codegen/FunctionEmitterStatements.cpp
     src/compiler/codegen/FunctionEmitterStrings.cpp
+    src/compiler/codegen/FunctionEmitterStringFunctions.cpp
     src/compiler/codegen/LlvmIrEmitter.cpp
     src/compiler/codegen/LlvmText.cpp
     src/compiler/codegen/MathBuiltins.cpp
@@ -60,6 +61,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticContracts.cpp
     src/compiler/semantic/SemanticPointers.cpp
     src/compiler/semantic/SemanticStatements.cpp
+    src/compiler/semantic/SemanticStrings.cpp
     src/compiler/semantic/SemanticSupport.cpp
     src/compiler/semantic/SemanticTypes.cpp
     src/compiler/semantic/Symbol.cpp

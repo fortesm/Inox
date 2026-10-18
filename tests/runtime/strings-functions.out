@@ -1,0 +1,28 @@
+11 13 0 0 1 4
+Substr [éllo]
+Substr end []
+Substr all [héllo wörld]
+7 0 0 0
+UpperCase [HÉLLO WÖRLD]
+LowerCase [àéî ωmega]
+UpperCase empty []
+Trim [x y]
+LTrim [x ]
+RTrim [  x]
+Trim empty []
+Left [hé]
+Right [wörld]
+Left 0 []
+PadLeft [   é]
+PadRight [ab  ]
+PadLeft short [héllo wörld]
+Replicate [ô-ô-ô-]
+Replicate 0 []
+Replace [a::b::c]
+Replace none [héllo wörld]
+true false true
+true false true false
+true false
+-1 1 0
+Composed [Hello, INOX!!]
+ok

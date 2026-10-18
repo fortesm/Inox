@@ -342,7 +342,12 @@ bool FunctionEmitter::scanOwnsReferences() const
             const auto& variable = static_cast<const ast::VarStatement&>(statement);
             owns = typeOwnsReferences(semantics_.declaredType(variable));
         }
+        // Statement temporaries of `+` on Strings and of protected reads.
+        const bool runsRoutine = statementMayRunRoutine(statement);
         forEachExpressionOf(statement, [&](const ast::Expression& expression) {
+            if (!owns && (isStringConcatenation(expression) || (runsRoutine && isBorrowedRead(expression)))) {
+                owns = true;
+            }
             if (owns || expression.kind() != ast::AstNodeKind::CallExpression) {
                 if (!owns && expression.kind() == ast::AstNodeKind::BinaryExpression &&
                     static_cast<const ast::BinaryExpression&>(expression).op() == ast::BinaryOperator::Assign) {
@@ -360,6 +365,90 @@ bool FunctionEmitter::scanOwnsReferences() const
         }
     }
     return owns;
+}
+
+// Whether this node runs a routine of the program: a call of a routine or a
+// method, or a routine called by its bare name (`Next`).
+bool FunctionEmitter::runsRoutine(const ast::Expression& node) const
+{
+    if (node.kind() == ast::AstNodeKind::IdentifierExpression) {
+        const semantic::Symbol* symbol = semantics_.symbolOf(static_cast<const ast::IdentifierExpression&>(node));
+        return symbol != nullptr && symbol->kind == semantic::SymbolKind::Function;
+    }
+    if (node.kind() != ast::AstNodeKind::CallExpression) {
+        return false;
+    }
+    const auto& call = static_cast<const ast::CallExpression&>(node);
+    if (isMemberAccessCall(call.callee()) || (isMemberAccessCall(call) && !memberField(call))) {
+        return true;  // a method
+    }
+    const semantic::Symbol* symbol = semantics_.symbolOf(call);
+    return symbol != nullptr && symbol->kind == semantic::SymbolKind::Function;
+}
+
+// The expressions of the statement itself (not of nested bodies, which are
+// statements of their own).
+bool FunctionEmitter::statementMayRunRoutine(const ast::Statement& statement) const
+{
+    bool runs = false;
+    forEachExpressionOf(statement, [&](const ast::Expression& node) { runs = runs || runsRoutine(node); });
+    return runs;
+}
+
+// Storage a routine of the program can change: a State variable, a ref or
+// ref mut parameter (the caller's storage), a with binding, anything reached
+// through a pointer or a slice, and the fields and elements of these. A
+// local variable or a value parameter is only changed by its own routine.
+bool FunctionEmitter::placeMayChange(const ast::Expression& place) const
+{
+    if (place.kind() == ast::AstNodeKind::IdentifierExpression) {
+        const auto& identifier = static_cast<const ast::IdentifierExpression&>(place);
+        const std::string name = normalize(identifier.name());
+        if (referenceParameters_.contains(name) || name.rfind("__with", 0) == 0) {
+            return true;
+        }
+        const semantic::Symbol* symbol = semantics_.symbolOf(identifier);
+        return symbol != nullptr && symbol->kind == semantic::SymbolKind::State;
+    }
+    if (place.kind() != ast::AstNodeKind::CallExpression) {
+        return false;
+    }
+    const auto& call = static_cast<const ast::CallExpression&>(place);
+    if (isPointerBuiltin(call)) {
+        return equalsIgnoreCase(static_cast<const ast::IdentifierExpression&>(call.callee()).name(), "Value");
+    }
+    if ((isMemberAccessCall(call) && memberField(call)) || isIndexCall(call)) {
+        const ast::Expression& base = *call.arguments()[0];
+        const TypeRef baseType = typeOf(base);
+        return isPointerType(baseType) || isSliceType(baseType) || placeMayChange(base);
+    }
+    return false;
+}
+
+// A read of storage that holds references (a String, or an aggregate of
+// them) and that a routine of the program can change.
+bool FunctionEmitter::isBorrowedRead(const ast::Expression& expression) const
+{
+    const TypeRef type = typeOf(expression);
+    return typeOwnsReferences(type) && !isMoveOnly(type) && !isFileType(type) && placeMayChange(expression);
+}
+
+// Retains the value read and holds it until the end of the statement.
+std::string FunctionEmitter::protectBorrowed(const ast::Expression& expression, const std::string& value)
+{
+    const TypeRef type = typeOf(expression);
+    const std::string llvmType = valueLlvmType(type);
+    requireStringRuntime();
+    if (isStringType(type)) {
+        output_ << "  call void @__inox_str_retain(ptr " << value << ")\n";
+    } else {
+        const std::string copy = "%borrowcopy" + std::to_string(nextTemporary_++);
+        output_ << "  " << copy << " = alloca " << llvmType << '\n';
+        output_ << "  store " << llvmType << ' ' << value << ", ptr " << copy << '\n';
+        emitRetainAt(copy, type);
+    }
+    holdOwnedResult(value, type, llvmType);
+    return value;
 }
 
 } // namespace inox::compiler::codegen::detail

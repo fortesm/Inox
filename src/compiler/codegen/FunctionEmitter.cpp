@@ -57,6 +57,7 @@ FunctionEmitter::FunctionEmitter(std::ostringstream& output,
     }
     for (const FunctionParameter& parameter : signature.parameters) {
         if (parameter.byReference) {
+            referenceParameters_.insert(normalize(parameter.inoxName));
             // The pointer itself is the slot: reads and writes of the
             // parameter go to the caller's storage.
             locals_.emplace(normalize(parameter.inoxName),

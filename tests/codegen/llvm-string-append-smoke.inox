@@ -1,0 +1,30 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Change std-strings (design section 1): a `+` chain of Strings is one call
+== to __inox_str_concat with all its parts, and `S += X` or `S := S + X`
+== appends to S in place (__inox_str_append), so a loop of appends costs
+== O(N). `S := S + Next` calls a routine that could change S first, so it
+== keeps the ordinary concatenation.
+State
+    Count Integer := 0
+;
+
+Next String :
+    Count += 1
+    Return "n"
+;
+
+Main :
+    A := "a"
+    B := "b"
+    S := A + "-" + B
+    S += "!"
+    S := S + A + B
+    S := S + Next
+    PutLn(S)
+;

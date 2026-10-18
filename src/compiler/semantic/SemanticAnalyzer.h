@@ -225,6 +225,15 @@ private:
     TypeRef analyzeFileCall(std::string_view name, const ast::CallExpression& call);
     // Whether the module that declares this file function is used.
     bool fileFunctionVisible(std::string_view name) const;
+    // Std.Strings / Std.StrUtils (change std-strings; SemanticStrings.cpp).
+    void declareStringFunctionNames(const ast::ModuleNode& module);
+    // A routine of the program (also a generic one) has this name: a standard
+    // function of a module the program does not use leaves the name to it.
+    bool userRoutineNamed(std::string_view name) const;
+    bool stringFunctionVisible(std::string_view name) const;
+    // `argumentTypes`, when given, holds the types of the arguments, already
+    // analyzed (Length's argument is analyzed first to tell an array).
+    TypeRef analyzeStringCall(const ast::CallExpression& call, const std::vector<TypeRef>* argumentTypes);
     // A value stored into a File must be a file just opened (OpenRead,
     // Create, OpenAppend): anything else would copy a File.
     void requireFreshFile(const ast::Expression& value) const;
@@ -290,6 +299,8 @@ private:
     bool filesVisible_ = false;    // Std.Files: the File type and the basic operations
     bool ioUtilsVisible_ = false;  // Std.IOUtils: the conveniences (it uses Std.Files)
     bool debugVisible_ = false;    // the program uses Std.Debug (Assert)
+    bool stringsVisible_ = false;  // Std.Strings: Length, Substr, Pos, case
+    bool strUtilsVisible_ = false; // Std.StrUtils: the conveniences (it uses Std.Strings)
     std::unordered_map<const ast::Expression*, std::int64_t> constants_;
     // Char Consts (`Const Letter := 'A'`) by normalized name, as Unicode scalar
     // values; used for static case choices (ADR-0011).

@@ -1,0 +1,18 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-14, CANON-19 (change std-strings): Substr past the last character
+== stops the program with fault 15; positions count characters, so a
+== range that fits in bytes but not in characters traps too.
+Use Std.StrUtils
+
+Main :
+    S := "héllo"
+    PutLn("before")
+    PutLn(Substr(S, 4, 3))
+    PutLn("not reached")
+;

@@ -528,6 +528,18 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
         requireMatchingTypes();
     };
 
+    // CANON-14 (std-strings): `+` joins two Strings, never a String and a
+    // value of another type (no implicit conversion).
+    if (op == ast::BinaryOperator::Add && ((leftType != nullptr && leftType->isString()) ||
+                                           (rightType != nullptr && rightType->isString()))) {
+        const TypeRef other = leftType != nullptr && leftType->isString() ? rightType : leftType;
+        if (other == nullptr || !other->isString()) {
+            throw SemanticError("'+' joins two Strings (CANON-14), and the other operand is " +
+                                types::nameOf(other) + ": there is no implicit conversion to String");
+        }
+        return types().stringType();
+    }
+
     switch (op) {
     case ast::BinaryOperator::Add:
     case ast::BinaryOperator::Subtract:

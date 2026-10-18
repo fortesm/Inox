@@ -5,9 +5,8 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== CANON-14: String lengths (ByteLength, CharLength, GraphemeLength) are
-== reserved for Std.StrUtils; Length takes an array or a slice (CANON-13).
+== CANON-14, CANON-18 (change std-strings): Trim exists only in a program
+== that uses Std.StrUtils.
 Main :
-    S := "Inox"
-    PutLn(Length(S))
+    PutLn(Trim(" x "))
 ;

@@ -39,7 +39,10 @@ namespace inox::compiler::codegen::detail {
 void FunctionEmitter::emitStatement(const ast::Statement& statement)
 {
     ++statementDepth_;
+    const bool outerRunsRoutine = statementRunsRoutine_;
+    statementRunsRoutine_ = statementMayRunRoutine(statement);
     emitStatementKind(statement);
+    statementRunsRoutine_ = outerRunsRoutine;
     flushStatementTemporaries();
     --statementDepth_;
 }

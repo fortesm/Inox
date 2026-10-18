@@ -157,13 +157,13 @@ TypeRef SemanticAnalyzer::analyzePreludeCall(std::string_view name, const std::v
         }
     }
 
-    // Length takes an array or a slice (CANON-13, handled with the call);
-    // String lengths are reserved for Std.StrUtils (CANON-14). Ord takes an
-    // enum value (CANON-13), never a Char: Char conversions are explicit
-    // (CANON-14; Marcelo Fortes, 2026-10-12).
+    // Length takes an array or a slice (CANON-13), or a String with Std.Strings
+    // (CANON-14), handled with the call. Ord takes an enum value (CANON-13),
+    // never a Char: Char conversions are explicit (CANON-14; Marcelo Fortes,
+    // 2026-10-12).
     if (equalsIgnoreCase(name, "Length")) {
-        throw SemanticError("Length takes an array or a slice (CANON-13); String lengths are "
-                            "reserved for Std.StrUtils (CANON-14)");
+        throw SemanticError("Length takes an array or a slice (CANON-13), or a String with `Use Std.Strings` "
+                            "(CANON-14)");
     }
     if (equalsIgnoreCase(name, "Ord")) {
         throw SemanticError("Ord takes an enum value (CANON-13); a Char is not an ordinal: its "

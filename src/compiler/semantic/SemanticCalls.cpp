@@ -86,6 +86,12 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
             if (argumentType != nullptr && argumentType->isSlice()) {
                 return types().int64Type();  // ADR-0017: a slice's bounds are known at run time
             }
+            // Std.Strings: Length of a String counts its characters.
+            if (argumentType != nullptr && argumentType->isString() && equalsIgnoreCase(callee.name(), "Length") &&
+                (stringsVisible_ || !userRoutineNamed(callee.name()))) {
+                const std::vector<TypeRef> argumentTypes{argumentType};
+                return analyzeStringCall(call, &argumentTypes);
+            }
             if (argumentType != nullptr && argumentType->isArray()) {
                 // CANON-13: Low, High and Length of a fixed array are
                 // compile-time constants of its type.
@@ -139,8 +145,7 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
 
         // Std.Debug (debug-assert): Assert exists only with `Use Std.Debug`;
         // a routine of the program named Assert is called otherwise.
-        if (equalsIgnoreCase(callee.name(), "Assert") &&
-            (debugVisible_ || resolveFunctionSignature(callee.name()) == nullptr)) {
+        if (equalsIgnoreCase(callee.name(), "Assert") && (debugVisible_ || !userRoutineNamed(callee.name()))) {
             return analyzeAssertCall(call);
         }
 
@@ -148,15 +153,22 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
         // that declares it, a file function's name stays free for the
         // program's own routines; a call to none of them gets a hint.
         if (isFileFunction(callee.name(), call.arguments().size()) &&
-            (fileFunctionVisible(callee.name()) || resolveFunctionSignature(callee.name()) == nullptr)) {
+            (fileFunctionVisible(callee.name()) || !userRoutineNamed(callee.name()))) {
             return analyzeFileCall(callee.name(), call);
+        }
+
+        // Std.Strings / Std.StrUtils (std-strings), the same way; Length of
+        // an array, a slice or a String was handled above.
+        if (findStringFunction(callee.name()) != nullptr && !equalsIgnoreCase(callee.name(), "Length") &&
+            (stringFunctionVisible(callee.name()) || !userRoutineNamed(callee.name()))) {
+            return analyzeStringCall(call, nullptr);
         }
 
         // Length of anything but an array or a slice, and Ord before enums
         // exist, are not Inox (CANON-13, CANON-14); a routine of the program
         // with that name is called instead.
         if ((equalsIgnoreCase(callee.name(), "Length") || equalsIgnoreCase(callee.name(), "Ord")) &&
-            resolveFunctionSignature(callee.name()) == nullptr) {
+            !userRoutineNamed(callee.name())) {
             analyzePreludeCall(callee.name(), {});
         }
 

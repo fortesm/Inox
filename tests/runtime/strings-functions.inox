@@ -1,0 +1,53 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-14 (change std-strings): every function of Std.Strings and
+== Std.StrUtils on ASCII, multi-byte and empty Strings. Positions and
+== lengths count characters (code points); ByteLength counts bytes.
+== Leak-checked.
+Use Std.StrUtils
+
+Show(Name String, Value String) :
+    PutLn(Name, " [", Value, "]")
+;
+
+Main :
+    S := "héllo wörld"
+    E := ""
+    PutLn(Length(S), " ", ByteLength(S), " ", Length(E), " ", ByteLength(E), " ", Length("😀"), " ", ByteLength("😀"))
+    Show("Substr", Substr(S, 2, 4))
+    Show("Substr end", Substr(S, 12, 0))
+    Show("Substr all", Substr(S, 1, Length(S)))
+    PutLn(Position("wö", S), " ", Position("x", S), " ", Position("", S), " ", Position("h", E))
+    Show("UpperCase", UpperCase(S))
+    Show("LowerCase", LowerCase("ÀÉÎ ΩMEGA"))
+    Show("UpperCase empty", UpperCase(E))
+    Show("Trim", Trim("  x y \t"))
+    Show("LTrim", LTrim("  x "))
+    Show("RTrim", RTrim("  x "))
+    Show("Trim empty", Trim(E))
+    Show("Left", Left(S, 2))
+    Show("Right", Right(S, 5))
+    Show("Left 0", Left(S, 0))
+    Show("PadLeft", PadLeft("é", 4))
+    Show("PadRight", PadRight("ab", 4))
+    Show("PadLeft short", PadLeft(S, 3))
+    Show("Replicate", Replicate("ô-", 3))
+    Show("Replicate 0", Replicate("ab", 0))
+    Show("Replace", Replace("a.b.c", ".", "::"))
+    Show("Replace none", Replace(S, "zz", "y"))
+    PutLn(Contains(S, "lo w"), " ", Contains(S, "xyz"), " ", Contains(E, E))
+    PutLn(StartsWith(S, "hé"), " ", StartsWith(S, "wö"), " ", EndsWith(S, "rld"), " ", EndsWith("a", "ba"))
+    PutLn(SameText("ÁRVORE", "árvore"), " ", SameText("a", "b"))
+    PutLn(CompareText("a", "B"), " ", CompareText("B", "a"), " ", CompareText("Ab", "aB"))
+    Name := Trim("  Inox ")
+    Greeting := "Hello, " + UpperCase(Name) + Replicate("!", 2)
+    Show("Composed", Greeting)
+    if Contains(Greeting, "INOX") and Length(Greeting) = 13
+        PutLn("ok")
+    ;
+;

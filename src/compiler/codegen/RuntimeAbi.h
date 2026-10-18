@@ -30,6 +30,22 @@ enum class RuntimeFunction {
     StringEqual,
     StringCompare,
     StringGetLn,
+    // Std.Strings / Std.StrUtils and `+` (runtime/StringFunctions.cpp). A
+    // result is owned; the last parameter of a function that makes a String
+    // receives its status (1 out of range, 2 out of memory).
+    StringConcat,
+    StringAppend,
+    StringLength,
+    StringSubstr,
+    StringEdge,
+    StringPosition,
+    StringCase,
+    StringTrim,
+    StringPad,
+    StringReplicate,
+    StringReplace,
+    StringFind,
+    StringCompareText,
     // File runtime (runtime/FileRuntime.cpp), declared on first use. The
     // functions without `nounwind` raise Inox exceptions (F3).
     FileOpen,

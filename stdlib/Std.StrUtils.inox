@@ -1,0 +1,29 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== String conveniences in the style of Delphi's StrUtils (canon r3.64 module
+== pairs). Compiler intrinsics, visible in a program that uses Std.StrUtils,
+== which also gives everything of Std.Strings:
+==
+==   Trim(S String) String               == without White_Space at both ends
+==   LTrim(S String) String              == ... at the start
+==   RTrim(S String) String              == ... at the end
+==   Left(S String, N Integer) String    == the first N characters, 0 <= N <= Length(S)
+==   Right(S String, N Integer) String   == the last N characters
+==   PadLeft(S String, Width Integer) String   == spaces before, up to Width characters
+==   PadRight(S String, Width Integer) String  == spaces after
+==   Replicate(S String, N Integer) String     == S repeated N times (Repeat is a keyword)
+==   Replace(S String, Old String, New String) String  == every Old, left to right
+==   Contains(S String, Sub String) Bool
+==   StartsWith(S String, Prefix String) Bool
+==   EndsWith(S String, Suffix String) Bool
+==   SameText(A String, B String) Bool         == equal ignoring case
+==   CompareText(A String, B String) Integer   == -1, 0 or 1 ignoring case
+==
+== White_Space and case follow Unicode, the same in every language.
+
+Use Std.Strings

@@ -724,6 +724,10 @@ Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-struct-value-smoke.inox")) `
     -RequiredFragments @("%tpair = type { i64, i64 }", "define %tpair @inox_makepair", "define i64 @inox_sumpair", "call %tpair @inox_makepair", "call i64 @inox_sumpair", "ret i32 0")
 
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-string-append-smoke.inox")) `
+    -RequiredFragments @("call ptr @__inox_str_concat(i64 3", "call void @__inox_str_append(ptr %s, i64 1", "call void @__inox_str_append(ptr %s, i64 2", "call ptr @__inox_str_concat(i64 2", "ret i32 0")
+
 $exceptionSmokeFragments = if ($IsWindows) {
     @("personality ptr @__CxxFrameHandler3", "catchswitch within none",
       "catchpad within", "[ptr null, i32 64, ptr null]",

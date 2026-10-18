@@ -1,0 +1,1 @@
+Length is declared in Std.Strings: add `Use Std.Strings` (or Std.StrUtils, which gives it too)
