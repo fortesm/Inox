@@ -189,7 +189,7 @@ State
 
 Main :
     P TP
-    A Array[1..2] String
+    A Array[1..2] String := Fill("")
     A[2] := P.FName
     PutLn(A[1], A[2], G)
 ;
@@ -298,7 +298,8 @@ Main :
     ;
 
 Main :
-    A Array[1..2] TRect
+    R TRect
+    A Array[1..2] TRect := Fill(R)
     with A[2].Size
         .Width := 2
         .Height := 3
@@ -438,7 +439,7 @@ Main :
 ;
 """),
     ("array-local", "fixed array with indexing, Low/High and += on an element", """Main :
-    A Array[1..3] Integer
+    A Array[1..3] Integer := Fill(0)
     for I in Low(A)..High(A)
         A[I] := I
     ;
@@ -451,7 +452,7 @@ Main :
 ;
 
 Main :
-    A Array[1..4] Integer
+    A Array[1..4] Integer := Fill(0)
     A[2] := 5
     PutLn(First(A[2..3]), Length(A[..]))
 ;
@@ -461,7 +462,7 @@ Main :
 ;
 
 Main :
-    A Array[1..2] Integer
+    A Array[1..2] Integer := Fill(0)
     Bump(A[1])
     PutLn(A[1])
 ;
@@ -488,14 +489,15 @@ Main :
     ;
 
 Main :
-    A Array[1..2] TPoint
+    P TPoint
+    A Array[1..2] TPoint := Fill(P)
     A[2].FX := 4
     PutLn(A[1].FX + A[2].FX)
 ;
 """),
     ("struct-array-field", "struct field of array type, copied with its struct", """Type
     TBuffer Struct
-        FData Array[1..3] Integer
+        FData Array[1..3] Integer := Fill(0)
     ;
 
 Main :
@@ -513,7 +515,7 @@ Main :
 
 State
     Origin TPoint
-    Counts Array[1..2] Integer
+    Counts Array[1..2] Integer := Fill(0)
 ;
 
 Main :

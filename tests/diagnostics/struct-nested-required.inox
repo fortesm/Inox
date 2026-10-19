@@ -1,0 +1,23 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.82 (CANON-5): a struct field whose struct has a field without an
+== implicit value makes the outer struct need a construction too.
+Type
+    TSuit (Club, Diamond, Heart, Spade)
+    TCard Struct
+        FSuit TSuit
+    ;
+    THand Struct
+        FFirst TCard
+        FSize Integer := 1
+    ;
+
+Main :
+    H THand
+    PutLn(H.FSize)
+;

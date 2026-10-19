@@ -1,0 +1,59 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.82 (CANON-5, CANON-9): explicit initialization is transitive over
+== aggregates and type parameters. A field of an enum, array or type
+== parameter has no implicit value: it has a default (a literal, or Fill for
+== an array) or is given in the construction; a struct takes its type
+== defaults only when every component has one, also through nested structs
+== and parts; no instance of a generic struct brings a default of its own.
+Type
+    TStatus (Pending, Approved, Rejected)
+    TPacket Struct
+        FData Array[1..4] Byte := Fill(7)
+        FTags Array[1..2] String := Fill("none")
+        FState TStatus := Approved
+        FSize Integer := 0
+    ;
+    TFrame Struct
+        FData Array[1..3] Integer
+        FState TStatus
+        FSize Integer := 0
+    ;
+    TRoute Struct
+        FFrame TFrame
+        FHops Integer := 1
+    ;
+    TBox<T> Struct
+        FValue T
+        FCount Integer := 0
+    ;
+    TTagged Struct (TFrame)
+        FLabel String := "tagged"
+    ;
+
+Main :
+    == Every field has a default: the struct may be declared without a value.
+    P TPacket
+    P.FData[2] := 9
+    PutLn(P.FData[1], " ", P.FData[2], " ", P.FTags[2], " ", P.FState, " ", P.FSize)
+
+    == Required fields are given in the construction, also in a nested one.
+    F := TFrame(FData := Fill(3), FState := Rejected)
+    R := TRoute(FFrame := TFrame(FData := Fill(1), FState := Pending))
+    T := TTagged(TFrame := F)
+    PutLn(F.FData[3], " ", F.FState, " ", F.FSize, " ", R.FFrame.FState, " ", R.FHops, " ", T.FState, " ", T.FLabel)
+
+    == Every instance of a generic struct gives its type-parameter fields.
+    A TBox<TStatus> := TBox(FValue := Pending)
+    C := TBox(FValue := 0)
+    W TBox<String> := TBox(FValue := "word", FCount := 2)
+    PutLn(A.FValue, " ", C.FValue, " ", W.FValue, " ", W.FCount)
+
+    == An array of structs without complete defaults is filled with a value.
+    Frames Array[1..2] TFrame := Fill(F)
+    PutLn(Frames[2].FState, " ", Frames[2].FData[1])
+;

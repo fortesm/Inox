@@ -218,6 +218,7 @@ private:
     std::string emitSetCall(const ast::CallExpression& call);
     // `Fill(Value)` (r3.81): the target array with every element a copy.
     std::string emitFill(const ast::CallExpression& call);
+    void emitArrayFillDefault(const std::string& pointer, TypeRef arrayType, const std::string& text);
     std::string emitSetComparison(const ast::BinaryExpression& expression);
     std::string emitMembership(const ast::BinaryExpression& expression);
     // The UInt64 helpers of RuntimeHelpersIr (change uint64), once per module.

@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-18 against Inox 0.2.0 pre-alpha, canon r3.81.
+Verified on 2026-10-18 against Inox 0.2.0 pre-alpha, canon r3.82.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -61,8 +61,10 @@ each version added.
   Low/High, checked Succ/Pred, `for` and `case` coverage, printed by name;
   Ranges of Integer checked when stored (kind 11); Set<T> with `in`, the
   comparisons, the six functions (`Include`/`Exclude` since r3.81; a call
-  as a statement is rejected) and `[A, B]`; `X in A..B`; an enum struct
-  field needs a default (r3.81).
+  as a statement is rejected) and `[A, B]`; `X in A..B`.
+- Required fields (r3.82): enum, array and type-parameter fields without
+  default are given in the construction; type defaults only when complete,
+  nested and in parts; array field defaults `:= Fill(Literal)`.
 - Every local and State array is initialized where it is declared;
   `Fill(Value)` by element or row, in declarations, State and assignments,
   for every element type (r3.81).
@@ -90,10 +92,6 @@ each version added.
   in later changes; case mapping is one code point to one (`ß` stays `ß`).
 - A Range over Char is declared and its bounds checked; its values, and
   Sets over it, wait for Char values.
-- An array field of a struct starts at zero (or its element struct's
-  defaults) when the struct takes its type defaults (open question 3 of
-  `revisions.md`); a generic struct field instantiated with an enum is not
-  held to the enum-field rule.
 - Currency and Crypto: names registered, no arithmetic or literals;
   BigCurrency absent.
 - Vector, `Option`, `Result`: not implemented (`Option` exists only as

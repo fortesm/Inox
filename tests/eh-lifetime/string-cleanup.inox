@@ -13,7 +13,7 @@
 Type
     TBox Struct
         FText String
-        FItems Array[1..2] String
+        FItems Array[1..2] String := Fill("")
     ;
 
 Thrower(Text String) :

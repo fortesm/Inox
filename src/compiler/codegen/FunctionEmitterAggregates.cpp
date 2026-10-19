@@ -84,6 +84,10 @@ void FunctionEmitter::emitStructFieldDefaults(const std::string& pointer, TypeRe
         const std::string fieldPointer = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << fieldPointer << " = getelementptr " << llvmStructName(structType) << ", ptr "
                 << pointer << ", i32 0, i32 " << index << '\n';
+        if (field.hasDefault && field.fillDefault) {
+            emitArrayFillDefault(fieldPointer, field.type, field.defaultValue);
+            continue;
+        }
         if (field.type->isStruct()) {
             emitStructFieldDefaults(fieldPointer, defaulted);
             continue;
@@ -160,6 +164,53 @@ void FunctionEmitter::emitArrayElementDefaults(const std::string& pointer, TypeR
     output_ << "  store i64 " << next << ", ptr " << counter << '\n';
     output_ << "  br label %elemdefault.cond" << label << "\n\n";
     output_ << "elemdefault.end" << label << ":\n";
+}
+
+// r3.82: an array field with the default `Fill(Literal)` gets the literal in
+// every element (an immortal String literal needs no retain; None and the
+// empty set are the zero the field already holds).
+void FunctionEmitter::emitArrayFillDefault(const std::string& pointer, TypeRef arrayType, const std::string& text)
+{
+    const FlatArray flat = flattenArray(arrayType);
+    const TypeRef element = flat.element;
+    if (element->isOptionOwn() || element->isSet()) {
+        return;
+    }
+    const std::string storage = llvmStorageType(element);
+    std::string value;
+    if (isStringType(element)) {
+        value = emitStringValue(std::string_view(text).substr(1, text.size() - 2));
+    } else if (element->isEnum()) {
+        std::size_t ordinal = 0;
+        while (ordinal < element->literals().size() && !equalsIgnoreCase(element->literals()[ordinal], text)) {
+            ++ordinal;
+        }
+        value = std::to_string(ordinal);
+    } else {
+        value = llvmDefaultLiteral(text, storage);
+    }
+    const std::string label = std::to_string(nextLabel_++);
+    const std::string counter = "%filldefault.i" + label;
+    output_ << "  " << counter << " = alloca i64\n";
+    output_ << "  store i64 0, ptr " << counter << '\n';
+    output_ << "  br label %filldefault.cond" << label << "\n\n";
+    output_ << "filldefault.cond" << label << ":\n";
+    const std::string index = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string more = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << index << " = load i64, ptr " << counter << '\n';
+    output_ << "  " << more << " = icmp slt i64 " << index << ", " << flat.count << '\n';
+    output_ << "  br i1 " << more << ", label %filldefault.body" << label << ", label %filldefault.end" << label
+            << "\n\n";
+    output_ << "filldefault.body" << label << ":\n";
+    const std::string elementPointer = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << elementPointer << " = getelementptr inbounds " << storage << ", ptr " << pointer << ", i64 "
+            << index << '\n';
+    output_ << "  store " << storage << ' ' << value << ", ptr " << elementPointer << '\n';
+    const std::string next = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << next << " = add i64 " << index << ", 1\n";
+    output_ << "  store i64 " << next << ", ptr " << counter << '\n';
+    output_ << "  br label %filldefault.cond" << label << "\n\n";
+    output_ << "filldefault.end" << label << ":\n";
 }
 
 // The struct a construction `T(Field := Value, ...)` builds, as the analysis

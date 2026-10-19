@@ -16,7 +16,7 @@ Use Std.Strings
 Type
     TCard Struct
         FName String
-        FTags Array[1..2] String
+        FTags Array[1..2] String := Fill("")
     ;
 
 State

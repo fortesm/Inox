@@ -4,7 +4,10 @@
 == This Source Code Form is subject to the terms of the Mozilla Public
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
-== r3.81 (CANON-5): an enum field is born with a default written in its struct.
+
+== r3.82 (CANON-5, CANON-9): an enum field without a default has no implicit
+== value; it is given in the construction, so a struct declared without one
+== is an error.
 Type
     TSuit (Club, Diamond, Heart, Spade)
     TCard Struct

@@ -190,6 +190,9 @@ struct StructFieldDeclaration {
     std::string typeName;
     bool hasDefault = false;
     std::string defaultValue;
+    // r3.82: `:= Fill(Literal)`, the default of an array field;
+    // defaultValue is the literal.
+    bool fillDefault = false;
     std::size_t line = 0;
     // Method reuse (CANON-9): `TName Struct (TPart)` reuses TPart. The part
     // is a field named after its type, whose fields and methods the struct
