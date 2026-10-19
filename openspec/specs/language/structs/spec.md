@@ -87,4 +87,4 @@ SHALL NOT take its type defaults, in a local, in State or by `New(TName)`
 
 #### Scenario: Given or defaulted
 - **WHEN** they have defaults (`:= Approved`, `:= Fill(7)`) or are given in the construction, also nested
-- **THEN** the values hold them (tests/runtime/required-fields.inox)
+- **THEN** the values hold them (tests/runtime/required-fields.inox, tests/runtime/struct-required-fields.inox)

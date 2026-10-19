@@ -1,0 +1,77 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.82 (CANON-5, CANON-9): explicit initialization is transitive over
+== structs, arrays and generic types. An array field takes Fill(Literal) as
+== its default or is given in the construction; an enum field without a
+== default and a field of a type parameter are given in the construction; a
+== struct is declared without a value only when every field has one.
+Type
+    TSuit (Club, Diamond, Heart, Spade)
+    TStatus (Pending, Approved, Rejected)
+    TNode Struct
+        FValue Integer := 0
+    ;
+    TPacket Struct
+        FData Array[1..4] Byte := Fill(9)
+        FSize Integer := 0
+    ;
+    TDefaults Struct
+        FSuits Array[1..2] TSuit := Fill(Heart)
+        FFlags Array[1..2] Bool := Fill(True)
+        FRatios Array[1..2] Float := Fill(0.5)
+        FNames Array[1..2] String := Fill("none")
+        FSmall Array[1..2] Int8 := Fill(-3)
+        FGrid Array[1..2, 1..3] Integer := Fill(7)
+        FKids Array[1..2] Option<Own<TNode>> := Fill(None)
+        FSeen Array[1..2] Set<TSuit> := Fill([])
+    ;
+    TFrame Struct
+        FData Array[1..3] Integer
+        FSuit TSuit
+        FSize Integer := 1
+    ;
+    TPair Struct
+        FPacket TPacket
+        FFrame TFrame
+    ;
+    TBox<T> Struct
+        FValue T
+        FCount Integer := 0
+    ;
+
+State
+    Shared TPacket
+;
+
+Main :
+    == Every field has a value: declared without one.
+    P TPacket
+    D TDefaults
+    PutLn(P.FData[4], " ", P.FSize, " ", Shared.FData[1])
+    PutLn(D.FSuits[2], " ", D.FFlags[1], " ", D.FRatios[2], " ", D.FNames[1], " ", D.FSmall[2], " ", D.FGrid[2, 3])
+    PutLn(Alive(D.FKids[1]), " ", Club in D.FSeen[2])
+    D.FNames[2] := "set"
+    PutLn(D.FNames[1], " ", D.FNames[2])
+
+    == Fields without default are given in the construction.
+    F := TFrame(FData := Fill(4), FSuit := Spade)
+    PutLn(F.FData[3], " ", F.FSuit, " ", F.FSize)
+
+    == A nested struct with such fields is given too.
+    Pair := TPair(FFrame := TFrame(FData := Fill(1), FSuit := Club))
+    PutLn(Pair.FPacket.FData[1], " ", Pair.FFrame.FSuit)
+
+    == A field of a type parameter never has an implicit value.
+    A := TBox(FValue := Pending)
+    B TBox<Integer> := TBox(FValue := 5)
+    C TBox<TPacket> := TBox(FValue := P)
+    PutLn(A.FValue, " ", B.FValue, " ", C.FValue.FData[2], " ", A.FCount)
+
+    == New with the defaults of a complete type.
+    N := New(TPacket)
+    PutLn(Value(N).FData[3])
+;

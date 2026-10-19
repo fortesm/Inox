@@ -88,6 +88,10 @@ An array field SHALL NOT have a literal default.
 - **WHEN** a program writes `B.FData[2] := 7`, copies B into C and changes `C.FData[2]`
 - **THEN** `B.FData[2]` is still 7 (tests/runtime/struct-array-field.inox)
 
+#### Scenario: Fill defaults of every element type
+- **WHEN** array fields default to `Fill` of an enum literal, a Bool, a Float, a String, an Int8, an Integer in two dimensions, None and `[]`, in a local, in State and by `New`
+- **THEN** every element holds its literal (tests/runtime/struct-required-fields.inox)
+
 #### Scenario: Default on an array field
 - **WHEN** a struct declares `FData Array[1..2] Integer := 1`, or `FData Array[1..4] Byte` and is declared without a value
 - **THEN** the compiler rejects both, showing `:= Fill(Value)` (tests/diagnostics/struct-array-field-default.inox, tests/diagnostics/struct-array-field-required.inox)
