@@ -1,0 +1,1 @@
+a Char has no arithmetic (CANON-14): compute on its code point, Char(Integer(C) + 1)

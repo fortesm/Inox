@@ -18,8 +18,10 @@
 ==   Position(Sub String, S String) Integer    == where Sub first starts in S, 0 when absent
 ==   UpperCase(S String) String                == Unicode case mapping, any language
 ==   LowerCase(S String) String
+==   CharAt(S String, I Integer) Char         == the character at position I (char-values)
 ==
 == Positions count characters and start at 1. A position or count outside
-== the String stops the program with "string index out of range": Substr
+== the String stops the program with "string index out of range" (CharAt
+== needs 1 <= I <= Length(S)): Substr
 == needs 1 <= Start <= Length(S) + 1, Count >= 0 and Start + Count - 1 <=
 == Length(S). Case mappings take one character to one (ß stays ß).

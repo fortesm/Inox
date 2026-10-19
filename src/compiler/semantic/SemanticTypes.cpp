@@ -94,6 +94,10 @@ bool SemanticAnalyzer::canAssign(TypeRef targetType, TypeRef valueType) const
     if (valueType != nullptr && valueType->isRange() && targetType == valueType->rangeBase()) {
         return true;
     }
+    // A value of a Char Range is a Char (change char-values).
+    if (valueType != nullptr && valueType->isCharRange() && targetType == types().charType()) {
+        return true;
+    }
     return targetType == nullptr || (valueType != nullptr && targetType == valueType);
 }
 
@@ -159,6 +163,32 @@ bool SemanticAnalyzer::canAssignValue(TypeRef targetType, TypeRef valueType, con
         }
         result_.requireRangeCheck(value, targetType);
         return true;
+    }
+    // Change char-values: a Char enters a Char Range checked against its
+    // bounds (kind 11), as an Integer enters a Range; a constant outside them
+    // is a compile error.
+    if (targetType != nullptr && targetType->isCharRange() && valueType != nullptr && valueType->isChar()) {
+        std::int64_t constant = 0;
+        if (staticCharValue(value, constant)) {
+            if (constant < targetType->minValue() || constant > targetType->maxValue()) {
+                throw SemanticError("value out of range for " + targetType->name() + ": " +
+                                    describeChar(constant));
+            }
+            return true;
+        }
+        if (valueType->isCharRange() && valueType->minValue() >= targetType->minValue() &&
+            valueType->maxValue() <= targetType->maxValue()) {
+            return true;
+        }
+        result_.requireRangeCheck(value, targetType);
+        return true;
+    }
+    // A Char is never an integer, and an integer never a Char (CANON-14).
+    if (targetType != nullptr && valueType != nullptr &&
+        ((targetType->isChar() && valueType->isInteger()) || (targetType->isInteger() && valueType->isChar()))) {
+        throw SemanticError(targetType->isChar()
+                                ? "an integer is not a Char: convert a code point with Char(I) (CANON-14)"
+                                : "a Char is not an integer: its code point is Integer(C) (CANON-14)");
     }
     // Change uint64: a constant Integer that is not negative is a UInt64.
     if (isUInt64Type(targetType) && valueType == types().int64Type()) {
@@ -313,9 +343,9 @@ TypeRef SemanticAnalyzer::resolveArrayType(const types::TypeSyntax& syntax, std:
     }
     const bool isPointer = element->isLink() || element->isOptionOwn();
     if (!element->isNumeric() && !element->isBool() && !element->isString() && !element->isStruct() && !isPointer &&
-        !element->isEnum() && !element->isSet()) {
+        !element->isEnum() && !element->isSet() && !element->isChar()) {
         throw SemanticError("array elements of type " + element->name() +
-                            " are not supported yet; use an integer, Float, Bool, enum, Set, String or struct element");
+                            " are not supported yet; use an integer, Float, Bool, Char, enum, Set, String or struct element");
     }
     return types().array(low, high, element);
 }

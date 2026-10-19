@@ -49,11 +49,9 @@ bool isSetLiteral(const ast::Expression& expression)
 TypeRef SemanticAnalyzer::resolveSetType(const types::TypeSyntax& syntax, std::string_view written)
 {
     const TypeRef base = resolveTypeSyntax(syntax.argument(), syntax.argument().spelling());
-    if (base->isChar() && base->rangeBase() == nullptr && base != types().charType()) {
-        throw SemanticError("a Set over a Char Range comes with Char values: " + std::string(written));
-    }
-    if (!base->isEnum() && !base->isRange()) {
-        throw SemanticError("a Set is over an Enum or a Range (CANON-13), not " + base->name() + ": " +
+    if (!base->isEnum() && !base->isRange() && !base->isCharRange()) {
+        throw SemanticError("a Set is over an Enum or a Range, of Integers or Chars (CANON-13), not " +
+                            base->name() + ": " +
                             std::string(written));
     }
     if (base->maxValue() - base->minValue() + 1 > kMaxSetSize) {
@@ -169,7 +167,7 @@ TypeRef SemanticAnalyzer::analyzeMembership(const ast::BinaryExpression& express
     TypeRef setType = nullptr;
     if (isSetLiteral(right)) {
         const TypeRef value = analyzeExpression(expression.left());
-        if (value == nullptr || (!value->isEnum() && !value->isRange())) {
+        if (value == nullptr || (!value->isEnum() && !value->isRange() && !value->isCharRange())) {
             throw SemanticError("'in' with a set literal needs an Enum or Range value on its left, got " +
                                 types::nameOf(value));
         }
@@ -184,7 +182,9 @@ TypeRef SemanticAnalyzer::analyzeMembership(const ast::BinaryExpression& express
     const TypeRef base = setType->element();
     const TypeRef value = analyzeExpressionFor(expression.left(), base);
     // A Range set accepts any Integer value: one outside the Range is not in it.
-    const bool fits = value == base || (base->isRange() && value != nullptr && value->isInteger() &&
+    // A Char Range set accepts any Char the same way (change char-values).
+    const bool charFits = base->isCharRange() && value != nullptr && value->isChar();
+    const bool fits = value == base || charFits || (base->isRange() && value != nullptr && value->isInteger() &&
                                         !isUInt64Type(value) && (value == base->rangeBase() ||
                                                                  value == types().naturalType() ||
                                                                  value->rangeBase() == base->rangeBase()));

@@ -58,6 +58,10 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
         return "declare zeroext i1 @__inox_str_find(ptr, ptr, i32) nounwind";
     case RuntimeFunction::StringCompareText:
         return "declare i32 @__inox_str_compare_text(ptr, ptr) nounwind";
+    case RuntimeFunction::StringFromChar:
+        return "declare ptr @__inox_str_from_char(i64, ptr) nounwind";
+    case RuntimeFunction::StringCharAt:
+        return "declare i64 @__inox_str_char_at(ptr, i64, ptr) nounwind";
     case RuntimeFunction::FileOpen:
         return "declare ptr @__inox_file_open(ptr, i32)";
     case RuntimeFunction::FileRetain:

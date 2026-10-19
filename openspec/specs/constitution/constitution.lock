@@ -31,7 +31,7 @@ spec.md#CANON-4 One statement per line	8ee77f1d6ea33df1	constitution
 spec.md#CANON-4 Sections and removed forms	5e7112e068617ad9	state-without-colon
 spec.md#CANON-5 Three declaration forms	def4ac0631701707	constitution
 spec.md#CANON-5 Every variable is born with a value	49e7c9c733cd1d4d	array-fill
-spec.md#CANON-5 Initialization is transitive	99f101d690d69751	array-fill
+spec.md#CANON-5 Initialization is transitive	bcc378d817cfdee1	char-values
 spec.md#CANON-5 Unread locals are errors	49f999bc0b47b9e2	driver-commands
 spec.md#CANON-5 Grouped declarations	8c0f134a15fbaefc	constitution
 spec.md#CANON-5 Assignment is a statement	b3da436634a3b804	constitution
@@ -87,7 +87,7 @@ spec.md#CANON-14 Concatenation	2db6dbc0e418e839	std-strings
 spec.md#CANON-14 String functions	a22244eff844257b	std-strings
 spec.md#CANON-14 Characters, not bytes	d894458bf1a34c75	std-strings
 spec.md#CANON-14 Reserved String operations	9acf94a61f69a7b0	std-strings
-spec.md#CANON-14 Char	d1c75c6e4e4568df	char-not-ordinal
+spec.md#CANON-14 Char	1365677d418253be	char-values
 spec.md#CANON-15 The try statement	5388bdd6cd1d1c0d	constitution
 spec.md#CANON-15 Typed handlers	f805cb680eaed837	constitution
 spec.md#CANON-15 Raise	44fa410a9bb2fe56	constitution

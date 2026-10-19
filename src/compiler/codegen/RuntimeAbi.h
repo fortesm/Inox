@@ -46,6 +46,9 @@ enum class RuntimeFunction {
     StringReplace,
     StringFind,
     StringCompareText,
+    // Char values (change char-values): String(C) and CharAt(S, I).
+    StringFromChar,
+    StringCharAt,
     // File runtime (runtime/FileRuntime.cpp), declared on first use. The
     // functions without `nounwind` raise Inox exceptions (F3).
     FileOpen,

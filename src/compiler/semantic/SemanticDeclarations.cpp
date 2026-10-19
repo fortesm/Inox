@@ -626,9 +626,10 @@ std::string SemanticAnalyzer::requiredFieldMessage(const std::string& name, Type
 // r3.82 (CANON-5, CANON-9): the first field a value of `type` would get
 // without a value written for it, as "TName.Field" (through nested
 // structs), or empty when the type defaults are a complete value. An enum,
-// an array, a type parameter, an owner and a struct that has such a field
-// have no implicit value; a field with a default, a scalar or String
-// (zero, ""), a Set (empty) and a Link or Option (None) have one.
+// a Char (char-values), an array, a type parameter, an owner and a struct
+// that has such a field have no implicit value; a field with a default, a
+// number, a Bool or a String (zero, False, ""), a Set (empty) and a Link or
+// Option (None) have one.
 std::string SemanticAnalyzer::requiredFieldWithoutDefault(TypeRef type)
 {
     if (type == nullptr || !type->isStruct()) {
@@ -638,7 +639,9 @@ std::string SemanticAnalyzer::requiredFieldWithoutDefault(TypeRef type)
         if (field.hasDefault || field.type == nullptr) {
             continue;
         }
-        if (field.fromTypeParameter || field.type->isEnum() || field.type->isArray() || field.type->isOwn()) {
+        // A Char has no implicit value either (change char-values).
+        if (field.fromTypeParameter || field.type->isEnum() || field.type->isChar() || field.type->isArray() ||
+            field.type->isOwn()) {
             return type->name() + "." + field.name;
         }
         if (std::string inner = requiredFieldWithoutDefault(field.type); !inner.empty()) {
@@ -660,6 +663,21 @@ void SemanticAnalyzer::validateStructFieldDefault(const std::string& fieldName,
         }
         if (!quoted) {
             throw SemanticError("String struct field default must be a String literal: " + fieldName);
+        }
+        return;
+    }
+    // A Char field defaults to a Char literal, inside its Range if it has
+    // one (char-values).
+    const bool charQuoted = defaultValue.size() >= 2 && defaultValue.front() == '\'';
+    if (fieldType->isChar() || charQuoted) {
+        std::int64_t code = 0;
+        if (!fieldType->isChar() || !charQuoted || !decodeCharLiteral(defaultValue, code)) {
+            throw SemanticError("the default of struct field " + fieldName + " of type " + fieldType->name() +
+                                " must be " + (fieldType->isChar() ? "one Char literal" : "of that type") +
+                                ", got " + defaultValue);
+        }
+        if (code < fieldType->minValue() || code > fieldType->maxValue()) {
+            throw SemanticError("struct field default out of range for " + fieldType->name() + ": " + fieldName);
         }
         return;
     }

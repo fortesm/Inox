@@ -145,7 +145,7 @@ TypeRef SemanticAnalyzer::analyzeFileCall(std::string_view name, const ast::Call
         // Write and WriteLn take the values PutLn prints.
         if (type == nullptr ||
             (!type->isString() && !type->isBool() && type != types().float64Type() && !type->isInteger() &&
-             !type->isEnum())) {
+             !type->isEnum() && !type->isChar())) {
             throw SemanticError("argument " + std::to_string(index + 1) + " of " + functionName +
                                 " cannot be written yet: " + types::nameOf(type));
         }

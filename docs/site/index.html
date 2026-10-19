@@ -322,9 +322,21 @@ Swap(ref mut A Integer, ref mut B Integer) :    == writes the caller's variables
 <li><code>UInt64</code> (also <code>UInteger</code>) holds 0..18446744073709551615. Its arithmetic never wraps either: 2^64-1 + 1 and 3 - 4 stop the program with "integer overflow", and <code>div</code>, <code>mod</code>, <code>shr</code> and the comparisons are unsigned. A literal above Int64.Max is accepted where a UInt64 is expected (<code>U UInt64 := 18446744073709551615</code>, <code>U = $FFFFFFFFFFFFFFFF</code>, <code>Const Max := UInt64(18446744073709551615)</code>), and only there. A UInt64 and an Integer variable never mix: write <code>U + UInt64(I)</code> or <code>Integer(U) + I</code>, conversions that stop the program when the value does not fit (a negative I, a U above Int64.Max). <code>-U</code> is a compile error; write <code>-Integer(U)</code>.</li>
 <li>There is no <code>Variant</code> or <code>OleVariant</code>: every value has one static type.</li>
 <li><code>String</code> is UTF-8, immutable and never null; <code>""</code> is its default value, not absence. See <a href="#strings">Strings</a>.</li>
-<li><code>Char</code> is a Unicode scalar value.</li>
+<li><code>Char</code> is a Unicode scalar value. See <a href="#chars">Characters</a>.</li>
 </ul>
 <p>Integer <code>/</code> is rejected. Use <code>div</code> for integer division and <code>mod</code> for signed remainder. Integer overflow is not a promised wraparound semantic.</p>
+<h3 id="chars">Characters</h3>
+<p>A <code>Char</code> is one Unicode scalar value (U+0000..U+10FFFF without the surrogates), never a byte or a number. A literal is one character between single quotes, or an escape: <code>'\n'</code>, <code>'\r'</code>, <code>'\t'</code>, <code>'\0'</code>, <code>'\\'</code>, <code>'\''</code>. Every conversion is written: <code>Char(I)</code> from a code point (outside 0..$10FFFF or a surrogate stops the program with "integer conversion out of range"), <code>Integer(C)</code> to it, <code>String(C)</code> to a one-character String. A Char has no arithmetic, no <code>Ord</code>, <code>Succ</code> or <code>Pred</code>: compute on its code point. Chars compare by code point and form ranges for <code>for</code>, <code>case</code> and <code>in</code>:</p>
+<pre><code>Initial Char := 'M'
+PutLn(Initial, " ", Integer(Initial), " ", Char(233))   == M 77 é
+for Letter in 'a'..'e'
+    Put(Letter)                                        == abcde
+;
+Next := Char(Integer(Initial) + 1)                     == N
+Word := "água" + String(Next)                          == no implicit conversion
+First := CharAt(Word, 1)                               == á (Use Std.Strings)
+IsLower := First in 'a'..'z'                           == false: á is not in a..z</code></pre>
+<p>A Range over Char, <code>TLetter Range 'A'..'Z'</code>, holds Chars: storing one outside it stops the program with "value out of range", and <code>Set&lt;TLetter&gt;</code> is a set of letters. A Char field has a default (<code>FMark Char := 'x'</code>) or is given in the construction. A Char is stored in 32 bits. Reading one Char from the input comes later.</p>
 <h3 id="strings">Strings</h3>
 <p>A <code>String</code> holds UTF-8 text and never changes: assigning or passing a String gives a copy of the value, so changing one variable never changes another. Strings work everywhere a value can live: locals, parameters and results, struct fields, array elements, <code>State</code> and <code>ref</code> parameters. A String local or <code>State</code> variable needs an initializer, an array of Strings is filled (<code>Fill("")</code>), and a struct field without default starts as <code>""</code>. <code>=</code> and <code>#</code> compare the bytes.</p>
 <pre><code>Type
@@ -800,6 +812,7 @@ PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
 <tr><td><code>Substr(S, Start, Count)</code></td><td>Count characters from position Start (the first is 1)</td></tr>
 <tr><td><code>Position(Sub, S)</code></td><td>the position of the first Sub in S; 0 when absent or empty</td></tr>
 <tr><td><code>UpperCase(S)</code>, <code>LowerCase(S)</code></td><td>the case changed by Unicode rules, one character to one</td></tr>
+<tr><td><code>CharAt(S, I)</code></td><td>the <code>Char</code> at position I (the first is 1)</td></tr>
 </table>
 <table>
 <tr><th>Std.StrUtils</th><th>Result</th></tr>
@@ -965,7 +978,7 @@ Color(S TSuit) String :
     ;
 ;</code></pre>
 <p>A <strong>Set</strong>, <code>Set&lt;TSuit&gt;</code>, is a set over an enum or a Range of at most 256 values, a value that starts empty. <code>[Club, Heart]</code> writes one where a Set is expected; <code>X in S</code> tests membership; <code>=</code> and <code>#</code> compare, <code>&lt;=</code> and <code>&gt;=</code> test subset and superset; <code>Union</code>, <code>Intersection</code>, <code>Difference</code>, <code>SymmetricDifference</code>, <code>Include(S, X)</code> and <code>Exclude(S, X)</code> return new sets. Unlike Pascal's <code>Include</code> and <code>Exclude</code>, they never change their argument: write <code>S := Include(S, Heart)</code>; a call that drops the new set is an error that says so. It costs one bit per value, with no allocation. <code>X in A..B</code> also tests a value against two bounds.</p>
-<p><code>examples/cards.inox</code> scores a hand of cards with all three. A Range over Char (<code>TLetter Range 'A'..'Z'</code>) is declared and waits for Char values.</p>
+<p><code>examples/cards.inox</code> scores a hand of cards with all three. A Range over Char (<code>TLetter Range 'A'..'Z'</code>) holds Chars, and a Set over it is a set of letters (<a href="#chars">Characters</a>).</p>
 </section>
 <section id="runtime-status"><h2>Runtime and implementation status</h2>
 <p>Inox does not yet provide a complete standalone language runtime. The <code>stdlib/Std.*.inox</code> files remain early standard-library modules and documentation anchors. The minimal static <code>libinoxrt</code> component (canon revision 3.17) provides exception transport and unwinding; since revision 3.55 it also holds the String runtime (reference-counted immutable blocks and line input), and since revision 3.59 the text-file runtime. It is not yet a general-purpose language runtime or RTTI system.</p>

@@ -104,6 +104,8 @@ private:
     // copies of Value, where an array is expected.
     bool isFillCall(const ast::CallExpression& call) const;
     TypeRef analyzeFill(const ast::CallExpression& call);
+    // Char(I), TLetter(X) and String(C) (change char-values), SemanticEnums.cpp.
+    void checkCharConversion(const ast::CallExpression& call, TypeRef target);
     static std::string arrayWithoutInitializer(const std::string& name, const std::string& written,
                                                TypeRef arrayType);
     TypeRef analyzeMembership(const ast::BinaryExpression& expression);

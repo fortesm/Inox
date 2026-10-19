@@ -29,6 +29,8 @@ void* __inox_str_replicate(void* value, std::int64_t times, std::int32_t* status
 void* __inox_str_replace(void* value, void* oldValue, void* newValue, std::int32_t* status) noexcept;
 bool __inox_str_find(void* value, void* sub, std::int32_t where) noexcept;
 std::int32_t __inox_str_compare_text(void* left, void* right) noexcept;
+void* __inox_str_from_char(std::int64_t code, std::int32_t* status) noexcept;
+std::int64_t __inox_str_char_at(void* value, std::int64_t position, std::int32_t* status) noexcept;
 }
 
 namespace {
@@ -227,6 +229,28 @@ void testReplaceFind()
     check(!__inox_str_find(literal("ab"), literal("abc"), 2), "EndsWith of a longer String");
 }
 
+// Change char-values: String(C) and CharAt(S, I).
+void testChars()
+{
+    std::int32_t status = -1;
+    void* a = __inox_str_from_char('a', &status);
+    check(__inox_str_length(a) == 1, "String(C) is one character");
+    expect(take(a, status), "a", "String of an ASCII Char");
+    expect(take(__inox_str_from_char(0xE9, &status), status), "é", "String of a two-byte Char");
+    expect(take(__inox_str_from_char(0x20AC, &status), status), "€", "String of a three-byte Char");
+    expect(take(__inox_str_from_char(0x1F600, &status), status), "😀", "String of a four-byte Char");
+    void* word = literal("aé€😀");
+    check(__inox_str_char_at(word, 1, &status) == 'a' && status == 0, "CharAt of the first character");
+    check(__inox_str_char_at(word, 2, &status) == 0xE9, "CharAt counts characters");
+    check(__inox_str_char_at(word, 4, &status) == 0x1F600, "CharAt of the last character");
+    __inox_str_char_at(word, 5, &status);
+    check(status == 1, "CharAt past the end is out of range");
+    __inox_str_char_at(word, 0, &status);
+    check(status == 1, "CharAt of position 0 is out of range");
+    __inox_str_char_at(literal(""), 1, &status);
+    check(status == 1, "CharAt of an empty String is out of range");
+}
+
 } // namespace
 
 int runStringFunctionsTests()
@@ -237,6 +261,7 @@ int runStringFunctionsTests()
     testCase();
     testTrimPadReplicate();
     testReplaceFind();
+    testChars();
     if (failures == 0) {
         std::printf("[PASS] inoxrt string functions unit tests\n");
     }

@@ -43,6 +43,11 @@ std::string SemanticAnalyzer::arrayWithoutInitializer(const std::string& name, c
             example = std::to_string(element->minValue());
         } else if (element->isInteger()) {
             example = "0";
+        } else if (element->isChar()) {
+            const std::int64_t code = element->isCharRange() ? element->minValue() : ' ';
+            example = code >= 0x20 && code < 0x7F && code != '\'' && code != '\\'
+                          ? std::string("'") + static_cast<char>(code) + "'"
+                          : "Char(" + std::to_string(code) + ")";
         } else if (element->isString()) {
             example = "\"\"";
         } else if (element->isSet()) {

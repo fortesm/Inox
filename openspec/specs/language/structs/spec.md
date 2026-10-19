@@ -71,7 +71,7 @@ other structs, SHALL be a compile error.
 - **THEN** the compiler rejects it with "struct contains itself: TNode" (tests/diagnostics/struct-recursive.inox, tests/diagnostics/struct-recursive-indirect.inox)
 
 ### Requirement: Fields without an implicit value are required
-A field of an enum, array or type-parameter type without a default, and a
+A field of an enum, Char, array or type-parameter type without a default, and a
 field of a struct without complete type defaults, SHALL be given in every
 construction; a struct with such a field (directly, nested or in a part)
 SHALL NOT take its type defaults, in a local, in State or by `New(TName)`
@@ -79,7 +79,7 @@ SHALL NOT take its type defaults, in a local, in State or by `New(TName)`
 
 #### Scenario: Declared without a value
 - **WHEN** `Q TPacket` with `FData Array[1..4] Byte`, `C TCard` with `FSuit TSuit`, `R TRoute` whose `FFrame TFrame` has such a field, a part with one, a State variable, or `New(TPacket)`
-- **THEN** the compiler rejects each, naming the field (tests/diagnostics/struct-array-field-required.inox, tests/diagnostics/enum-field-without-default.inox, tests/diagnostics/nested-required-field.inox, tests/diagnostics/part-required-field.inox, tests/diagnostics/state-required-field.inox, tests/diagnostics/new-required-field.inox)
+- **THEN** the compiler rejects each, naming the field (tests/diagnostics/struct-array-field-required.inox, tests/diagnostics/enum-field-without-default.inox, tests/diagnostics/char-field-without-default.inox, tests/diagnostics/nested-required-field.inox, tests/diagnostics/part-required-field.inox, tests/diagnostics/state-required-field.inox, tests/diagnostics/new-required-field.inox)
 
 #### Scenario: Omitted in the construction
 - **WHEN** a construction omits such a field

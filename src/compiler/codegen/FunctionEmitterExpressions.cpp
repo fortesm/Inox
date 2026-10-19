@@ -8,6 +8,7 @@
 // FunctionEmitter: expression types and the lowering of expressions.
 
 #include "FunctionEmitter.h"
+#include "../support/CharLiteral.h"
 
 #include "AstQueries.h"
 #include "ExceptionAbi.h"
@@ -48,14 +49,10 @@ const semantic::ConstantValue* FunctionEmitter::resolvedConstant(const ast::Iden
 }
 
 // The LLVM type of an expression's value: the LLVM type of the type the
-// analysis gave it. A Char literal is its code point (i32); Free and the
-// file calls without a result are void; None is a null pointer.
+// analysis gave it (a Char is its code point, an i64); Free and the file
+// calls without a result are void; None is a null pointer.
 std::string FunctionEmitter::expressionLlvmType(const ast::Expression& expression) const
 {
-    if (expression.kind() == ast::AstNodeKind::LiteralExpression &&
-        static_cast<const ast::LiteralExpression&>(expression).literalKind() == ast::LiteralKind::Char) {
-        return "i32";
-    }
     if (expression.kind() == ast::AstNodeKind::CallExpression) {
         const auto& call = static_cast<const ast::CallExpression&>(expression);
         if (isPointerBuiltin(call) &&
@@ -156,7 +153,7 @@ TypeRef FunctionEmitter::conversionTarget(const ast::CallExpression& call) const
     const bool lowered = target != nullptr && (target == semantics_.types().naturalType() ||
                                                target == semantics_.types().int64Type() ||
                                                target->isNarrowInteger() || isUInt64Type(target) ||
-                                               target->isEnum() || target->isRange());
+                                               target->isEnum() || target->isRange() || target->isChar());
     return lowered ? target : nullptr;
 }
 
@@ -235,6 +232,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         }
         if (literal.literalKind() == ast::LiteralKind::String) {
             return emitStringValue(literal.value());
+        }
+        if (literal.literalKind() == ast::LiteralKind::Char) {
+            return std::to_string(support::decodeCharLiteral(literal.value()).code);
         }
         break;
     }
@@ -535,6 +535,14 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return emitMathBuiltinCall(callee.name(), call.arguments());
         }
 
+        // String(C) (change char-values): the one-character String.
+        if (call.arguments().size() == 1 && equalsIgnoreCase(callee.name(), "String") &&
+            calledRoutine(callee) == nullptr) {
+            const TypeRef source = typeOf(*call.arguments().front());
+            const std::string value = emitExpression(*call.arguments().front());
+            return source != nullptr && source->isChar() ? emitCharString(value) : value;
+        }
+
         // CANON-8: Natural(X) checks X >= 0 at run time (fault kind 7);
         // Integer(X) and Int64(X) of an integer value are the identity,
         // because Natural shares Integer's i64 representation.
@@ -544,6 +552,14 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             const TypeRef source = typeOf(*call.arguments().front());
             if (isUInt64Type(source) || isUInt64Type(target)) {
                 return emitUnsignedConversion(value, source, target);
+            }
+            // Char(I) (change char-values): a Unicode scalar, 0..$10FFFF
+            // without the surrogates (kind 8); TLetter(X): one of its values.
+            if (target->isChar()) {
+                if (source == target || (source != nullptr && source->isChar() && !target->isCharRange())) {
+                    return value;
+                }
+                return emitCharCheck(value, target);
             }
             // TSuit(I): an ordinal 0..N-1 (CANON-13 Q2: kind 8); TMonth(I):
             // one of its values.
@@ -635,6 +651,34 @@ std::string FunctionEmitter::emitMathBuiltinCall(std::string_view name, const st
         output_ << "double " << values[index];
     }
     output_ << ")\n";
+    return result;
+}
+
+// Change char-values: `value` stops the program (kind 8) unless it is a
+// Unicode scalar inside `target` (Char, or a Char Range): a surrogate is
+// replaced by -1, which the range check then rejects.
+std::string FunctionEmitter::emitCharCheck(const std::string& value, TypeRef target)
+{
+    const std::string offset = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string surrogate = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string checked = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << offset << " = sub i64 " << value << ", 55296\n";
+    output_ << "  " << surrogate << " = icmp ult i64 " << offset << ", 2048\n";
+    output_ << "  " << checked << " = select i1 " << surrogate << ", i64 -1, i64 " << value << '\n';
+    return emitRangeCheck(checked, IntegerRange{target->minValue(), target->maxValue()}, 8);
+}
+
+// String(C) (change char-values): a new String held to the end of the
+// statement.
+std::string FunctionEmitter::emitCharString(const std::string& value)
+{
+    requireRuntime(RuntimeFunction::StringFromChar);
+    requireStringRuntime();
+    const std::string status = newStringStatus();
+    const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << result << " = call ptr @__inox_str_from_char(i64 " << value << ", ptr " << status << ")\n";
+    emitStringStatusCheck(status);
+    holdOwnedResult(result, semantics_.types().stringType(), "ptr");
     return result;
 }
 

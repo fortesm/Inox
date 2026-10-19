@@ -92,6 +92,10 @@ void SemanticAnalyzer::recordConstantValue(std::string_view name, std::string_vi
         std::int64_t code = 0;
         if (decodeCharLiteral(valueToken, code)) {
             charConstants_[normalizeName(name)] = code;
+            // The backend reads a Char Const as its code point (char-values).
+            value.kind = ConstantValue::Kind::Integer;
+            value.integer = code;
+            result_.setConstantValue(*symbol, value);
         }
         return;
     }

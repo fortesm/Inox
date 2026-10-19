@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-18 against Inox 0.2.0 pre-alpha, canon r3.82.
+Verified on 2026-10-18 against Inox 0.2.0 pre-alpha, canon r3.83.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -62,6 +62,9 @@ each version added.
   Ranges of Integer checked when stored (kind 11); Set<T> with `in`, the
   comparisons, the six functions (`Include`/`Exclude` since r3.81; a call
   as a statement is rejected) and `[A, B]`; `X in A..B`.
+- Char values (r3.83): literals with escapes, `Char(I)` checked,
+  `Integer(C)`, `String(C)`, `CharAt`, comparison, Char ranges in `for`,
+  `case` and `in`, Char Ranges and sets over them, output in UTF-8.
 - Required fields (r3.82): enum, array and type-parameter fields without
   default are given in the construction; type defaults only when complete,
   nested and in parts; array field defaults `:= Fill(Literal)`.
@@ -90,8 +93,9 @@ each version added.
 - Strings: `S[I]` and `GraphemeLength` are reserved; collation,
   normalization, Split/Join and conversions between numbers and text come
   in later changes; case mapping is one code point to one (`ß` stays `ß`).
-- A Range over Char is declared and its bounds checked; its values, and
-  Sets over it, wait for Char values.
+- Char: reading one Char from the input (`Get(C)`) is not implemented, and
+  a Char array element, stored in 32 bits like a narrow integer, cannot be
+  passed by `ref` yet.
 - Currency and Crypto: names registered, no arithmetic or literals;
   BigCurrency absent.
 - Vector, `Option`, `Result`: not implemented (`Option` exists only as
@@ -111,8 +115,6 @@ each version added.
   LLVM backend").
 - A Float `Const` is not lowered, so Std.Math exposes `Pi`, `Tau` and `E` as
   functions.
-- Char values: a Char local or comparison is accepted and not lowered, and
-  `PutLn(C)` with a Char is rejected ("cannot be printed yet").
 - A function called as a statement (its result unused) passes the analyzer
   and is "not yet implemented" in the backend (left as it is, r3.65).
 - Module exports, visibility and package search beyond local `Use`.

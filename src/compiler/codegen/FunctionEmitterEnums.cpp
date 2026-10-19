@@ -36,7 +36,7 @@ TypeRef FunctionEmitter::enumTypeNamed(const ast::Expression& expression) const
     }
     const TypeRef type =
         semantics_.types().lookup(static_cast<const ast::IdentifierExpression&>(expression).name());
-    return type != nullptr && (type->isEnum() || type->isRange()) ? type : nullptr;
+    return type != nullptr && (type->isEnum() || type->isRange() || type->isCharRange()) ? type : nullptr;
 }
 
 bool FunctionEmitter::isOrdinalBuiltin(const ast::CallExpression& call) const

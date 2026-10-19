@@ -19,7 +19,9 @@ std::string llvmStructName(TypeRef structType)
 
 std::optional<IntegerRange> narrowIntegerRange(TypeRef type)
 {
-    if (type == nullptr || !type->isNarrowInteger()) {
+    // A Char (CANON-8 table: i32) is stored in 32 bits like a narrow
+    // integer and computed as an i64 (change char-values).
+    if (type == nullptr || !(type->isNarrowInteger() || type->isChar())) {
         return std::nullopt;
     }
     return IntegerRange{type->minValue(), type->maxValue()};
@@ -40,6 +42,7 @@ std::string llvmValueType(TypeRef type)
     case types::TypeKind::Bool:
         return "i1";
     case types::TypeKind::Enum:  // CANON-13: the ordinal, an i64 like every integer
+    case types::TypeKind::Char:  // CANON-14 (char-values): the code point, an i64
     case types::TypeKind::Integer:
         // CANON-8: every integer is computed as i64 holding the mathematical
         // value; Natural and the narrow widths are range-checked where a
@@ -64,7 +67,6 @@ std::string llvmValueType(TypeRef type)
         return llvmStructName(type);
     case types::TypeKind::Void:
     case types::TypeKind::None:
-    case types::TypeKind::Char:
     case types::TypeKind::Decimal:
     case types::TypeKind::Exception:
         break;
@@ -76,6 +78,9 @@ std::string llvmStorageType(TypeRef type)
 {
     if (type != nullptr && type->isNarrowInteger()) {
         return "i" + std::to_string(type->bits());
+    }
+    if (type != nullptr && type->isChar()) {
+        return "i32";
     }
     return llvmValueType(type);
 }

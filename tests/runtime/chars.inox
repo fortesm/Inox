@@ -1,0 +1,109 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== Change char-values (CANON-14): a Char is a Unicode scalar value. Literals
+== with escapes, Char(I) and Integer(C), String(C) and CharAt(S, I),
+== comparison by code point, Char ranges in for, case and in, Char Range
+== types with Low/High and sets, printing and writing, Char Consts, State,
+== fields (given or defaulted), arrays, ref parameters, IIf and generics.
+Use Std.IOUtils
+Use Std.Strings
+
+Type
+    TLetter Range 'A'..'Z'
+    TCell Struct
+        FMark Char := 'x'
+        FCount Integer := 0
+    ;
+    TTag Struct
+        FInitial Char
+        FMarks Array[1..2] Char := Fill('.')
+    ;
+
+State
+    Separator Char := '-'
+;
+
+Const Star := '*'
+
+Next(Letter Char) Char :
+    Return Char(Integer(Letter) + 1)
+;
+
+Upper(ref mut Letter Char) :
+    if Letter >= 'a' and Letter <= 'z'
+        Letter := Char(Integer(Letter) - 32)
+    ;
+;
+
+Largest<T>(A T, B T) T :
+    Return IIf(A > B, A, B)
+;
+
+Main :
+    == Literals, conversions and printing.
+    Letter Char := 'é'
+    PutLn(Letter, " ", Integer(Letter), " ", Char(65), " ", Star, Separator, '\'', '\\')
+    Put('\t')
+    PutLn('|', Char(128512))
+
+    == Comparison by code point.
+    PutLn('a' < 'b', " ", 'Z' >= 'a', " ", Letter = 'é', " ", Letter # 'e', " ", Largest('q', 'k'))
+
+    == Chars and Strings.
+    Word := "água" + String(Letter)
+    PutLn(Word, " ", Length(Word), " ", CharAt(Word, 1), " ", CharAt(Word, 5), " ", String('z') = "z")
+
+    == Ranges, for, case and in.
+    for Code in 'a'..'e'
+        Put(Code)
+    ;
+    PutLn(" ", 'q' in 'a'..'z', " ", Letter in 'a'..'z', " ", Next('a'))
+    for Code in Low(TLetter)..High(TLetter)
+        if Code in ['A', 'Z']
+            Put(Code)
+        ;
+    ;
+    PutLn("")
+    Samples := "éQ7!"
+    for Index in 1..Length(Samples)
+        case CharAt(Samples, Index)
+            'a'..'z' | 'A'..'Z' | 'é'
+                Put("letter ")
+            '0'..'9'
+                Put("digit ")
+            else
+                Put("other ")
+        ;
+    ;
+    PutLn("")
+
+    == A Char Range and a set over it.
+    Initial TLetter := 'M'
+    Vowels Set<TLetter> := ['A', 'E', 'I', 'O', 'U']
+    Vowels := Include(Vowels, 'Y')
+    PutLn(Initial, " ", 'E' in Vowels, " ", Initial in Vowels, " ", 'Y' in Vowels, " ", Low(TLetter), High(TLetter))
+
+    == Arrays, fields, ref parameters.
+    Marks Array[1..3] Char := Fill('#')
+    Lower := 'b'
+    Upper(Lower)
+    Marks[2] := Lower
+    Cell TCell
+    Tag := TTag(FInitial := 'T')
+    PutLn(Marks[1], Marks[2], Marks[3], " ", Cell.FMark, " ", Tag.FInitial, Tag.FMarks[2])
+    PutLn(IIf(Cell.FCount = 0, 'y', 'n'))
+
+    == Written to a file and read back.
+    Out := Create("chars-test.txt")
+    WriteLn(Out, Letter, Star, 'Z')
+    Close(Out)
+    Reader := OpenRead("chars-test.txt")
+    Line := ReadLn(Reader)
+    Close(Reader)
+    DeleteFile("chars-test.txt")
+    PutLn(Line, " ", Length(Line))
+;

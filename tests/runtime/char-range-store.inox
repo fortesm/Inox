@@ -1,0 +1,20 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Change char-values: a Char outside a Char Range, stored into it, stops the
+== program (kind 11).
+Type
+    TLetter Range 'A'..'Z'
+
+Main :
+    Code := 'Z'
+    Upper TLetter := Code
+    PutLn(Upper)
+    Code := 'a'
+    Upper := Code
+    PutLn(Upper)
+;

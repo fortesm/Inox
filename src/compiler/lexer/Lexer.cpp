@@ -329,7 +329,14 @@ Token Lexer::stringLiteral(SourceLocation start, std::size_t startOffset)
 
 Token Lexer::charLiteral(SourceLocation start, std::size_t startOffset)
 {
+    // A backslash escapes the next character, so '\'' is one quote (char-values).
     while (!isAtEnd() && peek() != '\'' && peek() != '\n') {
+        if (peek() == '\\') {
+            advance();
+            if (isAtEnd() || peek() == '\n') {
+                break;
+            }
+        }
         advance();
     }
 

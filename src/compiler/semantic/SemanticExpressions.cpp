@@ -10,6 +10,7 @@
 #include "SemanticAnalyzer.h"
 
 #include "SemanticSupport.h"
+#include "../support/CharLiteral.h"
 #include "../exceptions/ExceptionTypes.h"
 
 #include <algorithm>
@@ -187,8 +188,27 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
             return types().float64Type();
         case ast::LiteralKind::String:
             return types().stringType();
-        case ast::LiteralKind::Char:
+        case ast::LiteralKind::Char: {
+            // CANON-14 (char-values): one Unicode scalar, never a surrogate.
+            const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
+            const support::DecodedChar decoded = support::decodeCharLiteral(literal.value());
+            switch (decoded.status) {
+            case support::CharLiteralStatus::Ok:
+                break;
+            case support::CharLiteralStatus::Empty:
+                throw SemanticError("a Char literal holds one character: '' is empty");
+            case support::CharLiteralStatus::NotOneChar:
+                throw SemanticError("a Char literal holds one character, got " + std::string(literal.value()) +
+                                    "; a text is a String, \"...\"");
+            case support::CharLiteralStatus::UnknownEscape:
+                throw SemanticError("unknown escape in Char literal " + std::string(literal.value()) +
+                                    ": the escapes are \\n \\r \\t \\0 \\\\ \\'");
+            case support::CharLiteralStatus::Surrogate:
+                throw SemanticError("a Char is a Unicode scalar value, never a surrogate (CANON-14): " +
+                                    std::string(literal.value()));
+            }
             return types().charType();
+        }
         case ast::LiteralKind::Boolean:
             return types().boolType();
         }
@@ -661,6 +681,10 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             throw SemanticError("an enum has no arithmetic: Succ(E), Pred(E) and Ord(E) step and measure it "
                                 "(CANON-13)");
         }
+        if ((leftType != nullptr && leftType->isChar()) || (rightType != nullptr && rightType->isChar())) {
+            throw SemanticError("a Char has no arithmetic (CANON-14): compute on its code point, "
+                                "Char(Integer(C) + 1)");
+        }
         if ((leftType != nullptr && !isNumericType(leftType)) ||
             (rightType != nullptr && !isNumericType(rightType))) {
             throw SemanticError(
@@ -762,6 +786,14 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
         // `Club..Heart`: a range of literals of one enum (CANON-13).
         if (leftType != nullptr && leftType->isEnum() && leftType == rightType) {
             return leftType;
+        }
+        // `'a'..'z'`: a range of Chars (change char-values), of the Range
+        // type when both ends have it.
+        if (leftType != nullptr && rightType != nullptr && leftType->isChar() && rightType->isChar()) {
+            return leftType == rightType ? leftType : types().charType();
+        }
+        if ((leftType != nullptr && leftType->isChar()) || (rightType != nullptr && rightType->isChar())) {
+            throw SemanticError("a range of Chars has two Chars, 'a'..'z' (CANON-14)");
         }
         requireIntegerOperands();
         return leftType;

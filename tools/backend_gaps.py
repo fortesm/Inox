@@ -483,6 +483,14 @@ Main :
     PutLn(L.FA.FX + L.FB.FX)
 ;
 """),
+    ("char-values", "Char local, conversion, comparison and printing", """Main :
+    Letter Char := 'a'
+    Next := Char(Integer(Letter) + 1)
+    if Next > Letter
+        PutLn(Next)
+    ;
+;
+"""),
     ("array-of-struct", "array of struct elements with defaults and field access", """Type
     TPoint Struct
         FX Integer := 3

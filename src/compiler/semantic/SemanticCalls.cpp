@@ -156,6 +156,18 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
                     checkEnumConversion(call, type);
                     return type;
                 }
+                // Char values (change char-values): Char(I) and String(C).
+                if (type->isChar() || type->isString()) {
+                    checkCharConversion(call, type);
+                    return type;
+                }
+                if (call.arguments().size() == 1) {
+                    if (const TypeRef from = result_.typeOf(*call.arguments()[0]);
+                        from != nullptr && from->isChar() && !type->isInteger()) {
+                        throw SemanticError(callee.name() + "(C) of a Char is not a conversion: a Char becomes "
+                                            "Integer(C), its code point, or String(C) (CANON-14)");
+                    }
+                }
                 // An enum becomes an integer only through Ord (CANON-13).
                 if (call.arguments().size() == 1 && type->isInteger()) {
                     if (const TypeRef from = result_.typeOf(*call.arguments()[0]); from != nullptr && from->isEnum()) {
@@ -457,7 +469,8 @@ TypeRef SemanticAnalyzer::analyzeConstruction(const ast::CallExpression& call, T
                 throw SemanticError("construction omits the owner " + type->name() + "." + field.name +
                                     ": give it, " + field.name + " := New(...)");
             }
-            if (field.type != nullptr && (field.type->isArray() || field.type->isEnum() || field.fromTypeParameter)) {
+            if (field.type != nullptr && (field.type->isArray() || field.type->isEnum() || field.type->isChar() ||
+                                          field.fromTypeParameter)) {
                 throw SemanticError("construction omits " + type->name() + "." + field.name +
                                     ", which has no default (CANON-5, r3.82): give it, " + field.name + " := ...");
             }

@@ -28,7 +28,7 @@ TypeRef SemanticAnalyzer::enumTypeNamed(const ast::Expression& expression) const
         return nullptr;
     }
     const TypeRef type = types().lookup(static_cast<const ast::IdentifierExpression&>(expression).name());
-    return type != nullptr && (type->isEnum() || type->isRange()) ? type : nullptr;
+    return type != nullptr && (type->isEnum() || type->isRange() || type->isCharRange()) ? type : nullptr;
 }
 
 // Null when the call is not one of these built-ins applied to an enum.
@@ -64,6 +64,10 @@ TypeRef SemanticAnalyzer::analyzeOrdinalBuiltin(const ast::CallExpression& call)
     if (type == nullptr || !type->isEnum()) {
         if (ord) {
             return nullptr;  // the prelude's message for Ord of anything else
+        }
+        if (type != nullptr && type->isChar()) {
+            throw SemanticError(name + " does not apply to a Char, which is not an ordinal (CANON-14): step a code "
+                                "point, Char(Integer(C) + 1)");
         }
         if (type == nullptr || !type->isRange()) {
             throw SemanticError(name + " takes an enum or Range value (CANON-13), got " + types::nameOf(type));
@@ -114,6 +118,45 @@ void SemanticAnalyzer::checkEnumConversion(const ast::CallExpression& call, Type
                             " (its ordinals are 0.." + std::to_string(enumType->maxValue()) + ")");
     }
     constants_[&call] = constant.bits;
+}
+
+// Change char-values (CANON-14): `Char(I)` converts a code point, checked
+// to be a Unicode scalar (0..$10FFFF without the surrogates); `TLetter(X)`
+// also checks its Range; `String(C)` is the one-character String. A
+// constant outside is an error here, any other value is checked when the
+// program runs (kind 8).
+void SemanticAnalyzer::checkCharConversion(const ast::CallExpression& call, TypeRef target)
+{
+    const std::string name = target->name();
+    if (call.arguments().size() != 1) {
+        throw SemanticError(name + "(X) converts one value");
+    }
+    const ast::Expression& argument = *call.arguments()[0];
+    const TypeRef type = result_.typeOf(argument);
+    if (target->isString()) {
+        if (type == nullptr || !(type->isChar() || type->isString())) {
+            throw SemanticError("String(C) converts a Char (CANON-14), got " + types::nameOf(type) +
+                                "; numbers become text in a later change");
+        }
+        return;
+    }
+    if (type != nullptr && type->isChar()) {
+        return;
+    }
+    if (!isIntegerType(type) || (type != nullptr && type->isEnum())) {
+        throw SemanticError(name + "(I) converts an integer code point to a Char (CANON-14), got " +
+                            types::nameOf(type));
+    }
+    IntegerConstant constant;
+    if (!integerConstant(argument, constant)) {
+        return;
+    }
+    const bool surrogate = constant.bits >= 0xD800 && constant.bits <= 0xDFFF;
+    if (constant.isUnsigned || constant.bits < target->minValue() || constant.bits > target->maxValue() ||
+        surrogate) {
+        throw SemanticError("value out of range for " + name + ": " + constantText(constant) +
+                            (surrogate ? " is a surrogate, never a Char (CANON-14)" : ""));
+    }
 }
 
 } // namespace inox::compiler::semantic

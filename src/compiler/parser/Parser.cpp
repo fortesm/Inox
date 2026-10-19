@@ -1939,6 +1939,10 @@ std::string Parser::parseStructFieldDefault(const std::string& fieldName)
     if (sign.empty() && match(TokenKind::StringLiteral)) {
         return '"' + previous().lexeme + '"';
     }
+    // A Char default keeps its quotes ('x', char-values).
+    if (sign.empty() && match(TokenKind::CharLiteral)) {
+        return previous().lexeme;
+    }
     // An enum literal (`FSuit TSuit := Heart`); the analyzer checks that it
     // belongs to the field's enum (CANON-13).
     if (sign.empty() && match(TokenKind::Identifier)) {

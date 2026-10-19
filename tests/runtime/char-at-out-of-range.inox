@@ -1,0 +1,17 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Change char-values: CharAt outside the String stops the program (kind 15).
+Use Std.Strings
+
+Main :
+    Word := "água"
+    Place := Length(Word)
+    PutLn(CharAt(Word, Place))
+    Place += 1
+    PutLn(CharAt(Word, Place))
+;

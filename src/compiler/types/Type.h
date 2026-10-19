@@ -117,6 +117,9 @@ public:
     // minValue..maxValue; its arithmetic is its base's (Int64).
     bool isRange() const noexcept { return kind_ == TypeKind::Integer && element_ != nullptr; }
     const Type* rangeBase() const noexcept { return isRange() ? element_ : nullptr; }
+    // A Range over Char (`TLetter Range 'A'..'Z'`, char-values): a Char type
+    // whose values are minValue..maxValue; element() is Char.
+    bool isCharRange() const noexcept { return kind_ == TypeKind::Char && element_ != nullptr; }
     // Enum (CANON-13): nominal, ordinals 0..N-1 (minValue..maxValue).
     bool isEnum() const noexcept { return kind_ == TypeKind::Enum; }
     // Set<T> (CANON-13): element() is T, an Enum or a Range of at most 256

@@ -84,7 +84,11 @@ TypeContext::TypeContext()
         builtins_.emplace(normalize(name), type);
     }
     float64_ = builtins_.at("float64");
-    char_ = create(TypeKind::Char, "Char");
+    // CANON-14: the code points of Unicode; the surrogates are not values.
+    Type* charType = create(TypeKind::Char, "Char");
+    charType->low_ = 0;
+    charType->high_ = 0x10FFFF;
+    char_ = charType;
     string_ = create(TypeKind::String, "String");
     file_ = create(TypeKind::File, "File");
     for (const Type* type : {bool_, char_, string_, file_}) {

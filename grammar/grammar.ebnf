@@ -328,7 +328,10 @@ decimal_digits    ::= digit ( "_"? digit )*
 hex_digits        ::= hex_digit ( "_"? hex_digit )*
                       (* "_" only between digits: never leading, trailing or doubled *)
 string_literal    ::= '"' string_char* '"'
-char_literal      ::= "'" unicode_scalar "'"
+char_literal      ::= "'" ( unicode_scalar | char_escape ) "'"
+char_escape       ::= "\\" ( "n" | "r" | "t" | "0" | "\\" | "'" )
+                      (* change char-values: one Unicode scalar, never a surrogate;
+                         the escapes of Strings and the quote *)
 identifier        ::= ( letter | "_" ) ( letter | digit | "_" )*
                       (* case-insensitive; a reserved word is not an identifier *)
 comment           ::= "==" any_char_except_newline*
