@@ -489,15 +489,28 @@ TypeRef SemanticAnalyzer::instantiateStruct(const ast::TypeDeclaration& generic,
             }
             const TypeRef fieldType = resolveWrittenType(written);
             rejectFileIn(fieldType, "a struct field, " + declaration.name);
-            if (declaration.hasDefault) {
+            // r3.82: no instance may bring a default the generic struct does
+            // not guarantee, so a field whose type uses a type parameter has
+            // none; it is given in the construction.
+            const bool usesParameter = written != declaration.typeName;
+            if (declaration.hasDefault && usesParameter) {
+                throw SemanticError("a field whose type uses a type parameter has no default; give " +
+                                    declaration.name + " in the construction (r3.82)");
+            }
+            if (declaration.hasDefault && declaration.fillDefault) {
+                validateFillDefault(declaration.name, fieldType, declaration.defaultValue);
+            } else if (declaration.hasDefault) {
                 if (fieldType->isPointer() || fieldType->isArray() || fieldType->isStruct()) {
                     throw SemanticError("only a scalar struct field has a default (CANON-9): " + declaration.name +
                                         " is " + fieldType->name());
                 }
                 validateStructFieldDefault(declaration.name, fieldType, declaration.defaultValue);
             }
-            fields.push_back(types::StructField{declaration.name, fieldType, false, declaration.hasDefault,
-                                                declaration.defaultValue});
+            types::StructField field{declaration.name, fieldType, false, declaration.hasDefault,
+                                     declaration.defaultValue};
+            field.fillDefault = declaration.fillDefault;
+            field.fromTypeParameter = !replace(declaration.typeName).empty();
+            fields.push_back(std::move(field));
         }
         types().setStructFields(type, std::move(fields));
         rejectRecursiveStruct(type);

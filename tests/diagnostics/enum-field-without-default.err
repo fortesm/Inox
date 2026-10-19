@@ -1,1 +1,1 @@
-an enum field needs a default (CANON-5): FSuit TSuit := Club
+C TCard has no value for TCard.FSuit, which has no default (CANON-5, r3.82)

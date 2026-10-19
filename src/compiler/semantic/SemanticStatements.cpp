@@ -279,6 +279,9 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
                 throw SemanticError(owner + " is an owner without default: build " + var.name() +
                                     " with its owners given");
             }
+            if (const std::string field = requiredFieldWithoutDefault(type); !field.empty()) {
+                throw SemanticError(requiredFieldMessage(var.name(), type, field));
+            }
         }
         // CANON-24: a struct born with its defaults satisfies its invariant.
         if (var.initializer() == nullptr && hasInvariant(type) && invariantChecksOn()) {

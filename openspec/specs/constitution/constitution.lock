@@ -30,7 +30,8 @@ spec.md#CANON-4 Control structures use no colon	5efc6a9619e1419f	constitution
 spec.md#CANON-4 One statement per line	8ee77f1d6ea33df1	constitution
 spec.md#CANON-4 Sections and removed forms	5e7112e068617ad9	state-without-colon
 spec.md#CANON-5 Three declaration forms	def4ac0631701707	constitution
-spec.md#CANON-5 Every variable is born with a value	920b621fa21cf217	array-fill
+spec.md#CANON-5 Every variable is born with a value	49e7c9c733cd1d4d	array-fill
+spec.md#CANON-5 Initialization is transitive	99f101d690d69751	array-fill
 spec.md#CANON-5 Unread locals are errors	49f999bc0b47b9e2	driver-commands
 spec.md#CANON-5 Grouped declarations	8c0f134a15fbaefc	constitution
 spec.md#CANON-5 Assignment is a statement	b3da436634a3b804	constitution
@@ -55,11 +56,11 @@ spec.md#CANON-8 Generic syntax	86290950744f92d4	generics
 spec.md#CANON-8 Generic instances	f1cb99e31378061c	generics
 spec.md#CANON-8 Type arguments are inferred	e820ebe2b699c413	generics
 spec.md#CANON-9 Structs are nominal value types	dc875c23516647e8	method-reuse
-spec.md#CANON-9 Fields	1e7fbb70bed7cf50	constitution
+spec.md#CANON-9 Fields	9c34d16a35318065	array-fill
 spec.md#CANON-9 Associated methods	fad873f99ec30d01	constitution
 spec.md#CANON-9 Method reuse	acc8de932d91e277	method-reuse
 spec.md#CANON-9 Methods of built-in types	32a2985898e98345	method-reuse
-spec.md#CANON-9 Named construction	af42acdf70dbb28f	constitution
+spec.md#CANON-9 Named construction	03a7f232bee036de	array-fill
 spec.md#CANON-9 Structs are not compared	8271b9ae445cd83b	constitution
 spec.md#CANON-10 Parameters and mutability	4f674605f2f74e7d	method-reuse
 spec.md#CANON-10 Scope of locals	d219e369bba5040a	constitution

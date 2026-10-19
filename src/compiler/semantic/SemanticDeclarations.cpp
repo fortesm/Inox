@@ -512,6 +512,7 @@ void SemanticAnalyzer::registerStructDeclaration(const ast::TypeDeclaration& dec
         // too (completeStructFields): its bounds may name a Const.
         field.hasDefault = fieldDeclaration.hasDefault;
         field.defaultValue = fieldDeclaration.defaultValue;
+        field.fillDefault = fieldDeclaration.fillDefault;
         field.isPart = fieldDeclaration.isPart;
         fields.push_back(std::move(field));
         written.push_back(fieldDeclaration.typeName);
@@ -559,13 +560,13 @@ void SemanticAnalyzer::validateStructDeclaration(const ast::TypeDeclaration& dec
         }
         const TypeRef type = resolveWrittenType(field.typeName);
         rejectFileIn(type, "a struct field, " + field.name);
-        // r3.81: an enum field is born with a value written in the struct,
-        // as an enum variable is (CANON-5).
-        if (type->isEnum() && !field.hasDefault) {
-            throw SemanticError("an enum field needs a default (CANON-5): " + field.name + " " + type->name() +
-                                " := " + type->literals().front());
-        }
-        if (field.hasDefault) {
+        if (field.hasDefault && field.fillDefault) {
+            validateFillDefault(field.name, type, field.defaultValue);
+        } else if (field.hasDefault) {
+            if (type->isArray()) {
+                throw SemanticError("the default of an array field fills it, " + field.name + " " + field.typeName +
+                                    " := Fill(Value) (r3.82)");
+            }
             if (type->isPointer()) {
                 throw SemanticError("a pointer field has no default literal: a Link and an Option are born "
                                     "empty, an Own is given in the construction (" + field.name + ")");
@@ -578,6 +579,73 @@ void SemanticAnalyzer::validateStructDeclaration(const ast::TypeDeclaration& dec
     }
     rejectRecursiveStruct(resolveStruct(declaration.name));
     validateReuse(declaration);
+}
+
+// r3.82: `FData Array[1..4] Byte := Fill(0)`, the default of an array
+// field: one literal of its innermost element type, for every element.
+void SemanticAnalyzer::validateFillDefault(const std::string& fieldName, TypeRef fieldType,
+                                           const std::string& literal) const
+{
+    if (!fieldType->isArray()) {
+        throw SemanticError("Fill is the default of an array field, and " + fieldName + " is " + fieldType->name());
+    }
+    TypeRef element = fieldType->element();
+    while (element->isArray()) {
+        element = element->element();
+    }
+    if (element->isStruct()) {
+        throw SemanticError("the default of a field is a literal, and an array of " + element->name() +
+                            " has none: give " + fieldName + " in the construction (r3.82)");
+    }
+    if (element->isOptionOwn()) {
+        if (!equalsIgnoreCase(literal, "None")) {
+            throw SemanticError("an array of owners is filled with None: " + fieldName + " := Fill(None)");
+        }
+        return;
+    }
+    if (element->isSet()) {
+        if (literal != "[]") {
+            throw SemanticError("the default of an array of sets is the empty set: " + fieldName + " := Fill([])");
+        }
+        return;
+    }
+    if (literal == "[]" || equalsIgnoreCase(literal, "None")) {
+        throw SemanticError("Fill(" + literal + ") does not fit " + fieldType->name() + ": " + fieldName);
+    }
+    validateStructFieldDefault(fieldName, element, literal);
+}
+
+// The diagnostic of a struct declared without a value whose type defaults
+// leave `field` without one (r3.82).
+std::string SemanticAnalyzer::requiredFieldMessage(const std::string& name, TypeRef type, const std::string& field)
+{
+    return name + " " + type->name() + " has no value for " + field +
+           ", which has no default (CANON-5, r3.82): build it, " + name + " := " + type->name() + "(... := ...)";
+}
+
+// r3.82 (CANON-5, CANON-9): the first field a value of `type` would get
+// without a value written for it, as "TName.Field" (through nested
+// structs), or empty when the type defaults are a complete value. An enum,
+// an array, a type parameter, an owner and a struct that has such a field
+// have no implicit value; a field with a default, a scalar or String
+// (zero, ""), a Set (empty) and a Link or Option (None) have one.
+std::string SemanticAnalyzer::requiredFieldWithoutDefault(TypeRef type)
+{
+    if (type == nullptr || !type->isStruct()) {
+        return {};
+    }
+    for (const types::StructField& field : type->fields()) {
+        if (field.hasDefault || field.type == nullptr) {
+            continue;
+        }
+        if (field.fromTypeParameter || field.type->isEnum() || field.type->isArray() || field.type->isOwn()) {
+            return type->name() + "." + field.name;
+        }
+        if (std::string inner = requiredFieldWithoutDefault(field.type); !inner.empty()) {
+            return type->name() + "." + field.name + " (" + inner + ")";
+        }
+    }
+    return {};
 }
 
 void SemanticAnalyzer::validateStructFieldDefault(const std::string& fieldName,
@@ -726,6 +794,9 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
             }
             if (const std::string owner = ownerFieldWithoutDefault(type); !owner.empty()) {
                 throw SemanticError(owner + " is an owner without default: give " + name + " a value");
+            }
+            if (const std::string field = requiredFieldWithoutDefault(type); !field.empty()) {
+                throw SemanticError(requiredFieldMessage(name, type, field));
             }
         }
     }

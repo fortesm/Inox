@@ -15,7 +15,7 @@ Type
     ;
     TTeam Struct
         FLeader TPerson
-        FTags Array[1..2] String
+        FTags Array[1..2] String := Fill("")
     ;
 
 State

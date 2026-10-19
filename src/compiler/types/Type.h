@@ -54,6 +54,12 @@ struct StructField {
     bool isPart = false;      // a reused struct (CANON-9)
     bool hasDefault = false;
     std::string defaultValue; // the literal as written
+    // r3.82: `FData Array[1..4] Byte := Fill(0)`; defaultValue is the
+    // literal every element gets.
+    bool fillDefault = false;
+    // r3.82: the field's type is a type parameter of a generic struct
+    // (`FValue T`); it never has an implicit value, whatever T becomes.
+    bool fromTypeParameter = false;
 };
 
 class Type {

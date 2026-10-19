@@ -57,7 +57,7 @@ Main :
     PutLn(N.FKey, " ", N.FValue.FKey, " ", N.FValue.FValue)
     F := Flip(P)
     PutLn(F.FKey, " ", F.FValue, " ", KeyOf(P), " ", KeyOf(F))
-    Words TBox<String>
+    Words TBox<String> := TBox(FItems := Fill(""))
     Add(Words, "red")
     Add(Words, "green")
     PutLn(Words.FCount, " ", Words.FItems[1], " ", Words.FItems[2], " [", Words.FItems[3], "]")

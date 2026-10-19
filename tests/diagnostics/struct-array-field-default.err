@@ -1,1 +1,1 @@
-semantic error: only a scalar struct field has a default (CANON-9): FData
+the default of an array field fills it, FData Array[1..2] Integer := Fill(Value) (r3.82)

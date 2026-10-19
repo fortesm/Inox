@@ -5,7 +5,8 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== CANON-9: only a scalar field has a literal default.
+== CANON-9, r3.82: an array field defaults to Fill(Literal), never to a bare
+== literal.
 Type
     TBuffer Struct
         FData Array[1..2] Integer := 1

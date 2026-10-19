@@ -8,7 +8,7 @@
 == CANON-13: an index into an array field is checked like any other.
 Type
     TBuffer Struct
-        FData Array[1..4] Byte
+        FData Array[1..4] Byte := Fill(0)
     ;
 
 Main :

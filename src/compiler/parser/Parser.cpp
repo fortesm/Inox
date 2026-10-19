@@ -1895,7 +1895,22 @@ ast::StructFieldDeclaration Parser::parseStructField()
     field.typeName = parseTypeName("expected the type of the struct field");
     if (match(TokenKind::ColonEqual)) {
         field.hasDefault = true;
-        field.defaultValue = parseStructFieldDefault(field.name);
+        // r3.82: an array field defaults to `Fill(Literal)`.
+        if (check(TokenKind::Identifier) && peek().normalized == "fill" && current_ + 1 < tokens_.size() &&
+            tokens_[current_ + 1].kind == TokenKind::LeftParen) {
+            advance();
+            advance();
+            field.fillDefault = true;
+            if (match(TokenKind::LeftBracket)) {
+                consume(TokenKind::RightBracket, "the default of an array of sets is the empty set, Fill([])");
+                field.defaultValue = "[]";
+            } else {
+                field.defaultValue = parseStructFieldDefault(field.name);
+            }
+            consume(TokenKind::RightParen, "the default of an array field is Fill(Literal)");
+        } else {
+            field.defaultValue = parseStructFieldDefault(field.name);
+        }
         if (!isAtEnd() && !check(TokenKind::Semicolon) && peek().location.line == name.location.line) {
             throw ParseError("the default of struct field " + field.name + " must be one literal (CANON-9)",
                              peek().location);

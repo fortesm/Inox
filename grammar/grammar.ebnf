@@ -48,9 +48,15 @@ type_parameters   ::= "<" identifier ( "," identifier )* ">"
 reused_parts      ::= "(" identifier ( "," identifier )* ")"
                       (* method reuse (CANON-9): each part is a field named after
                          its type that brings its fields and methods; never empty *)
-struct_field      ::= identifier type_ref ( ":=" ( "-"? literal | identifier ) )? NEWLINE
+struct_field      ::= identifier type_ref ( ":=" field_default )? NEWLINE
                       (* the type may be an array (v3.53), never a Slice<T> (ADR-0017);
-                         an identifier default is a literal of the field's enum (CANON-13) *)
+                         an identifier default is a literal of the field's enum (CANON-13).
+                         An enum, array or type-parameter field without default has no
+                         implicit value: it is given in the construction (r3.82) *)
+field_default     ::= "-"? literal | identifier
+                    | "Fill" "(" ( "-"? literal | identifier | "[" "]" ) ")"
+                      (* r3.82: Fill(Literal) is the default of an array field only:
+                         a literal of its innermost element, None or [] *)
 range_decl        ::= identifier "Range" range_bound ".." range_bound
 range_bound       ::= integer_literal | char_literal | "-" integer_literal | identifier
                       (* CANON-13: a static bound, a literal or a Const; Low <= High *)
