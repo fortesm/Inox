@@ -84,7 +84,7 @@ Main :
     LX := Link(Pt.FX)
     Value(LX) := 5
     Pt.Mover(1)
-    Tabela Array[1..3] Integer
+    Tabela Array[1..3] Integer := Fill(0)
     LE := Link(Tabela[2])
     Value(LE) := 9
     PutLn("ponto ", Pt.FX, ", soma ", Pt.Soma, ", tabela ", Tabela[2])

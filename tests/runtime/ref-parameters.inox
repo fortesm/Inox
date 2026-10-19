@@ -24,7 +24,7 @@ Sum(ref V Array[1..N] Integer) Integer :
     Return Total
 ;
 
-Fill(ref mut V Array[1..N] Integer, Start Integer) :
+Number(ref mut V Array[1..N] Integer, Start Integer) :
     for I in 1..N
         V[I] := Start + I
     ;
@@ -45,8 +45,8 @@ Bump(ref mut B Byte) :
 ;
 
 Main :
-    A Array[1..N] Integer
-    Fill(A, 10)
+    A Array[1..N] Integer := Fill(0)
+    Number(A, 10)
     PutLn(Sum(A), " ", A[1], " ", A[5])
     X Integer := 1
     Y Integer := 2

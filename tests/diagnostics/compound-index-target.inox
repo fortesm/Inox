@@ -12,7 +12,7 @@ Next Integer :
 ;
 
 Main :
-    V Array[1..3] Integer
+    V Array[1..3] Integer := Fill(0)
     V[Next] += 1
     PutLn(V[1])
 ;

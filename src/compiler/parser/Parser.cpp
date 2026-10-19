@@ -963,13 +963,12 @@ ast::ExpressionPtr Parser::parsePrimary()
         return std::make_unique<ast::IdentifierExpression>(token.lexeme);
     }
 
-    // CANON-13 (Q6): `With(S, X)` is the set function; the reserved word
-    // `with` starts a statement, never an expression, so a `with` followed by
-    // `(` in an expression can only be the function.
+    // r3.81: the set function `With(S, X)` became `Include(S, X)`; `with`
+    // only starts a statement.
     if (checkKeyword("with") && current_ + 1 < tokens_.size() &&
         tokens_[current_ + 1].kind == TokenKind::LeftParen) {
-        const lexer::Token& token = advance();
-        return std::make_unique<ast::IdentifierExpression>(token.lexeme);
+        errorAtCurrent("the set function With(S, X) is now Include(S, X), and Without(S, X) is Exclude(S, X) "
+                       "(r3.81); 'with' starts a statement");
     }
 
     if (match(TokenKind::LeftParen)) {

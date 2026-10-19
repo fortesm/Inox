@@ -61,7 +61,7 @@ Main :
     R := TPerson(FName := "Dora", FAge := 50)
     PutLn(Describe(R))
 
-    Names Array[1..3] String
+    Names Array[1..3] String := Fill("")
     Names[2] := "dois"
     for I in 1..3
         PutLn(I, "=[", Names[I], "]")

@@ -7,7 +7,7 @@
 
 == ADR-0017: constant bounds outside the array are compile errors.
 Main :
-    A Array[1..3] Integer
+    A Array[1..3] Integer := Fill(0)
     S := A[0..2]
     PutLn(S[1])
 ;

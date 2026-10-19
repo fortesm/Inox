@@ -55,7 +55,8 @@ TItem.StockValue(Self) Integer :
 ;
 
 Main :
-    Stock Array[1..3] TProduct
+    Blank TProduct
+    Stock Array[1..3] TProduct := Fill(Blank)
     Stock[1] := TProduct(FName := "Screw")
     Stock[2] := TProduct(FName := "Nut")
     Stock[1].FCents := 50

@@ -28,8 +28,8 @@ constexpr std::array<std::string_view, 42> kKeywords = {
 
 // CANON-2 predefined names (r3.76): identifiers that keep their meaning and
 // can never be declared.
-constexpr std::array<std::string_view, 10> kPredefinedNames = {
-    "true", "false", "exit", "leave", "continue", "iif",
+constexpr std::array<std::string_view, 11> kPredefinedNames = {
+    "true", "false", "exit", "leave", "continue", "iif", "fill",
     "bitand", "bitor", "bitxor", "bitnot"
 };
 

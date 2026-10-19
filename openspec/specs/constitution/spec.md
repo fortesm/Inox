@@ -315,12 +315,12 @@ The reserved words SHALL be: Use Type Const State Struct Enum if elif else
 unless while repeat until for in step case try except On do ensure raise
 retry with mut ref div mod and xor or not shr shl Return pre pos old
 invariant variant Override. Predefined names, never declared but free as
-field and method names: True False Exit leave continue IIf bitand bitor
-bitxor bitnot. `Main`, `Var` and `Module` are ordinary names (2026-10-16).
+field and method names: True False Exit leave continue IIf Fill bitand
+bitor bitxor bitnot. `Main`, `Var` and `Module` are ordinary names (2026-10-16).
 
 #### Scenario: Predefined names
 - **WHEN** a program declares True, Exit, BitAnd, False or Leave, or names a field Exit
-- **THEN** the declarations are rejected (tests/diagnostics/predefined-true-declared.inox, tests/diagnostics/predefined-exit-assigned.inox, tests/diagnostics/predefined-bitand-parameter.inox, tests/diagnostics/predefined-false-routine.inox, tests/diagnostics/predefined-leave-declared.inox) and the field works (tests/runtime/predefined-names.inox)
+- **THEN** the declarations are rejected (tests/diagnostics/predefined-true-declared.inox, tests/diagnostics/predefined-exit-assigned.inox, tests/diagnostics/predefined-bitand-parameter.inox, tests/diagnostics/predefined-false-routine.inox, tests/diagnostics/predefined-leave-declared.inox, tests/diagnostics/fill-predefined.inox) and the field works (tests/runtime/predefined-names.inox)
 
 #### Scenario: Reserved words
 - **WHEN** a program declares a variable named Old or Do
@@ -439,8 +439,11 @@ and later ones assign it. A bare identifier is never a declaration.
 ### Requirement: CANON-5 Every variable is born with a value
 A scalar declaration SHALL have an initializer: `C Integer` is "scalar
 declaration requires initializer: C", for locals, Strings and State alike.
-Structs and aggregates may omit `:=` and take their type defaults. An enum
-variable needs an initializer (strict Ada rule).
+An enum variable needs an initializer (strict Ada rule), an enum struct
+field a default. Every array, whatever its element type, SHALL be
+initialized where it is declared, never with an implicit zero, False or
+first enum literal (r3.81; `Fill`, CANON-13). Structs and Sets may omit
+`:=` and take their type defaults.
 
 #### Scenario: Scalars need a value
 - **WHEN** a local, String or State scalar has no initializer
@@ -451,8 +454,12 @@ variable needs an initializer (strict Ada rule).
 - **THEN** it holds its field defaults (tests/runtime/struct-defaults.inox)
 
 #### Scenario: Enum initializer
-- **WHEN** an enum variable is declared without `:=`
-- **THEN** it is rejected (tests/diagnostics/enum-without-initializer.inox)
+- **WHEN** an enum variable is declared without `:=`, or an enum struct field without a default
+- **THEN** it is rejected (tests/diagnostics/enum-without-initializer.inox, tests/diagnostics/enum-field-without-default.inox)
+
+#### Scenario: Arrays are filled
+- **WHEN** a local or State array is declared without `:=`, or with `Fill(Value)`
+- **THEN** the first is rejected (tests/diagnostics/array-without-initializer.inox, tests/diagnostics/enum-array-without-initializer.inox, tests/diagnostics/state-array-without-initializer.inox) and the second holds Value in every element (tests/runtime/array-fill.inox)
 
 ### Requirement: CANON-5 Unread locals are errors
 A local that is never read SHALL be a compile error ("local variable never
@@ -527,8 +534,8 @@ constant expression, and a Const may follow the routine that uses it.
 
 ### Requirement: CANON-5 State
 A `State` section (`State`, its variables, `;`) SHALL hold a module's
-mutable global variables, explicit and rare: one declaration per line; scalars need initializers; structs and
-arrays may omit them; `mut` is forbidden. Initializers run in source order
+mutable global variables, explicit and rare: one declaration per line; scalars and
+arrays need initializers; structs and Sets may omit them; `mut` is forbidden. Initializers run in source order
 before `Main`. A module may have several State sections. Details:
 `language/module-state`, `language/declaration-sections`.
 
@@ -955,7 +962,10 @@ expression is reserved. Details: `language/case-statement`.
 `Array[Low..High] T` SHALL be a fixed-size value type whose bounds are part
 of the type; `Array[1..3, 1..4] T` is an array of arrays indexed `M[I, J]`.
 Every index is checked; `Low`, `High` and `Length` are constants; arrays are
-not compared; array literals are reserved. Details: `language/fixed-arrays`.
+not compared; array literals are reserved. `Fill(Value)` is the array its
+target expects, every element (or row) a copy of Value, evaluated once,
+following the rules of types, copy and construction (r3.81). Details:
+`language/fixed-arrays`.
 
 #### Scenario: Bounds
 - **WHEN** a program indexes outside the bounds at run time, or with a constant
@@ -1016,12 +1026,13 @@ initializer (CANON-5).
 base of at most 256 values (not Integer, Float or String); a value type,
 empty by default, never a hash set. `in` tests membership, `=`/`#` compare,
 `<=`/`>=` test subset and superset; `Union`, `Intersection`, `Difference`,
-`SymmetricDifference`, `With`, `Without` return new sets; `[A, B]` is a
-literal in a Set context.
+`SymmetricDifference`, `Include`, `Exclude` return new sets and never
+change their arguments, so a call that drops its result is an error (r3.81);
+`[A, B]` is a literal in a Set context.
 
 #### Scenario: Sets
 - **WHEN** a program builds and tests sets
-- **THEN** the results follow set algebra (tests/runtime/sets.inox); a base that is not an Enum or a Range of at most 256 values is rejected (tests/diagnostics/set-invalid-base.inox, tests/diagnostics/set-too-large.inox)
+- **THEN** the results follow set algebra (tests/runtime/sets.inox); a base that is not an Enum or a Range of at most 256 values is rejected (tests/diagnostics/set-invalid-base.inox, tests/diagnostics/set-too-large.inox); `Include(S, X)` as a statement is rejected (tests/diagnostics/set-function-statement.inox)
 
 ### Requirement: CANON-14 String values
 `String` SHALL be UTF-8, immutable and never null, with `""` as its default;

@@ -86,6 +86,15 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
             }
             return analyzeSetFunction(call);
         }
+        if (equalsIgnoreCase(callee.name(), "Without") && call.arguments().size() == 2 &&
+            !userRoutineNamed(callee.name())) {
+            throw SemanticError("the set function Without(S, X) is now Exclude(S, X), and With(S, X) is "
+                                "Include(S, X) (r3.81)");
+        }
+        // r3.81: an array is filled where it is declared, `Fill(Value)`.
+        if (isFillCall(call)) {
+            return analyzeFill(call);
+        }
         // Enums: Ord, Succ, Pred, and Low and High of an enum type.
         if (const TypeRef ordinal = analyzeOrdinalBuiltin(call)) {
             return ordinal;

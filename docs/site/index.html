@@ -181,7 +181,7 @@ export INOX_OUTPUT_DIR=&quot;$HOME/tools/inox-linux-x64/output&quot;</code></pre
 putln
 PUTLN</code></pre>
 <p>Inox has 42 reserved words, which never name anything: <code>Use Type Const State Struct Enum if elif else unless while repeat until for in step case try except On do ensure raise retry with mut ref div mod and xor or not shr shl Return pre pos old invariant variant Override</code>.</p>
-<p><code>True</code>, <code>False</code>, <code>Exit</code>, <code>leave</code>, <code>continue</code>, <code>IIf</code>, <code>bitand</code>, <code>bitor</code>, <code>bitxor</code> and <code>bitnot</code> are predefined names, as <code>Break</code> and <code>Exit</code> in Pascal: they always keep their meaning and can never be declared (a variable, parameter, routine, type or Const named <code>True</code> is an error), but they may name fields and methods (<code>Porta.Exit</code>). <code>Main</code>, <code>Var</code> and <code>Module</code> are ordinary names: the program starts at the routine named Main. Words such as <code>Self</code>, <code>Result</code> and <code>None</code> mean something only where they appear.</p>
+<p><code>True</code>, <code>False</code>, <code>Exit</code>, <code>leave</code>, <code>continue</code>, <code>IIf</code>, <code>Fill</code>, <code>bitand</code>, <code>bitor</code>, <code>bitxor</code> and <code>bitnot</code> are predefined names, as <code>Break</code> and <code>Exit</code> in Pascal: they always keep their meaning and can never be declared (a variable, parameter, routine, type or Const named <code>True</code> is an error), but they may name fields and methods (<code>Porta.Exit</code>). <code>Main</code>, <code>Var</code> and <code>Module</code> are ordinary names: the program starts at the routine named Main. Words such as <code>Self</code>, <code>Result</code> and <code>None</code> mean something only where they appear.</p>
 <p><code>{</code> and <code>}</code> are reserved for a future construct; blocks close with <code>;</code>.</p>
 <p>Line comments use <code>==</code>:</p>
 <pre><code>X := 10  == comment until end of line</code></pre>
@@ -326,7 +326,7 @@ Swap(ref mut A Integer, ref mut B Integer) :    == writes the caller's variables
 </ul>
 <p>Integer <code>/</code> is rejected. Use <code>div</code> for integer division and <code>mod</code> for signed remainder. Integer overflow is not a promised wraparound semantic.</p>
 <h3 id="strings">Strings</h3>
-<p>A <code>String</code> holds UTF-8 text and never changes: assigning or passing a String gives a copy of the value, so changing one variable never changes another. Strings work everywhere a value can live: locals, parameters and results, struct fields, array elements, <code>State</code> and <code>ref</code> parameters. A String local or <code>State</code> variable needs an initializer; a struct field without default and an array element start as <code>""</code>. <code>=</code> and <code>#</code> compare the bytes.</p>
+<p>A <code>String</code> holds UTF-8 text and never changes: assigning or passing a String gives a copy of the value, so changing one variable never changes another. Strings work everywhere a value can live: locals, parameters and results, struct fields, array elements, <code>State</code> and <code>ref</code> parameters. A String local or <code>State</code> variable needs an initializer, an array of Strings is filled (<code>Fill("")</code>), and a struct field without default starts as <code>""</code>. <code>=</code> and <code>#</code> compare the bytes.</p>
 <pre><code>Type
     TPet Struct
         FName String := &quot;no name&quot;
@@ -339,7 +339,7 @@ Main :
     S := &quot;xyz&quot;
     PutLn(S, &quot; &quot;, T, &quot; &quot;, S = T)      == xyz abc false
     P TPet
-    Names Array[1..3] String
+    Names Array[1..3] String := Fill(&quot;&quot;)
     Names[2] := P.FName
     PutLn(&quot;[&quot;, Names[1], &quot;] &quot;, Names[2])  == [] no name
 ;</code></pre>
@@ -414,10 +414,10 @@ Q TPoint := P                       == a copy
 L TLine
 L.FB.X := 7                         == field paths reach nested fields
 L.FA.Move(1, 1)                     == and methods on them
-Points Array[1..10] TPoint
+Points Array[1..10] TPoint := Fill(Q)   == ten copies of Q
 Points[3].X := 5</code></pre>
 <p>A struct cannot contain itself, directly or through another struct.</p>
-<p>A field may be a fixed array, and module <code>State</code> may hold structs and arrays. Without an initializer they start at their type defaults; copying a struct copies its arrays:</p>
+<p>A field may be a fixed array, and module <code>State</code> may hold structs and arrays. A struct without an initializer, and an array field inside it, start at their type defaults; an array variable is always filled; copying a struct copies its arrays:</p>
 <pre><code>Type
     TBuffer Struct
         FData Array[1..4] Byte
@@ -426,7 +426,7 @@ Points[3].X := 5</code></pre>
 
 State
     Origin TPoint := TPoint(X := 1, Y := 2)
-    Counts Array[1..3] Integer          == all zero
+    Counts Array[1..3] Integer := Fill(0)
 ;
 
 B TBuffer
@@ -590,7 +590,7 @@ Main :
 <li>An owner is never copied: <code>Q := P</code> is an error; <code>Q := Move(P)</code> gives the object to Q, and using P afterwards is a compile error until P is assigned again, on every path (branches, loops, handlers).</li>
 <li>The object is freed by <code>Free(P)</code>, when the owner is overwritten, when its routine returns (also through an exception), or when its declaration runs again; the objects it owns are freed with it, in a loop (a list of a million nodes frees without recursion).</li>
 <li>A value parameter <code>P Own&lt;T&gt;</code> belongs to the routine: the caller writes <code>Move(X)</code> or a new value. A struct holding an owner moves like one.</li>
-<li><code>Option&lt;Own&lt;T&gt;&gt;</code> may be <code>None</code> (assigning <code>None</code> frees its object); it is reached through <code>Link(X)</code>, which is empty when it is <code>None</code>. An array of owners is <code>Array[...] Option&lt;Own&lt;T&gt;&gt;</code>.</li>
+<li><code>Option&lt;Own&lt;T&gt;&gt;</code> may be <code>None</code> (assigning <code>None</code> frees its object); it is reached through <code>Link(X)</code>, which is empty when it is <code>None</code>. An array of owners is <code>Array[...] Option&lt;Own&lt;T&gt;&gt;</code>, filled with <code>Fill(None)</code>.</li>
 </ul>
 <h3>Links</h3>
 <ul>
@@ -885,13 +885,13 @@ Sum(V Array[1..Size] Integer) Integer :
 ;
 
 Main :
-    A Array[1..Size] Integer
+    A Array[1..Size] Integer := Fill(0)
     for I in 1..Size
         A[I] := I * I
     ;
     A[2] += 100
     PutLn(Sum(A))
-    M Array[1..2, -1..1] Byte
+    M Array[1..2, -1..1] Byte := Fill(0)
     M[1, 0] := 200
 ;</code></pre>
 <p>A slice is a read-only view of part of an array, without copying: <code>A[3..6]</code>, <code>A[..3]</code>, <code>A[7..]</code>, <code>A[..]</code>. Its type is <code>Slice&lt;Integer&gt;</code>, and it keeps the array's indices (<code>A[3..6]</code> is indexed 3 to 6; <code>Low</code>, <code>High</code> and <code>Length</code> give its bounds):</p>
@@ -905,6 +905,16 @@ Main :
 
 PutLn(Sum(A[2..4]), " ", Sum(A[..]))</code></pre>
 <p>A slice is never empty, cannot be written, is bound once and cannot be returned, so it never outlives its array; bounds outside the array stop the program with "slice bounds out of range".</p>
+<p>Every array is initialized where it is declared, whatever its element type: no element is ever an implicit zero, <code>False</code> or first enum literal. <code>Fill(Value)</code> is the array its target expects, with the target's type and bounds, every element a copy of Value, evaluated once, as Ada's <code>(others =&gt; Value)</code> and Rust's <code>[Value; N]</code> without repeating the size. It is written wherever an array is expected (a declaration, a <code>State</code> initializer, an assignment, an argument, a <code>Return</code>); in two dimensions Value is an element or a whole row:</p>
+<pre><code>Counts Array[1..100] Integer := Fill(0)
+Hand Array[1..5] TSuit := Fill(Club)
+Names Array[1..3] String := Fill(&quot;&quot;)
+Zero TPoint
+Points Array[1..10] TPoint := Fill(Zero)
+Row Array[1..4] Byte := Fill(1)
+Grid Array[1..3, 1..4] Byte := Fill(Row)
+Counts := Fill(-1)</code></pre>
+<p>An array of a Range checks the value (<code>Fill(13)</code> into an <code>Array[...] TMonth</code> stops the program with "value out of range"), each String element holds its own copy, and an array of owners is filled only with <code>None</code>. Array literals, with one value per element, are reserved for later.</p>
 <p>An array is a value: assigning it (<code>B Array[1..Size] Integer := A</code>) or passing it to a routine copies it. Every index is checked: <code>A[I]</code> with <code>I</code> outside <code>Low(A)..High(A)</code> stops the program with "array index out of bounds", and a constant index outside the bounds is a compile error. <code>Low</code>, <code>High</code> and <code>Length</code> are constants. A multi-dimensional array is an array of arrays (<code>M[I, J]</code> is <code>M[I][J]</code>). Bounds are integer literals or Consts; elements are integers, <code>Float</code> or <code>Bool</code> for now.</p>
 <ul>
 <li>Vectors are planned as dynamic, 0-based, bounds-checked collections.</li>
@@ -943,7 +953,7 @@ Color(S TSuit) String :
             Return &quot;red&quot;
     ;
 ;</code></pre>
-<p>A <strong>Set</strong>, <code>Set&lt;TSuit&gt;</code>, is a set over an enum or a Range of at most 256 values, a value that starts empty. <code>[Club, Heart]</code> writes one where a Set is expected; <code>X in S</code> tests membership; <code>=</code> and <code>#</code> compare, <code>&lt;=</code> and <code>&gt;=</code> test subset and superset; <code>Union</code>, <code>Intersection</code>, <code>Difference</code>, <code>SymmetricDifference</code>, <code>With(S, X)</code> and <code>Without(S, X)</code> return new sets. It costs one bit per value, with no allocation. <code>X in A..B</code> also tests a value against two bounds.</p>
+<p>A <strong>Set</strong>, <code>Set&lt;TSuit&gt;</code>, is a set over an enum or a Range of at most 256 values, a value that starts empty. <code>[Club, Heart]</code> writes one where a Set is expected; <code>X in S</code> tests membership; <code>=</code> and <code>#</code> compare, <code>&lt;=</code> and <code>&gt;=</code> test subset and superset; <code>Union</code>, <code>Intersection</code>, <code>Difference</code>, <code>SymmetricDifference</code>, <code>Include(S, X)</code> and <code>Exclude(S, X)</code> return new sets. Unlike Pascal's <code>Include</code> and <code>Exclude</code>, they never change their argument: write <code>S := Include(S, Heart)</code>; a call that drops the new set is an error that says so. It costs one bit per value, with no allocation. <code>X in A..B</code> also tests a value against two bounds.</p>
 <p><code>examples/cards.inox</code> scores a hand of cards with all three. A Range over Char (<code>TLetter Range 'A'..'Z'</code>) is declared and waits for Char values.</p>
 </section>
 <section id="runtime-status"><h2>Runtime and implementation status</h2>

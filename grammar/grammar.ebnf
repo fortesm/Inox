@@ -65,8 +65,9 @@ state_section     ::= "State" NEWLINE state_field* ";"
                          and end with ";", like a control structure *)
 state_field       ::= identifier type_ref? ":=" expression NEWLINE
                     | identifier type_ref NEWLINE
-                      (* State scalars require an initializer (the second form is
-                         for structs and arrays, v3.53); one name per line;
+                      (* State scalars and arrays require an initializer (the
+                         second form is for structs and Sets, v3.53, r3.81);
+                         one name per line;
                          "mut" is forbidden. The initializer
                          is an expression: one top-level ":=" declares, and a
                          ":=" inside it can only be a named argument *)
@@ -134,8 +135,9 @@ local_decl        ::= name_list type_ref ( ":=" expression )?
                       (* FORM 2 "B Integer := 6" and FORM 3 "P TPoint", also
                          grouped: "A, B, C Integer := X" evaluates X once and
                          gives every name its value (v3.26). The form without
-                         ":=" is valid only for structs/aggregates: scalars and
-                         enums require an initializer (CANON-5). FORM 1
+                         ":=" is valid only for structs and Sets: scalars,
+                         enums and arrays (Fill, r3.81) require an initializer
+                         (CANON-5). FORM 1
                          "A := 5" is an assignment_stmt whose target is a new
                          name: the first appearance of a name declares it. *)
 name_list         ::= identifier ( "," identifier )*
@@ -284,14 +286,20 @@ slice_range       ::= bitor_expr? ".." bitor_expr?
                          views; an omitted bound is the base's own *)
 member_suffix     ::= "." identifier
 primary           ::= literal | identifier | "(" expression ")" | with_member
-                    | conditional_expr | set_literal | with_function
+                    | conditional_expr | set_literal | fill_expr
 set_literal       ::= "[" ( expression ( "," expression )* )? "]"
                       (* CANON-13 Q6: a set literal, written where a Set<T> is
-                         expected; array literals are reserved *)
-with_function     ::= "with" "(" expression "," expression ")"
-                      (* CANON-13 Q6: With(S, X), the set function; the reserved
-                         word starts a statement, so in an expression followed
-                         by "(" it can only be the function *)
+                         expected; array literals are reserved. The set
+                         functions are calls: Include(S, X) and Exclude(S, X)
+                         (r3.81, formerly With and Without) *)
+fill_expr         ::= "Fill" "(" expression ")"
+                      (* r3.81 (CANON-5, CANON-13): written where an array is
+                         expected (a declaration, a State initializer, an
+                         assignment, an argument, a Return), whose type and
+                         bounds it takes; every
+                         element, or row, is a copy of the value, evaluated
+                         once. "Fill" is a predefined name, not a reserved
+                         word. *)
 conditional_expr  ::= "IIf" "(" expression "," expression "," expression ")"
                       (* r3.76 (formerly ADR-0013's "if C then A else B"):
                          selects a value; each branch is an expression, never a

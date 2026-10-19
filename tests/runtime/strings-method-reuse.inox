@@ -48,7 +48,7 @@ ShowAll(P TAssinatura) :
     PutLn(P.Describe, " em ", P.FCidade)
 ;
 
-Fill(ref mut P TAssinatura, Nome String) :
+Preencher(ref mut P TAssinatura, Nome String) :
     P.UpdateNome(Nome)
     P.Mudar("Olinda")
 ;
@@ -60,7 +60,8 @@ Make(Nome String) TAssinatura :
 ;
 
 Main :
-    L Array[1..2] TAssinatura
+    Vazia TAssinatura
+    L Array[1..2] TAssinatura := Fill(Vazia)
     L[1].UpdateNome("Um")
     L[2].Rename("Dois")
     L[2].Mudar("Recife")
@@ -71,7 +72,7 @@ Main :
     Global.Mudar("Natal")
     ShowAll(Global)
     X TAssinatura
-    Fill(X, "Preenchido")
+    Preencher(X, "Preenchido")
     ShowAll(X)
     Y := Make("Feito")
     ShowAll(Y)

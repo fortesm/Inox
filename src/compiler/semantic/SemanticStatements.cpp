@@ -207,6 +207,19 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
                 updateOnlyReads_.insert(&identifier);
             }
         }
+        if (statementExpression.kind() == ast::AstNodeKind::CallExpression &&
+            isSetFunctionCall(static_cast<const ast::CallExpression&>(statementExpression))) {
+            // r3.81: the set functions never change their argument (unlike
+            // Pascal's Include and Exclude); a call whose new set is dropped
+            // is a mistake.
+            const auto& call = static_cast<const ast::CallExpression&>(statementExpression);
+            const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
+            const std::string set = call.arguments()[0]->kind() == ast::AstNodeKind::IdentifierExpression
+                                        ? static_cast<const ast::IdentifierExpression&>(*call.arguments()[0]).name()
+                                        : std::string("S");
+            throw SemanticError(name + " returns a new set and does not change its argument; write " + set +
+                                " := " + name + "(" + set + ", ...)");
+        }
         analyzeExpression(statementExpression);
         if (statementExpression.kind() == ast::AstNodeKind::CallExpression) {
             const auto& call = static_cast<const ast::CallExpression&>(statementExpression);
@@ -241,14 +254,17 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         if (type == nullptr) {
             throw SemanticError("variable requires a type or initializer: " + var.name());
         }
-        // CANON-5 rule 3/4: every variable is born with a value. Only structs and
-        // aggregates may omit ":=" (type-default initialization); scalars must be
-        // initialized explicitly.
+        // CANON-5 rule 3/4: every variable is born with a value. Only structs
+        // and sets may omit ":=" (type-default initialization); scalars and
+        // arrays (r3.81, `Fill(Value)`) must be initialized explicitly.
         // A Link and an Option<Own<T>> are born empty; an Own is born with
         // New(...) (safe-pointers).
         const bool bornEmpty = type->isLink() || type->isOptionOwn();
         // A Set is empty by default (CANON-13).
-        if (var.initializer() == nullptr && !type->isStruct() && !type->isArray() && !type->isSet() && !bornEmpty) {
+        if (var.initializer() == nullptr && !type->isStruct() && !type->isSet() && !bornEmpty) {
+            if (type->isArray()) {
+                throw SemanticError(arrayWithoutInitializer(var.name(), var.typeName(), type));
+            }
             if (type->isOwn()) {
                 throw SemanticError("an owner is born with New(...) or Move(X): " + var.name());
             }

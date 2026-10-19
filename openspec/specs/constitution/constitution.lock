@@ -20,7 +20,7 @@ spec.md#CANON-2 Names are case-insensitive	34febe6d17f2bbd8	constitution
 spec.md#CANON-2 Comments and literals	5984e594e993a409	constitution
 spec.md#CANON-2 Digit separator	006404ba593459d4	constitution
 spec.md#CANON-2 Symbols	4e0baeb201620000	keyword-review
-spec.md#CANON-2 Reserved words and predefined names	71c5be1aa2dacd2a	syntax-review
+spec.md#CANON-2 Reserved words and predefined names	ad956dd27288b1a7	array-fill
 spec.md#CANON-2 Words Inox does not have	26d08a59b30da9d4	keyword-review
 spec.md#CANON-3 Modules and Use	a016d047491d856a	syntax-review
 spec.md#CANON-3 Module resolution	87deaf60cefa2a59	constitution
@@ -30,14 +30,14 @@ spec.md#CANON-4 Control structures use no colon	5efc6a9619e1419f	constitution
 spec.md#CANON-4 One statement per line	8ee77f1d6ea33df1	constitution
 spec.md#CANON-4 Sections and removed forms	5e7112e068617ad9	state-without-colon
 spec.md#CANON-5 Three declaration forms	def4ac0631701707	constitution
-spec.md#CANON-5 Every variable is born with a value	09666162e40ecae8	enum-range-set
+spec.md#CANON-5 Every variable is born with a value	920b621fa21cf217	array-fill
 spec.md#CANON-5 Unread locals are errors	49f999bc0b47b9e2	driver-commands
 spec.md#CANON-5 Grouped declarations	8c0f134a15fbaefc	constitution
 spec.md#CANON-5 Assignment is a statement	b3da436634a3b804	constitution
 spec.md#CANON-5 Compound assignment	dd10a3d40b134734	constitution
 spec.md#CANON-5 Safe inference	d38b28e5f8aba169	constitution
 spec.md#CANON-5 Const	c197440f16489fef	constitution
-spec.md#CANON-5 State	44b828a421ea1bb3	state-without-colon
+spec.md#CANON-5 State	5615bfddcfe0a5e5	array-fill
 spec.md#CANON-5 Type section forms	9aed9c6a5e82fb8e	constitution
 spec.md#CANON-6 Functions and subroutines	f14392ba57c91bea	constitution
 spec.md#CANON-6 Exit	9b3a00557eb7a21e	constitution
@@ -73,13 +73,13 @@ spec.md#CANON-12 repeat and until	00d3f517f353512d	constitution
 spec.md#CANON-12 for loops	d097122190e2dca7	constitution
 spec.md#CANON-12 for evaluates its header once	1e21a50aec55f675	constitution
 spec.md#CANON-12 case	05564fff224e8982	keyword-review
-spec.md#CANON-13 Array	1241a5bd9705ff10	constitution
+spec.md#CANON-13 Array	835ed8635001a6f5	array-fill
 spec.md#CANON-13 Slice	b7058d14d22dc286	constitution
 spec.md#CANON-13 Vector	cf3e9c09995b13ef	constitution
 spec.md#CANON-13 Range	3849cf8a94f9ca0b	enum-range-set
 spec.md#CANON-13 Enum	7333c209b57c5f42	enum-range-set
 spec.md#CANON-13 Enum operations	dde9b37364df11bc	enum-range-set
-spec.md#CANON-13 Set	88dd65a8c9ee318a	enum-range-set
+spec.md#CANON-13 Set	c488f965eba31f97	array-fill
 spec.md#CANON-14 String values	5d7a5e2811c9ed78	constitution
 spec.md#CANON-14 String comparison	b425efc203c39994	constitution
 spec.md#CANON-14 Concatenation	2db6dbc0e418e839	std-strings

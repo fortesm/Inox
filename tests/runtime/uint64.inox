@@ -47,7 +47,7 @@ Main :
     C TCounter
     C.FSmall += 3
     PutLn(C.FTotal, " ", C.FSmall)
-    A Array[1..3] UInt64
+    A Array[1..3] UInt64 := Fill(0)
     A[1] := U
     A[2] := H
     A[3] := A[1] - A[2]

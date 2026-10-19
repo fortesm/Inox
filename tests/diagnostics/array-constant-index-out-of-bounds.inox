@@ -7,7 +7,7 @@
 
 == CANON-13: a constant index outside the bounds is a compile-time error.
 Main :
-    A Array[1..3] Integer
+    A Array[1..3] Integer := Fill(0)
     A[4] := 1
     PutLn(A[1])
 ;

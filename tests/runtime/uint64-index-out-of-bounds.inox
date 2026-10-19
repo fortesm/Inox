@@ -8,7 +8,7 @@
 == Change uint64: a UInt64 index above Int64.Max is outside every array,
 == also one whose bounds are negative.
 Main :
-    A Array[-2..2] Integer
+    A Array[-2..2] Integer := Fill(0)
     U UInt64 := 18446744073709551615
     PutLn(A[-2])
     PutLn(A[U])

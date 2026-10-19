@@ -71,6 +71,7 @@ public:
         constantValues_.clear();
         naturalChecks_.clear();
         rangeChecks_.clear();
+        fillUnits_.clear();
         invariantBefore_.clear();
         invariantAfter_.clear();
         newValueInvariants_.clear();
@@ -224,6 +225,16 @@ public:
         return found != rangeChecks_.end() ? found->second : nullptr;
     }
 
+    // `Fill(Value)` (r3.81): the call fills its target array with copies of
+    // Value; `unit` is the element (or row) type each copy has.
+    void setFillUnit(const ast::CallExpression& call, const types::Type* unit) { fillUnits_[&call] = unit; }
+
+    const types::Type* fillUnit(const ast::CallExpression& call) const
+    {
+        const auto found = fillUnits_.find(&call);
+        return found != fillUnits_.end() ? found->second : nullptr;
+    }
+
     // CANON-24: where a struct invariant must hold. At a site (a qualified
     // method call, a field write, a call with ref mut arguments) the backend
     // checks the invariant of each listed place before or after the site;
@@ -272,6 +283,7 @@ private:
     std::unordered_map<const ast::AstNode*, const types::Type*> newValueInvariants_;
     std::unordered_set<const ast::Expression*> naturalChecks_;
     std::unordered_map<const ast::Expression*, const types::Type*> rangeChecks_;
+    std::unordered_map<const ast::CallExpression*, const types::Type*> fillUnits_;
     std::unique_ptr<types::TypeContext> types_;
     std::unordered_map<const ast::Expression*, const types::Type*> expressionTypes_;
     std::unordered_map<const ast::IdentifierExpression*, const Symbol*> identifierSymbols_;

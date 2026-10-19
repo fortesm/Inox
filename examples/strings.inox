@@ -40,7 +40,8 @@ Words(S String) Integer :
 ;
 
 Main :
-    Items Array[1..3] TItem
+    Blank TItem
+    Items Array[1..3] TItem := Fill(Blank)
     Items[1] := TItem(FName := "Café", FPrice := 3)
     Items[2] := TItem(FName := "Crème brûlée", FPrice := 5)
     Items[3] := TItem(FName := "Água", FPrice := 1)

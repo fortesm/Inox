@@ -65,6 +65,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticStatements.cpp
     src/compiler/semantic/SemanticStrings.cpp
     src/compiler/semantic/SemanticEnums.cpp
+    src/compiler/semantic/SemanticArrays.cpp
     src/compiler/semantic/SemanticSets.cpp
     src/compiler/semantic/SemanticSupport.cpp
     src/compiler/semantic/SemanticTypes.cpp

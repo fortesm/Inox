@@ -140,6 +140,10 @@ bool SemanticAnalyzer::isFreshOwnerValue(const ast::Expression& value) const
         const Symbol* symbol = result_.symbolOf(call);
         return symbol != nullptr && symbol->kind == SymbolKind::Function;
     }
+    // `Fill(None)` (r3.81): a new array of empty owners.
+    if (isFillCall(call)) {
+        return true;
+    }
     if ((equalsIgnoreCase(name, "New") || equalsIgnoreCase(name, "Move")) &&
         isPointerBuiltinCall(name, call.arguments().size())) {
         return true;
