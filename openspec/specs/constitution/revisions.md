@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.81
+Canon revision: r3.82
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -27,14 +27,6 @@ stands.
    capture clause (`Name`, `Move(X)`, `Link(X)`), `{ }` as an effect or a
    requirement clause, `@` annotations; no String interpolation and `{ }`
    reserved (decided, r3.74).
-3. **Array fields of structs** (change `array-fill`, r3.81): every local and
-   State array is filled, but a struct field of an array type
-   (`FData Array[1..4] Byte`) still starts at zero (or at the element
-   struct's defaults) when the struct takes its type defaults, under the
-   struct rule kept on 2026-10-18. Must an array field be filled too, by a
-   field default (`FData Array[1..4] Byte := Fill(0)`) or in the
-   construction? A field of a generic struct whose parameter is an enum
-   (`TBox<TSuit>` with `FValue T`) is not yet held to the enum-field rule.
 
 ## Revision log
 
@@ -260,3 +252,20 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   preferência seria Include(S, X), acompanhado de Exclude(S, X),
   substituindo o par atual With/Without." Array fields of structs stay open
   (question 3). Change `array-fill`.
+- r3.82 — 2026-10-18 — Open question 3 answered: initialization is
+  transitive over aggregates and type parameters (CANON-5, CANON-9). A
+  struct field of an enum, array or type-parameter type has no implicit
+  value: it has a default (a literal, or `Fill(Literal)` for an array
+  field) or is given in the construction, whose omission is an error. A
+  struct takes its type defaults (a declaration without `:=`, State,
+  `New(TName)`) only when every component has one, nested structs and
+  parts included. A field whose type uses a type parameter never has a
+  default, whatever the instance (`D TBox<Integer>` is an error). Scalar,
+  String, Set and pointer fields keep their zero, "", empty and None.
+  Marcelo Fortes, 2026-10-18: "a inicialização explícita não pode ser
+  contornada pelo fato de um valor estar dentro de uma Struct, de um Array
+  ou de um tipo genérico"; "Nenhuma especialização genérica pode introduzir
+  silenciosamente um valor padrão que não seja garantido pelo contrato do
+  tipo genérico"; "aprovar ambas as correções no mesmo PR, incluindo os
+  testes de estruturas aninhadas e especializações genéricas." Change
+  `array-fill`.

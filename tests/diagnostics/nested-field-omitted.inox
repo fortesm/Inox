@@ -1,0 +1,24 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.82 (CANON-9): a construction that omits a nested struct without
+== complete defaults is an error.
+Type
+    TStatus (Pending, Approved, Rejected)
+    TFrame Struct
+        FState TStatus
+        FSize Integer := 0
+    ;
+    TRoute Struct
+        FFrame TFrame
+        FHops Integer := 1
+    ;
+
+Main :
+    R := TRoute(FHops := 2)
+    PutLn(R.FHops)
+;

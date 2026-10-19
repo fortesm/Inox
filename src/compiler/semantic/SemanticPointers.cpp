@@ -233,6 +233,11 @@ TypeRef SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const ast
                 throw SemanticError(owner + " is an owner without default: build the value, New(" + target->name() +
                                     "(... := New(...)))");
             }
+            if (const std::string field = requiredFieldWithoutDefault(target); !field.empty()) {
+                throw SemanticError("New(" + target->name() + ") has no value for " + field +
+                                    ", which has no default (r3.82): build the value, New(" + target->name() +
+                                    "(... := ...))");
+            }
             result_.bind(typeName, resolveOrThrow(typeName.name()));
             result_.setExpressionType(typeName, target);
         } else {

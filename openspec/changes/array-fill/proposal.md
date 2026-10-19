@@ -45,7 +45,25 @@ Risk: normal (an initialization rule, a new expression lowered with the
 existing element loop, and a rename; no exception lowering, runtime ABI or
 memory ownership change).
 
-Status: **implemented** (canon r3.81).
+Status: **implemented** (canon r3.81 and r3.82, one PR).
+
+Approval of r3.82 (Marcelo Fortes, 2026-10-18), answering the question this
+change first left open: "Eu fecharia as duas questões aplicando um princípio
+único à Inox: a inicialização explícita não pode ser contornada pelo fato de
+um valor estar dentro de uma Struct, de um Array ou de um tipo genérico."
+For array fields: "exigir := Fill(...) no campo ou o fornecimento explícito
+do array durante a construção"; for type parameters: "um campo cujo tipo é
+um parâmetro genérico T não possui default implícito, independentemente do
+tipo concreto utilizado na instanciação"; and "Estruturas aninhadas somente
+admitem construção por defaults quando todos os seus componentes puderem ser
+inicializados conforme as regras aplicáveis. A ausência de um campo
+obrigatório constitui erro de compilação. Nenhuma especialização genérica
+pode introduzir silenciosamente um valor padrão que não seja garantido pelo
+contrato do tipo genérico." Decision: "aprovar ambas as correções no mesmo
+PR, incluindo os testes de estruturas aninhadas e especializações
+genéricas." His examples write `TBox<TStatus>(FValue := Pending)`; type
+arguments are never written in an expression (r3.77), so the tests write
+`A TBox<TStatus> := TBox(FValue := Pending)`.
 
 ## What Changes
 
@@ -63,10 +81,16 @@ Status: **implemented** (canon r3.81).
   multi-dimensional array Value is an element (`Fill(0)`) or a whole row
   (`Fill(Row)`). An array of owners is filled only with None. `Fill` is a
   predefined name (CANON-2), like IIf: it cannot be declared.
-- **An enum struct field needs a default** (`FSuit TSuit := Club`), as an
-  enum variable needs an initializer. Structs keep their rule: `P TPoint`
-  takes the field defaults, a field without default starts at its type's
-  zero.
+- **Initialization is transitive (r3.82).** A struct field of an enum,
+  array or type-parameter type has no implicit value: it has a default
+  (`FSuit TSuit := Club`, `FData Array[1..4] Byte := Fill(0)`, a literal of
+  the innermost element, `None` or `[]`) or is given in the construction.
+  A struct takes its type defaults (`P TPoint`, State, `New(TName)`) only
+  when every component has one, nested structs and parts included;
+  otherwise it is an error naming the field. A field whose type uses a type
+  parameter (`FValue T`, `FItems Array[1..3] T`) never has a default, in
+  any instance (`D TBox<Integer>` is an error). Scalar, String, Set and
+  pointer fields without default keep their zero, "", empty and None.
 - **`Include(S, X)` and `Exclude(S, X)`** replace `With` and `Without`.
   `With(S, X)` and `Without(S, X)` are rejected with the new names. The six
   set functions never change their arguments; calling one as a statement is
@@ -76,16 +100,8 @@ Status: **implemented** (canon r3.81).
 Migrated: every program of the suite and the examples (arrays filled; three
 test routines named `Fill` renamed).
 
-Open (recorded in `revisions.md`, not decided here):
-
-- An **array field of a struct** (`FData Array[1..4] Byte`) still starts at
-  zero (or at the element struct's defaults) when the struct takes its type
-  defaults, under the struct rule the maintainer kept. Whether it must be
-  filled too (`FData Array[1..4] Byte := Fill(0)` as a field default, or
-  given in the construction) is his decision.
-- A field of a **generic** struct whose type parameter is instantiated with
-  an enum (`TBox<TSuit>` with `FValue T`) is not checked by the enum-field
-  rule, which reads the written field type.
+Both questions this change first left open (array fields of structs, and
+fields of a type parameter instantiated with an enum) are answered by r3.82.
 
 ## Capabilities
 
@@ -95,16 +111,22 @@ Open (recorded in `revisions.md`, not decided here):
 - `language/enums`: enums in aggregates.
 - `language/sets`: Include and Exclude; set functions as statements.
 - `language/module-state`: State arrays are initialized.
+- `language/structs`: type defaults only when complete; required fields.
+- `language/generics`: a field of a type parameter has no default.
 
 ## Impact
 
 - Lexer: `Fill` is a predefined name.
 - Parser: `with(` in an expression is the old set function, rejected with
   the new name.
+- Parser: an array field default `:= Fill(Literal)`.
 - Analyzer: `SemanticArrays.cpp` (Fill, the array diagnostic); the
-  initialization rule for locals and State; the enum field rule; the set
+  initialization rule for locals and State; required fields
+  (`requiredFieldWithoutDefault`, used by locals, State, New and
+  construction); fields of a type parameter in generic instances; the set
   functions renamed and rejected as statements.
-- Emitter: `FunctionEmitter::emitFill` (FunctionEmitterArrays.cpp).
+- Emitter: `FunctionEmitter::emitFill` (FunctionEmitterArrays.cpp) and
+  `emitArrayFillDefault` (FunctionEmitterAggregates.cpp).
 - Constitution (CANON-2, CANON-5, CANON-13), the four capability specs,
   grammar.ebnf, docs/site/index.html, CHANGELOG.md, docs/STATUS.md,
   `tools/string_leak_check.py` (array-fill tests).

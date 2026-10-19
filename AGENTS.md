@@ -256,7 +256,7 @@ time. Each names where it bit.
 - **Windows does not delete or rename an open file.** A File declared in a
   loop stays open until the next round or the routine's exit; tests that
   delete their files close them first.
-- **`Step` and `In` are keywords** (`for ... step`, `for ... in`), as are `Pre`, `Pos`, `Old`, `Invariant`, `Variant` and `Override`; `True`, `False`, `Exit`, `Leave`, `Continue`, `IIf`, `Fill` (r3.81) and the `bit...` operators are predefined names (r3.76); do not use any of them as test variables or routine names. Every array in a test is declared with `:= Fill(...)` (r3.81). A test file has no `Module` line: its name is its module's name.
+- **`Step` and `In` are keywords** (`for ... step`, `for ... in`), as are `Pre`, `Pos`, `Old`, `Invariant`, `Variant` and `Override`; `True`, `False`, `Exit`, `Leave`, `Continue`, `IIf`, `Fill` (r3.81) and the `bit...` operators are predefined names (r3.76); do not use any of them as test variables or routine names. Every array in a test is declared with `:= Fill(...)` (r3.81), and a struct with an enum, array or type-parameter field without default is built by construction, never declared bare (r3.82, `requiredFieldWithoutDefault`). A test file has no `Module` line: its name is its module's name.
 - **GitHub GraphQL is blocked here.** Use `gh api` REST routes (`gh pr view`
   and `gh pr create` fail); job logs come from check-run annotations.
 

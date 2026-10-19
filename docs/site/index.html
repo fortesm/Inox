@@ -417,10 +417,10 @@ L.FA.Move(1, 1)                     == and methods on them
 Points Array[1..10] TPoint := Fill(Q)   == ten copies of Q
 Points[3].X := 5</code></pre>
 <p>A struct cannot contain itself, directly or through another struct.</p>
-<p>A field may be a fixed array, and module <code>State</code> may hold structs and arrays. A struct without an initializer, and an array field inside it, start at their type defaults; an array variable is always filled; copying a struct copies its arrays:</p>
+<p>A field may be a fixed array, and module <code>State</code> may hold structs and arrays. An array variable is always filled, and copying a struct copies its arrays:</p>
 <pre><code>Type
     TBuffer Struct
-        FData Array[1..4] Byte
+        FData Array[1..4] Byte := Fill(0)
         FCount Integer := 0
     ;
 
@@ -432,6 +432,17 @@ State
 B TBuffer
 B.FData[2] := 200                   == every index is checked
 C TBuffer := B                      == C has its own copy of FData</code></pre>
+<p>Explicit initialization cannot be bypassed by putting a value inside a struct, an array or a generic type. A field of an enum, array or type-parameter type has no implicit value: it has a default (a literal, or <code>Fill(Literal)</code> for an array) or is given in the construction, and leaving it out is an error. A struct takes its type defaults (<code>P TPoint</code>, a <code>State</code> variable, <code>New(TPoint)</code>) only when every field has one, nested structs and parts included. Scalar, String, Set and pointer fields without default start at zero, <code>""</code>, empty and <code>None</code>.</p>
+<pre><code>Type
+    TStatus (Pending, Approved, Rejected)
+    TFrame Struct
+        FData Array[1..3] Integer      == no default: given in the construction
+        FState TStatus                 == no default: given in the construction
+        FSize Integer := 0
+    ;
+
+F := TFrame(FData := Fill(0), FState := Pending)
+G TFrame                               == error: TFrame.FData has no default</code></pre>
 <p>A slice cannot be a struct field or a <code>State</code> variable, because it never outlives its array (ADR-0017).</p>
 </section>
 <section id="method-reuse"><h2>Method reuse: composition without inheritance</h2>
@@ -493,7 +504,7 @@ PutLn(S.FPlan, " ", 21.Twice)</code></pre>
 <p>Inox has Eiffel's design by contract (CANON-24). A routine states what the caller must guarantee and what it guarantees in return; a struct states what is always true of its values. The words are <code>pre</code> (Eiffel <code>require</code>), <code>pos</code> (Eiffel <code>ensure</code>; <code>ensure</code> is the cleanup clause of <code>try</code>), <code>old</code>, <code>Result</code>, <code>invariant</code> and <code>variant</code>. They are contextual: outside these places they are ordinary names.</p>
 <pre><code>Type
     TStack Struct
-        FItems Array[1..5] Integer
+        FItems Array[1..5] Integer := Fill(0)
         FCount Integer := 0
         invariant Self.FCount >= 0 and Self.FCount <= 5, "count in range"
     ;
@@ -645,7 +656,7 @@ Main :
 <ul>
 <li><strong>Types are never written in a call.</strong> They come from the arguments (a literal takes the type of the others: <code>Max(B, 1)</code> with <code>B Byte</code> is <code>Max&lt;UInt8&gt;</code>), or from the target when the arguments do not fix them. <code>Max&lt;Integer&gt;(3, 7)</code> is an error that says so.</li>
 <li><strong>No constraints.</strong> T may be any type. What the body does with it is checked in each instance: <code>Max</code> on two structs is &quot;in Max&lt;TPoint&gt;, used in Main: structs cannot be compared with '&gt;'&quot;. An owner or a File as T works when the body moves it or passes it by <code>ref mut</code>.</li>
-<li><strong>Generic structs</strong> take their types from the written type (<code>TPair&lt;String, Integer&gt;</code>), from the target of a construction or from the values of the fields. Their methods are not in the language yet: write a generic routine, <code>Push&lt;T&gt;(ref mut S TStack&lt;T&gt;, X T)</code>.</li>
+<li><strong>Generic structs</strong> take their types from the written type (<code>TPair&lt;String, Integer&gt;</code>), from the target of a construction or from the values of the fields. A field whose type uses a type parameter (<code>FValue T</code>, <code>FItems Array[1..8] T</code>) never has a default, whatever the instance: <code>D TBox&lt;Integer&gt;</code> is an error, <code>D TBox&lt;Integer&gt; := TBox(FValue := 0)</code> is a value. Their methods are not in the language yet: write a generic routine, <code>Push&lt;T&gt;(ref mut S TStack&lt;T&gt;, X T)</code>.</li>
 </ul>
 <p><code>examples/generics.inox</code> builds one stack and uses it for Integers, Strings and pairs.</p>
 </section>

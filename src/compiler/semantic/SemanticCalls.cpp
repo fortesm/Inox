@@ -457,14 +457,26 @@ TypeRef SemanticAnalyzer::analyzeConstruction(const ast::CallExpression& call, T
                 throw SemanticError("construction omits the owner " + type->name() + "." + field.name +
                                     ": give it, " + field.name + " := New(...)");
             }
+            if (field.type != nullptr && (field.type->isArray() || field.type->isEnum() || field.fromTypeParameter)) {
+                throw SemanticError("construction omits " + type->name() + "." + field.name +
+                                    ", which has no default (CANON-5, r3.82): give it, " + field.name + " := ...");
+            }
             throw SemanticError(
                 "construction omits scalar field without default (CANON-9): " +
                 type->name() + "." + field.name);
         }
-        if (!named) {
+        if (!named && !field.hasDefault) {
             if (const std::string owner = ownerFieldWithoutDefault(field.type); !owner.empty()) {
                 throw SemanticError("construction omits " + type->name() + "." + field.name +
                                     ", which holds the owner " + owner + ": give it");
+            }
+            if (field.fromTypeParameter) {
+                throw SemanticError("construction omits " + type->name() + "." + field.name +
+                                    ", which has no default (CANON-5, r3.82): give it, " + field.name + " := ...");
+            }
+            if (const std::string inner = requiredFieldWithoutDefault(field.type); !inner.empty()) {
+                throw SemanticError("construction omits " + type->name() + "." + field.name + ", and " + inner +
+                                    " has no default (CANON-5, r3.82): give it, " + field.name + " := ...");
             }
         }
     }

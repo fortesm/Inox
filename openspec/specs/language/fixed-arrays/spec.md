@@ -115,10 +115,10 @@ element, with the index checked as for any array.
 - **THEN** the program stops with array index out of bounds (tests/runtime/array-of-struct-out-of-bounds.inox)
 
 ### Requirement: Arrays as struct fields
-A struct field SHALL be allowed to have an array type. As the other fields of a
-struct (CANON-5), its elements SHALL start at zero (or at the element struct's
-defaults) when the struct takes its type defaults; whether array fields must be
-filled too is an open question (revisions.md). `S.F[I]` SHALL read and write
+A struct field SHALL be allowed to have an array type. It SHALL have no
+implicit value (r3.82): its default is `Fill(Literal)`, a literal of its
+innermost element type (`None` for owners, `[]` for sets), or it is given in
+the construction. An array of structs has no literal, so it is always given. `S.F[I]` SHALL read and write
 one element with the index checked; copying the struct SHALL copy the array.
 An array field SHALL NOT have a literal default.
 
@@ -127,8 +127,8 @@ An array field SHALL NOT have a literal default.
 - **THEN** `B.FData[2]` is still 7 (tests/runtime/struct-array-field.inox)
 
 #### Scenario: Default on an array field
-- **WHEN** a struct declares `FData Array[1..2] Integer := 1`
-- **THEN** the compiler rejects it (tests/diagnostics/struct-array-field-default.inox)
+- **WHEN** a struct declares `FData Array[1..2] Integer := 1`, or `FData Array[1..4] Byte` and is declared without a value
+- **THEN** the compiler rejects both, showing `:= Fill(Value)` (tests/diagnostics/struct-array-field-default.inox, tests/diagnostics/struct-array-field-required.inox)
 
 #### Scenario: Field index out of bounds
 - **WHEN** `B.FData[I]` runs with I = 5 on `Array[1..4] Byte`

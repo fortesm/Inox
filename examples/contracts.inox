@@ -18,7 +18,7 @@ Const Capacity := 5
 
 Type
     TStack Struct
-        FItems Array[1..Capacity] Integer
+        FItems Array[1..Capacity] Integer := Fill(0)
         FCount Integer := 0
         invariant Self.FCount >= 0 and Self.FCount <= Capacity, "count in range"
     ;

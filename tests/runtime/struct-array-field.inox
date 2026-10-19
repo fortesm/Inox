@@ -6,13 +6,14 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-13 and CANON-9: a struct field may be a fixed array (bounds may name
-== a Const). Its elements start at zero or at their struct's defaults, every
-== index is checked, and copying the struct copies the array.
+== a Const). It has no implicit value (r3.82): a default Fill(Literal), or
+== the array given in the construction; every index is checked, and copying
+== the struct copies the array.
 Const Size := 4
 
 Type
     TBuffer Struct
-        FData Array[1..Size] Byte
+        FData Array[1..Size] Byte := Fill(0)
         FCount Integer := 2
         FPoints Array[0..1] TPoint
     ;
@@ -36,7 +37,8 @@ Total(Buffer TBuffer) Integer :
 ;
 
 Main :
-    B TBuffer
+    Origin TPoint
+    B := TBuffer(FPoints := Fill(Origin))
     B.FData[2] := 200
     C TBuffer := B
     C.FData[2] := 1

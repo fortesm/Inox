@@ -1,0 +1,21 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.82: a field default is a literal, so an array of structs has none and
+== is given in the construction.
+Type
+    TPoint Struct
+        FX Integer := 0
+    ;
+    TShape Struct
+        FPoints Array[1..2] TPoint := Fill(Origin)
+    ;
+
+Main :
+    S := TShape(FPoints := Fill(TPoint(FX := 1)))
+    PutLn(S.FPoints[1].FX)
+;

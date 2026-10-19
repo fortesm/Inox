@@ -11,7 +11,9 @@
 == and Peek. The types are never written in a call: they come from the
 == arguments (`Push(Numbers, 3)`) or from the target (`Top Integer := ...`).
 == There are no constraints: Max works for any type with `>`, and using it
-== on a struct is an error that names the instance (Max<TPoint>).
+== on a struct is an error that names the instance (Max<TPoint>). A field
+== of type T, or of an array of T, has no default: each stack is built with
+== its items, `TStack(FItems := Fill(0))`.
 Const Capacity := 8
 
 Type
@@ -52,7 +54,7 @@ Max<T>(A T, B T) T :
 ;
 
 Main :
-    Numbers TStack<Integer>
+    Numbers TStack<Integer> := TStack(FItems := Fill(0))
     for I in 1..5
         Push(Numbers, I * I)
     ;
@@ -63,7 +65,7 @@ Main :
     ;
     PutLn("sum of squares: ", Total)
 
-    Words TStack<String>
+    Words TStack<String> := TStack(FItems := Fill(""))
     Push(Words, "first")
     Push(Words, "second")
     Push(Words, "third")
@@ -73,7 +75,7 @@ Main :
     PutLn("")
 
     Best := TPair(FKey := "none", FValue := 0)
-    Scores TStack<TPair<String, Integer>>
+    Scores TStack<TPair<String, Integer>> := TStack(FItems := Fill(Best))
     Push(Scores, TPair(FKey := "ana", FValue := 7))
     Push(Scores, TPair(FKey := "bia", FValue := 9))
     Push(Scores, TPair(FKey := "caio", FValue := 4))

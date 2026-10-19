@@ -2,6 +2,7 @@
 
 - [x] 1.1 Record Marcelo's answers of 2026-10-18 (strict rule for every array, Fill, enum field defaults, Include/Exclude) as r3.81; open question 2 leaves the list
 - [x] 1.2 Record what stays open: array fields of structs; enum fields reached through a generic type parameter
+- [x] 1.3 Record Marcelo's answer of 2026-10-18 to that question as r3.82 (initialization is transitive)
 
 ## 2. Compiler
 
@@ -11,11 +12,13 @@
 - [x] 2.4 Analyzer: enum struct fields need a default
 - [x] 2.5 Analyzer: Include/Exclude replace With/Without; a set function as a statement is an error
 - [x] 2.6 Emitter: `emitFill`, Value evaluated once, copied into a temporary held to the end of the statement
+- [x] 2.7 r3.82: array field default `:= Fill(Literal)` (parser, analyzer, emitter); required enum, array and type-parameter fields in locals, State, New and construction, through nested structs and parts; no default for a type-parameter field
 
 ## 3. Programs and tests
 
 - [x] 3.1 Migrate the suite and the examples (arrays filled, routines named Fill renamed, Include/Exclude)
 - [x] 3.2 Tests: runtime array-fill (with .in), array-fill-range; diagnostics array-without-initializer, enum-array-without-initializer, state-array-without-initializer, array-fill-without-target, array-fill-type, array-fill-owner, fill-predefined, enum-field-without-default, set-function-statement, set-with-renamed, set-without-renamed
+- [x] 3.3 r3.82 tests: runtime required-fields; diagnostics struct-array-field-required, struct-array-field-omitted, enum-field-omitted, nested-required-field, nested-field-omitted, part-required-field, state-required-field, new-required-field, generic-field-required, generic-field-required-enum, generic-field-omitted, generic-field-default
 
 ## 4. Documentation
 
@@ -29,4 +32,4 @@
 - [x] 5.3 `tools/mutation_fuzz.py` seeds 1 and 7 are clean
 - [x] 5.4 `tools/backend_gaps.py` reports 0 BUG; `tools/string_leak_check.py` passes
 - [x] 5.5 `tools/eh_state_balance.py`, `tools/grammar_consistency.py`, `openspec validate --all --strict` and `tools/constitution_check.py check` pass
-- [ ] 5.6 Linux and Windows CI green
+- [ ] 5.6 Linux and Windows CI green (r3.81 commit green; r3.82 pending)

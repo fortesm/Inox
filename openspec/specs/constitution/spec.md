@@ -439,10 +439,10 @@ and later ones assign it. A bare identifier is never a declaration.
 ### Requirement: CANON-5 Every variable is born with a value
 A scalar declaration SHALL have an initializer: `C Integer` is "scalar
 declaration requires initializer: C", for locals, Strings and State alike.
-An enum variable needs an initializer (strict Ada rule), an enum struct
-field a default. Every array, whatever its element type, SHALL be
-initialized where it is declared, never with an implicit zero, False or
-first enum literal (r3.81; `Fill`, CANON-13). Structs and Sets may omit
+An enum variable needs an initializer (strict Ada rule). Every array,
+whatever its element type, SHALL be initialized where it is declared,
+never with an implicit zero, False or first enum literal (r3.81; `Fill`,
+CANON-13). Sets, and structs whose type defaults are complete, may omit
 `:=` and take their type defaults.
 
 #### Scenario: Scalars need a value
@@ -454,12 +454,29 @@ first enum literal (r3.81; `Fill`, CANON-13). Structs and Sets may omit
 - **THEN** it holds its field defaults (tests/runtime/struct-defaults.inox)
 
 #### Scenario: Enum initializer
-- **WHEN** an enum variable is declared without `:=`, or an enum struct field without a default
-- **THEN** it is rejected (tests/diagnostics/enum-without-initializer.inox, tests/diagnostics/enum-field-without-default.inox)
+- **WHEN** an enum variable is declared without `:=`
+- **THEN** it is rejected (tests/diagnostics/enum-without-initializer.inox)
 
 #### Scenario: Arrays are filled
 - **WHEN** a local or State array is declared without `:=`, or with `Fill(Value)`
 - **THEN** the first is rejected (tests/diagnostics/array-without-initializer.inox, tests/diagnostics/enum-array-without-initializer.inox, tests/diagnostics/state-array-without-initializer.inox) and the second holds Value in every element (tests/runtime/array-fill.inox)
+
+### Requirement: CANON-5 Initialization is transitive
+Explicit initialization SHALL hold through structs, arrays and type
+parameters (r3.82). A struct field of an enum, array or type-parameter type
+has no implicit value: it has a default (a literal, or `Fill(Literal)` for
+an array) or is given in the construction. A struct takes its type defaults
+only when every component has one, nested structs and parts included; no
+instance of a generic struct brings a default its declaration does not
+guarantee.
+
+#### Scenario: Required fields
+- **WHEN** a struct whose array, enum or type-parameter field has no default is declared without `:=`, directly, nested, as a part, in State, by `New(TName)` or as an instance `TBox<Integer>`
+- **THEN** it is rejected (tests/diagnostics/struct-array-field-required.inox, tests/diagnostics/enum-field-without-default.inox, tests/diagnostics/nested-required-field.inox, tests/diagnostics/part-required-field.inox, tests/diagnostics/state-required-field.inox, tests/diagnostics/new-required-field.inox, tests/diagnostics/generic-field-required.inox, tests/diagnostics/generic-field-required-enum.inox)
+
+#### Scenario: Required fields given
+- **WHEN** such fields have defaults, or are given in the construction, also nested and in generic instances
+- **THEN** the values hold them (tests/runtime/required-fields.inox)
 
 ### Requirement: CANON-5 Unread locals are errors
 A local that is never read SHALL be a compile error ("local variable never
@@ -747,8 +764,10 @@ without creating reference semantics. Details: `language/structs`.
 - **THEN** the original is unchanged (tests/semantic/valid/struct-value-copy.inox, tests/runtime/struct-initializers.inox)
 
 ### Requirement: CANON-9 Fields
-A field SHALL have a type and may have a literal default; a field without
-one starts at its type's default. Type names conventionally start with `T`
+A field SHALL have a type and may have a literal default (`Fill(Literal)` for
+an array field); a scalar, String, Set or pointer field without one starts at
+its type's default, and an enum, array or type-parameter field without one
+is given in the construction (CANON-5, r3.82). Type names conventionally start with `T`
 and fields with `F` (style, not an error). A struct that contains itself,
 directly or through other structs, is an error.
 
@@ -800,13 +819,14 @@ caller's variable; a method belongs to its exact type.
 ### Requirement: CANON-9 Named construction
 `TPoint(FX := 10, FY := 20)` SHALL build a struct value as an expression:
 named arguments only, in any order; a duplicate or unknown field is an
-error; an omitted field takes its default, and an omitted scalar field
-without default is an error. `TPoint()` is invalid; `P TPoint` gives all
+error; an omitted field takes its default, and an omitted field without
+default (scalar, enum, array, type parameter, or a struct without complete
+defaults) is an error. `TPoint()` is invalid; `P TPoint` gives all
 defaults.
 
 #### Scenario: Construction rules
 - **WHEN** a construction is positional, repeats or invents a field, or omits a scalar without default
-- **THEN** it is rejected (tests/diagnostics/construction-positional.inox, tests/diagnostics/construction-duplicate-field.inox, tests/diagnostics/construction-unknown-field.inox, tests/diagnostics/construction-omitted-scalar.inox); valid constructions run (tests/runtime/struct-construction.inox)
+- **THEN** it is rejected (tests/diagnostics/construction-positional.inox, tests/diagnostics/construction-duplicate-field.inox, tests/diagnostics/construction-unknown-field.inox, tests/diagnostics/construction-omitted-scalar.inox, tests/diagnostics/struct-array-field-omitted.inox, tests/diagnostics/enum-field-omitted.inox, tests/diagnostics/nested-field-omitted.inox, tests/diagnostics/generic-field-omitted.inox); valid constructions run (tests/runtime/struct-construction.inox)
 
 ### Requirement: CANON-9 Structs are not compared
 Structs SHALL never be compared with `=`, `#` or the ordering operators, as
