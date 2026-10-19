@@ -21,7 +21,7 @@ Type
         FY Integer
     ;
 
-Fill(ref mut Data Array[1..Size] Byte, Value Byte) :
+Load(ref mut Data Array[1..Size] Byte, Value Byte) :
     for I in Low(Data)..High(Data)
         Data[I] := Value
     ;
@@ -43,7 +43,7 @@ Main :
     PutLn(B.FData[2], " ", C.FData[2], " ", B.FCount, " ", B.FPoints[1].FX)
     B.FPoints[0].FY := 3
     PutLn(B.FPoints[0].FY, " ", Low(B.FData), " ", High(B.FData), " ", Length(B.FData))
-    Fill(B.FData, 10)
+    Load(B.FData, 10)
     PutLn(Total(B))
     with B
         .FData[4] := 50

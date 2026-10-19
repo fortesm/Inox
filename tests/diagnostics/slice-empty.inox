@@ -7,7 +7,7 @@
 
 == ADR-0017: a slice is never empty (L <= H), like an array.
 Main :
-    A Array[1..3] Integer
+    A Array[1..3] Integer := Fill(0)
     S := A[3..2]
     PutLn(Length(S))
 ;

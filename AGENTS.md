@@ -102,7 +102,7 @@ module that owns a concern instead of searching the whole emitter.
     the module helper `@__inox_str_fault`;
   - `FunctionEmitterAggregates.cpp` — struct defaults and construction,
     places, fields, methods, assignment;
-  - `FunctionEmitterArrays.cpp` — indexing, bounds, slices;
+  - `FunctionEmitterArrays.cpp` — indexing, bounds, slices, `Fill`;
   - `FunctionEmitterExpressions.cpp` — expression types and lowering;
   - `FunctionEmitterFiles.cpp` — the Std.IOUtils file functions (calls into
     libinoxrt with `invoke` inside protected regions);
@@ -177,6 +177,8 @@ module that owns a concern instead of searching the whole emitter.
     Succ, Pred, Low and High of a type) and `TEnum(I)` (CANON-13);
   - `SemanticSets.cpp` — Set<T>: its base, the literal `[A, B]`, `in`, the
     six set functions (CANON-13);
+  - `SemanticArrays.cpp` — `Fill(Value)` typed by its target array, and
+    the diagnostic of an array declared without a value (r3.81);
   - `SemanticStrings.cpp` — Std.Strings / Std.StrUtils (CANON-14): the
     names visible with their `Use`, argument checks; the table of the
     functions is `StdStrings.h`, shared with codegen;
@@ -254,7 +256,7 @@ time. Each names where it bit.
 - **Windows does not delete or rename an open file.** A File declared in a
   loop stays open until the next round or the routine's exit; tests that
   delete their files close them first.
-- **`Step` and `In` are keywords** (`for ... step`, `for ... in`), as are `Pre`, `Pos`, `Old`, `Invariant`, `Variant` and `Override`; `True`, `False`, `Exit`, `Leave`, `Continue`, `IIf` and the `bit...` operators are predefined names (r3.76); do not use any of them as test variables. A test file has no `Module` line: its name is its module's name.
+- **`Step` and `In` are keywords** (`for ... step`, `for ... in`), as are `Pre`, `Pos`, `Old`, `Invariant`, `Variant` and `Override`; `True`, `False`, `Exit`, `Leave`, `Continue`, `IIf`, `Fill` (r3.81) and the `bit...` operators are predefined names (r3.76); do not use any of them as test variables or routine names. Every array in a test is declared with `:= Fill(...)` (r3.81). A test file has no `Module` line: its name is its module's name.
 - **GitHub GraphQL is blocked here.** Use `gh api` REST routes (`gh pr view`
   and `gh pr create` fail); job logs come from check-run annotations.
 

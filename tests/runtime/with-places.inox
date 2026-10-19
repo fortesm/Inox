@@ -63,7 +63,8 @@ Main :
     Anotar(C)
     Mostrar(C)
 
-    A Array[1..3] TCliente
+    Vazio TCliente
+    A Array[1..3] TCliente := Fill(Vazio)
     I := 2
     with A[I]
         .FNome := "Bia"

@@ -462,6 +462,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (isOrdinalBuiltin(call)) {
             return emitOrdinalBuiltin(call);
         }
+        if (semantics_.fillUnit(call) != nullptr) {
+            return emitFill(call);
+        }
         if (isSetCall(call)) {
             return emitSetCall(call);
         }

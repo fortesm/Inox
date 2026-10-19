@@ -9,7 +9,7 @@
 == ordinals from 0, comparison by ordinal, Ord, TEnum(I), Low, High, Succ,
 == Pred, enum ranges in for, PutLn prints the name as declared (Q3: with
 == TNaipe, PutLn(Naipe) prints Copas), WriteLn writes it, and enums in
-== fields with a default, array elements (born at the first literal), State,
+== fields with a default, array elements (filled, Fill(Club), r3.81), State,
 == parameters, results and a generic routine.
 Use Std.IOUtils
 
@@ -52,7 +52,7 @@ Main :
     D := Wednesday
     PutLn(Next(D), " ", Next(Next(D)), " ", Max(Club, Heart), " ", Max(D, Monday))
     C TCard
-    Hand Array[1..3] TSuit
+    Hand Array[1..3] TSuit := Fill(Club)
     Hand[3] := Trump
     Trump := Pred(Trump)
     PutLn(C.FSuit, " ", Hand[1], " ", Hand[3], " ", Trump)

@@ -1,0 +1,1 @@
+the set function Without(S, X) is now Exclude(S, X)

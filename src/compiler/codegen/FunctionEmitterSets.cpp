@@ -24,7 +24,7 @@ namespace inox::compiler::codegen::detail {
 namespace {
 
 constexpr std::array<std::string_view, 6> kSetFunctions{
-    "Union", "Intersection", "Difference", "SymmetricDifference", "With", "Without"};
+    "Union", "Intersection", "Difference", "SymmetricDifference", "Include", "Exclude"};
 
 unsigned setBits(TypeRef setType)
 {
@@ -93,9 +93,9 @@ std::string FunctionEmitter::emitSetCall(const ast::CallExpression& call)
         return value;
     }
     const std::string set = emitExpression(*call.arguments()[0]);
-    if (equalsIgnoreCase(name, "With") || equalsIgnoreCase(name, "Without")) {
+    if (equalsIgnoreCase(name, "Include") || equalsIgnoreCase(name, "Exclude")) {
         const std::string mask = emitSetMask(emitExpression(*call.arguments()[1]), setType);
-        if (equalsIgnoreCase(name, "With")) {
+        if (equalsIgnoreCase(name, "Include")) {
             return operation("or", set, mask);
         }
         return operation("and", set, operation("xor", mask, "-1"));

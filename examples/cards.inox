@@ -39,7 +39,8 @@ Color(S TSuit) String :
 ;
 
 Main :
-    Hand Array[1..4] TCard
+    Blank TCard
+    Hand Array[1..4] TCard := Fill(Blank)
     Hand[1] := TCard(FSuit := Heart, FRank := Ace)
     Hand[2] := TCard(FSuit := Spade, FRank := King)
     Hand[3] := TCard(FSuit := Heart, FRank := Seven)
@@ -48,7 +49,7 @@ Main :
     Suits Set<TSuit>
     for I in 1..4
         Total := Total + Points(Hand[I].FRank)
-        Suits := With(Suits, Hand[I].FSuit)
+        Suits := Include(Suits, Hand[I].FSuit)
         PutLn(Hand[I].FRank, " of ", Hand[I].FSuit, " (", Color(Hand[I].FSuit), "): ", Points(Hand[I].FRank))
     ;
     PutLn("Total: ", Total, " of at most ", High(TScore))

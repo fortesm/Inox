@@ -11,7 +11,7 @@ Clear(V Array[1..3] Integer) :
 ;
 
 Main :
-    A Array[1..3] Integer
+    A Array[1..3] Integer := Fill(0)
     Clear(A)
     PutLn(A[1])
 ;

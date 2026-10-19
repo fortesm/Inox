@@ -1,0 +1,93 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.81 (CANON-5, CANON-13): every array is initialized where it is
+== declared; Fill(Value) is the target array with every element a copy of
+== Value, evaluated once, in locals, State, assignments, arguments and
+== results, for every element type, by element or by row in a
+== multi-dimensional array.
+Use Std.Strings
+
+Type
+    TSuit (Club, Diamond, Heart, Spade)
+    TMonth Range 1..12
+    TPoint Struct
+        FX Integer := 1
+        FName String := "origin"
+    ;
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+State
+    Calls Integer := 0
+    Totals Array[1..3] Integer := Fill(7)
+;
+
+Next Integer :
+    Calls += 1
+    Return Calls * 10
+;
+
+Sevens Array[1..3] Integer :
+    Return Fill(7)
+;
+
+Sum(V Array[1..3] Integer) Integer :
+    Return V[1] + V[2] + V[3]
+;
+
+Main :
+    Counts Array[1..4] Integer := Fill(42)
+    Small Array[-1..1] Int8 := Fill(-5)
+    Wide Array[1..2] UInt64 := Fill(UInt64(18446744073709551615))
+    Ratios Array[0..2] Float := Fill(0.5)
+    Flags Array[0..1] Bool := Fill(True)
+    Suits Array[1..3] TSuit := Fill(Heart)
+    Months Array[1..2] TMonth := Fill(12)
+    Hands Array[1..2] Set<TSuit> := Fill([Club, Spade])
+    PutLn(Counts[1], " ", Counts[4], " ", Small[-1], " ", Small[1], " ", Wide[2])
+    PutLn(Ratios[2], " ", Flags[1], " ", Suits[3], " ", Months[2], " ", Spade in Hands[2], " ", Heart in Hands[1])
+
+    == Strings: each element holds the same text; changing one leaves the others.
+    Line String := ""
+    GetLn(Line)
+    Words Array[1..3] String := Fill(Line + "!")
+    Words[2] := "changed"
+    PutLn(Words[1], " ", Words[2], " ", Words[3], " ", Length(Words[3]))
+
+    == Structs: a value with its defaults, or a construction.
+    Origin TPoint
+    Points Array[1..2] TPoint := Fill(Origin)
+    Named Array[1..2] TPoint := Fill(TPoint(FX := 9, FName := Line))
+    Points[1].FX := 3
+    PutLn(Points[1].FX, " ", Points[2].FX, " ", Points[2].FName, " ", Named[2].FX, " ", Named[1].FName)
+
+    == Two dimensions: by element, or by row.
+    Grid Array[1..2, 1..3] Byte := Fill(200)
+    Row Array[1..3] Byte := Fill(1)
+    Row[3] := 9
+    Rows Array[1..2, 1..3] Byte := Fill(Row)
+    PutLn(Grid[2, 3], " ", Rows[1, 1], " ", Rows[2, 3])
+
+    == The value is evaluated once.
+    Tens Array[1..5] Integer := Fill(Next)
+    PutLn(Tens[1], " ", Tens[5], " ", Calls)
+
+    == Assignment, and State.
+    Counts := Fill(-1)
+    Totals[2] := 0
+    PutLn(Counts[2], " ", Totals[1], " ", Totals[2], " ", Totals[3])
+
+    == An argument and a result.
+    PutLn(Sum(Fill(5)), " ", Sum(Sevens))
+
+    == Owners are only filled with None.
+    Nodes Array[1..2] Option<Own<TNode>> := Fill(None)
+    Nodes[2] := New(TNode(FValue := 5))
+    PutLn(Alive(Nodes[1]), " ", Alive(Nodes[2]))
+;

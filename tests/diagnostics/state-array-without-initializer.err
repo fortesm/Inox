@@ -1,0 +1,1 @@
+an array needs an initializer (CANON-5, r3.81): Counts Array[1..3] Integer := Fill(0)

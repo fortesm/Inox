@@ -100,6 +100,12 @@ private:
     TypeRef analyzeSetLiteral(const ast::CallExpression& call);
     bool isSetFunctionCall(const ast::CallExpression& call) const;
     TypeRef analyzeSetFunction(const ast::CallExpression& call);
+    // `Fill(Value)` (r3.81), in SemanticArrays.cpp: an array filled with
+    // copies of Value, where an array is expected.
+    bool isFillCall(const ast::CallExpression& call) const;
+    TypeRef analyzeFill(const ast::CallExpression& call);
+    static std::string arrayWithoutInitializer(const std::string& name, const std::string& written,
+                                               TypeRef arrayType);
     TypeRef analyzeMembership(const ast::BinaryExpression& expression);
     // Once every Type of the module is declared: struct fields and Const and
     // State variables whose written type is a type name.

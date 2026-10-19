@@ -559,6 +559,12 @@ void SemanticAnalyzer::validateStructDeclaration(const ast::TypeDeclaration& dec
         }
         const TypeRef type = resolveWrittenType(field.typeName);
         rejectFileIn(type, "a struct field, " + field.name);
+        // r3.81: an enum field is born with a value written in the struct,
+        // as an enum variable is (CANON-5).
+        if (type->isEnum() && !field.hasDefault) {
+            throw SemanticError("an enum field needs a default (CANON-5): " + field.name + " " + type->name() +
+                                " := " + type->literals().front());
+        }
         if (field.hasDefault) {
             if (type->isPointer()) {
                 throw SemanticError("a pointer field has no default literal: a Link and an Option are born "
@@ -701,13 +707,17 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
     }
 
     // CANON-5: "State scalars still require initializers"; like locals, only
-    // structs and arrays may use the type-default form `Name TType`.
+    // structs and sets may use the type-default form `Name TType`; an array
+    // is filled, `Fill(Value)` (r3.81).
     if (section.sectionKind() == ast::SectionKind::State) {
         for (const auto& [name, typeName] : stateDeclarationsWithoutInitializer_) {
             const TypeRef type = resolveWrittenType(typeName);
             // A Link and an Option<Own<T>> are born empty (safe-pointers).
             const bool bornEmpty = type->isLink() || type->isOptionOwn();
-            if (!type->isStruct() && !type->isArray() && !type->isSet() && !bornEmpty) {
+            if (type->isArray()) {
+                throw SemanticError(arrayWithoutInitializer(name, typeName, type));
+            }
+            if (!type->isStruct() && !type->isSet() && !bornEmpty) {
                 throw SemanticError(type->isOwn()
                                         ? "an owner is born with New(...): " + name
                                     : type->isEnum() ? "an enum variable needs an initializer (CANON-5): " + name + " " +

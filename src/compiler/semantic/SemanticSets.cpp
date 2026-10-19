@@ -9,7 +9,8 @@
 // over an Enum or an Integer Range of at most 256 values, a value type,
 // empty by default. `[A, B]` is a literal where a Set is expected; `in`
 // tests membership; `=`, `#`, `<=` and `>=` compare; Union, Intersection,
-// Difference, SymmetricDifference, With and Without return new sets.
+// Difference, SymmetricDifference, Include and Exclude return new sets
+// (r3.81: Include and Exclude replaced With and Without).
 
 #include "SemanticAnalyzer.h"
 
@@ -28,7 +29,7 @@ namespace {
 constexpr std::int64_t kMaxSetSize = 256;  // Q7
 
 constexpr std::array<std::string_view, 6> kSetFunctions{
-    "Union", "Intersection", "Difference", "SymmetricDifference", "With", "Without"};
+    "Union", "Intersection", "Difference", "SymmetricDifference", "Include", "Exclude"};
 
 } // namespace
 
@@ -119,7 +120,7 @@ TypeRef SemanticAnalyzer::analyzeSetFunction(const ast::CallExpression& call)
     const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
     const ast::Expression& first = *call.arguments()[0];
     const ast::Expression& second = *call.arguments()[1];
-    const bool element = equalsIgnoreCase(name, "With") || equalsIgnoreCase(name, "Without");
+    const bool element = equalsIgnoreCase(name, "Include") || equalsIgnoreCase(name, "Exclude");
     // The set argument that is not a literal gives the other its type.
     TypeRef setType = nullptr;
     if (isSetLiteral(first) && !element) {

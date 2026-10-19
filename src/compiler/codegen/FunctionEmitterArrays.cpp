@@ -254,4 +254,62 @@ std::string FunctionEmitter::narrowForStorage(const std::string& value, const El
     return truncated;
 }
 
+// `Fill(Value)` (r3.81): Value is evaluated once and copied into every
+// element (or row) of a temporary array, which is the call's value; the
+// store that takes it retains what it holds, and the temporary is released
+// at the end of the statement. An array of owners is only filled with None:
+// all of it is null.
+std::string FunctionEmitter::emitFill(const ast::CallExpression& call)
+{
+    const TypeRef arrayType = typeOf(call);
+    const TypeRef unit = semantics_.fillUnit(call);
+    const std::string llvmType = llvmValueType(arrayType);
+    if (isMoveOnly(unit)) {
+        return "zeroinitializer";
+    }
+    std::string value = emitExpression(*call.arguments()[0]);
+    const std::string storage = llvmStorageType(unit);
+    if (narrowIntegerRange(unit)) {
+        const std::string truncated = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << truncated << " = trunc i64 " << value << " to " << storage << '\n';
+        value = truncated;
+    }
+    const std::int64_t units = flattenArray(arrayType).count / (isArrayType(unit) ? flattenArray(unit).count : 1);
+    const std::string array = "%fill" + std::to_string(nextTemporary_++);
+    output_ << "  " << array << " = alloca " << llvmType << '\n';
+    output_ << "  store " << llvmType << " zeroinitializer, ptr " << array << '\n';
+    const bool owns = typeOwnsReferences(unit);
+    const std::string label = std::to_string(nextLabel_++);
+    const std::string counter = "%fill.i" + label;
+    output_ << "  " << counter << " = alloca i64\n";
+    output_ << "  store i64 0, ptr " << counter << '\n';
+    output_ << "  br label %fill.cond" << label << "\n\n";
+    output_ << "fill.cond" << label << ":\n";
+    const std::string index = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string more = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << index << " = load i64, ptr " << counter << '\n';
+    output_ << "  " << more << " = icmp slt i64 " << index << ", " << units << '\n';
+    output_ << "  br i1 " << more << ", label %fill.body" << label << ", label %fill.end" << label << "\n\n";
+    output_ << "fill.body" << label << ":\n";
+    const std::string element = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << element << " = getelementptr inbounds " << storage << ", ptr " << array << ", i64 " << index
+            << '\n';
+    if (owns) {
+        emitOwningStore(element, unit, storage, value);
+    } else {
+        output_ << "  store " << storage << ' ' << value << ", ptr " << element << '\n';
+    }
+    const std::string next = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << next << " = add i64 " << index << ", 1\n";
+    output_ << "  store i64 " << next << ", ptr " << counter << '\n';
+    output_ << "  br label %fill.cond" << label << "\n\n";
+    output_ << "fill.end" << label << ":\n";
+    const std::string filled = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << filled << " = load " << llvmType << ", ptr " << array << '\n';
+    if (owns) {
+        holdOwnedResult(filled, arrayType, llvmType);
+    }
+    return filled;
+}
+
 } // namespace inox::compiler::codegen::detail

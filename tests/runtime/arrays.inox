@@ -21,7 +21,7 @@ Sum(V Array[1..Size] Integer) Integer :
 ;
 
 Squares Array[1..Size] Integer :
-    R Array[1..Size] Integer
+    R Array[1..Size] Integer := Fill(0)
     for I in 1..Size
         R[I] := I * I
     ;
@@ -29,7 +29,7 @@ Squares Array[1..Size] Integer :
 ;
 
 Main :
-    A Array[1..Size] Integer
+    A Array[1..Size] Integer := Fill(0)
     for I in Low(A)..High(A)
         A[I] := I * I
     ;
@@ -39,19 +39,19 @@ Main :
         Total += A[I]
     ;
     PutLn(A[2], " ", Total, " ", Length(A), " ", Low(A), " ", High(A))
-    M Array[1..2, -1..1] Byte
+    M Array[1..2, -1..1] Byte := Fill(0)
     M[1, 0] := 200
     M[2, -1] := M[1, 0] + 55
     PutLn(M[1, 0], " ", M[2, -1], " ", M[2, 1])
     B Array[1..Size] Integer := A
     B[1] := -7
     PutLn(A[1], " ", B[1])
-    F Array[0..2] Float
+    F Array[0..2] Float := Fill(0.0)
     F[1] := 2.5
-    Flags Array[0..1] Bool
+    Flags Array[0..1] Bool := Fill(False)
     Flags[1] := F[1] > 2.0
     PutLn(F[1], " ", Flags[0], " ", Flags[1])
-    K Array[1..2] Int8
+    K Array[1..2] Int8 := Fill(0)
     K[1] := -128
     PutLn(K[1])
     Row Array[-1..1] Byte := M[2]

@@ -48,7 +48,7 @@ Main :
     P.FName := Pick(Copy, Name, true)
     PutLn(P.FName, " ", Q.FName)
 
-    Words Array[1..3] String
+    Words Array[1..3] String := Fill("")
     for I in 1..3
         Line String := ""
         GetLn(Line)

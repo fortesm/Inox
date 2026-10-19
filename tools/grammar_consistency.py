@@ -39,7 +39,7 @@ CONTEXTUAL_WORDS = {"self", "range", "array", "override",
                     # predefined names (CANON-2, r3.74): identifiers that
                     # keep their meaning and can never be declared
                     "true", "false", "exit", "bitand", "bitor", "bitxor", "bitnot",
-                    "leave", "continue", "iif",
+                    "leave", "continue", "iif", "fill",
                     # meaningful in one position only (r3.76): `pos then`
                     "then",
                     # design by contract (CANON-24)

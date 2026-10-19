@@ -37,7 +37,8 @@ Main :
     GetLn(First)
     GetLn(Second)
 
-    Pets Array[1..3] TPet
+    NoPet TPet
+    Pets Array[1..3] TPet := Fill(NoPet)
     Pets[1] := MakePet(First, "gato")
     Pets[2].FName := Second
     PutLn(Pets[1].FName, " ", Pets[1].FKind, " ", Pets[2].FName, " [", Pets[2].FKind, "] ", Pets[3].FName, " ", Pets[3].FLegs)
@@ -46,13 +47,13 @@ Main :
     Pets[1] := Pets[3]
     PutLn(Copy[1].FName, " ", Pets[1].FName)
 
-    Grid Array[1..2, 1..2] String
+    Grid Array[1..2, 1..2] String := Fill("")
     Grid[1, 2] := First
     Grid[2, 1] := Second
     Grid[2, 2] := Grid[1, 2]
     PutLn("[", Grid[1, 1], "] ", Grid[1, 2], " ", Grid[2, 1], " ", Grid[2, 2])
 
-    Pair Array[1..2] String
+    Pair Array[1..2] String := Fill("")
     Pair[1] := First
     Pair[2] := Second
     Flipped := Reverse(Pair)

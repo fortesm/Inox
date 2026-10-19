@@ -16,7 +16,7 @@ Indice Integer :
 ;
 
 Main :
-    A Array[1..2] Integer
+    A Array[1..2] Integer := Fill(0)
     L := Link(A[Indice])
     PutLn(Value(L))
 ;

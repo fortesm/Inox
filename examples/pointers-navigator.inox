@@ -59,7 +59,8 @@ TNavigator.Show(Self) :
 ;
 
 Main :
-    Contacts Array[1..Size] TContact
+    Blank TContact
+    Contacts Array[1..Size] TContact := Fill(Blank)
     Contacts[1] := TContact(FName := "Ann", FPhone := "1111", FAge := 30)
     Contacts[2] := TContact(FName := "Ben", FPhone := "2222", FAge := 25)
     Contacts[3] := TContact(FName := "Carl", FPhone := "3333", FAge := 41)

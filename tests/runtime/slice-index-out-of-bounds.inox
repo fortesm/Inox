@@ -8,7 +8,7 @@
 == ADR-0017: a slice index outside the slice bounds traps, even when it is
 == inside the array.
 Main :
-    A Array[1..5] Integer
+    A Array[1..5] Integer := Fill(0)
     S := A[2..3]
     I Integer := 3
     I += 1

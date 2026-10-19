@@ -48,23 +48,23 @@ Main :
     Show(Intersection(All, Red))
     Show(Difference(All, Red))
     Show(SymmetricDifference(Red, [Heart, Spade]))
-    Show(With(Empty, Spade))
-    Show(Without(All, Club))
+    Show(Include(Empty, Spade))
+    Show(Exclude(All, Club))
     PutLn(Red <= All, " ", All >= Black, " ", Red <= Black, " ", Red = [Heart, Diamond], " ", Empty # [], " ", Heart in [Club, Heart])
     Copy := Empty
-    Copy := With(Copy, Club)
+    Copy := Include(Copy, Club)
     Pair Set<TSuit> := [Club, Heart]
     PutLn(Club in Empty, " ", Club in Copy, " ", Club in Pair, " ", Heart in Pair, " ", Spade in Pair)
     H THand
-    H.FSuits := With(H.FSuits, Heart)
+    H.FSuits := Include(H.FSuits, Heart)
     Show(H.FSuits)
-    Seen := With(Seen, 100)
-    Seen := With(Seen, 0)
+    Seen := Include(Seen, 100)
+    Seen := Include(Seen, 0)
     N := 50
     PutLn(100 in Seen, " ", 0 in Seen, " ", N in Seen, " ", 101 in Seen, " ", -1 in Seen)
     Big Set<TFlags> := [1, 200, 129]
     PutLn(200 in Big, " ", 129 in Big, " ", 128 in Big, " ", 1 in Big, " ", Big = [1, 129, 200])
-    Hands Array[1..2] Set<TSuit>
+    Hands Array[1..2] Set<TSuit> := Fill([])
     Hands[2] := Red
     Show(Hands[1])
     Show(Hands[2])

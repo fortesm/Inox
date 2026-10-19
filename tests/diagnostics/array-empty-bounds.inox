@@ -7,6 +7,6 @@
 
 == CANON-13: Low must not exceed High.
 Main :
-    A Array[3..1] Integer
+    A Array[3..1] Integer := Fill(0)
     PutLn(A[1])
 ;

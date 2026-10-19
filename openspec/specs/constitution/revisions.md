@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.80
+Canon revision: r3.81
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -22,16 +22,19 @@ stands.
    files (a `BinaryFile` type, little-endian, `Write`/`Read` sized by the
    type, Strings in binary files, reading past the end, 0-based byte
    offsets); streams come after `generics`.
-2. **Enums in aggregates** (change `enum-range-set`, r3.80): a struct field
-   of an enum type without a default, and an array element of an enum
-   type, start at the first literal (implemented, as every aggregate starts
-   at its type's defaults); the alternative is to require a default for
-   enum fields and to forbid enum arrays until array literals exist.
-3. **`| |`, `{ }` and annotations** (brainstorm, 2026-10-16):
+2. **`| |`, `{ }` and annotations** (brainstorm, 2026-10-16):
    `openspec/changes/delimiters-and-annotations/proposal.md` — `| |` as a
    capture clause (`Name`, `Move(X)`, `Link(X)`), `{ }` as an effect or a
    requirement clause, `@` annotations; no String interpolation and `{ }`
    reserved (decided, r3.74).
+3. **Array fields of structs** (change `array-fill`, r3.81): every local and
+   State array is filled, but a struct field of an array type
+   (`FData Array[1..4] Byte`) still starts at zero (or at the element
+   struct's defaults) when the struct takes its type defaults, under the
+   struct rule kept on 2026-10-18. Must an array field be filled too, by a
+   field default (`FData Array[1..4] Byte := Fill(0)`) or in the
+   construction? A field of a generic struct whose parameter is an enum
+   (`TBox<TSuit>` with `FValue T`) is not yet held to the enum-field rule.
 
 ## Revision log
 
@@ -236,3 +239,24 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   first literal (open question 2). Marcelo Fortes, 2026-10-12: "Todas as
   tomadas de decisão dos pontos 1 a 5 foram verificadas e eleitas para
   serem acatadas." Change `enum-range-set`.
+- r3.81 — 2026-10-18 — Open question 2 answered: the strict rule for every
+  array. Every local and State array, whatever its element type, is
+  initialized where it is declared; `Fill(Value)` (a predefined name, like
+  IIf) is the array its target expects, every element or row a copy of
+  Value, evaluated once, following the rules of types (a Range checks it),
+  copy and construction; an array of owners is filled with None. An enum
+  struct field needs a default; structs keep their field defaults (`P
+  TPoint`). The set functions `With`/`Without` become `Include`/`Exclude`
+  (the old names are rejected with the new ones); the six set functions
+  never change their arguments, so a call as a statement is an error.
+  Marcelo Fortes, 2026-10-18: "Entre as três alternativas originais, eu
+  escolheria a estrita como regra definitiva, acompanhada de um mecanismo
+  simples para inicialização de arrays"; "Todos os arrays da linguagem
+  Inox, independentemente do tipo de seus elementos, exigem inicialização
+  explícita na declaração. A expressão Fill(Value) inicializa integralmente
+  o array de destino com o valor especificado, observando as regras de
+  tipos, cópia e construção"; "Eu manteria separada a regra já existente
+  para inicialização de estruturas por defaults de seus campos"; "Minha
+  preferência seria Include(S, X), acompanhado de Exclude(S, X),
+  substituindo o par atual With/Without." Array fields of structs stay open
+  (question 3). Change `array-fill`.

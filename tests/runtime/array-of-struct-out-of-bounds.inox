@@ -12,7 +12,8 @@ Type
     ;
 
 Main :
-    A Array[1..3] TPoint
+    Zero TPoint
+    A Array[1..3] TPoint := Fill(Zero)
     I Integer := 3
     I += 1
     A[I].FX := 1

@@ -17,8 +17,8 @@ Type
 State
     Origin TPoint := TPoint(FX := 1, FY := 2)
     Home TPoint
-    Counts Array[1..3] Integer
-    Grid Array[1..2, 1..2] TPoint
+    Counts Array[1..3] Integer := Fill(0)
+    Grid Array[1..2, 1..2] TPoint := Fill(Home)
     Total Integer := Origin.FX + Origin.FY
 ;
 

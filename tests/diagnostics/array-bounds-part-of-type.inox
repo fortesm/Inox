@@ -7,8 +7,8 @@
 
 == CANON-13: Low and High are part of an array type.
 Main :
-    A Array[1..3] Integer
-    B Array[0..2] Integer
+    A Array[1..3] Integer := Fill(0)
+    B Array[0..2] Integer := Fill(0)
     B := A
     PutLn(B[0])
 ;
