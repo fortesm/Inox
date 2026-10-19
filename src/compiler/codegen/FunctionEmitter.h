@@ -218,6 +218,9 @@ private:
     std::string emitSetCall(const ast::CallExpression& call);
     // `Fill(Value)` (r3.81): the target array with every element a copy.
     std::string emitFill(const ast::CallExpression& call);
+    // Change char-values: Char(I) checked, and String(C).
+    std::string emitCharCheck(const std::string& value, TypeRef target);
+    std::string emitCharString(const std::string& value);
     void emitArrayFillDefault(const std::string& pointer, TypeRef arrayType, const std::string& text);
     std::string emitSetComparison(const ast::BinaryExpression& expression);
     std::string emitMembership(const ast::BinaryExpression& expression);

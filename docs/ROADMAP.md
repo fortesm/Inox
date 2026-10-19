@@ -19,7 +19,8 @@ may still move.
 0.2     now    the imperative core: structs, fixed arrays, slices, ref
                parameters, case, Strings, text files, Std.Strings /
                Std.StrUtils with concatenation, UInt64, Enum, Range and Set
-               (done); Char values; Float conversions and Float Const
+               (done); Char values (done, r3.83); Float conversions
+               and Float Const
 0.3            exact decimals (Currency, Crypto); Std.DateTime /
                Std.DateUtils; Std.SystemUtils; Std.Debug.Assert; console I/O
                moved into libinoxrt (the final I/O ABI)
@@ -77,5 +78,6 @@ whether concurrency or contracts are in it) is the maintainer's decision.
   (constructors and destructors: the maintainer's analysis).
   `docs/OOP_COMPARISON.md` lists what object orientation gives and Inox's
   answer to each point.
-- Then the rest of 0.2: Char values and output; Float conversions and Float
-  `Const`.
+- `char-values` — Char values and output (done, r3.83). Later: `Get(C)`,
+  Char classification and case mapping.
+- Then the rest of 0.2: Float conversions and Float `Const`.

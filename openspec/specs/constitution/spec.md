@@ -463,7 +463,7 @@ CANON-13). Sets, and structs whose type defaults are complete, may omit
 
 ### Requirement: CANON-5 Initialization is transitive
 Explicit initialization SHALL hold through structs, arrays and type
-parameters (r3.82). A struct field of an enum, array or type-parameter type
+parameters (r3.82). A struct field of an enum, Char, array or type-parameter type
 has no implicit value: it has a default (a literal, or `Fill(Literal)` for
 an array) or is given in the construction. A struct takes its type defaults
 only when every component has one, nested structs and parts included; no
@@ -1127,13 +1127,19 @@ I. `Pos` is a reserved word (CANON-2), so the search function is named
 ### Requirement: CANON-14 Char
 `Char` SHALL be a Unicode scalar value, U+0000..U+10FFFF without the
 surrogates U+D800..U+DFFF: not a byte, an integer or a grapheme cluster. A
-surrogate literal is a compile error; conversions among Char, Byte and
-Integer are always explicit. A Char is not an ordinal: `Ord` never applies
-to it.
+surrogate literal is a compile error; `Char(I)` (checked) and `Integer(C)`
+are the only conversions with integers, `String(C)` the one with Strings.
+A Char is not an ordinal: no `Ord`, `Succ`, `Pred` or arithmetic; Chars
+compare by code point and form ranges (`'a'..'z'`). Details:
+`language/chars`.
 
 #### Scenario: Char assignment
 - **WHEN** a String is assigned to a Char
-- **THEN** it is rejected (tests/invalid/invalid-011.inox); a surrogate literal is rejected (test to add)
+- **THEN** it is rejected (tests/invalid/invalid-011.inox); a surrogate literal is rejected (tests/diagnostics/char-surrogate-literal.inox)
+
+#### Scenario: Char values
+- **WHEN** a program converts, compares, prints and stores Chars, iterates a Char range and reads `CharAt`
+- **THEN** each follows `language/chars` (tests/runtime/chars.inox)
 
 #### Scenario: Ord of a Char
 - **WHEN** a program writes `Ord('A')`

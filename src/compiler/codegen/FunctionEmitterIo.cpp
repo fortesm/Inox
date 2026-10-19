@@ -160,14 +160,16 @@ void FunctionEmitter::emitOutputCall(const ast::Expression& argument, bool newli
     }
 
     const TypeRef printedType = typeOf(argument);
-    if (isStringType(printedType) || (printedType != nullptr && printedType->isEnum())) {
+    if (isStringType(printedType) || (printedType != nullptr && (printedType->isEnum() || printedType->isChar()))) {
         // The bytes of the block, printed by the program's printf so the
         // output stays in order with every other Put (StringRuntime.cpp).
         // An enum prints its literal's name (CANON-13).
         requireModuleLine("@.inox.fmt.strv = private unnamed_addr constant [5 x i8] c\"%.*s\\00\"");
         requireModuleLine("@.inox.fmt.strv.nl = private unnamed_addr constant [6 x i8] c\"%.*s\\0A\\00\"");
-        const std::string value = printedType->isEnum() ? emitEnumName(emitExpression(argument), printedType)
-                                                        : emitExpression(argument);
+        // A Char prints its character in UTF-8 (change char-values).
+        const std::string value = printedType->isEnum()   ? emitEnumName(emitExpression(argument), printedType)
+                                  : printedType->isChar() ? emitCharString(emitExpression(argument))
+                                                          : emitExpression(argument);
         const std::string lengthPointer = "%tmp" + std::to_string(nextTemporary_++);
         const std::string length = "%tmp" + std::to_string(nextTemporary_++);
         const std::string length32 = "%tmp" + std::to_string(nextTemporary_++);

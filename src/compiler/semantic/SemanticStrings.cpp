@@ -108,6 +108,8 @@ TypeRef SemanticAnalyzer::analyzeStringCall(const ast::CallExpression& call, con
         return types().stringType();
     case 'B':
         return types().boolType();
+    case 'C':
+        return types().charType();
     default:
         return types().int64Type();
     }

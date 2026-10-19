@@ -26,6 +26,7 @@ enum class StringFunction {
     Position,
     UpperCase,
     LowerCase,
+    CharAt,  // change char-values
     // Std.StrUtils
     Trim,
     LTrim,
@@ -48,18 +49,19 @@ struct StringFunctionInfo {
     StringFunction function;
     // One letter per parameter: S a String, I an integer.
     std::string_view parameters;
-    // S a String, I an Integer, B a Bool.
+    // S a String, I an Integer, B a Bool, C a Char.
     char result;
     bool convenience;  // declared in Std.StrUtils, not Std.Strings
 };
 
-inline constexpr std::array<StringFunctionInfo, 20> kStringFunctions{{
+inline constexpr std::array<StringFunctionInfo, 21> kStringFunctions{{
     {"Length", StringFunction::Length, "S", 'I', false},
     {"ByteLength", StringFunction::ByteLength, "S", 'I', false},
     {"Substr", StringFunction::Substr, "SII", 'S', false},
     {"Position", StringFunction::Position, "SS", 'I', false},
     {"UpperCase", StringFunction::UpperCase, "S", 'S', false},
     {"LowerCase", StringFunction::LowerCase, "S", 'S', false},
+    {"CharAt", StringFunction::CharAt, "SI", 'C', false},
     {"Trim", StringFunction::Trim, "S", 'S', true},
     {"LTrim", StringFunction::LTrim, "S", 'S', true},
     {"RTrim", StringFunction::RTrim, "S", 'S', true},

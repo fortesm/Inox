@@ -247,6 +247,17 @@ std::string FunctionEmitter::emitStringCall(const ast::CallExpression& call, sem
     case StringFunction::Substr:
         return makes(RuntimeFunction::StringSubstr, "__inox_str_substr",
                      "ptr " + values[0] + ", i64 " + values[1] + ", i64 " + values[2]);
+    case StringFunction::CharAt: {
+        // Change char-values: the code point at a position counted from 1;
+        // outside the String the status stops the program (kind 15).
+        requireRuntime(RuntimeFunction::StringCharAt);
+        requireStringRuntime();
+        const std::string status = newStringStatus();
+        output_ << "  " << result << " = call i64 @__inox_str_char_at(ptr " << values[0] << ", i64 " << values[1]
+                << ", ptr " << status << ")\n";
+        emitStringStatusCheck(status);
+        return result;
+    }
     case StringFunction::Position:
         requireRuntime(RuntimeFunction::StringPosition);
         output_ << "  " << result << " = call i64 @__inox_str_pos(ptr " << values[0] << ", ptr " << values[1]

@@ -538,4 +538,27 @@ std::int32_t __inox_str_compare_text(void* left, void* right) noexcept
     return j < b->length ? -1 : 0;
 }
 
+// String(C) (change char-values): the one-character String of a Char, a
+// Unicode scalar the compiler already checked.
+void* __inox_str_from_char(std::int64_t code, std::int32_t* status) noexcept
+{
+    char bytes[4];
+    const char* end = encode(static_cast<std::uint32_t>(code), bytes);
+    return succeed(status, makeString(bytes, end - bytes, 1));
+}
+
+// CharAt(S, I) (change char-values): the code point at position I, counted
+// from 1 in characters; outside 1..Length(S) the status is out of range.
+std::int64_t __inox_str_char_at(void* value, std::int64_t position, std::int32_t* status) noexcept
+{
+    InoxString* string = asString(value);
+    if (position < 1 || position > characterCount(string)) {
+        *status = kOutOfRange;
+        return 0;
+    }
+    *status = kOk;
+    std::int64_t index = byteOffset(string, position - 1);
+    return decode(string->bytes, index);
+}
+
 } // extern "C"

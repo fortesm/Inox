@@ -1,0 +1,1 @@
+value out of range for Char: 55296 is a surrogate, never a Char (CANON-14)

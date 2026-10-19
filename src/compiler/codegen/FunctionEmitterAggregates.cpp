@@ -8,6 +8,7 @@
 // FunctionEmitter: struct defaults and construction, places, fields, methods, assignment.
 
 #include "FunctionEmitter.h"
+#include "../support/CharLiteral.h"
 
 #include "AstQueries.h"
 #include "ExceptionAbi.h"
@@ -108,6 +109,12 @@ void FunctionEmitter::emitStructFieldDefaults(const std::string& pointer, TypeRe
             output_ << "  store ptr " << value << ", ptr " << fieldPointer << '\n';
             continue;
         }
+        if (field.type->isChar()) {
+            // The code point of the default literal (char-values).
+            output_ << "  store i64 " << support::decodeCharLiteral(field.defaultValue).code << ", ptr "
+                    << fieldPointer << '\n';
+            continue;
+        }
         if (field.type->isEnum()) {
             // The ordinal of the default literal (CANON-13).
             std::size_t ordinal = 0;
@@ -180,6 +187,8 @@ void FunctionEmitter::emitArrayFillDefault(const std::string& pointer, TypeRef a
     std::string value;
     if (isStringType(element)) {
         value = emitStringValue(std::string_view(text).substr(1, text.size() - 2));
+    } else if (element->isChar()) {
+        value = std::to_string(support::decodeCharLiteral(text).code);
     } else if (element->isEnum()) {
         std::size_t ordinal = 0;
         while (ordinal < element->literals().size() && !equalsIgnoreCase(element->literals()[ordinal], text)) {

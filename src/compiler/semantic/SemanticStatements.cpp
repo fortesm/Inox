@@ -378,8 +378,11 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         // Change uint64: a range of UInt64 values gives a UInt64 iterator;
         // every other integer range gives an Integer one.
         // An enum range gives an iterator of the enum (CANON-13).
+        // A Char range gives a Char iterator (change char-values).
         const TypeRef iteratorType =
-            isUInt64Type(rangeType) || (rangeType != nullptr && rangeType->isEnum()) ? rangeType : types().int64Type();
+            isUInt64Type(rangeType) || (rangeType != nullptr && (rangeType->isEnum() || rangeType->isChar()))
+                ? rangeType
+                : types().int64Type();
         if (forStatement.step() != nullptr) {
             const TypeRef stepType = analyzeWithIntegerContext(*forStatement.step(), iteratorType);
             if (!isIntegerType(stepType)) {

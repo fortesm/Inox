@@ -42,7 +42,7 @@ void testValueTypes()
     checkEqual(llvmValueType(context.stringType()), "ptr", "String is a pointer");
     checkEqual(llvmValueType(context.fileType()), "ptr", "File is a pointer");
     checkEqual(llvmValueType(context.slice(context.int64Type())), "{ ptr, i64, i64 }", "a slice");
-    checkEqual(llvmValueType(context.charType()), "", "Char is not lowered");
+    checkEqual(llvmValueType(context.charType()), "i64", "a Char is its code point, an i64");
     checkEqual(llvmValueType(context.builtin("Currency")), "", "a decimal is not lowered");
     checkEqual(llvmValueType(nullptr), "", "an unknown type has no LLVM type");
 }

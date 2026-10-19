@@ -1,1 +1,1 @@
-a Set is over an Enum or a Range (CANON-13), not Int64: Set<Integer>
+a Set is over an Enum or a Range, of Integers or Chars (CANON-13), not Int64: Set<Integer>

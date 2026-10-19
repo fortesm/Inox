@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.82
+Canon revision: r3.83
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -269,3 +269,17 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   tipo genérico"; "aprovar ambas as correções no mesmo PR, incluindo os
   testes de estruturas aninhadas e especializações genéricas." Change
   `array-fill`.
+- r3.83 — 2026-10-19 — Char values (CANON-14, CANON-5): a Char literal
+  takes the escapes of Strings and its quote (`'\n'`, `'\''`), never a
+  surrogate; `Char(I)` is checked (kind 8), `Integer(C)` gives the code
+  point and `String(C)` the one-character String, with no implicit
+  conversion either way; Chars compare by code point and form ranges for
+  `for`, `case` and `in`; a Char Range holds Chars (checked stores, kind 11,
+  Low and High, sets over it); no arithmetic, `Ord`, `Succ` or `Pred`;
+  `CharAt(S, I)` in Std.Strings (kind 15 outside); Put, PutLn and WriteLn
+  write the character in UTF-8; a Char field has a default or is given in
+  the construction (r3.82); Chars live in locals, parameters, results,
+  fields, State, arrays (stored in 32 bits), Consts and generic instances.
+  `Get(C)` comes later. Marcelo Fortes, 2026-10-19, on the eight
+  recommendations: "Ok, então, neste caso, está tudo acatado. Prossiga com
+  nosso padrão." Change `char-values`.

@@ -8,6 +8,7 @@
 #include "SemanticSupport.h"
 
 #include "SemanticAnalyzer.h"
+#include "../support/CharLiteral.h"
 
 #include <array>
 #include <cctype>
@@ -349,34 +350,27 @@ std::string caseValueText(std::int64_t value, const CaseDomain& domain)
     return std::to_string(value);
 }
 
-// Decodes a char literal token ('A', 'é'): exactly one UTF-8 encoded scalar.
+// Decodes a char literal token ('A', 'é', '\n'): exactly one Unicode scalar
+// (support/CharLiteral.h).
 bool decodeCharLiteral(std::string_view text, std::int64_t& value)
 {
-    if (text.size() >= 2 && text.front() == '\'' && text.back() == '\'') {
-        text = text.substr(1, text.size() - 2);
+    const support::DecodedChar decoded = support::decodeCharLiteral(text);
+    value = decoded.code;
+    return decoded.status == support::CharLiteralStatus::Ok;
+}
+
+std::string describeChar(std::int64_t code)
+{
+    static constexpr char hex[] = "0123456789ABCDEF";
+    std::string digits;
+    for (std::int64_t rest = code; rest > 0 || digits.size() < 4; rest >>= 4) {
+        digits.insert(digits.begin(), hex[rest & 0xF]);
     }
-    if (text.empty()) {
-        return false;
+    std::string text = "U+" + digits;
+    if (code >= 0x20 && code < 0x7F && code != '\'' && code != '\\') {
+        text = std::string("'") + static_cast<char>(code) + "' (" + text + ")";
     }
-    const auto byte = [&](std::size_t i) { return static_cast<unsigned char>(text[i]); };
-    std::size_t length = 0;
-    std::int64_t code = 0;
-    if (byte(0) < 0x80) { length = 1; code = byte(0); }
-    else if ((byte(0) & 0xE0) == 0xC0) { length = 2; code = byte(0) & 0x1F; }
-    else if ((byte(0) & 0xF0) == 0xE0) { length = 3; code = byte(0) & 0x0F; }
-    else if ((byte(0) & 0xF8) == 0xF0) { length = 4; code = byte(0) & 0x07; }
-    else { return false; }
-    if (text.size() != length) {
-        return false;
-    }
-    for (std::size_t i = 1; i < length; ++i) {
-        if ((byte(i) & 0xC0) != 0x80) {
-            return false;
-        }
-        code = (code << 6) | (byte(i) & 0x3F);
-    }
-    value = code;
-    return true;
+    return text;
 }
 
 const ast::BinaryExpression* namedArgument(const ast::Expression& argument)
