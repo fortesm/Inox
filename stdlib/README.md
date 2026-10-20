@@ -2,7 +2,7 @@
 
 This directory contains the minimal standard-library modules agreed for Inox 0.1:
 
-- `Std.System.inox` — prelude (implicit) documentation and compiler intrinsics (formerly `Std.Core`).
+- `Std.System.inox` — prelude (implicit) documentation and compiler intrinsics.
 - `Std.IO.inox` — I/O facade for `Put` and `PutLn` built-ins/runtime lowering.
 - `Std.Math.inox` — pure Integer helpers that can be implemented in Inox 0.1.
 - `Std.Debug.inox` — debug facade; `Assert` requires canonical trap/runtime support.
