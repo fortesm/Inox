@@ -48,6 +48,19 @@ enum class RuntimeFunction {
     // Char values (change char-values): String(C) and CharAt(S, I).
     StringFromChar,
     StringCharAt,
+    // Numbers and text (r3.90, change numbers-text). The four StringTo*
+    // raise ConversionError, so they have no `nounwind`.
+    StringFromInteger,
+    StringFromUnsigned,
+    StringFromFloat,
+    StringFromFloat32,
+    StringFormatFloat,
+    StringToInteger,
+    StringToUnsigned,
+    StringToFloat,
+    StringToFloat32,
+    StringFieldCount,
+    StringField,
     // The classes and the case of a Char (r3.89, change input-chars-exponents).
     CharIs,
     CharCase,
@@ -63,6 +76,7 @@ enum class RuntimeFunction {
     FileWriteInteger,
     FileWriteUnsigned,
     FileWriteFloat,
+    FileWriteFloat32,
     FileWriteBool,
     FileWriteNewline,
     FileExists,
@@ -88,6 +102,7 @@ enum class RuntimeFunction {
     ConsoleAtEnd,
     ConsoleGetFloat,
     ConsoleGetFloat32,
+    ConsolePutFloat32,
     // Std.Terminal (runtime/ConsoleRuntime.cpp), declared on first use.
     TerminalRawMode,
     TerminalReadKey,

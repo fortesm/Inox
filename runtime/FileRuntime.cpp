@@ -22,6 +22,7 @@
 // errno, which the C runtime sets on Linux and on Windows.
 
 #include "Console.h"
+#include "NumberText.h"
 #include "StringBlock.h"
 
 #include "../src/compiler/exceptions/ExceptionTypes.h"
@@ -340,11 +341,17 @@ void __inox_file_write_u64(void* value, std::uint64_t number)
     writeBytes(value, text, static_cast<std::size_t>(length));
 }
 
+// B3 (r3.90): as Put prints it, the shortest text that reads back.
 void __inox_file_write_f64(void* value, double number)
 {
-    char text[512];
-    const int length = std::snprintf(text, sizeof text, "%f", number);
-    writeBytes(value, text, static_cast<std::size_t>(length));
+    char text[inox::runtime::kRealTextCapacity];
+    writeBytes(value, text, inox::runtime::formatReal(number, false, text));
+}
+
+void __inox_file_write_f32(void* value, float number)
+{
+    char text[inox::runtime::kRealTextCapacity];
+    writeBytes(value, text, inox::runtime::formatReal(static_cast<double>(number), true, text));
 }
 
 void __inox_file_write_bool(void* value, bool flag)

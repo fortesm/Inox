@@ -5,8 +5,7 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== Change char-values: String(X) converts a Char only; numbers become text in
-== a later change.
+== r3.90 (B1): String(X) converts a Char or a number; a Bool is not one.
 Main :
-    PutLn(String(5))
+    PutLn(String(True))
 ;

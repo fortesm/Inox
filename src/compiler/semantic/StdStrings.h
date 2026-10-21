@@ -36,6 +36,10 @@ enum class StringFunction {
     IsPunctuation,
     UpperCaseChar,
     LowerCaseChar,
+    // r3.90 (B1, B4): numbers and fields
+    FormatFloat,
+    FieldCount,
+    Field,
     // Std.StrUtils
     Trim,
     LTrim,
@@ -56,14 +60,15 @@ enum class StringFunction {
 struct StringFunctionInfo {
     std::string_view name;
     StringFunction function;
-    // One letter per parameter: S a String, I an integer, C a Char.
+    // One letter per parameter: S a String, I an integer, C a Char, R a
+    // real (Float or Float32).
     std::string_view parameters;
     // S a String, I an Integer, B a Bool, C a Char.
     char result;
     bool convenience;  // declared in Std.StrUtils, not Std.Strings
 };
 
-inline constexpr std::array<StringFunctionInfo, 29> kStringFunctions{{
+inline constexpr std::array<StringFunctionInfo, 32> kStringFunctions{{
     {"Length", StringFunction::Length, "S", 'I', false},
     {"ByteLength", StringFunction::ByteLength, "S", 'I', false},
     {"Substr", StringFunction::Substr, "SII", 'S', false},
@@ -77,6 +82,7 @@ inline constexpr std::array<StringFunctionInfo, 29> kStringFunctions{{
     {"IsUpper", StringFunction::IsUpper, "C", 'B', false},
     {"IsLower", StringFunction::IsLower, "C", 'B', false},
     {"IsPunctuation", StringFunction::IsPunctuation, "C", 'B', false},
+    {"FormatFloat", StringFunction::FormatFloat, "RI", 'S', false},
     {"Trim", StringFunction::Trim, "S", 'S', true},
     {"LTrim", StringFunction::LTrim, "S", 'S', true},
     {"RTrim", StringFunction::RTrim, "S", 'S', true},
@@ -91,6 +97,8 @@ inline constexpr std::array<StringFunctionInfo, 29> kStringFunctions{{
     {"EndsWith", StringFunction::EndsWith, "SS", 'B', true},
     {"SameText", StringFunction::SameText, "SS", 'B', true},
     {"CompareText", StringFunction::CompareText, "SS", 'I', true},
+    {"FieldCount", StringFunction::FieldCount, "SS", 'I', true},
+    {"Field", StringFunction::Field, "SSI", 'S', true},
     // UpperCase(C) and LowerCase(C) of a Char: found by name as the String
     // functions above, chosen by the analyzer when the argument is a Char.
     {"UpperCase", StringFunction::UpperCaseChar, "C", 'C', false},

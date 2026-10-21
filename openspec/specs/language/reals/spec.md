@@ -79,13 +79,14 @@ error.
 - **THEN** the compiler rejects it (tests/diagnostics/float-conversion-constant.inox)
 
 ### Requirement: Conversions take numbers
-A conversion into a number SHALL take a number: an integer, a real, or for
-an integer type a Char's code point. A Bool, a String or an enum SHALL be
-rejected, with the way to write it (`IIf(B, 1, 0)`, `Float(Ord(E))`).
+A conversion into a number SHALL take a number (an integer, a real, or for
+an integer type a Char's code point) or a String (r3.90). A Bool or an enum
+SHALL be rejected, with the way to write it (`IIf(B, 1, 0)`,
+`Float(Ord(E))`); text is never an enum value.
 
 #### Scenario: Values that are not numbers
-- **WHEN** a program writes `Float(True)`, `Integer("7")` or `Float(Heart)`
-- **THEN** the compiler rejects each (tests/diagnostics/conversion-of-bool.inox, tests/diagnostics/conversion-of-string.inox, tests/diagnostics/float-enum-conversion.inox)
+- **WHEN** a program writes `Float(True)`, `Float(Heart)` or `TSuit("Club")`
+- **THEN** the compiler rejects each (tests/diagnostics/conversion-of-bool.inox, tests/diagnostics/float-enum-conversion.inox, tests/diagnostics/text-to-enum.inox)
 
 ### Requirement: Real Consts
 A `Const` SHALL hold a Float or a Float32 given by a constant real
@@ -132,3 +133,18 @@ or the end; a Float32 is rounded once from the text.
 #### Scenario: Input
 - **WHEN** a program reads `-12.5`, `3`, `1.5e3` and a Float32 just above a tie
 - **THEN** the values arrive and the Float32 is above 1 (tests/runtime/get-real.inox)
+
+### Requirement: Numbers as text
+`String(N)` and `String(F)` SHALL write the number as Put does (a real as
+its shortest round-trip text); `Integer(S)`, every integer type, `Float(S)`
+and `Float32(S)` SHALL read the whole String: an optional `-` and digits,
+for a real an optional fraction and exponent, within the type. Other text
+(spaces, `+`, `_`, a value outside) raises ConversionError (r3.90).
+
+#### Scenario: Both ways
+- **WHEN** a program converts numbers of several types to text and back, and invalid or out-of-range text
+- **THEN** valid text gives the value, a Float survives the round trip, and the rest raises ConversionError (tests/runtime/number-text.inox)
+
+#### Scenario: Printing
+- **WHEN** a program prints Floats and Float32s
+- **THEN** each prints its shortest round-trip text (tests/runtime/float-printing.inox)

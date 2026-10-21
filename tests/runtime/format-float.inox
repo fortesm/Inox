@@ -1,0 +1,18 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.90 (B1): FormatFloat(F, Decimals) (Std.Strings) writes F with exactly
+== Decimals digits after the point, 0..20, rounded to nearest from the exact
+== binary value; no point when Decimals is 0. A Float32 is widened exactly.
+Use Std.Strings
+
+Main :
+    Price Float := 19.987
+    Small Float32 := 0.1
+    PutLn(FormatFloat(Price, 2), " ", FormatFloat(Price, 0), " ", FormatFloat(Price, 5), " ", FormatFloat(-1.0 / 3.0, 3))
+    PutLn(FormatFloat(Small, 10), " ", FormatFloat(1.0e20, 1), " ", FormatFloat(0.0, 2), " [", FormatFloat(7.0, 0), "]")
+    PutLn(FormatFloat(Price, 21))
+;

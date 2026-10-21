@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.89
+Canon revision: r3.90
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -351,3 +351,13 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   IsLower, IsPunctuation) and maps its case (CANON-14). Marcelo Fortes,
   2026-10-21: "A Acatado todos / B Acatado todos / C Acatado todos".
   Change `input-chars-exponents`.
+- r3.90 — 2026-10-21 — Numbers and text (0.3). B1: `String(N)` and
+  `String(F)` write a number as Put does; `FormatFloat(F, Decimals)`
+  (Std.Strings). B2: `Integer(S)`, every integer type, `Float(S)` and
+  `Float32(S)` read the whole text; other text raises the new exception
+  `ConversionError` (CANON-8, CANON-15). B3: a real is written as the
+  shortest text that reads back as the same value of its type (`0.1`,
+  `2.5`, `1500.0`, `1.0e16`), everywhere a real is written (CANON-17). B4:
+  Split and Join move to 0.5 with the collections; `FieldCount(S, Sep)` and
+  `Field(S, Sep, I)` (Std.StrUtils) now (CANON-14). Marcelo Fortes,
+  2026-10-21: "B Acatado todos". Change `numbers-text`.

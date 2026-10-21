@@ -91,6 +91,7 @@ Exception
         PermissionDenied
         AlreadyExists
         DiskFull
+    ConversionError
     ArithmeticError
         DivisionByZero
         OverflowError
@@ -646,8 +647,8 @@ Narrowing is never implicit: `T(X)` converts explicitly, checks T's range at
 run time, and a constant outside T is a compile error. `Integer(FloatExpr)`
 truncates toward zero and fails when out of range or NaN; `Float(I)`
 rounds; `Float32(F)` rounds and fails beyond Float32. Storing an Integer
-into a Natural is range-checked implicitly (ADR-0015). Details:
-`language/reals`.
+into a Natural is range-checked implicitly (ADR-0015). Text converts both
+ways (r3.90, `language/reals`).
 
 #### Scenario: Checked conversion
 - **WHEN** `Byte(X)` receives 300 at run time, or `Byte(300)` is written
@@ -660,6 +661,17 @@ into a Natural is range-checked implicitly (ADR-0015). Details:
 #### Scenario: Implicit Natural check
 - **WHEN** a negative Integer is stored into a Natural
 - **THEN** it traps (tests/runtime/natural-assignment-negative.inox)
+
+### Requirement: CANON-8 Numbers and text
+`String(X)` of an integer or a real SHALL be the text Put writes; `T(S)` of
+a String into an integer type, Float or Float32 SHALL read the whole text,
+an optional `-` and digits (and for a real a fraction and an exponent),
+within T; other text raises `ConversionError` (CANON-15), which a handler
+catches (r3.90).
+
+#### Scenario: Both ways
+- **WHEN** numbers become text and text becomes numbers, valid or not
+- **THEN** the values arrive and invalid text raises ConversionError (tests/runtime/number-text.inox)
 
 ### Requirement: CANON-8 Constants in fixed-width types
 A constant Integer expression SHALL be read in a fixed-width type when it
@@ -1125,16 +1137,24 @@ String changes. Details: `stdlib/strings`.
 
 ### Requirement: CANON-14 String functions
 `Use Std.Strings` SHALL give `Length`, `ByteLength`, `Substr`, `Position`,
-`UpperCase` and `LowerCase` (also of a Char), `CharAt` and the Char classes
+`UpperCase` and `LowerCase` (also of a Char), `CharAt`, the Char classes
 `IsLetter`, `IsDigit`, `IsSpace`, `IsUpper`, `IsLower`, `IsPunctuation`
-(r3.89); `Use Std.StrUtils` adds `Trim`, `LTrim`, `RTrim`, `Left`, `Right`,
-`PadLeft`, `PadRight`, `Replicate`, `Replace`, `Contains`, `StartsWith`,
-`EndsWith`, `SameText` and `CompareText`. Without the `Use`, the names are
+(r3.89) and `FormatFloat` (r3.90). `Use Std.StrUtils` gives these and the
+conveniences of the next requirement. Without the `Use`, the names are
 free. Details: `stdlib/strings`.
 
 #### Scenario: Without Use
 - **WHEN** a program calls Length of a String or Trim without the module that gives it, or declares its own Trim and Left without `Use Std.StrUtils`
 - **THEN** the first two are rejected naming the module, and the own routines are called (tests/diagnostics/string-length-without-use.inox, tests/diagnostics/string-function-without-use.inox, tests/runtime/string-names-free.inox)
+
+### Requirement: CANON-14 String conveniences
+`Use Std.StrUtils` SHALL give `Trim`, `LTrim`, `RTrim`, `Left`, `Right`,
+`PadLeft`, `PadRight`, `Replicate`, `Replace`, `Contains`, `StartsWith`,
+`EndsWith`, `SameText`, `CompareText`, `FieldCount` and `Field` (r3.90).
+
+#### Scenario: Conveniences
+- **WHEN** a program uses them on ASCII, multi-byte and empty Strings, or FieldCount with only Std.Strings
+- **THEN** each gives the result of `stdlib/strings` (tests/runtime/strings-functions.inox, tests/runtime/fields.inox), and the last is rejected (tests/diagnostics/field-needs-strutils.inox)
 
 ### Requirement: CANON-14 Characters, not bytes
 The String functions SHALL count code points: lengths and positions, the
@@ -1242,6 +1262,10 @@ fields or methods.
 - **WHEN** `On IOError` meets FileNotFound and `On ArithmeticError` meets DivisionByZero
 - **THEN** both match (tests/semantic/valid/exception-taxonomy.inox, tests/integration/exceptions/taxonomy-arithmetic.inox)
 
+#### Scenario: ConversionError
+- **WHEN** `On ConversionError` and `On Exception` meet text that is not a number
+- **THEN** both match (tests/runtime/number-text.inox)
+
 ### Requirement: CANON-15 Deferred exception features
 User-defined exception types, payload fields and reflection SHALL wait for
 an approved design. A future Result value complements exceptions for
@@ -1271,6 +1295,17 @@ runs, and is given back at exit (r3.88).
 #### Scenario: Prompt and answer
 - **WHEN** a program writes a prompt with Put and reads a line
 - **THEN** the prompt comes before the read and the line arrives unchanged (tests/runtime/console-prompt.inox)
+
+### Requirement: CANON-17 How reals are written
+`Put`, `PutLn`, `Write`, `WriteLn` and `String(F)` SHALL write a Float or a
+Float32 as the shortest text that reads back as the same value of its type:
+fixed notation for exponents -4 to 15 with a digit after the point
+(`2.5`, `1500.0`, `0.30000000000000004`), an exponent otherwise
+(`1.0e16`, `1.5e-5`); `-0.0`, `NaN`, `Inf`, `-Inf` (r3.90).
+
+#### Scenario: Reals printed
+- **WHEN** a program prints ordinary, large, small, special and Float32 values
+- **THEN** each prints its shortest text (tests/runtime/float-printing.inox)
 
 ### Requirement: CANON-17 Get and GetLn
 `Get(X)` SHALL read one value into the variable X, and `GetLn(X)` reads one
@@ -1424,8 +1459,7 @@ The planned modules SHALL be `Std.DateTime` / `Std.DateUtils` and
 `Std.SystemUtils` (environment, process, command line). `Std.Strings` /
 `Std.StrUtils` SHALL grow, by Unicode rules never tied to one human
 language, with grapheme lengths, root collation, locale collation later,
-normalization, splitting, joining, character classes and conversions
-between numbers and text.
+normalization, and `Split`/`Join` with the collections of 0.5.
 
 #### Scenario: Not yet available
 - **WHEN** a program uses `Std.DateTime`

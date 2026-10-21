@@ -22,7 +22,7 @@ struct ExceptionTypeInfo {
 };
 
 // Keep existing v3.16 ids stable. New ids are appended deliberately.
-inline constexpr std::array<ExceptionTypeInfo, 12> kStandardExceptionTypes{{
+inline constexpr std::array<ExceptionTypeInfo, 13> kStandardExceptionTypes{{
     {"Exception",       0x100, ""},
     {"RangeError",      0x101, "Exception"},
     {"IndexError",      0x102, "RangeError"},
@@ -35,6 +35,8 @@ inline constexpr std::array<ExceptionTypeInfo, 12> kStandardExceptionTypes{{
     {"PermissionDenied",0x109, "IOError"},
     {"AlreadyExists",   0x10A, "IOError"},
     {"DiskFull",        0x10B, "IOError"},
+    // r3.90 (B2): a String that is not a number of the type, Integer("4x").
+    {"ConversionError", 0x10C, "Exception"},
 }};
 
 inline bool equalsIgnoreCase(std::string_view left, std::string_view right)

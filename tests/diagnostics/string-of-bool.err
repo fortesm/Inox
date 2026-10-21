@@ -1,0 +1,1 @@
+String(X) converts a Char or a number (CANON-14), got Bool; a Bool is IIf(B, "true", "false")

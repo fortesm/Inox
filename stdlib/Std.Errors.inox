@@ -15,6 +15,7 @@
 ==     PermissionDenied
 ==     AlreadyExists
 ==     DiskFull
+==   ConversionError      == text that is not a number of the type (r3.90)
 ==   ArithmeticError
 ==     DivisionByZero
 ==     OverflowError

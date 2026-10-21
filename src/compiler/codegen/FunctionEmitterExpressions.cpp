@@ -562,18 +562,30 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return emitMathBuiltinCall(callee.name(), call.arguments());
         }
 
+        // r3.90 (B2): T(S) of a String into a number.
+        if (const TypeRef target = textConversionTarget(call)) {
+            return emitTextToNumber(call, target);
+        }
+
         // Change float-conversions: Float(X), Float32(X), and T(F) of a
         // Float into an integer type.
         if (const TypeRef target = realConversionTarget(call)) {
             return emitRealConversion(call, target);
         }
 
-        // String(C) (change char-values): the one-character String.
+        // String(C) (change char-values): the one-character String; String(N)
+        // and String(F) (r3.90, B1): the number as Put writes it.
         if (call.arguments().size() == 1 && equalsIgnoreCase(callee.name(), "String") &&
             calledRoutine(callee) == nullptr) {
             const TypeRef source = typeOf(*call.arguments().front());
             const std::string value = emitExpression(*call.arguments().front());
-            return source != nullptr && source->isChar() ? emitCharString(value) : value;
+            if (source != nullptr && source->isChar()) {
+                return emitCharString(value);
+            }
+            if (source != nullptr && (source->isInteger() || source->isFloat())) {
+                return emitNumberString(value, source, expressionLlvmType(*call.arguments().front()));
+            }
+            return value;
         }
 
         // CANON-8: Natural(X) checks X >= 0 at run time (fault kind 7);
@@ -713,6 +725,81 @@ std::string FunctionEmitter::emitCharString(const std::string& value)
     emitStringStatusCheck(status);
     holdOwnedResult(result, semantics_.types().stringType(), "ptr");
     return result;
+}
+
+// r3.90 (B1): String(N) or String(F), a new String held to the end of the
+// statement.
+std::string FunctionEmitter::emitNumberString(const std::string& value, TypeRef source, const std::string& llvmType)
+{
+    RuntimeFunction function = RuntimeFunction::StringFromInteger;
+    std::string symbol = "__inox_str_from_i64";
+    std::string type = "i64";
+    if (source->isFloat()) {
+        const bool float32 = llvmType == "float";
+        function = float32 ? RuntimeFunction::StringFromFloat32 : RuntimeFunction::StringFromFloat;
+        symbol = float32 ? "__inox_str_from_f32" : "__inox_str_from_f64";
+        type = float32 ? "float" : "double";
+    } else if (isUInt64Type(source)) {
+        function = RuntimeFunction::StringFromUnsigned;
+        symbol = "__inox_str_from_u64";
+    }
+    requireRuntime(function);
+    requireStringRuntime();
+    const std::string status = newStringStatus();
+    const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << result << " = call ptr @" << symbol << "(" << type << " " << value << ", ptr " << status
+            << ")\n";
+    emitStringStatusCheck(status);
+    holdOwnedResult(result, semantics_.types().stringType(), "ptr");
+    return result;
+}
+
+// r3.90 (B2): the numeric target of `T(S)` with S a String; else null.
+TypeRef FunctionEmitter::textConversionTarget(const ast::CallExpression& call) const
+{
+    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().size() != 1 ||
+        calledRoutine(static_cast<const ast::IdentifierExpression&>(call.callee())) != nullptr) {
+        return nullptr;
+    }
+    const TypeRef source = typeOf(*call.arguments().front());
+    if (source == nullptr || !source->isString()) {
+        return nullptr;
+    }
+    const TypeRef target = typeOf(call);
+    if (target == nullptr || target->isEnum() || !(target->isInteger() || target->isFloat())) {
+        return nullptr;
+    }
+    return target;
+}
+
+// r3.90 (B2): text into a number, by libinoxrt; text that is not a number
+// of the target raises ConversionError (an `invoke` inside try).
+std::string FunctionEmitter::emitTextToNumber(const ast::CallExpression& call, TypeRef target)
+{
+    const std::string text = emitExpression(*call.arguments().front());
+    if (target->isFloat()) {
+        const bool float32 = target->bits() == 32;
+        return emitRuntimeCall(float32 ? RuntimeFunction::StringToFloat32 : RuntimeFunction::StringToFloat,
+                               float32 ? "float" : "double", float32 ? "__inox_str_to_f32" : "__inox_str_to_f64",
+                               "ptr " + text);
+    }
+    if (isUInt64Type(target)) {
+        return emitRuntimeCall(RuntimeFunction::StringToUnsigned, "i64", "__inox_str_to_u64", "ptr " + text);
+    }
+    std::int64_t low = 0;
+    std::int64_t high = 0;
+    if (target->isRange() || target->isCharRange()) {
+        low = target->minValue();
+        high = target->maxValue();
+    } else if (const std::optional<IntegerRange> range = narrowIntegerRange(target)) {
+        low = range->low;
+        high = range->high;
+    } else {
+        low = std::numeric_limits<std::int64_t>::min();
+        high = std::numeric_limits<std::int64_t>::max();
+    }
+    return emitRuntimeCall(RuntimeFunction::StringToInteger, "i64", "__inox_str_to_i64",
+                           "ptr " + text + ", i64 " + std::to_string(low) + ", i64 " + std::to_string(high));
 }
 
 // Change float-conversions: the target of a conversion `T(X)` that involves

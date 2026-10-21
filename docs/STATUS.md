@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.89.
+Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.90.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -72,6 +72,10 @@ each version added.
 - Input: `Get` of integers, Float and Float32 (strict, exponents allowed)
   and Char; `GetLn` of a String (r3.89).
 - Real literals with exponents, `1.5e3` (r3.89).
+- Numbers and text (r3.90): `String(N)`, `String(F)`, `FormatFloat`;
+  `Integer(S)`, every integer type, `Float(S)`, `Float32(S)` raising
+  `ConversionError`; reals written as their shortest round-trip text;
+  `FieldCount`/`Field`.
 - Required fields (r3.82): enum, array and type-parameter fields without
   default are given in the construction; type defaults only when complete,
   nested and in parts; array field defaults `:= Fill(Literal)`.
@@ -106,9 +110,9 @@ each version added.
 
 ## Conformance gaps (the law is ahead of the code)
 
-- Strings: `S[I]` and `GraphemeLength` are reserved; collation,
-  normalization, Split/Join and conversions between numbers and text come
-  in later changes; case mapping is one code point to one (`ß` stays `ß`).
+- Strings: `S[I]` and `GraphemeLength` are reserved; collation and
+  normalization come in later changes, Split/Join in 0.5; case mapping is
+  one code point to one (`ß` stays `ß`).
 - Char: a Char array element, stored in 32 bits like a narrow integer,
   cannot be passed by `ref` yet; case mapping of a Char is one code point
   to one.

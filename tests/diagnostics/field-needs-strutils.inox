@@ -4,8 +4,9 @@
 == This Source Code Form is subject to the terms of the Mozilla Public
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.90 (B4): FieldCount and Field are declared in Std.StrUtils.
+Use Std.Strings
 
-== Change float-conversions (CANON-8): text does not convert to a number yet.
 Main :
-    PutLn(Integer("7"))
+    PutLn(FieldCount("a,b", ","))
 ;

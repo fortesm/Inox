@@ -44,11 +44,11 @@ other types SHALL be rejected.
 ### Requirement: Chars and Strings
 `String(C)` SHALL be the one-character String of C; there is no implicit
 conversion between Char and String (`S + String(C)`). `String(X)` of
-anything but a Char or a String SHALL be rejected.
+anything but a Char, a String or a number (r3.90) SHALL be rejected.
 
 #### Scenario: String of a Char
 - **WHEN** a program writes `"água" + String(Letter)` and `String('z') = "z"`
-- **THEN** it gets the joined String and true (tests/runtime/chars.inox); `String(5)` is rejected (tests/diagnostics/string-of-integer.inox)
+- **THEN** it gets the joined String and true (tests/runtime/chars.inox); `String(True)` and `String(Heart)` are rejected (tests/diagnostics/string-of-bool.inox, tests/diagnostics/string-of-enum.inox)
 
 ### Requirement: Comparison by code point
 `=`, `#`, `<`, `<=`, `>` and `>=` SHALL compare Chars by code point, as

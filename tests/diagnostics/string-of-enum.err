@@ -1,0 +1,1 @@
+String(X) converts a Char or a number (CANON-14), got TSuit; an enum literal is printed by PutLn

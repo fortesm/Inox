@@ -1,1 +1,1 @@
-Float(X) converts a number, got Bool; a Bool is not a number: IIf(B, 1, 0)
+Float(X) converts a number or a String, got Bool; a Bool is not a number: IIf(B, 1, 0)

@@ -1,0 +1,4 @@
+19.99 20 19.98700 -0.333
+0.1000000015 100000000000000000000.0 0.00 [7]
+Inox runtime error: string index out of range
+inox: program stopped by an Inox runtime error (exit code 70)
