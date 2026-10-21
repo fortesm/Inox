@@ -1,0 +1,1 @@
+case selector must be discrete (Integer family, Char, Bool, Enum or Range) or a String, got Float64

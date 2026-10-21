@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.84
+Canon revision: r3.85
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -300,3 +300,10 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   "as conversões de Float e as Consts de Float" next: "Conbinado,
   prossiga". The choices marked in the change's proposal await his
   confirmation (open question 3). Change `float-conversions`.
+- r3.85 — 2026-10-21 — `case` on a String (CANON-12, ADR-0011): the
+  selector may be a String; each choice is a String literal or a String
+  Const, compared byte for byte as `=` compares; no ranges; the same String
+  twice is an overlap; `else` (Ada's `others`) is always required; a Float
+  is never a selector. Marcelo Fortes, 2026-10-19, on the proposal (String
+  yes with these rules, Float no): "Sim acatado !"; on `others`: `else` is
+  that arm (r3.74). Change `case-strings`.

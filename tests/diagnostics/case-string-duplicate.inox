@@ -1,0 +1,22 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Change case-strings: the same String twice is an overlap, also through a
+== Const.
+Const Stop := "stop"
+
+Main :
+    Word := "a"
+    case Word
+        "stop"
+            PutLn(1)
+        Stop
+            PutLn(2)
+        else
+            PutLn(3)
+    ;
+;

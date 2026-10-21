@@ -8,6 +8,7 @@
 // SemanticAnalyzer: routine bodies, statements, Var blocks, case (ADR-0011).
 
 #include "SemanticAnalyzer.h"
+#include "../support/StringLiteral.h"
 
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
@@ -644,10 +645,16 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
     const auto caseStart = movedOwners_;
     auto caseMerged = movedOwners_;
     const TypeRef selectorType = analyzeExpression(statement.expression());
+    // Change case-strings: a String selector, with String literals or Consts
+    // as choices and `else` always.
+    if (selectorType != nullptr && selectorType->isString()) {
+        analyzeStringCase(statement);
+        return;
+    }
     CaseDomain domain;
     if (!caseDomainFor(selectorType, domain)) {
         throw SemanticError(
-            "case selector must be discrete (Integer family, Char, Bool, Enum or Range), got " +
+            "case selector must be discrete (Integer family, Char, Bool, Enum or Range) or a String, got " +
             (selectorType == nullptr ? std::string("<unknown>") : selectorType->name()) + " (ADR-0011)");
     }
 
@@ -738,6 +745,71 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
                             " (first missing: " + caseValueText(next, domain) +
                             "); add an 'else' arm (ADR-0011)");
     }
+}
+
+// Change case-strings (Marcelo Fortes, 2026-10-19): a `case` on a String.
+// Each choice is a String literal or a String Const, compared byte for byte
+// as `=` compares; ranges have no meaning for text; a String repeated in the
+// choices is an error; `else` is required, since no list of Strings covers
+// every String.
+void SemanticAnalyzer::analyzeStringCase(const ast::CaseStatement& statement)
+{
+    const auto caseStart = movedOwners_;
+    auto caseMerged = movedOwners_;
+    std::vector<std::string> seen;
+    for (const ast::CaseArm& arm : statement.arms()) {
+        for (const auto& choice : arm.choices) {
+            if (choice->kind() == ast::AstNodeKind::BinaryExpression &&
+                static_cast<const ast::BinaryExpression&>(*choice).op() == ast::BinaryOperator::Range) {
+                throw SemanticError("a case on a String has no ranges: each choice is one String (\"a\" | \"b\")");
+            }
+            const TypeRef type = analyzeExpression(*choice);
+            std::string bytes;
+            if (!staticStringValue(*choice, bytes)) {
+                throw SemanticError("a choice of a case on a String is a String literal or a String Const" +
+                                    (type != nullptr && !type->isString() ? ", got " + type->name()
+                                                                          : std::string()) +
+                                    " (ADR-0011)");
+            }
+            for (const std::string& other : seen) {
+                if (other == bytes) {
+                    throw SemanticError("overlapping case choices: the String \"" + bytes +
+                                        "\" is covered more than once (ADR-0011)");
+                }
+            }
+            seen.push_back(std::move(bytes));
+        }
+        movedOwners_ = caseStart;
+        analyzeStatements(arm.body, true);
+        caseMerged.insert(movedOwners_.begin(), movedOwners_.end());
+    }
+    movedOwners_ = caseStart;
+    if (!statement.hasElse()) {
+        throw SemanticError("a case on a String needs an 'else' arm: no choices cover every String (ADR-0011)");
+    }
+    analyzeStatements(statement.elseBody(), true);
+    caseMerged.insert(movedOwners_.begin(), movedOwners_.end());
+    movedOwners_ = std::move(caseMerged);
+}
+
+// The bytes of a String literal or a String Const (change case-strings).
+bool SemanticAnalyzer::staticStringValue(const ast::Expression& expression, std::string& value) const
+{
+    if (expression.kind() == ast::AstNodeKind::LiteralExpression) {
+        const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
+        if (literal.literalKind() != ast::LiteralKind::String) {
+            return false;
+        }
+        value = support::decodeStringLiteral(literal.value());
+        return true;
+    }
+    const Symbol* symbol = resolveConstant(expression);
+    const ConstantValue* constant = symbol != nullptr ? result_.constantValueOf(*symbol) : nullptr;
+    if (constant == nullptr || constant->kind != ConstantValue::Kind::String) {
+        return false;
+    }
+    value = support::decodeStringLiteral(constant->text);
+    return true;
 }
 
 } // namespace inox::compiler::semantic

@@ -180,8 +180,9 @@ with_member       ::= "." identifier
                          with expression; unprefixed names use normal scope *)
 
 case_stmt         ::= "case" expression NEWLINE case_arm* case_else_arm? ";"
-                      (* ADR-0011: the selector is discrete and ends at the
-                         header line *)
+                      (* ADR-0011: the selector is discrete, or a String
+                         (r3.85: String choices, no ranges, "else" always), and
+                         ends at the header line *)
 case_arm          ::= choice_list ( simple_stmt NEWLINE | NEWLINE block_body )
 choice_list       ::= choice ( "|" choice )*
                       (* "|" is punctuation, not an operator; "," is rejected *)

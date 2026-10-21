@@ -108,6 +108,9 @@ private:
     void checkCharConversion(const ast::CallExpression& call, TypeRef target);
     // Conversions into a number (change float-conversions), SemanticEnums.cpp.
     void checkNumericConversion(const ast::CallExpression& call, TypeRef target);
+    // A case on a String (change case-strings), SemanticStatements.cpp.
+    void analyzeStringCase(const ast::CaseStatement& statement);
+    bool staticStringValue(const ast::Expression& expression, std::string& value) const;
     static std::string arrayWithoutInitializer(const std::string& name, const std::string& written,
                                                TypeRef arrayType);
     TypeRef analyzeMembership(const ast::BinaryExpression& expression);
