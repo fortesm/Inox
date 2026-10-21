@@ -207,6 +207,11 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
             return analyzeFileCall(callee.name(), call);
         }
 
+        // Std.Terminal (change console-abi-terminal).
+        if (const TerminalSignature* terminal = terminalFunction(callee.name())) {
+            return analyzeTerminalCall(call, *terminal);
+        }
+
         // Std.Strings / Std.StrUtils (std-strings), the same way; Length of
         // an array, a slice or a String was handled above.
         if (findStringFunction(callee.name()) != nullptr && !equalsIgnoreCase(callee.name(), "Length") &&

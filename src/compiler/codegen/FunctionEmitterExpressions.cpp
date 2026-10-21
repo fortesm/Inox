@@ -259,6 +259,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (parameter != parameters_.end()) {
             return parameter->second;
         }
+        if (const semantic::TerminalSignature* terminal = terminalCallOf(expression)) {
+            return emitTerminalCall(expression, *terminal);
+        }
         if (const FunctionSignature* routine = calledRoutine(identifier)) {
             if (!routine->parameters.empty()) {
                 throw CodegenError("function requires arguments; use parentheses only when passing arguments: " + identifier.name());
@@ -535,6 +538,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return result;
         }
 
+        if (const semantic::TerminalSignature* terminal = terminalCallOf(call)) {
+            return emitTerminalCall(call, *terminal);
+        }
         if (isFileCall(call)) {
             if (fileCallLlvmType(call) == "void") {
                 throw CodegenError("void function call cannot be used as an expression");

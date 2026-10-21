@@ -63,6 +63,7 @@ th{background:#eef3fb}
 <li><a href="#output">Std.IO and variadic output</a></li>
 <li><a href="#string-functions">String functions: Std.Strings and Std.StrUtils</a></li>
 <li><a href="#files">Text files: Std.Files and Std.IOUtils</a></li>
+<li><a href="#terminal">The terminal: Std.Terminal</a></li>
 <li><a href="#arrays-sets-future">Arrays, vectors, ranges, enums, and sets</a></li>
 <li><a href="#enums-ranges-sets">Enums, ranges and sets</a></li>
 <li><a href="#runtime-status">Runtime and implementation status</a></li>
@@ -148,7 +149,7 @@ inox version               print the version</code></pre>
 <p>Checking and IR emission do not require Clang when using a prebuilt compiler. Building and running currently require <code>clang</code> in <code>PATH</code>.</p>
 </section>
 <section id="stdlib-output"><h2>Standard library discovery and output directory</h2>
-<p>The standard library has <code>Std.System</code> (the prelude, always available, formerly <code>Std.Core</code>), <code>Std.IO</code>, <code>Std.Math</code>, <code>Std.Errors</code> (the exception types), <code>Std.Debug</code> and the pairs <code>Std.Files</code> / <code>Std.IOUtils</code> and <code>Std.Strings</code> / <code>Std.StrUtils</code>. Modules come in pairs: <code>Std.X</code> holds a subject's types and fundamental operations, and <code>Std.XUtils</code> the conveniences built on them (using <code>Std.XUtils</code> also gives everything of <code>Std.X</code>). Planned: <code>Std.DateTime</code> / <code>Std.DateUtils</code>, and <code>Std.SystemUtils</code> for system functions.</p>
+<p>The standard library has <code>Std.System</code> (the prelude, always available, formerly <code>Std.Core</code>), <code>Std.IO</code>, <code>Std.Math</code>, <code>Std.Errors</code> (the exception types), <code>Std.Debug</code> and the pairs <code>Std.Files</code> / <code>Std.IOUtils</code> and <code>Std.Strings</code> / <code>Std.StrUtils</code>, and <code>Std.Terminal</code> (keys, cursor, colors). Modules come in pairs: <code>Std.X</code> holds a subject's types and fundamental operations, and <code>Std.XUtils</code> the conveniences built on them (using <code>Std.XUtils</code> also gives everything of <code>Std.X</code>). Planned: <code>Std.DateTime</code> / <code>Std.DateUtils</code>, and <code>Std.SystemUtils</code> for system functions.</p>
 <p><code>Use Std.Debug</code> gives <code>Assert(Condition)</code> and <code>Assert(Condition, Message)</code>. When the condition is false the program stops at once, like an overflow: no handler catches it and no <code>ensure</code> runs. Assert is never compiled out.</p>
 <pre><code>Use Std.Debug
 
@@ -294,6 +295,7 @@ P.X := P.Y := 0</code></pre>
     PutLn(&quot;report&quot;)
 ;</code></pre>
 <p><code>Exit</code> is reserved for early return from subroutines without a value. Functions with a return type must use <code>Return Expression</code>.</p>
+<p>A function is not a statement, as in Ada (canon r3.88): its result is always used. <code>Add(1, 2)</code> alone, a function without arguments written alone, or <code>C.Next</code> alone for a method with a result, are compile errors that show the way: <code>X := Add(...)</code>. A routine called for its effect is a subroutine.</p>
 <h3>Parameters: by value, ref and ref mut</h3>
 <p>A parameter is normally an immutable copy. Two forms pass a reference to the caller's storage instead:</p>
 <pre><code>Sum(ref V Array[1..1000] Integer) Integer :     == read-only, no copy of the array
@@ -810,7 +812,7 @@ PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
     GetLn(Name)
     PutLn(&quot;Hello, &quot;, Name)
 ;</code></pre>
-<p>The current backend lowers these facilities through the runtime/compiler path used by the LLVM smoke-test backend. This is not the final language ABI.</p>
+<p>The console belongs to the runtime <code>libinoxrt</code> (canon r3.88): output stays in order whatever writes it, and what <code>Put</code> wrote is shown before the program waits for input, so a prompt always appears first. On Windows the console is switched to UTF-8 with VT sequences while the program runs and given back at exit.</p>
 </section>
 <section id="string-functions"><h2>String functions: Std.Strings and Std.StrUtils</h2>
 <p><code>+</code> joins two Strings and <code>+=</code> appends, with no <code>Use</code>. There is no implicit conversion: <code>"N=" + N</code> with an Integer N is an error, and <code>PutLn("N=", N)</code> prints both without building a String. A chain such as <code>A + " " + B + "!"</code> makes one String in one step, and <code>S += X</code> (or <code>S := S + X</code>) writes X at the end of S in place when no other variable holds the same text, so a loop of appends takes linear time, as with a string builder. A copy taken before the append keeps its value.</p>
@@ -903,6 +905,41 @@ ensure
 ;</code></pre>
 <p>A complete tour, with every operation and every error handled with <code>try</code>, is <code>examples/file_io.inox</code> (the test suite runs it, like every example, and checks its output). Binary files, positions and streams are not in the language yet: their design is the OpenSpec change <code>binary-streams</code>, awaiting approval.</p>
 </section>
+<section id="terminal"><h2>The terminal: Std.Terminal</h2>
+<p><code>Use Std.Terminal</code> gives what a full-screen text program, such as an editor, needs (canon r3.88). Without the <code>Use</code> these names are free for the program's own routines.</p>
+<ul>
+<li><code>RawMode(True)</code>: keys arrive one at a time, not echoed, with Ctrl+C and Ctrl+Z as keys; <code>RawMode(False)</code> goes back.</li>
+<li><code>ReadKey</code> waits for a key and returns a <code>TKey</code>: <code>Kind</code> (<code>KeyChar</code>, <code>KeyUp</code>, <code>KeyDown</code>, <code>KeyLeft</code>, <code>KeyRight</code>, <code>KeyHome</code>, <code>KeyEnd</code>, <code>KeyPageUp</code>, <code>KeyPageDown</code>, <code>KeyEnter</code>, <code>KeyBackspace</code>, <code>KeyDelete</code>, <code>KeyTab</code>, <code>KeyEscape</code>, <code>KeyF1</code>..<code>KeyF12</code>), <code>Ch</code> (the character of a <code>KeyChar</code>), <code>Ctrl</code> and <code>Alt</code>. Ctrl+A is <code>'a'</code> with <code>Ctrl</code>; Escape then a key is that key with <code>Alt</code>. Past the end of input the program stops with "end of input".</li>
+<li><code>ScreenSize</code> returns a <code>TScreenSize</code> (<code>Rows</code>, <code>Cols</code>); 24 x 80 when the output is not a terminal.</li>
+<li><code>MoveTo(Row, Col)</code> counts from 1; <code>ClearScreen</code>, <code>ClearLine</code>; <code>SetColor(Fg, Bg)</code> with the 16 colors of <code>TColor</code> (<code>Black</code>..<code>White</code>, <code>Gray</code>, <code>BrightRed</code>..<code>BrightWhite</code>), <code>ResetColor</code>; <code>ShowCursor(Bool)</code>; <code>Flush</code>.</li>
+</ul>
+<p>The terminal is given back as the program found it however the program ends: the end of <code>Main</code>, a runtime error, an exception nobody handles or a signal. When the input is a file or a pipe, <code>RawMode</code> does nothing and <code>ReadKey</code> reads the same keys from its bytes, so a full-screen program can be tested with an input file.</p>
+<pre><code>Use Std.Terminal
+
+Main :
+    RawMode(True)
+    ClearScreen
+    SetColor(BrightYellow, Blue)
+    Put(&quot;Press keys, Escape quits&quot;)
+    ResetColor
+    Done Bool := False
+    while not Done
+        Key := ReadKey
+        MoveTo(3, 1)
+        ClearLine
+        if Key.Kind = KeyEscape
+            Done := True
+        elif Key.Kind = KeyChar
+            Put(&quot;character &quot;, Key.Ch, IIf(Key.Ctrl, &quot; with Ctrl&quot;, &quot;&quot;))
+        else
+            Put(&quot;key &quot;, Key.Kind)
+        ;
+        Flush
+    ;
+    RawMode(False)
+;</code></pre>
+<p><code>examples/keys.inox</code> is this program.</p>
+</section>
 <section id="arrays-sets-future"><h2>Arrays, vectors, ranges, enums, and sets</h2>
 <p>The 0.1 direction defines or reserves several Pascal/Ada-inspired aggregate concepts:</p>
 <ul>
@@ -991,8 +1028,8 @@ Color(S TSuit) String :
 <p><code>examples/cards.inox</code> scores a hand of cards with all three. A Range over Char (<code>TLetter Range 'A'..'Z'</code>) holds Chars, and a Set over it is a set of letters (<a href="#chars">Characters</a>).</p>
 </section>
 <section id="runtime-status"><h2>Runtime and implementation status</h2>
-<p>Inox does not yet provide a complete standalone language runtime. The <code>stdlib/Std.*.inox</code> files remain early standard-library modules and documentation anchors. The minimal static <code>libinoxrt</code> component (canon revision 3.17) provides exception transport and unwinding; since revision 3.55 it also holds the String runtime (reference-counted immutable blocks and line input), and since revision 3.59 the text-file runtime. It is not yet a general-purpose language runtime or RTTI system.</p>
-<p>The current compiler executable is a native C++ program. The native build/run path emits textual LLVM IR and delegates final executable generation to external Clang. Modules that use exception handling or Strings are linked through <code>clang++</code> together with <code>libinoxrt</code>; other modules retain the existing Clang path.</p>
+<p>Inox does not yet provide a complete standalone language runtime. The <code>stdlib/Std.*.inox</code> files remain early standard-library modules and documentation anchors. The minimal static <code>libinoxrt</code> component (canon revision 3.17) provides exception transport and unwinding; since revision 3.55 it also holds the String runtime (reference-counted immutable blocks and line input), since revision 3.59 the text-file runtime, and since revision 3.88 the console (<code>Put</code>, <code>Get</code>, <code>Std.Terminal</code>). It is not yet a general-purpose language runtime or RTTI system.</p>
+<p>The current compiler executable is a native C++ program. The native build/run path emits textual LLVM IR and delegates final executable generation to external Clang. Every program is linked through <code>clang++</code> together with <code>libinoxrt</code>, which owns the console (canon r3.88).</p>
 </section>
 <section id="design-stance"><h2>Design stance</h2>
 <p>Inox rejects unsafe defaults:</p>

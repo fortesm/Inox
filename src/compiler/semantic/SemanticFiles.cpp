@@ -77,6 +77,7 @@ void SemanticAnalyzer::declareStandardModuleNames(const ast::ModuleNode& module)
         symbols_.globalScope().declare("Assert", SymbolKind::Builtin);
     }
     declareStringFunctionNames(module);
+    declareTerminalNames(module);
     for (const FileFunction& function : kFileFunctions) {
         // ReadLn is also the console prelude function (no argument).
         if (fileFunctionVisible(function.name) && !symbols_.globalScope().containsLocal(function.name)) {

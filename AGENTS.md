@@ -231,11 +231,14 @@ time. Each names where it bit.
   libraries, so Linux and Windows produced different IR (2026-10-17).
 - **The token scanners are gone.** Type/Const/State are typed declarations
   (v3.53); never re-scan tokens of a section — extend the parser instead.
-- **Console I/O stays in the program, memory stays in libinoxrt.** On Windows
-  the program and libinoxrt may use different C runtimes: a `FILE*` or a
-  `malloc` block must never cross between them. String output is the
-  program's `printf`, `GetLn` reads through the program's `getchar` passed as
-  a function pointer, and only libinoxrt allocates or frees (v3.55).
+- **Console I/O and memory stay in libinoxrt.** On Windows the program and
+  libinoxrt may use different C runtimes: a `FILE*` or a `malloc` block must
+  never cross between them. Since r3.88 the console is libinoxrt's alone
+  (`runtime/ConsoleRuntime.cpp`: `__inox_con_*`, `__inox_term_*`); generated
+  code never calls `printf`, `getchar` or `fflush`, every program links
+  libinoxrt, and the fault functions call `__inox_runtime_shutdown` (flush
+  and give the terminal back) before `_exit`. Only libinoxrt allocates or
+  frees (v3.55).
 - **String literals are immortal; leak tests need input.** A test made only of
   literals allocates nothing, so it cannot leak; feed lines through `GetLn`
   (`NAME.in`) and run `tools/string_leak_check.py`. clang has no ASan runtime

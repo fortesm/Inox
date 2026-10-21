@@ -10,6 +10,12 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 `r3.61` are canon revisions, entries of the decision log
 (`openspec/specs/constitution/revisions.md`), not versions.
 
+## 0.3.0 pre-alpha — in progress
+
+### Added
+- The console and Std.Terminal (canon r3.88, CANON-7, CANON-17, CANON-18, CANON-19, change `console-abi-terminal`). The console belongs to libinoxrt (`runtime/ConsoleRuntime.cpp`): `Put`, `PutLn`, `Get` and `GetLn` call it, generated code no longer calls `printf` or `getchar`, and every program links libinoxrt. Output stays in order, a prompt written with `Put` is shown before the program waits for input, and on Windows the console runs in UTF-8 with VT sequences and is given back at exit. `Use Std.Terminal` gives `RawMode`, `ReadKey` (a `TKey` with `Kind`, `Ch`, `Ctrl`, `Alt`: characters, arrows, Home, End, PageUp, PageDown, Enter, Backspace, Delete, Tab, Escape, F1..F12), `ScreenSize`, `MoveTo`, `ClearScreen`, `ClearLine`, `SetColor`/`ResetColor` with 16 colors, `ShowCursor` and `Flush`; the terminal is given back however the program ends (end of Main, a runtime error, an unhandled exception, a signal). With a file or a pipe as input, `ReadKey` reads the same keys from the bytes, so full-screen programs are testable. New runtime error "end of input" (ReadKey past the end). `examples/keys.inox`.
+- **Breaking:** a function or method called as a statement is a compile error, as in Ada (canon r3.88): `Twice(2)`, `Answer` or `C.Next` alone show `X := Twice(...)`. Before, the result was dropped silently.
+
 ## 0.2.0 pre-alpha — unreleased
 
 ### Added

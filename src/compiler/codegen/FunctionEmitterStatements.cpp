@@ -311,6 +311,10 @@ void FunctionEmitter::emitAssignmentOrCallStatement(const ast::Expression& expre
 
 void FunctionEmitter::emitExpressionStatement(const ast::Expression& expression)
 {
+    if (const semantic::TerminalSignature* terminal = terminalCallOf(expression)) {
+        emitTerminalCall(expression, *terminal);
+        return;
+    }
     if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
         const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
         if (equalsIgnoreCase(identifier.name(), "Get")) {

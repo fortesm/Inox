@@ -30,8 +30,6 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
         return "declare zeroext i1 @__inox_str_equal(ptr, ptr) nounwind";
     case RuntimeFunction::StringCompare:
         return "declare i32 @__inox_str_compare(ptr, ptr) nounwind";
-    case RuntimeFunction::StringGetLn:
-        return "declare ptr @__inox_str_getln(ptr, ptr) nounwind";
     case RuntimeFunction::StringConcat:
         return "declare ptr @__inox_str_concat(i64, ptr, ptr) nounwind";
     case RuntimeFunction::StringAppend:
@@ -92,6 +90,48 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
         return "declare void @__inox_file_delete(ptr)";
     case RuntimeFunction::FileRename:
         return "declare void @__inox_file_rename(ptr, ptr)";
+    case RuntimeFunction::RuntimeInit:
+        return "declare void @__inox_runtime_init() nounwind";
+    case RuntimeFunction::RuntimeShutdown:
+        return "declare void @__inox_runtime_shutdown() nounwind";
+    case RuntimeFunction::ConsoleWrite:
+        return "declare void @__inox_con_write(ptr, i64) nounwind";
+    case RuntimeFunction::ConsolePutString:
+        return "declare void @__inox_con_put_str(ptr) nounwind";
+    case RuntimeFunction::ConsolePutInteger:
+        return "declare void @__inox_con_put_i64(i64) nounwind";
+    case RuntimeFunction::ConsolePutUnsigned:
+        return "declare void @__inox_con_put_u64(i64) nounwind";
+    case RuntimeFunction::ConsolePutFloat:
+        return "declare void @__inox_con_put_f64(double) nounwind";
+    case RuntimeFunction::ConsolePutBool:
+        return "declare void @__inox_con_put_bool(i1 zeroext) nounwind";
+    case RuntimeFunction::ConsolePutNewline:
+        return "declare void @__inox_con_put_newline() nounwind";
+    case RuntimeFunction::ConsoleGetChar:
+        return "declare i32 @__inox_con_getc() nounwind";
+    case RuntimeFunction::ConsoleGetLn:
+        return "declare ptr @__inox_con_getln(ptr) nounwind";
+    case RuntimeFunction::TerminalRawMode:
+        return "declare void @__inox_term_raw_mode(i1 zeroext) nounwind";
+    case RuntimeFunction::TerminalReadKey:
+        return "declare i64 @__inox_term_read_key() nounwind";
+    case RuntimeFunction::TerminalScreenSize:
+        return "declare i64 @__inox_term_screen_size() nounwind";
+    case RuntimeFunction::TerminalMoveTo:
+        return "declare void @__inox_term_move_to(i64, i64) nounwind";
+    case RuntimeFunction::TerminalClearScreen:
+        return "declare void @__inox_term_clear_screen() nounwind";
+    case RuntimeFunction::TerminalClearLine:
+        return "declare void @__inox_term_clear_line() nounwind";
+    case RuntimeFunction::TerminalSetColor:
+        return "declare void @__inox_term_set_color(i64, i64) nounwind";
+    case RuntimeFunction::TerminalResetColor:
+        return "declare void @__inox_term_reset_color() nounwind";
+    case RuntimeFunction::TerminalShowCursor:
+        return "declare void @__inox_term_show_cursor(i1 zeroext) nounwind";
+    case RuntimeFunction::TerminalFlush:
+        return "declare void @__inox_term_flush() nounwind";
     case RuntimeFunction::OwnAlloc:
         return "declare ptr @__inox_own_alloc(i64) nounwind";
     case RuntimeFunction::OwnFree:

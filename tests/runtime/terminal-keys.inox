@@ -1,0 +1,26 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== Std.Terminal (r3.88): ReadKey reads the keys of a terminal from the bytes
+== of standard input, so a pipe or a file tests it: characters in UTF-8,
+== Ctrl+letter, the escape sequences of the arrows, Home/End/PageUp/PageDown,
+== Delete and F1..F12 (with xterm modifiers), Escape then a key as Alt, and a
+== lone Escape at the end. RawMode does nothing when input is not a terminal,
+== and ScreenSize is 24 x 80 when output is not one.
+Use Std.Terminal
+
+Main :
+    RawMode(True)
+    Size := ScreenSize
+    PutLn(Size.Rows, " ", Size.Cols)
+    for Index in 1..15
+        Key := ReadKey
+        PutLn(Index, " ", Key.Kind, " ", Integer(Key.Ch), " ", Key.Ctrl, " ", Key.Alt)
+    ;
+    RawMode(False)
+    Last := ReadKey
+    PutLn(Last.Kind)
+;

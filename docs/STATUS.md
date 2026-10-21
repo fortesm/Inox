@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-18 against Inox 0.2.0 pre-alpha, canon r3.87.
+Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.88.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -85,8 +85,17 @@ each version added.
   taxonomy, Itanium landing pads on Linux and MSVC funclets on Windows.
 - Text files: Std.Files (type and basic operations) / Std.IOUtils
   (conveniences).
+- Console (r3.88): libinoxrt owns standard output and input
+  (`runtime/ConsoleRuntime.cpp`) and every program links it; prompts are
+  flushed before input; Windows consoles run in UTF-8 with VT sequences.
+- A function or method called as a statement is a compile error (r3.88,
+  as in Ada).
+- Std.Terminal (r3.88): RawMode, ReadKey (keys, Ctrl, Alt, function keys),
+  ScreenSize, MoveTo, ClearScreen, ClearLine, SetColor/ResetColor,
+  ShowCursor, Flush; the terminal is given back on every exit; keys read
+  from a file or pipe for tests; `examples/keys.inox`.
 - Standard library: Std.System, Std.IO, Std.Math, Std.Errors, Std.Debug
-  (Assert), Std.Files, Std.IOUtils, Std.Strings, Std.StrUtils.
+  (Assert), Std.Files, Std.IOUtils, Std.Strings, Std.StrUtils, Std.Terminal.
 - Windows x64 and Linux x64 run the full suite in CI
   (`ci/windows-known-failures.txt` is empty).
 
@@ -113,12 +122,8 @@ each version added.
   returns, not at the end of each iteration. Each is a task of change
   `safe-pointers-followups`.
 - Real literals have no exponent form (`1.0e3`), as the grammar says.
-- A function called as a statement (its result unused) passes the analyzer
-  and is "not yet implemented" in the backend (left as it is, r3.65).
 - Module exports, visibility and package search beyond local `Use`.
-- Console output goes through the C `printf` and Integer input through
-  `getchar`-based helpers: a temporary ABI.
-- Final runtime ABI and toolchain discovery; clang is still the external
+- Toolchain discovery; clang is still the external
   driver (by design until E22's criteria hold).
 - Quality gates still to come: clang-format, clang-tidy, cppcheck,
   coverage.
@@ -152,6 +157,9 @@ they are rejected now.)
 - Exception handlers are matched by the written type name
   (`exceptions/ExceptionTypes`); the exception hierarchy (identifiers,
   parents) is not part of `types::Type` yet.
+- Std.Terminal on Windows is checked by the CI suite only through files and
+  pipes; raw mode and key reading in a real Windows console were not run
+  by an agent (no Windows console here).
 - Generics (change `generics`): methods of generic structs, and invariants
   and reused parts in a generic struct, are rejected for now; semantic
   messages carry no line numbers, so an error in an instance names the

@@ -161,7 +161,9 @@ compound_op       ::= "+=" | "-=" | "*=" | "/=" | "^="
 target            ::= postfix_expr | with_member
 call_stmt         ::= postfix_expr
                       (* must be a call: a bare identifier or literal is not a
-                         statement; "Report" and "Account.Print" call without "()" *)
+                         statement; "Report" and "Account.Print" call without "()".
+                         r3.88 (CANON-7, as in Ada): it must call a subroutine;
+                         a function's result is never dropped *)
 
 (* ---------- Control flow (CANON-12, CANON-11) ---------- *)
 

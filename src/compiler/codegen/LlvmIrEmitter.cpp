@@ -210,19 +210,15 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
         output << '\n';
     }
 
-    output << "@.inox.fmt.i64.nl = private unnamed_addr constant [6 x i8] c\"%lld\\0A\\00\"\n"
-           << "@.inox.fmt.i64 = private unnamed_addr constant [5 x i8] c\"%lld\\00\"\n"
-           << "@.inox.fmt.f64.nl = private unnamed_addr constant [4 x i8] c\"%f\\0A\\00\"\n"
-           << "@.inox.fmt.f64 = private unnamed_addr constant [3 x i8] c\"%f\\00\"\n"
-           << "@.inox.fmt.str.nl = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\"\n"
-           << "@.inox.fmt.str = private unnamed_addr constant [3 x i8] c\"%s\\00\"\n"
-           << "@.inox.true = private unnamed_addr constant [5 x i8] c\"true\\00\"\n"
-           << "@.inox.false = private unnamed_addr constant [6 x i8] c\"false\\00\"\n";
     for (const std::string& global : moduleContext.moduleLines) {
         output << global << '\n';
     }
-    output << "declare i32 @printf(ptr, ...)\n";
-    output << "declare i32 @getchar()\n";
+    // E1 (change console-abi-terminal): the console is libinoxrt's, and every
+    // program links it.
+    for (const RuntimeFunction function : kConsoleRuntimeFunctions) {
+        output << runtimeDeclaration(function) << '\n';
+    }
+    moduleContext.usesInoxRuntime = true;
     output << "declare double @llvm.sqrt.f64(double)\n";
     output << "declare double @llvm.sin.f64(double)\n";
     output << "declare double @llvm.cos.f64(double)\n";

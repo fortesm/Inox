@@ -24,15 +24,18 @@ may still move.
                Std.Debug.Assert; transitive initialization; != (r3.61-r3.87)
 0.3            numbers, text and the basic library: Currency and Crypto
                (exact decimals); conversions between numbers and text,
-               Split/Join; real literals with exponents; Get(C), Char
-               classification and case mapping; Std.DateTime/DateUtils,
-               Std.SystemUtils; console I/O moved into libinoxrt (the final
-               I/O ABI); a function called as a statement (decision)
+               FieldCount/Field; real literals with exponents; Get(C),
+               Char classification and case mapping; Std.DateTime/
+               DateUtils, Std.SystemUtils; console I/O in libinoxrt (done,
+               r3.88); a function is not a statement (done, r3.88);
+               Std.Terminal (done, r3.88) and a micro-editor
+               (examples/edit.inox) that accepts 0.3
 0.4            modules and encapsulation: Export and visibility, interface
                and body, selective imports and aliases, package search;
                the `encapsulation` design (Object Pascal and Rust)
 0.5            ownership and collections: Vector<T> with move semantics and
-               Clone, Option<T> and Result<T, E>, Self owned; methods of
+               Clone, Option<T> and Result<T, E> (TryInteger), Split and
+               Join, Self owned; methods of
                generic structs; the safe-pointers follow-ups; `lifecycle`
                (constructors and destructors); arenas as an option
 0.6            expressiveness: routine types (named routines, then
@@ -109,4 +112,11 @@ with C libraries comes after 1.0 ("Sim, isso é depois da versão 1.0").
 - `float-policy` and `not-equal-operator` — the floating-point policy and
   `!=` (done, r3.86 and r3.87).
 - The v0.2.0 release (the maintainer's, on the site).
-- Next, 0.3: `decimals` (Currency and Crypto) first, then text and numbers.
+- 0.3, decided by Marcelo Fortes on 2026-10-21 (A1-F3) and delivered in
+  five pull requests ("Faça em Pr Serparados para ser mais fácil de
+  testar"): `console-abi-terminal` (the console in libinoxrt, a function is
+  not a statement, Std.Terminal; done, r3.88); then `Get(C)`, Char
+  classification and real literals with exponents; conversions between
+  numbers and text and FieldCount/Field (Split/Join move to 0.5, with
+  collections); Currency and Crypto; Std.DateTime/DateUtils,
+  Std.SystemUtils and the micro-editor `examples/edit.inox`.

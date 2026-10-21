@@ -21,6 +21,7 @@
 // PermissionDenied, AlreadyExists, DiskFull, otherwise IOError), mapped from
 // errno, which the C runtime sets on Linux and on Windows.
 
+#include "Console.h"
 #include "StringBlock.h"
 
 #include "../src/compiler/exceptions/ExceptionTypes.h"
@@ -98,6 +99,7 @@ struct InoxFile final {
 // program's fault function; the message and exit status are the same.
 [[noreturn]] void outOfMemory()
 {
+    inox::runtime::shutdownConsole();
     std::fflush(nullptr);
     std::fputs("Inox runtime error: out of memory\n", stderr);
     std::_Exit(70);

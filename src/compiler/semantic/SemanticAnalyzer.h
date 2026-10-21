@@ -8,6 +8,7 @@
 #pragma once
 
 #include "SemanticResult.h"
+#include "StdTerminal.h"
 #include "../ast/Ast.h"
 #include "../types/TypeSyntax.h"
 
@@ -234,6 +235,7 @@ private:
     static bool isPreludeCall(std::string_view name);
     static bool isExceptionType(std::string_view name);
     static bool isMemberCall(const ast::CallExpression& expression);
+    static std::string discardedResultMessage(const ast::Expression& expression);
     static std::string normalizeName(std::string_view name);
     bool canAssign(TypeRef targetType, TypeRef valueType) const;
     static bool typesMatch(TypeRef left, TypeRef right);
@@ -263,6 +265,12 @@ private:
     // (ReadLn with no argument is the console prelude function).
     static bool isFileFunction(std::string_view name, std::size_t argumentCount);
     TypeRef analyzeFileCall(std::string_view name, const ast::CallExpression& call);
+    // Std.Terminal (SemanticTerminal.cpp, change console-abi-terminal).
+    void declareTerminalNames(const ast::ModuleNode& module);
+    const TerminalSignature* terminalFunction(std::string_view name) const;
+    TypeRef terminalResultType(const TerminalSignature& function);
+    TypeRef analyzeTerminalIdentifier(const ast::IdentifierExpression& identifier, const TerminalSignature& function);
+    TypeRef analyzeTerminalCall(const ast::CallExpression& call, const TerminalSignature& function);
     // Whether the module that declares this file function is used.
     bool fileFunctionVisible(std::string_view name) const;
     // Std.Strings / Std.StrUtils (change std-strings; SemanticStrings.cpp).
@@ -341,6 +349,7 @@ private:
     bool hasMain_ = false;
     bool filesVisible_ = false;    // Std.Files: the File type and the basic operations
     bool ioUtilsVisible_ = false;  // Std.IOUtils: the conveniences (it uses Std.Files)
+    bool terminalVisible_ = false;  // the program uses Std.Terminal
     bool debugVisible_ = false;    // the program uses Std.Debug (Assert)
     bool stringsVisible_ = false;  // Std.Strings: Length, Substr, Pos, case
     bool strUtilsVisible_ = false; // Std.StrUtils: the conveniences (it uses Std.Strings)

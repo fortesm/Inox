@@ -42,6 +42,9 @@ void SemanticAnalyzer::requireStatementExpression(const ast::Expression& express
         if (genericRoutine(identifier.name()) != nullptr) {
             return;  // analyzed as a call: its types must be known there
         }
+        if (terminalFunction(identifier.name()) != nullptr) {
+            return;  // Std.Terminal: ClearScreen, Flush, ...
+        }
         if (const FunctionSignature* signature = resolveFunctionSignature(identifier.name())) {
             // `Report` calls a routine without arguments (CANON-7); a routine
             // that takes arguments needs them.
@@ -244,6 +247,9 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
             const Symbol& symbol = resolveOrThrow(identifier.name());
             result_.bind(identifier, symbol);
             return types().voidType();
+        }
+        if (const TerminalSignature* terminal = terminalFunction(identifier.name())) {
+            return analyzeTerminalIdentifier(identifier, *terminal);
         }
         if (const ast::FunctionDeclaration* generic = genericRoutine(identifier.name())) {
             return analyzeGenericCall(*generic, identifier, nullptr);

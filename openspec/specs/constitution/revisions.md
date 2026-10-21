@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.87
+Canon revision: r3.88
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -326,3 +326,16 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   Marcelo Fortes, 2026-10-21: "Deve ser adotado o operador != paralelo ao
   operador #, ambos são válidos"; "if ! (a = b) é inválido deve ser o
   operador not". Change `not-equal-operator`.
+- r3.88 — 2026-10-21 — The console and Std.Terminal (0.3). E1: the console
+  belongs to libinoxrt and every program links it; Put, PutLn, Get, GetLn
+  and Std.Terminal reach it only through the runtime; on Windows the
+  console is UTF-8 with VT sequences while the program runs (CANON-17,
+  CANON-19). E2: a function or method with a result is not a statement, as
+  in Ada, with no way to drop a result (CANON-7). F1: `Std.Terminal` —
+  RawMode, ReadKey (TKey: Kind, Ch, Ctrl, Alt), ScreenSize, MoveTo,
+  ClearScreen, ClearLine, SetColor/ResetColor (16 colors), ShowCursor,
+  Flush; ReadKey past the end of input traps "end of input" (CANON-18,
+  CANON-19). F2: the terminal is given back however the program ends.
+  Marcelo Fortes, 2026-10-21: "E1 Sim / E2 como em Ada / F1 Sim para tudo
+  Std.Terminal é o nome padrão / F2 Sim / F3 Sim / Faça em Pr Serparados
+  para ser mais fácil de testar". Change `console-abi-terminal`.

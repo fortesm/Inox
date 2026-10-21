@@ -1,0 +1,36 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== Std.Terminal (canon r3.88): shows each key pressed until Escape. Run it in
+== a terminal; with a file as input it reads the same keys from the bytes.
+Use Std.Terminal
+
+Main :
+    RawMode(True)
+    ShowCursor(False)
+    ClearScreen
+    Size := ScreenSize
+    SetColor(BrightYellow, Blue)
+    Put("Std.Terminal: press keys, Escape quits (", Size.Rows, " x ", Size.Cols, ")")
+    ResetColor
+    Done Bool := False
+    while not Done
+        Key := ReadKey
+        MoveTo(3, 1)
+        ClearLine
+        if Key.Kind = KeyEscape
+            Done := True
+        elif Key.Kind = KeyChar
+            Put("character ", Key.Ch, IIf(Key.Ctrl, " with Ctrl", ""), IIf(Key.Alt, " with Alt", ""))
+        else
+            Put("key ", Key.Kind, IIf(Key.Ctrl, " with Ctrl", ""), IIf(Key.Alt, " with Alt", ""))
+        ;
+        Flush
+    ;
+    RawMode(False)
+    MoveTo(5, 1)
+    PutLn("bye")
+;

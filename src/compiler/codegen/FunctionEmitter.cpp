@@ -148,6 +148,8 @@ void FunctionEmitter::emit()
 void FunctionEmitter::emitBody()
 {
     if (signature_.llvmName == "main") {
+        // E1 (change console-abi-terminal): the console is set up first.
+        output_ << "  call void @__inox_runtime_init()\n";
         // State is initialized in source order before Main's body: an
         // initializer, or the type defaults of a struct or array.
         for (const StateGlobal& state : stateGlobals_) {

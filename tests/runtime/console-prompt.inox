@@ -1,0 +1,19 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== CANON-17 (r3.88): the console belongs to libinoxrt. A prompt written with
+== Put comes before the line read after it, and text in UTF-8 goes through
+== unchanged, in and out.
+Main :
+    Name String := ""
+    Put("Name? ")
+    GetLn(Name)
+    PutLn("Hello, ", Name, "!")
+    Put("Age? ")
+    Age Integer := 0
+    GetLn(Age)
+    PutLn(Name, " is ", Age, ", ", Age > 17, ", ", 1.5)
+;
