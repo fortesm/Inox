@@ -106,6 +106,8 @@ private:
     TypeRef analyzeFill(const ast::CallExpression& call);
     // Char(I), TLetter(X) and String(C) (change char-values), SemanticEnums.cpp.
     void checkCharConversion(const ast::CallExpression& call, TypeRef target);
+    // Conversions into a number (change float-conversions), SemanticEnums.cpp.
+    void checkNumericConversion(const ast::CallExpression& call, TypeRef target);
     static std::string arrayWithoutInitializer(const std::string& name, const std::string& written,
                                                TypeRef arrayType);
     TypeRef analyzeMembership(const ast::BinaryExpression& expression);
@@ -157,6 +159,9 @@ private:
     void leaveScope();
     std::int64_t caseChoiceValue(const ast::Expression& choice, TypeRef selectorType);
     bool staticBoolValue(const ast::Expression& expression, bool& value) const;
+    // A constant real expression (change float-conversions): literals, real
+    // Consts, unary minus, + - * / and Float/Float32 conversions of them.
+    bool staticRealValue(const ast::Expression& expression, double& value) const;
     bool staticCharValue(const ast::Expression& expression, std::int64_t& value) const;
     const Symbol* resolveConstant(const ast::Expression& expression) const;
     void recordConstantExpression(const std::string& name, const ast::Expression& value);

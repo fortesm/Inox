@@ -6,6 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include "LlvmText.h"
+#include "../support/RealLiteral.h"
 
 #include <cctype>
 #include <cstdint>
@@ -67,23 +68,26 @@ std::string llvmIntegerLiteral(std::string_view value)
 
 // A struct field default (CANON-9) is one literal, possibly negative; the
 // semantic analyzer has checked its type and range.
+// LLVM writes a real constant as the 64-bit pattern of the double holding
+// it; a float constant is the double of the rounded float value, so every
+// value is exact (change float-conversions).
+std::string llvmRealConstant(double value, bool float32)
+{
+    const double exact = float32 ? static_cast<double>(static_cast<float>(value)) : value;
+    std::uint64_t bits = 0;
+    std::memcpy(&bits, &exact, sizeof bits);
+    std::ostringstream hex;
+    hex << "0x" << std::uppercase << std::hex << std::setw(16) << std::setfill('0') << bits;
+    return hex.str();
+}
+
 std::string llvmDefaultLiteral(std::string_view value, std::string_view llvmType)
 {
     if (llvmType == "i1") {
         return equalsIgnoreCase(value, "true") ? "1" : "0";
     }
-    if (llvmType == "double") {
-        return std::string(value);
-    }
-    if (llvmType == "float") {
-        // LLVM writes a float constant as the 64-bit pattern of the double
-        // holding the rounded float value.
-        const double rounded = static_cast<double>(std::stof(std::string(value)));
-        std::uint64_t bits = 0;
-        std::memcpy(&bits, &rounded, sizeof bits);
-        std::ostringstream hex;
-        hex << "0x" << std::uppercase << std::hex << std::setw(16) << std::setfill('0') << bits;
-        return hex.str();
+    if (llvmType == "double" || llvmType == "float") {
+        return llvmRealConstant(support::parseRealLiteral(value), llvmType == "float");
     }
     const bool negative = !value.empty() && value.front() == '-';
     std::string magnitude(negative ? value.substr(1) : value);

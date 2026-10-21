@@ -168,9 +168,14 @@ std::string FunctionEmitter::emitFileCall(const ast::CallExpression& call)
             } else if (type->isBool()) {
                 emitRuntimeCall(RuntimeFunction::FileWriteBool, "void", "__inox_file_write_bool",
                                 "ptr " + file + ", i1 zeroext " + written);
-            } else if (type->isFloat() && type->bits() == 64) {
+            } else if (type->isFloat()) {
+                std::string real = written;
+                if (type->bits() == 32) {
+                    real = "%tmp" + std::to_string(nextTemporary_++);
+                    output_ << "  " << real << " = fpext float " << written << " to double\n";
+                }
                 emitRuntimeCall(RuntimeFunction::FileWriteFloat, "void", "__inox_file_write_f64",
-                                "ptr " + file + ", double " + written);
+                                "ptr " + file + ", double " + real);
             } else if (isUInt64Type(type)) {
                 emitRuntimeCall(RuntimeFunction::FileWriteUnsigned, "void", "__inox_file_write_u64",
                                 "ptr " + file + ", i64 " + written);

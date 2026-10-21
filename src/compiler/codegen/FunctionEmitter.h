@@ -221,6 +221,10 @@ private:
     // Change char-values: Char(I) checked, and String(C).
     std::string emitCharCheck(const std::string& value, TypeRef target);
     std::string emitCharString(const std::string& value);
+    // Change float-conversions: conversions to and from Float.
+    TypeRef realConversionTarget(const ast::CallExpression& call) const;
+    std::string emitRealConversion(const ast::CallExpression& call, TypeRef target);
+    void emitTrapUnless(const std::string& condition, int kind);
     void emitArrayFillDefault(const std::string& pointer, TypeRef arrayType, const std::string& text);
     std::string emitSetComparison(const ast::BinaryExpression& expression);
     std::string emitMembership(const ast::BinaryExpression& expression);

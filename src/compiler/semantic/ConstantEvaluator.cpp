@@ -8,6 +8,7 @@
 // SemanticAnalyzer: constant evaluation and folding, static values, case choices.
 
 #include "SemanticAnalyzer.h"
+#include "../support/RealLiteral.h"
 
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
@@ -362,6 +363,10 @@ void SemanticAnalyzer::recordConstantExpression(const std::string& name,
         constant.kind = ConstantValue::Kind::Integer;
         constant.integer = integer;
         result_.setConstantValue(*symbol, constant);
+    } else if (double real = 0.0; staticRealValue(value, real)) {
+        constant.kind = ConstantValue::Kind::Real;
+        constant.real = real;
+        result_.setConstantValue(*symbol, constant);
     } else if (staticBoolValue(value, boolean)) {
         constant.kind = ConstantValue::Kind::Boolean;
         constant.boolean = boolean;
@@ -383,6 +388,93 @@ const Symbol* SemanticAnalyzer::resolveConstant(const ast::Expression& expressio
     const Symbol* symbol = symbols_.currentScope().resolve(
         static_cast<const ast::IdentifierExpression&>(expression).name());
     return symbol != nullptr && symbol->kind == SymbolKind::Constant ? symbol : nullptr;
+}
+
+bool SemanticAnalyzer::staticRealValue(const ast::Expression& expression, double& value) const
+{
+    const TypeRef type = result_.typeOf(expression);
+    if (type == nullptr || !type->isFloat()) {
+        return false;
+    }
+    const auto rounded = [&](double real) {
+        return type->bits() == 32 ? static_cast<double>(static_cast<float>(real)) : real;
+    };
+    switch (expression.kind()) {
+    case ast::AstNodeKind::LiteralExpression: {
+        const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
+        if (literal.literalKind() != ast::LiteralKind::Float) {
+            return false;
+        }
+        value = rounded(support::parseRealLiteral(literal.value()));
+        return true;
+    }
+    case ast::AstNodeKind::IdentifierExpression: {
+        const Symbol* symbol = resolveConstant(expression);
+        const ConstantValue* constant = symbol != nullptr ? result_.constantValueOf(*symbol) : nullptr;
+        if (constant == nullptr || constant->kind != ConstantValue::Kind::Real) {
+            return false;
+        }
+        value = constant->real;
+        return true;
+    }
+    case ast::AstNodeKind::UnaryExpression: {
+        const auto& unary = static_cast<const ast::UnaryExpression&>(expression);
+        double operand = 0.0;
+        if ((unary.op() != ast::UnaryOperator::Minus && unary.op() != ast::UnaryOperator::Plus) ||
+            !staticRealValue(unary.operand(), operand)) {
+            return false;
+        }
+        value = unary.op() == ast::UnaryOperator::Minus ? -operand : operand;
+        return true;
+    }
+    case ast::AstNodeKind::BinaryExpression: {
+        const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
+        double left = 0.0;
+        double right = 0.0;
+        if (!staticRealValue(binary.left(), left) || !staticRealValue(binary.right(), right)) {
+            return false;
+        }
+        switch (binary.op()) {
+        case ast::BinaryOperator::Add:
+            value = rounded(left + right);
+            return true;
+        case ast::BinaryOperator::Subtract:
+            value = rounded(left - right);
+            return true;
+        case ast::BinaryOperator::Multiply:
+            value = rounded(left * right);
+            return true;
+        case ast::BinaryOperator::Divide:
+            value = rounded(left / right);
+            return true;
+        default:
+            return false;
+        }
+    }
+    case ast::AstNodeKind::CallExpression: {
+        // Float(X) and Float32(X) of a constant real or integer.
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().size() != 1 ||
+            types().lookup(static_cast<const ast::IdentifierExpression&>(call.callee()).name()) != type) {
+            return false;
+        }
+        double operand = 0.0;
+        std::int64_t integer = 0;
+        if (staticRealValue(*call.arguments()[0], operand)) {
+            value = rounded(operand);
+            return true;
+        }
+        const TypeRef from = result_.typeOf(*call.arguments()[0]);
+        if (from != nullptr && from->isInteger() && !isUInt64Type(from) &&
+            constantIntegerValue(*call.arguments()[0], integer)) {
+            value = rounded(static_cast<double>(integer));
+            return true;
+        }
+        return false;
+    }
+    default:
+        return false;
+    }
 }
 
 bool SemanticAnalyzer::staticBoolValue(const ast::Expression& expression, bool& value) const

@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-18 against Inox 0.2.0 pre-alpha, canon r3.83.
+Verified on 2026-10-18 against Inox 0.2.0 pre-alpha, canon r3.84.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -28,9 +28,9 @@ each version added.
   structs, arrays, Strings), routines, no empty parentheses.
 - Types: Bool, Integer/Int64, Natural, Int8/16/32, Byte/UInt8, UInt16/32,
   UInt64/UInteger (0..2^64-1, unsigned arithmetic, comparisons, `case`,
-  `for`, input and output, r3.79), Float/Float64 (Float32 partly), String,
-  Char literals as `case` choices; checked arithmetic, conversions `T(X)`
-  between integer types, runtime faults with exit status 70.
+  `for`, input and output, r3.79), Float/Float64 and Float32, String, Char;
+  checked arithmetic, conversions `T(X)` between integer types, Float and
+  Float32 (r3.84), real Consts, runtime faults with exit status 70.
 - Control flow: if/elif/else, unless, conditional expression `IIf(C, A, B)`, while,
   repeat/until, for with step, leave/continue, case (Ada style), with
   (any place as target, evaluated once, checked through pointers).
@@ -110,11 +110,7 @@ each version added.
   inside a loop is freed when its declaration runs again or the routine
   returns, not at the end of each iteration. Each is a task of change
   `safe-pointers-followups`.
-- Conversions involving Float (`Integer(F)`, `Float(I)`, `Float(U)` with U a
-  UInt64, `Float32(X)`): accepted, not lowered ("not yet implemented in the
-  LLVM backend").
-- A Float `Const` is not lowered, so Std.Math exposes `Pi`, `Tau` and `E` as
-  functions.
+- Real literals have no exponent form (`1.0e3`), as the grammar says.
 - A function called as a statement (its result unused) passes the analyzer
   and is "not yet implemented" in the backend (left as it is, r3.65).
 - Module exports, visibility and package search beyond local `Use`.

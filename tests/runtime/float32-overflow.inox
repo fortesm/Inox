@@ -1,0 +1,17 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Change float-conversions: Float32(F) of a finite F beyond Float32 stops
+== the program (kind 11), instead of becoming an infinity.
+Main :
+    Value := 3.0
+    for Index in 1..39
+        Value := Value * 10.0
+    ;
+    PutLn(Float32(Value / 10.0) > Float32(1.0))
+    PutLn(Float32(Value))
+;

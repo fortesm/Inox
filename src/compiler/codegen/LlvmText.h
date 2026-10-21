@@ -26,6 +26,7 @@ std::string safeLlvmName(const std::string& name);
 // quoted otherwise (the name of a generic instance, `inox_max<int64>`).
 std::string llvmGlobalName(const std::string& name);
 std::string llvmIntegerLiteral(std::string_view value);
+std::string llvmRealConstant(double value, bool float32);
 std::string llvmDefaultLiteral(std::string_view value, std::string_view llvmType);
 
 struct LlvmStringConstant {

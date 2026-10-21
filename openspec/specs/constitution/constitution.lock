@@ -45,7 +45,7 @@ spec.md#CANON-6 Exit	9b3a00557eb7a21e	constitution
 spec.md#CANON-7 Empty parentheses are forbidden	f2c66de5a62e9bae	constitution
 spec.md#CANON-8 Built-in types	781016d8d519add9	constitution
 spec.md#CANON-8 The numeric set is closed	41287e2139bf5048	constitution
-spec.md#CANON-8 Conversions	eb495ebb922c23dd	constitution
+spec.md#CANON-8 Conversions	325374dc533806e6	float-conversions
 spec.md#CANON-8 Constants in fixed-width types	865fe0822fe03457	constitution
 spec.md#CANON-8 UInt64 literals	178ffcfdec0ab8b1	uint64
 spec.md#CANON-8 Exact decimals	9ad292af3a271504	constitution

@@ -125,7 +125,7 @@ TypeRef SemanticAnalyzer::analyzePreludeCall(std::string_view name, const std::v
             const TypeRef type = argumentTypes[index];
             if (type != nullptr &&
                 (type->isString() || type->isBool() || type->isInteger() || type->isEnum() || type->isChar() ||
-                 type == types().float64Type())) {
+                 type->isFloat())) {
                 continue;
             }
 

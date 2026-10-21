@@ -483,6 +483,13 @@ Main :
     PutLn(L.FA.FX + L.FB.FX)
 ;
 """),
+    ("float-const", "Float Const, a constant expression of it and a conversion", """Const Rate := 1.5
+Const Twice := Rate * 2.0
+
+Main :
+    PutLn(Twice + Float(3), " ", Integer(Rate))
+;
+"""),
     ("char-values", "Char local, conversion, comparison and printing", """Main :
     Letter Char := 'a'
     Next := Char(Integer(Letter) + 1)

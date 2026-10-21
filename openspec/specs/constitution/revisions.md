@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.83
+Canon revision: r3.84
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -27,6 +27,10 @@ stands.
    capture clause (`Name`, `Move(X)`, `Link(X)`), `{ }` as an effect or a
    requirement clause, `@` annotations; no String interpolation and `{ }`
    reserved (decided, r3.74).
+3. **Float choices** (change `float-conversions`, r3.84): a finite value
+   beyond Float32 in `Float32(F)` traps (kind 11) rather than becoming an
+   infinity; a real literal is a Float32 where a Float32 is expected; Std.Math's
+   Pi, Tau and E are Consts. Implemented; confirm or change.
 
 ## Revision log
 
@@ -283,3 +287,16 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `Get(C)` comes later. Marcelo Fortes, 2026-10-19, on the eight
   recommendations: "Ok, então, neste caso, está tudo acatado. Prossiga com
   nosso padrão." Change `char-values`.
+- r3.84 — 2026-10-21 — Float conversions and Float Consts (CANON-8, CANON-5):
+  `Float(I)` and `Float32(I)` round an integer (a UInt64 read unsigned);
+  `Float(G)` widens a Float32 exactly and `Float32(F)` rounds, trapping
+  ("value out of range", kind 11) when a finite F is beyond Float32;
+  `T(F)` into an integer type truncates toward zero and traps (kind 8) for
+  NaN, the infinities and values outside T, as the law already said; a
+  conversion into a number takes a number (Bool, String and enum rejected
+  with the way to write them); a real literal is a Float32 where a Float32
+  is expected; real Consts are folded at compile time, and Std.Math's Pi,
+  Tau and E become Consts. Marcelo Fortes, 2026-10-19, on the plan to do
+  "as conversões de Float e as Consts de Float" next: "Conbinado,
+  prossiga". The choices marked in the change's proposal await his
+  confirmation (open question 3). Change `float-conversions`.
