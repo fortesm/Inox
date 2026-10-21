@@ -51,7 +51,11 @@ may still move.
                documentation and examples
 after 1.0      concurrency with data-race safety (Chapel, Go, Rust, Delphi's
                forall; atomic String and File counts); contract monitoring
-               levels per module and static proof (SPARK); BigCurrency
+               levels per module and static proof (SPARK); BigCurrency;
+               interface with C libraries (FFI: declaring external C
+               routines, loading .so/.dll; C++ through C wrappers); a
+               separate repository of Inox libraries, such as an Inox DBO
+               (database objects)
 ```
 
 Stages (constitution VERSIONING): pre-alpha until the 1.0 scope is complete,
@@ -59,7 +63,8 @@ then alpha, beta and stable. What belongs to the 1.0 scope is the
 maintainer's decision. Marcelo Fortes, 2026-10-21: concurrency comes after
 1.0 ("Concorrência pode entrar após 1.0"); 1.0 has no fixed date ("Não nos
 preocuparemos se a saída de inox 1.0 pode ser após o Natal"); visibility
-(0.4) comes before collections (0.5): "Visibilidade antes".
+(0.4) comes before collections (0.5): "Visibilidade antes"; the interface
+with C libraries comes after 1.0 ("Sim, isso é depois da versão 1.0").
 
 ## Next work (OpenSpec changes, in the maintainer's order)
 
