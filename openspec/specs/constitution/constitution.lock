@@ -19,7 +19,7 @@ spec.md#CANON-1 Safety defaults	579a8963240512e4	constitution
 spec.md#CANON-2 Names are case-insensitive	34febe6d17f2bbd8	constitution
 spec.md#CANON-2 Comments and literals	5984e594e993a409	constitution
 spec.md#CANON-2 Digit separator	006404ba593459d4	constitution
-spec.md#CANON-2 Symbols	4e0baeb201620000	keyword-review
+spec.md#CANON-2 Symbols	ac2950b644f0074d	not-equal-operator
 spec.md#CANON-2 Reserved words and predefined names	ad956dd27288b1a7	array-fill
 spec.md#CANON-2 Words Inox does not have	26d08a59b30da9d4	keyword-review
 spec.md#CANON-3 Modules and Use	a016d047491d856a	syntax-review

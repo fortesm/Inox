@@ -72,6 +72,14 @@ Token Lexer::nextToken()
         return makeToken(TokenKind::Equal, start, startOffset);
     case '#':
         return makeToken(TokenKind::Hash, start, startOffset);
+    // r3.87: `!=` is inequality too, the same operator as `#`; a lone `!`
+    // is not an operator: negation is `not`.
+    case '!':
+        if (match('=')) {
+            return makeToken(TokenKind::Hash, start, startOffset);
+        }
+        return invalidToken(start, startOffset,
+                            "'!' is not an operator: negation is 'not' (not (A = B)), inequality is '#' or '!='");
     case '|':
         // ADR-0011: separates the alternatives of a case arm. It is not an
         // operator; bitwise or is spelled `bitor`.

@@ -17,7 +17,7 @@
 
 namespace inox::compiler::support {
 
-inline double parseRealLiteral(std::string_view text)
+inline std::string realLiteralDigits(std::string_view text)
 {
     std::string digits;
     digits.reserve(text.size());
@@ -26,7 +26,25 @@ inline double parseRealLiteral(std::string_view text)
             digits.push_back(ch);
         }
     }
-    return std::strtod(digits.c_str(), nullptr);
+    return digits;
+}
+
+inline double parseRealLiteral(std::string_view text)
+{
+    return std::strtod(realLiteralDigits(text).c_str(), nullptr);
+}
+
+// r3.86: a Float32 literal is read from its decimal text straight into a
+// float, rounded once (never through a double, which could round twice).
+// The result is the double holding that float exactly.
+inline double parseRealLiteral32(std::string_view text)
+{
+    return static_cast<double>(std::strtof(realLiteralDigits(text).c_str(), nullptr));
+}
+
+inline double parseRealLiteral(std::string_view text, bool float32)
+{
+    return float32 ? parseRealLiteral32(text) : parseRealLiteral(text);
 }
 
 } // namespace inox::compiler::support

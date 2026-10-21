@@ -256,7 +256,9 @@ and_expr          ::= relational_expr ( "and" relational_expr )*
                          and/or/xor may not be mixed without parentheses *)
 relational_expr   ::= membership_expr ( relational_op membership_expr )*
                                                              (* level 12, left *)
-relational_op     ::= "=" | "#" | "<" | "<=" | ">" | ">="
+relational_op     ::= "=" | "#" | "!=" | "<" | "<=" | ">" | ">="
+                      (* r3.87: "!=" is "#" spelled differently; a lone "!" is
+                         not an operator, negation is "not" *)
 membership_expr   ::= range_expr ( "in" range_expr )?        (* level 11, none *)
 range_expr        ::= bitor_expr ( ".." bitor_expr )?        (* level 10, none *)
                       (* ADR-0008: "in" and ".." are non-associative; a chain
