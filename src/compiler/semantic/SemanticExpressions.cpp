@@ -11,6 +11,7 @@
 
 #include "SemanticSupport.h"
 #include "../support/CharLiteral.h"
+#include "../support/RealLiteral.h"
 #include "../exceptions/ExceptionTypes.h"
 
 #include <algorithm>
@@ -71,7 +72,9 @@ void SemanticAnalyzer::requireStatementExpression(const ast::Expression& express
 // Whether the UInt64 context of a target reaches into this expression's
 // operands (change uint64): only through arithmetic and bitwise operators,
 // unary + and bitnot, and the branches of IIf.
-static bool carriesIntegerContext(const ast::Expression& expression)
+// `real`: the context is Float32 (change float-conversions), where a negated
+// literal and a quotient of literals are Float32 too.
+static bool carriesIntegerContext(const ast::Expression& expression, bool real)
 {
     switch (expression.kind()) {
     case ast::AstNodeKind::LiteralExpression:
@@ -79,10 +82,13 @@ static bool carriesIntegerContext(const ast::Expression& expression)
         return true;
     case ast::AstNodeKind::UnaryExpression: {
         const ast::UnaryOperator op = static_cast<const ast::UnaryExpression&>(expression).op();
-        return op == ast::UnaryOperator::Plus || op == ast::UnaryOperator::BitNot;
+        return op == ast::UnaryOperator::Plus || op == ast::UnaryOperator::BitNot ||
+               (real && op == ast::UnaryOperator::Minus);
     }
     case ast::AstNodeKind::BinaryExpression:
         switch (static_cast<const ast::BinaryExpression&>(expression).op()) {
+        case ast::BinaryOperator::Divide:
+            return real;
         case ast::BinaryOperator::Add:
         case ast::BinaryOperator::Subtract:
         case ast::BinaryOperator::Multiply:
@@ -117,7 +123,11 @@ static bool isLiteralAboveInt64(const ast::Expression& expression)
 
 TypeRef SemanticAnalyzer::analyzeWithIntegerContext(const ast::Expression& expression, TypeRef context)
 {
-    const TypeRef previous = std::exchange(integerContext_, isUInt64Type(context) ? context : nullptr);
+    // A UInt64 context makes its integer literals UInt64 (change uint64); a
+    // Float32 context makes its real literals Float32 (change
+    // float-conversions).
+    const bool keeps = isUInt64Type(context) || (context != nullptr && context->isFloat() && context->bits() == 32);
+    const TypeRef previous = std::exchange(integerContext_, keeps ? context : nullptr);
     try {
         const TypeRef type = analyzeExpression(expression);
         integerContext_ = previous;
@@ -131,7 +141,7 @@ TypeRef SemanticAnalyzer::analyzeWithIntegerContext(const ast::Expression& expre
 TypeRef SemanticAnalyzer::analyzeExpression(const ast::Expression& expression)
 {
     const TypeRef context = integerContext_;
-    if (!carriesIntegerContext(expression)) {
+    if (!carriesIntegerContext(expression, context != nullptr && context->isFloat())) {
         integerContext_ = nullptr;
     }
     TypeRef type = nullptr;
@@ -185,6 +195,16 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
             return types().int64Type();
         }
         case ast::LiteralKind::Float:
+            // A real literal is a Float32 where a Float32 is expected.
+            if (integerContext_ != nullptr && integerContext_->isFloat()) {
+                const double value =
+                    support::parseRealLiteral(static_cast<const ast::LiteralExpression&>(expression).value());
+                if (value > std::numeric_limits<float>::max()) {
+                    throw SemanticError("value out of range for Float32: " +
+                                        std::string(static_cast<const ast::LiteralExpression&>(expression).value()));
+                }
+                return integerContext_;
+            }
             return types().float64Type();
         case ast::LiteralKind::String:
             return types().stringType();

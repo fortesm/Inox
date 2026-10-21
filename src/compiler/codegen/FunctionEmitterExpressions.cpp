@@ -9,6 +9,7 @@
 
 #include "FunctionEmitter.h"
 #include "../support/CharLiteral.h"
+#include "../support/RealLiteral.h"
 
 #include "AstQueries.h"
 #include "ExceptionAbi.h"
@@ -225,7 +226,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return llvmIntegerLiteral(literal.value());
         }
         if (literal.literalKind() == ast::LiteralKind::Float) {
-            return std::string(literal.value());
+            const TypeRef type = typeOf(expression);
+            return llvmRealConstant(support::parseRealLiteral(literal.value()),
+                                    type != nullptr && type->isFloat() && type->bits() == 32);
         }
         if (literal.literalKind() == ast::LiteralKind::Boolean) {
             return equalsIgnoreCase(literal.value(), "true") ? "1" : "0";
@@ -277,6 +280,10 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             }
             if (constant->kind == semantic::ConstantValue::Kind::String) {
                 return emitStringValue(constant->text);
+            }
+            if (constant->kind == semantic::ConstantValue::Kind::Real) {
+                const TypeRef type = typeOf(expression);
+                return llvmRealConstant(constant->real, type != nullptr && type->bits() == 32);
             }
             return std::to_string(constant->integer);
         }
@@ -535,6 +542,12 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return emitMathBuiltinCall(callee.name(), call.arguments());
         }
 
+        // Change float-conversions: Float(X), Float32(X), and T(F) of a
+        // Float into an integer type.
+        if (const TypeRef target = realConversionTarget(call)) {
+            return emitRealConversion(call, target);
+        }
+
         // String(C) (change char-values): the one-character String.
         if (call.arguments().size() == 1 && equalsIgnoreCase(callee.name(), "String") &&
             calledRoutine(callee) == nullptr) {
@@ -680,6 +693,109 @@ std::string FunctionEmitter::emitCharString(const std::string& value)
     emitStringStatusCheck(status);
     holdOwnedResult(result, semantics_.types().stringType(), "ptr");
     return result;
+}
+
+// Change float-conversions: the target of a conversion `T(X)` that involves
+// a Float, as source or as target; else null.
+TypeRef FunctionEmitter::realConversionTarget(const ast::CallExpression& call) const
+{
+    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().size() != 1 ||
+        calledRoutine(static_cast<const ast::IdentifierExpression&>(call.callee())) != nullptr) {
+        return nullptr;
+    }
+    const TypeRef target =
+        semantics_.types().lookup(static_cast<const ast::IdentifierExpression&>(call.callee()).name());
+    const TypeRef source = typeOf(*call.arguments().front());
+    if (target == nullptr || source == nullptr) {
+        return nullptr;
+    }
+    const bool real = target->isFloat() || source->isFloat();
+    const bool numeric = (target->isFloat() || target->isInteger()) && (source->isFloat() || source->isInteger());
+    return real && numeric ? target : nullptr;
+}
+
+// Branches to a trap of `kind` unless `condition` (an i1) holds.
+void FunctionEmitter::emitTrapUnless(const std::string& condition, int kind)
+{
+    const std::string label = std::to_string(nextLabel_++);
+    output_ << "  br i1 " << condition << ", label %conv.ok" << label << ", label %conv.fault" << label << "\n\n";
+    output_ << "conv.fault" << label << ":\n  call void @__inox_arith_fault(i32 " << kind << ")\n  unreachable\n\n";
+    output_ << "conv.ok" << label << ":\n";
+}
+
+// CANON-8 (change float-conversions):
+// - Float(I) and Float32(I) round an integer to the nearest real (a UInt64
+//   is read unsigned);
+// - Float(G) widens a Float32 exactly; Float32(F) rounds to the nearest
+//   Float32, and a finite F beyond Float32's range stops the program with
+//   "value out of range" (kind 11);
+// - T(F) of a Float into an integer type truncates toward zero; NaN, an
+//   infinity or a value outside T stops the program with "integer
+//   conversion out of range" (kind 8).
+std::string FunctionEmitter::emitRealConversion(const ast::CallExpression& call, TypeRef target)
+{
+    const ast::Expression& argument = *call.arguments().front();
+    const TypeRef source = typeOf(argument);
+    const std::string value = emitExpression(argument);
+    const std::string sourceType = valueLlvmType(source);
+    const std::string targetType = valueLlvmType(target);
+    const auto temporary = [this] { return "%tmp" + std::to_string(nextTemporary_++); };
+
+    if (target->isFloat()) {
+        if (source->isInteger()) {
+            const std::string result = temporary();
+            output_ << "  " << result << " = " << (isUInt64Type(source) ? "uitofp" : "sitofp") << " i64 " << value
+                    << " to " << targetType << '\n';
+            return result;
+        }
+        if (sourceType == targetType) {
+            return value;
+        }
+        const std::string result = temporary();
+        if (target->bits() == 64) {
+            output_ << "  " << result << " = fpext float " << value << " to double\n";
+            return result;
+        }
+        output_ << "  " << result << " = fptrunc double " << value << " to float\n";
+        // Overflow: the rounded value is infinite while the source was finite.
+        const std::string sourceMagnitude = temporary();
+        const std::string resultMagnitude = temporary();
+        const std::string sourceFinite = temporary();
+        const std::string resultInfinite = temporary();
+        const std::string overflow = temporary();
+        const std::string fits = temporary();
+        output_ << "  " << sourceMagnitude << " = call double @llvm.fabs.f64(double " << value << ")\n";
+        output_ << "  " << resultMagnitude << " = call float @llvm.fabs.f32(float " << result << ")\n";
+        output_ << "  " << sourceFinite << " = fcmp one double " << sourceMagnitude << ", 0x7FF0000000000000\n";
+        output_ << "  " << resultInfinite << " = fcmp oeq float " << resultMagnitude << ", 0x7FF0000000000000\n";
+        output_ << "  " << overflow << " = and i1 " << sourceFinite << ", " << resultInfinite << '\n';
+        output_ << "  " << fits << " = xor i1 " << overflow << ", true\n";
+        // llvm.fabs.f64 is declared with every module (LlvmIrEmitter).
+        requireModuleLine("declare float @llvm.fabs.f32(float)");
+        emitTrapUnless(fits, 11);
+        return result;
+    }
+
+    // A Float into an integer type: in range (and not NaN) before converting.
+    const bool unsignedTarget = isUInt64Type(target);
+    const std::string low = temporary();
+    const std::string high = temporary();
+    const std::string inRange = temporary();
+    // -2^63 <= F < 2^63, or 0 <= F < 2^64 for UInt64: exact powers of two.
+    const std::string lowBound = llvmRealConstant(unsignedTarget ? 0.0 : -9223372036854775808.0, sourceType == "float");
+    const std::string highBound =
+        llvmRealConstant(unsignedTarget ? 18446744073709551616.0 : 9223372036854775808.0, sourceType == "float");
+    output_ << "  " << low << " = fcmp oge " << sourceType << ' ' << value << ", " << lowBound << '\n';
+    output_ << "  " << high << " = fcmp olt " << sourceType << ' ' << value << ", " << highBound << '\n';
+    output_ << "  " << inRange << " = and i1 " << low << ", " << high << '\n';
+    emitTrapUnless(inRange, 8);
+    const std::string integer = temporary();
+    output_ << "  " << integer << " = " << (unsignedTarget ? "fptoui " : "fptosi ") << sourceType << ' ' << value
+            << " to i64\n";
+    if (unsignedTarget || target == semantics_.types().int64Type()) {
+        return integer;
+    }
+    return emitRangeCheck(integer, IntegerRange{target->minValue(), target->maxValue()}, 8);
 }
 
 } // namespace inox::compiler::codegen::detail

@@ -198,9 +198,15 @@ void FunctionEmitter::emitOutputCall(const ast::Expression& argument, bool newli
     const std::string argumentType = expressionLlvmType(argument);
     const std::string value = emitExpression(argument);
     if (isFloatLlvmType(argumentType)) {
+        // A Float32 prints as the Float64 it widens to exactly.
+        std::string printed = value;
+        if (argumentType == "float") {
+            printed = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << printed << " = fpext float " << value << " to double\n";
+        }
         output_ << "  call i32 (ptr, ...) @printf(ptr "
                 << (newline ? "@.inox.fmt.f64.nl" : "@.inox.fmt.f64")
-                << ", double " << value << ")\n";
+                << ", double " << printed << ")\n";
         return;
     }
 

@@ -1,0 +1,56 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Change float-conversions (CANON-8): Float(I) and Float32(I) round an
+== integer to the nearest real (a UInt64 read unsigned); Float(G) widens a
+== Float32 exactly and Float32(F) rounds; T(F) into an integer type
+== truncates toward zero; real literals are Float32 where a Float32 is
+== expected; Float and Float32 Consts, also as constant expressions and
+== conversions, in any order; Float32 values print and are written.
+Use Std.IOUtils
+Use Std.Math
+
+Const Rate := 1.5
+Const Half := 1.0 / 2.0
+Const Shift := -Half * 4.0 + Rate
+Const Third := Float32(1.0 / 3.0)
+Const Seven := Float(7)
+
+Average(Total Integer, Count Integer) Float :
+    Return Float(Total) / Float(Count)
+;
+
+Main :
+    == Integers into reals, and back with truncation toward zero.
+    Count := 7
+    PutLn(Float(Count), " ", Average(10, 4), " ", Integer(7.9), " ", Integer(-7.9), " ", Byte(255.9))
+    Large UInt64 := 18446744073709551615
+    PutLn(Float(Large) > 1.0, " ", UInt64(1000.75), " ", Natural(3.2), " ", Int8(-128.5))
+
+    == Float32: literals, rounding and widening.
+    Small Float32 := 0.1
+    Wide := Float(Small)
+    PutLn(Small, " ", Wide = 0.1, " ", Float32(Wide) = Small, " ", Float32(Count), " ", Small * 2.0 < 0.3)
+
+    == Consts.
+    PutLn(Rate, " ", Half, " ", Shift, " ", Third, " ", Seven, " ", Area(2.0), " ", Pi > 3.14)
+
+    == Written to a file.
+    Out := Create("float-conversions.txt")
+    WriteLn(Out, Small, " ", Rate)
+    Close(Out)
+    Reader := OpenRead("float-conversions.txt")
+    PutLn(ReadLn(Reader))
+    Close(Reader)
+    DeleteFile("float-conversions.txt")
+;
+
+Area(Radius Float) Float :
+    Return Late * Radius
+;
+
+Const Late := 2.5

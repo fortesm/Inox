@@ -624,12 +624,18 @@ Inox SHALL have no `Double`, `Extended`, `Decimal`, `Variant` or
 Only safe widening defined by Inox SHALL be implicit (Natural to Integer).
 Narrowing is never implicit: `T(X)` converts explicitly, checks T's range at
 run time, and a constant outside T is a compile error. `Integer(FloatExpr)`
-truncates toward zero and fails when out of range. Storing an Integer into a
-Natural is range-checked implicitly (ADR-0015).
+truncates toward zero and fails when out of range or NaN; `Float(I)`
+rounds; `Float32(F)` rounds and fails beyond Float32. Storing an Integer
+into a Natural is range-checked implicitly (ADR-0015). Details:
+`language/reals`.
 
 #### Scenario: Checked conversion
 - **WHEN** `Byte(X)` receives 300 at run time, or `Byte(300)` is written
 - **THEN** the first traps (tests/runtime/byte-conversion-runtime-range.inox) and the second is rejected (tests/diagnostics/byte-conversion-out-of-range.inox)
+
+#### Scenario: Real conversions
+- **WHEN** a program converts between integers, Float and Float32
+- **THEN** the results round or truncate as `language/reals` says (tests/runtime/float-conversions.inox), and `Byte(F)` with F = 256.9 traps (tests/runtime/float-to-integer-range.inox)
 
 #### Scenario: Implicit Natural check
 - **WHEN** a negative Integer is stored into a Natural

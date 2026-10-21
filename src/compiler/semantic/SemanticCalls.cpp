@@ -147,7 +147,9 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
                     }
                     // UInt64(18446744073709551615): the argument of a
                     // UInt64 conversion is a UInt64 context (change uint64).
-                    analyzeWithIntegerContext(*argument, type);
+                    // The argument of Float32(X) is the Float64 it rounds
+                    // (change float-conversions).
+                    analyzeWithIntegerContext(*argument, type->isFloat() ? nullptr : type);
                 }
                 // CANON-8 (v3.39): an integer conversion checks the range of
                 // its target. A constant argument outside it, such as
@@ -173,6 +175,10 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
                     if (const TypeRef from = result_.typeOf(*call.arguments()[0]); from != nullptr && from->isEnum()) {
                         throw SemanticError(callee.name() + "(E) of an enum value is written Ord(E) (CANON-13)");
                     }
+                }
+                // Change float-conversions: a number converts to a number.
+                if (call.arguments().size() == 1 && (type->isInteger() || type->isFloat())) {
+                    checkNumericConversion(call, type);
                 }
                 if (call.arguments().size() == 1 && type->isInteger()) {
                     IntegerConstant constant;

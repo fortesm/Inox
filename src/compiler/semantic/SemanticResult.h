@@ -48,11 +48,13 @@ struct FunctionSignature {
 // Later phases read it from here instead of re-parsing the Const section
 // (CANON E11, decision P-C stage 1).
 struct ConstantValue {
-    enum class Kind { Integer, Boolean, String };
+    enum class Kind { Integer, Boolean, String, Real };
     Kind kind = Kind::Integer;
     std::int64_t integer = 0;
     bool boolean = false;
     std::string text;  // a String Const: the literal's text
+    double real = 0.0;  // a Float Const (change float-conversions), already
+                        // rounded to Float32 when its type is Float32
 };
 
 class SemanticResult {

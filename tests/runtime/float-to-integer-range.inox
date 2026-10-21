@@ -1,0 +1,15 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Change float-conversions (CANON-8): T(F) into an integer type truncates
+== toward zero, and a value outside T stops the program (kind 8).
+Main :
+    Value := 255.9
+    PutLn(Byte(Value))
+    Value += 1.0
+    PutLn(Byte(Value))
+;
