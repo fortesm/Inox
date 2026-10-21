@@ -267,6 +267,13 @@ void FunctionEmitter::emitCase(const ast::CaseStatement& statement)
     const std::string endTarget = prefix + "end";
     const std::string type = expressionLlvmType(statement.expression());
     const std::string selector = emitExpression(statement.expression());
+    // Change case-strings: a String selector is compared with each choice
+    // as `=` compares, byte for byte.
+    const bool textual = isStringType(typeOf(statement.expression()));
+    if (textual) {
+        requireRuntime(RuntimeFunction::StringEqual);
+        requireStringRuntime();
+    }
     // Bool and UInt64 (change uint64) are ordered unsigned.
     const bool unsignedCompare = type == "i1" || isUInt64Type(typeOf(statement.expression()));
     const auto& arms = statement.arms();
@@ -299,6 +306,11 @@ void FunctionEmitter::emitCase(const ast::CaseStatement& statement)
                 output_ << "  " << leHigh << " = icmp " << (unsignedCompare ? "ule " : "sle ")
                         << type << " " << selector << ", " << high << "\n";
                 output_ << "  " << hit << " = and i1 " << geLow << ", " << leHigh << "\n";
+            } else if (textual) {
+                const std::string value = emitExpression(choice);
+                hit = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << hit << " = call zeroext i1 @__inox_str_equal(ptr " << selector << ", ptr " << value
+                        << ")\n";
             } else {
                 const std::string value = emitExpression(choice);
                 hit = "%tmp" + std::to_string(nextTemporary_++);

@@ -749,7 +749,16 @@ Band := IIf(N &lt; 10, &quot;low&quot;, IIf(N &lt; 100, &quot;medium&quot;, &quo
     else
         PutLn(&quot;other&quot;)
 ;</code></pre>
-<p>The last arm, <code>else</code>, is required unless the choices cover every value of the selector type (it was spelled <code>otherwise</code> until canon revision 3.74). A <code>Bool</code> case that handles <code>True</code> and <code>False</code> needs no <code>else</code>. A case on an <code>Integer</code> code that handles only 404 is rejected. The selector must be discrete: an integer type, <code>Char</code>, <code>Bool</code>, an enum or a range.</p>
+<p>The last arm, <code>else</code>, is required unless the choices cover every value of the selector type (it was spelled <code>otherwise</code> until canon revision 3.74). A <code>Bool</code> case that handles <code>True</code> and <code>False</code> needs no <code>else</code>. A case on an <code>Integer</code> code that handles only 404 is rejected. The selector is discrete (an integer type, <code>Char</code>, <code>Bool</code>, an enum or a range) or a <code>String</code>. Ada's <code>others</code> is the <code>else</code> arm.</p>
+<p>A <code>case</code> on a String chooses among String literals and String Consts, compared byte for byte as <code>=</code> compares (case and accents count; normalize with <code>LowerCase(S)</code> for a case-insensitive choice). There are no ranges of Strings, the same String twice is an error, and <code>else</code> is always required, since no list covers every String. A <code>Float</code> is never a selector: equality of reals is not a safe choice.</p>
+<pre><code>case Trim(Line)
+    "start" | "go"
+        Start
+    "stop" | "halt"
+        Stop
+    else
+        PutLn("unknown command: ", Line)
+;</code></pre>
 <h3>with</h3>
 <p><code>with Target</code> opens a block where <code>.Member</code> is a member of the target, as in Visual Basic; names without the dot follow the normal scope. Assignment is <code>:=</code>, as everywhere (<code>=</code> compares).</p>
 <pre><code>with Customer

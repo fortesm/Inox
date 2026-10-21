@@ -20,7 +20,7 @@ may still move.
                parameters, case, Strings, text files, Std.Strings /
                Std.StrUtils with concatenation, UInt64, Enum, Range and Set
                (done); Char values (done, r3.83); Float conversions
-               and Float Const (done, r3.84); `case` on Strings
+               and Float Const (done, r3.84); `case` on Strings (done, r3.85)
 0.3            exact decimals (Currency, Crypto); Std.DateTime /
                Std.DateUtils; Std.SystemUtils; Std.Debug.Assert; console I/O
                moved into libinoxrt (the final I/O ABI)
@@ -81,5 +81,5 @@ whether concurrency or contracts are in it) is the maintainer's decision.
 - `char-values` — Char values and output (done, r3.83). Later: `Get(C)`,
   Char classification and case mapping.
 - `float-conversions` — Float conversions and real Consts (done, r3.84).
-- Then the rest of 0.2: `case` on Strings (approved 2026-10-19), then the
-  v0.2.0 release.
+- `case-strings` — `case` on a String (done, r3.85).
+- Then the v0.2.0 release.

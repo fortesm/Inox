@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-18 against Inox 0.2.0 pre-alpha, canon r3.84.
+Verified on 2026-10-18 against Inox 0.2.0 pre-alpha, canon r3.85.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -62,6 +62,8 @@ each version added.
   Ranges of Integer checked when stored (kind 11); Set<T> with `in`, the
   comparisons, the six functions (`Include`/`Exclude` since r3.81; a call
   as a statement is rejected) and `[A, B]`; `X in A..B`.
+- `case` on a String (r3.85): String literal and Const choices, `else`
+  always.
 - Char values (r3.83): literals with escapes, `Char(I)` checked,
   `Integer(C)`, `String(C)`, `CharAt`, comparison, Char ranges in `for`,
   `case` and `in`, Char Ranges and sets over them, output in UTF-8.

@@ -974,15 +974,20 @@ loop never computes past Int64.Min or Int64.Max.
 - **THEN** each call happens once (tests/runtime/for-bounds-evaluated-once.inox, tests/runtime/for-step-evaluated-once.inox) and the loop ends (tests/runtime/for-range-ends-at-max.inox)
 
 ### Requirement: CANON-12 case
-`case Selector` SHALL choose one arm (ADR-0011): a discrete selector
-evaluated once; arms of static values or ranges separated by `|`; no overlap
-and no fall-through; `else` at most once, last, and required unless the
-choices cover every value; no `of`, `when`, `=>`, `:` or `do`. `case` as an
-expression is reserved. Details: `language/case-statement`.
+`case Selector` SHALL choose one arm (ADR-0011): a discrete or String
+selector evaluated once; arms of static values or ranges (not of Strings)
+separated by `|`; no overlap and no fall-through; `else` at most once, last,
+and required unless the choices cover every value (always for a String); no
+`of`, `when`, `=>`, `:` or `do`. `case` as an expression is reserved.
+Details: `language/case-statement`.
 
 #### Scenario: case
 - **WHEN** a case runs, or overlaps, or misses values without `else`
 - **THEN** it picks one arm (tests/runtime/case-lowering.inox) or is rejected (tests/diagnostics/case-overlap-range.inox, tests/diagnostics/case-integer-incomplete.inox)
+
+#### Scenario: case on a String
+- **WHEN** a case selects on a String with String choices and `else`, or without `else`
+- **THEN** it picks one arm (tests/runtime/case-strings.inox) or is rejected (tests/diagnostics/case-string-without-else.inox)
 
 ### Requirement: CANON-13 Array
 `Array[Low..High] T` SHALL be a fixed-size value type whose bounds are part

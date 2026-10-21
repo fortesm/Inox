@@ -1,0 +1,46 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Change case-strings (ADR-0011): a case on a String. Each choice is a
+== String literal or a String Const, compared byte for byte as = compares;
+== several choices share an arm with |; else is required. The selector is
+== evaluated once, also when it is a call or a concatenation.
+Use Std.StrUtils
+
+Const Quit := "quit"
+
+Command(Line String) String :
+    case Trim(Line)
+        "start" | "go"
+            Return "starting"
+        "stop" | "halt" | Quit
+            Return "stopping"
+        "" | "\t"
+            Return "empty"
+        "café"
+            Return "accented"
+        else
+            Return "unknown: " + Line
+    ;
+;
+
+Main :
+    Line String := ""
+    for Index in 1..7
+        GetLn(Line)
+        PutLn(Command(Line))
+    ;
+    Word := "Go"
+    case Word + "!"
+        "go!"
+            PutLn("lower")
+        "Go!"
+            PutLn("as written")
+        else
+            PutLn("other")
+    ;
+;
