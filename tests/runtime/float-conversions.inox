@@ -10,7 +10,9 @@
 == Float32 exactly and Float32(F) rounds; T(F) into an integer type
 == truncates toward zero; real literals are Float32 where a Float32 is
 == expected; Float and Float32 Consts, also as constant expressions and
-== conversions, in any order; Float32 values print and are written.
+== conversions, in any order; Float32 values print and are written. Since
+== r3.86 a real-literal Const (Pi, Low) is universal, as Ada and Go: a
+== Float32 where a Float32 is expected.
 Use Std.IOUtils
 Use Std.Math
 
@@ -19,6 +21,7 @@ Const Half := 1.0 / 2.0
 Const Shift := -Half * 4.0 + Rate
 Const Third := Float32(1.0 / 3.0)
 Const Seven := Float(7)
+Const Low := -2.5
 
 Average(Total Integer, Count Integer) Float :
     Return Float(Total) / Float(Count)
@@ -35,6 +38,22 @@ Main :
     Small Float32 := 0.1
     Wide := Float(Small)
     PutLn(Small, " ", Wide = 0.1, " ", Float32(Wide) = Small, " ", Float32(Count), " ", Small * 2.0 < 0.3)
+
+    == r3.86: a Float32 literal and a universal Const (Pi, Low) are rounded
+    == once from their digits; the value after the tie of 1 + 2^-24 is above 1.
+    Tie Float32 := 1.000000059604644775390626
+    Pi32 Float32 := Pi
+    Low32 Float32 := Low
+    PutLn(Tie > 1.0, " ", Pi32, " ", Float(Pi32) = Pi, " ", Low32, " ", Tau * 1.0 > Pi)
+
+    == r3.86: NaN and the infinities keep their kind through Float32(F), and
+    == a value too small for Float32 becomes zero, keeping its sign.
+    Zero := 0.0
+    Infinite := 1.0 / Zero
+    Undefined := Zero / Zero
+    Tiny := 0.000000000000000000000000000000000000000000000000001
+    PutLn(Float32(Infinite), " ", Float32(-Infinite), " ", Float32(Undefined) = Float32(Undefined), " ",
+          Float32(Tiny) = Float32(0.0), " ", Float32(-Tiny))
 
     == Consts.
     PutLn(Rate, " ", Half, " ", Shift, " ", Third, " ", Seven, " ", Area(2.0), " ", Pi > 3.14)

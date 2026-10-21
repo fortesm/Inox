@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.85
+Canon revision: r3.87
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -27,10 +27,6 @@ stands.
    capture clause (`Name`, `Move(X)`, `Link(X)`), `{ }` as an effect or a
    requirement clause, `@` annotations; no String interpolation and `{ }`
    reserved (decided, r3.74).
-3. **Float choices** (change `float-conversions`, r3.84): a finite value
-   beyond Float32 in `Float32(F)` traps (kind 11) rather than becoming an
-   infinity; a real literal is a Float32 where a Float32 is expected; Std.Math's
-   Pi, Tau and E are Consts. Implemented; confirm or change.
 
 ## Revision log
 
@@ -307,3 +303,26 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   is never a selector. Marcelo Fortes, 2026-10-19, on the proposal (String
   yes with these rules, Float no): "Sim acatado !"; on `others`: `else` is
   that arm (r3.74). Change `case-strings`.
+- r3.86 — 2026-10-21 — Open question 3 answered, the floating-point policy
+  (CANON-8): `Float32(F)` rounds as IEEE 754 (ties to even), a loss of
+  precision being no error; a finite F whose rounding overflows stops the
+  program (kind 11), never an infinity or a saturation; a constant beyond
+  Float32 is a compile error; NaN and the infinities keep their kind, and
+  underflow gives a subnormal or a signed zero without error; Float32
+  expressions are computed in Float32. A real literal is a Float32 where a
+  Float32 is expected, rounded once from its decimal text, never through a
+  Float64; a typed value never changes precision implicitly. A Const whose
+  value is a real literal (or its negation) is universal, as Ada's named
+  numbers and Go's untyped constants; Std.Math's Pi, Tau and E are such
+  Consts, written with more digits than either type holds. An unchecked
+  conversion to an infinity (`Float32Unchecked`) is an idea, not approved.
+  Marcelo Fortes, 2026-10-21: "Eu adotaria um modelo verificado para
+  Float32(F), inspirado em Ada, mas com regras mais determinísticas";
+  "Eu confirmaria essa decisão sem alterações" (literals); "Prefiro
+  claramente o modelo Ada/Go" (constants); "Não faria Float32(F)
+  simplesmente saturar". Change `float-policy`.
+- r3.87 — 2026-10-21 — `!=` is inequality, the same operator as `#`, both
+  valid; a lone `!` is not an operator, negation is `not` (CANON-2).
+  Marcelo Fortes, 2026-10-21: "Deve ser adotado o operador != paralelo ao
+  operador #, ambos são válidos"; "if ! (a = b) é inválido deve ser o
+  operador not". Change `not-equal-operator`.

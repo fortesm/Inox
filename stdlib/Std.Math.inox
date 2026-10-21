@@ -117,14 +117,14 @@ Lcm(A Integer, B Integer) Integer :
 == STATUS NOTES (see docs/STATUS.md, conformance gaps):
 ==  - Lcm/Sqr/Cube inherit checked integer arithmetic. Overflow deterministically
 ==    traps under DECISION P-A; v3.19 verification confirmed all three paths.
-==  - Pi, Tau and E are Float Consts (change float-conversions; until then they
-==    were zero-argument functions, and every use reads the same). The literals
-==    are given to Float64's honest precision (~16-17 significant digits); extra
-==    digits would be decorative.
+==  - Pi, Tau and E are universal real Consts (r3.86, as Ada.Numerics and Go's
+==    math): a Float where a Float is expected and a Float32 where a Float32 is,
+==    each rounded once from these digits, more than either type holds. Until
+==    r3.84 they were zero-argument functions; every use reads the same.
 
-Const Pi := 3.141592653589793
-Const Tau := 6.283185307179586
-Const E := 2.718281828459045
+Const Pi := 3.141592653589793238462643383279502884
+Const Tau := 6.283185307179586476925286766559005768
+Const E := 2.718281828459045235360287471352662498
 
 Cotan(X Float) Float :
     Return 1.0 / Tan(X)

@@ -87,7 +87,7 @@ std::string llvmDefaultLiteral(std::string_view value, std::string_view llvmType
         return equalsIgnoreCase(value, "true") ? "1" : "0";
     }
     if (llvmType == "double" || llvmType == "float") {
-        return llvmRealConstant(support::parseRealLiteral(value), llvmType == "float");
+        return llvmRealConstant(support::parseRealLiteral(value, llvmType == "float"), llvmType == "float");
     }
     const bool negative = !value.empty() && value.front() == '-';
     std::string magnitude(negative ? value.substr(1) : value);

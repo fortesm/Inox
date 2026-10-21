@@ -227,8 +227,8 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         }
         if (literal.literalKind() == ast::LiteralKind::Float) {
             const TypeRef type = typeOf(expression);
-            return llvmRealConstant(support::parseRealLiteral(literal.value()),
-                                    type != nullptr && type->isFloat() && type->bits() == 32);
+            const bool float32 = type != nullptr && type->isFloat() && type->bits() == 32;
+            return llvmRealConstant(support::parseRealLiteral(literal.value(), float32), float32);
         }
         if (literal.literalKind() == ast::LiteralKind::Boolean) {
             return equalsIgnoreCase(literal.value(), "true") ? "1" : "0";
@@ -283,7 +283,11 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             }
             if (constant->kind == semantic::ConstantValue::Kind::Real) {
                 const TypeRef type = typeOf(expression);
-                return llvmRealConstant(constant->real, type != nullptr && type->bits() == 32);
+                const bool float32 = type != nullptr && type->bits() == 32;
+                // A universal Const is read once from its digits (r3.86).
+                const double value =
+                    constant->universal ? support::parseRealLiteral(constant->text, float32) : constant->real;
+                return llvmRealConstant(value, float32);
             }
             return std::to_string(constant->integer);
         }

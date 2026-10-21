@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -80,6 +81,9 @@ static bool carriesIntegerContext(const ast::Expression& expression, bool real)
     case ast::AstNodeKind::LiteralExpression:
     case ast::AstNodeKind::ConditionalExpression:
         return true;
+    // A universal real Const takes a Float32 context (r3.86).
+    case ast::AstNodeKind::IdentifierExpression:
+        return real;
     case ast::AstNodeKind::UnaryExpression: {
         const ast::UnaryOperator op = static_cast<const ast::UnaryExpression&>(expression).op();
         return op == ast::UnaryOperator::Plus || op == ast::UnaryOperator::BitNot ||
@@ -198,8 +202,8 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
             // A real literal is a Float32 where a Float32 is expected.
             if (integerContext_ != nullptr && integerContext_->isFloat()) {
                 const double value =
-                    support::parseRealLiteral(static_cast<const ast::LiteralExpression&>(expression).value());
-                if (value > std::numeric_limits<float>::max()) {
+                    support::parseRealLiteral32(static_cast<const ast::LiteralExpression&>(expression).value());
+                if (std::isinf(value)) {
                     throw SemanticError("value out of range for Float32: " +
                                         std::string(static_cast<const ast::LiteralExpression&>(expression).value()));
                 }
@@ -265,6 +269,17 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
         }
         if (symbol.kind == SymbolKind::Variable) {
             requireOwnerUsable(symbol);
+        }
+        // r3.86: a universal real Const (`Pi`) is a Float32 where a Float32
+        // is expected, rounded once from its decimal text.
+        if (symbol.kind == SymbolKind::Constant && integerContext_ != nullptr && integerContext_->isFloat()) {
+            if (const ConstantValue* constant = result_.constantValueOf(symbol);
+                constant != nullptr && constant->kind == ConstantValue::Kind::Real && constant->universal) {
+                if (std::isinf(support::parseRealLiteral32(constant->text))) {
+                    throw SemanticError("value out of range for Float32: " + identifier.name());
+                }
+                return integerContext_;
+            }
         }
         return symbol.type;
     }

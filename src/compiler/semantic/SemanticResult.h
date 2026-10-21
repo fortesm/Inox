@@ -55,6 +55,11 @@ struct ConstantValue {
     std::string text;  // a String Const: the literal's text
     double real = 0.0;  // a Float Const (change float-conversions), already
                         // rounded to Float32 when its type is Float32
+    // r3.86: a Const whose value is a real literal (`Const Pi :=
+    // 3.14159...`, also negated) is universal, as Ada's named numbers and
+    // Go's untyped constants: a Float32 where a Float32 is expected, read
+    // once from `text`, its decimal digits.
+    bool universal = false;
 };
 
 class SemanticResult {

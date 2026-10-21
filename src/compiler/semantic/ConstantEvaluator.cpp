@@ -100,6 +100,16 @@ void SemanticAnalyzer::recordConstantValue(std::string_view name, std::string_vi
         }
         return;
     }
+    // A real literal: a universal real Const (r3.86).
+    if (!valueToken.empty() && std::isdigit(static_cast<unsigned char>(valueToken.front())) != 0 &&
+        valueToken.find('.') != std::string_view::npos) {
+        value.kind = ConstantValue::Kind::Real;
+        value.real = support::parseRealLiteral(valueToken);
+        value.text = std::string(valueToken);
+        value.universal = true;
+        result_.setConstantValue(*symbol, value);
+        return;
+    }
     if (equalsIgnoreCase(valueToken, "true") || equalsIgnoreCase(valueToken, "false")) {
         value.kind = ConstantValue::Kind::Boolean;
         value.boolean = equalsIgnoreCase(valueToken, "true");
@@ -366,6 +376,17 @@ void SemanticAnalyzer::recordConstantExpression(const std::string& name,
     } else if (double real = 0.0; staticRealValue(value, real)) {
         constant.kind = ConstantValue::Kind::Real;
         constant.real = real;
+        // `Const Low := -2.5`: a negated real literal is universal too.
+        if (value.kind() == ast::AstNodeKind::UnaryExpression &&
+            static_cast<const ast::UnaryExpression&>(value).op() == ast::UnaryOperator::Minus &&
+            static_cast<const ast::UnaryExpression&>(value).operand().kind() == ast::AstNodeKind::LiteralExpression) {
+            const auto& literal =
+                static_cast<const ast::LiteralExpression&>(static_cast<const ast::UnaryExpression&>(value).operand());
+            if (literal.literalKind() == ast::LiteralKind::Float) {
+                constant.text = "-" + std::string(literal.value());
+                constant.universal = true;
+            }
+        }
         result_.setConstantValue(*symbol, constant);
     } else if (staticBoolValue(value, boolean)) {
         constant.kind = ConstantValue::Kind::Boolean;
@@ -405,7 +426,8 @@ bool SemanticAnalyzer::staticRealValue(const ast::Expression& expression, double
         if (literal.literalKind() != ast::LiteralKind::Float) {
             return false;
         }
-        value = rounded(support::parseRealLiteral(literal.value()));
+        // A Float32 literal is rounded once, from its decimal text (r3.86).
+        value = support::parseRealLiteral(literal.value(), type->bits() == 32);
         return true;
     }
     case ast::AstNodeKind::IdentifierExpression: {
@@ -414,7 +436,8 @@ bool SemanticAnalyzer::staticRealValue(const ast::Expression& expression, double
         if (constant == nullptr || constant->kind != ConstantValue::Kind::Real) {
             return false;
         }
-        value = constant->real;
+        value = constant->universal ? support::parseRealLiteral(constant->text, type->bits() == 32)
+                                    : rounded(constant->real);
         return true;
     }
     case ast::AstNodeKind::UnaryExpression: {

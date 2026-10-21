@@ -299,8 +299,9 @@ start, at the end or doubled it is an error.
 - **THEN** the first is 1000 (tests/runtime/digit-separators.inox) and the others are errors (tests/diagnostics/digit-separator-doubled.inox, tests/diagnostics/digit-separator-trailing.inox)
 
 ### Requirement: CANON-2 Symbols
-The symbols SHALL be: `:=` declaration and assignment; `=` and `#` equality
-and inequality; `<` `<=` `>` `>=`; `..` range; `:` routine declaration
+The symbols SHALL be: `:=` declaration and assignment; `=` equality, `#`
+and `!=` inequality (one operator, two spellings; a lone `!` is not an
+operator, negation is `not`, r3.87); `<` `<=` `>` `>=`; `..` range; `:` routine declaration
 (CANON-4); `;` block close; `.` member; `,` separator; `|` between `case`
 alternatives; `^` power, never XOR; `+=` `-=` `*=` `/=` `^=` compound
 assignment. `{` and `}` are reserved until generics and concurrency show
@@ -309,6 +310,10 @@ their use (Marcelo Fortes, 2026-10-16).
 #### Scenario: Tokens
 - **WHEN** the lexer reads keywords, literals and symbols
 - **THEN** it produces the expected tokens (tests/lexer/valid/tokens-keywords-literals.inox)
+
+#### Scenario: Inequality spelled != and a lone !
+- **WHEN** a program compares with `!=` and `#`, or writes `if ! (A = B)`
+- **THEN** both spellings compare alike (tests/runtime/not-equal-operator.inox) and `!` is rejected, pointing to `not` (tests/diagnostics/bang-negation.inox)
 
 ### Requirement: CANON-2 Reserved words and predefined names
 The reserved words SHALL be: Use Type Const State Struct Enum if elif else
