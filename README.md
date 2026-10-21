@@ -23,7 +23,7 @@ Core safety defaults include:
 - Unicode Strings with `+` that appends in place, and Std.Strings / Std.StrUtils functions (Substr, Position, Trim, UpperCase, SameText...) that count characters, never bytes, and follow no single human language
 - Generics without constraints or run-time cost: `Max<T>(A T, B T) T` and `TPair<K, V> Struct` get one compiled copy per list of types, inferred from the arguments, never written in a call
 
-The language draws carefully from several traditions (Ada/SPARK robustness, Rust ownership and mutability discipline, Modula/Oberon modular clarity, modern Pascal ergonomics, C/C++ performance realism, and others) while rejecting defaults that introduce undefined behavior or ambiguity.
+The language draws carefully from several traditions for robustness, discipline, modular clarity, ergonomics, performance realism while rejecting defaults that introduce undefined behavior or ambiguity.
 
 ## Target Domains
 
@@ -41,7 +41,7 @@ Inox is aimed at systems where correctness and predictability matter:
 
 The reference compiler is written in portable C++20 and targets LLVM. Windows x64 (Clang, MSVC ABI) and Linux x64 are the primary targets; both run the full regression suite in CI, including native exception handling (MSVC funclets on Windows, Itanium landing pads on Linux). The language core does not rely on a tracing garbage collector; memory management favors explicit ownership, moves, and deterministic resource control (arenas may come later as an option).
 
-Inox is at version 0.2.0, pre-alpha: the complete compiler pipeline (lexer → parser → semantic analysis → LLVM IR → executable) works, and the language and its standard library are growing toward 1.0. What works today and what is still missing is in [`docs/STATUS.md`](docs/STATUS.md).
+Inox is at version 0.3.0, pre-alpha: the complete compiler pipeline (lexer → parser → semantic analysis → LLVM IR → executable) works, and the language and its standard library are growing toward 1.0. What works today and what is still missing is in [`docs/STATUS.md`](docs/STATUS.md).
 
 ## Building
 
