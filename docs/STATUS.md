@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.88.
+Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.89.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -66,7 +66,12 @@ each version added.
   always.
 - Char values (r3.83): literals with escapes, `Char(I)` checked,
   `Integer(C)`, `String(C)`, `CharAt`, comparison, Char ranges in `for`,
-  `case` and `in`, Char Ranges and sets over them, output in UTF-8.
+  `case` and `in`, Char Ranges and sets over them, output in UTF-8;
+  `Get(C)`, `EndOfInput`, the Unicode classes (IsLetter, IsDigit, IsSpace,
+  IsUpper, IsLower, IsPunctuation) and case of a Char (r3.89).
+- Input: `Get` of integers, Float and Float32 (strict, exponents allowed)
+  and Char; `GetLn` of a String (r3.89).
+- Real literals with exponents, `1.5e3` (r3.89).
 - Required fields (r3.82): enum, array and type-parameter fields without
   default are given in the construction; type defaults only when complete,
   nested and in parts; array field defaults `:= Fill(Literal)`.
@@ -104,9 +109,9 @@ each version added.
 - Strings: `S[I]` and `GraphemeLength` are reserved; collation,
   normalization, Split/Join and conversions between numbers and text come
   in later changes; case mapping is one code point to one (`ß` stays `ß`).
-- Char: reading one Char from the input (`Get(C)`) is not implemented, and
-  a Char array element, stored in 32 bits like a narrow integer, cannot be
-  passed by `ref` yet.
+- Char: a Char array element, stored in 32 bits like a narrow integer,
+  cannot be passed by `ref` yet; case mapping of a Char is one code point
+  to one.
 - Currency and Crypto: names registered, no arithmetic or literals;
   BigCurrency absent.
 - Vector, `Option`, `Result`: not implemented (`Option` exists only as
@@ -121,7 +126,6 @@ each version added.
   inside a loop is freed when its declaration runs again or the routine
   returns, not at the end of each iteration. Each is a task of change
   `safe-pointers-followups`.
-- Real literals have no exponent form (`1.0e3`), as the grammar says.
 - Module exports, visibility and package search beyond local `Use`.
 - Toolchain discovery; clang is still the external
   driver (by design until E22's criteria hold).

@@ -75,3 +75,13 @@ character in UTF-8. Reading one Char (`Get(C)`) is not yet in the language.
 #### Scenario: Places and output
 - **WHEN** a program uses a Char Const, State variable, field, array element, `ref mut` parameter and `IIf`, and writes Chars to a file
 - **THEN** each holds and writes its character (tests/runtime/chars.inox)
+
+### Requirement: Reading a Char
+`Get(C)` SHALL read the next character of the input exactly, white space and
+line ends included, into a Char or a Char Range (a value outside the Range
+traps, "value out of range"); `EndOfInput` tells when nothing is left
+(CANON-17, r3.89).
+
+#### Scenario: Characters and a Range
+- **WHEN** a program reads characters until EndOfInput, and a capital into a Range of lower-case letters
+- **THEN** every character arrives (tests/runtime/get-char.inox) and the capital traps (tests/runtime/get-char-range.inox)

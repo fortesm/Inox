@@ -192,6 +192,9 @@ private:
 
     void emitOutputCallSequence(const std::vector<ast::ExpressionPtr>& arguments, bool newline);
 
+    const LocalInfo& inputTarget(const ast::Expression& argument) const;
+    std::string emitInputReadCharacter(const ast::Expression& argument);
+    void emitInputReadReal(const ast::Expression& argument);
     void emitOutputValue(const ast::Expression& argument);
     void emitOutputCall(const ast::Expression& argument, bool newline);
 

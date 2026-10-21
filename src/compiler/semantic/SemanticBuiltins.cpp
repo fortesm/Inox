@@ -31,7 +31,7 @@ using namespace detail;
 void SemanticAnalyzer::declareBuiltins()
 {
     const std::vector<std::string_view> valueBuiltins = {
-        "Put", "PutLn", "Get", "GetLn", "ReadLn",
+        "Put", "PutLn", "Get", "GetLn", "ReadLn", "EndOfInput",
         "Abs", "Sqrt", "Cbrt", "Sin", "Cos", "Tan", "ArcSin", "ArcCos", "ArcTan", "ArcTan2",
         "Sinh", "Cosh", "Tanh", "Exp", "Ln", "LnXP1", "Log2", "Log10", "LogN", "Power",
         "Floor", "Ceil", "FMod", "Hypot", "Hypot3",
@@ -99,15 +99,19 @@ TypeRef SemanticAnalyzer::analyzeInputCall(
         // CANON-17 (v3.50): GetLn(S) reads the rest of the line into a String.
         if (symbol.type != nullptr && symbol.type->isString()) {
             if (!equalsIgnoreCase(name, "GetLn")) {
-                throw SemanticError("Get reads Integer values; use GetLn(" + identifier.name() +
+                throw SemanticError("Get reads one value, not a line; use GetLn(" + identifier.name() +
                                     ") to read a line of text into a String");
             }
             continue;
         }
+        // r3.89 (C1, C2): a Char reads the next character exactly; Float and
+        // Float32 read a real number strictly.
+        if (symbol.type != nullptr && (symbol.type->isChar() || symbol.type->isFloat())) {
+            continue;
+        }
         if (!isIntegerType(symbol.type)) {
-            throw SemanticError(
-                std::string(name) + " currently supports only Integer/Int64 and String input, got " +
-                types::nameOf(symbol.type) + " for " + identifier.name());
+            throw SemanticError(std::string(name) + " reads integers, Float, Float32, Char and (GetLn) String, got " +
+                                types::nameOf(symbol.type) + " for " + identifier.name());
         }
     }
 

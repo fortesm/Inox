@@ -277,13 +277,18 @@ conflict. Documentation uses one canonical spelling.
 A line comment SHALL start with `==` and run to the end of the line; there
 are no block comments. Strings use double quotes, Chars single quotes
 (`'a'`, `'é'`, `'😀'`). Integers are decimal `42` or hexadecimal `$2A` or
-`0x2A` (the same literal); reals are `3.14`. A leading zero never means
-octal: `017` is seventeen. An integer literal must fit Int64 (UInt64: see
-CANON-8).
+`0x2A` (the same literal); reals are `3.14` or, with an exponent after the
+fraction, `1.5e3` and `2.0E-7` (r3.89; `1e3` is an error). A leading zero
+never means octal: `017` is seventeen. An integer literal must fit Int64
+(UInt64: see CANON-8), a real literal Float64.
 
 #### Scenario: Literals
 - **WHEN** a program uses `$FF`, `0xFF` and `017`
 - **THEN** they are 255, 255 and 17 (tests/runtime/hex-literals.inox); a literal beyond Int64 is rejected (tests/diagnostics/literal-out-of-range.inox)
+
+#### Scenario: Exponents
+- **WHEN** a program writes `1.5e3`, `2.0E-7`, `1e3` and `1.0e400`
+- **THEN** the first two are reals (tests/runtime/real-exponent.inox); `1e3` and a literal beyond Float64 are rejected (tests/diagnostics/real-exponent-without-fraction.inox, tests/diagnostics/real-literal-out-of-range.inox)
 
 #### Scenario: Unterminated string
 - **WHEN** a string literal is not closed
@@ -1120,11 +1125,12 @@ String changes. Details: `stdlib/strings`.
 
 ### Requirement: CANON-14 String functions
 `Use Std.Strings` SHALL give `Length`, `ByteLength`, `Substr`, `Position`,
-`UpperCase` and `LowerCase`; `Use Std.StrUtils` SHALL give these and
-`Trim`, `LTrim`, `RTrim`, `Left`, `Right`, `PadLeft`, `PadRight`,
-`Replicate`, `Replace`, `Contains`, `StartsWith`, `EndsWith`, `SameText`
-and `CompareText`. Without the `Use`, these names are free for the
-program. Details: `stdlib/strings`.
+`UpperCase` and `LowerCase` (also of a Char), `CharAt` and the Char classes
+`IsLetter`, `IsDigit`, `IsSpace`, `IsUpper`, `IsLower`, `IsPunctuation`
+(r3.89); `Use Std.StrUtils` adds `Trim`, `LTrim`, `RTrim`, `Left`, `Right`,
+`PadLeft`, `PadRight`, `Replicate`, `Replace`, `Contains`, `StartsWith`,
+`EndsWith`, `SameText` and `CompareText`. Without the `Use`, the names are
+free. Details: `stdlib/strings`.
 
 #### Scenario: Without Use
 - **WHEN** a program calls Length of a String or Trim without the module that gives it, or declares its own Trim and Left without `Use Std.StrUtils`
@@ -1270,7 +1276,8 @@ runs, and is given back at exit (r3.88).
 `Get(X)` SHALL read one value into the variable X, and `GetLn(X)` reads one
 and consumes the rest of the line; both take several variables in order.
 `Get` and `GetLn` without arguments discard one token or the rest of the
-line (the console pause). Arguments are assignable variables.
+line (the console pause). Arguments are assignable variables of an integer
+type, Float, Float32, Char or (GetLn) String.
 
 #### Scenario: Reading values
 - **WHEN** GetLn reads two Integers from one line, or receives a literal
@@ -1284,6 +1291,28 @@ value outside the variable's type, traps ("invalid integer input").
 #### Scenario: Integer input
 - **WHEN** an Integer is read from valid input, with a plus sign, trailing garbage, at the end of input, or beyond Int64
 - **THEN** the first is stored (tests/integration/input/get-integer.inox) and the others trap (tests/integration/input/get-integer-plus-sign.inox, tests/integration/input/get-integer-trailing-garbage.inox, tests/integration/input/get-integer-eof.inox, tests/integration/input/get-integer-overflow-positive.inox)
+
+### Requirement: CANON-17 Reading a Char and the end of input
+`Get(C)` SHALL read the next character exactly, a space or a line end
+included; `GetLn(C)` then consumes the rest of the line unless C was the
+line end. `EndOfInput` is true when nothing is left to read. Reading a Char
+past the end traps ("end of input"); bytes that are not UTF-8 trap
+("invalid UTF-8 input") (r3.89).
+
+#### Scenario: Characters
+- **WHEN** a program reads every character of its input, then one more, or bytes that are not UTF-8
+- **THEN** it reads them all, spaces and line ends included (tests/runtime/get-char.inox), and the others trap (tests/runtime/get-char-end-of-input.inox, tests/runtime/get-char-invalid-utf8.inox)
+
+### Requirement: CANON-17 Real input is strict
+`Get(F)` of a Float or a Float32 SHALL skip white space and read an
+optional `-`, digits, an optional fraction and an optional exponent, ending
+at white space or the end; anything else traps ("invalid number input"), a
+value beyond the type traps ("value out of range"). A Float32 is rounded
+once from the text (r3.89).
+
+#### Scenario: Reals
+- **WHEN** reals are read, or text that is not one, or a value beyond Float32
+- **THEN** they are stored (tests/runtime/get-real.inox) and the others trap (tests/runtime/get-real-invalid.inox, tests/runtime/get-real-range.inox)
 
 ### Requirement: CANON-17 GetLn into a String
 `GetLn(S)` with a String variable SHALL read the rest of the line without
@@ -1429,8 +1458,9 @@ The category texts SHALL be: `integer overflow`, `division by zero`,
 exponent`, `invalid integer input`, `value out of range for Natural`,
 `integer conversion out of range`, `array index out of bounds`, `slice
 bounds out of range`, `out of memory`, `invalid UTF-8 input`, `assertion
-failed` (`: Message`), `string index out of range`, `end of input`, those
-of CANON-24 and CANON-25, and `value out of range`.
+failed` (`: Message`), `string index out of range`, `end of input`,
+`invalid number input`, those of CANON-24 and CANON-25, and `value out of
+range`.
 
 #### Scenario: Categories
 - **WHEN** each kind of fault happens at run time

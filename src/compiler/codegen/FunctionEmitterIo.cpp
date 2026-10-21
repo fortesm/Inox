@@ -42,20 +42,97 @@ void FunctionEmitter::emitInputCallSequence(const std::vector<ast::ExpressionPtr
         throw CodegenError("Get/GetLn calls with parentheses require at least one argument");
     }
 
+    // What the last argument read: a String consumed its line, a Char may
+    // have been the line end itself.
     bool lastReadLine = false;
+    std::string lastCharacter;
     for (const auto& argument : arguments) {
-        lastReadLine = isStringType(typeOf(*argument));
+        const TypeRef type = typeOf(*argument);
+        lastReadLine = isStringType(type);
+        lastCharacter.clear();
         if (lastReadLine) {
             emitInputReadLine(*argument);
+        } else if (type != nullptr && type->isChar()) {
+            lastCharacter = emitInputReadCharacter(*argument);
+        } else if (type != nullptr && type->isFloat()) {
+            emitInputReadReal(*argument);
         } else {
             emitInputReadInteger(*argument);
         }
     }
 
-    // A String argument already consumed the rest of its line.
-    if (consumeRestOfLine && !lastReadLine) {
-        emitInputDiscardLine();
+    if (!consumeRestOfLine || lastReadLine) {
+        return;
     }
+    if (lastCharacter.empty()) {
+        emitInputDiscardLine();
+        return;
+    }
+    // GetLn(C): the rest of the line, unless C was the line end.
+    const std::string label = std::to_string(nextLabel_++);
+    const std::string more = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << more << " = icmp ne i64 " << lastCharacter << ", 10\n";
+    output_ << "  br i1 " << more << ", label %getln.rest" << label << ", label %getln.done" << label << "\n\n";
+    output_ << "getln.rest" << label << ":\n";
+    emitInputDiscardLine();
+    output_ << "  br label %getln.done" << label << "\n\n";
+    output_ << "getln.done" << label << ":\n";
+}
+
+// The slot of a variable Get reads into.
+const FunctionEmitter::LocalInfo& FunctionEmitter::inputTarget(const ast::Expression& argument) const
+{
+    if (argument.kind() != ast::AstNodeKind::IdentifierExpression) {
+        throw CodegenUnsupported("Get/GetLn LLVM emission requires assignable local variables");
+    }
+    const auto& identifier = static_cast<const ast::IdentifierExpression&>(argument);
+    const auto local = locals_.find(normalize(identifier.name()));
+    if (local == locals_.end()) {
+        throw CodegenUnsupported("Get/GetLn LLVM emission currently supports only local variables");
+    }
+    return local->second;
+}
+
+// r3.89 (C1): Get(C) reads the next character exactly; past the end of
+// input it stops with "end of input" (kind 18), bytes that are not UTF-8
+// with "invalid UTF-8 input" (kind 13). Returns the code point read.
+std::string FunctionEmitter::emitInputReadCharacter(const ast::Expression& argument)
+{
+    const LocalInfo& target = inputTarget(argument);
+    requireRuntime(RuntimeFunction::ConsoleGetCharacter);
+    const std::string code = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string present = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string valid = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << code << " = call i64 @__inox_con_get_char()\n";
+    output_ << "  " << present << " = icmp ne i64 " << code << ", -1\n";
+    emitTrapUnless(present, 18);
+    output_ << "  " << valid << " = icmp ne i64 " << code << ", -2\n";
+    emitTrapUnless(valid, 13);
+    std::string stored = code;
+    if (target.type != nullptr && target.type->isCharRange()) {
+        stored = emitRangeCheck(code, IntegerRange{target.type->minValue(), target.type->maxValue()}, 11);
+    }
+    output_ << "  store i64 " << stored << ", ptr " << target.slot << "\n";
+    return code;
+}
+
+// r3.89 (C2): Get of a Float or a Float32 reads a real number strictly
+// (`-12.5`, `3`, `1.5e3`); anything else is "invalid number input" (kind
+// 19), beyond the type's range "value out of range" (kind 11).
+void FunctionEmitter::emitInputReadReal(const ast::Expression& argument)
+{
+    const LocalInfo& target = inputTarget(argument);
+    const bool float32 = target.llvmType == "float";
+    requireRuntime(float32 ? RuntimeFunction::ConsoleGetFloat32 : RuntimeFunction::ConsoleGetFloat);
+    const std::string status = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string ok = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string valid = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << status << " = call i32 @" << (float32 ? "__inox_con_get_f32" : "__inox_con_get_f64")
+            << "(ptr " << target.slot << ")\n";
+    output_ << "  " << valid << " = icmp ne i32 " << status << ", 1\n";
+    emitTrapUnless(valid, 19);
+    output_ << "  " << ok << " = icmp ne i32 " << status << ", 2\n";
+    emitTrapUnless(ok, 11);
 }
 
 // CANON-17 (v3.50): GetLn(S) reads the rest of the line, without its line

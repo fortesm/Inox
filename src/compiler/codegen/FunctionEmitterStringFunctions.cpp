@@ -267,6 +267,30 @@ std::string FunctionEmitter::emitStringCall(const ast::CallExpression& call, sem
     case StringFunction::LowerCase:
         return makes(RuntimeFunction::StringCase, "__inox_str_case",
                      "ptr " + values[0] + ", i32 " + (function == StringFunction::UpperCase ? "0" : "1"));
+    case StringFunction::IsLetter:
+    case StringFunction::IsDigit:
+    case StringFunction::IsSpace:
+    case StringFunction::IsUpper:
+    case StringFunction::IsLower:
+    case StringFunction::IsPunctuation: {
+        // r3.89 (C3): the order of the classes in __inox_char_is.
+        const int which = function == StringFunction::IsLetter  ? 0
+                          : function == StringFunction::IsDigit ? 1
+                          : function == StringFunction::IsSpace ? 2
+                          : function == StringFunction::IsUpper ? 3
+                          : function == StringFunction::IsLower ? 4
+                                                                : 5;
+        requireRuntime(RuntimeFunction::CharIs);
+        output_ << "  " << result << " = call zeroext i1 @__inox_char_is(i64 " << values[0] << ", i32 " << which
+                << ")\n";
+        return result;
+    }
+    case StringFunction::UpperCaseChar:
+    case StringFunction::LowerCaseChar:
+        requireRuntime(RuntimeFunction::CharCase);
+        output_ << "  " << result << " = call i64 @__inox_char_case(i64 " << values[0] << ", i32 "
+                << (function == StringFunction::UpperCaseChar ? 0 : 1) << ")\n";
+        return result;
     case StringFunction::Trim:
     case StringFunction::LTrim:
     case StringFunction::RTrim:

@@ -17,6 +17,7 @@
 #include <array>
 #include <cctype>
 #include <cstddef>
+#include <cmath>
 #include <cstdint>
 #include <functional>
 #include <limits>
@@ -105,6 +106,9 @@ void SemanticAnalyzer::recordConstantValue(std::string_view name, std::string_vi
         valueToken.find('.') != std::string_view::npos) {
         value.kind = ConstantValue::Kind::Real;
         value.real = support::parseRealLiteral(valueToken);
+        if (std::isinf(value.real)) {
+            throw SemanticError("value out of range for Float: " + std::string(valueToken));
+        }
         value.text = std::string(valueToken);
         value.universal = true;
         result_.setConstantValue(*symbol, value);

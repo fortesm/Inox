@@ -328,7 +328,10 @@ bool_literal      ::= "true" | "false"
 integer_literal   ::= decimal_digits | "$" hex_digits | ( "0x" | "0X" ) hex_digits
                       (* v3.34: "$FF" and "0xFF" are the same literal; a leading
                          zero never means octal *)
-real_literal      ::= decimal_digits "." decimal_digits
+real_literal      ::= decimal_digits "." decimal_digits exponent?
+exponent          ::= ( "e" | "E" ) ( "+" | "-" )? decimal_digits
+                      (* r3.89: "1.5e3", "2.0E-7"; the fraction is required, so
+                         "1e3" is an error; beyond Float64 is a compile error *)
 decimal_digits    ::= digit ( "_"? digit )*
 hex_digits        ::= hex_digit ( "_"? hex_digit )*
                       (* "_" only between digits: never leading, trailing or doubled *)

@@ -199,6 +199,7 @@ constexpr RuntimeFaultKind kRuntimeFaultKinds[] = {
     {16, "use of a freed object or an empty Link"},
     {17, "use of an owner after Move or Free"},
     {18, "end of input"},
+    {19, "invalid number input"},
 };
 
 } // namespace
@@ -222,7 +223,8 @@ std::string runtimeFaultSeam()
        << "; a Range or past the ends of Succ and Pred, 12 out of memory, 13 invalid UTF-8\n"
        << "; input, 14 a failed Std.Debug.Assert, 15 a position or count outside a String\n"
        << "; (Std.Strings), 16 a Link to a freed object, 17 an owner used after Move or\n"
-       << "; Free, 18 a read past the end of input (ReadKey).\n";
+       << "; Free, 18 a read past the end of input (ReadKey, Get of a Char), 19 invalid\n"
+       << "; number input (Get of a real).\n";
     for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
         const std::string text = std::string("Inox runtime error: ") + kind.message + "\n";
         ir << "@.inox.fault." << kind.code << " = private unnamed_addr constant ["

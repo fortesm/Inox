@@ -281,7 +281,30 @@ Token Lexer::number(SourceLocation start, std::size_t startOffset)
         if (!digitRun(false)) {
             return invalidToken(start, startOffset, kSeparator);
         }
+        // r3.89 (B5): an exponent after the fraction, `1.5e3`, `2.0E-7`.
+        if (peek() == 'e' || peek() == 'E') {
+            advance();
+            if (peek() == '+' || peek() == '-') {
+                advance();
+            }
+            if (!isDigit(peek())) {
+                return invalidToken(start, startOffset,
+                                    "an exponent needs digits after 'e' (r3.89): write '1.5e3' or '2.0e-7'");
+            }
+            if (!digitRun(false)) {
+                return invalidToken(start, startOffset, kSeparator);
+            }
+        }
         return makeToken(TokenKind::FloatLiteral, start, startOffset);
+    }
+
+    // r3.89 (B5): an exponent needs a fraction, `1.0e3`; `1e3` is an error.
+    if ((peek() == 'e' || peek() == 'E') &&
+        (isDigit(peekNext()) || ((peekNext() == '+' || peekNext() == '-')))) {
+        const std::string digits(source_.substr(startOffset, current_ - startOffset));
+        return invalidToken(start, startOffset,
+                            "a real literal with an exponent has a fraction (r3.89): write '" + digits +
+                                ".0e...', not '" + digits + "e...'");
     }
 
     return makeToken(TokenKind::IntegerLiteral, start, startOffset);

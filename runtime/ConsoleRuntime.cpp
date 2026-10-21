@@ -22,6 +22,7 @@
 #include "Console.h"
 #include "StringBlock.h"
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -735,6 +736,150 @@ void* __inox_con_getln(std::int32_t* status) noexcept
     InoxString* line = inox::runtime::readLine(readForLine, nullptr, lineStatus);
     *status = static_cast<std::int32_t>(lineStatus);
     return line;
+}
+
+// ---- Get of a Char, a Float and EndOfInput (change input-chars-exponents) ----
+
+// Get(C): the next character exactly (a space, a line end), its code point;
+// -1 at the end of input, -2 for bytes that are not UTF-8.
+std::int64_t __inox_con_get_char() noexcept
+{
+    const int lead = readByte();
+    if (lead < 0) {
+        return -1;
+    }
+    int length = 0;
+    std::int64_t code = 0;
+    if (lead < 0x80) {
+        return lead;
+    }
+    if ((lead & 0xE0) == 0xC0) {
+        length = 2;
+        code = lead & 0x1F;
+    } else if ((lead & 0xF0) == 0xE0) {
+        length = 3;
+        code = lead & 0x0F;
+    } else if ((lead & 0xF8) == 0xF0) {
+        length = 4;
+        code = lead & 0x07;
+    } else {
+        return -2;
+    }
+    for (int index = 1; index < length; ++index) {
+        const int next = peekByte();
+        if (next < 0 || (next & 0xC0) != 0x80) {
+            return -2;
+        }
+        readRawByte();
+        code = (code << 6) | (next & 0x3F);
+    }
+    const std::int64_t smallest = length == 2 ? 0x80 : length == 3 ? 0x800 : 0x10000;
+    if (code < smallest || code > 0x10FFFF || (code >= 0xD800 && code <= 0xDFFF)) {
+        return -2;
+    }
+    return code;
+}
+
+// EndOfInput: nothing is left to read (waits for input on a terminal).
+bool __inox_con_at_end() noexcept
+{
+    return peekByte() < 0;
+}
+
+} // extern "C"
+
+namespace {
+
+bool isInputSpace(int byte) noexcept
+{
+    return byte == ' ' || byte == '\t' || byte == '\n' || byte == '\r';
+}
+
+// One real number of the input, strictly: optional '-', digits, an optional
+// fraction and an optional exponent, then white space or the end. Status 0
+// ok, 1 invalid (also at the end of input), 2 beyond the type's range.
+std::int32_t readRealToken(char* text, std::size_t capacity) noexcept
+{
+    int byte = readByte();
+    while (byte >= 0 && isInputSpace(byte)) {
+        byte = readByte();
+    }
+    std::size_t length = 0;
+    bool valid = true;
+    const auto take = [&](int ch) {
+        if (length + 1 < capacity) {
+            text[length++] = static_cast<char>(ch);
+        } else {
+            valid = false;
+        }
+    };
+    const auto digits = [&]() {
+        if (byte < '0' || byte > '9') {
+            valid = false;
+            return;
+        }
+        while (byte >= '0' && byte <= '9') {
+            take(byte);
+            byte = readByte();
+        }
+    };
+    if (byte == '-') {
+        take(byte);
+        byte = readByte();
+    }
+    digits();
+    if (valid && byte == '.') {
+        take(byte);
+        byte = readByte();
+        digits();
+    }
+    if (valid && (byte == 'e' || byte == 'E')) {
+        take(byte);
+        byte = readByte();
+        if (byte == '+' || byte == '-') {
+            take(byte);
+            byte = readByte();
+        }
+        digits();
+    }
+    if (valid && byte >= 0 && !isInputSpace(byte)) {
+        valid = false;
+    }
+    text[length] = '\0';
+    return valid ? 0 : 1;
+}
+
+} // namespace
+
+extern "C" {
+
+std::int32_t __inox_con_get_f64(double* out) noexcept
+{
+    char text[400];
+    if (readRealToken(text, sizeof text) != 0) {
+        return 1;
+    }
+    const double value = std::strtod(text, nullptr);
+    if (value == HUGE_VAL || value == -HUGE_VAL) {
+        return 2;
+    }
+    *out = value;
+    return 0;
+}
+
+// A Float32 is read from the text straight into a float, rounded once.
+std::int32_t __inox_con_get_f32(float* out) noexcept
+{
+    char text[400];
+    if (readRealToken(text, sizeof text) != 0) {
+        return 1;
+    }
+    const float value = std::strtof(text, nullptr);
+    if (value == HUGE_VALF || value == -HUGE_VALF) {
+        return 2;
+    }
+    *out = value;
+    return 0;
 }
 
 // ---- Std.Terminal (F1) ----

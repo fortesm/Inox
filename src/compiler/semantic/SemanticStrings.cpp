@@ -72,7 +72,23 @@ bool SemanticAnalyzer::stringFunctionVisible(std::string_view name) const
 TypeRef SemanticAnalyzer::analyzeStringCall(const ast::CallExpression& call, const std::vector<TypeRef>* argumentTypes)
 {
     const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
-    const StringFunctionInfo& info = *findStringFunction(callee.name());
+    const StringFunctionInfo* found = findStringFunction(callee.name());
+    // r3.89 (C3): UpperCase(C) and LowerCase(C) of a Char. The argument is
+    // analyzed once, here, and its type passed on.
+    std::vector<TypeRef> analyzedArgument;
+    if ((found->function == StringFunction::UpperCase || found->function == StringFunction::LowerCase) &&
+        call.arguments().size() == 1) {
+        if (argumentTypes == nullptr) {
+            analyzedArgument.push_back(analyzeExpressionFor(*call.arguments()[0], types().stringType()));
+            argumentTypes = &analyzedArgument;
+        }
+        const TypeRef argument = (*argumentTypes)[0];
+        if (argument != nullptr && argument->isChar()) {
+            found = &stringFunctionInfo(found->function == StringFunction::UpperCase ? StringFunction::UpperCaseChar
+                                                                                     : StringFunction::LowerCaseChar);
+        }
+    }
+    const StringFunctionInfo& info = *found;
     const std::string name(info.name);
     if (info.convenience && !strUtilsVisible_) {
         throw SemanticError(name + " is declared in Std.StrUtils: add `Use Std.StrUtils`");
@@ -92,13 +108,19 @@ TypeRef SemanticAnalyzer::analyzeStringCall(const ast::CallExpression& call, con
     result_.bind(call, symbol);
     for (std::size_t index = 0; index < arguments.size(); ++index) {
         const ast::Expression& argument = *arguments[index];
-        const TypeRef expected = info.parameters[index] == 'S' ? types().stringType() : types().int64Type();
+        const char kind = info.parameters[index];
+        const TypeRef expected = kind == 'S'   ? types().stringType()
+                                 : kind == 'C' ? types().charType()
+                                               : types().int64Type();
         const TypeRef actual = argumentTypes != nullptr ? (*argumentTypes)[index] : analyzeExpressionFor(argument, expected);
-        const bool matches = info.parameters[index] == 'S' ? actual != nullptr && actual->isString()
-                                                           : actual != nullptr && actual->isInteger();
+        const bool matches = kind == 'S'   ? actual != nullptr && actual->isString()
+                             : kind == 'C' ? actual != nullptr && actual->isChar()
+                                           : actual != nullptr && actual->isInteger();
         if (!matches) {
             throw SemanticError("argument " + std::to_string(index + 1) + " of " + name + " is " +
-                                (info.parameters[index] == 'S' ? std::string("a String") : std::string("an integer")) +
+                                (kind == 'S'   ? std::string("a String")
+                                 : kind == 'C' ? std::string("a Char")
+                                               : std::string("an integer")) +
                                 ", got " + types::nameOf(actual));
         }
     }
