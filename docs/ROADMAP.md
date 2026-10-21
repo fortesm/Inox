@@ -58,8 +58,8 @@ Stages (constitution VERSIONING): pre-alpha until the 1.0 scope is complete,
 then alpha, beta and stable. What belongs to the 1.0 scope is the
 maintainer's decision. Marcelo Fortes, 2026-10-21: concurrency comes after
 1.0 ("Concorrência pode entrar após 1.0"); 1.0 has no fixed date ("Não nos
-preocuparemos se a saída de inox 1.0 pode ser após o Natal"). Modules come
-before collections, so the library grown in 0.3 gets visibility early.
+preocuparemos se a saída de inox 1.0 pode ser após o Natal"); visibility
+(0.4) comes before collections (0.5): "Visibilidade antes".
 
 ## Next work (OpenSpec changes, in the maintainer's order)
 
