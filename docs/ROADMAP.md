@@ -16,31 +16,55 @@ may still move.
 ```text
 0.1     done   foundation: spec, driver, tests, release packages, LLVM
                subset, checked arithmetic, exceptions on Linux and Windows
-0.2     now    the imperative core: structs, fixed arrays, slices, ref
-               parameters, case, Strings, text files, Std.Strings /
-               Std.StrUtils with concatenation, UInt64, Enum, Range and Set
-               (done); Char values (done, r3.83); Float conversions
-               and Float Const (done, r3.84); `case` on Strings (done, r3.85)
-0.3            exact decimals (Currency, Crypto); Std.DateTime /
-               Std.DateUtils; Std.SystemUtils; Std.Debug.Assert; console I/O
-               moved into libinoxrt (the final I/O ABI)
-0.4            ownership: Vector<T> with move semantics and Clone,
-               Option<T> and Result<T, E>, Self owned
-0.5            modules: Export, interface and body, package search
-0.6            backend: object files and linker integration (E22);
-               portability hardening; clang-format, clang-tidy, cppcheck,
-               coverage
-0.7            contracts (Pre, Pos, Invariant); generic constraints if
-               real programs ask for them
-0.8            concurrency (`do`) with data-race safety
-0.9            alpha: the 1.0 scope is complete; then beta: frozen, fixes only
+0.2     done   the imperative core: structs and method reuse, fixed arrays
+               (Fill), slices, ref parameters, case (also on Strings),
+               Strings and Std.Strings/StrUtils, text files, UInt64, Enum,
+               Range and Set, Char, Float conversions and real Consts,
+               generics (simplest form), design by contract, safe pointers,
+               Std.Debug.Assert; transitive initialization; != (r3.61-r3.87)
+0.3            numbers, text and the basic library: Currency and Crypto
+               (exact decimals); conversions between numbers and text,
+               Split/Join; real literals with exponents; Get(C), Char
+               classification and case mapping; Std.DateTime/DateUtils,
+               Std.SystemUtils; console I/O moved into libinoxrt (the final
+               I/O ABI); a function called as a statement (decision)
+0.4            modules and encapsulation: Export and visibility, interface
+               and body, selective imports and aliases, package search;
+               the `encapsulation` design (Object Pascal and Rust)
+0.5            ownership and collections: Vector<T> with move semantics and
+               Clone, Option<T> and Result<T, E>, Self owned; methods of
+               generic structs; the safe-pointers follow-ups; `lifecycle`
+               (constructors and destructors); arenas as an option
+0.6            expressiveness: routine types (named routines, then
+               closures), variant structs, binary files and streams; the
+               `| |`, `{ }` and `@` brainstorm settled; generic constraints
+               if real programs ask for them
+0.7            backend and quality: object files and linker integration
+               (E22, no external clang driver), BSD and other Unices,
+               clang-format, clang-tidy, cppcheck, coverage; typed AST for
+               types, exception hierarchy in the types, line numbers in
+               every diagnostic
+0.8            alpha: the 1.0 scope is complete; documentation, examples
+               and the site cover all of it
+0.9            beta: the language is frozen, fixes only
 1.0            stable: the core language, reproducible releases, coherent
                documentation and examples
+after 1.0      concurrency with data-race safety (Chapel, Go, Rust, Delphi's
+               forall; atomic String and File counts); contract monitoring
+               levels per module and static proof (SPARK); BigCurrency;
+               interface with C libraries (FFI: declaring external C
+               routines, loading .so/.dll; C++ through C wrappers); a
+               separate repository of Inox libraries, such as an Inox DBO
+               (database objects)
 ```
 
 Stages (constitution VERSIONING): pre-alpha until the 1.0 scope is complete,
-then alpha, beta and stable. What belongs to the 1.0 scope (for example
-whether concurrency or contracts are in it) is the maintainer's decision.
+then alpha, beta and stable. What belongs to the 1.0 scope is the
+maintainer's decision. Marcelo Fortes, 2026-10-21: concurrency comes after
+1.0 ("Concorrência pode entrar após 1.0"); 1.0 has no fixed date ("Não nos
+preocuparemos se a saída de inox 1.0 pode ser após o Natal"); visibility
+(0.4) comes before collections (0.5): "Visibilidade antes"; the interface
+with C libraries comes after 1.0 ("Sim, isso é depois da versão 1.0").
 
 ## Next work (OpenSpec changes, in the maintainer's order)
 
@@ -82,4 +106,7 @@ whether concurrency or contracts are in it) is the maintainer's decision.
   Char classification and case mapping.
 - `float-conversions` — Float conversions and real Consts (done, r3.84).
 - `case-strings` — `case` on a String (done, r3.85).
-- Then the v0.2.0 release.
+- `float-policy` and `not-equal-operator` — the floating-point policy and
+  `!=` (done, r3.86 and r3.87).
+- The v0.2.0 release (the maintainer's, on the site).
+- Next, 0.3: `decimals` (Currency and Crypto) first, then text and numbers.
