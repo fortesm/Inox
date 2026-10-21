@@ -362,23 +362,42 @@ run_driver_trap_test() {
         return 0
     fi
 
-    local actual exit_code
+    # Standard output and standard error are captured separately, as the
+    # PowerShell runner does: the program's output (which may end without a
+    # line end, such as the terminal reset written at a trap) and then the
+    # diagnostics.
+    local err_file
+    err_file="$(mktemp)"
+    local stdout_text stderr_text actual exit_code
     if [[ -n "$input_file" ]]; then
-        actual="$("$inox_exe" --run "$test_file" < "$input_file" 2>&1)"
+        stdout_text="$("$inox_exe" --run "$test_file" < "$input_file" 2>"$err_file")"
     else
-        actual="$("$inox_exe" --run "$test_file" 2>&1 < /dev/null)"
+        stdout_text="$("$inox_exe" --run "$test_file" 2>"$err_file" < /dev/null)"
     fi
     exit_code=$?
-    actual="$(printf '%s' "$actual" | sed 's/\r$//')"
+    stdout_text="$(printf '%s' "$stdout_text" | sed 's/\r$//')"
+    stderr_text="$(sed 's/\r$//' "$err_file")"
+    rm -f "$err_file"
+    if [[ -n "$stdout_text" && -n "$stderr_text" ]]; then
+        actual="$stdout_text"$'\n'"$stderr_text"
+    else
+        actual="$stdout_text$stderr_text"
+    fi
 
     # A compile error also exits non-zero, so require the runtime diagnostic itself.
-    # Optional NAME.out next to NAME.trap: the complete output (program output,
-    # runtime diagnostic, driver note) must match exactly, which proves that no
-    # handler or ensure block ran.
+    # Optional NAME.out next to NAME.trap: the complete output must match
+    # exactly, which proves that no handler or ensure block ran. Its lines
+    # that start with "Inox runtime error:" or "inox:" are standard error, the
+    # others standard output, in order.
     local exact_file="${test_file%.inox}.out"
     local exact_ok=1
-    if [[ -f "$exact_file" && "$actual" != "$(sed 's/\r$//' "$exact_file")" ]]; then
-        exact_ok=0
+    if [[ -f "$exact_file" ]]; then
+        local expected_out expected_err
+        expected_out="$(sed 's/\r$//' "$exact_file" | grep -v -e '^Inox runtime error:' -e '^inox:')"
+        expected_err="$(sed 's/\r$//' "$exact_file" | grep -e '^Inox runtime error:' -e '^inox:')"
+        if [[ "$stdout_text" != "$expected_out" || "$stderr_text" != "$expected_err" ]]; then
+            exact_ok=0
+        fi
     fi
     if [[ $exit_code -ne 0 && -n "$expected_message" && "$actual" == *"$expected_message"* && $exact_ok -eq 1 ]]; then
         record_pass "$rel --run (trap)"
