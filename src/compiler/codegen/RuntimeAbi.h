@@ -117,6 +117,18 @@ enum class RuntimeFunction {
     ConsolePutFloat32,
     ConsolePutDecimal,
     ConsoleGetDecimal,
+    // Std.SystemUtils and the clock of Std.DateTime (runtime/SystemRuntime.cpp,
+    // r3.92), declared on first use. A String result is owned (+1).
+    SystemParamCount,
+    SystemParamStr,
+    SystemGetEnv,
+    SystemEnvExists,
+    SystemHalt,
+    SystemSleep,
+    SystemCurrentDir,
+    SystemPlatformName,
+    ClockNowUTC,
+    ClockUTCOffset,
     // Std.Terminal (runtime/ConsoleRuntime.cpp), declared on first use.
     TerminalRawMode,
     TerminalReadKey,

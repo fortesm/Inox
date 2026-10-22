@@ -220,8 +220,8 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
             return analyzeRounding(call);
         }
         // Std.Terminal (change console-abi-terminal).
-        if (const TerminalSignature* terminal = terminalFunction(callee.name())) {
-            return analyzeTerminalCall(call, *terminal);
+        if (const ModuleIntrinsic* terminal = moduleIntrinsic(callee.name())) {
+            return analyzeIntrinsicCall(call, *terminal);
         }
 
         // Std.Strings / Std.StrUtils (std-strings), the same way; Length of

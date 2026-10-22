@@ -1,0 +1,296 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== edit: a micro-editor in the manner of mg (the 0.3 acceptance program,
+== decision F3 of Marcelo Fortes, 2026-10-21). One buffer of at most
+== MaxLines lines, the file named on the command line, Emacs keys:
+==
+==   arrows, Ctrl+F/B/N/P   move          Home, Ctrl+A / End, Ctrl+E   line start / end
+==   PageUp, Alt+V / PageDown, Ctrl+V      a screen up / down
+==   a character            insert        Tab                         four spaces
+==   Enter                  split line    Backspace / Delete, Ctrl+D  delete before / at
+==   Ctrl+K                 kill to the end of the line (or join the next)
+==   Ctrl+X Ctrl+S          save          Ctrl+X Ctrl+C               quit (twice if modified)
+==   Ctrl+G, Escape         cancel
+==
+== Usage: inox run examples/edit.inox notes.txt
+== It uses Std.Terminal (keys, screen), Std.IOUtils (the file),
+== Std.SystemUtils (the command line) and Std.StrUtils (the text).
+Use Std.Terminal
+Use Std.IOUtils
+Use Std.SystemUtils
+Use Std.StrUtils
+
+Const MaxLines := 2000
+
+State
+    Lines Array[1..MaxLines] String := Fill("")
+    Count Integer := 1
+    Row Integer := 1
+    Col Integer := 1
+    Top Integer := 1
+    FileName String := "untitled.txt"
+    Modified Bool := False
+    Message String := ""
+    Prefix Bool := False
+    QuitAsked Bool := False
+    Running Bool := True
+;
+
+Load(Path String) :
+    FileName := Path
+    if not Exists(Path)
+        Message := "(new file)"
+        Exit
+    ;
+    F := OpenRead(Path)
+    Count := 0
+    while not Eof(F) and Count < MaxLines
+        Count += 1
+        Lines[Count] := ReadLn(F)
+    ;
+    Close(F)
+    if Count = 0
+        Count := 1
+    ;
+    Message := "Read " + String(Count) + " lines"
+;
+
+Save :
+    F := Create(FileName)
+    for I in 1..Count
+        WriteLn(F, Lines[I])
+    ;
+    Close(F)
+    Modified := False
+    Message := "Wrote " + String(Count) + " lines to " + FileName
+;
+
+Draw :
+    Size := ScreenSize
+    TextRows := Size.Rows - 2
+    if Row < Top
+        Top := Row
+    ;
+    if Row >= Top + TextRows
+        Top := Row - TextRows + 1
+    ;
+    for Screen in 1..TextRows
+        MoveTo(Screen, 1)
+        ClearLine
+        Line := Top + Screen - 1
+        if Line <= Count
+            Text := Lines[Line]
+            Put(IIf(Length(Text) > Size.Cols, Left(Text, Size.Cols), Text))
+        else
+            Put("~")
+        ;
+    ;
+    MoveTo(TextRows + 1, 1)
+    ClearLine
+    SetColor(Black, White)
+    Status := " edit: " + FileName + IIf(Modified, " (modified)", "") + "  line " + String(Row) + "/" +
+              String(Count) + ", column " + String(Col)
+    Put(IIf(Length(Status) > Size.Cols, Left(Status, Size.Cols), PadRight(Status, Size.Cols)))
+    ResetColor
+    MoveTo(TextRows + 2, 1)
+    ClearLine
+    Put(IIf(Length(Message) > Size.Cols, Left(Message, Size.Cols), Message))
+    MoveTo(Row - Top + 1, IIf(Col > Size.Cols, Size.Cols, Col))
+    Flush
+;
+
+LineEnd :
+    Col := Length(Lines[Row]) + 1
+;
+
+== The column stays on the line after a move up or down.
+ClampColumn :
+    if Col > Length(Lines[Row]) + 1
+        LineEnd
+    ;
+;
+
+Insert(Text String) :
+    Line := Lines[Row]
+    Lines[Row] := Left(Line, Col - 1) + Text + Right(Line, Length(Line) - Col + 1)
+    Col += Length(Text)
+    Modified := True
+;
+
+SplitLine :
+    if Count = MaxLines
+        Message := "The buffer is full (" + String(MaxLines) + " lines)"
+        Exit
+    ;
+    I := Count
+    while I > Row
+        Lines[I + 1] := Lines[I]
+        I -= 1
+    ;
+    Line := Lines[Row]
+    Lines[Row + 1] := Right(Line, Length(Line) - Col + 1)
+    Lines[Row] := Left(Line, Col - 1)
+    Count += 1
+    Row += 1
+    Col := 1
+    Modified := True
+;
+
+== The next line joined to the end of this one.
+JoinNext :
+    if Row = Count
+        Exit
+    ;
+    Lines[Row] := Lines[Row] + Lines[Row + 1]
+    for I in Row + 1..Count - 1
+        Lines[I] := Lines[I + 1]
+    ;
+    Lines[Count] := ""
+    Count -= 1
+    Modified := True
+;
+
+DeleteBefore :
+    if Col > 1
+        Line := Lines[Row]
+        Lines[Row] := Left(Line, Col - 2) + Right(Line, Length(Line) - Col + 1)
+        Col -= 1
+        Modified := True
+    elif Row > 1
+        Row -= 1
+        LineEnd
+        JoinNext
+    ;
+;
+
+DeleteAt :
+    Line := Lines[Row]
+    if Col <= Length(Line)
+        Lines[Row] := Left(Line, Col - 1) + Right(Line, Length(Line) - Col)
+        Modified := True
+    else
+        JoinNext
+    ;
+;
+
+KillLine :
+    Line := Lines[Row]
+    if Col <= Length(Line)
+        Lines[Row] := Left(Line, Col - 1)
+        Modified := True
+    else
+        JoinNext
+    ;
+;
+
+Quit :
+    if Modified and not QuitAsked
+        Message := "Modified buffer not saved: Ctrl+X Ctrl+C again to quit"
+        QuitAsked := True
+    else
+        Running := False
+    ;
+;
+
+== Ctrl+X, then the key that completes the command.
+Command(Key TKey) :
+    Prefix := False
+    if Key.Kind = KeyChar and Key.Ctrl and Key.Ch = 's'
+        Save
+    elif Key.Kind = KeyChar and Key.Ctrl and Key.Ch = 'c'
+        Quit
+    else
+        Message := "Ctrl+X: S saves, C quits"
+    ;
+;
+
+Handle(Key TKey) :
+    Size := ScreenSize
+    Page := Size.Rows - 2
+    if Prefix
+        Command(Key)
+        Exit
+    ;
+    == A second Ctrl+X Ctrl+C quits; any other key asks again.
+    if not (Key.Kind = KeyChar and Key.Ctrl and (Key.Ch = 'x' or Key.Ch = 'c'))
+        QuitAsked := False
+    ;
+    if Key.Kind = KeyChar and not Key.Ctrl and not Key.Alt
+        Message := ""
+        Insert(String(Key.Ch))
+        Exit
+    ;
+    Message := ""
+    Letter := IIf(Key.Kind = KeyChar, Key.Ch, ' ')
+    if Key.Kind = KeyChar and Key.Ctrl and Letter = 'x'
+        Prefix := True
+        Message := "Ctrl+X-"
+    elif Key.Kind = KeyUp or (Key.Ctrl and Letter = 'p')
+        if Row > 1
+            Row -= 1
+            ClampColumn
+        ;
+    elif Key.Kind = KeyDown or (Key.Ctrl and Letter = 'n')
+        if Row < Count
+            Row += 1
+            ClampColumn
+        ;
+    elif Key.Kind = KeyLeft or (Key.Ctrl and Letter = 'b')
+        if Col > 1
+            Col -= 1
+        elif Row > 1
+            Row -= 1
+            LineEnd
+        ;
+    elif Key.Kind = KeyRight or (Key.Ctrl and Letter = 'f')
+        if Col <= Length(Lines[Row])
+            Col += 1
+        elif Row < Count
+            Row += 1
+            Col := 1
+        ;
+    elif Key.Kind = KeyHome or (Key.Ctrl and Letter = 'a')
+        Col := 1
+    elif Key.Kind = KeyEnd or (Key.Ctrl and Letter = 'e')
+        LineEnd
+    elif Key.Kind = KeyPageUp or (Key.Alt and Letter = 'v')
+        Row := IIf(Row > Page, Row - Page, 1)
+        ClampColumn
+    elif Key.Kind = KeyPageDown or (Key.Ctrl and Letter = 'v')
+        Row := IIf(Row + Page < Count, Row + Page, Count)
+        ClampColumn
+    elif Key.Kind = KeyEnter
+        SplitLine
+    elif Key.Kind = KeyTab
+        Insert("    ")
+    elif Key.Kind = KeyBackspace
+        DeleteBefore
+    elif Key.Kind = KeyDelete or (Key.Ctrl and Letter = 'd')
+        DeleteAt
+    elif Key.Ctrl and Letter = 'k'
+        KillLine
+    elif Key.Kind = KeyEscape or (Key.Ctrl and Letter = 'g')
+        Message := "Cancelled"
+    else
+        Message := "Key not bound"
+    ;
+;
+
+Main :
+    if ParamCount >= 1
+        Load(ParamStr(1))
+    ;
+    RawMode(True)
+    ClearScreen
+    while Running
+        Draw
+        Handle(ReadKey)
+    ;
+    RawMode(False)
+    ClearScreen
+;

@@ -1470,12 +1470,12 @@ it. No module is a catch-all.
 
 ### Requirement: CANON-18 Library modules
 The library SHALL hold `Std.System` (the implicit prelude), `Std.IO` (Put,
-PutLn, Get, GetLn), `Std.Math` (Integer helpers, the Float64 elementary
-functions, Round and Trunc), `Std.Debug` (`Assert(Condition)` and
-`Assert(Condition, Message)`, a trap when false, CANON-19), `Std.Files` /
-`Std.IOUtils` (CANON-17), `Std.Strings` / `Std.StrUtils` (CANON-14) and
-`Std.Terminal` (keys, cursor, colors, screen size; `stdlib/terminal`).
-`Assert` exists only with `Use Std.Debug`.
+PutLn, Get, GetLn), `Std.Math` (Integer helpers, the Float64 functions,
+Round, Trunc), `Std.Debug` (`Assert`, a trap when false, only with its
+`Use`), `Std.Files` / `Std.IOUtils` (CANON-17), `Std.Strings` /
+`Std.StrUtils` (CANON-14), `Std.Terminal`, `Std.DateTime` /
+`Std.DateUtils` and `Std.SystemUtils` (`stdlib/terminal`,
+`stdlib/datetime`, `stdlib/systemutils`).
 
 #### Scenario: Std.Math through Use
 - **WHEN** a program writes `Use Std.Math` and calls its helpers
@@ -1486,15 +1486,14 @@ functions, Round and Trunc), `Std.Debug` (`Assert(Condition)` and
 - **THEN** it does nothing, traps, traps with the message, is rejected, and the own routine is called (tests/runtime/debug-assert-holds.inox, tests/runtime/debug-assert-fails.inox, tests/runtime/debug-assert-message.inox, tests/diagnostics/assert-without-use.inox, tests/runtime/assert-name-free.inox)
 
 ### Requirement: CANON-18 Planned modules
-The planned modules SHALL be `Std.DateTime` / `Std.DateUtils` and
-`Std.SystemUtils` (environment, process, command line). `Std.Strings` /
-`Std.StrUtils` SHALL grow, by Unicode rules never tied to one human
-language, with grapheme lengths, root collation, locale collation later,
-normalization, and `Split`/`Join` with the collections of 0.5.
+`Std.Strings` / `Std.StrUtils` SHALL grow, by Unicode rules never tied to
+one human language, with grapheme lengths, root collation, locale collation
+later, normalization, and `Split`/`Join` with the collections of 0.5;
+running other programs comes after 1.0 (r3.92).
 
-#### Scenario: Not yet available
-- **WHEN** a program uses `Std.DateTime`
-- **THEN** the module is not found (tests/diagnostics/module-planned-not-found.inox)
+#### Scenario: Not available
+- **WHEN** a program uses a module that does not exist, such as `Std.Process`
+- **THEN** the module is not found (tests/diagnostics/module-not-found.inox)
 
 ### Requirement: CANON-19 Run-time faults are traps
 A run-time fault SHALL stop the program at once with `Inox runtime error:
@@ -1664,11 +1663,16 @@ The driver commands SHALL be `inox file.inox` and `inox run file.inox`
 emit-llvm`, `inox help` and `inox version` (Marcelo Fortes, 2026-10-13).
 `--run`, `--build`, `--emit-llvm`, `--help` and `--version` stay as aliases
 for a transition; `--parse-only`, `--dump-tokens` and `--dump-types` are
-developer switches.
+developer switches. Words after the file of a run are the program's
+arguments, and a run ends with the program's exit status (r3.92).
 
 #### Scenario: Commands and aliases
 - **WHEN** a program is run with `inox file`, `inox run` and `--run`, checked with `inox check`, and `inox help`, `inox version` and `inox run` without a file are called
 - **THEN** each behaves as stated (scripts/run-tests.sh, scripts/run-tests.ps1: "inox check <file>", "inox help", "inox version = inox --version", "inox run without a file is an error", tests/integration/run-hello.inox)
+
+#### Scenario: Arguments and status
+- **WHEN** `inox run args.inox "um arg" "dois"` runs a program that prints its arguments and halts with their count
+- **THEN** it prints both and the run ends with status 2 (scripts/run-tests.sh, scripts/run-tests.ps1: "inox run passes arguments and keeps Halt's status", tests/integration/system/args.inox)
 
 ### Requirement: CANON-24 Design by contract
 Routines and structs SHALL carry Eiffel's contracts (Marcelo Fortes,

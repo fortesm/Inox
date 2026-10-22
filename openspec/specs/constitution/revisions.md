@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.91
+Canon revision: r3.92
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -372,3 +372,18 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   write decimals (B1, B2, C2); "decimal overflow" is a new trap category
   (CANON-19). Marcelo Fortes, 2026-10-21 (repeated 2026-10-22): "A Acatado
   todos". Change `decimals`.
+- r3.92 — 2026-10-22 — Dates, the system and the micro-editor (0.3). D1: a
+  TDateTime is the microseconds since 0001-01-01 (proleptic Gregorian),
+  with TDate and TDuration. D2: two zones, UTC and the system's. D3:
+  Std.DateTime (EncodeDate/EncodeDateTime checked, DecodeDate, Year .. Second,
+  DayOfWeek, AddDays, AddSeconds, DaysBetween, IsLeapYear, comparison) and
+  Std.DateUtils (ISO 8601, FormatDateTime with Delphi's codes). D4:
+  Std.SystemUtils (ParamCount, ParamStr, GetEnv, EnvExists, Halt, Sleep,
+  CurrentDir, PlatformName); running other programs after 1.0; `inox run`
+  gives the words after the file to the program and keeps its exit status
+  (CANON-18, CANON-23). F3: `examples/edit.inox` accepts 0.3. Marcelo
+  Fortes, 2026-10-21 (repeated 2026-10-22): "D1 Acatado / D2 Acatado / D3
+  Acatados todos / D4 R: `ParamCount`, `ParamStr(I)`, `GetEnv(Name)`,
+  `EnvExists(Name)`, `Halt(Code)` para sair com um código, `Sleep(Ms)`,
+  `CurrentDir` e `PlatformName` / [...] / F3 Sim". Change
+  `datetime-systemutils`.

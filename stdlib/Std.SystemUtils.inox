@@ -1,0 +1,24 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Std.SystemUtils: the program and its system (change datetime-systemutils,
+== canon r3.92, decision D4 of Marcelo Fortes, 2026-10-21). Compiler
+== intrinsics carried out by libinoxrt, visible in a program that uses this
+== module, so their names stay free elsewhere. Text is UTF-8 on every system.
+==
+==   ParamCount Integer           == the arguments after the program's own name
+==   ParamStr(I Integer) String   == ParamStr(0) the program, ParamStr(1) the first argument;
+==                                == outside 0..ParamCount: "value out of range"
+==   GetEnv(Name String) String   == an environment variable; "" when it is not set
+==   EnvExists(Name String) Bool  == whether it is set (also to "")
+==   Halt(Code Integer)           == ends the program now with exit status Code, 0..255
+==                                == (else "value out of range"); the terminal is given back
+==   Sleep(Ms Integer)            == waits Ms milliseconds; what was written is shown first
+==   CurrentDir String            == the working directory
+==   PlatformName String          == "Linux", "Windows", "macOS", "FreeBSD", ...
+==
+== Running another program comes after 1.0.

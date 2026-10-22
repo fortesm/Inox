@@ -10,6 +10,8 @@ This directory contains the minimal standard-library modules agreed for Inox 0.1
 - `Std.Files.inox` / `Std.IOUtils.inox` — text files (CANON-17).
 - `Std.Strings.inox` / `Std.StrUtils.inox` — String functions (CANON-14).
 - `Std.Terminal.inox` — keys, cursor, colors and screen size for full-screen text programs (canon r3.88).
+- `Std.DateTime.inox` / `Std.DateUtils.inox` — dates, times and durations; ISO 8601 and FormatDateTime (canon r3.92).
+- `Std.SystemUtils.inox` — command line, environment, Halt, Sleep, current directory, platform name (canon r3.92).
 
 These modules are intentionally small. They must remain portable across Windows, Linux, and the other Unix/Unix-like targets represented by the platform architecture, and must not introduce unsafe pointers, GC, platform-specific APIs, or undocumented runtime dependencies.
 

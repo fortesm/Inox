@@ -19,4 +19,12 @@ namespace inox::runtime {
 // out of memory, an exception nobody handles, a signal.
 void shutdownConsole() noexcept;
 
+// Stops the program with "Inox runtime error: <category>" and status 70,
+// after shutdownConsole (CANON-19).
+[[noreturn]] void fault(const char* category) noexcept;
+
+// The command line Main received (SystemRuntime.cpp, change
+// datetime-systemutils, r3.92).
+void setCommandLine(int argc, char** argv) noexcept;
+
 } // namespace inox::runtime

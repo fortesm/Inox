@@ -139,7 +139,7 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
     case RuntimeFunction::FileRename:
         return "declare void @__inox_file_rename(ptr, ptr)";
     case RuntimeFunction::RuntimeInit:
-        return "declare void @__inox_runtime_init() nounwind";
+        return "declare void @__inox_runtime_init(i32, ptr) nounwind";
     case RuntimeFunction::RuntimeShutdown:
         return "declare void @__inox_runtime_shutdown() nounwind";
     case RuntimeFunction::ConsoleWrite:
@@ -174,6 +174,26 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
         return "declare void @__inox_con_put_dec(i64, i64, i32) nounwind";
     case RuntimeFunction::ConsoleGetDecimal:
         return "declare i32 @__inox_con_get_dec(i32, ptr) nounwind";
+    case RuntimeFunction::SystemParamCount:
+        return "declare i64 @__inox_sys_param_count() nounwind";
+    case RuntimeFunction::SystemParamStr:
+        return "declare ptr @__inox_sys_param_str(i64) nounwind";
+    case RuntimeFunction::SystemGetEnv:
+        return "declare ptr @__inox_sys_get_env(ptr) nounwind";
+    case RuntimeFunction::SystemEnvExists:
+        return "declare zeroext i1 @__inox_sys_env_exists(ptr) nounwind";
+    case RuntimeFunction::SystemHalt:
+        return "declare void @__inox_sys_halt(i64) noreturn nounwind";
+    case RuntimeFunction::SystemSleep:
+        return "declare void @__inox_sys_sleep(i64) nounwind";
+    case RuntimeFunction::SystemCurrentDir:
+        return "declare ptr @__inox_sys_current_dir() nounwind";
+    case RuntimeFunction::SystemPlatformName:
+        return "declare ptr @__inox_sys_platform_name() nounwind";
+    case RuntimeFunction::ClockNowUTC:
+        return "declare i64 @__inox_clock_now_utc() nounwind";
+    case RuntimeFunction::ClockUTCOffset:
+        return "declare i64 @__inox_clock_utc_offset(i64) nounwind";
     case RuntimeFunction::TerminalRawMode:
         return "declare void @__inox_term_raw_mode(i1 zeroext) nounwind";
     case RuntimeFunction::TerminalReadKey:

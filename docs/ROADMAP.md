@@ -28,10 +28,10 @@ may still move.
                exponents, Get(C),
                Char classification and case mapping (done, r3.89);
                Std.DateTime/
-               DateUtils, Std.SystemUtils; console I/O in libinoxrt (done,
-               r3.88); a function is not a statement (done, r3.88);
-               Std.Terminal (done, r3.88) and a micro-editor
-               (examples/edit.inox) that accepts 0.3
+               DateUtils, Std.SystemUtils (done, r3.92); console I/O in
+               libinoxrt (done, r3.88); a function is not a statement (done,
+               r3.88); Std.Terminal (done, r3.88) and a micro-editor
+               (examples/edit.inox, done, r3.92) that accepts 0.3
 0.4            modules and encapsulation: Export and visibility, interface
                and body, selective imports and aliases, package search;
                the `encapsulation` design (Object Pascal and Rust)

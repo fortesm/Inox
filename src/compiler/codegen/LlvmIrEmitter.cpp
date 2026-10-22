@@ -49,6 +49,10 @@ void emitFunction(std::ostringstream& output,
         }
         output << signature.parameters[index].llvmType << " %" << signature.parameters[index].llvmName;
     }
+    // D4 (r3.92): Main receives the command line and gives it to libinoxrt.
+    if (signature.llvmName == "main") {
+        output << "i32 %__inox.argc, ptr %__inox.argv";
+    }
     output << ')';
     if (functionContainsTry(function) || emitter.usesStringCleanup()) {
         output << " personality ptr @" << moduleContext.exceptionAbi.personality();

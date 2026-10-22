@@ -1,0 +1,22 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.92 (D4): Std.SystemUtils. Run without arguments, ParamCount is 0 and
+== ParamStr(0) is the program; PATH is set on every system the suite runs on;
+== Halt(0) ends the program at once with status 0.
+Use Std.SystemUtils
+
+Main :
+    PutLn(ParamCount, " ", ParamStr(0) # "", " ", EnvExists("PATH"), " ", GetEnv("PATH") # "")
+    PutLn(EnvExists("INOX_NOT_SET_IN_ANY_TEST"), " [", GetEnv("INOX_NOT_SET_IN_ANY_TEST"), "]")
+    Known := PlatformName = "Linux" or PlatformName = "Windows" or PlatformName = "macOS" or PlatformName = "FreeBSD"
+    PutLn(Known, " ", CurrentDir # "")
+    Sleep(5)
+    Put("halting")
+    Halt(0)
+    PutLn(" never")
+;

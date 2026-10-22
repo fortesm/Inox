@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.91.
+Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.92.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -106,8 +106,12 @@ each version added.
   ScreenSize, MoveTo, ClearScreen, ClearLine, SetColor/ResetColor,
   ShowCursor, Flush; the terminal is given back on every exit; keys read
   from a file or pipe for tests; `examples/keys.inox`.
+- Std.DateTime / Std.DateUtils (r3.92, mostly written in Inox) and
+  Std.SystemUtils (r3.92); `inox run file A B` passes arguments and keeps
+  the exit status; `examples/edit.inox`, the micro-editor.
 - Standard library: Std.System, Std.IO, Std.Math, Std.Errors, Std.Debug
-  (Assert), Std.Files, Std.IOUtils, Std.Strings, Std.StrUtils, Std.Terminal.
+  (Assert), Std.Files, Std.IOUtils, Std.Strings, Std.StrUtils, Std.Terminal,
+  Std.DateTime, Std.DateUtils, Std.SystemUtils.
 - Windows x64 and Linux x64 run the full suite in CI
   (`ci/windows-known-failures.txt` is empty).
 
@@ -167,6 +171,8 @@ they are rejected now.)
 - Exception handlers are matched by the written type name
   (`exceptions/ExceptionTypes`); the exception hierarchy (identifiers,
   parents) is not part of `types::Type` yet.
+- Std.DateTime types are Ranges of Integer: a TDateTime and a TDate can be
+  mixed in arithmetic without an error.
 - Std.Terminal on Windows is checked by the CI suite only through files and
   pipes; raw mode and key reading in a real Windows console were not run
   by an agent (no Windows console here).

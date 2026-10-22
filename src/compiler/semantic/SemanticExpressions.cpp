@@ -42,7 +42,7 @@ void SemanticAnalyzer::requireStatementExpression(const ast::Expression& express
         if (genericRoutine(identifier.name()) != nullptr) {
             return;  // analyzed as a call: its types must be known there
         }
-        if (terminalFunction(identifier.name()) != nullptr) {
+        if (moduleIntrinsic(identifier.name()) != nullptr) {
             return;  // Std.Terminal: ClearScreen, Flush, ...
         }
         if (equalsIgnoreCase(identifier.name(), "EndOfInput")) {
@@ -272,8 +272,8 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
             result_.bind(identifier, symbol);
             return types().voidType();
         }
-        if (const TerminalSignature* terminal = terminalFunction(identifier.name())) {
-            return analyzeTerminalIdentifier(identifier, *terminal);
+        if (const ModuleIntrinsic* terminal = moduleIntrinsic(identifier.name())) {
+            return analyzeIntrinsicIdentifier(identifier, *terminal);
         }
         // r3.89 (C1): EndOfInput, true when nothing is left to read.
         if (equalsIgnoreCase(identifier.name(), "EndOfInput")) {

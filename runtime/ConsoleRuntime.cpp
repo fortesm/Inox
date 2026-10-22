@@ -652,17 +652,30 @@ void shutdownConsole() noexcept
     std::fflush(stderr);
 }
 
+// A fault of the library itself (a ParamStr index, a Halt code): the same
+// message and status as the program's fault function (CANON-19).
+[[noreturn]] void fault(const char* category) noexcept
+{
+    shutdownConsole();
+    std::fputs("Inox runtime error: ", stderr);
+    std::fputs(category, stderr);
+    std::fputs("\n", stderr);
+    std::fflush(stderr);
+    std::_Exit(70);
+}
+
 } // namespace inox::runtime
 
 extern "C" {
 
 // Called first in Main.
-void __inox_runtime_init() noexcept
+void __inox_runtime_init(std::int32_t argc, char** argv) noexcept
 {
     if (gInitialized) {
         return;
     }
     gInitialized = true;
+    inox::runtime::setCommandLine(argc, argv);
 #if defined(_WIN32)
     gInputHandle = GetStdHandle(STD_INPUT_HANDLE);
     gOutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);

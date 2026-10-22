@@ -14,7 +14,7 @@
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
 #include "TypeLayout.h"
-#include "../semantic/StdTerminal.h"
+#include "../semantic/StdIntrinsics.h"
 
 #include <string>
 #include <utility>
@@ -22,11 +22,11 @@
 
 namespace inox::compiler::codegen::detail {
 
-using semantic::TerminalFunction;
-using semantic::TerminalSignature;
+using semantic::Intrinsic;
+using semantic::ModuleIntrinsic;
 
 // The Std.Terminal routine an identifier or a call names, or null.
-const TerminalSignature* FunctionEmitter::terminalCallOf(const ast::Expression& expression) const
+const ModuleIntrinsic* FunctionEmitter::intrinsicCallOf(const ast::Expression& expression) const
 {
     const ast::IdentifierExpression* identifier = nullptr;
     if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
@@ -40,7 +40,7 @@ const TerminalSignature* FunctionEmitter::terminalCallOf(const ast::Expression& 
     if (identifier == nullptr) {
         return nullptr;
     }
-    const TerminalSignature* function = semantic::findTerminalFunction(identifier->name());
+    const ModuleIntrinsic* function = semantic::findModuleIntrinsic(identifier->name());
     if (function == nullptr) {
         return nullptr;
     }
@@ -102,8 +102,31 @@ std::string FunctionEmitter::emitInt64Argument(const ast::Expression& argument)
     return result;
 }
 
-// Emits a Std.Terminal routine; its value, or "" for one without a result.
-std::string FunctionEmitter::emitTerminalCall(const ast::Expression& expression, const TerminalSignature& function)
+// One call into libinoxrt with its arguments; a String result (ptr) is owned
+// and held to the end of the statement.
+std::string FunctionEmitter::emitPlainIntrinsic(RuntimeFunction function, const std::string& returnType,
+                                                const std::string& symbol, const std::vector<std::string>& arguments)
+{
+    requireRuntime(function);
+    std::string list;
+    for (const std::string& argument : arguments) {
+        list += (list.empty() ? "" : ", ") + argument;
+    }
+    if (returnType == "void") {
+        output_ << "  call void @" << symbol << '(' << list << ")\n";
+        return {};
+    }
+    const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << result << " = call " << returnType << " @" << symbol << '(' << list << ")\n";
+    if (returnType == "ptr") {
+        requireStringRuntime();
+        holdOwnedResult(result, semantics_.types().stringType(), "ptr");
+    }
+    return result;
+}
+
+// Emits a library intrinsic; its value, or "" for one without a result.
+std::string FunctionEmitter::emitIntrinsicCall(const ast::Expression& expression, const ModuleIntrinsic& function)
 {
     static const std::vector<ast::ExpressionPtr> kNoArguments;
     const std::vector<ast::ExpressionPtr>& arguments =
@@ -112,16 +135,16 @@ std::string FunctionEmitter::emitTerminalCall(const ast::Expression& expression,
             : kNoArguments;
     const auto temporary = [this] { return "%tmp" + std::to_string(nextTemporary_++); };
     switch (function.function) {
-    case TerminalFunction::RawMode:
-    case TerminalFunction::ShowCursor: {
-        const bool raw = function.function == TerminalFunction::RawMode;
+    case Intrinsic::RawMode:
+    case Intrinsic::ShowCursor: {
+        const bool raw = function.function == Intrinsic::RawMode;
         requireRuntime(raw ? RuntimeFunction::TerminalRawMode : RuntimeFunction::TerminalShowCursor);
         const std::string flag = emitExpression(*arguments[0]);
         output_ << "  call void @" << (raw ? "__inox_term_raw_mode" : "__inox_term_show_cursor") << "(i1 zeroext "
                 << flag << ")\n";
         return {};
     }
-    case TerminalFunction::ReadKey: {
+    case Intrinsic::ReadKey: {
         requireRuntime(RuntimeFunction::TerminalReadKey);
         const std::string code = temporary();
         output_ << "  " << code << " = call i64 @__inox_term_read_key()\n";
@@ -144,7 +167,7 @@ std::string FunctionEmitter::emitTerminalCall(const ast::Expression& expression,
         return emitTerminalStruct(typeOf(expression),
                                   {{"Kind", kind}, {"Ch", character}, {"Ctrl", ctrl}, {"Alt", alt}});
     }
-    case TerminalFunction::ScreenSize: {
+    case Intrinsic::ScreenSize: {
         requireRuntime(RuntimeFunction::TerminalScreenSize);
         const std::string code = temporary();
         const std::string rows = temporary();
@@ -154,7 +177,7 @@ std::string FunctionEmitter::emitTerminalCall(const ast::Expression& expression,
         output_ << "  " << columns << " = and i64 " << code << ", 4294967295\n";
         return emitTerminalStruct(typeOf(expression), {{"Rows", rows}, {"Cols", columns}});
     }
-    case TerminalFunction::MoveTo: {
+    case Intrinsic::MoveTo: {
         requireRuntime(RuntimeFunction::TerminalMoveTo);
         const std::string row = emitInt64Argument(*arguments[0]);
         const std::string column = emitInt64Argument(*arguments[1]);
@@ -169,29 +192,57 @@ std::string FunctionEmitter::emitTerminalCall(const ast::Expression& expression,
         output_ << "  call void @__inox_term_move_to(i64 " << row << ", i64 " << column << ")\n";
         return {};
     }
-    case TerminalFunction::SetColor: {
+    case Intrinsic::SetColor: {
         requireRuntime(RuntimeFunction::TerminalSetColor);
         const std::string foreground = emitInt64Argument(*arguments[0]);
         const std::string background = emitInt64Argument(*arguments[1]);
         output_ << "  call void @__inox_term_set_color(i64 " << foreground << ", i64 " << background << ")\n";
         return {};
     }
-    case TerminalFunction::ClearScreen:
+    case Intrinsic::ClearScreen:
         requireRuntime(RuntimeFunction::TerminalClearScreen);
         output_ << "  call void @__inox_term_clear_screen()\n";
         return {};
-    case TerminalFunction::ClearLine:
+    case Intrinsic::ClearLine:
         requireRuntime(RuntimeFunction::TerminalClearLine);
         output_ << "  call void @__inox_term_clear_line()\n";
         return {};
-    case TerminalFunction::ResetColor:
+    case Intrinsic::ResetColor:
         requireRuntime(RuntimeFunction::TerminalResetColor);
         output_ << "  call void @__inox_term_reset_color()\n";
         return {};
-    case TerminalFunction::Flush:
+    case Intrinsic::Flush:
         requireRuntime(RuntimeFunction::TerminalFlush);
         output_ << "  call void @__inox_term_flush()\n";
         return {};
+    // Std.SystemUtils and the clock (r3.92): one call each; a String result
+    // is owned and held to the end of the statement.
+    case Intrinsic::ParamCount:
+        return emitPlainIntrinsic(RuntimeFunction::SystemParamCount, "i64", "__inox_sys_param_count", {});
+    case Intrinsic::ParamStr:
+        return emitPlainIntrinsic(RuntimeFunction::SystemParamStr, "ptr", "__inox_sys_param_str",
+                                  {"i64 " + emitInt64Argument(*arguments[0])});
+    case Intrinsic::GetEnv:
+        return emitPlainIntrinsic(RuntimeFunction::SystemGetEnv, "ptr", "__inox_sys_get_env",
+                                  {"ptr " + emitExpression(*arguments[0])});
+    case Intrinsic::EnvExists:
+        return emitPlainIntrinsic(RuntimeFunction::SystemEnvExists, "zeroext i1", "__inox_sys_env_exists",
+                                  {"ptr " + emitExpression(*arguments[0])});
+    case Intrinsic::Halt:
+        return emitPlainIntrinsic(RuntimeFunction::SystemHalt, "void", "__inox_sys_halt",
+                                  {"i64 " + emitInt64Argument(*arguments[0])});
+    case Intrinsic::Sleep:
+        return emitPlainIntrinsic(RuntimeFunction::SystemSleep, "void", "__inox_sys_sleep",
+                                  {"i64 " + emitInt64Argument(*arguments[0])});
+    case Intrinsic::CurrentDir:
+        return emitPlainIntrinsic(RuntimeFunction::SystemCurrentDir, "ptr", "__inox_sys_current_dir", {});
+    case Intrinsic::PlatformName:
+        return emitPlainIntrinsic(RuntimeFunction::SystemPlatformName, "ptr", "__inox_sys_platform_name", {});
+    case Intrinsic::NowUTC:
+        return emitPlainIntrinsic(RuntimeFunction::ClockNowUTC, "i64", "__inox_clock_now_utc", {});
+    case Intrinsic::UTCOffset:
+        return emitPlainIntrinsic(RuntimeFunction::ClockUTCOffset, "i64", "__inox_clock_utc_offset",
+                                  {"i64 " + emitInt64Argument(*arguments[0])});
     }
     return {};
 }
