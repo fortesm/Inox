@@ -48,6 +48,8 @@ enum class TokenKind {
     Dot,
     Colon,
     Semicolon,
+    // `_` alone (r3.93, E2): the discard target of `_ := F(X)`, never a name.
+    Underscore,
 
     EndOfFile,
     Invalid

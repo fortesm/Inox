@@ -131,7 +131,7 @@ generic_type      ::= identifier "<" type_ref ( "," type_ref )* ">"
 
 block_body        ::= statement*
 statement         ::= ( simple_stmt NEWLINE ) | compound_stmt
-simple_stmt       ::= local_decl | assignment_stmt | call_stmt | until_stmt
+simple_stmt       ::= local_decl | assignment_stmt | discard_stmt | call_stmt | until_stmt
                     | raise_stmt | retry_stmt | return_stmt | exit_stmt
                     | leave_stmt | continue_stmt
 compound_stmt     ::= if_stmt | unless_stmt | with_stmt | while_stmt | repeat_stmt
@@ -159,11 +159,19 @@ compound_op       ::= "+=" | "-=" | "*=" | "/=" | "^="
                          then B, then A. In a chain every target is a variable or
                          a field path (no call, no index). *)
 target            ::= postfix_expr | with_member
+discard_stmt      ::= "_" ":=" postfix_expr
+                      (* r3.93 (CANON-7, E2): drops the result of a call on
+                         purpose. "_" is a discard target, not a name: it is
+                         never read, declared or chained. The expression is a
+                         call of a function or a method with a result; a
+                         literal, a variable, a field, an operation, a
+                         conversion or a construction is rejected. *)
 call_stmt         ::= postfix_expr
                       (* must be a call: a bare identifier or literal is not a
                          statement; "Report" and "Account.Print" call without "()".
                          r3.88 (CANON-7, as in Ada): it must call a subroutine;
-                         a function's result is never dropped *)
+                         a function's result is used, or dropped on purpose
+                         with discard_stmt (r3.93) *)
 
 (* ---------- Control flow (CANON-12, CANON-11) ---------- *)
 

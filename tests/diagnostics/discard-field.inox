@@ -1,0 +1,30 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.93: a field is a value, not a call.
+Type
+    TPonto Struct
+        FX Integer := 0
+    ;
+
+Dobro(N Integer) Integer :
+    Return 2 * N
+;
+
+Mostrar(Texto String) :
+    PutLn(Texto)
+;
+
+TPonto.Limpar(Self mut) :
+    Self.FX := 0
+;
+
+Main :
+    P TPonto
+    P.FX := 3
+    _ := P.FX
+;

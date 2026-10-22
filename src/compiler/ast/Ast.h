@@ -418,17 +418,21 @@ private:
 
 class ExpressionStatement final : public Statement {
 public:
-    explicit ExpressionStatement(ExpressionPtr expression, bool compoundAssignment = false);
+    explicit ExpressionStatement(ExpressionPtr expression, bool compoundAssignment = false, bool discard = false);
 
     const Expression& expression() const;
     ExpressionPtr takeExpression();
     // ADR-0012: `L += R` is stored as `L := L + R`; this flag records the
     // compound form, so the read of L it implies is not counted as a read.
     bool isCompoundAssignment() const;
+    // r3.93 (E2): `_ := F(X)` calls F and drops its result on purpose. `_`
+    // is no variable: the statement holds only the call.
+    bool isDiscard() const;
 
 private:
     ExpressionPtr expression_;
     bool compoundAssignment_ = false;
+    bool discard_ = false;
 };
 
 class VarStatement final : public Statement {

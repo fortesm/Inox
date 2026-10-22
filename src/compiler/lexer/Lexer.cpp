@@ -227,7 +227,9 @@ Token Lexer::identifierOrKeyword(SourceLocation start, std::size_t startOffset)
     }
 
     Token token = makeToken(TokenKind::Identifier, start, startOffset);
-    if (isKeyword(token.normalized)) {
+    if (token.lexeme == "_") {
+        token.kind = TokenKind::Underscore;
+    } else if (isKeyword(token.normalized)) {
         token.kind = TokenKind::Keyword;
     }
     return token;
@@ -491,6 +493,8 @@ std::string tokenKindName(TokenKind kind)
         return "Colon";
     case TokenKind::Semicolon:
         return "Semicolon";
+    case TokenKind::Underscore:
+        return "Underscore";
     case TokenKind::EndOfFile:
         return "EndOfFile";
     case TokenKind::Invalid:

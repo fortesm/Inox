@@ -43,7 +43,9 @@ spec.md#CANON-5 Type section forms	9aed9c6a5e82fb8e	constitution
 spec.md#CANON-6 Functions and subroutines	f14392ba57c91bea	constitution
 spec.md#CANON-6 Exit	9b3a00557eb7a21e	constitution
 spec.md#CANON-7 Empty parentheses are forbidden	f2c66de5a62e9bae	constitution
-spec.md#CANON-7 A function is not a statement	e0b91247462efa4d	console-abi-terminal
+spec.md#CANON-7 A function is not a statement	baac3194dd629061	discard-results
+spec.md#CANON-7 Explicit discard	3180c217fc8056fd	discard-results
+spec.md#CANON-7 What is discarded	4f4558e2568a6f3d	discard-results
 spec.md#CANON-8 Built-in types	781016d8d519add9	constitution
 spec.md#CANON-8 The numeric set is closed	41287e2139bf5048	constitution
 spec.md#CANON-8 Conversions	02fc4ddafe8606d2	numbers-text

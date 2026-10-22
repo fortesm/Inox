@@ -242,6 +242,7 @@ private:
     static bool isExceptionType(std::string_view name);
     static bool isMemberCall(const ast::CallExpression& expression);
     static std::string discardedResultMessage(const ast::Expression& expression);
+    void analyzeDiscard(const ast::Expression& expression);
     static std::string normalizeName(std::string_view name);
     bool canAssign(TypeRef targetType, TypeRef valueType) const;
     static bool typesMatch(TypeRef left, TypeRef right);

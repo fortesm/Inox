@@ -118,7 +118,8 @@ StatementPtr cloneStatement(const Statement& statement, const CloneRewriters& re
         return std::make_unique<BlockStatement>(body(static_cast<const BlockStatement&>(statement).statements()));
     case AstNodeKind::ExpressionStatement: {
         const auto& node = static_cast<const ExpressionStatement&>(statement);
-        return std::make_unique<ExpressionStatement>(expression(node.expression()), node.isCompoundAssignment());
+        return std::make_unique<ExpressionStatement>(expression(node.expression()), node.isCompoundAssignment(),
+                                                     node.isDiscard());
     }
     case AstNodeKind::VarStatement: {
         const auto& node = static_cast<const VarStatement&>(statement);

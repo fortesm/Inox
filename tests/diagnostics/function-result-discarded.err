@@ -1,1 +1,1 @@
-the result of Twice is not used: a function is not a statement (r3.88); use its value, X := Twice(...)
+the result of Twice is not used: a function is not a statement (r3.88); use its value, X := Twice(...), or discard it, _ := Twice(...) (r3.93)

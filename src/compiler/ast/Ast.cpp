@@ -354,16 +354,22 @@ std::vector<StatementPtr> BlockStatement::takeStatements()
     return std::move(statements_);
 }
 
-ExpressionStatement::ExpressionStatement(ExpressionPtr expression, bool compoundAssignment)
+ExpressionStatement::ExpressionStatement(ExpressionPtr expression, bool compoundAssignment, bool discard)
     : Statement(AstNodeKind::ExpressionStatement),
       expression_(std::move(expression)),
-      compoundAssignment_(compoundAssignment)
+      compoundAssignment_(compoundAssignment),
+      discard_(discard)
 {
 }
 
 bool ExpressionStatement::isCompoundAssignment() const
 {
     return compoundAssignment_;
+}
+
+bool ExpressionStatement::isDiscard() const
+{
+    return discard_;
 }
 
 const Expression& ExpressionStatement::expression() const

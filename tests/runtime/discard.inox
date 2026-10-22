@@ -1,0 +1,115 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.93 (E2): `_ := F(X)` calls F for its effect and drops its result on
+== purpose. The call runs exactly once, with its effects, its exceptions and
+== its contracts; an owned result (a String, an owner, a struct with a
+== String) is released. Every kind of call: a function, one without
+== arguments, a method with and without arguments, a generic routine, a
+== library function, a function that raises.
+Use Std.Strings
+
+Type
+    TNo Struct
+        FValor Integer
+        FNome String := ""
+    ;
+    TContador Struct
+        FTotal Integer := 0
+    ;
+    TNota Struct
+        FTexto String := ""
+        FPeso Integer := 1
+    ;
+
+State
+    Chamadas Integer := 0
+;
+
+Registrar(Texto String) Integer :
+    Chamadas += 1
+    PutLn(Texto)
+    Return Chamadas
+;
+
+Proximo Integer :
+    Chamadas += 1
+    Return Chamadas
+;
+
+Saudacao(Nome String) String :
+    Chamadas += 1
+    Return "olá, " + Nome + "!"
+;
+
+NovoNo(Valor Integer) Own<TNo> :
+    Chamadas += 1
+    Return New(TNo(FValor := Valor, FNome := "nó " + String(Valor)))
+;
+
+Nota(Texto String) TNota :
+    Chamadas += 1
+    Return TNota(FTexto := Texto + " (cópia)")
+;
+
+Preco(Unidades Integer) Currency :
+    Chamadas += 1
+    Return 19.99 * Currency(Unidades)
+;
+
+Primeiro<T>(A T, B T) T :
+    Chamadas += 1
+    Return A
+;
+
+Ler(Texto String) Integer :
+    Chamadas += 1
+    Return Integer(Texto)
+;
+
+TContador.Somar(Self mut, N Integer) Integer :
+    Self.FTotal += N
+    Return Self.FTotal
+;
+
+TContador.Dobrar(Self mut) Integer :
+    Self.FTotal *= 2
+    Return Self.FTotal
+;
+
+Main :
+    _ := Registrar("um efeito")
+    _ := Proximo
+    _ := Saudacao("Marcelo")
+    _ := NovoNo(7)
+    _ := Nota("rascunho")
+    _ := Preco(3)
+    _ := Primeiro("a", "b")
+    _ := UpperCase("discarded")
+    PutLn("chamadas: ", Chamadas)
+
+    C TContador
+    _ := C.Somar(5)
+    _ := C.Dobrar
+    PutLn("total: ", C.FTotal)
+
+    for I in 1..1000
+        _ := Saudacao(String(I))
+    ;
+    PutLn("chamadas: ", Chamadas)
+
+    _ := Ler("42")
+    try
+        _ := Ler("quarenta e dois")
+        PutLn("never")
+    except
+        On ConversionError
+            PutLn("the exception goes through the discard")
+        ;
+    ;
+    PutLn("chamadas: ", Chamadas)
+;

@@ -97,6 +97,7 @@ private:
     ast::StatementPtr parseWithStatement();
     ast::StatementPtr parseReturnStatement();
     ast::StatementPtr parseExpressionStatement();
+    ast::StatementPtr parseDiscardStatement();
 
     ast::AstNodePtr parseModuleItem();
     ast::AstNodePtr parseUseDeclaration();
@@ -106,7 +107,6 @@ private:
     std::string parseStructFieldDefault(const std::string& fieldName);
     ast::VariableDeclaration parseSectionVariable(ast::SectionKind sectionKind);
     void expectEndOfDeclarationLine(std::size_t line, const char* what);
-    ast::AstNodePtr parseRawDeclaration();
     ast::AstNodePtr parseFunctionDeclaration();
     std::string parseQualifiedName(std::string_view message);
 

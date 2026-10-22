@@ -1,0 +1,1 @@
+'_' is not a name: it only discards the result of a call, _ := F(X) (r3.93)
