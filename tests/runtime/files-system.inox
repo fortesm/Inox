@@ -13,11 +13,13 @@ Main :
     First String := "inox-test-files-a.txt"
     Second String := "inox-test-files-b.txt"
     PutLn(Exists(First), " ", Exists(Second))
-    Create(First)
+    Made := Create(First)
+    Close(Made)
     PutLn(Exists(First), " ", Exists(Second))
     RenameFile(First, Second)
     PutLn(Exists(First), " ", Exists(Second))
-    Create(First)
+    Again := Create(First)
+    Close(Again)
     try
         RenameFile(First, Second)
     except

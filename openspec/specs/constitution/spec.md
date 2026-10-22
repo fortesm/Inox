@@ -607,6 +607,16 @@ routine without parameters is declared `Main :` / `Report :` and called
 - **WHEN** a declaration, call or method call is written with `()`
 - **THEN** it is a parse error (tests/parser/invalid/empty-paren-declaration.inox, tests/parser/invalid/empty-paren-call.inox, tests/parser/invalid/empty-paren-method-call.inox, tests/parser/invalid/get-empty-parens.inox); the forms without parentheses parse (tests/parser/valid/no-empty-parentheses.inox)
 
+### Requirement: CANON-7 A function is not a statement
+A function or a method with a result SHALL NOT be called as a statement, as
+in Ada: `Twice(2)`, `Answer` or `C.Next` alone is a compile error that names
+it and shows `X := Twice(...)`. There is no way to drop a result; a routine
+called for its effect is a subroutine (r3.88).
+
+#### Scenario: Results dropped
+- **WHEN** a function, a function without arguments, a method or a library function is called as a statement
+- **THEN** each is rejected (tests/diagnostics/function-result-discarded.inox, tests/diagnostics/function-result-discarded-bare.inox, tests/diagnostics/function-result-discarded-method.inox, tests/diagnostics/function-result-discarded-builtin.inox)
+
 ### Requirement: CANON-8 Built-in types
 The built-in types SHALL be exactly those of the table "CANON-8 built-in
 types" above; each friendly alias names one base type, with at most one
@@ -1245,6 +1255,17 @@ break after the last argument: `PutLn("A", 10, "B", true)`.
 - **WHEN** PutLn receives several values of different types
 - **THEN** they print in order on one line (examples/put-output-basic.inox)
 
+### Requirement: CANON-17 The console
+The console SHALL belong to libinoxrt: `Put`, `PutLn`, `Get`, `GetLn` and
+Std.Terminal reach it only through the runtime, so output stays in order and
+pending output is shown before the program waits for input. On Windows the
+console is UTF-8 (input and output) with VT sequences while the program
+runs, and is given back at exit (r3.88).
+
+#### Scenario: Prompt and answer
+- **WHEN** a program writes a prompt with Put and reads a line
+- **THEN** the prompt comes before the read and the line arrives unchanged (tests/runtime/console-prompt.inox)
+
 ### Requirement: CANON-17 Get and GetLn
 `Get(X)` SHALL read one value into the variable X, and `GetLn(X)` reads one
 and consumes the rest of the line; both take several variables in order.
@@ -1357,7 +1378,8 @@ The library SHALL hold `Std.System` (the implicit prelude), `Std.IO` (Put,
 PutLn, Get, GetLn), `Std.Math` (Integer helpers written in Inox and the
 Float64 elementary functions), `Std.Debug` (`Assert(Condition)` and
 `Assert(Condition, Message)`, a trap when false, CANON-19), `Std.Files` /
-`Std.IOUtils` (CANON-17) and `Std.Strings` / `Std.StrUtils` (CANON-14).
+`Std.IOUtils` (CANON-17), `Std.Strings` / `Std.StrUtils` (CANON-14) and
+`Std.Terminal` (keys, cursor, colors, screen size; `stdlib/terminal`).
 `Assert` exists only with `Use Std.Debug`.
 
 #### Scenario: Std.Math through Use
@@ -1407,9 +1429,8 @@ The category texts SHALL be: `integer overflow`, `division by zero`,
 exponent`, `invalid integer input`, `value out of range for Natural`,
 `integer conversion out of range`, `array index out of bounds`, `slice
 bounds out of range`, `out of memory`, `invalid UTF-8 input`, `assertion
-failed` (`: Message` when given), `string index out of range`, the
-categories of CANON-24 and CANON-25, and `value out of range` (Range,
-Succ, Pred).
+failed` (`: Message`), `string index out of range`, `end of input`, those
+of CANON-24 and CANON-25, and `value out of range`.
 
 #### Scenario: Categories
 - **WHEN** each kind of fault happens at run time
@@ -1428,9 +1449,9 @@ a String position, count or width outside what the function accepts.
 
 ### Requirement: CANON-19 Compiler, library and runtime
 The compiler (`inox`), the standard library (`stdlib/`) and the runtime
-`libinoxrt` (exception transport, Strings, Files) SHALL stay distinct; the
-runtime transports opaque exception identities and the taxonomy belongs to
-the language. The library is found at `INOX_STDLIB`, the package's
+`libinoxrt` (console, exception transport, Strings, Files) SHALL stay
+distinct; every program links libinoxrt (r3.88); the runtime transports
+opaque exception identities and the taxonomy belongs to the language. The library is found at `INOX_STDLIB`, the package's
 `stdlib/`, beside the executable, under the working directory, or in the
 source's directory or a parent.
 

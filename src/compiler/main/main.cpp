@@ -386,27 +386,22 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
     const std::string& llvmIr = llvmModule.ir;
     writeFile(artifacts.llvmIr, llvmIr);
 
-    // libinoxrt holds the exception transport and the String runtime; the
-    // emitter reports whether the module calls it (codegen/RuntimeAbi.h).
-    const bool usesExceptionRuntime = llvmModule.needsInoxRuntime;
-    if (usesExceptionRuntime && !clangxxExists()) {
+    // E1 (change console-abi-terminal): every program links libinoxrt, which
+    // holds the console, the exception transport and the String runtime.
+    if (!llvmModule.needsInoxRuntime) {
+        throw std::runtime_error("internal error: a module that does not declare libinoxrt");
+    }
+    if (!clangxxExists()) {
         throw std::runtime_error(
-            "clang++ was not found; Inox programs that use exceptions or Strings currently require the C++ ABI runtime");
+            "clang++ was not found; Inox programs link the C++ runtime library libinoxrt");
     }
-
-    std::vector<std::string> clangArgs{
-         usesExceptionRuntime ? "clang++" : "clang",
-         artifacts.llvmIr.string(),
-         "-o",
-         artifacts.executable.string() };
-    if (usesExceptionRuntime) {
-        const fs::path runtimeLibrary = findExceptionRuntimeLibrary(executableDir);
-        if (runtimeLibrary.empty()) {
-            throw std::runtime_error(
-                "libinoxrt was not found; set INOX_RUNTIME_LIB or keep the runtime library beside the Inox compiler");
-        }
-        clangArgs.push_back(runtimeLibrary.string());
+    const fs::path runtimeLibrary = findExceptionRuntimeLibrary(executableDir);
+    if (runtimeLibrary.empty()) {
+        throw std::runtime_error(
+            "libinoxrt was not found; set INOX_RUNTIME_LIB or keep the runtime library beside the Inox compiler");
     }
+    std::vector<std::string> clangArgs{"clang++", artifacts.llvmIr.string(), "-o", artifacts.executable.string(),
+                                       runtimeLibrary.string()};
     if (inox::compiler::support::hostOperatingSystem() != inox::compiler::support::OperatingSystem::Windows) {
         clangArgs.push_back("-lm");
     }

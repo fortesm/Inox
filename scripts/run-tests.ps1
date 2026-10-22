@@ -202,10 +202,19 @@ function Invoke-LinkedExecutionTest {
     )
 
     $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
-    $clang = Get-Command clang -ErrorAction SilentlyContinue
+    # E1 (change console-abi-terminal): every program links libinoxrt.
+    $clang = Get-Command clang++ -ErrorAction SilentlyContinue
     if ($null -eq $clang) {
-        Write-Host "[SKIP] $relativePath link/run (clang not found)"
+        Write-Host "[SKIP] $relativePath link/run (clang++ not found)"
         return
+    }
+    $runtimeLib = $env:INOX_RUNTIME_LIB
+    if ([string]::IsNullOrEmpty($runtimeLib)) {
+        $inoxDir = Split-Path -Parent $InoxExe
+        $runtimeLib = Join-Path $inoxDir "inoxrt.lib"
+        if (-not (Test-Path -LiteralPath $runtimeLib)) {
+            $runtimeLib = Join-Path $inoxDir "libinoxrt.a"
+        }
     }
 
     $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("inox-test-" + [System.Guid]::NewGuid().ToString("N"))
@@ -222,7 +231,7 @@ function Invoke-LinkedExecutionTest {
             return
         }
 
-        $clangArgs = @($llPath, "-o", $exePath)
+        $clangArgs = @($llPath, $runtimeLib, "-o", $exePath)
         if (-not $IsWindows) {
             $clangArgs += "-lm"
         }
@@ -689,15 +698,15 @@ Invoke-LlvmEmissionTest `
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\putln-integer.inox")) `
-    -RequiredFragments @("@.inox.fmt.i64.nl", "declare i32 @printf", "define i64 @inox_value", "define i32 @main()", "call i32 (ptr, ...) @printf", "ret i32 0")
+    -RequiredFragments @("declare void @__inox_con_put_i64(i64)", "define i64 @inox_value", "define i32 @main()", "call void @__inox_runtime_init()", "call void @__inox_con_put_i64", "call void @__inox_con_put_newline()", "ret i32 0")
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\put-output-basic.inox")) `
-    -RequiredFragments @("@.inox.fmt.str.nl", "@.inox.fmt.str", "@.inox.true", "@.inox.false", "@.inox.str.", "select i1", "call i32 (ptr, ...) @printf", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("@.inox.str.", "call void @__inox_con_write(ptr @.inox.str.", "call void @__inox_con_put_bool(i1 zeroext", "call void @__inox_con_put_newline()", "define i32 @main()", "ret i32 0")
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\subroutine-calls.inox")) `
-    -RequiredFragments @("define i64 @inox_value", "define void @inox_report", "call void @inox_report", "ret void", "report=", "call i32 (ptr, ...) @printf", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_value", "define void @inox_report", "call void @inox_report", "ret void", "report=", "call void @__inox_con_write", "define i32 @main()", "ret i32 0")
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\struct-basic.inox")) `

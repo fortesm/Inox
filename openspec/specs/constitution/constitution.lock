@@ -43,6 +43,7 @@ spec.md#CANON-5 Type section forms	9aed9c6a5e82fb8e	constitution
 spec.md#CANON-6 Functions and subroutines	f14392ba57c91bea	constitution
 spec.md#CANON-6 Exit	9b3a00557eb7a21e	constitution
 spec.md#CANON-7 Empty parentheses are forbidden	f2c66de5a62e9bae	constitution
+spec.md#CANON-7 A function is not a statement	e0b91247462efa4d	console-abi-terminal
 spec.md#CANON-8 Built-in types	781016d8d519add9	constitution
 spec.md#CANON-8 The numeric set is closed	41287e2139bf5048	constitution
 spec.md#CANON-8 Conversions	325374dc533806e6	float-conversions
@@ -96,6 +97,7 @@ spec.md#CANON-15 ensure	b689e2f1c71d1bce	constitution
 spec.md#CANON-15 Exception taxonomy	a06d0b586ea8bfb0	constitution
 spec.md#CANON-15 Deferred exception features	705ebf3b9b58ff8b	constitution
 spec.md#CANON-17 Put and PutLn	a72aa0b863f387da	constitution
+spec.md#CANON-17 The console	f69e1a55797187b7	console-abi-terminal
 spec.md#CANON-17 Get and GetLn	aa7214828a99f9f6	constitution
 spec.md#CANON-17 Integer input is strict	c34b1f0df7db3030	constitution
 spec.md#CANON-17 GetLn into a String	7c1ca5427a6d4b93	constitution
@@ -106,13 +108,13 @@ spec.md#CANON-17 Text in files	1a59a7ef5bb0ee53	constitution
 spec.md#CANON-17 File system functions	b0aa61e9bafcb323	constitution
 spec.md#CANON-17 File errors are exceptions	bc7b1e4c7018bea9	constitution
 spec.md#CANON-18 Library principles	247dc55ac8637e02	module-pairs
-spec.md#CANON-18 Library modules	c4ba8dc2998832c3	std-strings
+spec.md#CANON-18 Library modules	f95279fefcfa3bcd	console-abi-terminal
 spec.md#CANON-18 Planned modules	9e2d18b2c60927d4	std-strings
 spec.md#CANON-19 Run-time faults are traps	b35d7570f0992acd	constitution
 spec.md#CANON-19 Compile-time faults	bf1622e491bf380a	constitution
-spec.md#CANON-19 Trap categories	925a16408914c524	enum-range-set
+spec.md#CANON-19 Trap categories	69398835fb27cb73	console-abi-terminal
 spec.md#CANON-19 What traps	790accb59d3b394b	std-strings
-spec.md#CANON-19 Compiler, library and runtime	558fa5d9a67425f8	constitution
+spec.md#CANON-19 Compiler, library and runtime	c810ce0cc62b56be	console-abi-terminal
 spec.md#CANON-19 Compiler limits	2ea229dba96e0ae7	constitution
 spec.md#CANON-20 Operator precedence	1735231177adf8e3	constitution
 spec.md#CANON-20 Associativity	d963058f4f15fd1a	constitution

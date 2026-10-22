@@ -1,0 +1,57 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Std.Terminal: the screen and the keyboard of a text program, such as an
+== editor (change console-abi-terminal, canon r3.88, decision F1 of Marcelo
+== Fortes, 2026-10-21). The types are declared here; the routines are
+== compiler intrinsics carried out by libinoxrt, visible in a program that
+== uses Std.Terminal, so their names stay free elsewhere.
+==
+==   RawMode(On Bool)              == keys one at a time, not echoed; False goes back
+==   ReadKey TKey                  == waits for the next key
+==   ScreenSize TScreenSize        == rows and columns of the window (24 x 80 if none)
+==   MoveTo(Row Integer, Col Integer)  == the cursor, counted from 1
+==   ClearScreen                   == clears the window, cursor at 1, 1
+==   ClearLine                     == clears the cursor's line
+==   SetColor(Fg TColor, Bg TColor)    == the colors of what is written next
+==   ResetColor                    == the terminal's own colors
+==   ShowCursor(On Bool)           == shows or hides the cursor
+==   Flush                         == writes out what is waiting to be shown
+==
+== Rules:
+==   - the terminal is given back as the program found it however the program
+==     ends: the end of Main, a runtime error, an exception nobody handles or
+==     a signal (raw mode off, cursor shown, colors reset);
+==   - when standard input is not a terminal (a file, a pipe) RawMode does
+==     nothing and ReadKey reads the same keys from the bytes, so a program
+==     can be tested with an input file;
+==   - ReadKey past the end of input stops the program with "end of input";
+==   - MoveTo with Row or Col below 1 stops the program with "value out of
+==     range";
+==   - in a key of kind KeyChar, Ch is the character typed; in any other kind
+==     Ch is '\0'. Ctrl+A .. Ctrl+Z are KeyChar 'a' .. 'z' with Ctrl;
+==     Ctrl+Space is ' ' with Ctrl; Escape then a key is that key with Alt.
+
+Type
+    TKeyKind (KeyChar, KeyUp, KeyDown, KeyLeft, KeyRight, KeyHome, KeyEnd, KeyPageUp, KeyPageDown,
+              KeyEnter, KeyBackspace, KeyDelete, KeyTab, KeyEscape,
+              KeyF1, KeyF2, KeyF3, KeyF4, KeyF5, KeyF6, KeyF7, KeyF8, KeyF9, KeyF10, KeyF11, KeyF12)
+
+    TKey Struct
+        Kind TKeyKind := KeyChar
+        Ch Char := '\0'
+        Ctrl Bool := False
+        Alt Bool := False
+    ;
+
+    TScreenSize Struct
+        Rows Integer := 24
+        Cols Integer := 80
+    ;
+
+    TColor (Black, Red, Green, Yellow, Blue, Magenta, Cyan, White,
+            Gray, BrightRed, BrightGreen, BrightYellow, BrightBlue, BrightMagenta, BrightCyan, BrightWhite)

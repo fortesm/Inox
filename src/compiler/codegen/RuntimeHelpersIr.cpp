@@ -23,7 +23,7 @@ entry:
   br label %loop
 
 loop:
-  %ch = call i32 @getchar()
+  %ch = call i32 @__inox_con_getc()
   %is_newline = icmp eq i32 %ch, 10
   %is_eof = icmp eq i32 %ch, -1
   %done = or i1 %is_newline, %is_eof
@@ -38,7 +38,7 @@ entry:
   br label %skip_ws
 
 skip_ws:
-  %ch0 = call i32 @getchar()
+  %ch0 = call i32 @__inox_con_getc()
   %is_eof0 = icmp eq i32 %ch0, -1
   %is_space0 = icmp eq i32 %ch0, 32
   %is_tab0 = icmp eq i32 %ch0, 9
@@ -67,7 +67,7 @@ consume:
   br i1 %done1a, label %exit, label %consume_next
 
 consume_next:
-  %ch2 = call i32 @getchar()
+  %ch2 = call i32 @__inox_con_getc()
   br label %consume
 
 exit:
@@ -79,7 +79,7 @@ entry:
   br label %skip_ws
 
 skip_ws:
-  %c0 = call i32 @getchar()
+  %c0 = call i32 @__inox_con_getc()
   %eof0 = icmp eq i32 %c0, -1
   br i1 %eof0, label %trap, label %ws_check
 
@@ -98,7 +98,7 @@ sign_check:
   br i1 %is_minus, label %minus, label %first_digit
 
 minus:
-  %cm = call i32 @getchar()
+  %cm = call i32 @__inox_con_getc()
   br label %first_digit
 
 first_digit:
@@ -130,7 +130,7 @@ digit_body:
   br i1 %ovf, label %trap, label %digit_ok
 
 digit_ok:
-  %next_ch = call i32 @getchar()
+  %next_ch = call i32 @__inox_con_getc()
   br label %digits
 
 finish:
@@ -198,6 +198,7 @@ constexpr RuntimeFaultKind kRuntimeFaultKinds[] = {
     {15, "string index out of range"},
     {16, "use of a freed object or an empty Link"},
     {17, "use of an owner after Move or Free"},
+    {18, "end of input"},
 };
 
 } // namespace
@@ -210,7 +211,7 @@ std::string runtimeFaultSeam()
 
     std::ostringstream ir;
     ir << "; Every deterministic runtime fault goes through this one function (CANON-19).\n"
-       << "; It flushes the program's output, prints \"Inox runtime error: <category>\" on\n"
+       << "; It flushes the program's output and gives the terminal back (libinoxrt), prints \"Inox runtime error: <category>\" on\n"
        << "; standard error (file descriptor 2) and terminates with status "
        << kRuntimeFaultExitStatus << " without\n"
        << "; unwinding, so try/except/ensure cannot intercept it. Kinds: 1 integer\n"
@@ -221,18 +222,17 @@ std::string runtimeFaultSeam()
        << "; a Range or past the ends of Succ and Pred, 12 out of memory, 13 invalid UTF-8\n"
        << "; input, 14 a failed Std.Debug.Assert, 15 a position or count outside a String\n"
        << "; (Std.Strings), 16 a Link to a freed object, 17 an owner used after Move or\n"
-       << "; Free.\n";
+       << "; Free, 18 a read past the end of input (ReadKey).\n";
     for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
         const std::string text = std::string("Inox runtime error: ") + kind.message + "\n";
         ir << "@.inox.fault." << kind.code << " = private unnamed_addr constant ["
            << text.size() << " x i8] c\"" << llvmByteString(text) << "\"\n";
     }
-    ir << "declare i32 @fflush(ptr)\n"
-       << "declare " << resultType << " @" << writer.symbol << "(i32, ptr, " << lengthType << ")\n"
+    ir << "declare " << resultType << " @" << writer.symbol << "(i32, ptr, " << lengthType << ")\n"
        << "declare void @_exit(i32) noreturn nounwind\n\n"
        << "define internal void @__inox_arith_fault(i32 %kind) noreturn nounwind cold noinline {\n"
        << "entry:\n"
-       << "  %flushed = call i32 @fflush(ptr null)\n"
+       << "  call void @__inox_runtime_shutdown()\n"
        << "  switch i32 %kind, label %report [\n";
     for (const RuntimeFaultKind& kind : kRuntimeFaultKinds) {
         ir << "    i32 " << kind.code << ", label %kind" << kind.code << "\n";
@@ -277,7 +277,7 @@ std::string assertMessageHelper()
        << "@.inox.assert.newline = private unnamed_addr constant [1 x i8] c\"\\0A\"\n"
        << "define internal void @__inox_assert_message(ptr %message) noreturn nounwind cold noinline {\n"
        << "entry:\n"
-       << "  %flushed = call i32 @fflush(ptr null)\n"
+       << "  call void @__inox_runtime_shutdown()\n"
        << "  %prefix = call " << resultType << " @" << writer.symbol << "(i32 2, ptr @.inox.assert.prefix, "
        << lengthType << " " << prefix.size() << ")\n"
        << "  %lengthPointer = getelementptr { i64, i64 }, ptr %message, i32 0, i32 1\n"
@@ -316,7 +316,7 @@ std::string contractMessageHelper()
        << "@.inox.contract.newline = private unnamed_addr constant [1 x i8] c\"\\0A\"\n"
        << "define internal void @__inox_contract_fault(ptr %text) noreturn nounwind cold noinline {\n"
        << "entry:\n"
-       << "  %flushed = call i32 @fflush(ptr null)\n"
+       << "  call void @__inox_runtime_shutdown()\n"
        << "  %prefix = call " << resultType << " @" << writer.symbol << "(i32 2, ptr @.inox.contract.prefix, "
        << lengthType << " " << prefix.size() << ")\n"
        << "  %lengthPointer = getelementptr { i64, i64 }, ptr %text, i32 0, i32 1\n"
@@ -774,7 +774,7 @@ entry:
   br label %skip_ws
 
 skip_ws:
-  %c0 = call i32 @getchar()
+  %c0 = call i32 @__inox_con_getc()
   %eof0 = icmp eq i32 %c0, -1
   br i1 %eof0, label %trap, label %ws_check
 
@@ -815,7 +815,7 @@ digit_body:
   br i1 %ovf, label %trap, label %digit_ok
 
 digit_ok:
-  %next_ch = call i32 @getchar()
+  %next_ch = call i32 @__inox_con_getc()
   br label %digits
 
 finish:

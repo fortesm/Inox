@@ -160,6 +160,36 @@ void SemanticAnalyzer::analyzeStatements(const std::vector<ast::StatementPtr>& s
     }
 }
 
+// E2 (r3.88): the diagnostic of a function called as a statement, naming
+// it and showing how its result is used.
+std::string SemanticAnalyzer::discardedResultMessage(const ast::Expression& expression)
+{
+    std::string name = "the function";
+    std::string written = "F";
+    const ast::Expression* callee = &expression;
+    std::string receiver;
+    while (callee->kind() == ast::AstNodeKind::CallExpression) {
+        const auto& call = static_cast<const ast::CallExpression&>(*callee);
+        if (isMemberCall(call) && call.arguments().size() >= 2 &&
+            call.arguments()[1]->kind() == ast::AstNodeKind::IdentifierExpression) {
+            if (call.arguments()[0]->kind() == ast::AstNodeKind::IdentifierExpression) {
+                receiver = static_cast<const ast::IdentifierExpression&>(*call.arguments()[0]).name() + ".";
+            }
+            callee = call.arguments()[1].get();
+            break;
+        }
+        callee = &call.callee();
+    }
+    if (callee->kind() == ast::AstNodeKind::IdentifierExpression) {
+        name = static_cast<const ast::IdentifierExpression&>(*callee).name();
+        written = receiver + name;
+    }
+    const bool arguments = expression.kind() == ast::AstNodeKind::CallExpression &&
+                           !isMemberCall(static_cast<const ast::CallExpression&>(expression));
+    return "the result of " + name + " is not used: a function is not a statement (r3.88); use its value, " +
+           "X := " + written + (arguments ? "(...)" : "");
+}
+
 void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
 {
     switch (statement.kind()) {
@@ -221,12 +251,19 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             throw SemanticError(name + " returns a new set and does not change its argument; write " + set +
                                 " := " + name + "(" + set + ", ...)");
         }
-        analyzeExpression(statementExpression);
+        const TypeRef statementType = analyzeExpression(statementExpression);
         if (statementExpression.kind() == ast::AstNodeKind::CallExpression) {
             const auto& call = static_cast<const ast::CallExpression&>(statementExpression);
             if (isMemberCall(call) && result_.symbolOf(call) == nullptr) {
                 throw SemanticError("field access is not a statement: only assignments and calls may be used as statements");
             }
+        }
+        // E2 (r3.88, as in Ada): a function is not a statement; its result
+        // is always used.
+        if ((statementExpression.kind() == ast::AstNodeKind::CallExpression ||
+             statementExpression.kind() == ast::AstNodeKind::IdentifierExpression) &&
+            statementType != nullptr && !statementType->isVoid()) {
+            throw SemanticError(discardedResultMessage(statementExpression));
         }
         break;
     }

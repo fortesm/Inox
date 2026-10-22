@@ -1,0 +1,19 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== Std.Terminal (r3.88, F2): a runtime error gives the terminal back before
+== its message (colors reset, cursor shown). MoveTo counts from 1: row 0
+== stops the program with "value out of range".
+Use Std.Terminal
+
+Main :
+    ShowCursor(False)
+    SetColor(Yellow, Black)
+    Put("z")
+    Row Integer := 0
+    MoveTo(Row, 1)
+    PutLn("never")
+;

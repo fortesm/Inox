@@ -59,8 +59,8 @@ void FunctionEmitter::emitInputCallSequence(const std::vector<ast::ExpressionPtr
 }
 
 // CANON-17 (v3.50): GetLn(S) reads the rest of the line, without its line
-// end, through the program's getchar (StringRuntime.cpp). Invalid UTF-8 and
-// allocation failure are runtime faults 13 and 12.
+// end, through libinoxrt's console (change console-abi-terminal). Invalid
+// UTF-8 and allocation failure are runtime faults 13 and 12.
 void FunctionEmitter::emitInputReadLine(const ast::Expression& argument)
 {
     const auto& identifier = static_cast<const ast::IdentifierExpression&>(argument);
@@ -69,13 +69,12 @@ void FunctionEmitter::emitInputReadLine(const ast::Expression& argument)
         throw CodegenUnsupported("GetLn LLVM emission currently supports only local or State variables");
     }
     requireStringRuntime();
-    requireRuntime(RuntimeFunction::StringGetLn);
     const std::string status = "%getln.status" + std::to_string(nextTemporary_++);
     const std::string line = "%tmp" + std::to_string(nextTemporary_++);
     const std::string code = "%tmp" + std::to_string(nextTemporary_++);
     const std::string label = std::to_string(nextLabel_++);
     output_ << "  " << status << " = alloca i32\n";
-    output_ << "  " << line << " = call ptr @__inox_str_getln(ptr @getchar, ptr " << status << ")\n";
+    output_ << "  " << line << " = call ptr @__inox_con_getln(ptr " << status << ")\n";
     output_ << "  " << code << " = load i32, ptr " << status << '\n';
     output_ << "  switch i32 " << code << ", label %getln.ok" << label << " [\n"
             << "    i32 1, label %getln.utf8" << label << "\n"
@@ -146,52 +145,42 @@ void FunctionEmitter::emitOutputCallSequence(const std::vector<ast::ExpressionPt
     }
 }
 
+// E1 (change console-abi-terminal): every value is printed by libinoxrt,
+// which owns standard output; a line end is one more call.
 void FunctionEmitter::emitOutputCall(const ast::Expression& argument, bool newline)
+{
+    emitOutputValue(argument);
+    if (newline) {
+        output_ << "  call void @__inox_con_put_newline()\n";
+    }
+}
+
+void FunctionEmitter::emitOutputValue(const ast::Expression& argument)
 {
     if (argument.kind() == ast::AstNodeKind::LiteralExpression) {
         const auto& literal = static_cast<const ast::LiteralExpression&>(argument);
         if (literal.literalKind() == ast::LiteralKind::String) {
             const std::string value = emitStringLiteral(literal.value());
-            output_ << "  call i32 (ptr, ...) @printf(ptr "
-                    << (newline ? "@.inox.fmt.str.nl" : "@.inox.fmt.str")
-                    << ", ptr " << value << ")\n";
+            const std::size_t length = llvmStringConstant(literal.value()).size - 1;
+            output_ << "  call void @__inox_con_write(ptr " << value << ", i64 " << length << ")\n";
             return;
         }
     }
 
     const TypeRef printedType = typeOf(argument);
     if (isStringType(printedType) || (printedType != nullptr && (printedType->isEnum() || printedType->isChar()))) {
-        // The bytes of the block, printed by the program's printf so the
-        // output stays in order with every other Put (StringRuntime.cpp).
-        // An enum prints its literal's name (CANON-13).
-        requireModuleLine("@.inox.fmt.strv = private unnamed_addr constant [5 x i8] c\"%.*s\\00\"");
-        requireModuleLine("@.inox.fmt.strv.nl = private unnamed_addr constant [6 x i8] c\"%.*s\\0A\\00\"");
-        // A Char prints its character in UTF-8 (change char-values).
+        // An enum prints its literal's name (CANON-13); a Char its
+        // character in UTF-8 (change char-values).
         const std::string value = printedType->isEnum()   ? emitEnumName(emitExpression(argument), printedType)
                                   : printedType->isChar() ? emitCharString(emitExpression(argument))
                                                           : emitExpression(argument);
-        const std::string lengthPointer = "%tmp" + std::to_string(nextTemporary_++);
-        const std::string length = "%tmp" + std::to_string(nextTemporary_++);
-        const std::string length32 = "%tmp" + std::to_string(nextTemporary_++);
-        const std::string bytes = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << lengthPointer << " = getelementptr { i64, i64 }, ptr " << value << ", i32 0, i32 1\n";
-        output_ << "  " << length << " = load i64, ptr " << lengthPointer << '\n';
-        output_ << "  " << length32 << " = trunc i64 " << length << " to i32\n";
-        output_ << "  " << bytes << " = getelementptr i8, ptr " << value << ", i64 16\n";
-        output_ << "  call i32 (ptr, ...) @printf(ptr " << (newline ? "@.inox.fmt.strv.nl" : "@.inox.fmt.strv")
-                << ", i32 " << length32 << ", ptr " << bytes << ")\n";
+        output_ << "  call void @__inox_con_put_str(ptr " << value << ")\n";
         return;
     }
 
     if (isBoolExpression(argument)) {
         const std::string value = emitExpression(argument);
-        const std::string selected = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << selected
-                << " = select i1 " << value
-                << ", ptr @.inox.true, ptr @.inox.false\n";
-        output_ << "  call i32 (ptr, ...) @printf(ptr "
-                << (newline ? "@.inox.fmt.str.nl" : "@.inox.fmt.str")
-                << ", ptr " << selected << ")\n";
+        output_ << "  call void @__inox_con_put_bool(i1 zeroext " << value << ")\n";
         return;
     }
 
@@ -204,23 +193,16 @@ void FunctionEmitter::emitOutputCall(const ast::Expression& argument, bool newli
             printed = "%tmp" + std::to_string(nextTemporary_++);
             output_ << "  " << printed << " = fpext float " << value << " to double\n";
         }
-        output_ << "  call i32 (ptr, ...) @printf(ptr "
-                << (newline ? "@.inox.fmt.f64.nl" : "@.inox.fmt.f64")
-                << ", double " << printed << ")\n";
+        output_ << "  call void @__inox_con_put_f64(double " << printed << ")\n";
         return;
     }
 
     // Change uint64: a UInt64 is printed unsigned.
     if (isUInt64Type(typeOf(argument))) {
-        requireModuleLine("@.inox.fmt.u64 = private unnamed_addr constant [5 x i8] c\"%llu\\00\"");
-        requireModuleLine("@.inox.fmt.u64.nl = private unnamed_addr constant [6 x i8] c\"%llu\\0A\\00\"");
-        output_ << "  call i32 (ptr, ...) @printf(ptr " << (newline ? "@.inox.fmt.u64.nl" : "@.inox.fmt.u64")
-                << ", i64 " << value << ")\n";
+        output_ << "  call void @__inox_con_put_u64(i64 " << value << ")\n";
         return;
     }
-    output_ << "  call i32 (ptr, ...) @printf(ptr "
-            << (newline ? "@.inox.fmt.i64.nl" : "@.inox.fmt.i64")
-            << ", i64 " << value << ")\n";
+    output_ << "  call void @__inox_con_put_i64(i64 " << value << ")\n";
 }
 
 std::string FunctionEmitter::emitStringLiteral(std::string_view value)

@@ -1,0 +1,17 @@
+24 80
+1 KeyChar 97 false false
+2 KeyChar 97 true false
+3 KeyUp 0 false false
+4 KeyPageUp 0 false false
+5 KeyF1 0 false false
+6 KeyChar 120 false true
+7 KeyChar 233 false false
+8 KeyEnter 0 false false
+9 KeyTab 0 false false
+10 KeyBackspace 0 false false
+11 KeyDelete 0 false false
+12 KeyRight 0 true false
+13 KeyF12 0 false false
+14 KeyChar 32 false false
+15 KeyChar 32 true false
+KeyEscape

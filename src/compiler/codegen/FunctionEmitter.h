@@ -16,6 +16,7 @@
 #include "TypeLayout.h"
 #include "../ast/Ast.h"
 #include "../semantic/SemanticResult.h"
+#include "../semantic/StdTerminal.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -191,6 +192,7 @@ private:
 
     void emitOutputCallSequence(const std::vector<ast::ExpressionPtr>& arguments, bool newline);
 
+    void emitOutputValue(const ast::Expression& argument);
     void emitOutputCall(const ast::Expression& argument, bool newline);
 
     std::string emitStringLiteral(std::string_view value);
@@ -469,6 +471,12 @@ private:
     // ---- Std.IOUtils (OpenSpec change file-io; FunctionEmitterFiles.cpp) ----
     // A call to a file function (and not to a routine of the program).
     bool isFileCall(const ast::CallExpression& call) const;
+    // Std.Terminal (FunctionEmitterTerminal.cpp, change console-abi-terminal).
+    const semantic::TerminalSignature* terminalCallOf(const ast::Expression& expression) const;
+    std::string emitTerminalCall(const ast::Expression& expression, const semantic::TerminalSignature& function);
+    std::string emitTerminalStruct(TypeRef type, const std::vector<std::pair<std::string, std::string>>& fields);
+    std::string narrowFromInt64(const std::string& value, const std::string& llvmType);
+    std::string emitInt64Argument(const ast::Expression& argument);
     // Std.Debug Assert (FunctionEmitterDebug.cpp): a branch to a trap.
     bool isAssertCall(const ast::CallExpression& call) const;
     void emitAssertCall(const ast::CallExpression& call);

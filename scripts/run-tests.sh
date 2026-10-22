@@ -210,11 +210,17 @@ run_linked_execution_test() {
         return 0
     fi
 
-    local clang_args=("$ll_path" -o "$exe_path")
+    # E1 (change console-abi-terminal): every program links libinoxrt.
+    local runtime_lib="${INOX_RUNTIME_LIB:-}"
+    if [[ -z "$runtime_lib" ]]; then
+        runtime_lib="$(dirname "$inox_exe")/libinoxrt.a"
+        [[ -f "$runtime_lib" ]] || runtime_lib="$(dirname "$inox_exe")/inoxrt.lib"
+    fi
+    local clang_args=("$ll_path" "$runtime_lib" -o "$exe_path")
     if [[ "$(uname -s)" != MINGW* && "$(uname -s)" != MSYS* && "$(uname -s)" != CYGWIN* ]]; then
         clang_args+=("-lm")
     fi
-    clang "${clang_args[@]}" >/dev/null 2>&1
+    clang++ "${clang_args[@]}" >/dev/null 2>&1
     local clang_exit=$?
     if [[ $clang_exit -ne 0 ]]; then
         rm -rf "$temp_dir"
@@ -356,23 +362,42 @@ run_driver_trap_test() {
         return 0
     fi
 
-    local actual exit_code
+    # Standard output and standard error are captured separately, as the
+    # PowerShell runner does: the program's output (which may end without a
+    # line end, such as the terminal reset written at a trap) and then the
+    # diagnostics.
+    local err_file
+    err_file="$(mktemp)"
+    local stdout_text stderr_text actual exit_code
     if [[ -n "$input_file" ]]; then
-        actual="$("$inox_exe" --run "$test_file" < "$input_file" 2>&1)"
+        stdout_text="$("$inox_exe" --run "$test_file" < "$input_file" 2>"$err_file")"
     else
-        actual="$("$inox_exe" --run "$test_file" 2>&1 < /dev/null)"
+        stdout_text="$("$inox_exe" --run "$test_file" 2>"$err_file" < /dev/null)"
     fi
     exit_code=$?
-    actual="$(printf '%s' "$actual" | sed 's/\r$//')"
+    stdout_text="$(printf '%s' "$stdout_text" | sed 's/\r$//')"
+    stderr_text="$(sed 's/\r$//' "$err_file")"
+    rm -f "$err_file"
+    if [[ -n "$stdout_text" && -n "$stderr_text" ]]; then
+        actual="$stdout_text"$'\n'"$stderr_text"
+    else
+        actual="$stdout_text$stderr_text"
+    fi
 
     # A compile error also exits non-zero, so require the runtime diagnostic itself.
-    # Optional NAME.out next to NAME.trap: the complete output (program output,
-    # runtime diagnostic, driver note) must match exactly, which proves that no
-    # handler or ensure block ran.
+    # Optional NAME.out next to NAME.trap: the complete output must match
+    # exactly, which proves that no handler or ensure block ran. Its lines
+    # that start with "Inox runtime error:" or "inox:" are standard error, the
+    # others standard output, in order.
     local exact_file="${test_file%.inox}.out"
     local exact_ok=1
-    if [[ -f "$exact_file" && "$actual" != "$(sed 's/\r$//' "$exact_file")" ]]; then
-        exact_ok=0
+    if [[ -f "$exact_file" ]]; then
+        local expected_out expected_err
+        expected_out="$(sed 's/\r$//' "$exact_file" | grep -v -e '^Inox runtime error:' -e '^inox:')"
+        expected_err="$(sed 's/\r$//' "$exact_file" | grep -e '^Inox runtime error:' -e '^inox:')"
+        if [[ "$stdout_text" != "$expected_out" || "$stderr_text" != "$expected_err" ]]; then
+            exact_ok=0
+        fi
     fi
     if [[ $exit_code -ne 0 && -n "$expected_message" && "$actual" == *"$expected_message"* && $exact_ok -eq 1 ]]; then
         record_pass "$rel --run (trap)"
@@ -518,13 +543,13 @@ run_llvm_emission_test "$repo_root/examples/for-range-step.inox" \
     "define i64 @inox_sumevenuntil" "forcond" "forbody" "forstep" "forend" "store i64 2, ptr %i" "icmp sle i64" "icmp eq i64" "call i64 @__inox_add_i64" "@__inox_for_step_i64(i64 2)" "@llvm.sadd.with.overflow.i64" "br i1" "br label" "ret i64" "define i32 @main()" "ret i32 0"
 
 run_llvm_emission_test "$repo_root/examples/putln-integer.inox" \
-    "@.inox.fmt.i64.nl" "declare i32 @printf" "define i64 @inox_value" "define i32 @main()" "call i32 (ptr, ...) @printf" "ret i32 0"
+    "declare void @__inox_con_put_i64(i64)" "define i64 @inox_value" "define i32 @main()" "call void @__inox_runtime_init()" "call void @__inox_con_put_i64" "call void @__inox_con_put_newline()" "ret i32 0"
 
 run_llvm_emission_test "$repo_root/examples/put-output-basic.inox" \
-    "@.inox.fmt.str.nl" "@.inox.fmt.str" "@.inox.true" "@.inox.false" "@.inox.str." "select i1" "call i32 (ptr, ...) @printf" "define i32 @main()" "ret i32 0"
+    "@.inox.str." "call void @__inox_con_write(ptr @.inox.str." "call void @__inox_con_put_bool(i1 zeroext" "call void @__inox_con_put_newline()" "define i32 @main()" "ret i32 0"
 
 run_llvm_emission_test "$repo_root/examples/subroutine-calls.inox" \
-    "define i64 @inox_value" "define void @inox_report" "call void @inox_report" "ret void" "report=" "call i32 (ptr, ...) @printf" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_value" "define void @inox_report" "call void @inox_report" "ret void" "report=" "call void @__inox_con_write" "define i32 @main()" "ret i32 0"
 
 run_llvm_emission_test "$repo_root/examples/struct-basic.inox" \
     "%tpoint = type { i64, i64 }" "define i64 @inox_sumpoint" "alloca %tpoint" "zeroinitializer" "getelementptr %tpoint" "store i64 10" "store i64 20" "load i64" "call i64 @__inox_add_i64" "call i64 @inox_sumpoint" "ret i32 0"

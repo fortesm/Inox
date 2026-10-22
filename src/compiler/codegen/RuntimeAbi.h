@@ -29,7 +29,6 @@ enum class RuntimeFunction {
     StringRelease,
     StringEqual,
     StringCompare,
-    StringGetLn,
     // Std.Strings / Std.StrUtils and `+` (runtime/StringFunctions.cpp). A
     // result is owned; the last parameter of a function that makes a String
     // receives its status (1 out of range, 2 out of memory).
@@ -66,6 +65,31 @@ enum class RuntimeFunction {
     FileExists,
     FileDelete,
     FileRename,
+    // Console (runtime/ConsoleRuntime.cpp, change console-abi-terminal): every
+    // module declares them; Main calls RuntimeInit first and the fault
+    // function RuntimeShutdown before it stops.
+    RuntimeInit,
+    RuntimeShutdown,
+    ConsoleWrite,
+    ConsolePutString,
+    ConsolePutInteger,
+    ConsolePutUnsigned,
+    ConsolePutFloat,
+    ConsolePutBool,
+    ConsolePutNewline,
+    ConsoleGetChar,
+    ConsoleGetLn,
+    // Std.Terminal (runtime/ConsoleRuntime.cpp), declared on first use.
+    TerminalRawMode,
+    TerminalReadKey,
+    TerminalScreenSize,
+    TerminalMoveTo,
+    TerminalClearScreen,
+    TerminalClearLine,
+    TerminalSetColor,
+    TerminalResetColor,
+    TerminalShowCursor,
+    TerminalFlush,
     // Owned blocks of safe pointers (runtime/OwnRuntime.cpp).
     OwnAlloc,
     OwnFree,
@@ -75,6 +99,14 @@ enum class RuntimeFunction {
 inline constexpr std::array<RuntimeFunction, 5> kExceptionRuntimeFunctions = {
     RuntimeFunction::Raise,          RuntimeFunction::ExceptionCapture, RuntimeFunction::ExceptionType,
     RuntimeFunction::ExceptionRelease, RuntimeFunction::ExceptionRethrow,
+};
+
+// The console functions, declared by every module.
+inline constexpr std::array<RuntimeFunction, 11> kConsoleRuntimeFunctions = {
+    RuntimeFunction::RuntimeInit,       RuntimeFunction::RuntimeShutdown,   RuntimeFunction::ConsoleWrite,
+    RuntimeFunction::ConsolePutString,  RuntimeFunction::ConsolePutInteger, RuntimeFunction::ConsolePutUnsigned,
+    RuntimeFunction::ConsolePutFloat,   RuntimeFunction::ConsolePutBool,    RuntimeFunction::ConsolePutNewline,
+    RuntimeFunction::ConsoleGetChar,    RuntimeFunction::ConsoleGetLn,
 };
 
 // The LLVM declaration of a runtime function, exactly as emitted.

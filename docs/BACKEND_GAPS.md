@@ -8,7 +8,9 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 Status: measured on 2026-10-09 against v3.18, re-measured against v3.20
 (keyword rename only; results unchanged) and against v3.21 (compositional
 statement lowering: 7 gaps closed, 3 probes added, none of them a gap); table
-re-measured against canon r3.64. Layer B — describes the
+re-measured against canon r3.64 and r3.88 (the `function-result-discarded`
+probe left: calling a function as a statement is an error since r3.88, no
+gap is left). Layer B — describes the
 implementation, not the language.
 
 ## Why this file exists
@@ -50,8 +52,7 @@ analysis but not lowered yet.)
 | `loop-local-var` | local declaration inside a loop body | **OK** |  |
 | `until-in-if` | until inside if within repeat | **OK** |  |
 | `until-across-loop` | until with a loop between it and its repeat | **OK** |  |
-| `float32-conversion` | Float32 local initialized by explicit conversion | **GAP** | unsupported expression in function: Main |
-| `function-result-discarded` | function called as a statement (result not used; open question) | **GAP** | LLVM emission currently supports only subroutine calls as expression statements |
+| `float32-conversion` | Float32 local initialized by explicit conversion | **OK** |  |
 | `nested-if` | if inside if (straight-line code) | **OK** |  |
 | `const-use` | module Const used in an expression | **OK** |  |
 | `case` | case statement | **OK** |  |
@@ -89,12 +90,14 @@ analysis but not lowered yet.)
 | `slice` | read-only slice passed to a Slice<T> parameter | **OK** |  |
 | `ref-parameter` | ref mut parameter writing an array element | **OK** |  |
 | `struct-nested` | nested struct fields, field paths and defaults | **OK** |  |
+| `float-const` | Float Const, a constant expression of it and a conversion | **OK** |  |
+| `char-values` | Char local, conversion, comparison and printing | **OK** |  |
 | `array-of-struct` | array of struct elements with defaults and field access | **OK** |  |
 | `struct-array-field` | struct field of array type, copied with its struct | **OK** |  |
 | `state-aggregates` | State variables of struct and array type | **OK** |  |
 | `uint64-local` | UInt64 local | **OK** |  |
 
-Summary: GAP=2, OK=50
+Summary: OK=53
 
 ## Reading the table
 
