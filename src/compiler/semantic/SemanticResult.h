@@ -48,7 +48,9 @@ struct FunctionSignature {
 // Later phases read it from here instead of re-parsing the Const section
 // (CANON E11, decision P-C stage 1).
 struct ConstantValue {
-    enum class Kind { Integer, Boolean, String, Real };
+    // Decimal (change decimals, r3.91): `text` holds the value scaled by
+    // 10^places, signed decimal digits (`Const Fee := Currency(2.5)`).
+    enum class Kind { Integer, Boolean, String, Real, Decimal };
     Kind kind = Kind::Integer;
     std::int64_t integer = 0;
     bool boolean = false;

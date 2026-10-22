@@ -1,0 +1,16 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== A negated real literal is read in its type, then negated: a Float32 -0.1
+== is the negation of the Float32 nearest 0.1, and separators and exponents
+== are allowed (fixed with change decimals, r3.91).
+Main :
+    A := -1_000.5
+    B Float32 := -0.1
+    C := -1.0e-3
+    D Float32 := -2.5e2
+    PutLn(A, " ", B, " ", C, " ", D)
+;

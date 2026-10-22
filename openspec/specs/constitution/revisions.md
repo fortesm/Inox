@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.90
+Canon revision: r3.91
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -361,3 +361,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   Split and Join move to 0.5 with the collections; `FieldCount(S, Sep)` and
   `Field(S, Sep, I)` (Std.StrUtils) now (CANON-14). Marcelo Fortes,
   2026-10-21: "B Acatado todos". Change `numbers-text`.
+- r3.91 — 2026-10-22 — Currency and Crypto have values (0.3, CANON-8). A1:
+  `*` and `/` of decimals are exact and then rounded half to even to the
+  type's places. A2: a literal next to a decimal takes its type (`Price *
+  3`); an Integer variable needs `Currency(N)`. A3: `Integer(C)` truncates
+  toward zero; Std.Math gives `Round` (half to even) and `Trunc`. A4:
+  `Crypto(C)` is exact; `Currency(X)` of a Crypto rounds half to even,
+  without error. A5: a decimal is written with at least two decimals and no
+  trailing zeros after them. `Get`, `String(C)` and `Currency(S)` read and
+  write decimals (B1, B2, C2); "decimal overflow" is a new trap category
+  (CANON-19). Marcelo Fortes, 2026-10-21 (repeated 2026-10-22): "A Acatado
+  todos". Change `decimals`.

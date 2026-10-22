@@ -710,6 +710,11 @@ void SemanticAnalyzer::validateStructFieldDefault(const std::string& fieldName,
         }
         return;
     }
+    // Change decimals (r3.91): an integer or real literal, read exactly.
+    if (fieldType->isDecimal()) {
+        checkDecimalLiteral(magnitudeText, fieldType);
+        return;
+    }
     std::int64_t low = 0;
     std::int64_t high = 0;
     if (!integerTypeRange(fieldType, low, high)) {

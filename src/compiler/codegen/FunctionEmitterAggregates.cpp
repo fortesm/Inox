@@ -8,6 +8,7 @@
 // FunctionEmitter: struct defaults and construction, places, fields, methods, assignment.
 
 #include "FunctionEmitter.h"
+#include "../support/DecimalLiteral.h"
 #include "../support/CharLiteral.h"
 
 #include "AstQueries.h"
@@ -113,6 +114,21 @@ void FunctionEmitter::emitStructFieldDefaults(const std::string& pointer, TypeRe
             // The code point of the default literal (char-values).
             output_ << "  store i64 " << support::decodeCharLiteral(field.defaultValue).code << ", ptr "
                     << fieldPointer << '\n';
+            continue;
+        }
+        if (field.type->isDecimal()) {
+            // Change decimals (r3.91): the exact scaled value of the literal.
+            std::string scaled = "0";
+            if (field.hasDefault) {
+                const std::string& text = field.defaultValue;
+                const bool negative = !text.empty() && text.front() == '-';
+                scaled = support::parseDecimalLiteral(negative ? text.substr(1) : text, field.type->decimalPlaces())
+                             .scaled;
+                if (negative && scaled != "0") {
+                    scaled = "-" + scaled;
+                }
+            }
+            output_ << "  store " << layout.llvmType << ' ' << scaled << ", ptr " << fieldPointer << '\n';
             continue;
         }
         if (field.type->isEnum()) {

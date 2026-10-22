@@ -8,6 +8,7 @@
 // FunctionEmitter: expression types and the lowering of expressions.
 
 #include "FunctionEmitter.h"
+#include "../support/DecimalLiteral.h"
 #include "../support/CharLiteral.h"
 #include "../support/RealLiteral.h"
 
@@ -222,6 +223,11 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
     switch (expression.kind()) {
     case ast::AstNodeKind::LiteralExpression: {
         const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
+        // Change decimals (r3.91): a literal read as a Currency or a Crypto
+        // is its exact value scaled by 10^places.
+        if (const TypeRef type = typeOf(expression); type != nullptr && type->isDecimal()) {
+            return support::parseDecimalLiteral(literal.value(), type->decimalPlaces()).scaled;
+        }
         if (literal.literalKind() == ast::LiteralKind::Integer) {
             return llvmIntegerLiteral(literal.value());
         }
@@ -294,6 +300,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             if (constant->kind == semantic::ConstantValue::Kind::String) {
                 return emitStringValue(constant->text);
             }
+            if (constant->kind == semantic::ConstantValue::Kind::Decimal) {
+                return constant->text;
+            }
             if (constant->kind == semantic::ConstantValue::Kind::Real) {
                 const TypeRef type = typeOf(expression);
                 const bool float32 = type != nullptr && type->bits() == 32;
@@ -362,6 +371,18 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
                 output_ << "  " << result << " = icmp " << predicate << " i32 " << order << ", 0\n";
                 return result;
             }
+        }
+
+        // Change decimals (r3.91): Currency and Crypto compare as their
+        // scaled integers; + - * / are exact, checked, and * / round half to
+        // even (A1).
+        if (const TypeRef type = typeOf(binary.left()); type != nullptr && type->isDecimal()) {
+            if (const std::string predicate = llvmComparisonPredicate(binary.op()); !predicate.empty()) {
+                output_ << "  " << result << " = icmp " << predicate << ' ' << leftType << ' ' << left << ", "
+                        << right << '\n';
+                return result;
+            }
+            return emitDecimalArithmetic(binary.op(), type, left, right);
         }
 
         if (isFloatLlvmType(leftType) || isFloatLlvmType(rightType)) {
@@ -443,15 +464,27 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             const std::string operandType = expressionLlvmType(unary.operand());
             if (unary.operand().kind() == ast::AstNodeKind::LiteralExpression) {
                 const auto& literal = static_cast<const ast::LiteralExpression&>(unary.operand());
+                const TypeRef literalType = typeOf(unary.operand());
+                if (literalType != nullptr && literalType->isDecimal()) {
+                    const std::string scaled =
+                        support::parseDecimalLiteral(literal.value(), literalType->decimalPlaces()).scaled;
+                    return scaled == "0" ? scaled : "-" + scaled;
+                }
                 if (literal.literalKind() == ast::LiteralKind::Integer) {
                     return "-" + llvmIntegerLiteral(literal.value());
                 }
                 if (literal.literalKind() == ast::LiteralKind::Float) {
-                    return "-" + std::string(literal.value());
+                    // The literal read in its type, then negated (a Float32
+                    // `-0.1` is the negation of the Float32 nearest 0.1).
+                    const bool float32 = literalType != nullptr && literalType->isFloat() && literalType->bits() == 32;
+                    return llvmRealConstant(-support::parseRealLiteral(literal.value(), float32), float32);
                 }
             }
             const std::string operand = emitExpression(unary.operand());
             const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+            if (const TypeRef type = typeOf(unary.operand()); type != nullptr && type->isDecimal()) {
+                return emitDecimalArithmetic(ast::BinaryOperator::Subtract, type, "0", operand);
+            }
             if (isFloatLlvmType(operandType)) {
                 output_ << "  " << result << " = fsub " << operandType << " -0.0, " << operand << '\n';
             } else {
@@ -562,6 +595,24 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return emitMathBuiltinCall(callee.name(), call.arguments());
         }
 
+        // Change decimals (r3.91): Currency(X), Crypto(X), and T(C) of a
+        // decimal into a number; Round and Trunc of Std.Math.
+        if (call.arguments().size() == 1 && calledRoutine(callee) == nullptr) {
+            const TypeRef target = typeOf(call);
+            const TypeRef source = typeOf(*call.arguments().front());
+            const bool conversion = semantics_.types().lookup(callee.name()) != nullptr;
+            if (conversion && target != nullptr && source != nullptr &&
+                (target->isDecimal() || (source->isDecimal() && (target->isInteger() || target->isFloat())))) {
+                return emitDecimalConversion(call, target);
+            }
+            if (!conversion && (equalsIgnoreCase(callee.name(), "Round") || equalsIgnoreCase(callee.name(), "Trunc"))) {
+                if (const semantic::Symbol* symbol = semantics_.symbolOf(callee);
+                    symbol != nullptr && symbol->kind == semantic::SymbolKind::Builtin) {
+                    return emitRounding(call);
+                }
+            }
+        }
+
         // r3.90 (B2): T(S) of a String into a number.
         if (const TypeRef target = textConversionTarget(call)) {
             return emitTextToNumber(call, target);
@@ -584,6 +635,18 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             }
             if (source != nullptr && (source->isInteger() || source->isFloat())) {
                 return emitNumberString(value, source, expressionLlvmType(*call.arguments().front()));
+            }
+            if (source != nullptr && source->isDecimal()) {
+                requireRuntime(RuntimeFunction::StringFromDecimal);
+                requireStringRuntime();
+                const auto [low, high] = decimalHalves(value, source);
+                const std::string status = newStringStatus();
+                const std::string text = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << text << " = call ptr @__inox_str_from_dec(i64 " << low << ", i64 " << high
+                        << ", i32 " << source->decimalPlaces() << ", ptr " << status << ")\n";
+                emitStringStatusCheck(status);
+                holdOwnedResult(text, semantics_.types().stringType(), "ptr");
+                return text;
             }
             return value;
         }
@@ -724,6 +787,241 @@ std::string FunctionEmitter::emitCharString(const std::string& value)
     output_ << "  " << result << " = call ptr @__inox_str_from_char(i64 " << value << ", ptr " << status << ")\n";
     emitStringStatusCheck(status);
     holdOwnedResult(result, semantics_.types().stringType(), "ptr");
+    return result;
+}
+
+// Change decimals (r3.91): the two 64-bit halves of a Currency (its value
+// and its sign) or a Crypto, as libinoxrt takes them.
+std::pair<std::string, std::string> FunctionEmitter::decimalHalves(const std::string& value, TypeRef type)
+{
+    const std::string low = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string high = "%tmp" + std::to_string(nextTemporary_++);
+    if (type->bits() == 128) {
+        const std::string shifted = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << low << " = trunc i128 " << value << " to i64\n";
+        output_ << "  " << shifted << " = ashr i128 " << value << ", 64\n";
+        output_ << "  " << high << " = trunc i128 " << shifted << " to i64\n";
+        return {low, high};
+    }
+    output_ << "  " << high << " = ashr i64 " << value << ", 63\n";
+    return {value, high};
+}
+
+// A slot of 16 bytes that libinoxrt fills with a decimal, low half first.
+std::string FunctionEmitter::newDecimalSlot()
+{
+    const std::string slot = "%decimal.slot" + std::to_string(nextTemporary_++);
+    output_ << "  " << slot << " = alloca i128, align 16\n";
+    return slot;
+}
+
+std::string FunctionEmitter::loadDecimal(const std::string& slot, TypeRef type)
+{
+    const std::string value = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << value << " = load " << (type->bits() == 128 ? "i128" : "i64") << ", ptr " << slot << '\n';
+    return value;
+}
+
+// A status of libinoxrt: 0 ok, else the fault of `kinds` (1 and 2).
+void FunctionEmitter::emitDecimalStatus(const std::string& status, int firstKind, int secondKind)
+{
+    const std::string ok = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << ok << " = icmp ne i32 " << status << ", 1\n";
+    emitTrapUnless(ok, firstKind);
+    if (secondKind != 0) {
+        const std::string fine = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << fine << " = icmp ne i32 " << status << ", 2\n";
+        emitTrapUnless(fine, secondKind);
+    }
+}
+
+// A1: + and - checked inline ("decimal overflow", kind 20); * and / exact in
+// libinoxrt, rounded half to even, / by zero is "division by zero".
+std::string FunctionEmitter::emitDecimalArithmetic(ast::BinaryOperator op, TypeRef type, const std::string& left,
+                                                   const std::string& right)
+{
+    const std::string llvmType = type->bits() == 128 ? "i128" : "i64";
+    if (op == ast::BinaryOperator::Add || op == ast::BinaryOperator::Subtract) {
+        const std::string intrinsic =
+            std::string(op == ast::BinaryOperator::Add ? "llvm.sadd.with.overflow." : "llvm.ssub.with.overflow.") +
+            llvmType;
+        if (llvmType == "i128") {
+            requireModuleLine("declare { i128, i1 } @" + intrinsic + "(i128, i128)");
+        }
+        const std::string pair = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string value = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string overflow = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string fits = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << pair << " = call { " << llvmType << ", i1 } @" << intrinsic << '(' << llvmType << ' '
+                << left << ", " << llvmType << ' ' << right << ")\n";
+        output_ << "  " << value << " = extractvalue { " << llvmType << ", i1 } " << pair << ", 0\n";
+        output_ << "  " << overflow << " = extractvalue { " << llvmType << ", i1 } " << pair << ", 1\n";
+        output_ << "  " << fits << " = xor i1 " << overflow << ", true\n";
+        emitTrapUnless(fits, 20);
+        return value;
+    }
+    if (op != ast::BinaryOperator::Multiply && op != ast::BinaryOperator::Divide) {
+        throw CodegenError("operator not defined for " + type->name());
+    }
+    const bool multiply = op == ast::BinaryOperator::Multiply;
+    requireRuntime(multiply ? RuntimeFunction::DecimalMultiply : RuntimeFunction::DecimalDivide);
+    const auto [leftLow, leftHigh] = decimalHalves(left, type);
+    const auto [rightLow, rightHigh] = decimalHalves(right, type);
+    const std::string slot = newDecimalSlot();
+    const std::string status = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << status << " = call i32 @" << (multiply ? "__inox_dec_mul" : "__inox_dec_div") << "(i64 "
+            << leftLow << ", i64 " << leftHigh << ", i64 " << rightLow << ", i64 " << rightHigh << ", i32 "
+            << type->decimalPlaces() << ", ptr " << slot << ")\n";
+    emitDecimalStatus(status, 20, 2);
+    return loadDecimal(slot, type);
+}
+
+// Change decimals (r3.91, CANON-8, A3-A4): conversions into and out of a
+// Currency or a Crypto. Into: an integer exactly, a Float or the other
+// decimal rounded half to even, a String exactly (ConversionError
+// otherwise); beyond the type, "integer conversion out of range" (kind 8).
+// Out of: an integer truncated toward zero, a real the nearest one.
+std::string FunctionEmitter::emitDecimalConversion(const ast::CallExpression& call, TypeRef target)
+{
+    const ast::Expression& argument = *call.arguments().front();
+    const TypeRef source = typeOf(argument);
+    const std::string value = emitExpression(argument);
+    if (source == target) {
+        return value;
+    }
+    if (target->isDecimal()) {
+        const int places = static_cast<int>(target->decimalPlaces());
+        const bool crypto = target->bits() == 128;
+        if (source->isString()) {
+            const std::string slot = newDecimalSlot();
+            emitRuntimeCall(RuntimeFunction::StringToDecimal, "void", "__inox_str_to_dec",
+                            "ptr " + value + ", i32 " + std::to_string(places) + ", ptr " + slot);
+            return loadDecimal(slot, target);
+        }
+        if (source->isDecimal()) {
+            requireRuntime(RuntimeFunction::DecimalRescale);
+            const auto [low, high] = decimalHalves(value, source);
+            const std::string slot = newDecimalSlot();
+            const std::string status = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << status << " = call i32 @__inox_dec_rescale(i64 " << low << ", i64 " << high << ", i32 "
+                    << source->decimalPlaces() << ", i32 " << places << ", ptr " << slot << ")\n";
+            emitDecimalStatus(status, 8, 0);
+            return loadDecimal(slot, target);
+        }
+        if (source->isFloat()) {
+            std::string real = value;
+            if (source->bits() == 32) {
+                real = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << real << " = fpext float " << value << " to double\n";
+            }
+            requireRuntime(RuntimeFunction::DecimalFromFloat);
+            const std::string slot = newDecimalSlot();
+            const std::string status = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << status << " = call i32 @__inox_dec_from_f64(double " << real << ", i32 " << places
+                    << ", ptr " << slot << ")\n";
+            emitDecimalStatus(status, 8, 0);
+            return loadDecimal(slot, target);
+        }
+        // An integer, exactly.
+        const bool unsignedSource = isUInt64Type(source);
+        if (crypto) {
+            const std::string wide = "%tmp" + std::to_string(nextTemporary_++);
+            const std::string scaled = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << wide << " = " << (unsignedSource ? "zext" : "sext") << " i64 " << value
+                    << " to i128\n";
+            output_ << "  " << scaled << " = mul i128 " << wide << ", 1000000000000000000\n";
+            return scaled;
+        }
+        if (unsignedSource) {
+            const std::string fits = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << fits << " = icmp sge i64 " << value << ", 0\n";
+            emitTrapUnless(fits, 8);
+        }
+        const std::string pair = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string scaled = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string overflow = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string fits = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << pair << " = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 " << value
+                << ", i64 1000000)\n";
+        output_ << "  " << scaled << " = extractvalue { i64, i1 } " << pair << ", 0\n";
+        output_ << "  " << overflow << " = extractvalue { i64, i1 } " << pair << ", 1\n";
+        output_ << "  " << fits << " = xor i1 " << overflow << ", true\n";
+        emitTrapUnless(fits, 8);
+        return scaled;
+    }
+    const auto [low, high] = decimalHalves(value, source);
+    if (target->isFloat()) {
+        const bool float32 = target->bits() == 32;
+        requireRuntime(float32 ? RuntimeFunction::DecimalToFloat32 : RuntimeFunction::DecimalToFloat);
+        const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << result << " = call " << (float32 ? "float @__inox_dec_to_f32" : "double @__inox_dec_to_f64")
+                << "(i64 " << low << ", i64 " << high << ", i32 " << source->decimalPlaces() << ")\n";
+        return result;
+    }
+    return emitDecimalToInteger(low, high, source, target, false);
+}
+
+// The integer of a decimal, truncated toward zero or (Round) rounded half to
+// even, checked against the target type (kind 8).
+std::string FunctionEmitter::emitDecimalToInteger(const std::string& low, const std::string& high, TypeRef source,
+                                                  TypeRef target, bool round)
+{
+    requireRuntime(RuntimeFunction::DecimalToInteger);
+    const std::string status = "%tmp" + std::to_string(nextTemporary_++) + ".status";
+    const std::string code = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << status << " = alloca i32\n";
+    output_ << "  " << result << " = call i64 @__inox_dec_to_int(i64 " << low << ", i64 " << high << ", i32 "
+            << source->decimalPlaces() << ", i32 " << (round ? 1 : 0) << ", ptr " << status << ")\n";
+    output_ << "  " << code << " = load i32, ptr " << status << '\n';
+    emitDecimalStatus(code, 8, 0);
+    if (isUInt64Type(target)) {
+        const std::string fits = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << fits << " = icmp sge i64 " << result << ", 0\n";
+        emitTrapUnless(fits, 8);
+        return result;
+    }
+    if (target->isRange()) {
+        return emitRangeCheck(result, IntegerRange{target->minValue(), target->maxValue()}, 8);
+    }
+    if (const std::optional<IntegerRange> range = narrowIntegerRange(target)) {
+        return emitRangeCheck(result, *range, 8);
+    }
+    return result;
+}
+
+// A3 (Std.Math): Round(X) to the nearest integer, a half to the even one;
+// Trunc(X) toward zero; of a Float, a Float32, a Currency or a Crypto.
+// Beyond Integer (or NaN) is "integer conversion out of range".
+std::string FunctionEmitter::emitRounding(const ast::CallExpression& call)
+{
+    const bool round = equalsIgnoreCase(static_cast<const ast::IdentifierExpression&>(call.callee()).name(), "Round");
+    const ast::Expression& argument = *call.arguments().front();
+    const TypeRef source = typeOf(argument);
+    const std::string value = emitExpression(argument);
+    if (source->isDecimal()) {
+        const auto [low, high] = decimalHalves(value, source);
+        return emitDecimalToInteger(low, high, source, semantics_.types().int64Type(), round);
+    }
+    std::string real = value;
+    if (source->bits() == 32) {
+        real = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << real << " = fpext float " << value << " to double\n";
+    }
+    const std::string intrinsic = round ? "llvm.roundeven.f64" : "llvm.trunc.f64";
+    requireModuleLine("declare double @" + intrinsic + "(double)");
+    const std::string whole = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string above = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string below = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string fits = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << whole << " = call double @" << intrinsic << "(double " << real << ")\n";
+    // -2^63 <= whole < 2^63, and not NaN (ordered comparisons).
+    output_ << "  " << above << " = fcmp oge double " << whole << ", -9.2233720368547758e+18\n";
+    output_ << "  " << below << " = fcmp olt double " << whole << ", 9.2233720368547758e+18\n";
+    output_ << "  " << fits << " = and i1 " << above << ", " << below << '\n';
+    emitTrapUnless(fits, 8);
+    output_ << "  " << result << " = fptosi double " << whole << " to i64\n";
     return result;
 }
 

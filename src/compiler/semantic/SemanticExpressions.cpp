@@ -136,7 +136,10 @@ TypeRef SemanticAnalyzer::analyzeWithIntegerContext(const ast::Expression& expre
     // A UInt64 context makes its integer literals UInt64 (change uint64); a
     // Float32 context makes its real literals Float32 (change
     // float-conversions).
-    const bool keeps = isUInt64Type(context) || (context != nullptr && context->isFloat() && context->bits() == 32);
+    // A Currency or Crypto context makes its literals exact decimals (change
+    // decimals, r3.91).
+    const bool keeps = isUInt64Type(context) || (context != nullptr && context->isFloat() && context->bits() == 32) ||
+                       (context != nullptr && context->isDecimal());
     const TypeRef previous = std::exchange(integerContext_, keeps ? context : nullptr);
     try {
         const TypeRef type = analyzeExpression(expression);
@@ -151,7 +154,7 @@ TypeRef SemanticAnalyzer::analyzeWithIntegerContext(const ast::Expression& expre
 TypeRef SemanticAnalyzer::analyzeExpression(const ast::Expression& expression)
 {
     const TypeRef context = integerContext_;
-    if (!carriesIntegerContext(expression, context != nullptr && context->isFloat())) {
+    if (!carriesIntegerContext(expression, context != nullptr && (context->isFloat() || context->isDecimal()))) {
         integerContext_ = nullptr;
     }
     TypeRef type = nullptr;
@@ -191,6 +194,12 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
                 throw SemanticError("integer literal out of range for Int64: " +
                                     std::string(integerLiteral.value()));
             }
+            // Change decimals (r3.91, A2): where a Currency or a Crypto is
+            // expected, an integer literal is one, exactly.
+            if (integerContext_ != nullptr && integerContext_->isDecimal()) {
+                checkDecimalLiteral(integerLiteral.value(), integerContext_);
+                return integerContext_;
+            }
             // Change uint64 (Q1): where a UInt64 is expected, a literal is a
             // UInt64 and may reach 2^64-1; elsewhere it must fit Int64.
             if (isUInt64Type(integerContext_)) {
@@ -205,6 +214,12 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
             return types().int64Type();
         }
         case ast::LiteralKind::Float:
+            // Change decimals (r3.91, CANON-8): a real literal is read exactly
+            // where a Currency or a Crypto is expected.
+            if (integerContext_ != nullptr && integerContext_->isDecimal()) {
+                checkDecimalLiteral(static_cast<const ast::LiteralExpression&>(expression).value(), integerContext_);
+                return integerContext_;
+            }
             // A real literal is a Float32 where a Float32 is expected.
             if (integerContext_ != nullptr && integerContext_->isFloat()) {
                 const double value =
@@ -716,6 +731,39 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
     };
     adaptConstant(leftType, expression.right(), rightType);
     adaptConstant(rightType, expression.left(), leftType);
+
+    // Change decimals (r3.91, A2): a numeric literal next to a Currency or a
+    // Crypto is read exactly in that type (`3 * Price`); a variable of
+    // another type is converted explicitly.
+    if (leftType != nullptr && rightType != nullptr && leftType != rightType) {
+        if (rightType->isDecimal() && !leftType->isDecimal() && isNumericLiteral(expression.left())) {
+            leftType = analyzeWithIntegerContext(expression.left(), rightType);
+        } else if (leftType->isDecimal() && !rightType->isDecimal() && isNumericLiteral(expression.right())) {
+            rightType = analyzeWithIntegerContext(expression.right(), leftType);
+        }
+        if (leftType != rightType && (leftType->isDecimal() || rightType->isDecimal()) &&
+            (isNumericType(leftType) && isNumericType(rightType))) {
+            const TypeRef decimal = leftType->isDecimal() ? leftType : rightType;
+            const TypeRef other = leftType->isDecimal() ? rightType : leftType;
+            // The names a program writes: Integer and Float.
+            const std::string otherName = other == types().int64Type()     ? std::string("Integer")
+                                          : other == types().float64Type() ? std::string("Float")
+                                                                           : other->name();
+            throw SemanticError(
+                other->isDecimal()
+                    ? leftType->name() + " and " + rightType->name() +
+                          " do not mix (CANON-8): write Crypto(X) (exact) or Currency(X) (rounded half to even)"
+                    : decimal->name() + " and " + otherName + " do not mix (CANON-8): write " + decimal->name() +
+                          "(X) to compute in " + decimal->name() + ", or " + otherName + "(" +
+                          decimal->name().substr(0, 1) + ")");
+        }
+    }
+    if (op == ast::BinaryOperator::Power &&
+        ((leftType != nullptr && leftType->isDecimal()) || (rightType != nullptr && rightType->isDecimal()))) {
+        throw SemanticError("'^' is not defined for " +
+                            (leftType != nullptr && leftType->isDecimal() ? leftType : rightType)->name() +
+                            " (CANON-8): multiply, or compute in Float");
+    }
 
     const auto requireMatchingTypes = [&] {
         // Change uint64 (Q3): UInt64 and another integer type never mix; the

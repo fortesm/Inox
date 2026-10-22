@@ -149,13 +149,21 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
                     // UInt64 conversion is a UInt64 context (change uint64).
                     // The argument of Float32(X) is the Float64 it rounds
                     // (change float-conversions).
-                    analyzeWithIntegerContext(*argument, type->isFloat() ? nullptr : type);
+                    analyzeWithIntegerContext(*argument,
+                                              type->isFloat() || (type->isDecimal() && !isNumericLiteral(*argument))
+                                                  ? nullptr
+                                                  : type);
                 }
                 // CANON-8 (v3.39): an integer conversion checks the range of
                 // its target. A constant argument outside it, such as
                 // Natural(-1) or Byte(300), is a compile-time error.
                 if (type->isEnum()) {
                     checkEnumConversion(call, type);
+                    return type;
+                }
+                // Change decimals (r3.91): Currency(X) and Crypto(X).
+                if (type->isDecimal()) {
+                    checkDecimalConversion(call, type);
                     return type;
                 }
                 // Char values (change char-values): Char(I) and String(C).
@@ -207,6 +215,10 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
             return analyzeFileCall(callee.name(), call);
         }
 
+        // Std.Math Round and Trunc (change decimals).
+        if (isRoundingCall(call)) {
+            return analyzeRounding(call);
+        }
         // Std.Terminal (change console-abi-terminal).
         if (const TerminalSignature* terminal = terminalFunction(callee.name())) {
             return analyzeTerminalCall(call, *terminal);

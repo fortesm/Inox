@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.90.
+Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.91.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -72,6 +72,9 @@ each version added.
 - Input: `Get` of integers, Float and Float32 (strict, exponents allowed)
   and Char; `GetLn` of a String (r3.89).
 - Real literals with exponents, `1.5e3` (r3.89).
+- Currency and Crypto (r3.91): exact literals, + - * / (half to even),
+  conversions, Std.Math Round/Trunc, text, Get, fields, arrays, State and
+  Consts.
 - Numbers and text (r3.90): `String(N)`, `String(F)`, `FormatFloat`;
   `Integer(S)`, every integer type, `Float(S)`, `Float32(S)` raising
   `ConversionError`; reals written as their shortest round-trip text;
@@ -116,8 +119,7 @@ each version added.
 - Char: a Char array element, stored in 32 bits like a narrow integer,
   cannot be passed by `ref` yet; case mapping of a Char is one code point
   to one.
-- Currency and Crypto: names registered, no arithmetic or literals;
-  BigCurrency absent.
+- BigCurrency absent (after 1.0).
 - Vector, `Option`, `Result`: not implemented (`Option` exists only as
   `Option<Own<T>>`).
 - Safe pointers: a Link to a parameter is rejected ("not supported yet");

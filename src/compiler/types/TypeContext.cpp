@@ -95,7 +95,10 @@ TypeContext::TypeContext()
         builtins_.emplace(normalize(type->name()), type);
     }
     for (const char* name : {"Currency", "Crypto"}) {
-        builtins_.emplace(normalize(name), create(TypeKind::Decimal, name));
+        Type* decimal = create(TypeKind::Decimal, name);
+        decimal->bits_ = std::string_view(name) == "Currency" ? 64 : 128;
+        decimal->signed_ = true;
+        builtins_.emplace(normalize(name), decimal);
     }
 }
 

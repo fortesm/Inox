@@ -16,6 +16,11 @@
 ==   Power, Floor, Ceil, FMod, Hypot, Hypot3,
 ==   RadToDeg, DegToRad, RadToGrad, GradToRad, RadToCycle, CycleToRad.
 ==
+== Round(X) and Trunc(X) (change decimals, r3.91) are intrinsics too, visible
+== with `Use Std.Math`: of a Float, a Float32, a Currency or a Crypto they give
+== an Integer, Round to the nearest with a half to the even one, Trunc toward
+== zero; a value beyond Integer stops the program.
+==
 == Integer helpers below are implemented in Inox source and are part of the
 == first non-toy Std.Math layer.
 

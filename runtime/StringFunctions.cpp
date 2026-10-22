@@ -16,6 +16,7 @@
 // 2 out of memory. The library never prints: the program turns the status
 // into its runtime fault (CANON-19).
 
+#include "Decimal.h"
 #include "NumberText.h"
 #include "StringBlock.h"
 #include "../src/compiler/exceptions/ExceptionTypes.h"
@@ -708,6 +709,26 @@ float __inox_str_to_f32(void* value)
         raiseConversionError();
     }
     return static_cast<float>(result);
+}
+
+// r3.91: String(C) of a Currency or a Crypto, and Currency(S), Crypto(S)
+// (raising ConversionError).
+void* __inox_str_from_dec(std::uint64_t low, std::int64_t high, std::int32_t places, std::int32_t* status) noexcept
+{
+    char text[kDecimalTextCapacity];
+    const auto length = static_cast<std::int64_t>(formatDecimal(decimalOf(low, high), places, text));
+    return succeed(status, makeString(text, length, length));
+}
+
+void __inox_str_to_dec(void* value, std::int32_t places, void* out)
+{
+    const InoxString* string = asString(value);
+    Decimal result;
+    if (parseDecimal(string->bytes, static_cast<std::size_t>(string->length), places, result) != 0) {
+        raiseConversionError();
+    }
+    std::memcpy(out, &result.low, 8);
+    std::memcpy(static_cast<char*>(out) + 8, &result.high, 8);
 }
 
 // B4: FieldCount(S, Sep) is the number of fields of S between the

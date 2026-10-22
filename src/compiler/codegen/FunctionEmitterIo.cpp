@@ -56,6 +56,8 @@ void FunctionEmitter::emitInputCallSequence(const std::vector<ast::ExpressionPtr
             lastCharacter = emitInputReadCharacter(*argument);
         } else if (type != nullptr && type->isFloat()) {
             emitInputReadReal(*argument);
+        } else if (type != nullptr && type->isDecimal()) {
+            emitInputReadDecimal(*argument);
         } else {
             emitInputReadInteger(*argument);
         }
@@ -114,6 +116,22 @@ std::string FunctionEmitter::emitInputReadCharacter(const ast::Expression& argum
     }
     output_ << "  store i64 " << stored << ", ptr " << target.slot << "\n";
     return code;
+}
+
+// r3.91 (C2): Get of a Currency or a Crypto reads `-12.50` strictly, at
+// most the type's decimals ("invalid number input" otherwise, kind 19);
+// beyond the type "value out of range" (kind 11).
+void FunctionEmitter::emitInputReadDecimal(const ast::Expression& argument)
+{
+    const LocalInfo& target = inputTarget(argument);
+    requireRuntime(RuntimeFunction::ConsoleGetDecimal);
+    const std::string slot = newDecimalSlot();
+    const std::string status = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << status << " = call i32 @__inox_con_get_dec(i32 " << target.type->decimalPlaces() << ", ptr "
+            << slot << ")\n";
+    emitDecimalStatus(status, 19, 11);
+    const std::string value = loadDecimal(slot, target.type);
+    output_ << "  store " << target.llvmType << ' ' << value << ", ptr " << target.slot << '\n';
 }
 
 // r3.89 (C2): Get of a Float or a Float32 reads a real number strictly
@@ -258,6 +276,15 @@ void FunctionEmitter::emitOutputValue(const ast::Expression& argument)
     if (isBoolExpression(argument)) {
         const std::string value = emitExpression(argument);
         output_ << "  call void @__inox_con_put_bool(i1 zeroext " << value << ")\n";
+        return;
+    }
+
+    // A5 (r3.91): a Currency or a Crypto, at least two decimals.
+    if (printedType != nullptr && printedType->isDecimal()) {
+        requireRuntime(RuntimeFunction::ConsolePutDecimal);
+        const auto [low, high] = decimalHalves(emitExpression(argument), printedType);
+        output_ << "  call void @__inox_con_put_dec(i64 " << low << ", i64 " << high << ", i32 "
+                << printedType->decimalPlaces() << ")\n";
         return;
     }
 

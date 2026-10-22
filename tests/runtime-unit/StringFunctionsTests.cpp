@@ -43,6 +43,15 @@ std::int64_t __inox_str_to_i64(void* value, std::int64_t low, std::int64_t high)
 double __inox_str_to_f64(void* value);
 std::int64_t __inox_str_field_count(void* value, void* separator) noexcept;
 void* __inox_str_field(void* value, void* separator, std::int64_t index, std::int32_t* status) noexcept;
+std::int32_t __inox_dec_mul(std::uint64_t aLow, std::int64_t aHigh, std::uint64_t bLow, std::int64_t bHigh,
+                            std::int32_t places, void* out) noexcept;
+std::int32_t __inox_dec_div(std::uint64_t aLow, std::int64_t aHigh, std::uint64_t bLow, std::int64_t bHigh,
+                            std::int32_t places, void* out) noexcept;
+std::int64_t __inox_dec_to_int(std::uint64_t low, std::int64_t high, std::int32_t places, std::int32_t round,
+                               std::int32_t* status) noexcept;
+std::int32_t __inox_dec_from_f64(double number, std::int32_t places, void* out) noexcept;
+void* __inox_str_from_dec(std::uint64_t low, std::int64_t high, std::int32_t places, std::int32_t* status) noexcept;
+void __inox_str_to_dec(void* value, std::int32_t places, void* out);
 }
 
 namespace {
@@ -309,6 +318,37 @@ void testNumbersAndText()
     check(status == 1, "Field past the last is out of range");
 }
 
+// r3.91: exact decimals, a half rounded to even.
+void testDecimals()
+{
+    std::int32_t status = -1;
+    std::int64_t out[2] = {0, 0};
+    const auto currency = [&](std::int64_t scaled) {
+        return take(__inox_str_from_dec(static_cast<std::uint64_t>(scaled), scaled < 0 ? -1 : 0, 6, &status), status);
+    };
+    expect(currency(19990000), "19.99", "a Currency prints two decimals");
+    expect(currency(5000000), "5.00", "a whole Currency prints .00");
+    expect(currency(123456), "0.123456", "six decimals when it has them");
+    expect(currency(-500000), "-0.50", "a negative Currency");
+    check(__inox_dec_mul(19990000, 0, 3000000, 0, 6, out) == 0 && out[0] == 59970000, "19.99 * 3");
+    check(__inox_dec_div(5, 0, 2000000, 0, 6, out) == 0 && out[0] == 2, "0.0000025 rounds to even, 0.000002");
+    check(__inox_dec_div(7, 0, 2000000, 0, 6, out) == 0 && out[0] == 4, "0.0000035 rounds to even, 0.000004");
+    check(__inox_dec_div(1, 0, 0, 0, 6, out) == 2, "division by zero is status 2");
+    check(__inox_dec_mul(9000000000000000000ULL, 0, 2000000, 0, 6, out) == 1, "an overflow is status 1");
+    check(__inox_dec_to_int(static_cast<std::uint64_t>(-2700000), -1, 6, 0, &status) == -2, "Integer truncates");
+    check(__inox_dec_to_int(2500000, 0, 6, 1, &status) == 2, "Round of 2.5 is 2");
+    check(__inox_dec_from_f64(0.1, 6, out) == 0 && out[0] == 100000, "Currency(0.1) is 0.10");
+    __inox_str_to_dec(literal("-0.000000000000000123"), 18, out);
+    check(out[0] == -123 && out[1] == -1, "Crypto of a text");
+    bool raised = false;
+    try {
+        __inox_str_to_dec(literal("1.2345678"), 6, out);
+    } catch (...) {
+        raised = true;
+    }
+    check(raised, "more places than the type holds raises");
+}
+
 } // namespace
 
 int runStringFunctionsTests()
@@ -322,6 +362,7 @@ int runStringFunctionsTests()
     testChars();
     testCharClasses();
     testNumbersAndText();
+    testDecimals();
     if (failures == 0) {
         std::printf("[PASS] inoxrt string functions unit tests\n");
     }

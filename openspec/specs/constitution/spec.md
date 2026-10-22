@@ -706,7 +706,28 @@ decimal never convert implicitly; decimal overflow is an error.
 
 #### Scenario: Decimal literals
 - **WHEN** `P Currency := 19.99` and `Currency(19.999_999_9)` are written
-- **THEN** the first is exact and the second is a compile error (test to add with the decimal types)
+- **THEN** the first is exact (tests/runtime/decimals.inox) and the second is a compile error (tests/diagnostics/decimal-too-many-places.inox)
+
+### Requirement: CANON-8 Decimal arithmetic
+Currency and Crypto SHALL have `+ - * /`, unary minus and order; `+` and
+`-` are exact, `*` and `/` exact then rounded half to even to the type's
+places (A1); beyond the type is the trap "decimal overflow". A literal next
+to a decimal is read in its type (`Price * 3`), a variable of another type
+is converted explicitly (A2); `^`, `div` and `mod` do not apply (r3.91).
+
+#### Scenario: Arithmetic
+- **WHEN** a program computes with Currency and Crypto, mixes an Integer variable, or overflows
+- **THEN** the results are exact or rounded half to even (tests/runtime/decimals.inox), the mix is rejected (tests/diagnostics/decimal-mix-integer.inox) and the overflow traps (tests/runtime/decimal-overflow.inox)
+
+### Requirement: CANON-8 Decimal conversions
+`Integer(C)` SHALL truncate toward zero and Std.Math `Round(X)` round half
+to even, `Trunc(X)` toward zero (A3); `Crypto(C)` of a Currency is exact and
+`Currency(Cr)` rounds half to even, as `Currency(F)` of a Float (A4); a
+value beyond the target traps ("integer conversion out of range") (r3.91).
+
+#### Scenario: Conversions
+- **WHEN** decimals become integers, reals and the other decimal, and back
+- **THEN** each truncates, rounds or is exact as stated (tests/runtime/decimals.inox), and a Crypto beyond Currency traps (tests/runtime/decimal-conversion-range.inox)
 
 ### Requirement: CANON-8 Operators
 The operators SHALL be: Boolean `and` `or` `xor` `not`; integer bitwise
@@ -1307,6 +1328,16 @@ fixed notation for exponents -4 to 15 with a digit after the point
 - **WHEN** a program prints ordinary, large, small, special and Float32 values
 - **THEN** each prints its shortest text (tests/runtime/float-printing.inox)
 
+### Requirement: CANON-17 How decimals are written
+`Put`, `PutLn`, `Write`, `WriteLn` and `String(C)` SHALL write a Currency or
+a Crypto with at least two decimals and no trailing zeros after them
+(`19.99`, `5.00`, `0.123456`, `-0.50`) (A5); `Get` reads one strictly, an
+optional `-`, digits and at most the type's decimals (r3.91).
+
+#### Scenario: Decimals written and read
+- **WHEN** a program prints decimals, reads two and writes them to a file, then reads one with too many places
+- **THEN** each is written as stated and the last traps "invalid number input" (tests/runtime/decimals.inox, tests/runtime/decimals-input.inox)
+
 ### Requirement: CANON-17 Get and GetLn
 `Get(X)` SHALL read one value into the variable X, and `GetLn(X)` reads one
 and consumes the rest of the line; both take several variables in order.
@@ -1439,8 +1470,8 @@ it. No module is a catch-all.
 
 ### Requirement: CANON-18 Library modules
 The library SHALL hold `Std.System` (the implicit prelude), `Std.IO` (Put,
-PutLn, Get, GetLn), `Std.Math` (Integer helpers written in Inox and the
-Float64 elementary functions), `Std.Debug` (`Assert(Condition)` and
+PutLn, Get, GetLn), `Std.Math` (Integer helpers, the Float64 elementary
+functions, Round and Trunc), `Std.Debug` (`Assert(Condition)` and
 `Assert(Condition, Message)`, a trap when false, CANON-19), `Std.Files` /
 `Std.IOUtils` (CANON-17), `Std.Strings` / `Std.StrUtils` (CANON-14) and
 `Std.Terminal` (keys, cursor, colors, screen size; `stdlib/terminal`).
@@ -1487,18 +1518,26 @@ variable's value never turns a run-time check into a compile error.
 - **THEN** each is a compile error (tests/diagnostics/variable-mod-literal-zero.inox, tests/diagnostics/variable-shift-literal-64.inox, tests/diagnostics/variable-power-negative-literal.inox)
 
 ### Requirement: CANON-19 Trap categories
-The category texts SHALL be: `integer overflow`, `division by zero`,
-`invalid shift count`, `for-loop step must be positive`, `negative
-exponent`, `invalid integer input`, `value out of range for Natural`,
-`integer conversion out of range`, `array index out of bounds`, `slice
-bounds out of range`, `out of memory`, `invalid UTF-8 input`, `assertion
-failed` (`: Message`), `string index out of range`, `end of input`,
-`invalid number input`, those of CANON-24 and CANON-25, and `value out of
-range`.
+The category texts SHALL be: `integer overflow`, `decimal overflow`,
+`division by zero`, `invalid shift count`, `for-loop step must be
+positive`, `negative exponent`, `value out of range for Natural`, `integer
+conversion out of range`, `array index out of bounds`, `slice bounds out of
+range`, `out of memory`, `assertion failed` (`: Message`), `string index
+out of range`, those of CANON-24 and CANON-25, `value out of range`, and
+those of input below.
 
 #### Scenario: Categories
 - **WHEN** each kind of fault happens at run time
 - **THEN** the program prints its category and exits with 70 (tests/runtime/mul-overflow.inox, tests/runtime/mod-by-zero.inox, tests/runtime/shl-count-64.inox, tests/runtime/natural-assignment-negative.inox, tests/runtime/slice-bounds-runtime.inox, tests/runtime/string-substr-out-of-range.inox)
+
+### Requirement: CANON-19 Input trap categories
+Reading input SHALL trap with `invalid integer input`, `invalid number
+input` (a real or a decimal), `invalid UTF-8 input` and `end of input` (a
+character or a key past the end) (r3.88, r3.89, r3.91).
+
+#### Scenario: Input faults
+- **WHEN** a program reads a bad integer, a bad real, bytes that are not UTF-8 and a character past the end
+- **THEN** each traps with its category (tests/integration/input/get-integer-trailing-garbage.inox, tests/runtime/get-real-invalid.inox, tests/runtime/get-char-invalid-utf8.inox, tests/runtime/get-char-end-of-input.inox)
 
 ### Requirement: CANON-19 What traps
 These operations SHALL trap: `+ - *`, unary `-` and `Abs` on overflow;

@@ -82,6 +82,24 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
         return "declare i64 @__inox_str_field_count(ptr, ptr) nounwind";
     case RuntimeFunction::StringField:
         return "declare ptr @__inox_str_field(ptr, ptr, i64, ptr) nounwind";
+    case RuntimeFunction::DecimalMultiply:
+        return "declare i32 @__inox_dec_mul(i64, i64, i64, i64, i32, ptr) nounwind";
+    case RuntimeFunction::DecimalDivide:
+        return "declare i32 @__inox_dec_div(i64, i64, i64, i64, i32, ptr) nounwind";
+    case RuntimeFunction::DecimalRescale:
+        return "declare i32 @__inox_dec_rescale(i64, i64, i32, i32, ptr) nounwind";
+    case RuntimeFunction::DecimalToInteger:
+        return "declare i64 @__inox_dec_to_int(i64, i64, i32, i32, ptr) nounwind";
+    case RuntimeFunction::DecimalFromFloat:
+        return "declare i32 @__inox_dec_from_f64(double, i32, ptr) nounwind";
+    case RuntimeFunction::DecimalToFloat:
+        return "declare double @__inox_dec_to_f64(i64, i64, i32) nounwind";
+    case RuntimeFunction::DecimalToFloat32:
+        return "declare float @__inox_dec_to_f32(i64, i64, i32) nounwind";
+    case RuntimeFunction::StringFromDecimal:
+        return "declare ptr @__inox_str_from_dec(i64, i64, i32, ptr) nounwind";
+    case RuntimeFunction::StringToDecimal:
+        return "declare void @__inox_str_to_dec(ptr, i32, ptr)";
     case RuntimeFunction::CharIs:
         return "declare zeroext i1 @__inox_char_is(i64, i32) nounwind readnone";
     case RuntimeFunction::CharCase:
@@ -108,6 +126,8 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
         return "declare void @__inox_file_write_f64(ptr, double)";
     case RuntimeFunction::FileWriteFloat32:
         return "declare void @__inox_file_write_f32(ptr, float)";
+    case RuntimeFunction::FileWriteDecimal:
+        return "declare void @__inox_file_write_dec(ptr, i64, i64, i32)";
     case RuntimeFunction::FileWriteBool:
         return "declare void @__inox_file_write_bool(ptr, i1 zeroext)";
     case RuntimeFunction::FileWriteNewline:
@@ -150,6 +170,10 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
         return "declare i32 @__inox_con_get_f32(ptr) nounwind";
     case RuntimeFunction::ConsolePutFloat32:
         return "declare void @__inox_con_put_f32(float) nounwind";
+    case RuntimeFunction::ConsolePutDecimal:
+        return "declare void @__inox_con_put_dec(i64, i64, i32) nounwind";
+    case RuntimeFunction::ConsoleGetDecimal:
+        return "declare i32 @__inox_con_get_dec(i32, ptr) nounwind";
     case RuntimeFunction::TerminalRawMode:
         return "declare void @__inox_term_raw_mode(i1 zeroext) nounwind";
     case RuntimeFunction::TerminalReadKey:

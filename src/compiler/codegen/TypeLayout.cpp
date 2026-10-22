@@ -65,9 +65,12 @@ std::string llvmValueType(TypeRef type)
         return arrayLayout(type)->llvmType;
     case types::TypeKind::Struct:
         return llvmStructName(type);
+    case types::TypeKind::Decimal:
+        // Change decimals (r3.91): a Currency is an i64 scaled by 10^6, a
+        // Crypto an i128 scaled by 10^18.
+        return type->bits() == 128 ? "i128" : "i64";
     case types::TypeKind::Void:
     case types::TypeKind::None:
-    case types::TypeKind::Decimal:
     case types::TypeKind::Exception:
         break;
     }

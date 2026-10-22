@@ -1,0 +1,13 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.91 (A4): a Crypto beyond Currency stops the conversion with "integer
+== conversion out of range", as an integer conversion does.
+Main :
+    Huge Crypto := 100_000_000_000_000.0
+    PutLn(Huge)
+    PutLn(Currency(Huge))
+;

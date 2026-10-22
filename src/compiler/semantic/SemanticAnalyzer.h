@@ -231,6 +231,12 @@ private:
     static bool looksLikeIdentifier(std::string_view text);
     static bool isInternalSyntheticName(std::string_view name);
     static bool isNumericType(TypeRef type);
+    static bool isNumericLiteral(const ast::Expression& expression);
+    static void checkDecimalLiteral(std::string_view text, TypeRef type);
+    void checkDecimalConversion(const ast::CallExpression& call, TypeRef target);
+    bool isRoundingCall(const ast::CallExpression& call) const;
+    bool staticDecimalValue(const ast::Expression& expression, std::string& scaled) const;
+    TypeRef analyzeRounding(const ast::CallExpression& call);
     static bool isIntegerType(TypeRef type);
     static bool isPreludeCall(std::string_view name);
     static bool isExceptionType(std::string_view name);
@@ -350,6 +356,7 @@ private:
     bool filesVisible_ = false;    // Std.Files: the File type and the basic operations
     bool ioUtilsVisible_ = false;  // Std.IOUtils: the conveniences (it uses Std.Files)
     bool terminalVisible_ = false;  // the program uses Std.Terminal
+    bool mathVisible_ = false;      // the program uses Std.Math (Round, Trunc)
     bool debugVisible_ = false;    // the program uses Std.Debug (Assert)
     bool stringsVisible_ = false;  // Std.Strings: Length, Substr, Pos, case
     bool strUtilsVisible_ = false; // Std.StrUtils: the conveniences (it uses Std.Strings)

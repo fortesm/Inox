@@ -1,0 +1,1 @@
+Currency and Integer do not mix (CANON-8): write Currency(X) to compute in Currency, or Integer(C)

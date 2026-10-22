@@ -53,6 +53,7 @@ analysis but not lowered yet.)
 | `until-in-if` | until inside if within repeat | **OK** |  |
 | `until-across-loop` | until with a loop between it and its repeat | **OK** |  |
 | `float32-conversion` | Float32 local initialized by explicit conversion | **OK** |  |
+| `decimals` | Currency and Crypto arithmetic, conversions and output (r3.91) | **OK** |  |
 | `nested-if` | if inside if (straight-line code) | **OK** |  |
 | `const-use` | module Const used in an expression | **OK** |  |
 | `case` | case statement | **OK** |  |
@@ -97,7 +98,7 @@ analysis but not lowered yet.)
 | `state-aggregates` | State variables of struct and array type | **OK** |  |
 | `uint64-local` | UInt64 local | **OK** |  |
 
-Summary: OK=53
+Summary: OK=54
 
 ## Reading the table
 

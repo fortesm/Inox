@@ -106,11 +106,11 @@ TypeRef SemanticAnalyzer::analyzeInputCall(
         }
         // r3.89 (C1, C2): a Char reads the next character exactly; Float and
         // Float32 read a real number strictly.
-        if (symbol.type != nullptr && (symbol.type->isChar() || symbol.type->isFloat())) {
+        if (symbol.type != nullptr && (symbol.type->isChar() || symbol.type->isFloat() || symbol.type->isDecimal())) {
             continue;
         }
         if (!isIntegerType(symbol.type)) {
-            throw SemanticError(std::string(name) + " reads integers, Float, Float32, Char and (GetLn) String, got " +
+            throw SemanticError(std::string(name) + " reads integers, Float, Float32, Currency, Crypto, Char and (GetLn) String, got " +
                                 types::nameOf(symbol.type) + " for " + identifier.name());
         }
     }
@@ -129,7 +129,7 @@ TypeRef SemanticAnalyzer::analyzePreludeCall(std::string_view name, const std::v
             const TypeRef type = argumentTypes[index];
             if (type != nullptr &&
                 (type->isString() || type->isBool() || type->isInteger() || type->isEnum() || type->isChar() ||
-                 type->isFloat())) {
+                 type->isFloat() || type->isDecimal())) {
                 continue;
             }
 
@@ -186,6 +186,40 @@ bool SemanticAnalyzer::isPreludeCall(std::string_view name)
         }
     }
     return false;
+}
+
+// Change decimals (r3.91, A3): Round(X) and Trunc(X) of Std.Math take a
+// Float, a Float32, a Currency or a Crypto and give an Integer: Round to the
+// nearest, a half to the even one (as the decimal operators round), Trunc
+// toward zero; a value beyond Integer stops the program.
+bool SemanticAnalyzer::isRoundingCall(const ast::CallExpression& call) const
+{
+    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
+        return false;
+    }
+    const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
+    if (!equalsIgnoreCase(name, "Round") && !equalsIgnoreCase(name, "Trunc")) {
+        return false;
+    }
+    const Symbol* symbol = symbols_.currentScope().resolve(name);
+    return symbol != nullptr && symbol->kind == SymbolKind::Builtin;
+}
+
+TypeRef SemanticAnalyzer::analyzeRounding(const ast::CallExpression& call)
+{
+    const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
+    const Symbol& symbol = resolveOrThrow(callee.name());
+    result_.bind(callee, symbol);
+    result_.bind(call, symbol);
+    if (call.arguments().size() != 1) {
+        throw SemanticError(callee.name() + " takes one value: " + callee.name() + "(X)");
+    }
+    const TypeRef type = analyzeExpression(*call.arguments()[0]);
+    if (type == nullptr || !(type->isFloat() || type->isDecimal())) {
+        throw SemanticError(callee.name() + "(X) takes a Float, a Float32, a Currency or a Crypto, got " +
+                            types::nameOf(type));
+    }
+    return types().int64Type();
 }
 
 } // namespace inox::compiler::semantic

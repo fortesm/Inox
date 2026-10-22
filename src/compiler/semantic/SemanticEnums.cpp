@@ -138,7 +138,7 @@ void SemanticAnalyzer::checkCharConversion(const ast::CallExpression& call, Type
     const TypeRef type = result_.typeOf(argument);
     if (target->isString()) {
         // r3.90 (B1): String(N) and String(F) write a number as Put does.
-        if (type == nullptr || !(type->isChar() || type->isString() || type->isFloat() ||
+        if (type == nullptr || !(type->isChar() || type->isString() || type->isFloat() || type->isDecimal() ||
                                  (type->isInteger() && !type->isEnum()))) {
             throw SemanticError("String(X) converts a Char or a number (CANON-14), got " + types::nameOf(type) +
                                 (type != nullptr && type->isBool() ? "; a Bool is IIf(B, \"true\", \"false\")"
@@ -166,6 +166,37 @@ void SemanticAnalyzer::checkCharConversion(const ast::CallExpression& call, Type
     }
 }
 
+// Change decimals (r3.91, CANON-8, A3-A4): `Currency(X)` and `Crypto(X)`
+// take an integer (exact), a real literal (exact), a Float (rounded half to
+// even), the other decimal (Crypto(C) exact, Currency(Cr) rounded half to
+// even) or a String (read exactly, ConversionError otherwise).
+void SemanticAnalyzer::checkDecimalConversion(const ast::CallExpression& call, TypeRef target)
+{
+    const std::string name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
+    if (call.arguments().size() != 1) {
+        throw SemanticError(name + "(X) converts one value");
+    }
+    const ast::Expression& argument = *call.arguments()[0];
+    const TypeRef source = result_.typeOf(argument);
+    if (source == nullptr || source->isDecimal() || source->isFloat() || source->isString() ||
+        (source->isInteger() && !source->isEnum())) {
+        // A constant integer must fit once scaled.
+        IntegerConstant constant;
+        if (source != nullptr && source->isInteger() && integerConstant(argument, constant)) {
+            const std::string digits = constant.isUnsigned ? std::to_string(static_cast<std::uint64_t>(constant.bits))
+                                       : constant.bits < 0 ? std::to_string(constant.bits).substr(1)
+                                                           : std::to_string(constant.bits);
+            checkDecimalLiteral(digits, target);
+        }
+        return;
+    }
+    throw SemanticError(name + "(X) converts a number or a String (CANON-8), got " + types::nameOf(source) +
+                        (source->isBool() ? "; a Bool is not a number: IIf(B, 1, 0)"
+                         : source->isEnum() ? "; an enum value is Ord(E)"
+                         : source->isChar() ? "; a Char is Integer(C)"
+                                            : ""));
+}
+
 // Change float-conversions (CANON-8): `T(X)` into a number takes a number
 // (an integer, a Float, or for an integer type a Char's code point). A
 // constant real converted to an integer type truncates toward zero and must
@@ -181,7 +212,8 @@ void SemanticAnalyzer::checkNumericConversion(const ast::CallExpression& call, T
     if (source != nullptr && source->isString()) {
         return;
     }
-    if (source == nullptr || source->isInteger() || source->isFloat() || source->isChar() || source->isEnum()) {
+    if (source == nullptr || source->isInteger() || source->isFloat() || source->isChar() || source->isEnum() ||
+        source->isDecimal()) {
         // A Char into a Float is refused with the Char rules; an enum's
         // ordinal is Ord(E).
         if (source != nullptr && source->isEnum() && target->isFloat()) {

@@ -1,0 +1,4 @@
+12.345 -0.000000000000000123 24.69
+12.345 -0.000000000000000123
+Inox runtime error: invalid number input
+inox: program stopped by an Inox runtime error (exit code 70)
