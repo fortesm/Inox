@@ -1,0 +1,199 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== Mathematical expressions in every order and nesting (CANON-20): the
+== precedence of `^`, unary minus, `* / mod rem`, `+ -`, shifts, the bitwise
+== families, comparisons and `and or xor`; associativity; integer division
+== truncated toward zero, `mod` with the divisor's sign and `rem` with the
+== dividend's (r3.95, r3.96, as in Ada); reals; Std.Math and IIf inside
+== expressions. Literal expressions are folded at compile time; the last
+== group passes each number through I(...) or F(...), so they are computed
+== at run time. The expected values were computed by the independent oracle
+== of tools/calc_differential_test.py, not by Inox; the randomized part of the
+== same test runs in the E19 gates. `shl` is A * 2^N, checked (r3.97).
+Use Std.Math
+
+I(X Integer) Integer :
+    Return X
+;
+
+F(X Float) Float :
+    Return X
+;
+
+Main :
+    == Your example, with the products written
+    PutLn(4*4*(5*(2+2))-1)
+    PutLn(4 * 4 * (5 * (2 + 2)) - 1)
+    PutLn((4 * 4) * (5 * (2 + 2)) - 1)
+    PutLn(4 * (4 * (5 * (2 + 2)) - 1))
+    == Precedence of * / over + -
+    PutLn(2 + 3 * 4)
+    PutLn((2 + 3) * 4)
+    PutLn(2 * 3 + 4)
+    PutLn(2 * (3 + 4))
+    PutLn(10 - 6 / 2)
+    PutLn((10 - 6) / 2)
+    PutLn(1 + 2 * 3 - 4 / 2)
+    PutLn(1 + 2 * (3 - 4) / 2)
+    PutLn(100 / 10 / 2)
+    PutLn(100 / (10 / 2))
+    PutLn(2 * 3 * 4 / 6)
+    == Left associativity of - and /
+    PutLn(10 - 4 - 3)
+    PutLn(10 - (4 - 3))
+    PutLn(64 / 4 / 2)
+    PutLn(64 / (4 / 2))
+    PutLn(7 - 3 + 2)
+    PutLn(7 - (3 + 2))
+    PutLn(1 - 2 - 3 - 4 - 5)
+    PutLn(1000 / 10 / 10 / 10)
+    == Power: right associative, above unary minus
+    PutLn(2 ^ 3 ^ 2)
+    PutLn((2 ^ 3) ^ 2)
+    PutLn(-2 ^ 2)
+    PutLn((-2) ^ 2)
+    PutLn(-2 ^ 3)
+    PutLn((-2) ^ 3)
+    PutLn(2 ^ 0)
+    PutLn(0 ^ 0)
+    PutLn(3 ^ 2 * 2)
+    PutLn(3 * 2 ^ 2)
+    PutLn(2 ^ (1 + 2))
+    PutLn(10 ^ 18)
+    PutLn(-(2 ^ 62) - 2 ^ 62)
+    PutLn(2 ^ 2 ^ 2 ^ 2)
+    == Unary minus and plus
+    PutLn(-3 + 5)
+    PutLn(-(3 + 5))
+    PutLn(- -3)
+    PutLn(-(-3))
+    PutLn(5 - -2)
+    PutLn(5 + -2)
+    PutLn(+5 - +2)
+    PutLn(-3 * -3)
+    PutLn(-(-(-(4))))
+    PutLn(-9223372036854775807 - 1)
+    PutLn(bitnot 0)
+    PutLn(bitnot -1)
+    PutLn(-bitnot 5)
+    == Integer division truncates toward zero; mod has the divisor's sign, rem the dividend's
+    PutLn(7 / 2)
+    PutLn(-7 / 2)
+    PutLn(7 / -2)
+    PutLn(-7 / -2)
+    PutLn(7 mod 3)
+    PutLn(-7 mod 3)
+    PutLn(7 mod -3)
+    PutLn(-7 mod -3)
+    PutLn(7 rem 3)
+    PutLn(-7 rem 3)
+    PutLn(7 rem -3)
+    PutLn(-7 rem -3)
+    PutLn((-7 / 2) * 2 + -7 rem 2)
+    PutLn(17 mod 5 * 2)
+    PutLn(17 rem (5 * 2))
+    PutLn(-1 mod 7)
+    PutLn(-8 mod 7)
+    PutLn(-14 mod 7)
+    PutLn(13 / 4 * 4 + 13 rem 4)
+    == Deep nesting
+    PutLn(((((((((((1 + 2) * 3) - 4) * 5) + 6) * 7) - 8) * 9) + 10) * 11))
+    PutLn(1 + (2 + (3 + (4 + (5 + (6 + (7 + (8 + (9 + 10)))))))))
+    PutLn(((2)))
+    PutLn((((((((((((((((((((((42))))))))))))))))))))))
+    PutLn((1 + 2) * (3 + 4) * (5 + 6) * (7 + 8))
+    PutLn(((1 + 2) * (3 + (4 - 1) * 2)) mod 5)
+    == Shifts below + -, bitwise families grouped
+    PutLn(1 shl 4)
+    PutLn(1 + 2 shl 3)
+    PutLn((1 + 2) shl 3)
+    PutLn(1 + (2 shl 3))
+    PutLn(256 shr 2 shr 2)
+    PutLn(-7 shr 1)
+    PutLn(-1 shr 63)
+    PutLn(1 shl 62)
+    PutLn(-1 shl 1)
+    PutLn(-3 shl 4)
+    PutLn(-1 shl 63)
+    PutLn((2 ^ 61) shl 1)
+    PutLn(I(-5) shl I(60))
+    PutLn(12 bitand 10)
+    PutLn(12 bitor 10)
+    PutLn(12 bitxor 10)
+    PutLn(12 bitand 10 bitand 8)
+    PutLn((12 bitand 10) bitor 1)
+    PutLn(1 + 2 bitand 3)
+    PutLn((1 shl 4) bitor 1)
+    PutLn(bitnot 5 bitand 3)
+    PutLn(bitnot (5 bitand 3))
+    == Comparisons below arithmetic; and, or, xor grouped
+    PutLn(1 + 2 = 3)
+    PutLn(2 * 3 > 5)
+    PutLn(2 * 3 >= 7)
+    PutLn(1 # 2)
+    PutLn(7 / 2 = 3)
+    PutLn(-7 mod 2 = 1)
+    PutLn((1 < 2) = (3 < 4))
+    PutLn(1 < 2 and 2 < 3)
+    PutLn(1 > 2 or 2 < 3)
+    PutLn(1 < 2 xor 2 < 3)
+    PutLn(not (1 = 2))
+    PutLn(not (1 = 2) and 3 > 2)
+    PutLn((1 < 2 and 2 < 3) or 1 = 0)
+    PutLn(1 < 2 and (2 < 3 or 1 = 0))
+    PutLn(True and True and False)
+    PutLn(True or False or False)
+    PutLn(not True or True)
+    PutLn(not (True or True))
+    == Reals
+    PutLn(7.0 / 2.0)
+    PutLn(-7.0 / 2.0)
+    PutLn(1.0 / 3.0)
+    PutLn(0.1 + 0.2)
+    PutLn(2.0 ^ 0.5)
+    PutLn(2.0 ^ 10.0)
+    PutLn(-2.0 ^ 2.0)
+    PutLn(1.5 * (2.0 + 3.0) / 0.5)
+    PutLn(10.0 - 4.0 - 3.0)
+    PutLn(2.0 ^ 3.0 ^ 2.0)
+    PutLn(1.0e3 * 1.0e-3)
+    PutLn(6.02e23 / 6.02e20)
+    PutLn(Sqrt(16.0) + Sqrt(9.0) * 2.0)
+    PutLn(Abs(-2.5) * 4.0)
+    PutLn(Floor(-2.5) + Ceil(-2.5))
+    PutLn(Exp(Ln(10.0)))
+    PutLn(Sin(0.0) + Cos(0.0))
+    PutLn((1.0 + 2.0) * (3.0 - 4.5) / 2.0 ^ 2.0)
+    == Std.Math functions inside expressions
+    PutLn(Abs(-5) + Abs(5))
+    PutLn(Sqr(3) + Sqr(4))
+    PutLn(Max(3, 4) * Min(3, 4))
+    PutLn(Sign(-12) * 10)
+    PutLn(Sqr(Abs(-3) + 1))
+    PutLn(Max(Max(1, 2), Max(3, Min(9, 4))))
+    PutLn(Abs(-9223372036854775807))
+    == IIf inside expressions
+    PutLn(IIf(1 < 2, 10, 20) * 2)
+    PutLn(1 + IIf(2 > 3, 4, 5) * 6)
+    PutLn(IIf(7 mod 2 = 1, 7 / 2, 0) + IIf(True, 1, 2))
+    PutLn(IIf(2.5 > 1.0, 2.5, 1.0) * 2.0)
+    == Numbers computed at run time (through a routine, not folded)
+    PutLn(I(4) * I(4) * (I(5) * (I(2) + I(2))) - I(1))
+    PutLn(-I(7) / I(2))
+    PutLn(-I(7) mod I(2))
+    PutLn(-I(7) rem I(2))
+    PutLn(I(2) ^ I(3) ^ I(2))
+    PutLn(-I(2) ^ I(2))
+    PutLn(I(1) + I(2) shl I(3))
+    PutLn(I(-7) shr I(1))
+    PutLn(I(3000000000) * I(3000000000))
+    PutLn(F(7.0) / F(2.0))
+    PutLn(F(2.0) ^ F(0.5))
+    PutLn(I(1) < I(2) and I(2) < I(3))
+    PutLn(Sqr(I(-9)) - Abs(I(-81)))
+
+;

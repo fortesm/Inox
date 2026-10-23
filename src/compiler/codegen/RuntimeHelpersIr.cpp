@@ -483,8 +483,19 @@ entry:
   br i1 %bad, label %trap, label %ok
 
 ok:
+  ; r3.97 (CANON-8): A shl N is A * 2^N. The count is 0..63 here, so the
+  ; plain shl has no poison; shifting back must give A, or bits were lost.
   %r = shl i64 %a, %b
+  %back = ashr i64 %r, %b
+  %kept = icmp eq i64 %back, %a
+  br i1 %kept, label %done, label %overflow
+
+done:
   ret i64 %r
+
+overflow:
+  call void @__inox_arith_fault(i32 1)
+  unreachable
 
 trap:
   call void @__inox_arith_fault(i32 3)

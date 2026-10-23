@@ -30,6 +30,27 @@ using namespace detail;
 
 TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
 {
+    // Only a routine is called. `4(5 + 1)` or `(2 + 3)(4)` is not a
+    // multiplication: Inox, as Ada and Pascal, has no implicit product.
+    switch (call.callee().kind()) {
+    case ast::AstNodeKind::LiteralExpression: {
+        const auto& literal = static_cast<const ast::LiteralExpression&>(call.callee());
+        const bool number =
+            literal.literalKind() == ast::LiteralKind::Integer || literal.literalKind() == ast::LiteralKind::Float;
+        if (number) {
+            throw SemanticError(literal.value() + "(...) is not a multiplication: a number is not called; write " +
+                                literal.value() + " * (...)");
+        }
+        throw SemanticError("a literal is not called: only a routine takes arguments in parentheses");
+    }
+    case ast::AstNodeKind::BinaryExpression:
+    case ast::AstNodeKind::UnaryExpression:
+    case ast::AstNodeKind::ConditionalExpression:
+        throw SemanticError("(...)(...) is not a multiplication: a value is not called; write (...) * (...)");
+    default:
+        break;
+    }
+
     // CANON-24: the intrinsics written by the contract lowering.
     if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
         const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
@@ -279,7 +300,11 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
         const Symbol& symbol = resolveOrThrow(callee.name());
         if (symbol.kind == SymbolKind::Variable || symbol.kind == SymbolKind::LoopIterator ||
             symbol.kind == SymbolKind::Constant || symbol.kind == SymbolKind::State) {
-            throw SemanticError("'" + callee.name() + "' is a value, not a function; it cannot be called");
+            throw SemanticError("'" + callee.name() + "' is a value, not a function; it cannot be called" +
+                                (symbol.type != nullptr && (isIntegerType(symbol.type) || symbol.type->isFloat() ||
+                                                            symbol.type->isDecimal())
+                                     ? "; to multiply, write " + callee.name() + " * (...)"
+                                     : std::string()));
         }
         result_.bind(call, symbol);
     }

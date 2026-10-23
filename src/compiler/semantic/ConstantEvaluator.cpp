@@ -281,8 +281,14 @@ void SemanticAnalyzer::foldConstantExpression(const ast::Expression& expression)
                 throw SemanticError("constant shift count out of range: must be between 0 and 63");
             }
             if (binary.op() == ast::BinaryOperator::ShiftLeft) {
-                constants_[&expression] =
+                // r3.97 (CANON-8): A shl N is A * 2^N, and a value that leaves
+                // Int64 is an overflow, never lost bits; (-1) shl 1 is -2.
+                const auto shifted =
                     static_cast<std::int64_t>(static_cast<std::uint64_t>(a) << static_cast<unsigned>(b));
+                if ((shifted >> static_cast<unsigned>(b)) != a) {
+                    throwConstantOverflow("shift");
+                }
+                constants_[&expression] = shifted;
             } else {
                 constants_[&expression] = a >> static_cast<unsigned>(b);
             }

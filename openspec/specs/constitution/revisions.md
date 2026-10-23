@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.96
+Canon revision: r3.97
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -426,3 +426,13 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   Marcelo Fortes, 2026-10-23, to the question whether `mod` should follow
   Ada (`mod` as in Ada and a new `rem`): "Sim, siga a regra de Ada para o
   modulus". Change `ada-modulus`.
+- r3.97 (2026-10-23) — CANON-8 Checked left shift, CANON-19: `A shl N` is
+  the product A * 2^N whenever it fits A's type, on Integer as on UInt64; a
+  constant beyond it is a compile error and a run-time one a trap ("integer
+  overflow"), never silently lost bits; Int64 `shl` dropped them before.
+  A deliberately truncating shift, if it comes, has its own name (such as
+  `WrappingShl`). Marcelo Fortes, 2026-10-23: "colho a opção 1: shl deve
+  detectar overflow tanto em Integer quanto em UInt64. [...] A regra deve
+  ser uniforme: nenhuma operação de deslocamento à esquerda poderá perder
+  informação silenciosamente. [...] Recomendo corrigir Integer shl no mesmo
+  PR dos testes que identificaram o problema". Change `expression-checks`.

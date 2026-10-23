@@ -12,6 +12,13 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 
 ## 0.3.0 pre-alpha — in progress
 
+### Fixed
+- `shl` on an Integer dropped the bits that left Int64 silently (`(2 ^ 62) shl 2` was 0); it is now the product A * 2^N, checked as on UInt64: a constant beyond Int64 is a compile error, a run-time one stops with "integer overflow" (canon r3.97, CANON-8, change `expression-checks`). Found by the new expression test.
+- `4(5 * (2 + 2))` and `(2 + 3)(4)` were accepted by the analyzer as calls and failed only in code generation; they are now rejected naming the `*` to write, as is `X(2)` for a variable (change `expression-checks`). `1 < X < 10` gets a message that comparisons are not chained.
+
+### Tests
+- The arithmetic differential test is rewritten: random expressions with only the parentheses CANON-20 requires, checked against an independent parser and evaluator of the law, folded and at run time, and with expressions that must trap; `tests/runtime/math-expressions.inox` holds 152 written expressions.
+
 ### Changed
 - `mod` and `rem` as in Ada (canon r3.96, CANON-8, change `ada-modulus`): `mod` now has the sign of the divisor (`-7 mod 2` is 1, it was -1), and the new reserved word `rem` gives the remainder with the sign of the dividend (`-7 rem 2` is -1, what `mod` gave before). With non-negative operands both are as before.
 - `/` divides as in Ada (canon r3.95, CANON-8, change `integer-slash`): two integers give the integer division, truncated toward zero, which `div` gave before; two reals or two decimals their division. An integer and a real are never mixed without a conversion. `/=` now divides an Integer too, and a constant zero divisor of integer `/` is a compile error. `mod` is unchanged.

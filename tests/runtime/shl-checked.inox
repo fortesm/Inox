@@ -1,0 +1,22 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.97 (CANON-8): A shl N is the product A * 2^N whenever it fits the type:
+== negative values keep their sign ((-1) shl 1 is -2), Int64.Min is reached
+== from -1 shl 63, UInt64 holds 1 shl 63, and a Byte holds 1 shl 7. The same
+== values folded at compile time and computed at run time.
+I(X Integer) Integer :
+    Return X
+;
+
+Main :
+    PutLn(1 shl 10, " ", (2 ^ 61) shl 1, " ", -1 shl 1, " ", -3 shl 4, " ", -1 shl 63)
+    PutLn(I(1) shl I(10), " ", I(2 ^ 61) shl I(1), " ", I(-1) shl I(1), " ", I(-3) shl I(4), " ", I(-1) shl I(63))
+    W UInt64 := 1
+    PutLn(W shl 63)
+    B Byte := 1
+    PutLn(B shl 7)
+;

@@ -72,7 +72,7 @@ python3 tools/mutation_fuzz.py build-san/inox --seed 7
 python3 tools/backend_gaps.py build/inox            # 0 BUG; --markdown for docs/BACKEND_GAPS.md
 python3 tools/eh_state_balance.py build/inox build/libinoxrt.a
 python3 tools/string_leak_check.py build/inox
-python3 tools/calc_differential_test.py --inox build/inox --count 300
+python3 tools/calc_differential_test.py --inox build/inox   # 2000 expressions and 60 traps
 python3 tools/grammar_consistency.py
 OPENSPEC_TELEMETRY=0 openspec validate --all --strict --no-interactive
 python3 tools/constitution_check.py check
