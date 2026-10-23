@@ -61,22 +61,24 @@ def gen_int_expr(depth):
     if depth <= 0 or random.random() < 0.35:
         v = random.randint(1, 50)
         return (str(v), str(v))
-    op = random.choice(["+", "-", "*", "/", "mod", "^"])
+    op = random.choice(["+", "-", "*", "/", "mod", "rem", "^"])
     left_i, left_p = gen_int_expr(depth - 1)
     if op == "^":
         # Inox: integer ^ with small non-negative exponent (avoid overflow).
         base_i, base_p = gen_int_expr(depth - 1)
         exp = random.randint(0, 3)
         return (f"({base_i} ^ {exp})", f"({base_p} ** {exp})")
-    if op in ("/", "mod"):
+    if op in ("/", "mod", "rem"):
         # Use a guaranteed non-zero literal divisor so Python and Inox evaluate
         # the SAME math. Inox integer / and mod TRUNCATE toward zero (C/LLVM
         # sdiv/srem), NOT Python's floor //. We emit Python that emulates the
-        # truncating semantics via the inox_div / inox_mod helpers so the oracle
+        # semantics via the inox_div / inox_mod / inox_rem helpers so the oracle
         # matches Inox exactly.
         divisor = random.randint(2, 19)
         if op == "/":
             return (f"({left_i} / {divisor})", f"inox_div({left_p}, {divisor})")
+        if op == "rem":
+            return (f"({left_i} rem {divisor})", f"inox_rem({left_p}, {divisor})")
         return (f"({left_i} mod {divisor})", f"inox_mod({left_p}, {divisor})")
     right_i, right_p = gen_int_expr(depth - 1)
     return (f"({left_i} {op} {right_i})", f"({left_p} {op} {right_p})")
@@ -117,13 +119,18 @@ def _inox_div(a, b):
     return q if (a < 0) == (b < 0) else -q
 
 
-def _inox_mod(a, b):
-    # Remainder consistent with truncating division, like LLVM srem / Inox `mod`.
+def _inox_rem(a, b):
+    # Remainder of the truncating division, like LLVM srem / Inox `rem`.
     return a - _inox_div(a, b) * b
 
 
+def _inox_mod(a, b):
+    # Inox `mod` (r3.96, as in Ada) has the sign of the divisor: Python's %.
+    return a % b
+
+
 def eval_python(py_expr, kind):
-    env = {"math": math, "inox_div": _inox_div, "inox_mod": _inox_mod}
+    env = {"math": math, "inox_div": _inox_div, "inox_mod": _inox_mod, "inox_rem": _inox_rem}
     try:
         val = eval(py_expr, {"__builtins__": {}}, env)
     except Exception as e:

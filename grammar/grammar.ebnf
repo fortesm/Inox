@@ -282,12 +282,14 @@ shift_expr        ::= additive_expr ( ( "shl" | "shr" ) additive_expr )*
                                                              (* level 6, left *)
 additive_expr     ::= multiplicative_expr ( ( "+" | "-" ) multiplicative_expr )*
                                                              (* level 5, left *)
-multiplicative_expr ::= unary_expr ( ( "*" | "/" | "mod" ) unary_expr )*
+multiplicative_expr ::= unary_expr ( ( "*" | "/" | "mod" | "rem" ) unary_expr )*
                                                              (* level 4, left *)
                       (* r3.95, as in Ada: "/" of two integers is the integer
                          division, truncated toward zero; of two reals or two
                          decimals, theirs. The operands are never mixed. "div"
-                         is not a word of Inox. *)
+                         is not a word of Inox. r3.96, as in Ada: "mod" has the
+                         sign of the divisor, "rem" that of the dividend;
+                         both are integer operators. *)
 unary_expr        ::= ( "not" | "-" | "+" | "bitnot" | "old" ) unary_expr | power_expr
                                                              (* level 3, prefix *)
                       (* "old" only inside a "pos" clause (CANON-24) *)

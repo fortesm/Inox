@@ -2,7 +2,7 @@
 # One line per locked unit: unit <TAB> sha256 prefix <TAB> approving OpenSpec change.
 # A unit changes only through relock --approval <change>, where <change> quotes
 # Marcelo Fortes's approval (constitution G2, G8).
-spec.md#preamble	0e4138c3b752b47c	integer-slash
+spec.md#preamble	d9a615e7757ccb6a	ada-modulus
 spec.md#G1 The law wins on design, the code on status	3cd4e7bd04e698d5	constitution
 spec.md#G1 Disagreements are reported, never resolved silently	8ccfa1ba6f382aff	constitution
 spec.md#G2 Authority	ba32846a762fe307	constitution
@@ -20,7 +20,7 @@ spec.md#CANON-2 Names are case-insensitive	34febe6d17f2bbd8	constitution
 spec.md#CANON-2 Comments and literals	64712528802a82fe	input-chars-exponents
 spec.md#CANON-2 Digit separator	006404ba593459d4	constitution
 spec.md#CANON-2 Symbols	ac2950b644f0074d	not-equal-operator
-spec.md#CANON-2 Reserved words and predefined names	956e7d9cfba87361	integer-slash
+spec.md#CANON-2 Reserved words and predefined names	2de88340d502b56e	ada-modulus
 spec.md#CANON-2 Words Inox does not have	26d08a59b30da9d4	keyword-review
 spec.md#CANON-3 Modules and Use	a016d047491d856a	syntax-review
 spec.md#CANON-3 Module resolution	87deaf60cefa2a59	constitution
@@ -53,11 +53,12 @@ spec.md#CANON-8 Numbers and text	cf45e9203e68819c	numbers-text
 spec.md#CANON-8 Constants in fixed-width types	865fe0822fe03457	constitution
 spec.md#CANON-8 UInt64 literals	178ffcfdec0ab8b1	uint64
 spec.md#CANON-8 Exact decimals	5d41477899035b08	decimals
-spec.md#CANON-8 Decimal arithmetic	856dc8da195b8659	integer-slash
+spec.md#CANON-8 Decimal arithmetic	cab774647b777091	ada-modulus
 spec.md#CANON-8 Decimal conversions	677ed7760f80725b	decimals
-spec.md#CANON-8 Operators	6743356e82665850	integer-slash
+spec.md#CANON-8 Operators	6cbe5031eab78788	ada-modulus
+spec.md#CANON-8 Modulus and remainder	5b169f3d6db18cac	ada-modulus
 spec.md#CANON-8 Overflow is never silent	614aba4ebbefff21	constitution
-spec.md#CANON-8 Division by zero and power	ee9e1c756e12246b	integer-slash
+spec.md#CANON-8 Division by zero and power	33b25bdf2d857453	ada-modulus
 spec.md#CANON-8 Generic syntax	86290950744f92d4	generics
 spec.md#CANON-8 Generic instances	f1cb99e31378061c	generics
 spec.md#CANON-8 Type arguments are inferred	e820ebe2b699c413	generics
@@ -124,7 +125,7 @@ spec.md#CANON-19 Run-time faults are traps	b35d7570f0992acd	constitution
 spec.md#CANON-19 Compile-time faults	bba481c115a50489	integer-slash
 spec.md#CANON-19 Trap categories	ec48b18fe4534d53	decimals
 spec.md#CANON-19 Input trap categories	98bf25251b8ddc1e	decimals
-spec.md#CANON-19 What traps	2e1f1cda0f368369	integer-slash
+spec.md#CANON-19 What traps	75fbba69abea885d	ada-modulus
 spec.md#CANON-19 Compiler, library and runtime	c810ce0cc62b56be	console-abi-terminal
 spec.md#CANON-19 Compiler limits	2ea229dba96e0ae7	constitution
 spec.md#CANON-20 Operator precedence	1735231177adf8e3	constitution
@@ -133,7 +134,7 @@ spec.md#CANON-20 Mandatory parentheses	a91280e7e8bcf866	constitution
 spec.md#CANON-21 The test suite is part of the law	d2378e914a8ad594	constitution
 spec.md#CANON-21 Test layers	3dd5f11b490b5d34	constitution
 spec.md#CANON-23 LLVM backend and the clang driver	7017ebec86d19fdf	constitution
-spec.md#CANON-23 Lowering rules	44d322e2c29e8567	integer-slash
+spec.md#CANON-23 Lowering rules	caad16b92452433a	ada-modulus
 spec.md#CANON-23 Valid IR or a clear stop	b65face9199b56ba	constitution
 spec.md#CANON-23 Driver commands	e9b4dbcb3de5ddad	datetime-systemutils
 spec.md#CANON-24 Design by contract	44eb53736bce7681	design-by-contract

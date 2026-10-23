@@ -58,6 +58,8 @@ std::string_view binaryOperatorName(ast::BinaryOperator op)
         return "/";
     case ast::BinaryOperator::Modulo:
         return "mod";
+    case ast::BinaryOperator::Remainder:
+        return "rem";
     case ast::BinaryOperator::ShiftLeft:
         return "shl";
     case ast::BinaryOperator::ShiftRight:

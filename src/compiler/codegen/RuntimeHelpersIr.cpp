@@ -448,7 +448,7 @@ overflow:
   unreachable
 }
 
-define internal i64 @__inox_mod_i64(i64 %a, i64 %b) alwaysinline nounwind {
+define internal i64 @__inox_rem_i64(i64 %a, i64 %b) alwaysinline nounwind {
 entry:
   %z = icmp eq i64 %b, 0
   br i1 %z, label %trap, label %ok
@@ -463,6 +463,18 @@ ok:
 trap:
   call void @__inox_arith_fault(i32 2)
   unreachable
+}
+
+define internal i64 @__inox_mod_i64(i64 %a, i64 %b) alwaysinline nounwind {
+entry:
+  %r = call i64 @__inox_rem_i64(i64 %a, i64 %b)
+  %nonzero = icmp ne i64 %r, 0
+  %signs = xor i64 %r, %b
+  %differ = icmp slt i64 %signs, 0
+  %fix = and i1 %nonzero, %differ
+  %adjusted = add i64 %r, %b
+  %m = select i1 %fix, i64 %adjusted, i64 %r
+  ret i64 %m
 }
 
 define internal i64 @__inox_shl_i64(i64 %a, i64 %b) alwaysinline nounwind {

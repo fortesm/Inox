@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.95
+Canon revision: r3.96
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -419,3 +419,10 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   divisão real (ponto flutuante). O compilador decide qual operação
   realizar com base no tipo dos operandos envolvidos. [...] o mesmo pode
   ser imiplementado em Inox?". Change `integer-slash`.
+- r3.96 (2026-10-23) — CANON-2, CANON-8, CANON-19, CANON-20, CANON-23: as
+  in Ada, `mod` has the sign of the divisor (`-7 mod 2` is 1) and the new
+  reserved word `rem` the sign of the dividend (`-7 rem 2` is -1), with
+  A = (A / B) * B + A rem B; on UInt64 both are the unsigned remainder.
+  Marcelo Fortes, 2026-10-23, to the question whether `mod` should follow
+  Ada (`mod` as in Ada and a new `rem`): "Sim, siga a regra de Ada para o
+  modulus". Change `ada-modulus`.

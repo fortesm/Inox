@@ -13,7 +13,7 @@ Core safety defaults include:
 - No universal `null` or `nil`
 - No unsafe pointers in the language core
 - No silent integer overflow
-- `/` divides by the operands' type, as in Ada: integer division for integers, real for reals; never mixed
+- `/` divides by the operands' type, as in Ada: integer division for integers, real for reals; never mixed. `mod` and `rem` as in Ada
 - Parameters immutable by default
 - Mutating methods require an explicit `Self mut` receiver
 - Strong nominal typing with no implicit narrowing

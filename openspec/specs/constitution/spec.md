@@ -108,7 +108,7 @@ Level  Operators                              Associativity
  1     postfix: call f(...), index A[i]       left
  2     ^  (exponentiation)                    RIGHT
  3     unary: not  -x  +x  bitnot             (prefix, unary)
- 4     *  /  mod                              left
+ 4     *  /  mod  rem                         left
  5     +  -                                   left
  6     shl  shr  (bit shifts)                 left
  7     bitand                                 left
@@ -324,7 +324,7 @@ their use (Marcelo Fortes, 2026-10-16).
 ### Requirement: CANON-2 Reserved words and predefined names
 The reserved words SHALL be: Use Type Const State Struct Enum if elif else
 unless while repeat until for in step case try except On do ensure raise
-retry with mut ref mod and xor or not shr shl Return pre pos old
+retry with mut ref mod rem and xor or not shr shl Return pre pos old
 invariant variant Override. Predefined names, never declared but free as
 field and method names: True False Exit leave continue IIf Fill bitand
 bitor bitxor bitnot. `Main`, `Var` and `Module` are ordinary names (2026-10-16).
@@ -732,7 +732,7 @@ Currency and Crypto SHALL have `+ - * /`, unary minus and order; `+` and
 `-` are exact, `*` and `/` exact then rounded half to even to the type's
 places (A1); beyond the type is the trap "decimal overflow". A literal next
 to a decimal is read in its type (`Price * 3`), a variable of another type
-is converted explicitly (A2); `^` and `mod` do not apply (r3.91).
+is converted explicitly (A2); `^`, `mod` and `rem` do not apply (r3.91).
 
 #### Scenario: Arithmetic
 - **WHEN** a program computes with Currency and Crypto, mixes an Integer variable, or overflows
@@ -750,8 +750,8 @@ value beyond the target traps ("integer conversion out of range") (r3.91).
 
 ### Requirement: CANON-8 Operators
 The operators SHALL be: Boolean `and` `or` `xor` `not`; integer bitwise
-`bitand` `bitor` `bitxor` `bitnot` `shl` `shr`; `^` power; `/` division and
-integer `mod`. As in Ada, `/` of two integers is the integer division,
+`bitand` `bitor` `bitxor` `bitnot` `shl` `shr`; `^` power; `/` division;
+integer `mod` and `rem`. As in Ada, `/` of two integers is the integer division,
 truncated toward zero, and of two reals or two decimals their division; an
 integer and a real never meet in `/` without a conversion. `div` is not a
 word of Inox (r3.95).
@@ -759,6 +759,16 @@ word of Inox (r3.95).
 #### Scenario: Integer and real slash
 - **WHEN** a program divides integers of every kind, reals and decimals with `/`, uses `/=` on an Integer and names a variable `div`
 - **THEN** each gives its type's division (tests/runtime/integer-slash.inox); an Integer and a Float are rejected (tests/diagnostics/slash-mixed-types.inox); `A div 2` is a parse error (tests/diagnostics/div-is-a-name.inox)
+
+### Requirement: CANON-8 Modulus and remainder
+As in Ada (r3.96), `A mod B` SHALL have the sign of B and `A rem B` the
+sign of A, with A = (A / B) * B + A rem B: `-7 mod 2` is 1, `-7 rem 2` is
+-1, `7 mod -2` is -1. `Int64.Min mod -1` and `Int64.Min rem -1` are 0. On
+UInt64 both are the unsigned remainder. `rem` is a reserved word.
+
+#### Scenario: Signs and edges
+- **WHEN** mod and rem take every combination of signs, Int64.Min, constants, UInt64 and Byte, a zero divisor at run time or a constant one, or a Currency
+- **THEN** the results follow Ada (tests/runtime/div-mod-signs.inox, tests/runtime/mod-rem-edges.inox, tests/runtime/integer-slash.inox); the zero traps (tests/runtime/rem-by-zero.inox) or is rejected (tests/diagnostics/const-rem-zero.inox); the Currency is rejected (tests/diagnostics/decimal-rem.inox); `rem` is not a name (tests/diagnostics/rem-reserved.inox)
 
 #### Scenario: Operand types
 - **WHEN** `bitand` gets a Bool or `and` gets an Integer
@@ -775,7 +785,7 @@ in a Byte traps).
 - **THEN** the first is a compile error (tests/diagnostics/const-add-overflow.inox) and the second traps (tests/runtime/add-overflow.inox, tests/runtime/byte-overflow.inox)
 
 ### Requirement: CANON-8 Division by zero and power
-A constant zero divisor of integer `/` or `mod` SHALL be a compile error and a
+A constant zero divisor of integer `/`, `mod` or `rem` SHALL be a compile error and a
 run-time zero divisor a trap. Integer `^` needs a non-negative exponent (a
 negative one is an error, never an implicit Float) and traps on overflow; on
 Float `^` is the real power.
@@ -1561,7 +1571,7 @@ character or a key past the end) (r3.88, r3.89, r3.91).
 
 ### Requirement: CANON-19 What traps
 These operations SHALL trap: `+ - *`, unary `-` and `Abs` on overflow;
-integer `/` and `mod` by zero and `Int64.Min / -1`; a shift outside 0..width-1; `^`
+integer `/`, `mod` and `rem` by zero and `Int64.Min / -1`; a shift outside 0..width-1; `^`
 on overflow or with a negative exponent; a `for` step <= 0; a conversion or
 store outside the target range; an index or slice bound outside its array;
 a String position, count or width outside what the function accepts.
@@ -1660,8 +1670,9 @@ LLVM or clang. Replacing clang follows `engineering.md` E22.
 - **THEN** the driver names the tool, its exit code and its own messages (scripts/run-tests.sh, "run-hello --build (toolchain diagnostics)")
 
 ### Requirement: CANON-23 Lowering rules
-Integer `/` SHALL lower to `sdiv` (`udiv` for UInt64) and `mod` to `srem`
-(`urem`), through the checked helpers; real `/` to `fdiv`; no `nsw`/`nuw` flags until the overflow and optimization policy
+Integer `/` SHALL lower to `sdiv` (`udiv` for UInt64), `rem` to `srem` and
+`mod` to `srem` corrected to the divisor's sign (`urem` for both on UInt64),
+through the checked helpers; real `/` to `fdiv`; no `nsw`/`nuw` flags until the overflow and optimization policy
 allow them. Structs may lower to LLVM aggregates and receivers to pointers;
 neither changes value semantics.
 

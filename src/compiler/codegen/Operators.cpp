@@ -65,6 +65,8 @@ std::string checkedIntegerHelper(ast::BinaryOperator op)
         return "__inox_div_i64";
     case ast::BinaryOperator::Modulo:
         return "__inox_mod_i64";
+    case ast::BinaryOperator::Remainder:
+        return "__inox_rem_i64";
     case ast::BinaryOperator::ShiftLeft:
         return "__inox_shl_i64";
     case ast::BinaryOperator::ShiftRight:
@@ -87,6 +89,7 @@ std::string llvmUnsignedHelper(ast::BinaryOperator op)
     case ast::BinaryOperator::Divide:
         return "__inox_divu_i64";
     case ast::BinaryOperator::Modulo:
+    case ast::BinaryOperator::Remainder:
         return "__inox_modu_i64";
     case ast::BinaryOperator::ShiftLeft:
         return "__inox_shlu_i64";

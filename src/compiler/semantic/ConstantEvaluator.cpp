@@ -61,8 +61,10 @@ void SemanticAnalyzer::rejectInvalidConstantRightOperand(ast::BinaryOperator op,
         }
         return;
     case ast::BinaryOperator::Modulo:
+    case ast::BinaryOperator::Remainder:
         if (value == 0) {
-            throw SemanticError("constant division by zero in 'mod'");
+            throw SemanticError(std::string("constant division by zero in '") +
+                                (op == ast::BinaryOperator::Modulo ? "mod" : "rem") + "'");
         }
         return;
     case ast::BinaryOperator::ShiftLeft:
@@ -260,11 +262,19 @@ void SemanticAnalyzer::foldConstantExpression(const ast::Expression& expression)
             constants_[&expression] = a / b;
             return;
         case ast::BinaryOperator::Modulo:
+        case ast::BinaryOperator::Remainder: {
             if (b == 0) {
-                throw SemanticError("constant division by zero in 'mod'");
+                throw SemanticError(std::string("constant division by zero in '") +
+                                    (binary.op() == ast::BinaryOperator::Modulo ? "mod" : "rem") + "'");
             }
-            constants_[&expression] = (b == -1) ? 0 : a % b;
+            std::int64_t remainder = (b == -1) ? 0 : a % b;
+            // r3.96, as in Ada: `mod` takes the sign of the divisor.
+            if (binary.op() == ast::BinaryOperator::Modulo && remainder != 0 && ((remainder < 0) != (b < 0))) {
+                remainder += b;
+            }
+            constants_[&expression] = remainder;
             return;
+        }
         case ast::BinaryOperator::ShiftLeft:
         case ast::BinaryOperator::ShiftRight:
             if (b < 0 || b > 63) {
@@ -333,6 +343,7 @@ void SemanticAnalyzer::foldUnsignedBinary(const ast::BinaryExpression& binary, s
     case ast::BinaryOperator::Divide:
         return store(a / b);  // a zero divisor was rejected above
     case ast::BinaryOperator::Modulo:
+    case ast::BinaryOperator::Remainder:
         return store(a % b);
     case ast::BinaryOperator::ShiftLeft:
         if (b > 0 && (a >> (64 - b)) != 0) throwConstantOverflow("shift", "UInt64");
