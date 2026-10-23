@@ -4,7 +4,9 @@
 == This Source Code Form is subject to the terms of the Mozilla Public
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
+== r3.95: an Integer and a real are never divided without a conversion, as in Ada.
 Main :
-    X := 10 / 2
+    A := 7
+    F := 2.0
+    PutLn(A / F)
 ;

@@ -48,7 +48,7 @@ import tempfile
 REPOSITORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 TOKENS = [
-    "(", ")", ";", ":", "..", "=", ":=", "+", "-", "*", "div", "mod", "^",
+    "(", ")", ";", ":", "..", "=", ":=", "+", "-", "*", "/", "mod", "^",
     "shl", "shr", "not", "and", "or", "if", "elif", "else", "while", "repeat",
     "until", "for", "in", "try", "except", "ensure", "On", "Raise", "Retry",
     "leave", "continue", "Return", "Exit", "case", "else", "with", "Type",

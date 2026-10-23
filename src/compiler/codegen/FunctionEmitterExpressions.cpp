@@ -174,7 +174,7 @@ bool FunctionEmitter::isRangeCheckedArithmetic(const ast::Expression& expression
     case ast::BinaryOperator::Subtract:
     case ast::BinaryOperator::Multiply:
     case ast::BinaryOperator::Power:
-    case ast::BinaryOperator::IntegerDivide:
+    case ast::BinaryOperator::Divide:
     case ast::BinaryOperator::Modulo:
     case ast::BinaryOperator::ShiftLeft:
     case ast::BinaryOperator::ShiftRight:

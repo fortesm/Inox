@@ -98,12 +98,10 @@ static bool carriesIntegerContext(const ast::Expression& expression, bool real)
     case ast::AstNodeKind::BinaryExpression:
         switch (static_cast<const ast::BinaryExpression&>(expression).op()) {
         case ast::BinaryOperator::Divide:
-            return real;
         case ast::BinaryOperator::Add:
         case ast::BinaryOperator::Subtract:
         case ast::BinaryOperator::Multiply:
         case ast::BinaryOperator::Power:
-        case ast::BinaryOperator::IntegerDivide:
         case ast::BinaryOperator::Modulo:
         case ast::BinaryOperator::ShiftLeft:
         case ast::BinaryOperator::ShiftRight:
@@ -829,12 +827,15 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
         requireNumericOperands();
         return leftType;
     case ast::BinaryOperator::Divide:
+        // r3.95, as in Ada: `/` of two integers is the integer division,
+        // truncated toward zero; of two reals or two decimals, theirs. The
+        // operands are never mixed.
         if (isIntegerType(leftType) && isIntegerType(rightType)) {
-            throw SemanticError("operator '/' is not supported for Integer operands; use 'div' for integer division");
+            requireIntegerOperands();
+            return leftType;
         }
         requireNumericOperands();
         return leftType;
-    case ast::BinaryOperator::IntegerDivide:
     case ast::BinaryOperator::Modulo:
     case ast::BinaryOperator::ShiftLeft:
     case ast::BinaryOperator::ShiftRight:

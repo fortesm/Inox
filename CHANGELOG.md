@@ -12,7 +12,11 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 
 ## 0.3.0 pre-alpha — in progress
 
+### Changed
+- `/` divides as in Ada (canon r3.95, CANON-8, change `integer-slash`): two integers give the integer division, truncated toward zero, which `div` gave before; two reals or two decimals their division. An integer and a real are never mixed without a conversion. `/=` now divides an Integer too, and a constant zero divisor of integer `/` is a compile error. `mod` is unchanged.
+
 ### Removed
+- `div` is no longer a reserved word (canon r3.95): it is an ordinary name, and `A div 2` is a parse error. Every program, test, example and the standard library now write `/`.
 - The migration diagnostic for the old `Var` block (canon r3.94, CANON-4, change `remove-var-diagnostic`): `Var` is an ordinary name, and a `Var` block or `Var X := 1` now fails with the generic message of any unexpected text. `mut` stays reserved.
 
 ### Added

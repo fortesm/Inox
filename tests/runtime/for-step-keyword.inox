@@ -16,7 +16,7 @@ Main :
     for I in 1..N + 1 step 2
         PutLn(I)
     ;
-    for J in Twice(N)..N - 2 step N div 2
+    for J in Twice(N)..N - 2 step N / 2
         PutLn(J)
     ;
 ;

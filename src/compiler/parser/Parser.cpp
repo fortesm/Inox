@@ -740,8 +740,7 @@ ast::ExpressionPtr Parser::parseMultiplicative()
 {
     auto expression = parseUnary();
 
-    while (check(TokenKind::Star) || check(TokenKind::Slash) ||
-           checkKeyword("div") || checkKeyword("mod")) {
+    while (check(TokenKind::Star) || check(TokenKind::Slash) || checkKeyword("mod")) {
         const lexer::Token& op = advance();
         auto right = parseUnary();
         expression = makeExpr<ast::BinaryExpression>(
@@ -2611,9 +2610,6 @@ ast::BinaryOperator Parser::binaryOperatorFor(const lexer::Token& token)
         return ast::BinaryOperator::GreaterEqual;
     case TokenKind::Keyword:
     case TokenKind::Identifier:
-        if (token.normalized == "div") {
-            return ast::BinaryOperator::IntegerDivide;
-        }
         if (token.normalized == "mod") {
             return ast::BinaryOperator::Modulo;
         }

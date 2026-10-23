@@ -9,7 +9,7 @@
 Main :
     N := 3
     if N > 0
-        Half := N div 2
+        Half := N / 2
         PutLn(N)
     ;
 ;

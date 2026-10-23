@@ -309,8 +309,6 @@ private:
             return "*";
         case ast::BinaryOperator::Divide:
             return "/";
-        case ast::BinaryOperator::IntegerDivide:
-            return "div";
         case ast::BinaryOperator::Modulo:
             return "mod";
         case ast::BinaryOperator::ShiftLeft:

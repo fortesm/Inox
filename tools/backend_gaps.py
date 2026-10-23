@@ -351,10 +351,10 @@ Main :
     PutLn(P.X + P.Y)
 ;
 """),
-    ("for-step-expression-bounds", "for I in 1..N + 1 step N div 2", """Main :
+    ("for-step-expression-bounds", "for I in 1..N + 1 step N / 2", """Main :
     N := 4
     T := 0
-    for I in 1..N + 1 step N div 2
+    for I in 1..N + 1 step N / 2
         T := T + I
     ;
     PutLn(T)
@@ -422,7 +422,7 @@ Main :
     ("fixed-width-arith", "Int32/UInt16 arithmetic with a constant operand", """Main :
     I Int32 := 1000
     U UInt16 := 7
-    PutLn(I * 3 + 1, U div 2)
+    PutLn(I * 3 + 1, U / 2)
 ;
 """),
     ("bitnot", "bitnot on Integer and Byte", """Main :

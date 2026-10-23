@@ -6,9 +6,9 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 Compute(A Integer, B Integer) Integer :
-    Q := A div B
+    Q := A / B
     PutLn(Q)
-    X := A div B
+    X := A / B
     Y := A mod B
     PutLn(Y)
     Z := X shl 2

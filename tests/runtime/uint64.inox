@@ -7,7 +7,7 @@
 
 == Change uint64 (CANON-8): UInt64 values above Int64.Max in locals, State,
 == a Const, struct fields with defaults, array elements, parameters and
-== results; every operator (+ - * div mod ^ shl shr bitand bitor bitxor
+== results; every operator (+ - * / mod ^ shl shr bitand bitor bitxor
 == bitnot and the comparisons) compared and computed unsigned; IIf; checked
 == conversions in both directions; case with ranges and else; for loops up
 == and down to 2^64-1; a generic routine with a UInt64 and literals.
@@ -39,7 +39,7 @@ Main :
     P += 1
     PutLn(P, " ", P > 9223372036854775807)
     PutLn(U - 1, " ", H + 5, " ", H * 1, " ", Twice(H - 1))
-    PutLn(U div 10, " ", U mod 10, " ", U div H, " ", U mod H)
+    PutLn(U / 10, " ", U mod 10, " ", U / H, " ", U mod H)
     PutLn(H shl 0, " ", H shr 63, " ", U shr 1, " ", U bitand $FF, " ", H bitor 1, " ", U bitxor H)
     PutLn(bitnot U, " ", bitnot H, " ", UInt64(2) ^ 63, " ", UInt64(10) ^ 19)
     PutLn(U > H, " ", H < U, " ", H >= 1, " ", U = 18446744073709551615, " ", H # U, " ", 0 < H)

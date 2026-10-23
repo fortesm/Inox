@@ -11,5 +11,5 @@ Const Zero := 0
 
 Main :
     A Integer := 10
-    PutLn(A div Zero)
+    PutLn(A / Zero)
 ;

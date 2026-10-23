@@ -63,14 +63,14 @@ complement within the type's width.
 
 ### Requirement: UInt64 covers 0 to 2^64-1
 `UInt64` (alias `UInteger`) SHALL hold every value 0..18446744073709551615 and
-SHALL work in every position other integer types do. Comparisons, `div`, `mod`
+SHALL work in every position other integer types do. Comparisons, `/`, `mod`
 and `shr` SHALL use unsigned meaning.
 
 #### Scenario: Values above Int64.Max
 - **WHEN** a UInt64 starts at 9223372036854775807, is incremented, compared and printed
 - **THEN** it prints 9223372036854775808 and compares greater than its start (tests/runtime/uint64.inox)
 
-#### Scenario: Unsigned div, mod and shift
+#### Scenario: Unsigned division, mod and shift
 - **WHEN** a UInt64 above Int64.Max is divided, reduced with mod and shifted right
 - **THEN** the results are the unsigned ones (tests/runtime/uint64.inox)
 

@@ -29,12 +29,12 @@ places, a half going to the even neighbour (A1); so do `Round(X)` (Std.Math),
 ### Requirement: Decimals do not mix implicitly
 An Integer, a Float or the other decimal type SHALL NOT meet a decimal in
 an operator: the conversion is written (`Price * Currency(Count)`), except
-a literal, which takes the decimal's type (A2). `^`, `div` and `mod` do not
-apply.
+a literal, which takes the decimal's type (A2). `^` and `mod` do not apply;
+`/` of two decimals is the decimal division (r3.95).
 
 #### Scenario: Mixing
-- **WHEN** a Currency meets an Integer variable, a Float, a Crypto, `^` or `div`
-- **THEN** each is rejected with the conversion to write (tests/diagnostics/decimal-mix-integer.inox, tests/diagnostics/decimal-mix-float.inox, tests/diagnostics/decimal-mix-crypto.inox, tests/diagnostics/decimal-power.inox, tests/diagnostics/decimal-div.inox)
+- **WHEN** a Currency meets an Integer variable, a Float, a Crypto, `^` or `mod`
+- **THEN** each is rejected with the conversion to write (tests/diagnostics/decimal-mix-integer.inox, tests/diagnostics/decimal-mix-float.inox, tests/diagnostics/decimal-mix-crypto.inox, tests/diagnostics/decimal-power.inox, tests/diagnostics/decimal-mod.inox)
 
 ### Requirement: Conversions
 `Currency(X)` and `Crypto(X)` SHALL take an integer (exact), a Float (rounded

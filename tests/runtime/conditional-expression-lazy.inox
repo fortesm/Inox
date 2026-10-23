@@ -9,7 +9,7 @@
 == trap with a division by zero; it is never called. Also Float, Bool and a
 == chained conditional (suggested by ChatGPT).
 Danger(D Integer) Integer :
-    Return 100 div D
+    Return 100 / D
 ;
 
 Main :

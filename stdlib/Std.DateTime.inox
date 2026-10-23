@@ -54,10 +54,10 @@ DaysInMonth(Y Integer, M Integer) Integer :
 == Days since 0001-01-01 of a valid date (H. Hinnant's days_from_civil).
 DaysFromCivil(Y Integer, M Integer, D Integer) Integer :
     Shifted Integer := IIf(M <= 2, Y - 1, Y)
-    Era Integer := Shifted div 400
+    Era Integer := Shifted / 400
     YearOfEra Integer := Shifted - Era * 400
-    DayOfYear Integer := (153 * IIf(M > 2, M - 3, M + 9) + 2) div 5 + D - 1
-    DayOfEra Integer := YearOfEra * 365 + YearOfEra div 4 - YearOfEra div 100 + DayOfYear
+    DayOfYear Integer := (153 * IIf(M > 2, M - 3, M + 9) + 2) / 5 + D - 1
+    DayOfEra Integer := YearOfEra * 365 + YearOfEra / 4 - YearOfEra / 100 + DayOfYear
     Return Era * 146097 + DayOfEra - 306
 ;
 
@@ -77,7 +77,7 @@ EncodeDateTime(Y Integer, M Integer, D Integer, H Integer, N Integer, S Integer)
 ;
 
 DateOf(T TDateTime) TDate :
-    Return TDate(T div MicrosPerDay)
+    Return TDate(T / MicrosPerDay)
 ;
 
 DateTimeOf(D TDate) TDateTime :
@@ -86,13 +86,13 @@ DateTimeOf(D TDate) TDateTime :
 
 == The year, month and day of T (H. Hinnant's civil_from_days).
 DecodeDate(T TDateTime, ref mut Y Integer, ref mut M Integer, ref mut D Integer) :
-    Z Integer := T div MicrosPerDay + 306
-    Era Integer := Z div 146097
+    Z Integer := T / MicrosPerDay + 306
+    Era Integer := Z / 146097
     DayOfEra Integer := Z - Era * 146097
-    YearOfEra Integer := (DayOfEra - DayOfEra div 1460 + DayOfEra div 36524 - DayOfEra div 146096) div 365
-    DayOfYear Integer := DayOfEra - (365 * YearOfEra + YearOfEra div 4 - YearOfEra div 100)
-    MonthPart Integer := (5 * DayOfYear + 2) div 153
-    D := DayOfYear - (153 * MonthPart + 2) div 5 + 1
+    YearOfEra Integer := (DayOfEra - DayOfEra / 1460 + DayOfEra / 36524 - DayOfEra / 146096) / 365
+    DayOfYear Integer := DayOfEra - (365 * YearOfEra + YearOfEra / 4 - YearOfEra / 100)
+    MonthPart Integer := (5 * DayOfYear + 2) / 153
+    D := DayOfYear - (153 * MonthPart + 2) / 5 + 1
     M := IIf(MonthPart < 10, MonthPart + 3, MonthPart - 9)
     Y := YearOfEra + Era * 400 + IIf(M <= 2, 1, 0)
 ;
@@ -122,15 +122,15 @@ Day(T TDateTime) Integer :
 ;
 
 Hour(T TDateTime) Integer :
-    Return T mod MicrosPerDay div MicrosPerHour
+    Return T mod MicrosPerDay / MicrosPerHour
 ;
 
 Minute(T TDateTime) Integer :
-    Return T mod MicrosPerHour div MicrosPerMinute
+    Return T mod MicrosPerHour / MicrosPerMinute
 ;
 
 Second(T TDateTime) Integer :
-    Return T mod MicrosPerMinute div MicrosPerSecond
+    Return T mod MicrosPerMinute / MicrosPerSecond
 ;
 
 MicroSecond(T TDateTime) Integer :
@@ -139,7 +139,7 @@ MicroSecond(T TDateTime) Integer :
 
 == 0001-01-01 was a Monday.
 DayOfWeek(T TDateTime) TDayOfWeek :
-    Return TDayOfWeek(T div MicrosPerDay mod 7)
+    Return TDayOfWeek(T / MicrosPerDay mod 7)
 ;
 
 AddDays(T TDateTime, Days Integer) TDateTime :
@@ -152,7 +152,7 @@ AddSeconds(T TDateTime, Count Integer) TDateTime :
 
 == Whole days between A and B, whatever their order.
 DaysBetween(A TDateTime, B TDateTime) Integer :
-    Return IIf(A > B, A - B, B - A) div MicrosPerDay
+    Return IIf(A > B, A - B, B - A) / MicrosPerDay
 ;
 
 ToLocal(T TDateTime) TDateTime :

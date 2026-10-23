@@ -76,7 +76,7 @@ analysis but not lowered yet.)
 | `grouped-decl-struct` | grouped struct declaration P, Q TPoint := Base | **OK** |  |
 | `chained-assignment` | chained assignment A := B := C := X | **OK** |  |
 | `named-struct-construction` | named struct construction TPoint(X := 1, Y := 2) | **OK** |  |
-| `for-step-expression-bounds` | for I in 1..N + 1 step N div 2 | **OK** |  |
+| `for-step-expression-bounds` | for I in 1..N + 1 step N / 2 | **OK** |  |
 | `case-ada-choices` | case with | alternatives and a static range | **OK** |  |
 | `digit-separators` | numeric literals with the digit separator _ | **OK** |  |
 | `compound-assignment` | compound assignment += -= *= /= ^= | **OK** |  |

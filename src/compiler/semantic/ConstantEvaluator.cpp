@@ -55,9 +55,9 @@ bool SemanticAnalyzer::integerConstant(const ast::Expression& expression, Intege
 void SemanticAnalyzer::rejectInvalidConstantRightOperand(ast::BinaryOperator op, std::int64_t value, bool isUnsigned)
 {
     switch (op) {
-    case ast::BinaryOperator::IntegerDivide:
+    case ast::BinaryOperator::Divide:
         if (value == 0) {
-            throw SemanticError("constant division by zero in 'div'");
+            throw SemanticError("constant division by zero in '/'");
         }
         return;
     case ast::BinaryOperator::Modulo:
@@ -227,6 +227,11 @@ void SemanticAnalyzer::foldConstantExpression(const ast::Expression& expression)
         if (!constantIntegerValue(binary.left(), a) || !constantIntegerValue(binary.right(), b)) {
             return;
         }
+        // `/` folds as an integer division only between integers (r3.95);
+        // `7 / 2` where a Currency is expected is a decimal division.
+        if (binary.op() == ast::BinaryOperator::Divide && !isIntegerType(result_.typeOf(binary))) {
+            return;
+        }
         if (isUnsigned) {
             foldUnsignedBinary(binary, static_cast<std::uint64_t>(a), static_cast<std::uint64_t>(b));
             return;
@@ -245,9 +250,9 @@ void SemanticAnalyzer::foldConstantExpression(const ast::Expression& expression)
             if (!checkedMul(a, b, out)) throwConstantOverflow("multiplication");
             constants_[&expression] = out;
             return;
-        case ast::BinaryOperator::IntegerDivide:
+        case ast::BinaryOperator::Divide:
             if (b == 0) {
-                throw SemanticError("constant division by zero in 'div'");
+                throw SemanticError("constant division by zero in '/'");
             }
             if (a == kInt64Min && b == -1) {
                 throwConstantOverflow("division");
@@ -325,7 +330,7 @@ void SemanticAnalyzer::foldUnsignedBinary(const ast::BinaryExpression& binary, s
     case ast::BinaryOperator::Multiply:
         if (!checkedMulUnsigned(a, b, out)) throwConstantOverflow("multiplication", "UInt64");
         return store(out);
-    case ast::BinaryOperator::IntegerDivide:
+    case ast::BinaryOperator::Divide:
         return store(a / b);  // a zero divisor was rejected above
     case ast::BinaryOperator::Modulo:
         return store(a % b);

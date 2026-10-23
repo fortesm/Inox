@@ -25,7 +25,7 @@ Type
     ;
 
 Integer.Percent(Self, P Integer) Integer :
-    Return Self * P div 100
+    Return Self * P / 100
 ;
 
 String.Label(Self mut, Default String) :

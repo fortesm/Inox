@@ -17,7 +17,7 @@ Type
 Ratio<T>(A T, B T) T :
     pre B # 0, "B must not be zero"
     pos Result * B <= A
-    Return A div B
+    Return A / B
 ;
 
 Larger<T>(A T, B T) T :
@@ -29,7 +29,7 @@ Safe<T>(A T, B T) T :
         if B = 0
             Raise RangeError
         ;
-        Return A div B
+        Return A / B
     except
         Return 0
     ;

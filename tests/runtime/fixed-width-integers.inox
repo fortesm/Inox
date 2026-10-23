@@ -21,7 +21,7 @@ State
 ;
 
 Half(V Int32) Int32 :
-    Return V div 2
+    Return V / 2
 ;
 
 Main :
@@ -34,7 +34,7 @@ Main :
     S Int16 := Int16(1234)
     PutLn(S + 1, " ", S - 2000)
     U UInt16 := 65535
-    PutLn(U, " ", U div 2, " ", U mod 7)
+    PutLn(U, " ", U / 2, " ", U mod 7)
     P TPixel
     P.R := 10
     P.G := B
