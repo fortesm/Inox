@@ -64,6 +64,7 @@ th{background:#eef3fb}
 <li><a href="#string-functions">String functions: Std.Strings and Std.StrUtils</a></li>
 <li><a href="#files">Text files: Std.Files and Std.IOUtils</a></li>
 <li><a href="#terminal">The terminal: Std.Terminal</a></li>
+<li><a href="#datetime-system">Dates and the system</a></li>
 <li><a href="#arrays-sets-future">Arrays, vectors, ranges, enums, and sets</a></li>
 <li><a href="#enums-ranges-sets">Enums, ranges and sets</a></li>
 <li><a href="#runtime-status">Runtime and implementation status</a></li>
@@ -149,7 +150,7 @@ inox version               print the version</code></pre>
 <p>Checking and IR emission do not require Clang when using a prebuilt compiler. Building and running currently require <code>clang</code> in <code>PATH</code>.</p>
 </section>
 <section id="stdlib-output"><h2>Standard library discovery and output directory</h2>
-<p>The standard library has <code>Std.System</code> (the prelude, always available, formerly <code>Std.Core</code>), <code>Std.IO</code>, <code>Std.Math</code>, <code>Std.Errors</code> (the exception types), <code>Std.Debug</code> and the pairs <code>Std.Files</code> / <code>Std.IOUtils</code> and <code>Std.Strings</code> / <code>Std.StrUtils</code>, and <code>Std.Terminal</code> (keys, cursor, colors). Modules come in pairs: <code>Std.X</code> holds a subject's types and fundamental operations, and <code>Std.XUtils</code> the conveniences built on them (using <code>Std.XUtils</code> also gives everything of <code>Std.X</code>). Planned: <code>Std.DateTime</code> / <code>Std.DateUtils</code>, and <code>Std.SystemUtils</code> for system functions.</p>
+<p>The standard library has <code>Std.System</code> (the prelude, always available, formerly <code>Std.Core</code>), <code>Std.IO</code>, <code>Std.Math</code>, <code>Std.Errors</code> (the exception types), <code>Std.Debug</code> and the pairs <code>Std.Files</code> / <code>Std.IOUtils</code> and <code>Std.Strings</code> / <code>Std.StrUtils</code>, <code>Std.DateTime</code> / <code>Std.DateUtils</code>, <code>Std.SystemUtils</code> and <code>Std.Terminal</code> (keys, cursor, colors). Modules come in pairs: <code>Std.X</code> holds a subject's types and fundamental operations, and <code>Std.XUtils</code> the conveniences built on them (using <code>Std.XUtils</code> also gives everything of <code>Std.X</code>). Planned: <code>Std.DateTime</code> / <code>Std.DateUtils</code>, and <code>Std.SystemUtils</code> for system functions.</p>
 <p><code>Use Std.Debug</code> gives <code>Assert(Condition)</code> and <code>Assert(Condition, Message)</code>. When the condition is false the program stops at once, like an overflow: no handler catches it and no <code>ensure</code> runs. Assert is never compiled out.</p>
 <pre><code>Use Std.Debug
 
@@ -967,6 +968,19 @@ Main :
     RawMode(False)
 ;</code></pre>
 <p><code>examples/keys.inox</code> is this program.</p>
+</section>
+<section id="datetime-system"><h2>Dates and the system: Std.DateTime, Std.DateUtils, Std.SystemUtils</h2>
+<p><code>Use Std.DateTime</code> (canon r3.92) counts time in microseconds from 0001-01-01 on the proleptic Gregorian calendar: a <code>TDateTime</code> is an instant, a <code>TDate</code> a day number, a <code>TDuration</code> microseconds. They compare with <code>=</code>, <code>&lt;</code> and the other operators. <code>EncodeDate(Y, M, D)</code> and <code>EncodeDateTime(Y, M, D, H, N, S)</code> check their parts (a day that does not exist stops the program with "precondition violated"); <code>DecodeDate</code>, <code>Year</code>, <code>Month</code>, <code>Day</code>, <code>Hour</code>, <code>Minute</code>, <code>Second</code>, <code>MicroSecond</code> and <code>DayOfWeek</code> read them back; <code>AddDays</code>, <code>AddSeconds</code>, <code>DaysBetween</code>, <code>IsLeapYear</code> and <code>DaysInMonth</code> compute. There are two zones: <code>NowUTC</code> and <code>Now</code>, <code>ToLocal</code> and <code>ToUTC</code> for the system's zone. <code>Use Std.DateUtils</code> adds text: <code>ToISO8601(T)</code>, <code>FromISO8601(S)</code> (which raises <code>ConversionError</code> on text that is not a date) and <code>FormatDateTime(T, "dd/mm/yyyy hh:nn")</code> with Delphi's codes (<code>mm</code> is the month, <code>nn</code> the minutes).</p>
+<pre><code>Use Std.DateUtils
+
+Main :
+    Start := EncodeDateTime(2026, 10, 22, 9, 30, 0)
+    Due := AddDays(Start, 30)
+    PutLn(FormatDateTime(Due, "dd/mm/yyyy"), " is a ", DayOfWeek(Due))   == 21/11/2026 is a Saturday
+    PutLn(ToISO8601(Start), " ", DaysBetween(Start, Due), " days")
+;</code></pre>
+<p><code>Use Std.SystemUtils</code> gives <code>ParamCount</code> and <code>ParamStr(I)</code> (the command line: <code>inox run tool.inox A B</code> passes A and B), <code>GetEnv(Name)</code> and <code>EnvExists(Name)</code>, <code>Halt(Code)</code> (ends the program with that exit status, 0..255), <code>Sleep(Ms)</code>, <code>CurrentDir</code> and <code>PlatformName</code>. Text is UTF-8 on every system.</p>
+<p><code>examples/edit.inox</code> puts 0.3 together: a small editor in the manner of mg, with Emacs keys, which opens the file named on its command line (<code>inox run examples/edit.inox notes.txt</code>), saves with Ctrl+X Ctrl+S and quits with Ctrl+X Ctrl+C.</p>
 </section>
 <section id="arrays-sets-future"><h2>Arrays, vectors, ranges, enums, and sets</h2>
 <p>The 0.1 direction defines or reserves several Pascal/Ada-inspired aggregate concepts:</p>

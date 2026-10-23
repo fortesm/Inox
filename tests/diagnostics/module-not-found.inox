@@ -1,0 +1,16 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+
+== CANON-19: a module that is neither beside the program nor in the
+== standard library is an error (running other programs is after 1.0, so
+== there is no Std.Process).
+Use Std.Process
+
+Main :
+    PutLn(1)
+;

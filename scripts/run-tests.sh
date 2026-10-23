@@ -500,62 +500,62 @@ run_mode_exit_test --parse-only "$repo_root/tests/parser/valid/canonical-type-an
 run_mode_exit_test --parse-only "$repo_root/tests/parser/invalid/var-colon.inox" false
 
 run_llvm_emission_test "$repo_root/examples/empty.inox" \
-    "define i32 @main()" "ret i32 0"
+    "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/integer-function.inox" \
-    "define i64 @inox_sum" "%tmp0 = call i64 @__inox_add_i64(i64 %a, i64 %b)" "ret i64 %tmp0" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_sum" "%tmp0 = call i64 @__inox_add_i64(i64 %a, i64 %b)" "ret i64 %tmp0" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/function-call.inox" \
-    "define i64 @inox_sum" "define i64 @inox_double" "%tmp0 = call i64 @inox_sum(i64 %x, i64 %x)" "ret i64 %tmp0" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_sum" "define i64 @inox_double" "%tmp0 = call i64 @inox_sum(i64 %x, i64 %x)" "ret i64 %tmp0" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/local-variables.inox" \
-    "define i64 @inox_compute" "%a = alloca i64" "%b = alloca i64" "store i64 10, ptr %a" "store i64 20, ptr %b" "load i64, ptr %a" "load i64, ptr %b" "call i64 @__inox_add_i64" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_compute" "%a = alloca i64" "%b = alloca i64" "store i64 10, ptr %a" "store i64 20, ptr %b" "load i64, ptr %a" "load i64, ptr %b" "call i64 @__inox_add_i64" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/inline-typed-local.inox" \
-    "define i64 @inox_compute" "%a = alloca i64" "%b = alloca i64" "store i64 10, ptr %a" "store i64 20, ptr %b" "load i64, ptr %a" "load i64, ptr %b" "call i64 @__inox_add_i64" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_compute" "%a = alloca i64" "%b = alloca i64" "store i64 10, ptr %a" "store i64 20, ptr %b" "load i64, ptr %a" "load i64, ptr %b" "call i64 @__inox_add_i64" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/local-assignment.inox" \
-    "define i64 @inox_compute" "%a = alloca i64" "%b = alloca i64" "store i64 10, ptr %a" "store i64 20, ptr %b" "call i64 @__inox_add_i64" "call i64 @__inox_mul_i64" "store i64 %tmp0, ptr %a" "store i64 %tmp3, ptr %b" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_compute" "%a = alloca i64" "%b = alloca i64" "store i64 10, ptr %a" "store i64 20, ptr %b" "call i64 @__inox_add_i64" "call i64 @__inox_mul_i64" "store i64 %tmp0, ptr %a" "store i64 %tmp3, ptr %b" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/integer-operators.inox" \
-    "define i64 @inox_compute" "%tmp0 = call i64 @__inox_div_i64(i64 %a, i64 %b)" "call i64 @__inox_mod_i64" "call i64 @__inox_shl_i64" "call i64 @__inox_shr_i64" "and i64" "or i64" "xor i64" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_compute" "%tmp0 = call i64 @__inox_div_i64(i64 %a, i64 %b)" "call i64 @__inox_mod_i64" "call i64 @__inox_shl_i64" "call i64 @__inox_shr_i64" "and i64" "or i64" "xor i64" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/bool-comparisons.inox" \
-    "define i1 @inox_isgreater" "define i1 @inox_isequal" "define i1 @inox_isdifferent" "icmp sgt i64" "icmp eq i64" "icmp ne i64" "icmp slt i64" "icmp sle i64" "icmp sge i64" "ret i1" "define i32 @main()" "ret i32 0"
+    "define i1 @inox_isgreater" "define i1 @inox_isequal" "define i1 @inox_isdifferent" "icmp sgt i64" "icmp eq i64" "icmp ne i64" "icmp slt i64" "icmp sle i64" "icmp sge i64" "ret i1" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/bool-operators.inox" \
-    "define i1 @inox_both" "define i1 @inox_either" "define i1 @inox_different" "define i1 @inox_notpositive" "and i1" "or i1" "xor i1" "xor i1 %tmp0, true" "ret i1" "define i32 @main()" "ret i32 0"
+    "define i1 @inox_both" "define i1 @inox_either" "define i1 @inox_different" "define i1 @inox_notpositive" "and i1" "or i1" "xor i1" "xor i1 %tmp0, true" "ret i1" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/if-return.inox" \
-    "define i64 @inox_max" "icmp sgt i64" "br i1" "label %then0" "label %else0" "then0:" "else0:" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_max" "icmp sgt i64" "br i1" "label %then0" "label %else0" "then0:" "else0:" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/if-merge.inox" \
-    "define i64 @inox_maxplusone" "%m = alloca i64" "icmp sgt i64" "br i1" "label %then0" "label %else0" "then0:" "else0:" "br label %endif0" "endif0:" "store i64" "load i64" "call i64 @__inox_add_i64" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_maxplusone" "%m = alloca i64" "icmp sgt i64" "br i1" "label %then0" "label %else0" "then0:" "else0:" "br label %endif0" "endif0:" "store i64" "load i64" "call i64 @__inox_add_i64" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/while-loop.inox" \
-    "define i64 @inox_sumto" "whilecond0:" "whilebody0:" "whileend0:" "br i1" "br label %whilecond0" "icmp sgt i64" "call i64 @__inox_add_i64" "call i64 @__inox_sub_i64" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_sumto" "whilecond0:" "whilebody0:" "whileend0:" "br i1" "br label %whilecond0" "icmp sgt i64" "call i64 @__inox_add_i64" "call i64 @__inox_sub_i64" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/while-leave-continue.inox" \
-    "define i64 @inox_findfirstbelow" "whilecond0:" "whilebody0:" "whileend0:" "br i1" "br label %whilecond0" "br label %whileend0" "icmp eq i64" "call i64 @__inox_sub_i64" "store i64" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_findfirstbelow" "whilecond0:" "whilebody0:" "whileend0:" "br i1" "br label %whilecond0" "br label %whileend0" "icmp eq i64" "call i64 @__inox_sub_i64" "store i64" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/if-no-else.inox" \
-    "define i64 @inox_clamppositive" "%x = alloca i64" "icmp slt i64" "br i1" "label %then0" "label %endif0" "then0:" "br label %endif0" "endif0:" "store i64" "load i64" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_clamppositive" "%x = alloca i64" "icmp slt i64" "br i1" "label %then0" "label %endif0" "then0:" "br label %endif0" "endif0:" "store i64" "load i64" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/elif-return.inox" \
-    "define i64 @inox_compare" "icmp sgt i64" "icmp eq i64" "br i1" "elifcond0_0:" "elifthen0_0:" "ret i64 1" "ret i64 0" "ret i64 -1" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_compare" "icmp sgt i64" "icmp eq i64" "br i1" "elifcond0_0:" "elifthen0_0:" "ret i64 1" "ret i64 0" "ret i64 -1" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/repeat-flexible-end.inox" \
-    "define i64 @inox_countdown" "repeatbody" "repeatend" "br i1" "br label" "icmp" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_countdown" "repeatbody" "repeatend" "br i1" "br label" "icmp" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/repeat-flexible-start.inox" \
-    "define i64 @inox_countdown" "repeatbody" "repeatend" "br i1" "br label" "icmp" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_countdown" "repeatbody" "repeatend" "br i1" "br label" "icmp" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/repeat-flexible-middle.inox" \
-    "define i64 @inox_countdown" "repeatbody" "repeatend" "br i1" "br label" "icmp" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_countdown" "repeatbody" "repeatend" "br i1" "br label" "icmp" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/repeat-leave-continue.inox" \
-    "define i64 @inox_findvalue" "repeatbody" "repeatend" "br i1" "br label" "icmp eq i64" "call i64 @__inox_sub_i64" "store i64" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_findvalue" "repeatbody" "repeatend" "br i1" "br label" "icmp eq i64" "call i64 @__inox_sub_i64" "store i64" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/for-range-leave-continue.inox" \
-    "define i64 @inox_sumrange" "forcond" "forbody" "forstep" "forend" "br i1" "br label" "icmp sle i64" "icmp eq i64" "call i64 @__inox_add_i64" "@llvm.sadd.with.overflow.i64" "store i64" "load i64" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_sumrange" "forcond" "forbody" "forstep" "forend" "br i1" "br label" "icmp sle i64" "icmp eq i64" "call i64 @__inox_add_i64" "@llvm.sadd.with.overflow.i64" "store i64" "load i64" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 run_llvm_emission_test "$repo_root/examples/for-range-step.inox" \
-    "define i64 @inox_sumevenuntil" "forcond" "forbody" "forstep" "forend" "store i64 2, ptr %i" "icmp sle i64" "icmp eq i64" "call i64 @__inox_add_i64" "@__inox_for_step_i64(i64 2)" "@llvm.sadd.with.overflow.i64" "br i1" "br label" "ret i64" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_sumevenuntil" "forcond" "forbody" "forstep" "forend" "store i64 2, ptr %i" "icmp sle i64" "icmp eq i64" "call i64 @__inox_add_i64" "@__inox_for_step_i64(i64 2)" "@llvm.sadd.with.overflow.i64" "br i1" "br label" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 
 run_llvm_emission_test "$repo_root/examples/putln-integer.inox" \
-    "declare void @__inox_con_put_i64(i64)" "define i64 @inox_value" "define i32 @main()" "call void @__inox_runtime_init()" "call void @__inox_con_put_i64" "call void @__inox_con_put_newline()" "ret i32 0"
+    "declare void @__inox_con_put_i64(i64)" "define i64 @inox_value" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "call void @__inox_runtime_init(i32 %__inox.argc, ptr %__inox.argv)" "call void @__inox_con_put_i64" "call void @__inox_con_put_newline()" "ret i32 0"
 
 run_llvm_emission_test "$repo_root/examples/put-output-basic.inox" \
-    "@.inox.str." "call void @__inox_con_write(ptr @.inox.str." "call void @__inox_con_put_bool(i1 zeroext" "call void @__inox_con_put_newline()" "define i32 @main()" "ret i32 0"
+    "@.inox.str." "call void @__inox_con_write(ptr @.inox.str." "call void @__inox_con_put_bool(i1 zeroext" "call void @__inox_con_put_newline()" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 
 run_llvm_emission_test "$repo_root/examples/subroutine-calls.inox" \
-    "define i64 @inox_value" "define void @inox_report" "call void @inox_report" "ret void" "report=" "call void @__inox_con_write" "define i32 @main()" "ret i32 0"
+    "define i64 @inox_value" "define void @inox_report" "call void @inox_report" "ret void" "report=" "call void @__inox_con_write" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 
 run_llvm_emission_test "$repo_root/examples/struct-basic.inox" \
     "%tpoint = type { i64, i64 }" "define i64 @inox_sumpoint" "alloca %tpoint" "zeroinitializer" "getelementptr %tpoint" "store i64 10" "store i64 20" "load i64" "call i64 @__inox_add_i64" "call i64 @inox_sumpoint" "ret i32 0"
 
 run_llvm_emission_test "$repo_root/examples/associated-methods.inox" \
-    "%tpoint = type { i64, i64 }" "define void @inox_tpoint.move" "define i64 @inox_tpoint.sum" "ptr %self" "call void @inox_tpoint.move" "call i64 @inox_tpoint.sum" "getelementptr %tpoint" "ret void" "ret i64" "define i32 @main()" "ret i32 0"
+    "%tpoint = type { i64, i64 }" "define void @inox_tpoint.move" "define i64 @inox_tpoint.sum" "ptr %self" "call void @inox_tpoint.move" "call i64 @inox_tpoint.sum" "getelementptr %tpoint" "ret void" "ret i64" "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)" "ret i32 0"
 
 run_llvm_emission_test "$repo_root/examples/struct-field-defaults.inox" \
     "%tconfig = type { i64, i1 }" "define i64 @inox_getport" "alloca %tconfig" "zeroinitializer" "store i64 8080" "store i1 1" "getelementptr %tconfig" "load i64" "call i64 @inox_getport" "ret i32 0"
@@ -607,6 +607,15 @@ run_driver_command_tests() {
         record_pass "inox run without a file is an error"
     else
         record_fail "inox run without a file is an error"
+    fi
+    # r3.92 (D4): the words after the file are the program's arguments, and
+    # the status of Halt is kept.
+    output="$("$inox_exe" run "$repo_root/tests/integration/system/args.inox" "um arg" "ção" 2>/dev/null)"
+    local args_exit=$?
+    if [[ $args_exit -eq 2 && "$output" == $'1: um arg\n2: ção' ]]; then
+        record_pass "inox run passes arguments and keeps Halt's status"
+    else
+        record_fail "inox run passes arguments and keeps Halt's status" "exit code: $args_exit" "actual output: $output"
     fi
 }
 run_driver_command_tests

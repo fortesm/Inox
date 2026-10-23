@@ -1,0 +1,201 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Std.DateUtils: dates and times as text (change datetime-systemutils, canon
+== r3.92, decision D3 of Marcelo Fortes, 2026-10-21). It uses Std.DateTime
+== and gives everything of it.
+==
+==   ToISO8601(T) String          == 2026-10-22T05:57:30, then .ffffff when T has microseconds
+==   FromISO8601(S) TDateTime     == YYYY-MM-DD, optionally THH:MM, :SS, .f to .ffffff and Z;
+==                                == other text, or a date that does not exist, raises ConversionError
+==   FormatDateTime(T, Pattern) String
+==       the codes of Delphi: yyyy, yy, mm, m (month), dd, d, hh, h, nn, n
+==       (minutes), ss, s, zzz (milliseconds); text between single quotes is
+==       copied as it is, and so is any other character:
+==       FormatDateTime(T, "dd/mm/yyyy hh:nn") is 22/10/2026 05:57.
+Use Std.DateTime
+Use Std.StrUtils
+
+== N with at least Width digits, zeros on the left (N >= 0).
+ZeroPadded(N Integer, Width Integer) String :
+    Text := String(N)
+    while Length(Text) < Width
+        Text := "0" + Text
+    ;
+    Return Text
+;
+
+ToISO8601(T TDateTime) String :
+    Y Integer := 0
+    M Integer := 0
+    D Integer := 0
+    DecodeDate(T, Y, M, D)
+    Text := ZeroPadded(Y, 4) + "-" + ZeroPadded(M, 2) + "-" + ZeroPadded(D, 2) + "T" + ZeroPadded(Hour(T), 2) + ":" +
+            ZeroPadded(Minute(T), 2) + ":" + ZeroPadded(Second(T), 2)
+    if MicroSecond(T) # 0
+        Text += "." + ZeroPadded(MicroSecond(T), 6)
+    ;
+    Return Text
+;
+
+== The number written by the Count digits of S from position Start; any
+== other character raises ConversionError.
+DigitsAt(S String, Start Integer, Count Integer) Integer :
+    if Start + Count - 1 > Length(S)
+        Raise ConversionError
+    ;
+    Value Integer := 0
+    for I in Start..Start + Count - 1
+        C := CharAt(S, I)
+        if C < '0' or C > '9'
+            Raise ConversionError
+        ;
+        Value := Value * 10 + Integer(C) - Integer('0')
+    ;
+    Return Value
+;
+
+== Raises ConversionError unless S has the character C at position At.
+Expect(S String, At Integer, C Char) :
+    if At > Length(S)
+        Raise ConversionError
+    ;
+    if CharAt(S, At) # C
+        Raise ConversionError
+    ;
+;
+
+== Whether S has the character C at position At (and is that long): `and`
+== evaluates both operands, so the length is checked first here.
+CharIs(S String, At Integer, C Char) Bool :
+    Found Bool := False
+    if At <= Length(S)
+        Found := CharAt(S, At) = C
+    ;
+    Return Found
+;
+
+DigitAt(S String, At Integer) Bool :
+    Found Bool := False
+    if At <= Length(S)
+        Found := CharAt(S, At) >= '0' and CharAt(S, At) <= '9'
+    ;
+    Return Found
+;
+
+FromISO8601(S String) TDateTime :
+    Y := DigitsAt(S, 1, 4)
+    Expect(S, 5, '-')
+    M := DigitsAt(S, 6, 2)
+    Expect(S, 8, '-')
+    D := DigitsAt(S, 9, 2)
+    if Y < 1 or M < 1 or M > 12 or D < 1
+        Raise ConversionError
+    ;
+    if D > DaysInMonth(Y, M)
+        Raise ConversionError
+    ;
+    H Integer := 0
+    N Integer := 0
+    Sec Integer := 0
+    Micros Integer := 0
+    At Integer := 11
+    if CharIs(S, At, 'T')
+        H := DigitsAt(S, At + 1, 2)
+        Expect(S, At + 3, ':')
+        N := DigitsAt(S, At + 4, 2)
+        At := At + 6
+        if CharIs(S, At, ':')
+            Sec := DigitsAt(S, At + 1, 2)
+            At := At + 3
+            if CharIs(S, At, '.')
+                Digits Integer := 0
+                At := At + 1
+                while DigitAt(S, At) and Digits < 6
+                    Micros := Micros * 10 + Integer(CharAt(S, At)) - Integer('0')
+                    Digits += 1
+                    At := At + 1
+                ;
+                if Digits = 0
+                    Raise ConversionError
+                ;
+                while Digits < 6
+                    Micros := Micros * 10
+                    Digits += 1
+                ;
+            ;
+        ;
+        if H > 23 or N > 59 or Sec > 59
+            Raise ConversionError
+        ;
+    ;
+    if CharIs(S, At, 'Z')
+        At := At + 1
+    ;
+    if At <= Length(S)
+        Raise ConversionError
+    ;
+    Return TDateTime(Integer(EncodeDateTime(Y, M, D, H, N, Sec)) + Micros)
+;
+
+== The number of times the character at Start repeats (at most Limit).
+RunLength(Pattern String, Start Integer, Limit Integer) Integer :
+    C := CharAt(Pattern, Start)
+    Count Integer := 1
+    while Start + Count <= Length(Pattern) and Count < Limit
+        if CharAt(Pattern, Start + Count) # C
+            leave
+        ;
+        Count += 1
+    ;
+    Return Count
+;
+
+FormatDateTime(T TDateTime, Pattern String) String :
+    Y Integer := 0
+    M Integer := 0
+    D Integer := 0
+    DecodeDate(T, Y, M, D)
+    Text String := ""
+    At Integer := 1
+    while At <= Length(Pattern)
+        C := CharAt(Pattern, At)
+        Lower := LowerCase(C)
+        if C = '\''
+            == Text between single quotes is copied as it is.
+            At += 1
+            while At <= Length(Pattern) and not CharIs(Pattern, At, '\'')
+                Text += String(CharAt(Pattern, At))
+                At += 1
+            ;
+            At += 1
+        elif Lower = 'y'
+            Count := RunLength(Pattern, At, 4)
+            Text += IIf(Count >= 4, ZeroPadded(Y, 4), ZeroPadded(Y mod 100, 2))
+            At += IIf(Count >= 4, 4, Count)
+        elif Lower = 'm' or Lower = 'd' or Lower = 'h' or Lower = 'n' or Lower = 's'
+            Count := RunLength(Pattern, At, 2)
+            Value Integer := 0
+            case Lower
+                'm' Value := M
+                'd' Value := D
+                'h' Value := Hour(T)
+                'n' Value := Minute(T)
+                else Value := Second(T)
+            ;
+            Text += IIf(Count = 2, ZeroPadded(Value, 2), String(Value))
+            At += Count
+        elif Lower = 'z' and RunLength(Pattern, At, 3) = 3
+            Text += ZeroPadded(MicroSecond(T) div 1000, 3)
+            At += 3
+        else
+            Text += String(C)
+            At += 1
+        ;
+    ;
+    Return Text
+;

@@ -4,11 +4,11 @@
 == This Source Code Form is subject to the terms of the Mozilla Public
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-== CANON-18: Std.DateTime is a planned module; until its change, a Use of
-== it is not found.
+== r3.92 (D3): EncodeDate is checked: a day that does not exist in its month
+== breaks a precondition.
 Use Std.DateTime
 
 Main :
-    PutLn(1)
+    PutLn(EncodeDate(2024, 2, 29))
+    PutLn(EncodeDate(2026, 2, 29))
 ;

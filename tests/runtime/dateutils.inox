@@ -1,0 +1,34 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.92 (D3): Std.DateUtils writes and reads ISO 8601 and formats with the
+== codes of Delphi (mm month, nn minutes, zzz milliseconds, text in single
+== quotes); text that is not a date raises ConversionError.
+Use Std.DateUtils
+
+Parse(Text String) String :
+    Result String := "?"
+    try
+        Result := ToISO8601(FromISO8601(Text))
+    except
+        On ConversionError
+            Result := "ConversionError"
+        ;
+    ;
+    Return Result
+;
+
+Main :
+    T := EncodeDateTime(2026, 10, 22, 5, 7, 3)
+    PutLn(ToISO8601(T), " ", ToISO8601(T + 123456), " ", ToISO8601(DateTimeOf(EncodeDate(1, 1, 1))))
+    PutLn(FormatDateTime(T, "dd/mm/yyyy hh:nn"), " | ", FormatDateTime(T, "d/m/yy h:n:s"), " | ",
+          FormatDateTime(T + 250000, "yyyy-mm-dd'T'hh:nn:ss.zzz"), " | ", FormatDateTime(T, "'day' d, 'month' m"))
+    PutLn(Parse("2024-02-29"), " ", Parse("2024-02-29T23:59"), " ", Parse("2024-02-29T23:59:59.5Z"), " ",
+          Parse("9999-12-31T23:59:59.999999"))
+    PutLn(Parse("2026-02-29"), " ", Parse("2026-13-01"), " ", Parse("26-01-01"), " ", Parse("2026-01-01T24:00"), " ",
+          Parse("2026-01-01x"), " ", Parse("2026-01-01T10:00:00."))
+;

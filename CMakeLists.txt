@@ -31,7 +31,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/codegen/FunctionEmitterExceptions.cpp
     src/compiler/codegen/FunctionEmitterExpressions.cpp
     src/compiler/codegen/FunctionEmitterFiles.cpp
-    src/compiler/codegen/FunctionEmitterTerminal.cpp
+    src/compiler/codegen/FunctionEmitterIntrinsics.cpp
     src/compiler/codegen/FunctionEmitterDebug.cpp
     src/compiler/codegen/FunctionEmitterContracts.cpp
     src/compiler/codegen/FunctionEmitterPointers.cpp
@@ -57,7 +57,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticDeclarations.cpp
     src/compiler/semantic/SemanticExpressions.cpp
     src/compiler/semantic/SemanticFiles.cpp
-    src/compiler/semantic/SemanticTerminal.cpp
+    src/compiler/semantic/SemanticIntrinsics.cpp
     src/compiler/semantic/SemanticGenerics.cpp
     src/compiler/semantic/SemanticDebug.cpp
     src/compiler/semantic/SemanticReuse.cpp
@@ -89,6 +89,7 @@ add_library(inoxrt STATIC
     runtime/OwnRuntime.cpp
     runtime/StringRuntime.cpp
     runtime/StringFunctions.cpp
+    runtime/SystemRuntime.cpp
 )
 
 inox_apply_compiler_options(inoxrt)

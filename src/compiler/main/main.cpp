@@ -435,8 +435,8 @@ enum class Command {
 };
 
 constexpr const char* kUsage =
-    "usage: inox <file.inox>              build and run the program\n"
-    "       inox run <file.inox>          build and run the program\n"
+    "usage: inox <file.inox> [args]       build and run the program, giving it args\n"
+    "       inox run <file.inox> [args]   build and run the program, giving it args\n"
     "       inox build <file.inox>        build the program, print the executable path\n"
     "       inox check <file.inox>        parse and check the program\n"
     "       inox emit-llvm <file.inox>    print the LLVM IR\n"
@@ -485,11 +485,22 @@ int main(int argc, char** argv)
 
     Command command = Command::Run;
     const char* sourcePath = nullptr;
-    if (argc == 3 && commandFromWord(first, command)) {
+    // D4 (r3.92): `inox run file.inox A B` and `inox file.inox A B` give the
+    // words after the file to the program (ParamStr).
+    std::vector<std::string> programArguments;
+    if (argc >= 3 && commandFromWord(first, command)) {
         sourcePath = argv[2];
-    } else if (argc == 2 && !first.empty() && first[0] != '-' && !commandFromWord(first, command)) {
+        if (argc > 3) {
+            if (command != Command::Run) {
+                std::cerr << kUsage;
+                return 1;
+            }
+            programArguments.assign(argv + 3, argv + argc);
+        }
+    } else if (argc >= 2 && !first.empty() && first[0] != '-' && !commandFromWord(first, command)) {
         command = Command::Run;
         sourcePath = argv[1];
+        programArguments.assign(argv + 2, argv + argc);
     } else {
         std::cerr << kUsage;
         return 1;
@@ -540,8 +551,9 @@ int main(int argc, char** argv)
         } else if (build || run) {
             const BuildArtifacts artifacts = buildProgram(fs::path(sourcePath), *module, semanticResult, executableDir);
             if (run) {
-                const int programExit = inox::compiler::support::runProcess(
-                    { artifacts.executable.string() }, false);
+                std::vector<std::string> programCommand{artifacts.executable.string()};
+                programCommand.insert(programCommand.end(), programArguments.begin(), programArguments.end());
+                const int programExit = inox::compiler::support::runProcess(programCommand, false);
                 if (programExit == inox::compiler::codegen::kRuntimeFaultExitStatus) {
                     // The program already printed "Inox runtime error: <category>".
                     std::cerr << "inox: program stopped by an Inox runtime error (exit code "
@@ -549,11 +561,11 @@ int main(int argc, char** argv)
                     return 1;
                 }
                 if (programExit != 0) {
-                    // Distinguish "the program failed at run time" (crash, abort, non-zero
-                    // exit) from a compile error, which also exits with 1.
-                    std::cerr << "inox: program terminated abnormally (exit code "
-                              << programExit << ")\n";
-                    return 1;
+                    // Distinguish "the program failed at run time" (a crash, an abort,
+                    // Halt(Code)) from a compile error; the program's own status is
+                    // kept for a script (r3.92), 1 when it has none.
+                    std::cerr << "inox: program exited with code " << programExit << "\n";
+                    return programExit > 0 && programExit <= 255 ? programExit : 1;
                 }
                 return 0;
             }

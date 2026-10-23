@@ -311,8 +311,8 @@ void FunctionEmitter::emitAssignmentOrCallStatement(const ast::Expression& expre
 
 void FunctionEmitter::emitExpressionStatement(const ast::Expression& expression)
 {
-    if (const semantic::TerminalSignature* terminal = terminalCallOf(expression)) {
-        emitTerminalCall(expression, *terminal);
+    if (const semantic::ModuleIntrinsic* terminal = intrinsicCallOf(expression)) {
+        emitIntrinsicCall(expression, *terminal);
         return;
     }
     if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {

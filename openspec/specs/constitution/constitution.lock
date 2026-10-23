@@ -116,8 +116,8 @@ spec.md#CANON-17 Text in files	1a59a7ef5bb0ee53	constitution
 spec.md#CANON-17 File system functions	b0aa61e9bafcb323	constitution
 spec.md#CANON-17 File errors are exceptions	bc7b1e4c7018bea9	constitution
 spec.md#CANON-18 Library principles	247dc55ac8637e02	module-pairs
-spec.md#CANON-18 Library modules	beec926070dd2dd6	decimals
-spec.md#CANON-18 Planned modules	43d3d141085e2584	numbers-text
+spec.md#CANON-18 Library modules	3ec3d16f901ce61b	datetime-systemutils
+spec.md#CANON-18 Planned modules	9b116f6d28c62302	datetime-systemutils
 spec.md#CANON-19 Run-time faults are traps	b35d7570f0992acd	constitution
 spec.md#CANON-19 Compile-time faults	bf1622e491bf380a	constitution
 spec.md#CANON-19 Trap categories	ec48b18fe4534d53	decimals
@@ -133,7 +133,7 @@ spec.md#CANON-21 Test layers	3dd5f11b490b5d34	constitution
 spec.md#CANON-23 LLVM backend and the clang driver	7017ebec86d19fdf	constitution
 spec.md#CANON-23 Lowering rules	a2d41e406c3ccf63	constitution
 spec.md#CANON-23 Valid IR or a clear stop	b65face9199b56ba	constitution
-spec.md#CANON-23 Driver commands	c12adc30bfb52519	driver-commands
+spec.md#CANON-23 Driver commands	e9b4dbcb3de5ddad	datetime-systemutils
 spec.md#CANON-24 Design by contract	44eb53736bce7681	design-by-contract
 spec.md#CANON-24 Old and Result	ae9cb1852f6c7ede	design-by-contract
 spec.md#CANON-24 Struct invariants	98e810a4ab5089d2	design-by-contract

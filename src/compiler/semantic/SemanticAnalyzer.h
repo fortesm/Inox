@@ -8,7 +8,7 @@
 #pragma once
 
 #include "SemanticResult.h"
-#include "StdTerminal.h"
+#include "StdIntrinsics.h"
 #include "../ast/Ast.h"
 #include "../types/TypeSyntax.h"
 
@@ -271,12 +271,12 @@ private:
     // (ReadLn with no argument is the console prelude function).
     static bool isFileFunction(std::string_view name, std::size_t argumentCount);
     TypeRef analyzeFileCall(std::string_view name, const ast::CallExpression& call);
-    // Std.Terminal (SemanticTerminal.cpp, change console-abi-terminal).
-    void declareTerminalNames(const ast::ModuleNode& module);
-    const TerminalSignature* terminalFunction(std::string_view name) const;
-    TypeRef terminalResultType(const TerminalSignature& function);
-    TypeRef analyzeTerminalIdentifier(const ast::IdentifierExpression& identifier, const TerminalSignature& function);
-    TypeRef analyzeTerminalCall(const ast::CallExpression& call, const TerminalSignature& function);
+    // Std.Terminal (SemanticIntrinsics.cpp, change console-abi-terminal).
+    void declareModuleIntrinsics(const ast::ModuleNode& module);
+    const ModuleIntrinsic* moduleIntrinsic(std::string_view name) const;
+    TypeRef intrinsicResultType(const ModuleIntrinsic& function);
+    TypeRef analyzeIntrinsicIdentifier(const ast::IdentifierExpression& identifier, const ModuleIntrinsic& function);
+    TypeRef analyzeIntrinsicCall(const ast::CallExpression& call, const ModuleIntrinsic& function);
     // Whether the module that declares this file function is used.
     bool fileFunctionVisible(std::string_view name) const;
     // Std.Strings / Std.StrUtils (change std-strings; SemanticStrings.cpp).
@@ -355,7 +355,8 @@ private:
     bool hasMain_ = false;
     bool filesVisible_ = false;    // Std.Files: the File type and the basic operations
     bool ioUtilsVisible_ = false;  // Std.IOUtils: the conveniences (it uses Std.Files)
-    bool terminalVisible_ = false;  // the program uses Std.Terminal
+    // The modules whose intrinsics the program sees (Std.Terminal, ...).
+    std::unordered_set<std::string> intrinsicModules_;
     bool mathVisible_ = false;      // the program uses Std.Math (Round, Trunc)
     bool debugVisible_ = false;    // the program uses Std.Debug (Assert)
     bool stringsVisible_ = false;  // Std.Strings: Length, Substr, Pos, case

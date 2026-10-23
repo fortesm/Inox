@@ -12,7 +12,7 @@
 #include "SemanticAnalyzer.h"
 
 #include "SemanticSupport.h"
-#include "StdTerminal.h"
+#include "StdIntrinsics.h"
 
 #include <string>
 #include <string_view>
@@ -21,53 +21,56 @@ namespace inox::compiler::semantic {
 
 using namespace detail;
 
-void SemanticAnalyzer::declareTerminalNames(const ast::ModuleNode& module)
+void SemanticAnalyzer::declareModuleIntrinsics(const ast::ModuleNode& module)
 {
-    terminalVisible_ = usesModule(module, "Std.Terminal");
-    if (!terminalVisible_) {
-        return;
-    }
-    for (const TerminalSignature& function : kTerminalFunctions) {
+    intrinsicModules_.clear();
+    for (const ModuleIntrinsic& function : kModuleIntrinsics) {
+        if (!usesModule(module, function.module)) {
+            continue;
+        }
+        intrinsicModules_.insert(std::string(function.module));
         if (!symbols_.globalScope().containsLocal(function.name)) {
             symbols_.globalScope().declare(std::string(function.name), SymbolKind::Builtin);
         }
     }
 }
 
-const TerminalSignature* SemanticAnalyzer::terminalFunction(std::string_view name) const
+const ModuleIntrinsic* SemanticAnalyzer::moduleIntrinsic(std::string_view name) const
 {
-    return terminalVisible_ ? findTerminalFunction(name) : nullptr;
+    const ModuleIntrinsic* function = findModuleIntrinsic(name);
+    return function != nullptr && intrinsicModules_.contains(std::string(function->module)) ? function : nullptr;
 }
 
-TypeRef SemanticAnalyzer::terminalResultType(const TerminalSignature& function)
+TypeRef SemanticAnalyzer::intrinsicResultType(const ModuleIntrinsic& function)
 {
     if (function.result == "Void") {
         return types().voidType();
     }
     const TypeRef type = types().lookup(std::string(function.result));
     if (type == nullptr) {
-        throw SemanticError(std::string(function.result) + " is not declared: Std.Terminal was not loaded");
+        throw SemanticError(std::string(function.result) + " is not declared: " + std::string(function.module) +
+                            " was not loaded");
     }
     return type;
 }
 
 // `ReadKey`, `ScreenSize`, `ClearScreen`, ...: a routine without arguments
 // is called without parentheses.
-TypeRef SemanticAnalyzer::analyzeTerminalIdentifier(const ast::IdentifierExpression& identifier,
-                                                    const TerminalSignature& function)
+TypeRef SemanticAnalyzer::analyzeIntrinsicIdentifier(const ast::IdentifierExpression& identifier,
+                                                    const ModuleIntrinsic& function)
 {
-    rejectInContract("the terminal routine " + std::string(function.name));
+    rejectInContract("the library routine " + std::string(function.name));
     if (function.parameterCount != 0) {
         throw SemanticError("function " + identifier.name() +
                             " requires arguments; use parentheses only when passing arguments");
     }
     result_.bind(identifier, resolveOrThrow(identifier.name()));
-    return terminalResultType(function);
+    return intrinsicResultType(function);
 }
 
-TypeRef SemanticAnalyzer::analyzeTerminalCall(const ast::CallExpression& call, const TerminalSignature& function)
+TypeRef SemanticAnalyzer::analyzeIntrinsicCall(const ast::CallExpression& call, const ModuleIntrinsic& function)
 {
-    rejectInContract("the terminal routine " + std::string(function.name));
+    rejectInContract("the library routine " + std::string(function.name));
     const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
     const Symbol& symbol = resolveOrThrow(callee.name());
     result_.bind(callee, symbol);
@@ -83,9 +86,10 @@ TypeRef SemanticAnalyzer::analyzeTerminalCall(const ast::CallExpression& call, c
     }
     for (std::size_t index = 0; index < function.parameterCount; ++index) {
         const std::string_view expectedName = function.parameters[index];
-        const TypeRef expected = expectedName == "Integer" ? types().int64Type()
-                                 : expectedName == "Bool"  ? types().boolType()
-                                                           : types().lookup(std::string(expectedName));
+        const TypeRef expected = expectedName == "Integer"  ? types().int64Type()
+                                 : expectedName == "Bool"   ? types().boolType()
+                                 : expectedName == "String" ? types().stringType()
+                                                            : types().lookup(std::string(expectedName));
         const ast::Expression& argument = *call.arguments()[index];
         const TypeRef actual = analyzeExpressionFor(argument, expected);
         if (expected == nullptr || !canAssignValue(expected, actual, argument)) {
@@ -93,7 +97,7 @@ TypeRef SemanticAnalyzer::analyzeTerminalCall(const ast::CallExpression& call, c
                                 std::string(expectedName) + ", got " + types::nameOf(actual));
         }
     }
-    return terminalResultType(function);
+    return intrinsicResultType(function);
 }
 
 } // namespace inox::compiler::semantic

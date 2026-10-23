@@ -77,7 +77,7 @@ void SemanticAnalyzer::declareStandardModuleNames(const ast::ModuleNode& module)
         symbols_.globalScope().declare("Assert", SymbolKind::Builtin);
     }
     declareStringFunctionNames(module);
-    declareTerminalNames(module);
+    declareModuleIntrinsics(module);
     // Change decimals (r3.91, A3): Round and Trunc exist with Std.Math.
     mathVisible_ = usesModule(module, "Std.Math");
     for (const char* name : {"Round", "Trunc"}) {

@@ -633,80 +633,80 @@ Invoke-ModeExitTest `
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\empty.inox")) `
-    -RequiredFragments @("define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\integer-function.inox")) `
-    -RequiredFragments @("define i64 @inox_sum", "%tmp0 = call i64 @__inox_add_i64(i64 %a, i64 %b)", "ret i64 %tmp0", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_sum", "%tmp0 = call i64 @__inox_add_i64(i64 %a, i64 %b)", "ret i64 %tmp0", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\function-call.inox")) `
-    -RequiredFragments @("define i64 @inox_sum", "define i64 @inox_double", "%tmp0 = call i64 @inox_sum(i64 %x, i64 %x)", "ret i64 %tmp0", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_sum", "define i64 @inox_double", "%tmp0 = call i64 @inox_sum(i64 %x, i64 %x)", "ret i64 %tmp0", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\local-variables.inox")) `
-    -RequiredFragments @("define i64 @inox_compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "load i64, ptr %a", "load i64, ptr %b", "call i64 @__inox_add_i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "load i64, ptr %a", "load i64, ptr %b", "call i64 @__inox_add_i64", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\inline-typed-local.inox")) `
-    -RequiredFragments @("define i64 @inox_compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "load i64, ptr %a", "load i64, ptr %b", "call i64 @__inox_add_i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "load i64, ptr %a", "load i64, ptr %b", "call i64 @__inox_add_i64", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\local-assignment.inox")) `
-    -RequiredFragments @("define i64 @inox_compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "call i64 @__inox_add_i64", "call i64 @__inox_mul_i64", "store i64 %tmp0, ptr %a", "store i64 %tmp3, ptr %b", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_compute", "%a = alloca i64", "%b = alloca i64", "store i64 10, ptr %a", "store i64 20, ptr %b", "call i64 @__inox_add_i64", "call i64 @__inox_mul_i64", "store i64 %tmp0, ptr %a", "store i64 %tmp3, ptr %b", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\integer-operators.inox")) `
-    -RequiredFragments @("define i64 @inox_compute", "%tmp0 = call i64 @__inox_div_i64(i64 %a, i64 %b)", "call i64 @__inox_mod_i64", "call i64 @__inox_shl_i64", "call i64 @__inox_shr_i64", "and i64", "or i64", "xor i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_compute", "%tmp0 = call i64 @__inox_div_i64(i64 %a, i64 %b)", "call i64 @__inox_mod_i64", "call i64 @__inox_shl_i64", "call i64 @__inox_shr_i64", "and i64", "or i64", "xor i64", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\bool-comparisons.inox")) `
-    -RequiredFragments @("define i1 @inox_isgreater", "define i1 @inox_isequal", "define i1 @inox_isdifferent", "icmp sgt i64", "icmp eq i64", "icmp ne i64", "icmp slt i64", "icmp sle i64", "icmp sge i64", "ret i1", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i1 @inox_isgreater", "define i1 @inox_isequal", "define i1 @inox_isdifferent", "icmp sgt i64", "icmp eq i64", "icmp ne i64", "icmp slt i64", "icmp sle i64", "icmp sge i64", "ret i1", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\bool-operators.inox")) `
-    -RequiredFragments @("define i1 @inox_both", "define i1 @inox_either", "define i1 @inox_different", "define i1 @inox_notpositive", "and i1", "or i1", "xor i1", "xor i1 %tmp0, true", "ret i1", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i1 @inox_both", "define i1 @inox_either", "define i1 @inox_different", "define i1 @inox_notpositive", "and i1", "or i1", "xor i1", "xor i1 %tmp0, true", "ret i1", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\if-return.inox")) `
-    -RequiredFragments @("define i64 @inox_max", "icmp sgt i64", "br i1", "label %then0", "label %else0", "then0:", "else0:", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_max", "icmp sgt i64", "br i1", "label %then0", "label %else0", "then0:", "else0:", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\if-merge.inox")) `
-    -RequiredFragments @("define i64 @inox_maxplusone", "%m = alloca i64", "icmp sgt i64", "br i1", "label %then0", "label %else0", "then0:", "else0:", "br label %endif0", "endif0:", "store i64", "load i64", "call i64 @__inox_add_i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_maxplusone", "%m = alloca i64", "icmp sgt i64", "br i1", "label %then0", "label %else0", "then0:", "else0:", "br label %endif0", "endif0:", "store i64", "load i64", "call i64 @__inox_add_i64", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\while-loop.inox")) `
-    -RequiredFragments @("define i64 @inox_sumto", "whilecond0:", "whilebody0:", "whileend0:", "br i1", "br label %whilecond0", "icmp sgt i64", "call i64 @__inox_add_i64", "call i64 @__inox_sub_i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_sumto", "whilecond0:", "whilebody0:", "whileend0:", "br i1", "br label %whilecond0", "icmp sgt i64", "call i64 @__inox_add_i64", "call i64 @__inox_sub_i64", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\while-leave-continue.inox")) `
-    -RequiredFragments @("define i64 @inox_findfirstbelow", "whilecond0:", "whilebody0:", "whileend0:", "br i1", "br label %whilecond0", "br label %whileend0", "icmp eq i64", "call i64 @__inox_sub_i64", "store i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_findfirstbelow", "whilecond0:", "whilebody0:", "whileend0:", "br i1", "br label %whilecond0", "br label %whileend0", "icmp eq i64", "call i64 @__inox_sub_i64", "store i64", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\if-no-else.inox")) `
-    -RequiredFragments @("define i64 @inox_clamppositive", "%x = alloca i64", "icmp slt i64", "br i1", "label %then0", "label %endif0", "then0:", "br label %endif0", "endif0:", "store i64", "load i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_clamppositive", "%x = alloca i64", "icmp slt i64", "br i1", "label %then0", "label %endif0", "then0:", "br label %endif0", "endif0:", "store i64", "load i64", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\elif-return.inox")) `
-    -RequiredFragments @("define i64 @inox_compare", "icmp sgt i64", "icmp eq i64", "br i1", "elifcond0_0:", "elifthen0_0:", "ret i64 1", "ret i64 0", "ret i64 -1", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_compare", "icmp sgt i64", "icmp eq i64", "br i1", "elifcond0_0:", "elifthen0_0:", "ret i64 1", "ret i64 0", "ret i64 -1", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\repeat-flexible-end.inox")) `
-    -RequiredFragments @("define i64 @inox_countdown", "repeatbody", "repeatend", "br i1", "br label", "icmp", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_countdown", "repeatbody", "repeatend", "br i1", "br label", "icmp", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\repeat-flexible-start.inox")) `
-    -RequiredFragments @("define i64 @inox_countdown", "repeatbody", "repeatend", "br i1", "br label", "icmp", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_countdown", "repeatbody", "repeatend", "br i1", "br label", "icmp", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\repeat-flexible-middle.inox")) `
-    -RequiredFragments @("define i64 @inox_countdown", "repeatbody", "repeatend", "br i1", "br label", "icmp", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_countdown", "repeatbody", "repeatend", "br i1", "br label", "icmp", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\repeat-leave-continue.inox")) `
-    -RequiredFragments @("define i64 @inox_findvalue", "repeatbody", "repeatend", "br i1", "br label", "icmp eq i64", "call i64 @__inox_sub_i64", "store i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_findvalue", "repeatbody", "repeatend", "br i1", "br label", "icmp eq i64", "call i64 @__inox_sub_i64", "store i64", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\for-range-leave-continue.inox")) `
-    -RequiredFragments @("define i64 @inox_sumrange", "forcond", "forbody", "forstep", "forend", "br i1", "br label", "icmp sle i64", "icmp eq i64", "call i64 @__inox_add_i64", "@llvm.sadd.with.overflow.i64", "store i64", "load i64", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_sumrange", "forcond", "forbody", "forstep", "forend", "br i1", "br label", "icmp sle i64", "icmp eq i64", "call i64 @__inox_add_i64", "@llvm.sadd.with.overflow.i64", "store i64", "load i64", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\for-range-step.inox")) `
-    -RequiredFragments @("define i64 @inox_sumevenuntil", "forcond", "forbody", "forstep", "forend", "store i64 2, ptr %i", "icmp sle i64", "icmp eq i64", "call i64 @__inox_add_i64", "@__inox_for_step_i64(i64 2)", "@llvm.sadd.with.overflow.i64", "br i1", "br label", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_sumevenuntil", "forcond", "forbody", "forstep", "forend", "store i64 2, ptr %i", "icmp sle i64", "icmp eq i64", "call i64 @__inox_add_i64", "@__inox_for_step_i64(i64 2)", "@llvm.sadd.with.overflow.i64", "br i1", "br label", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\putln-integer.inox")) `
-    -RequiredFragments @("declare void @__inox_con_put_i64(i64)", "define i64 @inox_value", "define i32 @main()", "call void @__inox_runtime_init()", "call void @__inox_con_put_i64", "call void @__inox_con_put_newline()", "ret i32 0")
+    -RequiredFragments @("declare void @__inox_con_put_i64(i64)", "define i64 @inox_value", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "call void @__inox_runtime_init(i32 %__inox.argc, ptr %__inox.argv)", "call void @__inox_con_put_i64", "call void @__inox_con_put_newline()", "ret i32 0")
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\put-output-basic.inox")) `
-    -RequiredFragments @("@.inox.str.", "call void @__inox_con_write(ptr @.inox.str.", "call void @__inox_con_put_bool(i1 zeroext", "call void @__inox_con_put_newline()", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("@.inox.str.", "call void @__inox_con_write(ptr @.inox.str.", "call void @__inox_con_put_bool(i1 zeroext", "call void @__inox_con_put_newline()", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\subroutine-calls.inox")) `
-    -RequiredFragments @("define i64 @inox_value", "define void @inox_report", "call void @inox_report", "ret void", "report=", "call void @__inox_con_write", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("define i64 @inox_value", "define void @inox_report", "call void @inox_report", "ret void", "report=", "call void @__inox_con_write", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\struct-basic.inox")) `
@@ -714,7 +714,7 @@ Invoke-LlvmEmissionTest `
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\associated-methods.inox")) `
-    -RequiredFragments @("%tpoint = type { i64, i64 }", "define void @inox_tpoint.move", "define i64 @inox_tpoint.sum", "ptr %self", "call void @inox_tpoint.move", "call i64 @inox_tpoint.sum", "getelementptr %tpoint", "ret void", "ret i64", "define i32 @main()", "ret i32 0")
+    -RequiredFragments @("%tpoint = type { i64, i64 }", "define void @inox_tpoint.move", "define i64 @inox_tpoint.sum", "ptr %self", "call void @inox_tpoint.move", "call i64 @inox_tpoint.sum", "getelementptr %tpoint", "ret void", "ret i64", "define i32 @main(i32 %__inox.argc, ptr %__inox.argv)", "ret i32 0")
 
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "examples\struct-field-defaults.inox")) `
@@ -803,6 +803,15 @@ if ($LASTEXITCODE -ne 0) {
     $passed++; Write-Host "[PASS] inox run without a file is an error"
 } else {
     $failed++; Write-Host "[FAIL] inox run without a file is an error"
+}
+# r3.92 (D4): the words after the file are the program's arguments, and the
+# status of Halt is kept.
+$argsOutput = (& $InoxExe "run" (Join-Path $repoRoot "tests/integration/system/args.inox") "um arg" "dois" 2>$null | Out-String) -replace "`r`n", "`n"
+$argsExit = $LASTEXITCODE
+if ($argsExit -eq 2 -and $argsOutput.TrimEnd("`n") -eq "1: um arg`n2: dois") {
+    $passed++; Write-Host "[PASS] inox run passes arguments and keeps Halt's status"
+} else {
+    $failed++; Write-Host "[FAIL] inox run passes arguments and keeps Halt's status"; Write-Host "       exit code: $argsExit"; Write-Host "       actual output: $argsOutput"
 }
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\typed-ensure.inox")) `
