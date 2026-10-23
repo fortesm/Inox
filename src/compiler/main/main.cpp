@@ -363,9 +363,12 @@ struct BuildArtifacts {
     fs::path executable;
 };
 
+// r3.98 (CANON-23): a program is optimized (-O2) unless built with --debug
+// (-O0). Optimization never changes what a program does: the IR has no
+// nsw/nuw flags and every check traps explicitly, so -O2 keeps them.
 BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module,
                             const inox::compiler::semantic::SemanticResult& semantics,
-                            const fs::path& executableDir)
+                            const fs::path& executableDir, bool debug)
 {
     if (!clangExists()) {
         throw std::runtime_error(
@@ -400,8 +403,8 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
         throw std::runtime_error(
             "libinoxrt was not found; set INOX_RUNTIME_LIB or keep the runtime library beside the Inox compiler");
     }
-    std::vector<std::string> clangArgs{"clang++", artifacts.llvmIr.string(), "-o", artifacts.executable.string(),
-                                       runtimeLibrary.string()};
+    std::vector<std::string> clangArgs{"clang++", debug ? "-O0" : "-O2", artifacts.llvmIr.string(), "-o",
+                                       artifacts.executable.string(), runtimeLibrary.string()};
     if (inox::compiler::support::hostOperatingSystem() != inox::compiler::support::OperatingSystem::Windows) {
         clangArgs.push_back("-lm");
     }
@@ -438,6 +441,7 @@ constexpr const char* kUsage =
     "usage: inox <file.inox> [args]       build and run the program, giving it args\n"
     "       inox run <file.inox> [args]   build and run the program, giving it args\n"
     "       inox build <file.inox>        build the program, print the executable path\n"
+    "       --debug before the file       build without optimization (-O0); the default is -O2\n"
     "       inox check <file.inox>        parse and check the program\n"
     "       inox emit-llvm <file.inox>    print the LLVM IR\n"
     "       inox help                     print this help\n"
@@ -471,6 +475,22 @@ bool commandFromWord(const std::string& word, Command& command)
 
 int main(int argc, char** argv)
 {
+    // r3.98: `--debug` before the file (`inox --debug f.inox`, `inox run
+    // --debug f.inox`) builds without optimization; it is removed here.
+    bool debug = false;
+    std::vector<char*> arguments(argv, argv + argc);
+    // Only before the file: in `inox f.inox --debug`, the word is the
+    // program's argument.
+    Command ignored = Command::Run;
+    const std::size_t position =
+        arguments.size() > 2 && commandFromWord(arguments[1], ignored) ? 2 : 1;
+    if (arguments.size() > position && std::string(arguments[position]) == "--debug") {
+        debug = true;
+        arguments.erase(arguments.begin() + static_cast<std::ptrdiff_t>(position));
+    }
+    argc = static_cast<int>(arguments.size());
+    argv = arguments.data();
+
     const std::string first = argc > 1 ? argv[1] : "";
     if (argc == 2 && (first == "version" || first == "--version")) {
         std::cout << "inox " << inox::compiler::support::versionText() << ' '
@@ -549,7 +569,8 @@ int main(int argc, char** argv)
         if (emitLlvm) {
             std::cout << inox::compiler::codegen::LlvmIrEmitter().emit(*module, semanticResult);
         } else if (build || run) {
-            const BuildArtifacts artifacts = buildProgram(fs::path(sourcePath), *module, semanticResult, executableDir);
+            const BuildArtifacts artifacts =
+                buildProgram(fs::path(sourcePath), *module, semanticResult, executableDir, debug);
             if (run) {
                 std::vector<std::string> programCommand{artifacts.executable.string()};
                 programCommand.insert(programCommand.end(), programArguments.begin(), programArguments.end());

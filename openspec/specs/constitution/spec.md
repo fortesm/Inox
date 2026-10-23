@@ -1685,8 +1685,8 @@ LLVM or clang. Replacing clang follows `engineering.md` E22.
 ### Requirement: CANON-23 Lowering rules
 Integer `/` SHALL lower to `sdiv` (`udiv` for UInt64), `rem` to `srem` and
 `mod` to `srem` corrected to the divisor's sign (`urem` for both on UInt64),
-through the checked helpers; real `/` to `fdiv`; no `nsw`/`nuw` flags until the overflow and optimization policy
-allow them. Structs may lower to LLVM aggregates and receivers to pointers;
+through the checked helpers; real `/` to `fdiv`; no `nsw`/`nuw` flags: a
+check is an explicit trap, never poison the optimizer may use (r3.98). Structs may lower to LLVM aggregates and receivers to pointers;
 neither changes value semantics.
 
 #### Scenario: Emitted IR
@@ -1718,6 +1718,18 @@ arguments, and a run ends with the program's exit status (r3.92).
 #### Scenario: Arguments and status
 - **WHEN** `inox run args.inox "um arg" "dois"` runs a program that prints its arguments and halts with their count
 - **THEN** it prints both and the run ends with status 2 (scripts/run-tests.sh, scripts/run-tests.ps1: "inox run passes arguments and keeps Halt's status", tests/integration/system/args.inox)
+
+### Requirement: CANON-23 Optimization
+`inox run`, `inox build` and `inox file.inox` SHALL build an optimized
+program (clang -O2) by default; `--debug` before the file builds it without
+optimization (-O0), and after the file it is the program's argument (r3.98).
+Optimization never changes what a program does: the IR has no `nsw`/`nuw`
+flags and every check traps explicitly. Optimization chosen in the source
+for LLVM is a later design.
+
+#### Scenario: Optimized and debug builds
+- **WHEN** the whole suite runs optimized, and a run with `--debug` passes `--debug` after the file, computes 157 expressions and traps
+- **THEN** every result, trap and diagnostic is the same (scripts/run-tests.sh, scripts/run-tests.ps1: "inox run --debug builds without optimization; --debug after the file is an argument", "inox --debug: math-expressions gives the same values without optimization", "inox run --debug: a trap stops the program without optimization")
 
 ### Requirement: CANON-24 Design by contract
 Routines and structs SHALL carry Eiffel's contracts (Marcelo Fortes,

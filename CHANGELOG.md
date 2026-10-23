@@ -12,6 +12,9 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 
 ## 0.3.0 pre-alpha — in progress
 
+### Changed
+- Programs are optimized by default (canon r3.98, CANON-23, change `optimize-default`): `inox run`, `inox build` and `inox file.inox` call clang with `-O2`, and `--debug` before the file builds with `-O0`. Before, every program was built without optimization: an arithmetic loop of 300 million steps took 1.99 s and now takes 0.41 s, the time of the same loop in C -O2. Checks are unchanged.
+
 ### Fixed
 - `shl` on an Integer dropped the bits that left Int64 silently (`(2 ^ 62) shl 2` was 0); it is now the product A * 2^N, checked as on UInt64: a constant beyond Int64 is a compile error, a run-time one stops with "integer overflow" (canon r3.97, CANON-8, change `expression-checks`). Found by the new expression test.
 - `4(5 * (2 + 2))` and `(2 + 3)(4)` were accepted by the analyzer as calls and failed only in code generation; they are now rejected naming the `*` to write, as is `X(2)` for a variable (change `expression-checks`). `1 < X < 10` gets a message that comparisons are not chained.
