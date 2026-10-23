@@ -12,6 +12,9 @@ Main :
     C Integer := -16
     D Integer := 2
     PutLn(C shr D)
+    == r3.97: 1 shl 63 leaves Int64 (tests/runtime/shl-overflow.inox); -1 shl 63
+    == is Int64.Min, a valid product.
     E Integer := 63
-    PutLn(A shl E)
+    M Integer := -1
+    PutLn(M shl E)
 ;

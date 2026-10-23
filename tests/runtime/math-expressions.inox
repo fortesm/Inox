@@ -13,7 +13,7 @@
 == group passes each number through I(...) or F(...), so they are computed
 == at run time. The expected values were computed by the independent oracle
 == of tools/calc_differential_test.py, not by Inox; the randomized part of the
-== same test runs in the E19 gates.
+== same test runs in the E19 gates. `shl` is A * 2^N, checked (r3.97).
 Use Std.Math
 
 I(X Integer) Integer :
@@ -116,6 +116,11 @@ Main :
     PutLn(-7 shr 1)
     PutLn(-1 shr 63)
     PutLn(1 shl 62)
+    PutLn(-1 shl 1)
+    PutLn(-3 shl 4)
+    PutLn(-1 shl 63)
+    PutLn((2 ^ 61) shl 1)
+    PutLn(I(-5) shl I(60))
     PutLn(12 bitand 10)
     PutLn(12 bitor 10)
     PutLn(12 bitxor 10)
@@ -190,4 +195,5 @@ Main :
     PutLn(F(2.0) ^ F(0.5))
     PutLn(I(1) < I(2) and I(2) < I(3))
     PutLn(Sqr(I(-9)) - Abs(I(-81)))
+
 ;

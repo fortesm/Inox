@@ -12,7 +12,15 @@ faça muito mais testes com expressões matemáticas para testar."
 
 Risk: low (diagnostics and tests; valid programs get the same IR).
 
-Status: **implemented** (no canon revision: the law is unchanged).
+Decision on the open point (Marcelo Fortes, 2026-10-23): "colho a opção 1:
+shl deve detectar overflow tanto em Integer quanto em UInt64. [...] A regra
+deve ser uniforme: nenhuma operação de deslocamento à esquerda poderá perder
+informação silenciosamente. [...] Operações de deslocamento com
+truncamento modular, quando disponibilizadas, deverão possuir nomes e
+contratos distintos. Recomendo corrigir Integer shl no mesmo PR dos testes
+que identificaram o problema".
+
+Status: **implemented** (canon r3.97).
 
 ## What Changes
 
@@ -39,10 +47,13 @@ Status: **implemented** (no canon revision: the law is unchanged).
    implicit-product-number, -real, -group, -variable, literal-called,
    comparison-chained. New capability spec `language/expressions`.
 
-## Open point (found by the new test)
-
-`shl` on a signed integer drops the bits that leave Int64 silently (`(2 ^
-62) shl 2` is 0), at run time and in constant folding, while on UInt64 it
-stops with "integer overflow", and CANON-8 says overflow is never silent.
-The test does not generate that case until the maintainer decides: trap as
-UInt64 does, or define `shl` as a bit operation that drops bits.
+5. **Checked `shl` (r3.97).** Found by the new test: `shl` on an Integer
+   dropped the bits that left Int64 (`(2 ^ 62) shl 2` was 0), at run time
+   and in constant folding, while UInt64 stopped with "integer overflow".
+   Now `A shl N` is A * 2^N on both: the helper shifts with a count already
+   checked 0..63 (no LLVM poison), shifts back arithmetically and traps
+   "integer overflow" unless it gets A; constant folding does the same and
+   reports "constant integer overflow in shift". New CANON-8 requirement
+   "Checked left shift", CANON-19 updated. Tests shl-checked, shl-overflow,
+   shl-overflow-negative, shl-byte-overflow, const-shl-overflow; the oracle
+   checks `shl` and generates counts up to 63.

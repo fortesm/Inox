@@ -13,6 +13,7 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 ## 0.3.0 pre-alpha — in progress
 
 ### Fixed
+- `shl` on an Integer dropped the bits that left Int64 silently (`(2 ^ 62) shl 2` was 0); it is now the product A * 2^N, checked as on UInt64: a constant beyond Int64 is a compile error, a run-time one stops with "integer overflow" (canon r3.97, CANON-8, change `expression-checks`). Found by the new expression test.
 - `4(5 * (2 + 2))` and `(2 + 3)(4)` were accepted by the analyzer as calls and failed only in code generation; they are now rejected naming the `*` to write, as is `X(2)` for a variable (change `expression-checks`). `1 < X < 10` gets a message that comparisons are not chained.
 
 ### Tests

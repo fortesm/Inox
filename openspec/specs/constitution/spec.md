@@ -760,6 +760,18 @@ word of Inox (r3.95).
 - **WHEN** a program divides integers of every kind, reals and decimals with `/`, uses `/=` on an Integer and names a variable `div`
 - **THEN** each gives its type's division (tests/runtime/integer-slash.inox); an Integer and a Float are rejected (tests/diagnostics/slash-mixed-types.inox); `A div 2` is a parse error (tests/diagnostics/div-is-a-name.inox)
 
+### Requirement: CANON-8 Checked left shift
+`A shl N` SHALL be the product A * 2^N, on signed and unsigned integers
+alike, whenever it is representable in A's type (`-1 shl 1` is -2, `1 shl
+63` fits a UInt64, not an Integer); otherwise it is a compile error for a
+constant and a trap at run time, never lost bits (r3.97). N is checked
+apart: 0..63. A shift that drops bits on purpose would be a distinct,
+named operation.
+
+#### Scenario: Shifts that fit and shifts that do not
+- **WHEN** values of every sign are shifted within their type, a constant leaves Int64, and run-time shifts leave Int64, Int64.Min and a Byte
+- **THEN** the first print A * 2^N (tests/runtime/shl-checked.inox), the second is rejected (tests/diagnostics/const-shl-overflow.inox) and the others trap (tests/runtime/shl-overflow.inox, tests/runtime/shl-overflow-negative.inox, tests/runtime/shl-byte-overflow.inox)
+
 ### Requirement: CANON-8 Modulus and remainder
 As in Ada (r3.96), `A mod B` SHALL have the sign of B and `A rem B` the
 sign of A, with A = (A / B) * B + A rem B: `-7 mod 2` is 1, `-7 rem 2` is
@@ -1571,7 +1583,8 @@ character or a key past the end) (r3.88, r3.89, r3.91).
 
 ### Requirement: CANON-19 What traps
 These operations SHALL trap: `+ - *`, unary `-` and `Abs` on overflow;
-integer `/`, `mod` and `rem` by zero and `Int64.Min / -1`; a shift outside 0..width-1; `^`
+integer `/`, `mod` and `rem` by zero and `Int64.Min / -1`; a shift outside
+0..width-1 and a `shl` beyond its type; `^`
 on overflow or with a negative exponent; a `for` step <= 0; a conversion or
 store outside the target range; an index or slice bound outside its array;
 a String position, count or width outside what the function accepts.

@@ -56,6 +56,7 @@ spec.md#CANON-8 Exact decimals	5d41477899035b08	decimals
 spec.md#CANON-8 Decimal arithmetic	cab774647b777091	ada-modulus
 spec.md#CANON-8 Decimal conversions	677ed7760f80725b	decimals
 spec.md#CANON-8 Operators	6cbe5031eab78788	ada-modulus
+spec.md#CANON-8 Checked left shift	89d83b91355a0937	expression-checks
 spec.md#CANON-8 Modulus and remainder	5b169f3d6db18cac	ada-modulus
 spec.md#CANON-8 Overflow is never silent	614aba4ebbefff21	constitution
 spec.md#CANON-8 Division by zero and power	33b25bdf2d857453	ada-modulus
@@ -125,7 +126,7 @@ spec.md#CANON-19 Run-time faults are traps	b35d7570f0992acd	constitution
 spec.md#CANON-19 Compile-time faults	bba481c115a50489	integer-slash
 spec.md#CANON-19 Trap categories	ec48b18fe4534d53	decimals
 spec.md#CANON-19 Input trap categories	98bf25251b8ddc1e	decimals
-spec.md#CANON-19 What traps	75fbba69abea885d	ada-modulus
+spec.md#CANON-19 What traps	9e1fc4d6e0457c33	expression-checks
 spec.md#CANON-19 Compiler, library and runtime	c810ce0cc62b56be	console-abi-terminal
 spec.md#CANON-19 Compiler limits	2ea229dba96e0ae7	constitution
 spec.md#CANON-20 Operator precedence	1735231177adf8e3	constitution

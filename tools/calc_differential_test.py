@@ -18,8 +18,8 @@ the mixing rules) and evaluated with Inox's semantics:
   integers   Int64, checked: a case whose value leaves Int64 at any step is
              not generated (Inox would trap); `/` truncates toward zero, `mod`
              has the sign of the divisor and `rem` that of the dividend (r3.95,
-             r3.96, as in Ada); `^` needs an exponent >= 0; shifts 0..63, `shr`
-             arithmetic; bitand, bitor, bitxor, bitnot on two's complement
+             r3.96, as in Ada); `^` needs an exponent >= 0; shifts 0..63, `shl`
+             is A * 2^N and checked (r3.97), `shr` arithmetic; bitand, bitor, bitxor, bitnot on two's complement
   reals      Float64; `/` and `^` real; Std.Math functions
   Bool       comparisons, and, or, xor, not; IIf evaluates one branch
 
@@ -375,14 +375,8 @@ def evaluate(node):
             raise OracleError("shift count")
         if op == "shr":
             return ("int", a >> b)
-        if a < 0:
-            raise OracleError("shl of a negative value is not generated")
-        if not INT64_MIN <= a << b <= INT64_MAX:
-            # Open point (2026-10-23): Int64 `shl` drops the bits that leave
-            # the type, while UInt64 `shl` stops with "integer overflow"
-            # (CANON-8); until the maintainer decides, it is not generated.
-            raise OracleError("shl beyond Int64 is not generated")
-        return ("int", a << b)
+        # r3.97 (CANON-8): A shl N is A * 2^N, checked as any product.
+        return ("int", checked(a << b))
     if op == "bitand":
         return ("int", a & b)
     if op == "bitor":
@@ -523,7 +517,7 @@ class Gen:
             family = random.choice(["shift", "bitand", "bitor", "bitxor"])
             if family == "shift":
                 op = random.choice(["shl", "shr"])
-                count = (str(random.randint(0, 10)), 1)
+                count = (str(random.choice([random.randint(0, 10), random.randint(0, 63)])), 1)
                 left = self.int_expr(depth - 1)
                 return self.mixed_bitwise(op, left, count)
             return self.mixed_bitwise(family, self.int_expr(depth - 1), self.int_expr(depth - 1))
