@@ -426,16 +426,12 @@ not continue the expression of the previous line.
 `Type` SHALL have no `:` and no closing `;`, ending where the next module
 item starts; in it `Struct` and multi-line `Enum` close with `;`, `Range`
 and short `Enum` are single lines. `State` has no `:` and closes with `;`.
-`Const Name := Value` is one line. `State :`, `Name : Type` and `Var` blocks
-are rejected with a message showing the right form.
+`Const Name := Value` is one line. `State :` and `Name : Type` are rejected
+with a message showing the right form.
 
 #### Scenario: Sections without colon
 - **WHEN** a State section is written `State :`, misses its `;`, or declares `Name : Type`, or a Const declares `Const Name : Type`
 - **THEN** it is rejected (tests/diagnostics/state-with-colon.inox, tests/diagnostics/state-without-semicolon.inox, tests/diagnostics/state-legacy-colon.inox, tests/diagnostics/const-legacy-colon.inox)
-
-#### Scenario: Var is gone
-- **WHEN** a program writes a `Var` block, `mut var`, or a module `Var` section
-- **THEN** it is rejected (tests/diagnostics/var-block-removed.inox, tests/diagnostics/mut-var-removed.inox, tests/diagnostics/module-var-removed.inox, tests/invalid/invalid-031.inox)
 
 ### Requirement: CANON-5 Three declaration forms
 A local variable SHALL be declared inline, anywhere in a block, as `A := 5`
@@ -1903,7 +1899,7 @@ values.
 
 #### Scenario: mut stays reserved
 - **WHEN** a program writes `mut` before a name
-- **THEN** it is rejected (tests/diagnostics/mut-var-removed.inox)
+- **THEN** it is rejected (tests/diagnostics/mut-reserved.inox)
 
 ### Requirement: FUTURE Modules, variants and numbers
 `Export` visibility, interface/body separation and a package manager SHALL

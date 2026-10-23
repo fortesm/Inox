@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.93
+Canon revision: r3.94
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -398,3 +398,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   como erros de compilação. Aprovaria essa alteração em PR separado, com
   testes cobrindo chamada isolada, descarte explícito, variável não lida e
   descarte inválido." Change `discard-results`.
+- r3.94 (2026-10-23) — CANON-4: the migration diagnostic for the old `Var`
+  block, `Var X := ...` and a module `Var` section is removed; `Var` is an
+  ordinary name and such text fails with the generic message of any
+  unexpected text. `mut` stays reserved. Marcelo Fortes, 2026-10-23: "Deve
+  ser removido, ninguém usa Inox ainda, a não ser eu. A versão estável já
+  vai nascer sem var. Se esta palavra for digitada, o compilador deve se
+  comportar exatamente como qualquer outro identificador não reconhecido e
+  emitir uma mensagem genérica. Essa regra deve ser eliminada do cânone e
+  atualizado os .md do openspec". Change `remove-var-diagnostic`.
