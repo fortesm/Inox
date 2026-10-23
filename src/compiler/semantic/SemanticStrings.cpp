@@ -111,15 +111,18 @@ TypeRef SemanticAnalyzer::analyzeStringCall(const ast::CallExpression& call, con
         const char kind = info.parameters[index];
         const TypeRef expected = kind == 'S'   ? types().stringType()
                                  : kind == 'C' ? types().charType()
+                                 : kind == 'R' ? types().float64Type()
                                                : types().int64Type();
         const TypeRef actual = argumentTypes != nullptr ? (*argumentTypes)[index] : analyzeExpressionFor(argument, expected);
         const bool matches = kind == 'S'   ? actual != nullptr && actual->isString()
                              : kind == 'C' ? actual != nullptr && actual->isChar()
+                             : kind == 'R' ? actual != nullptr && actual->isFloat()
                                            : actual != nullptr && actual->isInteger();
         if (!matches) {
             throw SemanticError("argument " + std::to_string(index + 1) + " of " + name + " is " +
                                 (kind == 'S'   ? std::string("a String")
                                  : kind == 'C' ? std::string("a Char")
+                                 : kind == 'R' ? std::string("a Float or a Float32")
                                                : std::string("an integer")) +
                                 ", got " + types::nameOf(actual));
         }

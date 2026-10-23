@@ -24,7 +24,8 @@ may still move.
                Std.Debug.Assert; transitive initialization; != (r3.61-r3.87)
 0.3            numbers, text and the basic library: Currency and Crypto
                (exact decimals); conversions between numbers and text,
-               FieldCount/Field; real literals with exponents, Get(C),
+               FieldCount/Field (done, r3.90); real literals with
+               exponents, Get(C),
                Char classification and case mapping (done, r3.89);
                Std.DateTime/
                DateUtils, Std.SystemUtils; console I/O in libinoxrt (done,
@@ -118,7 +119,7 @@ with C libraries comes after 1.0 ("Sim, isso é depois da versão 1.0").
   testar"): `console-abi-terminal` (the console in libinoxrt, a function is
   not a statement, Std.Terminal; done, r3.88); `input-chars-exponents`
   (`Get(C)`, `EndOfInput`, Get of reals, Char classification, real literals
-  with exponents; done, r3.89); then conversions between
-  numbers and text and FieldCount/Field (Split/Join move to 0.5, with
-  collections); Currency and Crypto; Std.DateTime/DateUtils,
+  with exponents; done, r3.89); `numbers-text` (conversions between
+  numbers and text, the shortest real text, FieldCount/Field; Split/Join
+  move to 0.5, with collections; done, r3.90); then Currency and Crypto; Std.DateTime/DateUtils,
   Std.SystemUtils and the micro-editor `examples/edit.inox`.

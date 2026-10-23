@@ -16,7 +16,9 @@
 // 2 out of memory. The library never prints: the program turns the status
 // into its runtime fault (CANON-19).
 
+#include "NumberText.h"
 #include "StringBlock.h"
+#include "../src/compiler/exceptions/ExceptionTypes.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -25,6 +27,8 @@
 #include <iterator>
 #include <limits>
 #include <string_view>
+
+extern "C" [[noreturn]] void __inox_raise(std::uint64_t typeId);
 
 namespace inox::runtime {
 
@@ -605,6 +609,145 @@ std::int64_t __inox_char_case(std::int64_t code, std::int32_t mode) noexcept
     const auto point = static_cast<std::uint32_t>(code);
     return mode == 0 ? mapCodePoint(kUpperRuns, std::size(kUpperRuns), point)
                      : mapCodePoint(kLowerRuns, std::size(kLowerRuns), point);
+}
+
+// ---- Numbers and text (change numbers-text, r3.90) ----
+
+// B1: String(N), String(U), String(F), String(G) of a Float32.
+void* __inox_str_from_i64(std::int64_t number, std::int32_t* status) noexcept
+{
+    char text[32];
+    const int length = std::snprintf(text, sizeof text, "%lld", static_cast<long long>(number));
+    return succeed(status, makeString(text, length, length));
+}
+
+void* __inox_str_from_u64(std::uint64_t number, std::int32_t* status) noexcept
+{
+    char text[32];
+    const int length = std::snprintf(text, sizeof text, "%llu", static_cast<unsigned long long>(number));
+    return succeed(status, makeString(text, length, length));
+}
+
+void* __inox_str_from_f64(double number, std::int32_t* status) noexcept
+{
+    char text[kRealTextCapacity];
+    const auto length = static_cast<std::int64_t>(formatReal(number, false, text));
+    return succeed(status, makeString(text, length, length));
+}
+
+void* __inox_str_from_f32(float number, std::int32_t* status) noexcept
+{
+    char text[kRealTextCapacity];
+    const auto length = static_cast<std::int64_t>(formatReal(static_cast<double>(number), true, text));
+    return succeed(status, makeString(text, length, length));
+}
+
+// FormatFloat(F, Decimals): Decimals in 0..20, else status 1.
+void* __inox_str_format_float(double number, std::int64_t decimals, std::int32_t* status) noexcept
+{
+    if (decimals < 0 || decimals > 20) {
+        return fail(status, kOutOfRange);
+    }
+    char text[400];
+    const auto length = static_cast<std::int64_t>(formatFixed(number, static_cast<int>(decimals), text, sizeof text));
+    return succeed(status, makeString(text, length, length));
+}
+
+} // extern "C"
+
+namespace {
+
+[[noreturn]] void raiseConversionError()
+{
+    const auto* info = inox::compiler::exceptions::findExceptionType("ConversionError");
+    __inox_raise(info != nullptr ? info->typeId : 0x100);
+}
+
+} // namespace
+
+extern "C" {
+
+// B2: T(S) of a String into an integer type whose values are low..high, a
+// UInt64, a Float or a Float32. Text that is not a number of the type raises
+// ConversionError (Std.Errors), which a handler can catch.
+std::int64_t __inox_str_to_i64(void* value, std::int64_t low, std::int64_t high)
+{
+    const InoxString* string = asString(value);
+    std::int64_t result = 0;
+    if (!parseIntegerText(string->bytes, static_cast<std::size_t>(string->length), low, high, result)) {
+        raiseConversionError();
+    }
+    return result;
+}
+
+std::uint64_t __inox_str_to_u64(void* value)
+{
+    const InoxString* string = asString(value);
+    std::uint64_t result = 0;
+    if (!parseUnsignedText(string->bytes, static_cast<std::size_t>(string->length), result)) {
+        raiseConversionError();
+    }
+    return result;
+}
+
+double __inox_str_to_f64(void* value)
+{
+    const InoxString* string = asString(value);
+    double result = 0;
+    if (!parseRealText(string->bytes, static_cast<std::size_t>(string->length), false, result)) {
+        raiseConversionError();
+    }
+    return result;
+}
+
+float __inox_str_to_f32(void* value)
+{
+    const InoxString* string = asString(value);
+    double result = 0;
+    if (!parseRealText(string->bytes, static_cast<std::size_t>(string->length), true, result)) {
+        raiseConversionError();
+    }
+    return static_cast<float>(result);
+}
+
+// B4: FieldCount(S, Sep) is the number of fields of S between the
+// separators (one more than the separators; one for "" or an empty Sep);
+// Field(S, Sep, I) is the I-th, counted from 1 (outside, status 1).
+std::int64_t __inox_str_field_count(void* value, void* separator) noexcept
+{
+    const std::string_view text = view(asString(value));
+    const std::string_view sep = view(asString(separator));
+    if (sep.empty()) {
+        return 1;
+    }
+    std::int64_t count = 1;
+    for (std::size_t at = text.find(sep); at != std::string_view::npos; at = text.find(sep, at + sep.size())) {
+        ++count;
+    }
+    return count;
+}
+
+void* __inox_str_field(void* value, void* separator, std::int64_t index, std::int32_t* status) noexcept
+{
+    const std::string_view text = view(asString(value));
+    const std::string_view sep = view(asString(separator));
+    if (index < 1) {
+        return fail(status, kOutOfRange);
+    }
+    std::size_t start = 0;
+    for (std::int64_t field = 1; field < index; ++field) {
+        const std::size_t at = sep.empty() ? std::string_view::npos : text.find(sep, start);
+        if (at == std::string_view::npos) {
+            return fail(status, kOutOfRange);
+        }
+        start = at + sep.size();
+    }
+    const std::size_t end = sep.empty() ? std::string_view::npos : text.find(sep, start);
+    const std::string_view field = text.substr(start, end == std::string_view::npos ? std::string_view::npos : end - start);
+    if (field.size() == text.size()) {
+        return succeed(status, retained(asString(value)));
+    }
+    return succeed(status, makeString(field.data(), static_cast<std::int64_t>(field.size()), -1));
 }
 
 } // extern "C"

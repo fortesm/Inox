@@ -1,14 +1,14 @@
 == 1. Create, Write, WriteLn
 --- after Create (inox-file-io-notes.txt)
 1: [Hello, Inox!]
-2: [Integer 42, Bool true, Float 2.500000, negative -7]
+2: [Integer 42, Bool true, Float 2.5, negative -7]
 3: [Write does not end the line; it goes on here]
 4: [UTF-8: café, naïve, 日本語, ✓]
 5: []
 == 2. OpenAppend
 --- after OpenAppend (inox-file-io-notes.txt)
 1: [Hello, Inox!]
-2: [Integer 42, Bool true, Float 2.500000, negative -7]
+2: [Integer 42, Bool true, Float 2.5, negative -7]
 3: [Write does not end the line; it goes on here]
 4: [UTF-8: café, naïve, 日本語, ✓]
 5: []
@@ -25,7 +25,7 @@ first line: line 1
 copied: 6
 --- copy (inox-file-io-copy.txt)
 1: [Hello, Inox!]
-2: [Integer 42, Bool true, Float 2.500000, negative -7]
+2: [Integer 42, Bool true, Float 2.5, negative -7]
 3: [Write does not end the line; it goes on here]
 4: [UTF-8: café, naïve, 日本語, ✓]
 5: []

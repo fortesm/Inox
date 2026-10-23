@@ -137,9 +137,13 @@ void SemanticAnalyzer::checkCharConversion(const ast::CallExpression& call, Type
     const ast::Expression& argument = *call.arguments()[0];
     const TypeRef type = result_.typeOf(argument);
     if (target->isString()) {
-        if (type == nullptr || !(type->isChar() || type->isString())) {
-            throw SemanticError("String(C) converts a Char (CANON-14), got " + types::nameOf(type) +
-                                "; numbers become text in a later change");
+        // r3.90 (B1): String(N) and String(F) write a number as Put does.
+        if (type == nullptr || !(type->isChar() || type->isString() || type->isFloat() ||
+                                 (type->isInteger() && !type->isEnum()))) {
+            throw SemanticError("String(X) converts a Char or a number (CANON-14), got " + types::nameOf(type) +
+                                (type != nullptr && type->isBool() ? "; a Bool is IIf(B, \"true\", \"false\")"
+                                 : type != nullptr && type->isEnum() ? "; an enum literal is printed by PutLn"
+                                                                     : ""));
         }
         return;
     }
@@ -172,6 +176,11 @@ void SemanticAnalyzer::checkNumericConversion(const ast::CallExpression& call, T
     const TypeRef source = result_.typeOf(argument);
     // The name as written (`Float`, `Byte`), not the canonical one.
     const std::string name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
+    // r3.90 (B2): text becomes a number; text that is not one raises
+    // ConversionError when the program runs.
+    if (source != nullptr && source->isString()) {
+        return;
+    }
     if (source == nullptr || source->isInteger() || source->isFloat() || source->isChar() || source->isEnum()) {
         // A Char into a Float is refused with the Char rules; an enum's
         // ordinal is Ord(E).
@@ -179,10 +188,8 @@ void SemanticAnalyzer::checkNumericConversion(const ast::CallExpression& call, T
             throw SemanticError(name + "(E) of an enum value is written " + name + "(Ord(E)) (CANON-13)");
         }
     } else {
-        throw SemanticError(name + "(X) converts a number, got " + types::nameOf(source) +
-                            (source->isString() ? "; text becomes a number in a later change"
-                             : source->isBool() ? "; a Bool is not a number: IIf(B, 1, 0)"
-                                                : ""));
+        throw SemanticError(name + "(X) converts a number or a String, got " + types::nameOf(source) +
+                            (source->isBool() ? "; a Bool is not a number: IIf(B, 1, 0)" : ""));
     }
     double real = 0.0;
     if (source == nullptr || !source->isFloat() || !staticRealValue(argument, real)) {

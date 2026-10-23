@@ -1,0 +1,23 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.90 (B3): a Float prints the shortest text that reads back as the same
+== value: fixed notation for exponents -4..15 with at least one digit after
+== the point, an exponent outside; a Float32 its own shortest text; -0.0,
+== NaN, Inf and -Inf. Write to a file and String(F) print the same way.
+Use Std.Math
+
+Main :
+    PutLn(0.1, " ", 0.1 + 0.2, " ", 2.5, " ", 1500.0, " ", 100.0 / 3.0)
+    PutLn(1.0e16, " ", 1.0e15, " ", 1.5e-5, " ", 0.0001, " ", 0.00001, " ", 6.02214076e23)
+    Zero Float := 0.0
+    PutLn(-Zero, " ", Sqrt(-1.0), " ", 1.0 / Zero, " ", -1.0 / Zero)
+    Small Float32 := 0.1
+    Third Float32 := 1.0 / 3.0
+    PutLn(Small, " ", Third, " ", Float(Small))
+    Big Integer := 9_007_199_254_740_993
+    PutLn(Big, " ", Float(Big), " ", 1.0e300 * 10.0)
+;

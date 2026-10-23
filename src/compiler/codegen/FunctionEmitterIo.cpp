@@ -264,13 +264,13 @@ void FunctionEmitter::emitOutputValue(const ast::Expression& argument)
     const std::string argumentType = expressionLlvmType(argument);
     const std::string value = emitExpression(argument);
     if (isFloatLlvmType(argumentType)) {
-        // A Float32 prints as the Float64 it widens to exactly.
-        std::string printed = value;
+        // B3 (r3.90): a Float32 prints its own shortest text.
         if (argumentType == "float") {
-            printed = "%tmp" + std::to_string(nextTemporary_++);
-            output_ << "  " << printed << " = fpext float " << value << " to double\n";
+            requireRuntime(RuntimeFunction::ConsolePutFloat32);
+            output_ << "  call void @__inox_con_put_f32(float " << value << ")\n";
+        } else {
+            output_ << "  call void @__inox_con_put_f64(double " << value << ")\n";
         }
-        output_ << "  call void @__inox_con_put_f64(double " << printed << ")\n";
         return;
     }
 

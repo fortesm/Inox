@@ -84,6 +84,7 @@ add_library(inoxrt STATIC
     runtime/ConsoleRuntime.cpp
     runtime/ExceptionRuntime.cpp
     runtime/FileRuntime.cpp
+    runtime/NumberText.cpp
     runtime/OwnRuntime.cpp
     runtime/StringRuntime.cpp
     runtime/StringFunctions.cpp

@@ -1,0 +1,23 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.90 (B4): FieldCount(S, Sep) and Field(S, Sep, I) (Std.StrUtils) split a
+== String at a separator, counted from 1: one more field than separators,
+== empty fields included; an empty separator leaves one field, S. A field
+== outside 1..FieldCount stops the program with "string index out of range".
+Use Std.StrUtils
+
+Main :
+    Line := "ana;bia;;carla"
+    Count := FieldCount(Line, ";")
+    for I in 1..Count
+        Put("[", Field(Line, ";", I), "]")
+    ;
+    PutLn(" ", Count)
+    PutLn(FieldCount("", ","), " ", FieldCount("a,b,", ","), " [", Field("a,b,", ",", 3), "] ", FieldCount("só", ""),
+          " ", Field("só", "", 1), " ", Field("x::y::z", "::", 2), " ", FieldCount("日,本", ","))
+    PutLn(Field(Line, ";", 5))
+;

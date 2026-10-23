@@ -20,6 +20,7 @@
 // with Put is seen before the program stops to read.
 
 #include "Console.h"
+#include "NumberText.h"
 #include "StringBlock.h"
 
 #include <cmath>
@@ -708,9 +709,17 @@ void __inox_con_put_u64(std::uint64_t number) noexcept
     std::printf("%llu", static_cast<unsigned long long>(number));
 }
 
+// B3 (r3.90): the shortest text that reads back as the same value.
 void __inox_con_put_f64(double number) noexcept
 {
-    std::printf("%f", number);
+    char text[inox::runtime::kRealTextCapacity];
+    writeOut(text, inox::runtime::formatReal(number, false, text));
+}
+
+void __inox_con_put_f32(float number) noexcept
+{
+    char text[inox::runtime::kRealTextCapacity];
+    writeOut(text, inox::runtime::formatReal(static_cast<double>(number), true, text));
 }
 
 void __inox_con_put_bool(bool flag) noexcept

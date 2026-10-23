@@ -7,6 +7,7 @@
 // sanitizer build.
 
 #include <cstdint>
+#include <limits>
 #include <cstdio>
 #include <cstring>
 #include <deque>
@@ -31,6 +32,17 @@ bool __inox_str_find(void* value, void* sub, std::int32_t where) noexcept;
 std::int32_t __inox_str_compare_text(void* left, void* right) noexcept;
 void* __inox_str_from_char(std::int64_t code, std::int32_t* status) noexcept;
 std::int64_t __inox_str_char_at(void* value, std::int64_t position, std::int32_t* status) noexcept;
+bool __inox_char_is(std::int64_t code, std::int32_t which) noexcept;
+std::int64_t __inox_char_case(std::int64_t code, std::int32_t mode) noexcept;
+void* __inox_str_from_i64(std::int64_t number, std::int32_t* status) noexcept;
+void* __inox_str_from_u64(std::uint64_t number, std::int32_t* status) noexcept;
+void* __inox_str_from_f64(double number, std::int32_t* status) noexcept;
+void* __inox_str_from_f32(float number, std::int32_t* status) noexcept;
+void* __inox_str_format_float(double number, std::int64_t decimals, std::int32_t* status) noexcept;
+std::int64_t __inox_str_to_i64(void* value, std::int64_t low, std::int64_t high);
+double __inox_str_to_f64(void* value);
+std::int64_t __inox_str_field_count(void* value, void* separator) noexcept;
+void* __inox_str_field(void* value, void* separator, std::int64_t index, std::int32_t* status) noexcept;
 }
 
 namespace {
@@ -251,6 +263,52 @@ void testChars()
     check(status == 1, "CharAt of an empty String is out of range");
 }
 
+// r3.89: the classes and the case of a Char.
+void testCharClasses()
+{
+    check(__inox_char_is(0xE9, 0) && !__inox_char_is('7', 0), "IsLetter by Unicode");
+    check(__inox_char_is(0x663, 1) && !__inox_char_is('x', 1), "IsDigit of an Arabic-Indic digit");
+    check(__inox_char_is(0x3000, 2) && !__inox_char_is('_', 2), "IsSpace of an ideographic space");
+    check(__inox_char_is(0x3A9, 3) && __inox_char_is(0xDF, 4), "IsUpper of Omega, IsLower of sharp s");
+    check(__inox_char_is('-', 5) && !__inox_char_is('+', 5), "IsPunctuation: a hyphen is, a plus is not");
+    check(__inox_char_case(0x3C9, 0) == 0x3A9 && __inox_char_case('Q', 1) == 'q', "case of one Char");
+    check(__inox_char_case(0xDF, 0) == 0xDF, "sharp s keeps its case (one to one)");
+}
+
+// r3.90: numbers and text, and fields.
+void testNumbersAndText()
+{
+    std::int32_t status = -1;
+    expect(take(__inox_str_from_i64(-42, &status), status), "-42", "String of an Integer");
+    expect(take(__inox_str_from_u64(18446744073709551615ULL, &status), status), "18446744073709551615",
+           "String of a UInt64");
+    expect(take(__inox_str_from_f64(0.1 + 0.2, &status), status), "0.30000000000000004", "shortest round trip");
+    expect(take(__inox_str_from_f64(1500.0, &status), status), "1500.0", "a whole Float keeps a point");
+    expect(take(__inox_str_from_f64(1.0e16, &status), status), "1.0e16", "an exponent from 1e16");
+    expect(take(__inox_str_from_f64(1.5e-5, &status), status), "1.5e-5", "an exponent below 1e-4");
+    expect(take(__inox_str_from_f32(0.1F, &status), status), "0.1", "a Float32 prints its own shortest text");
+    expect(take(__inox_str_format_float(19.987, 2, &status), status), "19.99", "FormatFloat rounds");
+    expect(take(__inox_str_format_float(7.0, 0, &status), status), "7", "FormatFloat without decimals");
+    __inox_str_format_float(1.0, 21, &status);
+    check(status == 1, "FormatFloat with 21 decimals is out of range");
+    check(__inox_str_to_i64(literal("-9223372036854775808"), std::numeric_limits<std::int64_t>::min(), std::numeric_limits<std::int64_t>::max()) ==
+              std::numeric_limits<std::int64_t>::min(), "Integer of Int64.Min");
+    check(__inox_str_to_f64(literal("1.5e3")) == 1500.0, "Float of a text with an exponent");
+    bool raised = false;
+    try {
+        __inox_str_to_i64(literal("256"), 0, 255);
+    } catch (...) {
+        raised = true;
+    }
+    check(raised, "a value outside the type raises");
+    void* line = literal("a;;b");
+    check(__inox_str_field_count(line, literal(";")) == 3, "FieldCount counts empty fields");
+    expect(take(__inox_str_field(line, literal(";"), 3, &status), status), "b", "Field of the last field");
+    expect(take(__inox_str_field(line, literal(";"), 2, &status), status), "", "Field of an empty field");
+    __inox_str_field(line, literal(";"), 4, &status);
+    check(status == 1, "Field past the last is out of range");
+}
+
 } // namespace
 
 int runStringFunctionsTests()
@@ -262,6 +320,8 @@ int runStringFunctionsTests()
     testTrimPadReplicate();
     testReplaceFind();
     testChars();
+    testCharClasses();
+    testNumbersAndText();
     if (failures == 0) {
         std::printf("[PASS] inoxrt string functions unit tests\n");
     }

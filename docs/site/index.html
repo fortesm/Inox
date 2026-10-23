@@ -817,6 +817,16 @@ ensure
 <pre><code>Put(&quot;J=&quot;, J)
 PutLn(&quot;Cycle number &quot;, J)
 PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
+<p>A real is written as the shortest text that reads back as the same value (canon r3.90): <code>0.1</code>, <code>2.5</code>, <code>1500.0</code>, <code>0.30000000000000004</code>, with an exponent below 0.0001 and from 10<sup>16</sup> (<code>1.5e-5</code>, <code>1.0e16</code>), and <code>NaN</code>, <code>Inf</code>, <code>-Inf</code>. A <code>Float32</code> writes its own shortest text. <code>FormatFloat(F, 2)</code> (Std.Strings) fixes the decimals.</p>
+<p>Numbers and text convert both ways, explicitly: <code>String(42)</code>, <code>String(2.5)</code>; <code>Integer("42")</code>, <code>Byte("255")</code>, <code>Float("1.5e3")</code>. The text must be the whole number, with nothing around it; anything else raises <code>ConversionError</code>, which a handler catches:</p>
+<pre><code>Age Integer := 0
+try
+    Age := Integer(Answer)
+except
+    On ConversionError
+        PutLn(&quot;not a number: &quot;, Answer)
+    ;
+;</code></pre>
 <p><code>GetLn(S)</code> with a String variable reads the rest of the input line into <code>S</code>, without the line break (a carriage return before it is dropped too). At the end of the input <code>S</code> is <code>""</code>. The line must be valid UTF-8; otherwise the program stops with "invalid UTF-8 input". <code>Get</code> reads integers, <code>Float</code> and <code>Float32</code> values (<code>-12.5</code>, <code>3</code>, <code>1.5e3</code>; anything else stops the program with "invalid number input") and single characters (<code>Get(C)</code> with a <code>Char</code>); <code>EndOfInput</code> tells when the input has ended.</p>
 <pre><code>Main :
     Name String := &quot;&quot;
@@ -840,6 +850,7 @@ PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
 <tr><td><code>IsLetter(C)</code>, <code>IsDigit(C)</code>, <code>IsSpace(C)</code></td><td>whether a Char is a letter (Unicode L*), a decimal digit of any script (Nd), white space</td></tr>
 <tr><td><code>IsUpper(C)</code>, <code>IsLower(C)</code>, <code>IsPunctuation(C)</code></td><td>whether a Char is an upper-case letter (Lu), a lower-case letter (Ll), punctuation (P*)</td></tr>
 <tr><td><code>UpperCase(C)</code>, <code>LowerCase(C)</code></td><td>of a Char: the Char in the other case, one to one</td></tr>
+<tr><td><code>FormatFloat(F, Decimals)</code></td><td>F with exactly Decimals digits after the point (0..20), rounded to nearest: <code>FormatFloat(19.987, 2)</code> is <code>19.99</code></td></tr>
 </table>
 <table>
 <tr><th>Std.StrUtils</th><th>Result</th></tr>
@@ -851,6 +862,7 @@ PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
 <tr><td><code>Contains(S, Sub)</code>, <code>StartsWith(S, P)</code>, <code>EndsWith(S, P)</code></td><td>Bool</td></tr>
 <tr><td><code>SameText(A, B)</code></td><td>equal ignoring case</td></tr>
 <tr><td><code>CompareText(A, B)</code></td><td>-1, 0 or 1 ignoring case</td></tr>
+<tr><td><code>FieldCount(S, Sep)</code>, <code>Field(S, Sep, I)</code></td><td>the number of fields of S between separators, the I-th (from 1; empty fields count)</td></tr>
 </table>
 <p>Positions and lengths count characters, never bytes: in <code>"água😀"</code> Length is 5, ByteLength is 9 and <code>Substr(W, 2, 3)</code> is <code>"gua"</code>. Case, case-insensitive comparison and white space follow Unicode (version 15.1), the same for every language and with no locale: <code>SameText("ÁGUA", "água")</code> is true everywhere. A position or count outside the String is a bug, not a value: <code>Substr</code> past the end, <code>Left(S, N)</code> with N above Length(S), a negative width or count stop the program with "string index out of range" (exit status 70), as an array index does.</p>
 <pre><code>== Counts the words of S, separated by single spaces.

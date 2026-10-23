@@ -1,0 +1,71 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.90 (B1, B2): String(X) writes a number as Put does; T(S) reads a
+== number from a String, the whole text: an optional minus and digits for an
+== integer type (checked against the type), an optional fraction and
+== exponent for Float and Float32. Text that is not a number of the type
+== raises ConversionError, which a handler catches.
+Type
+    TScore Range 0..100
+
+Parse(Text String) Integer :
+    Result Integer := -1
+    try
+        Result := Integer(Text)
+    except
+        On ConversionError
+            Result := -999
+        ;
+    ;
+    Return Result
+;
+
+ParseByte(Text String) Integer :
+    Result Integer := -1
+    try
+        Result := Integer(Byte(Text))
+    except
+        On ConversionError
+            Result := -999
+        ;
+    ;
+    Return Result
+;
+
+Main :
+    N Integer := -42
+    U UInt64 := 18446744073709551615
+    B Byte := 200
+    F Float := 2.5
+    G Float32 := 0.1
+    Line := String(N) + "|" + String(U) + "|" + String(B) + "|" + String(F) + "|" + String(G) + "|" + String(7)
+    PutLn(Line)
+    PutLn(Parse("123"), " ", Parse("-9223372036854775808"), " ", Parse("9223372036854775808"), " ", Parse("+5"),
+          " ", Parse(" 5"), " ", Parse(""), " ", Parse("1_000"), " ", Parse("12a"))
+    PutLn(ParseByte("255"), " ", ParseByte("256"), " ", ParseByte("-1"))
+    Score := TScore("100")
+    Count := Natural("0")
+    Big := UInt64("18446744073709551615")
+    PutLn(Score, " ", Count, " ", Big)
+    PutLn(Float("1.5e3"), " ", Float("-0.25"), " ", Float("3"), " ", Float32("0.1") = G, " ", Float(String(0.1)) = 0.1)
+    try
+        X := Float("1.0e999")
+        PutLn(X)
+    except
+        On ConversionError
+            PutLn("ConversionError: 1.0e999")
+        ;
+    ;
+    try
+        Y := Float32("3.5e38")
+        PutLn(Y)
+    except
+        On Exception
+            PutLn("Exception: 3.5e38")
+        ;
+    ;
+;

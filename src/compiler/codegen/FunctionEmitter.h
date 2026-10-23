@@ -195,6 +195,9 @@ private:
     const LocalInfo& inputTarget(const ast::Expression& argument) const;
     std::string emitInputReadCharacter(const ast::Expression& argument);
     void emitInputReadReal(const ast::Expression& argument);
+    std::string emitNumberString(const std::string& value, TypeRef source, const std::string& llvmType);
+    TypeRef textConversionTarget(const ast::CallExpression& call) const;
+    std::string emitTextToNumber(const ast::CallExpression& call, TypeRef target);
     void emitOutputValue(const ast::Expression& argument);
     void emitOutputCall(const ast::Expression& argument, bool newline);
 

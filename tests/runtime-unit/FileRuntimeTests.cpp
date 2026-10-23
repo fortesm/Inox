@@ -109,7 +109,7 @@ void testRoundTrip()
     void* first = __inox_file_readln(reader);
     check(contents(first) == "a\xC3\xA7\xC3\xA3o -42", "ReadLn returns the first line");
     void* second = __inox_file_readln(reader);
-    check(contents(second) == "true 1.500000", "Bool and Float are written like PutLn");
+    check(contents(second) == "true 1.5", "Bool and Float are written like PutLn");
     check(__inox_file_eof(reader), "Eof after the last line");
     void* past = __inox_file_readln(reader);
     check(contents(past).empty(), "ReadLn past the end returns \"\"");

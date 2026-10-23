@@ -291,6 +291,25 @@ std::string FunctionEmitter::emitStringCall(const ast::CallExpression& call, sem
         output_ << "  " << result << " = call i64 @__inox_char_case(i64 " << values[0] << ", i32 "
                 << (function == StringFunction::UpperCaseChar ? 0 : 1) << ")\n";
         return result;
+    case StringFunction::FormatFloat: {
+        // r3.90 (B1): fixed decimals, 0..20 ("string index out of range"
+        // outside, the status of a String function).
+        std::string real = values[0];
+        if (expressionLlvmType(*call.arguments()[0]) == "float") {
+            real = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << real << " = fpext float " << values[0] << " to double\n";
+        }
+        return makes(RuntimeFunction::StringFormatFloat, "__inox_str_format_float",
+                     "double " + real + ", i64 " + values[1]);
+    }
+    case StringFunction::FieldCount:
+        requireRuntime(RuntimeFunction::StringFieldCount);
+        output_ << "  " << result << " = call i64 @__inox_str_field_count(ptr " << values[0] << ", ptr " << values[1]
+                << ")\n";
+        return result;
+    case StringFunction::Field:
+        return makes(RuntimeFunction::StringField, "__inox_str_field",
+                     "ptr " + values[0] + ", ptr " + values[1] + ", i64 " + values[2]);
     case StringFunction::Trim:
     case StringFunction::LTrim:
     case StringFunction::RTrim:
