@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.97
+Canon revision: r3.98
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -436,3 +436,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   ser uniforme: nenhuma operação de deslocamento à esquerda poderá perder
   informação silenciosamente. [...] Recomendo corrigir Integer shl no mesmo
   PR dos testes que identificaram o problema". Change `expression-checks`.
+- r3.98 (2026-10-23) — CANON-23 Optimization, Lowering rules: programs are
+  built with clang -O2 by default and `--debug` before the file builds them
+  with -O0; optimization never changes what a program does (no nsw/nuw, every
+  check an explicit trap). Measured: an arithmetic loop went from 1.99 s to
+  0.41 s, the time of C -O2. Optimization chosen in the source for LLVM is a
+  later design. Marcelo Fortes, 2026-10-23, to the proposal of an
+  optimization policy: "Sim, e deixe essa opção por default, posteriormente
+  faremos otimizações setadas no codigo fonte ara o llvm". Change
+  `optimize-default`.

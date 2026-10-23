@@ -813,6 +813,30 @@ if ($argsExit -eq 2 -and $argsOutput.TrimEnd("`n") -eq "1: um arg`n2: dois") {
 } else {
     $failed++; Write-Host "[FAIL] inox run passes arguments and keeps Halt's status"; Write-Host "       exit code: $argsExit"; Write-Host "       actual output: $argsOutput"
 }
+# r3.98 (CANON-23): programs are built with -O2; `--debug` before the file
+# builds them with -O0, and after the file it is the program's word.
+$debugOutput = (& $InoxExe "run" "--debug" (Join-Path $repoRoot "tests/integration/system/args.inox") "um arg" "--debug" 2>$null | Out-String) -replace "`r`n", "`n"
+$debugExit = $LASTEXITCODE
+if ($debugExit -eq 2 -and $debugOutput.TrimEnd("`n") -eq "1: um arg`n2: --debug") {
+    $passed++; Write-Host "[PASS] inox run --debug builds without optimization; --debug after the file is an argument"
+} else {
+    $failed++; Write-Host "[FAIL] inox run --debug builds without optimization; --debug after the file is an argument"; Write-Host "       exit code: $debugExit"; Write-Host "       actual output: $debugOutput"
+}
+$mathOutput = (& $InoxExe "--debug" (Join-Path $repoRoot "tests/runtime/math-expressions.inox") 2>$null | Out-String) -replace "`r`n", "`n"
+$mathExit = $LASTEXITCODE
+$mathExpected = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "tests/runtime/math-expressions.out")) -replace "`r`n", "`n"
+if ($mathExit -eq 0 -and $mathOutput.TrimEnd("`n") -eq $mathExpected.TrimEnd("`n")) {
+    $passed++; Write-Host "[PASS] inox --debug: math-expressions gives the same values without optimization"
+} else {
+    $failed++; Write-Host "[FAIL] inox --debug: math-expressions gives the same values without optimization"
+}
+$trapError = (& $InoxExe "run" "--debug" (Join-Path $repoRoot "tests/runtime/shl-overflow.inox") 2>&1 1>$null | Out-String)
+$trapExit = $LASTEXITCODE
+if ($trapExit -ne 0 -and $trapError -like "*Inox runtime error: integer overflow*") {
+    $passed++; Write-Host "[PASS] inox run --debug: a trap stops the program without optimization"
+} else {
+    $failed++; Write-Host "[FAIL] inox run --debug: a trap stops the program without optimization"; Write-Host "       actual output: $trapError"
+}
 Invoke-RunDriverTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\typed-ensure.inox")) `
     -ExpectedOutputFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\exceptions\typed-ensure.out"))

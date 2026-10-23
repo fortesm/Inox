@@ -142,11 +142,13 @@ inox --emit-llvm ./examples/put-output-basic.inox</code></pre>
 <pre><code>inox file.inox             build and run the program
 inox run file.inox         build and run the program
 inox build file.inox       build the program; prints the executable path
+inox run --debug file.inox build without optimization (also inox --debug file.inox, inox build --debug)
 inox check file.inox       parse and check the program
 inox emit-llvm file.inox   print the LLVM IR
 inox help                  print the commands
 inox version               print the version</code></pre>
 <p><code>--run</code>, <code>--build</code>, <code>--emit-llvm</code>, <code>--help</code> and <code>--version</code> are accepted as aliases. For compiler development, <code>--parse-only</code>, <code>--dump-tokens</code> and <code>--dump-types</code> show the parser's view, the tokens and the resolved types.</p>
+<p>Programs are optimized by default (clang <code>-O2</code>, canon r3.98): an arithmetic loop runs as fast as the same loop in C, with every overflow, range and contract check still in place, because a check is an explicit trap and never a hint the optimizer may drop. <code>--debug</code> before the file builds without optimization (<code>-O0</code>), which compiles faster and is easier to follow in a debugger; after the file, <code>--debug</code> is one of the program's arguments.</p>
 <p>Checking and IR emission do not require Clang when using a prebuilt compiler. Building and running currently require <code>clang</code> in <code>PATH</code>.</p>
 </section>
 <section id="stdlib-output"><h2>Standard library discovery and output directory</h2>

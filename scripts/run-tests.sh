@@ -617,6 +617,27 @@ run_driver_command_tests() {
     else
         record_fail "inox run passes arguments and keeps Halt's status" "exit code: $args_exit" "actual output: $output"
     fi
+    # r3.98 (CANON-23): programs are built with -O2; `--debug` before the
+    # file builds them with -O0, and after the file it is the program's word.
+    output="$("$inox_exe" run --debug "$repo_root/tests/integration/system/args.inox" "um arg" --debug 2>/dev/null)"
+    args_exit=$?
+    if [[ $args_exit -eq 2 && "$output" == $'1: um arg\n2: --debug' ]]; then
+        record_pass "inox run --debug builds without optimization; --debug after the file is an argument"
+    else
+        record_fail "inox run --debug builds without optimization; --debug after the file is an argument" "exit code: $args_exit" "actual output: $output"
+    fi
+    output="$("$inox_exe" --debug "$repo_root/tests/runtime/math-expressions.inox" 2>/dev/null)"
+    if [[ $? -eq 0 && "$output" == "$(sed 's/\r$//' "$repo_root/tests/runtime/math-expressions.out")" ]]; then
+        record_pass "inox --debug: math-expressions gives the same values without optimization"
+    else
+        record_fail "inox --debug: math-expressions gives the same values without optimization"
+    fi
+    output="$("$inox_exe" run --debug "$repo_root/tests/runtime/shl-overflow.inox" 2>&1 >/dev/null)"
+    if [[ $? -ne 0 && "$output" == *"Inox runtime error: integer overflow"* ]]; then
+        record_pass "inox run --debug: a trap stops the program without optimization"
+    else
+        record_fail "inox run --debug: a trap stops the program without optimization" "actual output: $output"
+    fi
 }
 run_driver_command_tests
 run_driver_execution_test "$repo_root/tests/integration/exceptions/typed-ensure.inox" "$repo_root/tests/integration/exceptions/typed-ensure.out"
