@@ -377,8 +377,8 @@ EOF               ::= (* end of the source file *)
   defaults) (CANON-7).
 - `leave`, `ensure` and `step` are reserved words; `break` and `finally` are
   ordinary identifiers (ADR-0007, ADR-0010).
-- `Var` is reserved and is not a declaration form: the old `Var ... ;` block was
-  removed (CANON-4, CANON-5).
+- `Var` is an ordinary name (2026-10-16); since r3.94 the old `Var ... ;` block
+  has no diagnostic of its own and fails as any other unexpected text.
 - Shadowing is forbidden in all scopes (CANON-10).
 
 ## Conformance gaps: parser versus this grammar (Layer B)
@@ -402,7 +402,6 @@ and v3.38.
 Closed in v3.31: the digit separator `_` is lexed. In v3.34 `0x` literals
 became canonical next to `$` (before, they were lowered to invalid IR).
 
-Closed since the first version of this file (v3.23–v3.29): `Var` and `mut var`
-rejected; scalar without initializer rejected; bare `:` block rejected; grouped
+Closed since the first version of this file (v3.23–v3.29): `mut` reserved; scalar without initializer rejected; bare `:` block rejected; grouped
 declarations canonical; `case` with `|` (comma rejected); full expressions in the
 `for` header with `step`; `in` and `..` in CANON-20.

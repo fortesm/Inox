@@ -34,7 +34,7 @@ These programs must fail parsing or semantic analysis.
 | `invalid-028.inox` | conditional header must end with a line break |
 | `invalid-029.inox` | `until` outside `repeat` |
 | `invalid-030.inox` | `until` condition must be `Bool` |
-| `invalid-031.inox` | `Var` blocks were removed (CANON-5); the parser rejects them |
+| `invalid-031.inox` | `Var :` in a body is not Inox: `Var` is an ordinary name, so `:` after it is an error |
 
 `invalid-001.inox` uses an inferred local variable (`X := 10`) and then assigns
 a `String` to it.

@@ -27,10 +27,6 @@ bool isPointerTypeWord(std::string_view normalized)
     return normalized == "own" || normalized == "link" || normalized == "option";
 }
 
-constexpr const char* kVarRemovedMessage =
-    "the 'Var' block and 'var'/'mut var' declarations were removed (CANON-5); "
-    "declare locals inline: 'Name := Value', 'Name Type := Value', or 'Name TStruct'";
-
 constexpr const char* kDiscardOnlyMessage =
     "'_' is not a name: it only discards the result of a call, _ := F(X) (r3.93)";
 
@@ -279,11 +275,6 @@ ast::StatementPtr Parser::parseStatement()
             "enclosing body");
     }
 
-    // CANON-5: the old `Var ... ;` block and `var`/`mut var` declarations were
-    // removed. `Var` and `mut` stay reserved; reject them with a migration hint.
-    if (atRemovedVar() || checkKeyword("mut")) {
-        errorAtCurrent(kVarRemovedMessage);
-    }
     if (atContractWord("pre") || atContractWord("pos")) {
         errorAtCurrent("'pre' and 'pos' go on the first lines of a routine, before its statements (CANON-24)");
     }
@@ -1706,9 +1697,6 @@ ast::AstNodePtr Parser::parseModuleItem()
         return parseSectionDeclaration(ast::SectionKind::State);
     }
 
-    if (atRemovedVar()) {
-        errorAtCurrent(kVarRemovedMessage);
-    }
     // CANON-3 (r3.76): a file is a module named after the file.
     if (check(TokenKind::Identifier) && peek().normalized == "module" && current_ + 1 < tokens_.size() &&
         tokens_[current_ + 1].location.line == peek().location.line &&
@@ -2155,20 +2143,6 @@ std::vector<std::string> Parser::parseTypeParameters(const lexer::Token& owner)
 
 // A contract line starts with the contextual word followed by more on the
 // same line, never by `:=` (so `Pos := 3` stays an assignment).
-// CANON-5: the old `Var` block, alone on its line or before a declaration
-// (`Var X := 1`). `Var` is not reserved (r3.76): `Var := 1` is a variable.
-bool Parser::atRemovedVar() const
-{
-    if (isAtEnd() || peek().kind != TokenKind::Identifier || peek().normalized != "var") {
-        return false;
-    }
-    if (current_ + 1 >= tokens_.size()) {
-        return true;
-    }
-    const lexer::Token& next = tokens_[current_ + 1];
-    return next.location.line != peek().location.line || next.kind == TokenKind::Identifier;
-}
-
 bool Parser::atContractWord(std::string_view word) const
 {
     if (isAtEnd() || (peek().kind != TokenKind::Identifier && peek().kind != TokenKind::Keyword) ||
@@ -2401,7 +2375,7 @@ bool Parser::atSectionBoundary() const
     }
 
     if (checkKeyword("use") || checkKeyword("type") || checkKeyword("const") ||
-        checkKeyword("state") || atRemovedVar()) {
+        checkKeyword("state")) {
         return true;
     }
 

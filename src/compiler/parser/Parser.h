@@ -127,7 +127,6 @@ private:
     const lexer::Token& previous() const;
     bool check(TokenKind kind) const;
     bool checkKeyword(std::string_view normalized) const;
-    bool atRemovedVar() const;
     bool checkIdentifierLike() const;
     bool match(TokenKind kind);
     bool matchKeyword(std::string_view normalized);
