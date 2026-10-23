@@ -31,6 +31,9 @@ constexpr const char* kVarRemovedMessage =
     "the 'Var' block and 'var'/'mut var' declarations were removed (CANON-5); "
     "declare locals inline: 'Name := Value', 'Name Type := Value', or 'Name TStruct'";
 
+constexpr const char* kDiscardOnlyMessage =
+    "'_' is not a name: it only discards the result of a call, _ := F(X) (r3.93)";
+
 constexpr const char* kAssignmentInExpressionMessage =
     "':=' is a statement, not an expression (CANON-5): an assignment cannot "
     "appear inside an expression, a condition or an initializer";
@@ -347,6 +350,10 @@ ast::StatementPtr Parser::parseStatement()
     }
     if (matchKeyword("continue")) {
         return endSimpleStatement(std::make_unique<ast::ContinueStatement>());
+    }
+
+    if (check(TokenKind::Underscore)) {
+        return endSimpleStatement(parseDiscardStatement());
     }
 
     if (atTypedLocalStatementStart()) {
@@ -906,6 +913,9 @@ ast::ExpressionPtr Parser::parsePostfix()
 
 ast::ExpressionPtr Parser::parsePrimary()
 {
+    if (check(TokenKind::Underscore)) {
+        errorAtCurrent(kDiscardOnlyMessage);
+    }
     // CANON-12 (r3.76): the conditional expression is `IIf(C, A, B)`; only
     // the chosen branch is evaluated. `if C then A else B` is gone.
     if (checkKeyword("if")) {
@@ -1571,6 +1581,23 @@ ast::StatementPtr Parser::parseReturnStatement()
     return std::make_unique<ast::ReturnStatement>(parseValue());
 }
 
+// r3.93 (E2): `_ := F(X)` drops the result of a call on purpose. `_` is a
+// discard target, not a name: it is written only here, never read, never
+// declared, never chained.
+ast::StatementPtr Parser::parseDiscardStatement()
+{
+    advance();  // '_'
+    if (!check(TokenKind::ColonEqual)) {
+        errorAtCurrent(kDiscardOnlyMessage);
+    }
+    advance();  // ':='
+    auto value = parseValue();
+    if (check(TokenKind::ColonEqual) || atCompoundAssignment()) {
+        errorAtCurrent("a discard is not chained: write _ := F(X) alone (r3.93)");
+    }
+    return std::make_unique<ast::ExpressionStatement>(std::move(value), false, true);
+}
+
 // An expression statement is a call or an assignment. Assignment may be
 // chained (CANON-5, v3.27): `A := B := C := X` evaluates X once and stores it
 // in C, then B, then A. The chain is desugared here into
@@ -1702,7 +1729,12 @@ ast::AstNodePtr Parser::parseModuleItem()
         }
     }
 
-    return parseRawDeclaration();
+    // Anything else was once kept as a raw declaration and ignored, so a
+    // line such as `+ Integer : ... ;` compiled silently (found with r3.93).
+    if (check(TokenKind::Underscore)) {
+        errorAtCurrent(kDiscardOnlyMessage);
+    }
+    errorAtCurrent("expected a declaration: Use, Type, Const, State or a routine, Name :");
 }
 
 ast::AstNodePtr Parser::parseUseDeclaration()
@@ -2002,23 +2034,6 @@ ast::VariableDeclaration Parser::parseSectionVariable(ast::SectionKind sectionKi
     return declaration;
 }
 
-ast::AstNodePtr Parser::parseRawDeclaration()
-{
-    const lexer::Token& head = advance();
-    std::vector<std::string> tokens;
-
-    while (!isAtEnd() && !check(TokenKind::Semicolon)) {
-        tokens.push_back(tokenText(advance()));
-    }
-
-    if (!isAtEnd()) {
-        consumeBlockClose();
-    }
-
-    return std::make_unique<ast::RawDeclaration>(
-        tokenText(head), std::move(tokens));
-}
-
 ast::AstNodePtr Parser::parseFunctionDeclaration()
 {
     const lexer::Token& name = consumeIdentifierLike("expected function name");
@@ -2058,6 +2073,9 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
              tokens_[current_ + 1].kind == TokenKind::Less)) {
             signatureTokens.push_back(parseTypeName("expected type name"));
             continue;
+        }
+        if (check(TokenKind::Underscore)) {
+            errorAtCurrent(kDiscardOnlyMessage);
         }
         signatureTokens.push_back(tokenText(advance()));
     }

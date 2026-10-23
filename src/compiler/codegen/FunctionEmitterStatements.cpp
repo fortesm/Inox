@@ -75,8 +75,15 @@ void FunctionEmitter::emitStatementKind(const ast::Statement& statement)
     }
 
     if (statement.kind() == ast::AstNodeKind::ExpressionStatement) {
-        const auto& expression =
-            static_cast<const ast::ExpressionStatement&>(statement).expression();
+        const auto& expressionStatement = static_cast<const ast::ExpressionStatement&>(statement);
+        const auto& expression = expressionStatement.expression();
+        if (expressionStatement.isDiscard()) {
+            // r3.93: `_ := F(X)` evaluates the call as a value and drops it;
+            // an owned result (a String, an Own, ...) was held by the call
+            // and is released with the statement's temporaries.
+            (void)emitExpression(expression);
+            return;
+        }
         if (isAssignmentExpression(expression)) {
             emitLocalAssignment(expression);
         } else {

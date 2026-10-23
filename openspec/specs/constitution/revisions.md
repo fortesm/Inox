@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.92
+Canon revision: r3.93
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -387,3 +387,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `EnvExists(Name)`, `Halt(Code)` para sair com um código, `Sleep(Ms)`,
   `CurrentDir` e `PlatformName` / [...] / F3 Sim". Change
   `datetime-systemutils`.
+- r3.93 (2026-10-22) — CANON-7 Explicit discard: `_ := Call` drops the
+  result of a function or method call on purpose; E2 and OPEN-4 stay
+  compile errors. `_` is a discard target without storage, declaration or
+  name; only a call with a result may be discarded, never a literal, a
+  variable, a field, an operation, a conversion or a construction. A line at
+  module level that is no declaration is now an error (it was ignored).
+  Marcelo Fortes, 2026-10-22: "Decisão final: opção 2, com `_ :=`,
+  restrita inicialmente a chamadas que retornem valor. Manter E2 e OPEN-4
+  como erros de compilação. Aprovaria essa alteração em PR separado, com
+  testes cobrindo chamada isolada, descarte explícito, variável não lida e
+  descarte inválido." Change `discard-results`.

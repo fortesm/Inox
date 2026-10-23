@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.92.
+Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.93.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -106,6 +106,8 @@ each version added.
   ScreenSize, MoveTo, ClearScreen, ClearLine, SetColor/ResetColor,
   ShowCursor, Flush; the terminal is given back on every exit; keys read
   from a file or pipe for tests; `examples/keys.inox`.
+- Explicit discard `_ := F(X)` (r3.93): a function's result is used or
+  dropped on purpose; E2 and OPEN-4 stay errors.
 - Std.DateTime / Std.DateUtils (r3.92, mostly written in Inox) and
   Std.SystemUtils (r3.92); `inox run file A B` passes arguments and keeps
   the exit status; `examples/edit.inox`, the micro-editor.

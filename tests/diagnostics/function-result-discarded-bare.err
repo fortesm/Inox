@@ -1,1 +1,1 @@
-the result of Answer is not used: a function is not a statement (r3.88); use its value, X := Answer
+the result of Answer is not used: a function is not a statement (r3.88); use its value, X := Answer, or discard it, _ := Answer (r3.93)

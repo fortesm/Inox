@@ -186,8 +186,69 @@ std::string SemanticAnalyzer::discardedResultMessage(const ast::Expression& expr
     }
     const bool arguments = expression.kind() == ast::AstNodeKind::CallExpression &&
                            !isMemberCall(static_cast<const ast::CallExpression&>(expression));
+    const std::string call = written + (arguments ? "(...)" : "");
     return "the result of " + name + " is not used: a function is not a statement (r3.88); use its value, " +
-           "X := " + written + (arguments ? "(...)" : "");
+           "X := " + call + ", or discard it, _ := " + call + " (r3.93)";
+}
+
+// r3.93 (E2): `_ := X` drops the result of X on purpose, and X must be a
+// call of a function or a method that has one. A literal, a variable, a
+// field, an operation, a conversion or a construction is not discarded: `_
+// := N` would pass for a read of N (OPEN-4). The call is analyzed, and later
+// emitted, as any call whose value is used.
+void SemanticAnalyzer::analyzeDiscard(const ast::Expression& expression)
+{
+    const char* const notACall =
+        "_ := discards only the result of a function or a method call (r3.93); this is not a call";
+    const bool isCall = expression.kind() == ast::AstNodeKind::CallExpression;
+    if (!isCall && expression.kind() != ast::AstNodeKind::IdentifierExpression) {
+        throw SemanticError(notACall);
+    }
+    if (isCall) {
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
+            const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
+            if (name == "__index" || name == "__slice" || name == "__set" || name == "__check" ||
+                name == "__pure") {
+                throw SemanticError(notACall);
+            }
+            if (types().isDeclared(name) || genericStruct(name) != nullptr) {
+                throw SemanticError("_ := discards only the result of a function or a method call (r3.93); " +
+                                    name + "(...) is a conversion or a construction, not a call");
+            }
+        }
+    }
+    const TypeRef type = analyzeExpression(expression);
+    if (isCall) {
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        if (isMemberCall(call) && result_.symbolOf(call) == nullptr) {
+            throw SemanticError(notACall);  // a field, not a method
+        }
+    } else {
+        const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
+        const Symbol* symbol = result_.symbolOf(identifier);
+        if (symbol != nullptr && symbol->kind != SymbolKind::Function && symbol->kind != SymbolKind::Builtin) {
+            throw SemanticError("_ := discards only the result of a function or a method call (r3.93); " +
+                                identifier.name() + " is a value, not a call");
+        }
+    }
+    if (type == nullptr || type->isVoid()) {
+        std::string name = "it";
+        const ast::Expression* callee = &expression;
+        if (isCall) {
+            const auto& call = static_cast<const ast::CallExpression&>(expression);
+            callee = isMemberCall(call) ? call.arguments()[1].get() : &call.callee();
+            if (callee->kind() == ast::AstNodeKind::CallExpression &&
+                isMemberCall(static_cast<const ast::CallExpression&>(*callee))) {
+                callee = static_cast<const ast::CallExpression&>(*callee).arguments()[1].get();
+            }
+        }
+        if (callee->kind() == ast::AstNodeKind::IdentifierExpression) {
+            name = static_cast<const ast::IdentifierExpression&>(*callee).name();
+        }
+        throw SemanticError(name + " returns no value, so there is nothing to discard: call it as a "
+                                   "statement, without _ := (r3.93)");
+    }
 }
 
 void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
@@ -209,6 +270,10 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
     case ast::AstNodeKind::ExpressionStatement: {
         const auto& expressionStatement = static_cast<const ast::ExpressionStatement&>(statement);
         const ast::Expression& statementExpression = expressionStatement.expression();
+        if (expressionStatement.isDiscard()) {
+            analyzeDiscard(statementExpression);
+            break;
+        }
         requireStatementExpression(statementExpression);
         // ADR-0012 / OPEN-4: `X += R` is stored as `X := X + R`. The copy of
         // X on the right only serves the update, so it is not a read of X

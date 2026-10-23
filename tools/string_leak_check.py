@@ -97,7 +97,7 @@ def main(argv):
                       glob.glob(os.path.join(ROOT, "tests", "runtime", "char*.inox")) +
                       glob.glob(os.path.join(ROOT, "tests", "runtime", "case-strings.inox")) +
                       [os.path.join(ROOT, "tests", "runtime", name)
-                       for name in ("number-text.inox", "fields.inox", "format-float.inox", "float-printing.inox",
+                       for name in ("number-text.inox", "fields.inox", "format-float.inox", "float-printing.inox", "discard.inox",
                                     "decimals.inox")] +
                       [os.path.join(ROOT, "examples", name)
                        for name in ("file_io.inox", "bank-atm.inox", "contracts.inox",

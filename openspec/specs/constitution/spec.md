@@ -615,13 +615,36 @@ routine without parameters is declared `Main :` / `Report :` and called
 
 ### Requirement: CANON-7 A function is not a statement
 A function or a method with a result SHALL NOT be called as a statement, as
-in Ada: `Twice(2)`, `Answer` or `C.Next` alone is a compile error that names
-it and shows `X := Twice(...)`. There is no way to drop a result; a routine
-called for its effect is a subroutine (r3.88).
+in Ada (r3.88): `Twice(2)`, `Answer` or `C.Next` alone is a compile error
+that names it and shows `X := Twice(...)` and `_ := Twice(...)`. Its result
+is used by an expression or discarded on purpose. A subroutine is called as
+a statement, without `_ :=`.
 
 #### Scenario: Results dropped
 - **WHEN** a function, a function without arguments, a method or a library function is called as a statement
 - **THEN** each is rejected (tests/diagnostics/function-result-discarded.inox, tests/diagnostics/function-result-discarded-bare.inox, tests/diagnostics/function-result-discarded-method.inox, tests/diagnostics/function-result-discarded-builtin.inox)
+
+### Requirement: CANON-7 Explicit discard
+`_ := Call` SHALL drop the result of a call on purpose (r3.93). `_` is a
+discard target, not a variable: no storage, no declaration, no part in name
+resolution, not subject to OPEN-4. The call is evaluated exactly once, with
+its effects, exceptions and contracts; an owned result is released.
+
+#### Scenario: Discarded calls
+- **WHEN** functions, a function without arguments, methods, a generic routine, a library function and functions returning a String, an owner, a struct or a Currency are discarded, and a discarded call raises or breaks a precondition
+- **THEN** each runs once and nothing leaks (tests/runtime/discard.inox); the exception reaches its handler; the precondition traps (tests/runtime/discard-contract.inox)
+
+### Requirement: CANON-7 What is discarded
+The right of `_ :=` SHALL be a call of a function or a method that produces
+a value. A literal, a variable, a field, an element, an operation, a
+conversion, a construction or a call without a result is rejected: a
+discard never stands for a read of a variable (OPEN-4). `_` is never read,
+declared, compounded or chained. Types or functions with special handling
+obligations may later forbid discarding their results.
+
+#### Scenario: Invalid discards
+- **WHEN** `_ :=` takes a literal, a variable, an operation, a field, an element, a conversion, a construction, a subroutine, PutLn or a method without a result, or `_` is read, declared, used as a parameter or routine name, compounded or chained
+- **THEN** each is rejected (tests/diagnostics/discard-literal.inox, tests/diagnostics/discard-variable.inox, tests/diagnostics/discard-operation.inox, tests/diagnostics/discard-field.inox, tests/diagnostics/discard-index.inox, tests/diagnostics/discard-conversion.inox, tests/diagnostics/discard-construction.inox, tests/diagnostics/discard-subroutine.inox, tests/diagnostics/discard-putln.inox, tests/diagnostics/discard-method-subroutine.inox, tests/diagnostics/discard-read.inox, tests/diagnostics/discard-declaration.inox, tests/diagnostics/discard-parameter.inox, tests/diagnostics/discard-routine-name.inox, tests/diagnostics/discard-compound.inox, tests/diagnostics/discard-chain.inox)
 
 ### Requirement: CANON-8 Built-in types
 The built-in types SHALL be exactly those of the table "CANON-8 built-in
