@@ -854,6 +854,18 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
     case ast::BinaryOperator::Greater:
     case ast::BinaryOperator::LessEqual:
     case ast::BinaryOperator::GreaterEqual:
+        // `1 < X < 10` reads as `(1 < X) < 10`, a Bool against a number:
+        // comparisons are not chained as in mathematics (CANON-20).
+        if (expression.left().kind() == ast::AstNodeKind::BinaryExpression && leftType != nullptr &&
+            leftType->isBool() && rightType != nullptr && !rightType->isBool()) {
+            const ast::BinaryOperator inner = static_cast<const ast::BinaryExpression&>(expression.left()).op();
+            if (inner == ast::BinaryOperator::Equal || inner == ast::BinaryOperator::NotEqual ||
+                inner == ast::BinaryOperator::Less || inner == ast::BinaryOperator::Greater ||
+                inner == ast::BinaryOperator::LessEqual || inner == ast::BinaryOperator::GreaterEqual) {
+                throw SemanticError("comparisons are not chained: A < B < C compares the Bool A < B with C; "
+                                    "write A < B and B < C, or B in A..C");
+            }
+        }
         if ((leftType != nullptr && (leftType->isPointer() || leftType->isNone())) ||
             (rightType != nullptr && (rightType->isPointer() || rightType->isNone()))) {
             throw SemanticError("pointers are not compared with '" + std::string(binaryOperatorName(op)) +

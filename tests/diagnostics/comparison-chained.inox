@@ -1,0 +1,12 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== Comparisons are not chained as in mathematics (CANON-20, relational is left
+== associative): `1 < X < 10` is `(1 < X) < 10`, a Bool against a number.
+Main :
+    X := 3
+    PutLn(1 < X < 10)
+;

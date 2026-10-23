@@ -1,0 +1,1 @@
+comparisons are not chained: A < B < C compares the Bool A < B with C; write A < B and B < C, or B in A..C
