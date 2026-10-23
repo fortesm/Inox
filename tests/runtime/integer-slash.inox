@@ -5,7 +5,8 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 == r3.95, as in Ada: `/` of two integers is the integer division, truncated
-== toward zero (the remainder of `mod` has the sign of the dividend); of two
+== toward zero (`mod` has the sign of the divisor and `rem` that of the
+== dividend, r3.96); of two
 == reals or two decimals it is their division. Every integer type: Integer,
 == UInt64 (unsigned), Byte, a Range; `/=`; a Const folded at compile time;
 == literals that take a Currency context divide as Currency. `div` is an
@@ -20,6 +21,7 @@ Main :
     B := -7
     PutLn(A / 2, " ", B / 2, " ", A / -2, " ", B / -2)
     PutLn(A mod 2, " ", B mod 2, " ", A mod -2, " ", B mod -2)
+    PutLn(A rem 2, " ", B rem 2, " ", A rem -2, " ", B rem -2)
     U UInt64 := 18446744073709551615
     PutLn(U / 2)
     Y Byte := 200

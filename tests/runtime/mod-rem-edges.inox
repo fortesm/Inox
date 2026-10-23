@@ -1,0 +1,24 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.96, as in Ada: `mod` has the sign of the divisor, `rem` the sign of
+== the dividend, and A = (A / B) * B + A rem B. The edges: Int64.Min by -1
+== (0 for both, never an overflow), Int64.Min by 3, constants folded at
+== compile time, UInt64 and Byte (no sign: both are the same).
+Const ModConst := -7 mod 2
+Const RemConst := -7 rem 2
+
+Main :
+    M := -9223372036854775807 - 1
+    PutLn(M mod -1, " ", M rem -1, " ", M mod 3, " ", M rem 3)
+    PutLn(ModConst, " ", RemConst, " ", -7 mod -2, " ", 7 rem -2)
+    A := -17
+    B := 5
+    PutLn((A / B) * B + A rem B = A)
+    U UInt64 := 18446744073709551615
+    Y Byte := 200
+    PutLn(U mod 10, " ", U rem 10, " ", Y mod 7, " ", Y rem 7)
+;

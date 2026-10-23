@@ -5,13 +5,15 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+== r3.96, as in Ada: `/` truncates toward zero, `mod` has the sign of the
+== divisor and `rem` the sign of the dividend.
 Main :
     A Integer := -7
     B Integer := 2
     PutLn(A / B)
-    PutLn(A mod B)
+    PutLn(A mod B, " ", A rem B)
     C Integer := 7
     D Integer := -2
     PutLn(C / D)
-    PutLn(C mod D)
+    PutLn(C mod D, " ", C rem D)
 ;

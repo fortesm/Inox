@@ -29,7 +29,7 @@ places, a half going to the even neighbour (A1); so do `Round(X)` (Std.Math),
 ### Requirement: Decimals do not mix implicitly
 An Integer, a Float or the other decimal type SHALL NOT meet a decimal in
 an operator: the conversion is written (`Price * Currency(Count)`), except
-a literal, which takes the decimal's type (A2). `^` and `mod` do not apply;
+a literal, which takes the decimal's type (A2). `^`, `mod` and `rem` do not apply;
 `/` of two decimals is the decimal division (r3.95).
 
 #### Scenario: Mixing

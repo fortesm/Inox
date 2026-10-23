@@ -13,6 +13,7 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 ## 0.3.0 pre-alpha — in progress
 
 ### Changed
+- `mod` and `rem` as in Ada (canon r3.96, CANON-8, change `ada-modulus`): `mod` now has the sign of the divisor (`-7 mod 2` is 1, it was -1), and the new reserved word `rem` gives the remainder with the sign of the dividend (`-7 rem 2` is -1, what `mod` gave before). With non-negative operands both are as before.
 - `/` divides as in Ada (canon r3.95, CANON-8, change `integer-slash`): two integers give the integer division, truncated toward zero, which `div` gave before; two reals or two decimals their division. An integer and a real are never mixed without a conversion. `/=` now divides an Integer too, and a constant zero divisor of integer `/` is a compile error. `mod` is unchanged.
 
 ### Removed

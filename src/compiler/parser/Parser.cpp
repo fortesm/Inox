@@ -740,7 +740,7 @@ ast::ExpressionPtr Parser::parseMultiplicative()
 {
     auto expression = parseUnary();
 
-    while (check(TokenKind::Star) || check(TokenKind::Slash) || checkKeyword("mod")) {
+    while (check(TokenKind::Star) || check(TokenKind::Slash) || checkKeyword("mod") || checkKeyword("rem")) {
         const lexer::Token& op = advance();
         auto right = parseUnary();
         expression = makeExpr<ast::BinaryExpression>(
@@ -2612,6 +2612,9 @@ ast::BinaryOperator Parser::binaryOperatorFor(const lexer::Token& token)
     case TokenKind::Identifier:
         if (token.normalized == "mod") {
             return ast::BinaryOperator::Modulo;
+        }
+        if (token.normalized == "rem") {
+            return ast::BinaryOperator::Remainder;
         }
         if (token.normalized == "shl") {
             return ast::BinaryOperator::ShiftLeft;

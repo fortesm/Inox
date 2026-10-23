@@ -63,7 +63,7 @@ complement within the type's width.
 
 ### Requirement: UInt64 covers 0 to 2^64-1
 `UInt64` (alias `UInteger`) SHALL hold every value 0..18446744073709551615 and
-SHALL work in every position other integer types do. Comparisons, `/`, `mod`
+SHALL work in every position other integer types do. Comparisons, `/`, `mod`, `rem`
 and `shr` SHALL use unsigned meaning.
 
 #### Scenario: Values above Int64.Max

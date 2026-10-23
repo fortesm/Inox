@@ -103,6 +103,7 @@ static bool carriesIntegerContext(const ast::Expression& expression, bool real)
         case ast::BinaryOperator::Multiply:
         case ast::BinaryOperator::Power:
         case ast::BinaryOperator::Modulo:
+        case ast::BinaryOperator::Remainder:
         case ast::BinaryOperator::ShiftLeft:
         case ast::BinaryOperator::ShiftRight:
         case ast::BinaryOperator::BitAnd:
@@ -836,7 +837,10 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
         }
         requireNumericOperands();
         return leftType;
+    // r3.96, as in Ada: `mod` has the sign of the divisor, `rem` the sign
+    // of the dividend (A = (A / B) * B + A rem B).
     case ast::BinaryOperator::Modulo:
+    case ast::BinaryOperator::Remainder:
     case ast::BinaryOperator::ShiftLeft:
     case ast::BinaryOperator::ShiftRight:
     case ast::BinaryOperator::BitAnd:
