@@ -23,7 +23,7 @@ may still move.
                generics (simplest form), design by contract, safe pointers,
                Std.Debug.Assert; transitive initialization; != (r3.61-r3.87)
 0.3            numbers, text and the basic library: Currency and Crypto
-               (exact decimals); conversions between numbers and text,
+               (exact decimals, done, r3.91); conversions between numbers and text,
                FieldCount/Field (done, r3.90); real literals with
                exponents, Get(C),
                Char classification and case mapping (done, r3.89);
@@ -121,5 +121,6 @@ with C libraries comes after 1.0 ("Sim, isso é depois da versão 1.0").
   (`Get(C)`, `EndOfInput`, Get of reals, Char classification, real literals
   with exponents; done, r3.89); `numbers-text` (conversions between
   numbers and text, the shortest real text, FieldCount/Field; Split/Join
-  move to 0.5, with collections; done, r3.90); then Currency and Crypto; Std.DateTime/DateUtils,
+  move to 0.5, with collections; done, r3.90); `decimals` (Currency and
+  Crypto; done, r3.91); then Std.DateTime/DateUtils,
   Std.SystemUtils and the micro-editor `examples/edit.inox`.

@@ -61,6 +61,17 @@ enum class RuntimeFunction {
     StringToFloat32,
     StringFieldCount,
     StringField,
+    // Currency and Crypto (r3.91, change decimals): two 64-bit halves in, a
+    // 16-byte slot out; StringToDecimal raises ConversionError.
+    DecimalMultiply,
+    DecimalDivide,
+    DecimalRescale,
+    DecimalToInteger,
+    DecimalFromFloat,
+    DecimalToFloat,
+    DecimalToFloat32,
+    StringFromDecimal,
+    StringToDecimal,
     // The classes and the case of a Char (r3.89, change input-chars-exponents).
     CharIs,
     CharCase,
@@ -77,6 +88,7 @@ enum class RuntimeFunction {
     FileWriteUnsigned,
     FileWriteFloat,
     FileWriteFloat32,
+    FileWriteDecimal,
     FileWriteBool,
     FileWriteNewline,
     FileExists,
@@ -103,6 +115,8 @@ enum class RuntimeFunction {
     ConsoleGetFloat,
     ConsoleGetFloat32,
     ConsolePutFloat32,
+    ConsolePutDecimal,
+    ConsoleGetDecimal,
     // Std.Terminal (runtime/ConsoleRuntime.cpp), declared on first use.
     TerminalRawMode,
     TerminalReadKey,

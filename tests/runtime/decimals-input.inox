@@ -1,0 +1,24 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.91 (C2): Get reads a Currency or a Crypto strictly: an optional minus,
+== digits and at most the type's decimals; Write and WriteLn write it as PutLn.
+Use Std.IOUtils
+
+Main :
+    Price Currency := 0
+    Rate Crypto := 0
+    Get(Price, Rate)
+    PutLn(Price, " ", Rate, " ", Price * 2)
+    Out := Create("inox-test-decimals.txt")
+    WriteLn(Out, Price, " ", Rate)
+    Close(Out)
+    Back := OpenRead("inox-test-decimals.txt")
+    PutLn(ReadLn(Back))
+    Close(Back)
+    DeleteFile("inox-test-decimals.txt")
+    GetLn(Price)
+;

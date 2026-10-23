@@ -8,6 +8,7 @@
 // SemanticAnalyzer: constant evaluation and folding, static values, case choices.
 
 #include "SemanticAnalyzer.h"
+#include "../support/DecimalLiteral.h"
 #include "../support/RealLiteral.h"
 
 #include "SemanticSupport.h"
@@ -373,6 +374,17 @@ void SemanticAnalyzer::recordConstantExpression(const std::string& name,
     ConstantValue constant;
     std::int64_t integer = 0;
     bool boolean = false;
+    // Change decimals (r3.91): `Const Fee := Currency(2.5)`, `Crypto(-1)`,
+    // or another decimal Const.
+    if (const TypeRef type = result_.typeOf(value); type != nullptr && type->isDecimal()) {
+        std::string scaled;
+        if (staticDecimalValue(value, scaled)) {
+            constant.kind = ConstantValue::Kind::Decimal;
+            constant.text = scaled;
+            result_.setConstantValue(*symbol, constant);
+        }
+        return;
+    }
     if (constantIntegerValue(value, integer)) {
         constant.kind = ConstantValue::Kind::Integer;
         constant.integer = integer;
@@ -403,6 +415,52 @@ void SemanticAnalyzer::recordConstantExpression(const std::string& name,
         constant.text = static_cast<const ast::LiteralExpression&>(value).value();
         result_.setConstantValue(*symbol, constant);
     }
+}
+
+// The exact scaled value of a constant Currency or Crypto: a conversion of
+// a numeric literal (possibly negated) or a decimal Const.
+bool SemanticAnalyzer::staticDecimalValue(const ast::Expression& expression, std::string& scaled) const
+{
+    const TypeRef type = result_.typeOf(expression);
+    if (type == nullptr || !type->isDecimal()) {
+        return false;
+    }
+    const ast::Expression* inner = &expression;
+    if (expression.kind() == ast::AstNodeKind::CallExpression) {
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        if (call.arguments().size() != 1 || result_.typeOf(*call.arguments()[0]) != type) {
+            return false;
+        }
+        inner = call.arguments()[0].get();
+    }
+    if (const Symbol* symbol = resolveConstant(*inner)) {
+        const ConstantValue* constant = result_.constantValueOf(*symbol);
+        if (constant == nullptr || constant->kind != ConstantValue::Kind::Decimal) {
+            return false;
+        }
+        scaled = constant->text;
+        return true;
+    }
+    bool negative = false;
+    if (inner->kind() == ast::AstNodeKind::UnaryExpression) {
+        const auto& unary = static_cast<const ast::UnaryExpression&>(*inner);
+        if (unary.op() != ast::UnaryOperator::Minus && unary.op() != ast::UnaryOperator::Plus) {
+            return false;
+        }
+        negative = unary.op() == ast::UnaryOperator::Minus;
+        inner = &unary.operand();
+    }
+    if (inner->kind() != ast::AstNodeKind::LiteralExpression) {
+        return false;
+    }
+    const support::DecimalLiteral literal =
+        support::parseDecimalLiteral(static_cast<const ast::LiteralExpression&>(*inner).value(),
+                                     type->decimalPlaces());
+    if (literal.status != support::DecimalLiteralStatus::Ok) {
+        return false;
+    }
+    scaled = negative && literal.scaled != "0" ? "-" + literal.scaled : literal.scaled;
+    return true;
 }
 
 const Symbol* SemanticAnalyzer::resolveConstant(const ast::Expression& expression) const

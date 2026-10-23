@@ -129,6 +129,13 @@ PROBES = [
     PutLn(G = F)
 ;
 """),
+    ("decimals", "Currency and Crypto arithmetic, conversions and output (r3.91)", """Main :
+    Price Currency := 19.99
+    Coin Crypto := 0.000000000000000001
+    Total := Price * 3 / 2 - 0.01
+    PutLn(Total, " ", Coin * 2, " ", Integer(Total), " ", Float(Coin), " ", Crypto(Price) > Coin)
+;
+"""),
     ("nested-if", "if inside if (straight-line code)", """Main :
     X Integer := 1
     if X = 1

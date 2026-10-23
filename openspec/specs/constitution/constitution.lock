@@ -50,7 +50,9 @@ spec.md#CANON-8 Conversions	02fc4ddafe8606d2	numbers-text
 spec.md#CANON-8 Numbers and text	cf45e9203e68819c	numbers-text
 spec.md#CANON-8 Constants in fixed-width types	865fe0822fe03457	constitution
 spec.md#CANON-8 UInt64 literals	178ffcfdec0ab8b1	uint64
-spec.md#CANON-8 Exact decimals	9ad292af3a271504	constitution
+spec.md#CANON-8 Exact decimals	5d41477899035b08	decimals
+spec.md#CANON-8 Decimal arithmetic	633b9fede1efb5b0	decimals
+spec.md#CANON-8 Decimal conversions	677ed7760f80725b	decimals
 spec.md#CANON-8 Operators	89dad5646c88f097	constitution
 spec.md#CANON-8 Overflow is never silent	614aba4ebbefff21	constitution
 spec.md#CANON-8 Division by zero and power	048fec166105c948	constitution
@@ -101,6 +103,7 @@ spec.md#CANON-15 Deferred exception features	705ebf3b9b58ff8b	constitution
 spec.md#CANON-17 Put and PutLn	a72aa0b863f387da	constitution
 spec.md#CANON-17 The console	f69e1a55797187b7	console-abi-terminal
 spec.md#CANON-17 How reals are written	d1bf0c58050139c6	numbers-text
+spec.md#CANON-17 How decimals are written	4a708262cb693344	decimals
 spec.md#CANON-17 Get and GetLn	5ff0e1a70e4564ec	input-chars-exponents
 spec.md#CANON-17 Integer input is strict	c34b1f0df7db3030	constitution
 spec.md#CANON-17 Reading a Char and the end of input	a81dfe523b96138b	input-chars-exponents
@@ -113,11 +116,12 @@ spec.md#CANON-17 Text in files	1a59a7ef5bb0ee53	constitution
 spec.md#CANON-17 File system functions	b0aa61e9bafcb323	constitution
 spec.md#CANON-17 File errors are exceptions	bc7b1e4c7018bea9	constitution
 spec.md#CANON-18 Library principles	247dc55ac8637e02	module-pairs
-spec.md#CANON-18 Library modules	f95279fefcfa3bcd	console-abi-terminal
+spec.md#CANON-18 Library modules	beec926070dd2dd6	decimals
 spec.md#CANON-18 Planned modules	43d3d141085e2584	numbers-text
 spec.md#CANON-19 Run-time faults are traps	b35d7570f0992acd	constitution
 spec.md#CANON-19 Compile-time faults	bf1622e491bf380a	constitution
-spec.md#CANON-19 Trap categories	aabec14a04562e3c	input-chars-exponents
+spec.md#CANON-19 Trap categories	ec48b18fe4534d53	decimals
+spec.md#CANON-19 Input trap categories	98bf25251b8ddc1e	decimals
 spec.md#CANON-19 What traps	790accb59d3b394b	std-strings
 spec.md#CANON-19 Compiler, library and runtime	c810ce0cc62b56be	console-abi-terminal
 spec.md#CANON-19 Compiler limits	2ea229dba96e0ae7	constitution

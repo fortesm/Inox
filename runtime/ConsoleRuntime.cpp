@@ -20,6 +20,7 @@
 // with Put is seen before the program stops to read.
 
 #include "Console.h"
+#include "Decimal.h"
 #include "NumberText.h"
 #include "StringBlock.h"
 
@@ -889,6 +890,42 @@ std::int32_t __inox_con_get_f32(float* out) noexcept
     }
     *out = value;
     return 0;
+}
+
+// ---- Currency and Crypto (change decimals, r3.91) ----
+
+// A5: at least two decimals, no trailing zeros after them.
+void __inox_con_put_dec(std::uint64_t low, std::int64_t high, std::int32_t places) noexcept
+{
+    char text[inox::runtime::kDecimalTextCapacity];
+    writeOut(text, inox::runtime::formatDecimal(inox::runtime::decimalOf(low, high), places, text));
+}
+
+// C2: Get of a Currency or a Crypto, strictly: an optional '-', digits and
+// at most `places` decimals, then white space or the end. Status 0 ok, 1
+// invalid (also at the end of input), 2 beyond the type.
+std::int32_t __inox_con_get_dec(std::int32_t places, void* out) noexcept
+{
+    int byte = readByte();
+    while (byte >= 0 && isInputSpace(byte)) {
+        byte = readByte();
+    }
+    char text[128];
+    std::size_t length = 0;
+    while (byte >= 0 && !isInputSpace(byte)) {
+        if (length + 1 >= sizeof text) {
+            return 1;
+        }
+        text[length++] = static_cast<char>(byte);
+        byte = readByte();
+    }
+    inox::runtime::Decimal value;
+    const int status = inox::runtime::parseDecimal(text, length, places, value);
+    if (status == 0) {
+        std::memcpy(out, &value.low, 8);
+        std::memcpy(static_cast<char*>(out) + 8, &value.high, 8);
+    }
+    return status;
 }
 
 // ---- Std.Terminal (F1) ----

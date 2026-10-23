@@ -99,6 +99,10 @@ public:
     bool isBool() const noexcept { return kind_ == TypeKind::Bool; }
     bool isInteger() const noexcept { return kind_ == TypeKind::Integer; }
     bool isFloat() const noexcept { return kind_ == TypeKind::Float; }
+    // CANON-8 (change decimals): Currency (64 bits, 6 places) and Crypto
+    // (128 bits, 18 places), exact decimals.
+    bool isDecimal() const noexcept { return kind_ == TypeKind::Decimal; }
+    unsigned decimalPlaces() const noexcept { return bits_ == 128 ? 18 : 6; }
     bool isNumeric() const noexcept { return isInteger() || isFloat(); }
     // CANON-8: Int8..Int32 and UInt8..UInt32, computed in i64 and
     // range-checked where a value takes the type.

@@ -195,9 +195,21 @@ private:
     const LocalInfo& inputTarget(const ast::Expression& argument) const;
     std::string emitInputReadCharacter(const ast::Expression& argument);
     void emitInputReadReal(const ast::Expression& argument);
+    void emitInputReadDecimal(const ast::Expression& argument);
     std::string emitNumberString(const std::string& value, TypeRef source, const std::string& llvmType);
     TypeRef textConversionTarget(const ast::CallExpression& call) const;
     std::string emitTextToNumber(const ast::CallExpression& call, TypeRef target);
+    // Currency and Crypto (change decimals).
+    std::pair<std::string, std::string> decimalHalves(const std::string& value, TypeRef type);
+    std::string newDecimalSlot();
+    std::string loadDecimal(const std::string& slot, TypeRef type);
+    void emitDecimalStatus(const std::string& status, int firstKind, int secondKind);
+    std::string emitDecimalArithmetic(ast::BinaryOperator op, TypeRef type, const std::string& left,
+                                      const std::string& right);
+    std::string emitDecimalConversion(const ast::CallExpression& call, TypeRef target);
+    std::string emitDecimalToInteger(const std::string& low, const std::string& high, TypeRef source, TypeRef target,
+                                     bool round);
+    std::string emitRounding(const ast::CallExpression& call);
     void emitOutputValue(const ast::Expression& argument);
     void emitOutputCall(const ast::Expression& argument, bool newline);
 

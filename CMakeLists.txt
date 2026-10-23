@@ -82,6 +82,7 @@ set(INOX_COMPILER_SOURCES
 
 add_library(inoxrt STATIC
     runtime/ConsoleRuntime.cpp
+    runtime/DecimalRuntime.cpp
     runtime/ExceptionRuntime.cpp
     runtime/FileRuntime.cpp
     runtime/NumberText.cpp

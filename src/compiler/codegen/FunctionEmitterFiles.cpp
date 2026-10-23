@@ -168,6 +168,11 @@ std::string FunctionEmitter::emitFileCall(const ast::CallExpression& call)
             } else if (type->isBool()) {
                 emitRuntimeCall(RuntimeFunction::FileWriteBool, "void", "__inox_file_write_bool",
                                 "ptr " + file + ", i1 zeroext " + written);
+            } else if (type->isDecimal()) {
+                const auto [low, high] = decimalHalves(written, type);
+                emitRuntimeCall(RuntimeFunction::FileWriteDecimal, "void", "__inox_file_write_dec",
+                                "ptr " + file + ", i64 " + low + ", i64 " + high + ", i32 " +
+                                    std::to_string(type->decimalPlaces()));
             } else if (type->isFloat()) {
                 // B3 (r3.90): the shortest text of the value's own type.
                 if (type->bits() == 32) {

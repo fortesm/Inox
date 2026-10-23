@@ -1,1 +1,1 @@
-array elements of type Currency are not supported yet; use an integer, Float, Bool, Char, enum, Set, String or struct element
+array elements of type IOError are not supported yet

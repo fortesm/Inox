@@ -22,6 +22,7 @@
 // errno, which the C runtime sets on Linux and on Windows.
 
 #include "Console.h"
+#include "Decimal.h"
 #include "NumberText.h"
 #include "StringBlock.h"
 
@@ -346,6 +347,13 @@ void __inox_file_write_f64(void* value, double number)
 {
     char text[inox::runtime::kRealTextCapacity];
     writeBytes(value, text, inox::runtime::formatReal(number, false, text));
+}
+
+// A5 (r3.91): a Currency or a Crypto, as Put writes it.
+void __inox_file_write_dec(void* value, std::uint64_t low, std::int64_t high, std::int32_t places)
+{
+    char text[inox::runtime::kDecimalTextCapacity];
+    writeBytes(value, text, inox::runtime::formatDecimal(inox::runtime::decimalOf(low, high), places, text));
 }
 
 void __inox_file_write_f32(void* value, float number)

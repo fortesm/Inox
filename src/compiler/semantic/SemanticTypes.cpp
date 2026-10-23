@@ -9,6 +9,7 @@
 // written types into type objects (OpenSpec change type-representation).
 
 #include "SemanticAnalyzer.h"
+#include "../support/DecimalLiteral.h"
 
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
@@ -59,7 +60,43 @@ bool SemanticAnalyzer::isInternalSyntheticName(std::string_view name)
 
 bool SemanticAnalyzer::isNumericType(TypeRef type)
 {
-    return type != nullptr && type->isNumeric();
+    // Change decimals (r3.91): Currency and Crypto have + - * / and order.
+    return type != nullptr && (type->isNumeric() || type->isDecimal());
+}
+
+// A literal number, possibly negated: the operand that takes the type of a
+// decimal next to it.
+bool SemanticAnalyzer::isNumericLiteral(const ast::Expression& expression)
+{
+    if (expression.kind() == ast::AstNodeKind::UnaryExpression) {
+        const auto& unary = static_cast<const ast::UnaryExpression&>(expression);
+        return (unary.op() == ast::UnaryOperator::Minus || unary.op() == ast::UnaryOperator::Plus) &&
+               isNumericLiteral(unary.operand());
+    }
+    if (expression.kind() != ast::AstNodeKind::LiteralExpression) {
+        return false;
+    }
+    const auto kind = static_cast<const ast::LiteralExpression&>(expression).literalKind();
+    return kind == ast::LiteralKind::Integer || kind == ast::LiteralKind::Float;
+}
+
+// Change decimals (r3.91, CANON-8): a literal read exactly as a Currency or a
+// Crypto; more places than the type holds, or a value beyond it, is an error.
+void SemanticAnalyzer::checkDecimalLiteral(std::string_view text, TypeRef type)
+{
+    const support::DecimalLiteral literal = support::parseDecimalLiteral(text, type->decimalPlaces());
+    switch (literal.status) {
+    case support::DecimalLiteralStatus::Ok:
+        return;
+    case support::DecimalLiteralStatus::TooManyPlaces:
+        throw SemanticError(std::string(text) + " has more decimal places than " + type->name() + " holds (" +
+                            std::to_string(type->decimalPlaces()) + ", CANON-8)");
+    case support::DecimalLiteralStatus::OutOfRange:
+        throw SemanticError("value out of range for " + type->name() + ": " + std::string(text));
+    case support::DecimalLiteralStatus::Malformed:
+        break;
+    }
+    throw SemanticError("not a decimal literal: " + std::string(text));
 }
 
 bool SemanticAnalyzer::isIntegerType(TypeRef type)
@@ -343,9 +380,10 @@ TypeRef SemanticAnalyzer::resolveArrayType(const types::TypeSyntax& syntax, std:
     }
     const bool isPointer = element->isLink() || element->isOptionOwn();
     if (!element->isNumeric() && !element->isBool() && !element->isString() && !element->isStruct() && !isPointer &&
-        !element->isEnum() && !element->isSet() && !element->isChar()) {
+        !element->isEnum() && !element->isSet() && !element->isChar() && !element->isDecimal()) {
         throw SemanticError("array elements of type " + element->name() +
-                            " are not supported yet; use an integer, Float, Bool, Char, enum, Set, String or struct element");
+                            " are not supported yet; use an integer, Float, Currency, Crypto, Bool, Char, enum, "
+                            "Set, String or struct element");
     }
     return types().array(low, high, element);
 }

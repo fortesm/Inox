@@ -1,0 +1,82 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.91 (CANON-8, A1-A5): Currency (6 places) and Crypto (18) are exact
+== decimals. A literal takes the type of a decimal next to it (A2); + and - are
+== exact; * and / round half to even to the places (A1); Integer(C) truncates
+== and Std.Math Round rounds half to even (A3); Crypto(C) is exact and
+== Currency(Cr) rounds half to even (A4); a decimal prints with at least two
+== decimals and no trailing zeros after them (A5).
+Use Std.Math
+Use Std.Strings
+
+Type
+    TItem Struct
+        Name String := "item"
+        Price Currency := 9.99
+        Fee Crypto := 0.000001
+    ;
+
+Const Shipping := Currency(4.5)
+Const Dust := Crypto(-0.000000000000000001)
+
+State
+    Balance Currency := 100
+;
+
+Total(Items Array[1..3] TItem) Currency :
+    Sum Currency := 0
+    for I in 1..3
+        Sum += Items[I].Price
+    ;
+    Return Sum
+;
+
+Half(C Crypto) Crypto :
+    Return C / 2
+;
+
+Main :
+    Price Currency := 19.99
+    Count Integer := 4
+    PutLn(Price, " ", Price * 3, " ", 3 * Price, " ", Price * Currency(Count), " ", -Price, " ", Currency(5), " ",
+          Price + 0.01, " ", Price - 20)
+    == A1: a half goes to the even neighbour.
+    PutLn(Currency(0.000005) / 2, " ", Currency(0.000007) / 2, " ", Currency(1) / 3, " ", Currency(2) / 3, " ",
+          Currency(0.5) * 0.000005, " ", Currency(1.5) * 0.000003)
+    == A3: Integer truncates toward zero, Round to the even neighbour.
+    PutLn(Integer(Currency(2.99)), " ", Integer(Currency(-2.99)), " ", Round(Currency(2.5)), " ",
+          Round(Currency(3.5)), " ", Round(Currency(-2.5)), " ", Trunc(Currency(-7.9)), " ", Byte(Currency(255.9)))
+    PutLn(Round(2.5), " ", Round(3.5), " ", Round(-0.5), " ", Trunc(-2.7), " ", Trunc(Float32(9.99)))
+    == A4: Crypto(C) is exact; Currency(Cr) rounds half to even; reals round.
+    Big Crypto := 123456789.123456789123456789
+    PutLn(Crypto(Price), " ", Currency(Big), " ", Currency(Crypto(0.0000005)), " ", Currency(Crypto(0.0000015)), " ",
+          Currency(0.1 + 0.2), " ", Crypto(0.1), " ", Crypto(Float32(0.5)), " ", Float(Price), " ", Float32(Price))
+    PutLn(Big * 2, " ", Big / Big, " ", Half(1), " ", Dust, " ", Shipping * 2, " ", Crypto(7))
+    == A5: two decimals at least.
+    PutLn(Currency(0), " ", Currency(0.1), " ", Currency(0.123456), " ", Currency(-0.5), " ", Crypto(1.5))
+    PutLn(Price > 10, " ", Price = 19.99, " ", Price # 19.98, " ", Currency(1) < Currency(0.5), " ",
+          String(Price * 3) + "!", " ", String(Big), " ", IIf(Price > 0, Price, 0))
+    PutLn(Currency("-0.5"), " ", Crypto("0.000000000000000001"), " ", Currency("19"))
+    try
+        Wrong := Currency("1.2345678")
+        PutLn(Wrong)
+    except
+        On ConversionError
+            PutLn("ConversionError: more places than a Currency holds")
+        ;
+    ;
+    Items Array[1..3] TItem := Fill(TItem(Price := 1.25))
+    Items[2].Price := 2.50
+    Balance -= Total(Items)
+    Prices Array[1..2] Currency := Fill(0.5)
+    PutLn(Total(Items), " ", Balance, " ", Prices[1] + Prices[2], " ", Items[1].Fee, " ", Items[3].Name)
+    Sum Currency := 0
+    for I in 1..10
+        Sum += 0.10
+    ;
+    PutLn(Sum, " ", Sum = 1, " ", FormatFloat(Float(Sum), 3))
+;

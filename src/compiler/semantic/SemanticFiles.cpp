@@ -78,6 +78,13 @@ void SemanticAnalyzer::declareStandardModuleNames(const ast::ModuleNode& module)
     }
     declareStringFunctionNames(module);
     declareTerminalNames(module);
+    // Change decimals (r3.91, A3): Round and Trunc exist with Std.Math.
+    mathVisible_ = usesModule(module, "Std.Math");
+    for (const char* name : {"Round", "Trunc"}) {
+        if (mathVisible_ && !symbols_.globalScope().containsLocal(name)) {
+            symbols_.globalScope().declare(name, SymbolKind::Builtin);
+        }
+    }
     for (const FileFunction& function : kFileFunctions) {
         // ReadLn is also the console prelude function (no argument).
         if (fileFunctionVisible(function.name) && !symbols_.globalScope().containsLocal(function.name)) {
@@ -145,7 +152,7 @@ TypeRef SemanticAnalyzer::analyzeFileCall(std::string_view name, const ast::Call
         }
         // Write and WriteLn take the values PutLn prints.
         if (type == nullptr ||
-            (!type->isString() && !type->isBool() && !type->isFloat() && !type->isInteger() &&
+            (!type->isString() && !type->isBool() && !type->isFloat() && !type->isDecimal() && !type->isInteger() &&
              !type->isEnum() && !type->isChar())) {
             throw SemanticError("argument " + std::to_string(index + 1) + " of " + functionName +
                                 " cannot be written yet: " + types::nameOf(type));
