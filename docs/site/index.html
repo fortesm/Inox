@@ -186,7 +186,7 @@ PUTLN</code></pre>
 <p><code>{</code> and <code>}</code> are reserved for a future construct; blocks close with <code>;</code>.</p>
 <p>Line comments use <code>==</code>:</p>
 <pre><code>X := 10  == comment until end of line</code></pre>
-<p>String literals use double quotes. Character literals use single quotes. <code>Char</code> is a Unicode scalar value, not a byte and not a grapheme cluster.</p>
+<p>Real literals have a fraction and may end with an exponent: <code>3.14</code>, <code>1.5e3</code>, <code>2.0E-7</code>; <code>1e3</code> is an error (write <code>1.0e3</code>). String literals use double quotes. Character literals use single quotes. <code>Char</code> is a Unicode scalar value, not a byte and not a grapheme cluster.</p>
 </section>
 <section id="modules"><h2>Modules and Use</h2>
 <p>A file is a module, named after the file: <code>Calc.Core.inox</code> (or <code>Calc/Core.inox</code>) is the module <code>Calc.Core</code>, and there is no header. The program's own file may have any name. A file starts with the modules it uses:</p>
@@ -337,8 +337,20 @@ for Letter in 'a'..'e'
 Next := Char(Integer(Initial) + 1)                     == N
 Word := "água" + String(Next)                          == no implicit conversion
 First := CharAt(Word, 1)                               == á (Use Std.Strings)
-IsLower := First in 'a'..'z'                           == false: á is not in a..z</code></pre>
-<p>A Range over Char, <code>TLetter Range 'A'..'Z'</code>, holds Chars: storing one outside it stops the program with "value out of range", and <code>Set&lt;TLetter&gt;</code> is a set of letters. A Char field has a default (<code>FMark Char := 'x'</code>) or is given in the construction. A Char is stored in 32 bits. Reading one Char from the input comes later.</p>
+Plain := First in 'a'..'z'                             == false: á is not in a..z
+Letter := IsLetter(First)                              == true: by Unicode (Use Std.Strings)
+Upper := UpperCase(First)                              == Á, a Char</code></pre>
+<p>A Range over Char, <code>TLetter Range 'A'..'Z'</code>, holds Chars: storing one outside it stops the program with "value out of range", and <code>Set&lt;TLetter&gt;</code> is a set of letters. A Char field has a default (<code>FMark Char := 'x'</code>) or is given in the construction. A Char is stored in 32 bits.</p>
+<p><code>Get(C)</code> reads the next character of the input exactly, a space or a line end included, and <code>EndOfInput</code> is true when nothing is left (canon r3.89); reading past the end stops the program with "end of input":</p>
+<pre><code>C Char := ' '
+Lines Integer := 0
+while not EndOfInput
+    Get(C)
+    if C = '\n'
+        Lines += 1
+    ;
+;
+PutLn(Lines, " lines")</code></pre>
 <h3 id="strings">Strings</h3>
 <p>A <code>String</code> holds UTF-8 text and never changes: assigning or passing a String gives a copy of the value, so changing one variable never changes another. Strings work everywhere a value can live: locals, parameters and results, struct fields, array elements, <code>State</code> and <code>ref</code> parameters. A String local or <code>State</code> variable needs an initializer, an array of Strings is filled (<code>Fill("")</code>), and a struct field without default starts as <code>""</code>. <code>=</code> and <code>#</code> compare the bytes.</p>
 <pre><code>Type
@@ -805,7 +817,7 @@ ensure
 <pre><code>Put(&quot;J=&quot;, J)
 PutLn(&quot;Cycle number &quot;, J)
 PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
-<p><code>GetLn(S)</code> with a String variable reads the rest of the input line into <code>S</code>, without the line break (a carriage return before it is dropped too). At the end of the input <code>S</code> is <code>""</code>. The line must be valid UTF-8; otherwise the program stops with "invalid UTF-8 input". <code>Get</code> reads Integer values only.</p>
+<p><code>GetLn(S)</code> with a String variable reads the rest of the input line into <code>S</code>, without the line break (a carriage return before it is dropped too). At the end of the input <code>S</code> is <code>""</code>. The line must be valid UTF-8; otherwise the program stops with "invalid UTF-8 input". <code>Get</code> reads integers, <code>Float</code> and <code>Float32</code> values (<code>-12.5</code>, <code>3</code>, <code>1.5e3</code>; anything else stops the program with "invalid number input") and single characters (<code>Get(C)</code> with a <code>Char</code>); <code>EndOfInput</code> tells when the input has ended.</p>
 <pre><code>Main :
     Name String := &quot;&quot;
     Put(&quot;Name: &quot;)
@@ -825,6 +837,9 @@ PutLn(&quot;A&quot;, 10, &quot;B&quot;, true)</code></pre>
 <tr><td><code>Position(Sub, S)</code></td><td>the position of the first Sub in S; 0 when absent or empty</td></tr>
 <tr><td><code>UpperCase(S)</code>, <code>LowerCase(S)</code></td><td>the case changed by Unicode rules, one character to one</td></tr>
 <tr><td><code>CharAt(S, I)</code></td><td>the <code>Char</code> at position I (the first is 1)</td></tr>
+<tr><td><code>IsLetter(C)</code>, <code>IsDigit(C)</code>, <code>IsSpace(C)</code></td><td>whether a Char is a letter (Unicode L*), a decimal digit of any script (Nd), white space</td></tr>
+<tr><td><code>IsUpper(C)</code>, <code>IsLower(C)</code>, <code>IsPunctuation(C)</code></td><td>whether a Char is an upper-case letter (Lu), a lower-case letter (Ll), punctuation (P*)</td></tr>
+<tr><td><code>UpperCase(C)</code>, <code>LowerCase(C)</code></td><td>of a Char: the Char in the other case, one to one</td></tr>
 </table>
 <table>
 <tr><th>Std.StrUtils</th><th>Result</th></tr>

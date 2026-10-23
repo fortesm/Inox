@@ -60,6 +60,10 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
         return "declare ptr @__inox_str_from_char(i64, ptr) nounwind";
     case RuntimeFunction::StringCharAt:
         return "declare i64 @__inox_str_char_at(ptr, i64, ptr) nounwind";
+    case RuntimeFunction::CharIs:
+        return "declare zeroext i1 @__inox_char_is(i64, i32) nounwind readnone";
+    case RuntimeFunction::CharCase:
+        return "declare i64 @__inox_char_case(i64, i32) nounwind readnone";
     case RuntimeFunction::FileOpen:
         return "declare ptr @__inox_file_open(ptr, i32)";
     case RuntimeFunction::FileRetain:
@@ -112,6 +116,14 @@ std::string_view runtimeDeclaration(RuntimeFunction function)
         return "declare i32 @__inox_con_getc() nounwind";
     case RuntimeFunction::ConsoleGetLn:
         return "declare ptr @__inox_con_getln(ptr) nounwind";
+    case RuntimeFunction::ConsoleGetCharacter:
+        return "declare i64 @__inox_con_get_char() nounwind";
+    case RuntimeFunction::ConsoleAtEnd:
+        return "declare zeroext i1 @__inox_con_at_end() nounwind";
+    case RuntimeFunction::ConsoleGetFloat:
+        return "declare i32 @__inox_con_get_f64(ptr) nounwind";
+    case RuntimeFunction::ConsoleGetFloat32:
+        return "declare i32 @__inox_con_get_f32(ptr) nounwind";
     case RuntimeFunction::TerminalRawMode:
         return "declare void @__inox_term_raw_mode(i1 zeroext) nounwind";
     case RuntimeFunction::TerminalReadKey:

@@ -1,1 +1,1 @@
-Get reads Integer values; use GetLn(S) to read a line of text into a String
+Get reads one value, not a line; use GetLn(S) to read a line of text into a String

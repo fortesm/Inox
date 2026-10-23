@@ -37,6 +37,11 @@ struct CaseRun {
     std::uint32_t stride;
 };
 
+struct CodeRange {
+    std::uint32_t first;
+    std::uint32_t last;
+};
+
 #include "UnicodeTables.inc"
 
 enum Status : std::int32_t {
@@ -82,6 +87,16 @@ std::uint32_t mapCodePoint(const CaseRun* runs, std::size_t count, std::uint32_t
         return code;
     }
     return static_cast<std::uint32_t>(static_cast<std::int64_t>(code) + run.delta);
+}
+
+// Whether code lies in one of the sorted ranges.
+template <std::size_t Count>
+bool inRanges(const CodeRange (&ranges)[Count], std::uint32_t code)
+{
+    const CodeRange* end = ranges + Count;
+    const CodeRange* found =
+        std::upper_bound(ranges, end, code, [](std::uint32_t value, const CodeRange& range) { return value < range.first; });
+    return found != ranges && code <= (found - 1)->last;
 }
 
 bool isWhiteSpace(std::uint32_t code)
@@ -559,6 +574,37 @@ std::int64_t __inox_str_char_at(void* value, std::int64_t position, std::int32_t
     *status = kOk;
     std::int64_t index = byteOffset(string, position - 1);
     return decode(string->bytes, index);
+}
+
+// r3.89 (C3): the class of a Char by its Unicode general category: 0
+// IsLetter (L*), 1 IsDigit (Nd), 2 IsSpace (White_Space), 3 IsUpper (Lu),
+// 4 IsLower (Ll), 5 IsPunctuation (P*).
+bool __inox_char_is(std::int64_t code, std::int32_t which) noexcept
+{
+    const auto point = static_cast<std::uint32_t>(code);
+    switch (which) {
+    case 0:
+        return inRanges(kLetterRanges, point);
+    case 1:
+        return inRanges(kDigitRanges, point);
+    case 2:
+        return isWhiteSpace(point);
+    case 3:
+        return inRanges(kUpperRanges, point);
+    case 4:
+        return inRanges(kLowerRanges, point);
+    default:
+        return inRanges(kPunctuationRanges, point);
+    }
+}
+
+// UpperCase(C) (mode 0) and LowerCase(C) (mode 1): the simple mapping of one
+// code point, as the String functions map each character.
+std::int64_t __inox_char_case(std::int64_t code, std::int32_t mode) noexcept
+{
+    const auto point = static_cast<std::uint32_t>(code);
+    return mode == 0 ? mapCodePoint(kUpperRuns, std::size(kUpperRuns), point)
+                     : mapCodePoint(kLowerRuns, std::size(kLowerRuns), point);
 }
 
 } // extern "C"

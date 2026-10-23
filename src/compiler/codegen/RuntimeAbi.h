@@ -48,6 +48,9 @@ enum class RuntimeFunction {
     // Char values (change char-values): String(C) and CharAt(S, I).
     StringFromChar,
     StringCharAt,
+    // The classes and the case of a Char (r3.89, change input-chars-exponents).
+    CharIs,
+    CharCase,
     // File runtime (runtime/FileRuntime.cpp), declared on first use. The
     // functions without `nounwind` raise Inox exceptions (F3).
     FileOpen,
@@ -79,6 +82,12 @@ enum class RuntimeFunction {
     ConsolePutNewline,
     ConsoleGetChar,
     ConsoleGetLn,
+    // Get of a Char or a real, EndOfInput (change input-chars-exponents),
+    // declared on first use.
+    ConsoleGetCharacter,
+    ConsoleAtEnd,
+    ConsoleGetFloat,
+    ConsoleGetFloat32,
     // Std.Terminal (runtime/ConsoleRuntime.cpp), declared on first use.
     TerminalRawMode,
     TerminalReadKey,

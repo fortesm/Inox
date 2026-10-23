@@ -27,6 +27,15 @@ enum class StringFunction {
     UpperCase,
     LowerCase,
     CharAt,  // change char-values
+    // r3.89 (C3): the classes and the case of a Char
+    IsLetter,
+    IsDigit,
+    IsSpace,
+    IsUpper,
+    IsLower,
+    IsPunctuation,
+    UpperCaseChar,
+    LowerCaseChar,
     // Std.StrUtils
     Trim,
     LTrim,
@@ -47,14 +56,14 @@ enum class StringFunction {
 struct StringFunctionInfo {
     std::string_view name;
     StringFunction function;
-    // One letter per parameter: S a String, I an integer.
+    // One letter per parameter: S a String, I an integer, C a Char.
     std::string_view parameters;
     // S a String, I an Integer, B a Bool, C a Char.
     char result;
     bool convenience;  // declared in Std.StrUtils, not Std.Strings
 };
 
-inline constexpr std::array<StringFunctionInfo, 21> kStringFunctions{{
+inline constexpr std::array<StringFunctionInfo, 29> kStringFunctions{{
     {"Length", StringFunction::Length, "S", 'I', false},
     {"ByteLength", StringFunction::ByteLength, "S", 'I', false},
     {"Substr", StringFunction::Substr, "SII", 'S', false},
@@ -62,6 +71,12 @@ inline constexpr std::array<StringFunctionInfo, 21> kStringFunctions{{
     {"UpperCase", StringFunction::UpperCase, "S", 'S', false},
     {"LowerCase", StringFunction::LowerCase, "S", 'S', false},
     {"CharAt", StringFunction::CharAt, "SI", 'C', false},
+    {"IsLetter", StringFunction::IsLetter, "C", 'B', false},
+    {"IsDigit", StringFunction::IsDigit, "C", 'B', false},
+    {"IsSpace", StringFunction::IsSpace, "C", 'B', false},
+    {"IsUpper", StringFunction::IsUpper, "C", 'B', false},
+    {"IsLower", StringFunction::IsLower, "C", 'B', false},
+    {"IsPunctuation", StringFunction::IsPunctuation, "C", 'B', false},
     {"Trim", StringFunction::Trim, "S", 'S', true},
     {"LTrim", StringFunction::LTrim, "S", 'S', true},
     {"RTrim", StringFunction::RTrim, "S", 'S', true},
@@ -76,6 +91,10 @@ inline constexpr std::array<StringFunctionInfo, 21> kStringFunctions{{
     {"EndsWith", StringFunction::EndsWith, "SS", 'B', true},
     {"SameText", StringFunction::SameText, "SS", 'B', true},
     {"CompareText", StringFunction::CompareText, "SS", 'I', true},
+    // UpperCase(C) and LowerCase(C) of a Char: found by name as the String
+    // functions above, chosen by the analyzer when the argument is a Char.
+    {"UpperCase", StringFunction::UpperCaseChar, "C", 'C', false},
+    {"LowerCase", StringFunction::LowerCaseChar, "C", 'C', false},
 }};
 
 // The function named `name` (case-insensitive), or null.

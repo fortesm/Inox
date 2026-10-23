@@ -262,6 +262,16 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (const semantic::TerminalSignature* terminal = terminalCallOf(expression)) {
             return emitTerminalCall(expression, *terminal);
         }
+        // r3.89 (C1): EndOfInput.
+        if (equalsIgnoreCase(identifier.name(), "EndOfInput")) {
+            if (const semantic::Symbol* symbol = semantics_.symbolOf(identifier);
+                symbol != nullptr && symbol->kind == semantic::SymbolKind::Builtin) {
+                requireRuntime(RuntimeFunction::ConsoleAtEnd);
+                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+                output_ << "  " << result << " = call zeroext i1 @__inox_con_at_end()\n";
+                return result;
+            }
+        }
         if (const FunctionSignature* routine = calledRoutine(identifier)) {
             if (!routine->parameters.empty()) {
                 throw CodegenError("function requires arguments; use parentheses only when passing arguments: " + identifier.name());

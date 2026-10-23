@@ -5,7 +5,7 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== CANON-17 (v3.50): Get reads Integer values; a line of text is read with GetLn.
+== CANON-17 (v3.50, r3.89): Get reads one value; a line of text is read with GetLn.
 Main :
     S String := ""
     Get(S)

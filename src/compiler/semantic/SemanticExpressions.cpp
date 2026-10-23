@@ -45,6 +45,9 @@ void SemanticAnalyzer::requireStatementExpression(const ast::Expression& express
         if (terminalFunction(identifier.name()) != nullptr) {
             return;  // Std.Terminal: ClearScreen, Flush, ...
         }
+        if (equalsIgnoreCase(identifier.name(), "EndOfInput")) {
+            throw SemanticError(discardedResultMessage(identifier));
+        }
         if (const FunctionSignature* signature = resolveFunctionSignature(identifier.name())) {
             // `Report` calls a routine without arguments (CANON-7); a routine
             // that takes arguments needs them.
@@ -212,6 +215,12 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
                 }
                 return integerContext_;
             }
+            // r3.89: an exponent can write a literal beyond Float64.
+            if (std::isinf(
+                    support::parseRealLiteral(static_cast<const ast::LiteralExpression&>(expression).value()))) {
+                throw SemanticError("value out of range for Float: " +
+                                    std::string(static_cast<const ast::LiteralExpression&>(expression).value()));
+            }
             return types().float64Type();
         case ast::LiteralKind::String:
             return types().stringType();
@@ -250,6 +259,14 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
         }
         if (const TerminalSignature* terminal = terminalFunction(identifier.name())) {
             return analyzeTerminalIdentifier(identifier, *terminal);
+        }
+        // r3.89 (C1): EndOfInput, true when nothing is left to read.
+        if (equalsIgnoreCase(identifier.name(), "EndOfInput")) {
+            if (const Symbol* symbol = symbols_.currentScope().resolve(identifier.name());
+                symbol != nullptr && symbol->kind == SymbolKind::Builtin) {
+                result_.bind(identifier, *symbol);
+                return types().boolType();
+            }
         }
         if (const ast::FunctionDeclaration* generic = genericRoutine(identifier.name())) {
             return analyzeGenericCall(*generic, identifier, nullptr);

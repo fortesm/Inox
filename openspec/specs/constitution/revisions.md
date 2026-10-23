@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.88
+Canon revision: r3.89
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -339,3 +339,15 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   Marcelo Fortes, 2026-10-21: "E1 Sim / E2 como em Ada / F1 Sim para tudo
   Std.Terminal é o nome padrão / F2 Sim / F3 Sim / Faça em Pr Serparados
   para ser mais fácil de testar". Change `console-abi-terminal`.
+- r3.89 — 2026-10-21 — Reading characters and reals, Char classes, real
+  exponents (0.3). B5: a real literal may end with an exponent after its
+  fraction (`1.5e3`, `2.0E-7`); `1e3` is an error; a real literal beyond
+  Float64 is a compile error (CANON-2). C1: `Get(C)` reads the next
+  character exactly, spaces and line ends included; `EndOfInput`; past the
+  end, "end of input" (CANON-17). C2: `Get` reads Float and Float32
+  strictly; "invalid number input" is a new trap category (CANON-17,
+  CANON-19); Currency and Crypto follow with their values. C3: Std.Strings
+  classifies a Char by Unicode (IsLetter, IsDigit, IsSpace, IsUpper,
+  IsLower, IsPunctuation) and maps its case (CANON-14). Marcelo Fortes,
+  2026-10-21: "A Acatado todos / B Acatado todos / C Acatado todos".
+  Change `input-chars-exponents`.

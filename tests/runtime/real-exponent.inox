@@ -1,0 +1,20 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.89 (B5): a real literal may end with an exponent, e or E, an optional
+== sign and digits: 1.5e3, 2.0E-7. A Float32 literal with an exponent is
+== rounded once from its text; a Const keeps its digits (universal).
+Const Avogadro := 6.022_140_76e23
+Const Tiny := 1.0e-300
+
+Main :
+    A Float := 1.5e3
+    B Float := 2.0E-7
+    C Float32 := 1.0e+2
+    D Float32 := 1.000000059604644775390626e0
+    PutLn(A, " ", B * 1.0e7, " ", C, " ", D > 1.0)
+    PutLn(Avogadro / 1.0e23, " ", Tiny * 1.0e300, " ", 1_0.0e-1)
+;
