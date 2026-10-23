@@ -190,7 +190,7 @@ FormatDateTime(T TDateTime, Pattern String) String :
             Text += IIf(Count = 2, ZeroPadded(Value, 2), String(Value))
             At += Count
         elif Lower = 'z' and RunLength(Pattern, At, 3) = 3
-            Text += ZeroPadded(MicroSecond(T) div 1000, 3)
+            Text += ZeroPadded(MicroSecond(T) / 1000, 3)
             At += 3
         else
             Text += String(C)

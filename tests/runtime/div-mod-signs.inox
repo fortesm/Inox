@@ -8,10 +8,10 @@
 Main :
     A Integer := -7
     B Integer := 2
-    PutLn(A div B)
+    PutLn(A / B)
     PutLn(A mod B)
     C Integer := 7
     D Integer := -2
-    PutLn(C div D)
+    PutLn(C / D)
     PutLn(C mod D)
 ;

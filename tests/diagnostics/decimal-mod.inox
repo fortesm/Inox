@@ -4,10 +4,9 @@
 == This Source Code Form is subject to the terms of the Mozilla Public
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-== ADR-0012: `/=` is valid only where `/` is; Integer division is `div`.
+== r3.91 (CANON-8): mod is an integer operator; `/` of two decimals is the
+== decimal division (r3.95).
 Main :
-    I := 4
-    I /= 2
-    PutLn(I)
+    Price Currency := 2
+    PutLn(Price mod 2)
 ;

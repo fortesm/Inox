@@ -6,5 +6,5 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 Main :
-    PutLn((-9223372036854775807 - 1) div -1)
+    PutLn((-9223372036854775807 - 1) / -1)
 ;

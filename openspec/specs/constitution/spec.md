@@ -108,7 +108,7 @@ Level  Operators                              Associativity
  1     postfix: call f(...), index A[i]       left
  2     ^  (exponentiation)                    RIGHT
  3     unary: not  -x  +x  bitnot             (prefix, unary)
- 4     *  /  div  mod                         left
+ 4     *  /  mod                              left
  5     +  -                                   left
  6     shl  shr  (bit shifts)                 left
  7     bitand                                 left
@@ -324,7 +324,7 @@ their use (Marcelo Fortes, 2026-10-16).
 ### Requirement: CANON-2 Reserved words and predefined names
 The reserved words SHALL be: Use Type Const State Struct Enum if elif else
 unless while repeat until for in step case try except On do ensure raise
-retry with mut ref div mod and xor or not shr shl Return pre pos old
+retry with mut ref mod and xor or not shr shl Return pre pos old
 invariant variant Override. Predefined names, never declared but free as
 field and method names: True False Exit leave continue IIf Fill bitand
 bitor bitxor bitnot. `Main`, `Var` and `Module` are ordinary names (2026-10-16).
@@ -530,11 +530,11 @@ call or an index, and follows the first-appearance rule (ADR-0009).
 `L += R`, `-=`, `*=`, `/=` and `^=` SHALL mean `L := L op R` with L evaluated
 once (ADR-0012). The target exists already (a variable, field, or element
 with side-effect-free indices); the form is not chainable and is not a read
-of L. `/=` exists only where `/` does, never for Integer; `^=` is power.
+of L. `/=` divides as `/` does, an Integer too (r3.95); `^=` is power.
 
 #### Scenario: Compound forms
 - **WHEN** a program uses the five forms
-- **THEN** each updates its target (tests/runtime/compound-assignment.inox); `I /= 2` on an Integer and a chain are errors (tests/diagnostics/compound-integer-divide.inox, tests/diagnostics/compound-chained.inox)
+- **THEN** each updates its target (tests/runtime/compound-assignment.inox, `N /= 5` in tests/runtime/integer-slash.inox); a chain is an error (tests/diagnostics/compound-chained.inox)
 
 ### Requirement: CANON-5 Safe inference
 Inference SHALL pick the most general safe type of a family, never a narrow
@@ -732,7 +732,7 @@ Currency and Crypto SHALL have `+ - * /`, unary minus and order; `+` and
 `-` are exact, `*` and `/` exact then rounded half to even to the type's
 places (A1); beyond the type is the trap "decimal overflow". A literal next
 to a decimal is read in its type (`Price * 3`), a variable of another type
-is converted explicitly (A2); `^`, `div` and `mod` do not apply (r3.91).
+is converted explicitly (A2); `^` and `mod` do not apply (r3.91).
 
 #### Scenario: Arithmetic
 - **WHEN** a program computes with Currency and Crypto, mixes an Integer variable, or overflows
@@ -750,13 +750,15 @@ value beyond the target traps ("integer conversion out of range") (r3.91).
 
 ### Requirement: CANON-8 Operators
 The operators SHALL be: Boolean `and` `or` `xor` `not`; integer bitwise
-`bitand` `bitor` `bitxor` `bitnot` `shl` `shr`; `^` power; integer division
-`div` and `mod`; `/` real division only. Integer `/` is a compile error
-whose message names `div`.
+`bitand` `bitor` `bitxor` `bitnot` `shl` `shr`; `^` power; `/` division and
+integer `mod`. As in Ada, `/` of two integers is the integer division,
+truncated toward zero, and of two reals or two decimals their division; an
+integer and a real never meet in `/` without a conversion. `div` is not a
+word of Inox (r3.95).
 
-#### Scenario: No integer slash
-- **WHEN** a program divides two Integers with `/`
-- **THEN** it is rejected naming `div` (tests/semantic/invalid/integer-slash.inox)
+#### Scenario: Integer and real slash
+- **WHEN** a program divides integers of every kind, reals and decimals with `/`, uses `/=` on an Integer and names a variable `div`
+- **THEN** each gives its type's division (tests/runtime/integer-slash.inox); an Integer and a Float are rejected (tests/diagnostics/slash-mixed-types.inox); `A div 2` is a parse error (tests/diagnostics/div-is-a-name.inox)
 
 #### Scenario: Operand types
 - **WHEN** `bitand` gets a Bool or `and` gets an Integer
@@ -773,7 +775,7 @@ in a Byte traps).
 - **THEN** the first is a compile error (tests/diagnostics/const-add-overflow.inox) and the second traps (tests/runtime/add-overflow.inox, tests/runtime/byte-overflow.inox)
 
 ### Requirement: CANON-8 Division by zero and power
-A constant zero divisor of `div` or `mod` SHALL be a compile error and a
+A constant zero divisor of integer `/` or `mod` SHALL be a compile error and a
 run-time zero divisor a trap. Integer `^` needs a non-negative exponent (a
 negative one is an error, never an implicit Float) and traps on overflow; on
 Float `^` is the real power.
@@ -1532,7 +1534,7 @@ literal outside its type SHALL be compiler diagnostics; knowledge about a
 variable's value never turns a run-time check into a compile error.
 
 #### Scenario: Constant operands
-- **WHEN** `A div 0`, `A shl 64` or `A ^ (-1)` are written with A a variable
+- **WHEN** `A / 0`, `A shl 64` or `A ^ (-1)` are written with A a variable
 - **THEN** each is a compile error (tests/diagnostics/variable-mod-literal-zero.inox, tests/diagnostics/variable-shift-literal-64.inox, tests/diagnostics/variable-power-negative-literal.inox)
 
 ### Requirement: CANON-19 Trap categories
@@ -1559,13 +1561,13 @@ character or a key past the end) (r3.88, r3.89, r3.91).
 
 ### Requirement: CANON-19 What traps
 These operations SHALL trap: `+ - *`, unary `-` and `Abs` on overflow;
-`div`/`mod` by zero and `Int64.Min div -1`; a shift outside 0..width-1; `^`
+integer `/` and `mod` by zero and `Int64.Min / -1`; a shift outside 0..width-1; `^`
 on overflow or with a negative exponent; a `for` step <= 0; a conversion or
 store outside the target range; an index or slice bound outside its array;
 a String position, count or width outside what the function accepts.
 
 #### Scenario: Edge cases
-- **WHEN** `Int64.Min div -1`, `-Int64.Min` and `Abs(Int64.Min)` run
+- **WHEN** `Int64.Min / -1`, `-Int64.Min` and `Abs(Int64.Min)` run
 - **THEN** each traps (tests/runtime/div-min-by-minus-one.inox, tests/runtime/neg-overflow.inox, tests/runtime/abs-overflow.inox); `Int64.Min mod -1` is 0 (tests/runtime/mod-min-by-minus-one.inox)
 
 ### Requirement: CANON-19 Compiler, library and runtime
@@ -1658,8 +1660,8 @@ LLVM or clang. Replacing clang follows `engineering.md` E22.
 - **THEN** the driver names the tool, its exit code and its own messages (scripts/run-tests.sh, "run-hello --build (toolchain diagnostics)")
 
 ### Requirement: CANON-23 Lowering rules
-`div` SHALL lower to `sdiv` and `mod` to `srem`; integer `/` never reaches
-the backend; no `nsw`/`nuw` flags until the overflow and optimization policy
+Integer `/` SHALL lower to `sdiv` (`udiv` for UInt64) and `mod` to `srem`
+(`urem`), through the checked helpers; real `/` to `fdiv`; no `nsw`/`nuw` flags until the overflow and optimization policy
 allow them. Structs may lower to LLVM aggregates and receivers to pointers;
 neither changes value semantics.
 

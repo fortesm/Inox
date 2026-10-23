@@ -1,0 +1,38 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.95, as in Ada: `/` of two integers is the integer division, truncated
+== toward zero (the remainder of `mod` has the sign of the dividend); of two
+== reals or two decimals it is their division. Every integer type: Integer,
+== UInt64 (unsigned), Byte, a Range; `/=`; a Const folded at compile time;
+== literals that take a Currency context divide as Currency. `div` is an
+== ordinary name.
+Const Quarter := 10 / 4
+
+Type
+    TPercent Range 0..100
+
+Main :
+    A := 7
+    B := -7
+    PutLn(A / 2, " ", B / 2, " ", A / -2, " ", B / -2)
+    PutLn(A mod 2, " ", B mod 2, " ", A mod -2, " ", B mod -2)
+    U UInt64 := 18446744073709551615
+    PutLn(U / 2)
+    Y Byte := 200
+    P TPercent := 90
+    PutLn(Y / 3, " ", P / 4, " ", Quarter)
+    N := 17
+    N /= 5
+    PutLn(N)
+    F := 7.0
+    PutLn(F / 2.0)
+    C Currency := 7 / 2
+    D Currency := 10.00
+    PutLn(C, " ", D / 3)
+    div := 3
+    PutLn(div * 2)
+;

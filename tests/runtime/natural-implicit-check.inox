@@ -9,7 +9,7 @@
 == time, with no conversion written: initialization, assignment, compound
 == assignment, argument and return.
 Half(N Natural) Natural :
-    Return N div 2
+    Return N / 2
 ;
 
 Main :

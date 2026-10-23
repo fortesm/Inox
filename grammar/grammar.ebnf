@@ -151,7 +151,7 @@ assignment_stmt   ::= target ( ":=" target )* ":=" expression
                     | target compound_op expression
 compound_op       ::= "+=" | "-=" | "*=" | "/=" | "^="
                       (* ADR-0012: L op= R is L := L op R with L evaluated once;
-                         not chainable; "/=" never on Integer; target is an
+                         not chainable; target is an
                          existing variable, a field path, or an array element
                          whose indices have no side effects (v3.45) *)
                       (* ADR-0009: ":=" is a statement, never an expression.
@@ -282,9 +282,12 @@ shift_expr        ::= additive_expr ( ( "shl" | "shr" ) additive_expr )*
                                                              (* level 6, left *)
 additive_expr     ::= multiplicative_expr ( ( "+" | "-" ) multiplicative_expr )*
                                                              (* level 5, left *)
-multiplicative_expr ::= unary_expr ( ( "*" | "/" | "div" | "mod" ) unary_expr )*
+multiplicative_expr ::= unary_expr ( ( "*" | "/" | "mod" ) unary_expr )*
                                                              (* level 4, left *)
-                      (* "/" on Integer operands is a compile-time error *)
+                      (* r3.95, as in Ada: "/" of two integers is the integer
+                         division, truncated toward zero; of two reals or two
+                         decimals, theirs. The operands are never mixed. "div"
+                         is not a word of Inox. *)
 unary_expr        ::= ( "not" | "-" | "+" | "bitnot" | "old" ) unary_expr | power_expr
                                                              (* level 3, prefix *)
                       (* "old" only inside a "pos" clause (CANON-24) *)

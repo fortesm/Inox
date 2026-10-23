@@ -23,8 +23,8 @@ Main :
     Sum := I + J
     Difference := I - J
     Product := I * J
-    Quotient := I div J
-    IntegerQuotient := I div J
+    Quotient := I / J
+    IntegerQuotient := I / J
     Remainder := I mod J
 
     Equal := I = J

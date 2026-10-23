@@ -11,7 +11,7 @@
 #   in the last ulp), default 1e-9 relative/absolute.
 #
 # The generator only uses operators and functions that Inox actually supports,
-# in Inox syntax (so `div` not `/` for integers, `Sqrt(x)` not the root symbol,
+# in Inox syntax (`/` of integers truncates toward zero, as in Ada (r3.95), `Sqrt(x)` not the root symbol,
 # parentheses freely nested). This keeps failures meaningful: a mismatch means
 # the evaluator is wrong, not that we wrote paper-notation the language lacks.
 #
@@ -61,22 +61,22 @@ def gen_int_expr(depth):
     if depth <= 0 or random.random() < 0.35:
         v = random.randint(1, 50)
         return (str(v), str(v))
-    op = random.choice(["+", "-", "*", "div", "mod", "^"])
+    op = random.choice(["+", "-", "*", "/", "mod", "^"])
     left_i, left_p = gen_int_expr(depth - 1)
     if op == "^":
         # Inox: integer ^ with small non-negative exponent (avoid overflow).
         base_i, base_p = gen_int_expr(depth - 1)
         exp = random.randint(0, 3)
         return (f"({base_i} ^ {exp})", f"({base_p} ** {exp})")
-    if op in ("div", "mod"):
+    if op in ("/", "mod"):
         # Use a guaranteed non-zero literal divisor so Python and Inox evaluate
-        # the SAME math. Inox integer div/mod TRUNCATE toward zero (C/LLVM
+        # the SAME math. Inox integer / and mod TRUNCATE toward zero (C/LLVM
         # sdiv/srem), NOT Python's floor //. We emit Python that emulates the
         # truncating semantics via the inox_div / inox_mod helpers so the oracle
         # matches Inox exactly.
         divisor = random.randint(2, 19)
-        if op == "div":
-            return (f"({left_i} div {divisor})", f"inox_div({left_p}, {divisor})")
+        if op == "/":
+            return (f"({left_i} / {divisor})", f"inox_div({left_p}, {divisor})")
         return (f"({left_i} mod {divisor})", f"inox_mod({left_p}, {divisor})")
     right_i, right_p = gen_int_expr(depth - 1)
     return (f"({left_i} {op} {right_i})", f"({left_p} {op} {right_p})")
@@ -112,7 +112,7 @@ def build_inox_program(expr, kind):
 
 
 def _inox_div(a, b):
-    # Truncate toward zero, like C/LLVM sdiv and Inox `div`.
+    # Truncate toward zero, like C/LLVM sdiv and Inox integer `/`.
     q = abs(a) // abs(b)
     return q if (a < 0) == (b < 0) else -q
 

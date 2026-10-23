@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.94
+Canon revision: r3.95
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -407,3 +407,15 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   comportar exatamente como qualquer outro identificador não reconhecido e
   emitir uma mensagem genérica. Essa regra deve ser eliminada do cânone e
   atualizado os .md do openspec". Change `remove-var-diagnostic`.
+- r3.95 (2026-10-23) — CANON-2, CANON-5, CANON-8, CANON-19, CANON-20,
+  CANON-23: `div` is no longer a reserved word; as in Ada, `/` of two
+  integers is the integer division, truncated toward zero (`div` before),
+  of two reals or two decimals their division, and the operands are never
+  mixed without a conversion. `/=` divides an Integer too; a constant zero
+  divisor of integer `/` is a compile error; integer `/` lowers to the
+  checked sdiv/udiv helpers. `mod` is unchanged. Marcelo Fortes,
+  2026-10-23: "valtando ao div e / vamos eliminar a palavra resrvada div
+  / Ada usa o caractere `/` tanto para a divisão inteira quanto para a
+  divisão real (ponto flutuante). O compilador decide qual operação
+  realizar com base no tipo dos operandos envolvidos. [...] o mesmo pode
+  ser imiplementado em Inox?". Change `integer-slash`.

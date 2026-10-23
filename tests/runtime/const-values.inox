@@ -17,7 +17,7 @@ Main :
     if Enabled
         PutLn("enabled")
     ;
-    for I in 1..Limit step Limit div 2
+    for I in 1..Limit step Limit / 2
         Put(I, " ")
     ;
     PutLn("")

@@ -62,7 +62,6 @@ std::string checkedIntegerHelper(ast::BinaryOperator op)
     case ast::BinaryOperator::Multiply:
         return "__inox_mul_i64";
     case ast::BinaryOperator::Divide:
-    case ast::BinaryOperator::IntegerDivide:
         return "__inox_div_i64";
     case ast::BinaryOperator::Modulo:
         return "__inox_mod_i64";
@@ -85,7 +84,7 @@ std::string llvmUnsignedHelper(ast::BinaryOperator op)
         return "__inox_subu_i64";
     case ast::BinaryOperator::Multiply:
         return "__inox_mulu_i64";
-    case ast::BinaryOperator::IntegerDivide:
+    case ast::BinaryOperator::Divide:
         return "__inox_divu_i64";
     case ast::BinaryOperator::Modulo:
         return "__inox_modu_i64";

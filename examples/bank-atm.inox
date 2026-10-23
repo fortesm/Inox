@@ -76,12 +76,12 @@ TAccount.Present(Self) Override :
 
 SaveNumber(ref mut F File, N Integer) :
     D := 1
-    while D <= N div 10
+    while D <= N / 10
         D *= 10
     ;
     repeat
-        WriteLn(F, N div D mod 10)
-        D := D div 10
+        WriteLn(F, N / D mod 10)
+        D := D / 10
         until D = 0
     ;
     WriteLn(F, "-")

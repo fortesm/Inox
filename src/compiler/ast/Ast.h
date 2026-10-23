@@ -61,7 +61,6 @@ enum class BinaryOperator {
     Subtract,
     Multiply,
     Divide,
-    IntegerDivide,
     Modulo,
     ShiftLeft,
     ShiftRight,

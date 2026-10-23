@@ -8,5 +8,5 @@
 Main :
     A Integer := (-9223372036854775807 - 1)
     B Integer := -1
-    PutLn(A div B)
+    PutLn(A / B)
 ;
