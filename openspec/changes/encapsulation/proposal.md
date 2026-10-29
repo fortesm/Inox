@@ -10,9 +10,11 @@ semelhante a do ObjectPascal + Rust mas precisamos desenhar ainda", and
 "Sim registre no future para não nos perdermos a questão do
 encapsulamento".
 
-Status: **direction recorded** (FUTURE "Encapsulation, routine types and
-lifecycle", r3.70); the design is still to be written. No code before the
-design is approved.
+Status: **superseded** by `modules-encapsulation` (r3.99), which answers
+the questions below: private by default, privacy per module, a struct with
+a private field without default built only by its module, reuse across
+modules sees public members, the invariant still checked after outside
+writes to public fields.
 
 ## Starting points for the design
 

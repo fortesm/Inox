@@ -10,6 +10,17 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 `r3.61` are canon revisions, entries of the decision log
 (`openspec/specs/constitution/revisions.md`), not versions.
 
+## 0.4.0 pre-alpha — in progress
+
+### Added
+- Modules and encapsulation (canon r3.99, CANON-3, change `modules-encapsulation`). Each module has its own names: a name is the module's own declaration first, then the one public declaration among the modules it uses, and two of them is an error that names the qualified forms. `Bank.Accounts.Fee` reaches a public name of a used module; `Use Bank.Accounts as Accounts` gives it a name local to the file; `Use Bank.Accounts.(Deposit, Withdraw)` takes only those names unqualified. Everything is private unless `Public`, the last word of a header (`TPerson Struct(TBeing) Public`, `TPerson.Rename(Self mut, Name String) String Public :`, `Const MaxRate Public := 0.05`) or the line that opens a struct's public fields; State is never public. `Use` is not transitive, and `Export Use M` passes M on (the library pairs use it). A struct's private fields and methods are reached only in its module, a struct with a private field without default is built only there, reuse across modules sees public members, and an outside write to a public field still checks the invariant. `--path <dir>` and `INOX_PATH` add directories where modules are searched; `Std` names only the standard library. `inox interface File.inox` prints what other modules see. `examples/bank` is a bank in four files.
+
+### Changed
+- `Public` is a reserved word; `Export` and `as` are words only in `Export Use` and `Use M as A`. A program that used another module now marks with `Public` what that module offers.
+
+### Fixed
+- A method argument was not analyzed against its parameter: `A.Deposit(500.00)` with a Currency parameter was rejected as Float64. It is analyzed like a routine argument.
+
 ## 0.3.0 pre-alpha — in progress
 
 ### Changed

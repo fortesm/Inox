@@ -32,9 +32,11 @@ may still move.
                libinoxrt (done, r3.88); a function is not a statement (done,
                r3.88); Std.Terminal (done, r3.88) and a micro-editor
                (examples/edit.inox, done, r3.92) that accepts 0.3
-0.4            modules and encapsulation: Export and visibility, interface
-               and body, selective imports and aliases, package search;
-               the `encapsulation` design (Object Pascal and Rust)
+0.4            modules and encapsulation (done, r3.99): private by default
+               with Public, Export Use, qualified names, aliases, selective
+               imports, the search path (--path, INOX_PATH), inox
+               interface, struct encapsulation per module; read-only
+               fields later
 0.5            ownership and collections: Vector<T> with move semantics and
                Clone, Option<T> and Result<T, E> (TryInteger), Split and
                Join, Self owned; methods of
@@ -101,8 +103,9 @@ with C libraries comes after 1.0 ("Sim, isso é depois da versão 1.0").
   streams after generics),
   `variant-structs` (one collection of several kinds, examined with `case`;
   direction recorded in r3.69, design after `enum-range-set`).
-- Directions recorded in r3.70, designs to write: `encapsulation` (close to
-  Object Pascal and Rust), `routine-types` (Pascal procedural types: named
+- `modules-encapsulation` — 0.4: modules and encapsulation (done, r3.99;
+  it answers the `encapsulation` direction of r3.70).
+- Directions recorded in r3.70, designs to write: `routine-types` (Pascal procedural types: named
   routines first, closures after `safe-pointers`), `lifecycle`
   (constructors and destructors: the maintainer's analysis).
   `docs/OOP_COMPARISON.md` lists what object orientation gives and Inox's

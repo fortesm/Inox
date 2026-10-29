@@ -74,6 +74,16 @@ module that owns a concern instead of searching the whole emitter.
 - `src/compiler/ast/AstClone.*` — deep copies of expressions and statements,
   with an expression rewriter and a type-name rewriter (contracts, generic
   instances).
+- `src/compiler/ast/ModuleInterface.*` — `inox interface`: a module's public
+  surface printed as Inox from its parsed file.
+- `src/compiler/semantic/ModuleResolution.*` — runs once on the parsed
+  modules, before contract lowering (CANON-3, r3.99): gives declarations of
+  used modules internal qualified names (`Mod::Routine`, `Mod.Type`),
+  resolves every name a module writes (own first, then the one public name
+  of its uses; qualified names, aliases, selective uses), and checks that
+  nothing public exposes something private. Field and method visibility,
+  which need expression types, are the analyzer's (`requireFieldVisible`,
+  `requireMethodVisible`, `requireBuildableHere`).
 
 - `src/compiler/codegen/LlvmIrEmitter.cpp` — the module: globals,
   declarations, internal helpers, `main` (`LlvmIrEmitter::emit`,
@@ -259,7 +269,15 @@ time. Each names where it bit.
 - **Windows does not delete or rename an open file.** A File declared in a
   loop stays open until the next round or the routine's exit; tests that
   delete their files close them first.
-- **`Step` and `In` are keywords** (`for ... step`, `for ... in`), as are `Pre`, `Pos`, `Old`, `Invariant`, `Variant` and `Override`; `True`, `False`, `Exit`, `Leave`, `Continue`, `IIf`, `Fill` (r3.81) and the `bit...` operators are predefined names (r3.76); do not use any of them as test variables or routine names. Every array in a test is declared with `:= Fill(...)` (r3.81), and a struct with an enum, array or type-parameter field without default is built by construction, never declared bare (r3.82, `requiredFieldWithoutDefault`). A test file has no `Module` line: its name is its module's name.
+- **`Step` and `In` are keywords** (`for ... step`, `for ... in`), as are `Pre`, `Pos`, `Old`, `Invariant`, `Variant` and `Override`; `True`, `False`, `Exit`, `Leave`, `Continue`, `IIf`, `Fill` (r3.81) and the `bit...` operators are predefined names (r3.76); do not use any of them as test variables or routine names. Every array in a test is declared with `:= Fill(...)` (r3.81), and a struct with an enum, array or type-parameter field without default is built by construction, never declared bare (r3.82, `requiredFieldWithoutDefault`). A test file has no `Module` line: its name is its module's name. A module a test uses marks with `Public` what the test reaches (r3.99); a multi-module scenario is a directory of `tests/modules/` with `Main.inox` and `Main.out`, `Main.err` or `Main.trap`.
+- **`.gitignore` can hide a test fixture.** A folder named `env/` (a Python
+  pattern) was never committed, so CI lacked the INOX_PATH modules that
+  passed locally (r3.99). Before pushing new test folders, run
+  `git status --ignored` or the suite from a clean clone.
+- **Windows CI compares failures with a list.** `tools/ci_known_failures.py`
+  must see every `[FAIL]`: a driver case named by a label counts by its
+  label (it once counted only `.inox` paths, and a broken `--debug` case
+  passed unseen). In PowerShell, `2>&1 1>$null` discards both streams.
 - **GitHub GraphQL is blocked here.** Use `gh api` REST routes (`gh pr view`
   and `gh pr create` fail); job logs come from check-run annotations.
 
