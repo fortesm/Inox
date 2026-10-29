@@ -90,7 +90,12 @@ std::string FunctionEmitter::enumNameTable(TypeRef enumType)
     std::string definition = table + " = private unnamed_addr constant [" +
                              std::to_string(enumType->literals().size()) + " x ptr] [";
     for (std::size_t index = 0; index < enumType->literals().size(); ++index) {
-        definition += (index == 0 ? "ptr " : ", ptr ") + emitStringValue(enumType->literals()[index]);
+        // r3.99: a literal of another module's enum has a qualified
+        // internal name (`Std.Terminal.KeyUp`); it prints as written.
+        const std::string& literal = enumType->literals()[index];
+        const std::size_t dot = literal.rfind('.');
+        definition += (index == 0 ? "ptr " : ", ptr ") +
+                      emitStringValue(dot == std::string::npos ? literal : literal.substr(dot + 1));
     }
     definition += "]";
     module_.moduleLines.push_back(definition);

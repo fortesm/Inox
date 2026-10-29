@@ -1,0 +1,1 @@
+TPerson is Public, but it reuses TBeing, which is not Public

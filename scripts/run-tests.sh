@@ -666,6 +666,36 @@ run_runtime_tree "$repo_root/tests/integration/input"
 run_runtime_tree "$repo_root/tests/runtime"
 run_examples "$repo_root/examples" "$repo_root/tests/examples"
 run_diagnostic_tree "$repo_root/tests/diagnostics"
+
+# r3.99 (CANON-3): each directory of tests/modules is a program of several
+# modules; Main.inox is its entry file. Main.out: it runs with exactly that
+# output; Main.err: it is rejected with an error containing that text.
+run_module_programs() {
+    local root="$repo_root/tests/modules"
+    [[ -d "$root" ]] || return 0
+    while IFS= read -r -d '' directory; do
+        local entry="$directory/Main.inox"
+        local rel
+        rel="$(relative_path "$directory")"
+        if [[ -f "$directory/Main.out" ]]; then
+            run_driver_execution_test "$entry" "$directory/Main.out"
+        elif [[ -f "$directory/Main.err" ]]; then
+            local expected actual exit_code
+            expected="$(sed 's/\r$//' "$directory/Main.err")"
+            actual="$("$inox_exe" --emit-llvm "$entry" 2>&1 >/dev/null)"
+            exit_code=$?
+            actual="$(printf '%s' "$actual" | sed 's/\r$//')"
+            if [[ $exit_code -ne 0 && "$actual" == *"$expected"* ]]; then
+                record_pass "$rel diagnostic"
+            else
+                record_fail "$rel diagnostic" "expected error containing: $expected" "actual error: $actual"
+            fi
+        else
+            record_fail "$rel" "missing Main.out or Main.err"
+        fi
+    done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
+}
+run_module_programs
 run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 
 # grammar/grammar.ebnf must agree with the constitution, the lexer and the parser.

@@ -17,7 +17,7 @@
 ==       (minutes), ss, s, zzz (milliseconds); text between single quotes is
 ==       copied as it is, and so is any other character:
 ==       FormatDateTime(T, "dd/mm/yyyy hh:nn") is 22/10/2026 05:57.
-Use Std.DateTime
+Export Use Std.DateTime
 Use Std.StrUtils
 
 == N with at least Width digits, zeros on the left (N >= 0).
@@ -29,7 +29,7 @@ ZeroPadded(N Integer, Width Integer) String :
     Return Text
 ;
 
-ToISO8601(T TDateTime) String :
+ToISO8601(T TDateTime) String Public :
     Y Integer := 0
     M Integer := 0
     D Integer := 0
@@ -87,7 +87,7 @@ DigitAt(S String, At Integer) Bool :
     Return Found
 ;
 
-FromISO8601(S String) TDateTime :
+FromISO8601(S String) TDateTime Public :
     Y := DigitsAt(S, 1, 4)
     Expect(S, 5, '-')
     M := DigitsAt(S, 6, 2)
@@ -155,7 +155,7 @@ RunLength(Pattern String, Start Integer, Limit Integer) Integer :
     Return Count
 ;
 
-FormatDateTime(T TDateTime, Pattern String) String :
+FormatDateTime(T TDateTime, Pattern String) String Public :
     Y Integer := 0
     M Integer := 0
     D Integer := 0

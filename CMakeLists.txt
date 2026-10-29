@@ -62,6 +62,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticDebug.cpp
     src/compiler/semantic/SemanticReuse.cpp
     src/compiler/semantic/ContractLowering.cpp
+    src/compiler/semantic/ModuleResolution.cpp
     src/compiler/semantic/SemanticContracts.cpp
     src/compiler/semantic/SemanticPointers.cpp
     src/compiler/semantic/SemanticStatements.cpp

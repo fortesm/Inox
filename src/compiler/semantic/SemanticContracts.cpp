@@ -118,7 +118,7 @@ bool SemanticAnalyzer::invariantChecksOn() const
     if (inContract_) {
         return false;
     }
-    const std::size_t dot = currentRoutine_.find('.');
+    const std::size_t dot = ast::methodDot(currentRoutine_);
     return dot == std::string::npos || !equalsIgnoreCase(currentRoutine_.substr(dot + 1), "__invariant");
 }
 

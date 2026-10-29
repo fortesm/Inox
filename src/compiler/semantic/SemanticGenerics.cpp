@@ -441,7 +441,7 @@ TypeRef SemanticAnalyzer::resolveGenericStructType(const types::TypeSyntax& synt
             throw SemanticError(syntax.name + " is not generic: write it without type arguments, not " +
                                 std::string(written));
         }
-        throw SemanticError("unknown type: " + std::string(written));
+        throw SemanticError("unknown type: " + unknownNameText(written));
     }
     if (syntax.arguments.size() != generic->typeParameters.size()) {
         throw SemanticError(generic->name + " takes " + std::to_string(generic->typeParameters.size()) +
@@ -565,8 +565,10 @@ const FunctionSignature& SemanticAnalyzer::instantiateRoutine(const ast::Functio
         }
         return nullptr;
     };
-    const ast::FunctionDeclaration& instance = result_.addInstance(std::make_unique<ast::FunctionDeclaration>(
-        name, std::move(tokens), ast::cloneStatements(generic.body(), rewrite)));
+    auto made = std::make_unique<ast::FunctionDeclaration>(name, std::move(tokens),
+                                                           ast::cloneStatements(generic.body(), rewrite));
+    made->copyModuleFrom(generic);
+    const ast::FunctionDeclaration& instance = result_.addInstance(std::move(made));
     symbols_.globalScope().declare(name, SymbolKind::Function);
     try {
         registerFunctionSignature(instance);

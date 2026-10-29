@@ -1093,6 +1093,30 @@ std::vector<ast::ExpressionPtr> Parser::parseArgumentList()
 std::string Parser::parseTypeName(const char* message)
 {
     const lexer::Token& name = consume(TokenKind::Identifier, message);
+    // r3.99 (A2): a type of another module, `Bank.Accounts.TAccount`.
+    if (check(TokenKind::Dot) && peek().location.line == name.location.line && current_ + 1 < tokens_.size() &&
+        tokens_[current_ + 1].kind == TokenKind::Identifier) {
+        std::string qualified = name.lexeme;
+        while (check(TokenKind::Dot) && current_ + 1 < tokens_.size() &&
+               tokens_[current_ + 1].kind == TokenKind::Identifier &&
+               tokens_[current_ + 1].location.line == name.location.line) {
+            advance();
+            qualified += "." + advance().lexeme;
+        }
+        if (check(TokenKind::Less) && peek().location.line == name.location.line) {
+            advance();
+            std::string text = qualified + "<";
+            do {
+                if (text.back() != '<') {
+                    text += ", ";
+                }
+                text += parseTypeName("expected a type argument");
+            } while (match(TokenKind::Comma));
+            consume(TokenKind::Greater, "expected '>' after the type arguments of " + qualified);
+            return text + ">";
+        }
+        return qualified;
+    }
     // ADR-0017: `Slice<T>`, a read-only view (generic arguments use <...>).
     if (name.normalized == "slice" && check(TokenKind::Less) &&
         peek().location.line == name.location.line) {
@@ -1681,7 +1705,23 @@ ast::StatementPtr Parser::parseExpressionStatement()
 ast::AstNodePtr Parser::parseModuleItem()
 {
     if (matchKeyword("use")) {
-        return parseUseDeclaration();
+        return parseUseDeclaration(false);
+    }
+    // r3.99: `Export Use A.B` passes the public declarations of A.B to the
+    // users of this module; `Export` has no other use.
+    if (check(TokenKind::Identifier) && peek().normalized == "export") {
+        const std::size_t line = peek().location.line;
+        advance();
+        if (!checkKeyword("use") || peek().location.line != line) {
+            errorAtCurrent("'Export' is only written before 'Use' (r3.99): Export Use Module re-exports a module; "
+                           "a declaration is made visible with 'Public' at the end of its header");
+        }
+        advance();
+        return parseUseDeclaration(true);
+    }
+    if (checkKeyword("public")) {
+        errorAtCurrent("'Public' is written at the end of a header (r3.99): 'Name(...) Type Public :', "
+                       "'TName Struct Public', 'Const Name Public := Value'");
     }
 
     if (matchKeyword("type")) {
@@ -1724,11 +1764,45 @@ ast::AstNodePtr Parser::parseModuleItem()
     errorAtCurrent("expected a declaration: Use, Type, Const, State or a routine, Name :");
 }
 
-ast::AstNodePtr Parser::parseUseDeclaration()
+// `Use A.B`, `Use A.B.(X, Y)` (only X and Y unqualified), `Use A.B as AB`
+// (a name for A.B in this file) and both, `Use A.B.(X) as AB` (r3.99).
+ast::AstNodePtr Parser::parseUseDeclaration(bool exported)
 {
-    std::vector<std::string> path;
-    path.push_back(parseQualifiedName("expected module name after 'Use'"));
-    return std::make_unique<ast::UseDeclaration>(std::move(path));
+    const std::size_t line = previous().location.line;
+    std::string name = consumeIdentifierLike("expected module name after 'Use'").lexeme;
+    std::vector<std::string> names;
+    bool selective = false;
+    while (match(TokenKind::Dot)) {
+        if (match(TokenKind::LeftParen)) {
+            selective = true;
+            if (check(TokenKind::RightParen)) {
+                errorAtCurrent("empty parentheses are not Inox: name what Use takes, Use A.B.(X, Y)");
+            }
+            do {
+                names.push_back(consume(TokenKind::Identifier, "expected a name in Use A.B.(X, Y)").lexeme);
+            } while (match(TokenKind::Comma));
+            consume(TokenKind::RightParen, "expected ')' after the names of Use A.B.(X, Y)");
+            break;
+        }
+        name += ".";
+        name += consume(TokenKind::Identifier, "expected name after '.'").lexeme;
+    }
+    std::string alias;
+    if (check(TokenKind::Identifier) && peek().normalized == "as" && peek().location.line == line) {
+        advance();
+        alias = consume(TokenKind::Identifier, "expected the alias after 'as': Use A.B as AB").lexeme;
+        if (exported) {
+            throw ParseError("an alias belongs to its file (r3.99): Export Use passes the module under its own "
+                             "name, write Export Use " + name,
+                             previous().location);
+        }
+    }
+    if (!isAtEnd() && peek().location.line == line) {
+        errorAtCurrent("expected line break after the Use declaration");
+    }
+    std::vector<std::string> path{std::move(name)};
+    return std::make_unique<ast::UseDeclaration>(std::move(path), exported, std::move(alias), std::move(names),
+                                                 selective, line);
 }
 
 // Type, Const and State sections (CANON-5) are parsed into typed
@@ -1804,12 +1878,24 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
         }
     }
 
+    // r3.99: a line break only ends a complete declaration, so the name may
+    // stand alone on its line: `TPerson` then `Struct (TBeing) Public`.
+    const std::size_t headerLine = isAtEnd() ? name.location.line : peek().location.line;
+    // `Public` ends a header: the type is seen by the modules that use this
+    // one (r3.99).
+    const auto takePublic = [&](std::size_t line) {
+        if (checkKeyword("public") && peek().location.line == line) {
+            advance();
+            declaration.isPublic = true;
+        }
+    };
+
     if (matchKeyword("struct")) {
         declaration.kind = ast::TypeDeclarationKind::Struct;
         // Method reuse (CANON-9, Marcelo Fortes 2026-10-13): `TName Struct
         // (TA, TB)` reuses TA and TB. Each part is a field named after its
         // type, written first, so `X.TA` reaches it.
-        if (check(TokenKind::LeftParen) && peek().location.line == name.location.line) {
+        if (check(TokenKind::LeftParen) && peek().location.line == headerLine) {
             advance();
             if (check(TokenKind::RightParen)) {
                 errorAtCurrent("empty parentheses are not Inox: write 'TName Struct' or name the reused "
@@ -1827,14 +1913,28 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
             } while (match(TokenKind::Comma));
             consume(TokenKind::RightParen, "expected ')' after the reused structs");
         }
-        expectEndOfDeclarationLine(name.location.line, "'Struct'");
+        takePublic(headerLine);
+        expectEndOfDeclarationLine(headerLine, "'Struct'");
+        // r3.99: the fields after a line `Public` are seen by other modules.
+        bool publicFields = false;
         while (!isAtEnd() && !check(TokenKind::Semicolon)) {
             if (atContractWord("invariant")) {
                 advance();
                 declaration.invariants.push_back(parseContractClause(ast::ContractClause::Kind::Invariant));
                 continue;
             }
+            if (checkKeyword("public")) {
+                const std::size_t line = peek().location.line;
+                if (publicFields) {
+                    errorAtCurrent("a Struct has one 'Public' line; the fields after it are public (r3.99)");
+                }
+                advance();
+                expectEndOfDeclarationLine(line, "'Public' (the public fields follow on the next lines)");
+                publicFields = true;
+                continue;
+            }
             declaration.fields.push_back(parseStructField());
+            declaration.fields.back().isPublic = publicFields;
         }
         consumeBlockClose();
         if (!declaration.typeParameters.empty()) {
@@ -1852,7 +1952,7 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
     }
 
     if (check(TokenKind::Identifier) && peek().normalized == "range" &&
-        peek().location.line == name.location.line) {
+        (peek().location.line == name.location.line || name.location.line != headerLine)) {
         advance();
         declaration.kind = ast::TypeDeclarationKind::Range;
         declaration.bounds = parseValue();
@@ -1862,6 +1962,7 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
             throw ParseError("a Range is written 'TName Range Low..High' (CANON-13): " + declaration.name,
                              name.location);
         }
+        takePublic(previous().location.line);
         expectEndOfDeclarationLine(previous().location.line, "a Range declaration");
         return declaration;
     }
@@ -1874,13 +1975,15 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
             declaration.literals.push_back(literal.lexeme);
         } while (match(TokenKind::Comma));
         consume(TokenKind::RightParen, "expected ')' after the enum literals");
+        takePublic(previous().location.line);
         expectEndOfDeclarationLine(previous().location.line, "an Enum declaration");
         return declaration;
     }
 
     if (matchKeyword("enum")) {
         declaration.kind = ast::TypeDeclarationKind::Enum;
-        expectEndOfDeclarationLine(name.location.line, "'Enum'");
+        takePublic(previous().location.line);
+        expectEndOfDeclarationLine(previous().location.line, "'Enum'");
         while (!isAtEnd() && !check(TokenKind::Semicolon)) {
             const lexer::Token& literal =
                 consume(TokenKind::Identifier, "expected an enum literal name");
@@ -1996,6 +2099,16 @@ ast::VariableDeclaration Parser::parseSectionVariable(ast::SectionKind sectionKi
                                 : declaration.name + " Type := Value") +
                        "', without ':'");
     }
+    // r3.99: `Const Name Public := Value`; State is never public, its
+    // module's routines are the only way to it.
+    if (checkKeyword("public") && peek().location.line == name.location.line) {
+        if (!isConst) {
+            errorAtCurrent("a State variable is never Public (r3.99): other modules reach it only through "
+                           "the public routines of its module");
+        }
+        advance();
+        declaration.isPublic = true;
+    }
     if (!match(TokenKind::ColonEqual)) {
         declaration.typeName = parseTypeName("expected a type or ':=' after the name");
         if (isConst && check(TokenKind::ColonEqual)) {
@@ -2006,6 +2119,10 @@ ast::VariableDeclaration Parser::parseSectionVariable(ast::SectionKind sectionKi
                                  "e.g. 'Const " + declaration.name + " := " + declaration.typeName +
                                  "(Value)'",
                              peek().location);
+        }
+        if (checkKeyword("public") && peek().location.line == name.location.line) {
+            errorAtCurrent("a State variable is never Public (r3.99): other modules reach it only through "
+                           "the public routines of its module");
         }
         if (!match(TokenKind::ColonEqual)) {
             if (isConst) {
@@ -2054,6 +2171,13 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
         // CANON-13: an array type in a signature is one type token,
         // `Array[1..3] Integer`, so later phases read it like any type name;
         // so is a generic type, `Slice<T>`, `Own<T>`, `TPair<K, V>` (CANON-8).
+        if (check(TokenKind::Identifier) && current_ + 2 < tokens_.size() &&
+            tokens_[current_ + 1].kind == TokenKind::Dot && tokens_[current_ + 2].kind == TokenKind::Identifier &&
+            tokens_[current_ + 2].location.line == peek().location.line) {
+            // r3.99 (A2): a qualified type, `Bank.Accounts.TAccount`.
+            signatureTokens.push_back(parseTypeName("expected type name"));
+            continue;
+        }
         if (check(TokenKind::Identifier) && current_ + 1 < tokens_.size() &&
             tokens_[current_ + 1].location.line == peek().location.line &&
             ((peek().normalized == "array" && tokens_[current_ + 1].kind == TokenKind::LeftBracket) ||
@@ -2071,15 +2195,30 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
         errorAt(name, "empty parentheses are not allowed in declarations; omit parentheses when there are no parameters");
     }
 
-    // `Override` ends the signature of a method that replaces a reused one
-    // (CANON-9): `TName.Method(Self) Type Override :`.
-    bool isOverride = false;
-    const auto isOverrideWord = [](std::string word) {
+    // r3.99: `Public` is the last word of a header, after the result type
+    // and `Override`: `TName.Method(Self) Type Override Public :`.
+    const auto lowered = [](std::string word) {
         for (char& ch : word) {
             ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
         }
-        return word == "override";
+        return word;
     };
+    bool isPublic = false;
+    if (!signatureTokens.empty() && lowered(signatureTokens.back()) == "public") {
+        signatureTokens.pop_back();
+        isPublic = true;
+    }
+    for (const std::string& token : signatureTokens) {
+        if (lowered(token) == "public") {
+            errorAt(name, "'Public' is the last word of a header, just before ':' (r3.99): " + functionName +
+                              "(...) Type Override Public :");
+        }
+    }
+
+    // `Override` ends the signature of a method that replaces a reused one
+    // (CANON-9): `TName.Method(Self) Type Override :`.
+    bool isOverride = false;
+    const auto isOverrideWord = [&](const std::string& word) { return lowered(word) == "override"; };
     if (!signatureTokens.empty() && isOverrideWord(signatureTokens.back())) {
         if (functionName.find('.') == std::string::npos) {
             errorAt(name, "'Override' marks a method that replaces a reused one (CANON-9); " +
@@ -2109,13 +2248,15 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
     auto body = parseBlockBody();
     consumeBlockClose();
 
-    return std::make_unique<ast::FunctionDeclaration>(
+    auto declaration = std::make_unique<ast::FunctionDeclaration>(
         std::move(functionName),
         std::move(signatureTokens),
         std::move(body),
         isOverride,
         std::move(contracts),
         std::move(typeParameters));
+    declaration->setPublic(isPublic);
+    return declaration;
 }
 
 // `<T, U>`: distinct names, on the line of the name they follow.
@@ -2444,6 +2585,11 @@ bool Parser::atTypedLocalStatementStart() const
 
     const lexer::Token& type = tokens_[index];
     ++index;
+    // r3.99 (A2): `A Bank.Accounts.TAccount`, a type of another module.
+    while (index + 1 < tokens_.size() && tokens_[index].kind == TokenKind::Dot &&
+           tokens_[index + 1].kind == TokenKind::Identifier && tokens_[index + 1].location.line == line) {
+        index += 2;
+    }
     if (index >= tokens_.size()) {
         return true;
     }

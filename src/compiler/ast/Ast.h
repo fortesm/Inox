@@ -165,21 +165,50 @@ public:
     void addLoadedModule(std::string name);
     const std::vector<std::string>& loadedModules() const;
 
+    // r3.99 (module resolution): the modules each module sees (itself, what
+    // it uses and what those re-export), the first words of the module names
+    // and aliases a module writes in qualified names (no variable may take
+    // one), and the explanation of a name a module cannot see, for the
+    // analyzer's "unknown symbol" error. Keys are module names as written.
+    std::vector<std::string> visibleModules(const std::string& module) const;
+    void setVisibleModules(const std::string& module, std::vector<std::string> modules);
+    bool reservesRoot(const std::string& module, std::string_view root) const;
+    void addReservedRoot(const std::string& module, std::string root);
+    std::string nameHint(const std::string& module, std::string_view name) const;
+    void setNameHint(const std::string& module, std::string_view name, std::string hint);
+
 private:
+    std::vector<std::pair<std::string, std::vector<std::string>>> visibleModules_;
+    std::vector<std::pair<std::string, std::string>> reservedRoots_;
+    std::vector<std::pair<std::string, std::string>> nameHints_;
     std::string name_;
     std::vector<AstNodePtr> items_;
     std::vector<StatementPtr> statements_;
     std::vector<std::string> loadedModules_;
 };
 
+// `Use A.B`, `Export Use A.B` (r3.99: the users of this module also see the
+// public declarations of A.B), `Use A.B as AB` (an alias for qualified names
+// in this file) and `Use A.B.(X, Y)` (only X and Y without qualification).
 class UseDeclaration final : public AstNode {
 public:
-    explicit UseDeclaration(std::vector<std::string> path);
+    explicit UseDeclaration(std::vector<std::string> path, bool exported = false, std::string alias = {},
+                            std::vector<std::string> names = {}, bool selective = false, std::size_t line = 0);
 
     const std::vector<std::string>& path() const;
+    bool isExported() const { return exported_; }
+    const std::string& alias() const { return alias_; }
+    const std::vector<std::string>& names() const { return names_; }
+    bool isSelective() const { return selective_; }
+    std::size_t line() const { return line_; }
 
 private:
     std::vector<std::string> path_;
+    bool exported_ = false;
+    std::string alias_;
+    std::vector<std::string> names_;
+    bool selective_ = false;
+    std::size_t line_ = 0;
 };
 
 // A field of a Struct declaration (CANON-9). `typeName` uses the front end's
@@ -198,6 +227,9 @@ struct StructFieldDeclaration {
     // is a field named after its type, whose fields and methods the struct
     // also offers directly.
     bool isPart = false;
+    // r3.99: a field after the `Public` line of its struct is seen by other
+    // modules; the others only by the module that declares the struct.
+    bool isPublic = false;
 };
 
 // Design by contract (CANON-24): one `pre`, `pos`, `invariant` or `variant`
@@ -238,6 +270,10 @@ struct TypeDeclaration {
     std::vector<ContractClause> invariants;  // Struct: `invariant` lines (CANON-24)
     // CANON-8 (r3.77): `TPair<K, V> Struct` declares K and V; empty otherwise.
     std::vector<std::string> typeParameters;
+    // r3.99: `TName Struct ... Public`; the module that declares the type
+    // (set by module resolution).
+    bool isPublic = false;
+    std::string module;
 };
 
 // One Const or State declaration (CANON-5). `typeName` is empty for the
@@ -249,6 +285,8 @@ struct VariableDeclaration {
     std::string typeName;
     ExpressionPtr value;
     std::size_t line = 0;
+    // r3.99: `Const Name Public := Value`; a State variable is never public.
+    bool isPublic = false;
 };
 
 class SectionDeclaration final : public AstNode {
@@ -261,8 +299,14 @@ public:
     const std::vector<TypeDeclaration>& types() const;
     // The declarations of a Const or State section (empty for Type).
     const std::vector<VariableDeclaration>& variables() const;
+    std::vector<TypeDeclaration>& types() { return types_; }
+    std::vector<VariableDeclaration>& variables() { return variables_; }
+    // r3.99: the module the section was written in (module resolution).
+    const std::string& module() const { return module_; }
+    void setModule(std::string module) { module_ = std::move(module); }
 
 private:
+    std::string module_;
     SectionKind sectionKind_;
     std::vector<TypeDeclaration> types_;
     std::vector<VariableDeclaration> variables_;
@@ -309,8 +353,26 @@ public:
     const std::vector<ContractClause>& contracts() const;
     std::vector<ContractClause> takeContracts();
     std::vector<StatementPtr> takeBody();
+    std::vector<ContractClause>& contracts() { return contracts_; }
+    std::vector<StatementPtr>& body() { return body_; }
+    std::vector<std::string>& signatureTokens() { return signatureTokens_; }
+    void setName(std::string name) { name_ = std::move(name); }
+    // r3.99: `... Public :` puts the routine in its module's interface; the
+    // module is the one it was written in (module resolution). A routine
+    // made from another (contract wrappers, generic instances) takes both.
+    bool isPublic() const { return isPublic_; }
+    void setPublic(bool isPublic) { isPublic_ = isPublic; }
+    const std::string& module() const { return module_; }
+    void setModule(std::string module) { module_ = std::move(module); }
+    void copyModuleFrom(const FunctionDeclaration& other)
+    {
+        isPublic_ = other.isPublic_;
+        module_ = other.module_;
+    }
 
 private:
+    bool isPublic_ = false;
+    std::string module_;
     std::string name_;
     std::vector<std::string> signatureTokens_;
     std::vector<StatementPtr> body_;

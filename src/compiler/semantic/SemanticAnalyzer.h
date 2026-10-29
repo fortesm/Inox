@@ -80,6 +80,7 @@ private:
 
     void declareModuleItem(const ast::AstNode& item);
     void registerFunctionSignatures(const ast::ModuleNode& module);
+    void registerFunctionSignatureIn(const ast::FunctionDeclaration& function);
     void registerFunctionSignature(const ast::FunctionDeclaration& function);
     const FunctionSignature* resolveFunctionSignature(std::string_view name) const;
     void analyzeModuleItem(const ast::AstNode& item);
@@ -275,6 +276,7 @@ private:
     // Std.Terminal (SemanticIntrinsics.cpp, change console-abi-terminal).
     void declareModuleIntrinsics(const ast::ModuleNode& module);
     const ModuleIntrinsic* moduleIntrinsic(std::string_view name) const;
+    TypeRef intrinsicType(const ModuleIntrinsic& function, std::string_view name);
     TypeRef intrinsicResultType(const ModuleIntrinsic& function);
     TypeRef analyzeIntrinsicIdentifier(const ast::IdentifierExpression& identifier, const ModuleIntrinsic& function);
     TypeRef analyzeIntrinsicCall(const ast::CallExpression& call, const ModuleIntrinsic& function);
@@ -354,6 +356,11 @@ private:
     std::size_t retryHandlerDepth_ = 0;
     std::size_t ensureDepth_ = 0;
     bool hasMain_ = false;
+    // r3.99: the program and the module whose declaration is analyzed.
+    const ast::ModuleNode* program_ = nullptr;
+    std::string currentModule_;
+    void enterModule(const std::string& module);
+    std::string unknownNameText(std::string_view name) const;
     bool filesVisible_ = false;    // Std.Files: the File type and the basic operations
     bool ioUtilsVisible_ = false;  // Std.IOUtils: the conveniences (it uses Std.Files)
     // The modules whose intrinsics the program sees (Std.Terminal, ...).

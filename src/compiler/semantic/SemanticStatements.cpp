@@ -34,6 +34,8 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
     const TypeRef previousReturnType = currentFunctionReturnType_;
     const bool previousSawReturn = currentFunctionSawReturn_;
     const std::string previousRoutine = std::exchange(currentRoutine_, function.name());
+    const std::string previousModule = currentModule_;
+    enterModule(function.module());
     const FunctionSignature* signature = resolveFunctionSignature(function.name());
     currentFunctionReturnType_ = signature != nullptr ? signature->returnType : nullptr;
     currentFunctionSawReturn_ = false;
@@ -60,6 +62,7 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
     currentFunctionReturnType_ = previousReturnType;
     currentFunctionSawReturn_ = previousSawReturn;
     currentRoutine_ = previousRoutine;
+    enterModule(previousModule);
 }
 
 bool SemanticAnalyzer::cannotFallThrough(const std::vector<ast::StatementPtr>& statements)

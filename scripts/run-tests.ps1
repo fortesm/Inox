@@ -909,6 +909,40 @@ Invoke-RuntimeTree "tests\integration\input"
 Invoke-RuntimeTree "tests\runtime"
 Invoke-Examples
 Invoke-DiagnosticTree "tests\diagnostics"
+
+# r3.99 (CANON-3): each directory of tests/modules is a program of several
+# modules; Main.inox is its entry file. Main.out: it runs with exactly that
+# output; Main.err: it is rejected with an error containing that text.
+$modulesRoot = Join-Path $repoRoot "tests\modules"
+if (Test-Path -LiteralPath $modulesRoot) {
+    Get-ChildItem -LiteralPath $modulesRoot -Directory | Sort-Object Name | ForEach-Object {
+        $directory = $_
+        $relative = [System.IO.Path]::GetRelativePath($repoRoot, $directory.FullName)
+        $entry = Get-Item -LiteralPath (Join-Path $directory.FullName "Main.inox")
+        $outPath = Join-Path $directory.FullName "Main.out"
+        $errPath = Join-Path $directory.FullName "Main.err"
+        if (Test-Path -LiteralPath $outPath) {
+            Invoke-RunDriverTest -TestFile $entry -ExpectedOutputFile (Get-Item -LiteralPath $outPath)
+        } elseif (Test-Path -LiteralPath $errPath) {
+            $expected = ((Get-Content -LiteralPath $errPath -Raw) -replace "`r`n", "`n") -replace "`n+$", ""
+            $actual = & $InoxExe "--emit-llvm" $entry.FullName 2>&1 | Out-String
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -ne 0 -and $actual.Contains($expected)) {
+                $script:passed++
+                Write-Host "[PASS] $relative diagnostic"
+            } else {
+                $script:failed++
+                Write-Host "[FAIL] $relative diagnostic"
+                Write-Host "       expected error containing: $expected"
+                Write-Host "       actual error: $actual"
+            }
+        } else {
+            $script:failed++
+            Write-Host "[FAIL] $relative"
+            Write-Host "       missing Main.out or Main.err"
+        }
+    }
+}
 Invoke-ModeExitTest `
     -Mode "--emit-llvm" `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\cycles\Cycle.A.inox")) `

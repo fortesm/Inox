@@ -95,7 +95,7 @@ std::vector<std::string> SemanticAnalyzer::ownMethodNames(std::string_view typeN
         if (key.size() > prefix.size() && key.compare(0, prefix.size(), prefix) == 0 &&
             normalizeName(signature.name).compare(0, prefix.size(), prefix) == 0 &&
             key.compare(prefix.size(), 2, "__") != 0) {
-            names.push_back(signature.name.substr(signature.name.find('.') + 1));
+            names.push_back(signature.name.substr(ast::methodDot(signature.name) + 1));
         }
     }
     return names;

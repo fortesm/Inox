@@ -5,7 +5,7 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-Use Std.Files
+Export Use Std.Files
 
 == File-system conveniences built on Std.Files (canon r3.64 module pairs).
 == Compiler intrinsics, visible in a program that uses Std.IOUtils, which

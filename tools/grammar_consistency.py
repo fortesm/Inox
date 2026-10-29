@@ -43,7 +43,9 @@ CONTEXTUAL_WORDS = {"self", "range", "array", "override",
                     # meaningful in one position only (r3.76): `pos then`
                     "then",
                     # design by contract (CANON-24)
-                    "pre", "pos", "old", "invariant", "variant"}
+                    "pre", "pos", "old", "invariant", "variant",
+                    # modules (r3.99): `Export Use`, `Use M as A`
+                    "export", "as"}
 
 # Reserved by the lexer but not part of any production (reserved for the
 # future or kept reserved to reject old syntax with a diagnostic).

@@ -9,6 +9,7 @@
 #include "../lexer/Lexer.h"
 #include "../parser/Parser.h"
 #include "../semantic/ContractLowering.h"
+#include "../semantic/ModuleResolution.h"
 #include "../semantic/SemanticAnalyzer.h"
 #include "../semantic/SemanticDumper.h"
 #include "../support/Environment.h"
@@ -143,15 +144,10 @@ public:
             throw std::runtime_error("program has no modules");
         }
 
-        auto program = std::make_unique<ModuleNode>(entryModuleName_);
-        for (auto& module : modules_) {
-            program->addLoadedModule(module->name());
-            for (auto& item : module->items()) {
-                if (item->kind() != inox::compiler::ast::AstNodeKind::UseDeclaration) {
-                    program->items().push_back(std::move(item));
-                }
-            }
-        }
+        // r3.99 (CANON-3): each module keeps its own names; module
+        // resolution gives the analyzer one program in which every name means
+        // one declaration.
+        auto program = inox::compiler::semantic::resolveModules(std::move(modules_));
         // CANON-24: contracts become checks once the whole program is known
         // (an Override inherits the contracts of methods in other modules).
         inox::compiler::semantic::lowerContracts(*program);

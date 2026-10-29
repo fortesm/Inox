@@ -1,0 +1,16 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.99: Export Use passes the public declarations of a module to the
+== users of the module that writes it; Bank gives Bank.Accounts and
+== Bank.Reports, and the qualified names of both work too.
+Use Bank
+
+Main :
+    PutLn(Fee(10), " ", Report(10))
+    PutLn(Bank.Accounts.Fee(1), " ", Bank.Fee(2))
+;

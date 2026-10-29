@@ -38,6 +38,17 @@ namespace inox::compiler::semantic {
 
 namespace {
 
+// r3.99: a routine of another module has the internal name
+// `Std.DateTime::EncodeDate`; its messages show `Std.DateTime.EncodeDate`.
+std::string shown(std::string name)
+{
+    for (std::size_t at = name.find("::"); at != std::string::npos; at = name.find("::", at)) {
+        name.replace(at, 2, ".");
+    }
+    return name;
+}
+
+
 using ast::ContractClause;
 
 std::string lower(std::string_view text)
@@ -294,7 +305,7 @@ private:
             }
         }
 
-        const std::size_t dot = function.name().find('.');
+        const std::size_t dot = ast::methodDot(function.name());
         if (function.isOverride() && dot != std::string::npos) {
             bool inheritedTrue = false;
             std::vector<Clause> inheritedPos;
@@ -387,7 +398,7 @@ private:
     {
         ast::FunctionDeclaration& function = *routine.declaration;
         const std::string& name = function.name();
-        const std::size_t dot = name.find('.');
+        const std::size_t dot = ast::methodDot(name);
         const std::string bodyName = dot == std::string::npos
                                          ? "__" + name + "_body"
                                          : name.substr(0, dot) + ".__" + name.substr(dot + 1) + "_body";
@@ -398,7 +409,7 @@ private:
         if (contract.preAlternatives.size() == 1) {
             for (const Clause& clause : contract.preAlternatives.front()) {
                 statements.push_back(check(1, instantiate(clause, nullptr),
-                                           "precondition violated: " + name + ": " + clauseText(clause) +
+                                           "precondition violated: " + shown(name) + ": " + clauseText(clause) +
                                                originNote(clause, name)));
             }
         } else if (contract.preAlternatives.size() > 1) {
@@ -423,7 +434,7 @@ private:
                           : std::move(all);
                 text += (text.empty() ? "(" : " or else (") + allText + ")";
             }
-            statements.push_back(check(1, std::move(any), "precondition violated: " + name + ": " + text));
+            statements.push_back(check(1, std::move(any), "precondition violated: " + shown(name) + ": " + text));
         }
 
         // Postcondition clauses, with their `old` values saved now.
@@ -431,7 +442,7 @@ private:
         std::vector<ast::StatementPtr> posChecks;
         for (const Clause& clause : contract.pos) {
             posChecks.push_back(check(2, instantiate(clause, &oldValues),
-                                      "postcondition violated: " + name + ": " + clauseText(clause) +
+                                      "postcondition violated: " + shown(name) + ": " + clauseText(clause) +
                                           originNote(clause, name)));
         }
         for (ast::StatementPtr& saved : oldValues) {
@@ -485,10 +496,12 @@ private:
                                                                     function.takeBody(), false,
                                                                     std::vector<ast::ContractClause>{},
                                                                     function.typeParameters()));
+        added_.back()->copyModuleFrom(function);
         auto wrapper = std::make_unique<ast::FunctionDeclaration>(name, function.signatureTokens(),
                                                                   std::move(statements), function.isOverride(),
                                                                   std::vector<ast::ContractClause>{},
                                                                   function.typeParameters());
+        wrapper->copyModuleFrom(function);
         // The old declaration (an empty shell now) stays alive until the pass
         // ends: `routines_` still points at it.
         retired_.push_back(std::move(program_.items()[routine.index]));
@@ -639,8 +652,12 @@ private:
                 statements.push_back(check(3, ast::cloneExpression(*clause.condition),
                                            "invariant violated: " + info.name + ": " + text));
             }
-            program_.items().push_back(std::make_unique<ast::FunctionDeclaration>(
-                info.name + ".__invariant", std::vector<std::string>{"(", "Self", ")"}, std::move(statements), false));
+            auto invariant = std::make_unique<ast::FunctionDeclaration>(
+                info.name + ".__invariant", std::vector<std::string>{"(", "Self", ")"}, std::move(statements), false);
+            if (info.declaration != nullptr) {
+                invariant->setModule(info.declaration->module);
+            }
+            program_.items().push_back(std::move(invariant));
         }
     }
 

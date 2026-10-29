@@ -8,6 +8,7 @@
 // SemanticAnalyzer: routine signatures, scopes and symbols, module items, Type/Const/State sections, structs.
 
 #include "SemanticAnalyzer.h"
+#include "StdIntrinsics.h"
 
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
@@ -43,6 +44,14 @@ void SemanticAnalyzer::registerFunctionSignatures(const ast::ModuleNode& module)
 }
 
 void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration& function)
+{
+    const std::string previousModule = currentModule_;
+    enterModule(function.module());
+    registerFunctionSignatureIn(function);
+    enterModule(previousModule);
+}
+
+void SemanticAnalyzer::registerFunctionSignatureIn(const ast::FunctionDeclaration& function)
 {
     const auto& tokens = function.signatureTokens();
 
@@ -194,6 +203,50 @@ void SemanticAnalyzer::rejectPredefinedName(std::string_view name)
     }
 }
 
+// r3.99: the text of an unknown name, with why it is not seen when another
+// module declares it.
+std::string SemanticAnalyzer::unknownNameText(std::string_view name) const
+{
+    if (program_ != nullptr) {
+        if (std::string hint = program_->nameHint(currentModule_, name); !hint.empty()) {
+            return hint;
+        }
+    }
+    return std::string(name);
+}
+
+// r3.99: the analysis of a declaration of `module` sees the library
+// functions of the modules it uses (with what they re-export), not those
+// another module of the program uses.
+void SemanticAnalyzer::enterModule(const std::string& module)
+{
+    if (program_ == nullptr || module.empty()) {
+        return;
+    }
+    currentModule_ = module;
+    const std::vector<std::string> visible = program_->visibleModules(module);
+    const auto sees = [&](std::string_view name) {
+        for (const std::string& entry : visible) {
+            if (equalsIgnoreCase(entry, name)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    ioUtilsVisible_ = sees("Std.IOUtils");
+    filesVisible_ = ioUtilsVisible_ || sees("Std.Files");
+    debugVisible_ = sees("Std.Debug");
+    mathVisible_ = sees("Std.Math");
+    strUtilsVisible_ = sees("Std.StrUtils");
+    stringsVisible_ = strUtilsVisible_ || sees("Std.Strings");
+    intrinsicModules_.clear();
+    for (const ModuleIntrinsic& function : kModuleIntrinsics) {
+        if (sees(function.module)) {
+            intrinsicModules_.insert(std::string(function.module));
+        }
+    }
+}
+
 void SemanticAnalyzer::declareOrThrow(
     std::string_view name,
     SymbolKind kind,
@@ -201,6 +254,13 @@ void SemanticAnalyzer::declareOrThrow(
     bool isMutable)
 {
     rejectPredefinedName(name);
+    // r3.99 (A2): `Bank.Accounts.Fee` must mean the module, so no variable
+    // takes the first name of a module or an alias its module uses.
+    if ((kind == SymbolKind::Variable || kind == SymbolKind::LoopIterator) && program_ != nullptr &&
+        program_->reservesRoot(currentModule_, name)) {
+        throw SemanticError(std::string(name) + " is the name of a module " + currentModule_ +
+                            " uses, in its qualified names: no variable takes it (r3.99)");
+    }
     Scope& scope = symbols_.currentScope();
     if (scope.containsLocal(name)) {
         throw SemanticError("duplicate symbol in same scope: " + std::string(name));
@@ -255,6 +315,12 @@ const Symbol& SemanticAnalyzer::resolveOrThrow(std::string_view name) const
     }
     const Symbol* symbol = symbols_.currentScope().resolve(name);
     if (symbol == nullptr) {
+        // r3.99: a name another module declares says why it is not seen.
+        if (program_ != nullptr) {
+            if (std::string hint = program_->nameHint(currentModule_, name); !hint.empty()) {
+                throw SemanticError("unknown symbol: " + hint);
+            }
+        }
         throw SemanticError("unknown symbol: " + std::string(name));
     }
     return *symbol;
@@ -288,6 +354,7 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
         }
     } else if (item.kind() == ast::AstNodeKind::SectionDeclaration) {
         const auto& section = static_cast<const ast::SectionDeclaration&>(item);
+        enterModule(section.module());
         validateSectionTypes(section);
         // Const and State initializers are expressions: they are analyzed like
         // any other (CANON-9 named construction, types), not skipped.
