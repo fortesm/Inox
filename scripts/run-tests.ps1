@@ -830,7 +830,9 @@ if ($mathExit -eq 0 -and $mathOutput.TrimEnd("`n") -eq $mathExpected.TrimEnd("`n
 } else {
     $failed++; Write-Host "[FAIL] inox --debug: math-expressions gives the same values without optimization"
 }
-$trapError = (& $InoxExe "run" "--debug" (Join-Path $repoRoot "tests/runtime/shl-overflow.inox") 2>&1 1>$null | Out-String)
+# PowerShell applies `2>&1 1>$null` left to right: the merged stream would be
+# discarded. The diagnostic is looked for in stdout and stderr together.
+$trapError = (& $InoxExe "run" "--debug" (Join-Path $repoRoot "tests/runtime/shl-overflow.inox") 2>&1 | Out-String)
 $trapExit = $LASTEXITCODE
 if ($trapExit -ne 0 -and $trapError -like "*Inox runtime error: integer overflow*") {
     $passed++; Write-Host "[PASS] inox run --debug: a trap stops the program without optimization"

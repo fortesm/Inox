@@ -19,7 +19,11 @@ toolchain; results on other toolchains are recorded separately.
 import re
 import sys
 
-FAIL = re.compile(r"^\[FAIL\]\s+(\S+?\.inox)\b")
+# A failing case is named by its .inox file, or by its whole label when it
+# names none (driver cases such as "inox run --debug: ..."), so no failure
+# escapes the comparison.
+FAIL = re.compile(r"^\s*\[FAIL\]\s+(\S+?\.inox)\b")
+FAIL_LABEL = re.compile(r"^\s*\[FAIL\]\s+(.+?)\s*$")
 
 
 def normalize(path):
@@ -43,7 +47,7 @@ def main(argv):
 
     failed = set()
     for line in log:
-        match = FAIL.match(line)
+        match = FAIL.match(line) or FAIL_LABEL.match(line)
         if match:
             failed.add(normalize(match.group(1)))
 
