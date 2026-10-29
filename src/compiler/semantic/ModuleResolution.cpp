@@ -469,6 +469,12 @@ private:
             std::string hint = used ? written + " is not Public in " + decl->module + " (r3.99)"
                                     : written + " is declared in " + decl->module + ", which " + module.name +
                                           " does not use: write Use " + decl->module + " (r3.99)";
+            if (used && decl->isPublic) {
+                // Public, but left out of a selective Use (A4).
+                const std::string qualified = qualifierFor(module, *decl);
+                hint = written + " is not in the list of Use " + decl->module + ".(...): write " + qualified +
+                       " or add " + written + " to the list (r3.99)";
+            }
             hints_.emplace_back(module.name, written, std::move(hint));
             return;
         }
