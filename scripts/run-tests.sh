@@ -699,6 +699,58 @@ run_module_programs() {
     done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
 }
 run_module_programs
+
+# r3.99: driver cases with their own arguments or environment. `out`: the
+# driver succeeds and prints exactly the file's text; `fail`: it fails with
+# an error containing the text. INOX_PATH is set for the case only.
+run_driver_case() {
+    local label="$1" kind="$2" expected="$3" inox_path="$4"
+    shift 4
+    if [[ "$kind" == "out" ]] && ! command -v clang >/dev/null 2>&1 && [[ "$1" == "run" ]]; then
+        echo "[SKIP] $label (clang not found)"
+        return 0
+    fi
+    local actual exit_code
+    if [[ -n "$inox_path" ]]; then
+        actual="$(cd "$repo_root" && INOX_PATH="$inox_path" "$inox_exe" "$@" 2>&1 < /dev/null)"
+    else
+        actual="$(cd "$repo_root" && env -u INOX_PATH "$inox_exe" "$@" 2>&1 < /dev/null)"
+    fi
+    exit_code=$?
+    actual="$(printf '%s' "$actual" | sed 's/\r$//')"
+    if [[ "$kind" == "out" ]]; then
+        local wanted
+        wanted="$(sed 's/\r$//' "$repo_root/$expected")"
+        if [[ $exit_code -eq 0 && "$actual" == "$wanted" ]]; then
+            record_pass "$label"
+        else
+            record_fail "$label" "exit code: $exit_code" "expected output: $wanted" "actual output: $actual"
+        fi
+    elif [[ $exit_code -ne 0 && "$actual" == *"$expected"* ]]; then
+        record_pass "$label"
+    else
+        record_fail "$label" "exit code: $exit_code" "expected error containing: $expected" "actual: $actual"
+    fi
+}
+sp="tests/search-path"
+run_driver_case "D1: --path before INOX_PATH, missing entry skipped" out "$sp/Main.out" \
+    "$repo_root/$sp/missing:$repo_root/$sp/inox-path" run --path "$sp/lib" "$sp/Main.inox"
+run_driver_case "D1: INOX_PATH alone" out "$sp/Main.env-only.out" "$repo_root/$sp/inox-path" run "$sp/Main.inox"
+run_driver_case "D1: --path to a missing directory" fail \
+    "--path does not point to an existing directory" "" run --path "$sp/nowhere" "$sp/Main.inox"
+run_driver_case "D2: a program file named Std.*" fail "the name Std.Thing is reserved" "" check "$sp/Std.Thing.inox"
+run_driver_case "E2: examples/bank runs" out "tests/examples/bank.out" "" run examples/bank/Main.inox
+run_driver_case "E2: bank balance not writable outside" fail "FBalance is not Public in Bank.Accounts" "" \
+    run --path examples/bank "$sp/bank/BalanceWrite.inox"
+run_driver_case "E2: bank balance not readable outside" fail "FBalance is not Public in Bank.Accounts" "" \
+    run --path examples/bank "$sp/bank/BalanceRead.inox"
+run_driver_case "E2: bank overdraw stops at the contract" fail \
+    "precondition violated: Bank.Accounts.TAccount.Withdraw" "" run --path examples/bank "$sp/bank/Overdraw.inox"
+run_driver_case "B4: inox interface of Bank.Accounts" out "tests/interface/bank-accounts.out" "" \
+    interface examples/bank/Bank/Accounts.inox
+run_driver_case "B4: inox interface of Bank" out "tests/interface/bank.out" "" interface examples/bank/Bank.inox
+run_driver_case "B4: inox interface of Std.DateUtils" out "tests/interface/std-dateutils.out" "" \
+    interface stdlib/Std.DateUtils.inox
 run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 
 # grammar/grammar.ebnf must agree with the constitution, the lexer and the parser.

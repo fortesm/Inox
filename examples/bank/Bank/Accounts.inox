@@ -1,0 +1,39 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Bank.Accounts: the account and the only ways to change its balance.
+Type
+    TAccount Struct Public
+        FBalance Currency := 0.00
+        invariant Self.FBalance >= 0.00, "a balance is never negative"
+    Public
+        FOwner String := ""
+    ;
+
+Const MaxWithdrawal Public := Currency(1_000.00)
+
+OpenAccount(Owner String) TAccount Public :
+    Return TAccount(FOwner := Owner)
+;
+
+TAccount.Deposit(Self mut, Amount Currency) Public :
+    pre Amount > 0.00, "a deposit is positive"
+    Self.FBalance += Amount
+;
+
+TAccount.Withdraw(Self mut, Amount Currency) Public :
+    pre Self.CanWithdraw(Amount), "a withdrawal is positive, covered and within the limit"
+    Self.FBalance -= Amount
+;
+
+TAccount.CanWithdraw(Self, Amount Currency) Bool Public :
+    Return Amount > 0.00 and Amount <= Self.FBalance and Amount <= MaxWithdrawal
+;
+
+TAccount.Balance(Self) Currency Public :
+    Return Self.FBalance
+;

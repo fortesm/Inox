@@ -22,6 +22,7 @@ include(InoxSanitizers)
 set(INOX_COMPILER_SOURCES
     src/compiler/ast/Ast.cpp
     src/compiler/ast/AstClone.cpp
+    src/compiler/ast/ModuleInterface.cpp
     src/compiler/codegen/AstQueries.cpp
     src/compiler/codegen/ExceptionAbi.cpp
     src/compiler/codegen/FunctionEmitter.cpp

@@ -1955,7 +1955,9 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
         (peek().location.line == name.location.line || name.location.line != headerLine)) {
         advance();
         declaration.kind = ast::TypeDeclarationKind::Range;
+        const std::size_t boundsStart = current_;
         declaration.bounds = parseValue();
+        declaration.boundsText = sourceText(boundsStart, current_);
         const auto* bounds = declaration.bounds.get();
         if (bounds->kind() != ast::AstNodeKind::BinaryExpression ||
             static_cast<const ast::BinaryExpression*>(bounds)->op() != ast::BinaryOperator::Range) {
@@ -2133,7 +2135,9 @@ ast::VariableDeclaration Parser::parseSectionVariable(ast::SectionKind sectionKi
         }
     }
 
+    const std::size_t valueStart = current_;
     declaration.value = parseValue();
+    declaration.valueText = sourceText(valueStart, current_);
     expectEndOfDeclarationLine(previous().location.line, "a section declaration");
     return declaration;
 }

@@ -5,6 +5,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include "../ast/ModuleInterface.h"
 #include "../codegen/LlvmIrEmitter.h"
 #include "../lexer/Lexer.h"
 #include "../parser/Parser.h"
@@ -129,10 +130,19 @@ bool isPreludeModule(std::string_view name)
            equalsIgnoreCase(name, "Sys.Std");
 }
 
+// r3.99 (D2): `Std` names the standard library; no other module takes it.
+bool isStandardLibraryName(std::string_view name)
+{
+    return equalsIgnoreCase(name, "Std") || (name.size() > 4 && equalsIgnoreCase(name.substr(0, 4), "Std."));
+}
+
 class ModuleLoader {
 public:
-    ModuleLoader(fs::path sourceDirectory, fs::path standardLibraryDirectory)
-        : sourceDirectory_(std::move(sourceDirectory)),
+    // r3.99 (D1): a Use is searched in `searchDirectories` in order (the
+    // entry file's directory, each --path, each INOX_PATH entry), then in the
+    // standard library; the first file found is the module.
+    ModuleLoader(std::vector<fs::path> searchDirectories, fs::path standardLibraryDirectory)
+        : searchDirectories_(std::move(searchDirectories)),
           standardLibraryDirectory_(std::move(standardLibraryDirectory))
     {
     }
@@ -158,6 +168,10 @@ private:
     void loadModule(const fs::path& sourcePath, std::string_view expectedName)
     {
         auto module = parseSource(sourcePath, std::string(expectedName));
+        if (expectedName.empty() && isStandardLibraryName(module->name()) && !insideStandardLibrary(sourcePath)) {
+            throw std::runtime_error("the name " + module->name() +
+                                     " is reserved: Std names the standard library (r3.99); rename the file");
+        }
 
         const std::string key = normalize(module->name());
         if (loading_.contains(key)) {
@@ -186,28 +200,79 @@ private:
         modules_.push_back(std::move(module));
     }
 
-    fs::path resolveDependency(std::string_view moduleName) const
+    // `Bank.Accounts` is `Bank.Accounts.inox` or `Bank/Accounts.inox` in
+    // `directory`; nothing when neither is there.
+    static fs::path moduleFileIn(const fs::path& directory, std::string_view moduleName)
     {
+        if (directory.empty()) {
+            return {};
+        }
+        fs::path flat = directory / (std::string(moduleName) + ".inox");
+        if (fs::is_regular_file(flat)) {
+            return flat;
+        }
         std::string nestedName(moduleName);
         std::replace(nestedName.begin(), nestedName.end(), '.', '/');
-        for (const fs::path& directory : {sourceDirectory_, standardLibraryDirectory_}) {
-            if (directory.empty()) {
-                continue;
+        fs::path nested = directory / (nestedName + ".inox");
+        if (fs::is_regular_file(nested)) {
+            return nested;
+        }
+        return {};
+    }
+
+    bool insideStandardLibrary(const fs::path& file) const
+    {
+        if (standardLibraryDirectory_.empty()) {
+            return false;
+        }
+        std::error_code error;
+        const fs::path library = fs::weakly_canonical(standardLibraryDirectory_, error);
+        const fs::path parent = fs::weakly_canonical(file, error).parent_path();
+        for (fs::path directory = parent; !directory.empty(); directory = directory.parent_path()) {
+            if (directory == library) {
+                return true;
             }
-            fs::path flat = directory / (std::string(moduleName) + ".inox");
-            if (fs::is_regular_file(flat)) {
-                return flat;
-            }
-            fs::path nested = directory / (nestedName + ".inox");
-            if (fs::is_regular_file(nested)) {
-                return nested;
+            if (directory == directory.parent_path()) {
+                break;
             }
         }
+        return false;
+    }
 
+    fs::path resolveDependency(std::string_view moduleName) const
+    {
+        // r3.99 (D2): `Use Std.X` is searched only in the standard library,
+        // and a Std module anywhere else is an error, never a replacement.
+        if (isStandardLibraryName(moduleName)) {
+            for (const fs::path& directory : searchDirectories_) {
+                const fs::path impostor = moduleFileIn(directory, moduleName);
+                if (!impostor.empty() && !insideStandardLibrary(impostor)) {
+                    throw std::runtime_error("the name " + std::string(moduleName) +
+                                             " is reserved: Std names the standard library (r3.99); rename " +
+                                             impostor.string());
+                }
+            }
+            fs::path found = moduleFileIn(standardLibraryDirectory_, moduleName);
+            if (!found.empty()) {
+                return found;
+            }
+            throw std::runtime_error("could not resolve module: " + std::string(moduleName) +
+                                     " is not in the standard library");
+        }
+        for (const fs::path& directory : searchDirectories_) {
+            fs::path found = moduleFileIn(directory, moduleName);
+            if (!found.empty()) {
+                return found;
+            }
+        }
+        fs::path found = moduleFileIn(standardLibraryDirectory_, moduleName);
+        if (!found.empty()) {
+            return found;
+        }
         throw std::runtime_error("could not resolve module: " + std::string(moduleName));
     }
 
-    fs::path sourceDirectory_;
+    std::vector<fs::path> searchDirectories_;
     fs::path standardLibraryDirectory_;
     std::string entryModuleName_;
     std::unordered_set<std::string> loading_;
@@ -273,12 +338,47 @@ fs::path findStandardLibraryDirectory(const fs::path& sourcePath, const fs::path
     return {};
 }
 
-std::unique_ptr<ModuleNode> loadProgram(const fs::path& sourcePath, const fs::path& executableDir)
+// r3.99 (D1): where a Use looks, in order: the entry file's directory,
+// each `--path` (an error when it is not a directory), each INOX_PATH entry
+// (';' separates them on Windows, ':' elsewhere; a missing one is skipped),
+// then the standard library.
+std::vector<fs::path> moduleSearchDirectories(const fs::path& entryDirectory, const std::vector<std::string>& paths)
+{
+    std::vector<fs::path> directories{entryDirectory};
+    for (const std::string& path : paths) {
+        if (!fs::is_directory(path)) {
+            throw std::runtime_error("--path does not point to an existing directory: " + path);
+        }
+        directories.push_back(fs::absolute(path));
+    }
+    const auto environment = inox::compiler::support::getEnvironmentVariable("INOX_PATH");
+    if (environment.has_value()) {
+        const char separator =
+            inox::compiler::support::hostOperatingSystem() == inox::compiler::support::OperatingSystem::Windows ? ';'
+                                                                                                               : ':';
+        std::size_t start = 0;
+        while (start <= environment->size()) {
+            std::size_t end = environment->find(separator, start);
+            if (end == std::string::npos) {
+                end = environment->size();
+            }
+            const std::string entry = environment->substr(start, end - start);
+            if (!entry.empty() && fs::is_directory(entry)) {
+                directories.push_back(fs::absolute(entry));
+            }
+            start = end + 1;
+        }
+    }
+    return directories;
+}
+
+std::unique_ptr<ModuleNode> loadProgram(const fs::path& sourcePath, const fs::path& executableDir,
+                                        const std::vector<std::string>& paths)
 {
     const fs::path absolutePath = fs::absolute(sourcePath);
-    return ModuleLoader(
-        absolutePath.parent_path(),
-        findStandardLibraryDirectory(absolutePath, executableDir)).loadProgram(absolutePath);
+    return ModuleLoader(moduleSearchDirectories(absolutePath.parent_path(), paths),
+                        findStandardLibraryDirectory(absolutePath, executableDir))
+        .loadProgram(absolutePath);
 }
 
 bool clangExists()
@@ -428,6 +528,7 @@ enum class Command {
     Build,     // inox build <file>, --build
     Check,     // inox check <file>: parse and semantic analysis
     EmitLlvm,  // inox emit-llvm <file>, --emit-llvm
+    Interface, // inox interface <file>: what other modules see (r3.99)
     ParseOnly,
     DumpTokens,
     DumpTypes,
@@ -440,6 +541,9 @@ constexpr const char* kUsage =
     "       --debug before the file       build without optimization (-O0); the default is -O2\n"
     "       inox check <file.inox>        parse and check the program\n"
     "       inox emit-llvm <file.inox>    print the LLVM IR\n"
+    "       inox interface <file.inox>    print what the modules that use it see\n"
+    "       --path <dir> before the file  also look there for used modules (repeatable;\n"
+    "                                     then INOX_PATH, then the standard library)\n"
     "       inox help                     print this help\n"
     "       inox version                  print the version\n"
     "developer switches: --parse-only, --dump-tokens, --dump-types <file.inox>;\n"
@@ -455,6 +559,7 @@ bool commandFromWord(const std::string& word, Command& command)
         {"run", Command::Run},           {"--run", Command::Run},
         {"build", Command::Build},       {"--build", Command::Build},
         {"check", Command::Check},       {"emit-llvm", Command::EmitLlvm},
+        {"interface", Command::Interface},
         {"--emit-llvm", Command::EmitLlvm}, {"--parse-only", Command::ParseOnly},
         {"--dump-tokens", Command::DumpTokens}, {"--dump-types", Command::DumpTypes},
     };
@@ -472,17 +577,33 @@ bool commandFromWord(const std::string& word, Command& command)
 int main(int argc, char** argv)
 {
     // r3.98: `--debug` before the file (`inox --debug f.inox`, `inox run
-    // --debug f.inox`) builds without optimization; it is removed here.
+    // --debug f.inox`) builds without optimization; r3.99 (D1): `--path
+    // <dir>`, repeatable, adds a directory where used modules are searched.
+    // Both are removed here.
     bool debug = false;
+    std::vector<std::string> searchPaths;
     std::vector<char*> arguments(argv, argv + argc);
     // Only before the file: in `inox f.inox --debug`, the word is the
     // program's argument.
     Command ignored = Command::Run;
     const std::size_t position =
         arguments.size() > 2 && commandFromWord(arguments[1], ignored) ? 2 : 1;
-    if (arguments.size() > position && std::string(arguments[position]) == "--debug") {
-        debug = true;
-        arguments.erase(arguments.begin() + static_cast<std::ptrdiff_t>(position));
+    while (arguments.size() > position) {
+        const std::string option(arguments[position]);
+        if (option == "--debug") {
+            debug = true;
+            arguments.erase(arguments.begin() + static_cast<std::ptrdiff_t>(position));
+        } else if (option == "--path") {
+            if (arguments.size() <= position + 1) {
+                std::cerr << "--path needs a directory: inox --path <dir> <file.inox>\n";
+                return 1;
+            }
+            searchPaths.emplace_back(arguments[position + 1]);
+            arguments.erase(arguments.begin() + static_cast<std::ptrdiff_t>(position),
+                            arguments.begin() + static_cast<std::ptrdiff_t>(position + 2));
+        } else {
+            break;
+        }
     }
     argc = static_cast<int>(arguments.size());
     argv = arguments.data();
@@ -543,9 +664,16 @@ int main(int argc, char** argv)
 
         throwOnInvalidToken(tokens);
 
+        if (command == Command::Interface) {
+            inox::compiler::parser::Parser parser(tokens);
+            const auto interfaceModule = parser.parseModule(fs::path(sourcePath).stem().string());
+            std::cout << inox::compiler::ast::moduleInterface(*interfaceModule);
+            return 0;
+        }
+
         std::unique_ptr<ModuleNode> module;
         if (!parseOnly) {
-            module = loadProgram(fs::path(sourcePath), executableDir);
+            module = loadProgram(fs::path(sourcePath), executableDir, searchPaths);
         } else {
             inox::compiler::parser::Parser parser(tokens);
             module = parser.parseModule(fs::path(sourcePath).stem().string());

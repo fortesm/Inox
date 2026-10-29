@@ -266,6 +266,7 @@ struct TypeDeclaration {
     std::size_t line = 0;
     std::vector<StructFieldDeclaration> fields;
     ExpressionPtr bounds;  // Range: the `Low..High` expression
+    std::string boundsText;  // the bounds as written (inox interface)
     std::vector<std::string> literals;
     std::vector<ContractClause> invariants;  // Struct: `invariant` lines (CANON-24)
     // CANON-8 (r3.77): `TPair<K, V> Struct` declares K and V; empty otherwise.
@@ -284,6 +285,7 @@ struct VariableDeclaration {
     std::string name;
     std::string typeName;
     ExpressionPtr value;
+    std::string valueText;  // the value as written (inox interface)
     std::size_t line = 0;
     // r3.99: `Const Name Public := Value`; a State variable is never public.
     bool isPublic = false;
