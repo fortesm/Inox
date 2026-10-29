@@ -10,7 +10,21 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 `r3.61` are canon revisions, entries of the decision log
 (`openspec/specs/constitution/revisions.md`), not versions.
 
+## 0.4.0 pre-alpha — in progress
+
+### Added
+- Modules and encapsulation (canon r3.99, CANON-3, change `modules-encapsulation`). Each module has its own names: a name is the module's own declaration first, then the one public declaration among the modules it uses, and two of them is an error that names the qualified forms. `Bank.Accounts.Fee` reaches a public name of a used module; `Use Bank.Accounts as Accounts` gives it a name local to the file; `Use Bank.Accounts.(Deposit, Withdraw)` takes only those names unqualified. Everything is private unless `Public`, the last word of a header (`TPerson Struct(TBeing) Public`, `TPerson.Rename(Self mut, Name String) String Public :`, `Const MaxRate Public := 0.05`) or the line that opens a struct's public fields; State is never public. `Use` is not transitive, and `Export Use M` passes M on (the library pairs use it). A struct's private fields and methods are reached only in its module, a struct with a private field without default is built only there, reuse across modules sees public members, and an outside write to a public field still checks the invariant. `--path <dir>` and `INOX_PATH` add directories where modules are searched; `Std` names only the standard library. `inox interface File.inox` prints what other modules see. `examples/bank` is a bank in four files.
+
+### Changed
+- `Public` is a reserved word; `Export` and `as` are words only in `Export Use` and `Use M as A`. A program that used another module now marks with `Public` what that module offers.
+
+### Fixed
+- A method argument was not analyzed against its parameter: `A.Deposit(500.00)` with a Currency parameter was rejected as Float64. It is analyzed like a routine argument.
+
 ## 0.3.0 pre-alpha — in progress
+
+### Changed
+- Programs are optimized by default (canon r3.98, CANON-23, change `optimize-default`): `inox run`, `inox build` and `inox file.inox` call clang with `-O2`, and `--debug` before the file builds with `-O0`. Before, every program was built without optimization: an arithmetic loop of 300 million steps took 1.99 s and now takes 0.41 s, the time of the same loop in C -O2. Checks are unchanged.
 
 ### Fixed
 - `shl` on an Integer dropped the bits that left Int64 silently (`(2 ^ 62) shl 2` was 0); it is now the product A * 2^N, checked as on UInt64: a constant beyond Int64 is a compile error, a run-time one stops with "integer overflow" (canon r3.97, CANON-8, change `expression-checks`). Found by the new expression test.

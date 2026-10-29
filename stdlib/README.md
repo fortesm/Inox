@@ -13,6 +13,15 @@ This directory contains the minimal standard-library modules agreed for Inox 0.1
 - `Std.DateTime.inox` / `Std.DateUtils.inox` — dates, times and durations; ISO 8601 and FormatDateTime (canon r3.92).
 - `Std.SystemUtils.inox` — command line, environment, Halt, Sleep, current directory, platform name (canon r3.92).
 
+## Visibility (canon r3.99)
+
+What a program sees of a module is what the module marks `Public`; the rest
+is private to it (CANON-3). A `Std.XUtils` module passes its `Std.X` on with
+`Export Use Std.X`, so `Use Std.StrUtils` gives Std.Strings too. `Std` names
+only this library: a program cannot declare a `Std.*` module, and `Use
+Std.X` never finds a file outside this directory. `inox interface
+stdlib/Std.DateUtils.inox` prints what a module offers.
+
 These modules are intentionally small. They must remain portable across Windows, Linux, and the other Unix/Unix-like targets represented by the platform architecture, and must not introduce unsafe pointers, GC, platform-specific APIs, or undocumented runtime dependencies.
 
 ## Runtime status

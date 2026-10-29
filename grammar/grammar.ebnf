@@ -27,7 +27,14 @@ module            ::= use_decl* module_item* EOF
                       (* r3.76: a file is a module named after the file (the
                          name its Use gives, or the entry file's stem); there
                          is no "Module" header; EOF closes the module *)
-use_decl          ::= "Use" qualified_name
+use_decl          ::= "Export"? "Use" qualified_name use_names? ( "as" identifier )?
+use_names         ::= "." "(" identifier ( "," identifier )* ")"
+                      (* r3.99 (CANON-3): a module sees the Public declarations of
+                         the modules it uses, never transitively; "Export Use" passes
+                         them to its own users ("Export" has no other use); "as" names
+                         the module in this file's qualified names (a contextual word,
+                         never with "Export"); ".(X, Y)" takes only X and Y without
+                         qualification *)
 module_item       ::= type_section | const_decl | state_section | routine_decl
 qualified_name    ::= identifier_like ( "." identifier )*
 identifier_like   ::= identifier
@@ -39,8 +46,14 @@ identifier_like   ::= identifier
 type_section      ::= "Type" type_decl+
                       (* section: no ":" and no closing ";" of its own *)
 type_decl         ::= struct_decl | range_decl | enum_short_decl | enum_block_decl
-struct_decl       ::= identifier type_parameters? "Struct" reused_parts? NEWLINE
-                      ( struct_field | invariant_clause )* ";"
+struct_decl       ::= identifier type_parameters? "Struct" reused_parts? "Public"? NEWLINE
+                      ( struct_field | invariant_clause )*
+                      ( "Public" NEWLINE ( struct_field | invariant_clause )* )? ";"
+                      (* r3.99: "Public" ends the header of a type other modules
+                         see; the fields after the line "Public" are seen by them,
+                         the others only by the type's module. A line break only
+                         ends a complete declaration: the name may stand alone on
+                         its line *)
                       (* "TPair<K, V> Struct" is generic (CANON-8, r3.77): no reused
                          parts and no invariant lines in a generic struct yet *)
 type_parameters   ::= "<" identifier ( "," identifier )* ">"
@@ -57,13 +70,13 @@ field_default     ::= "-"? literal | identifier
                     | "Fill" "(" ( "-"? literal | identifier | "[" "]" ) ")"
                       (* r3.82: Fill(Literal) is the default of an array field only:
                          a literal of its innermost element, None or [] *)
-range_decl        ::= identifier "Range" range_bound ".." range_bound
+range_decl        ::= identifier "Range" range_bound ".." range_bound "Public"?
 range_bound       ::= integer_literal | char_literal | "-" integer_literal | identifier
                       (* CANON-13: a static bound, a literal or a Const; Low <= High *)
-enum_short_decl   ::= identifier "(" identifier ( "," identifier )* ")"
-enum_block_decl   ::= identifier "Enum" NEWLINE ( identifier NEWLINE )+ ";"
+enum_short_decl   ::= identifier "(" identifier ( "," identifier )* ")" "Public"?
+enum_block_decl   ::= identifier "Enum" "Public"? NEWLINE ( identifier NEWLINE )+ ";"
 
-const_decl        ::= "Const" identifier ":=" expression
+const_decl        ::= "Const" identifier "Public"? ":=" expression
                       (* single line; immutable; the type is the value's (no
                          written type, v3.38); one ":=" only *)
 state_section     ::= "State" NEWLINE state_field* ";"
@@ -71,7 +84,8 @@ state_section     ::= "State" NEWLINE state_field* ";"
                          and end with ";", like a control structure *)
 state_field       ::= identifier type_ref? ":=" expression NEWLINE
                     | identifier type_ref NEWLINE
-                      (* State scalars and arrays require an initializer (the
+                      (* a State variable is never Public (r3.99); State scalars
+                         and arrays require an initializer (the
                          second form is for structs and Sets, v3.53, r3.81);
                          one name per line;
                          "mut" is forbidden. The initializer
@@ -80,7 +94,7 @@ state_field       ::= identifier type_ref? ":=" expression NEWLINE
 
 (* ---------- Routines (CANON-6, CANON-7, CANON-9) ---------- *)
 
-routine_decl      ::= routine_name parameter_part? type_ref? "Override"? ":" NEWLINE
+routine_decl      ::= routine_name parameter_part? type_ref? "Override"? "Public"? ":" NEWLINE
                       routine_contract* block_body ";"
 routine_contract  ::= ( "pre" "else"? | "pos" "then"? ) contract_tail
                       (* CANON-24, Eiffel's require / ensure: "pre" is checked on every
@@ -92,7 +106,10 @@ loop_contract     ::= ( "invariant" | "variant" ) contract_tail
                       (* the first lines of a loop body; "variant" in while and repeat *)
                       (* ":" declares the routine and opens its body (CANON-4);
                          with type_ref it is a function, without it a subroutine;
-                         "Override" marks a method that replaces a reused one (CANON-9) *)
+                         "Override" marks a method that replaces a reused one (CANON-9);
+                         "Public" is the last word before ":" and puts the routine in
+                         its module's interface (r3.99); a method is declared in the
+                         module of its type *)
 routine_name      ::= identifier_like ( type_parameters | "." identifier )?
                       (* "TPoint.Move" declares an associated method of TPoint;
                          "String.UpdateStr" a method of a built-in type (CANON-9);
@@ -111,7 +128,9 @@ parameter         ::= ( "ref" "mut"? )? identifier type_ref
 
 (* ---------- Types (CANON-8, CANON-13) ---------- *)
 
-type_ref          ::= array_type | generic_type | identifier
+type_ref          ::= array_type | generic_type | qualified_name
+                      (* r3.99 (A2): "Bank.Accounts.TAccount", a Public type of a
+                         module this file uses *)
 array_type        ::= "Array" "[" array_bounds ( "," array_bounds )* "]" type_ref
 array_bounds      ::= array_bound ".." array_bound
 array_bound       ::= "-"? integer_literal | identifier

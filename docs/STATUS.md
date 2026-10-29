@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 What the compiler does today, against the law in
 `openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
-Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.97.
+Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.98.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the
 analyzer accepts and the backend does not lower; `CHANGELOG.md` says what
 each version added.
@@ -17,10 +17,21 @@ each version added.
 
 - Driver: `inox file.inox`, `run`, `build`, `check`, `emit-llvm`, `help`,
   `version` (the `--` switches are aliases; `--parse-only`, `--dump-tokens`,
-  `--dump-types` for development); modules named after their files and local `Use` with
-  recursive loading and cycle rejection; library discovery; toolchain
-  failures reported with the tool's own messages.
-- 42 reserved words and 11 predefined names (`True`, `False`, `Exit`,
+  `--dump-types` for development), `interface` (a module's public
+  surface), `--path`; modules named after their files and `Use` with
+  recursive loading and cycle rejection; module search in the entry
+  directory, `--path`, `INOX_PATH` and the library, `Std` reserved to the
+  library; library discovery; toolchain failures reported with the tool's
+  own messages.
+- Modules and encapsulation (r3.99, CANON-3): each module its own names
+  (its own first, an ambiguity between used modules an error), qualified
+  names, aliases (`Use M as A`), selective use (`Use M.(X, Y)`); private by
+  default, `Public` on types, fields, routines, methods and Consts; `Use`
+  not transitive, `Export Use`; struct fields and methods private to their
+  module, a type with a private field without default built only by its
+  module, reuse across modules through public members; `examples/bank`.
+  Read-only fields are a later design.
+- 43 reserved words and 11 predefined names (`True`, `False`, `Exit`,
   `leave`, `continue`, `IIf`, `Fill`, `bitand`, `bitor`, `bitxor`, `bitnot`) that
   can never be declared; `{` `}` reserved (CANON-2).
 - Lexical rules, blocks, declarations (inline, grouped, chained, compound),
@@ -138,7 +149,9 @@ each version added.
   inside a loop is freed when its declaration runs again or the routine
   returns, not at the end of each iteration. Each is a task of change
   `safe-pointers-followups`.
-- Module exports, visibility and package search beyond local `Use`.
+- Packages: no tool finds or downloads them yet (FUTURE).
+- `inox interface` names a module by its file's stem: a nested file
+  (`Bank/Accounts.inox`) shows as `Accounts`.
 - Toolchain discovery; clang is still the external
   driver (by design until E22's criteria hold).
 - Quality gates still to come: clang-format, clang-tidy, cppcheck,

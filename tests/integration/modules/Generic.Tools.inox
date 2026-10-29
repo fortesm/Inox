@@ -9,14 +9,15 @@
 == generics-across-modules.inox: each instance is made in the program that
 == uses it.
 Type
-    TBox<T> Struct
+    TBox<T> Struct Public
+    Public
         FItem T
     ;
 
-Larger<T>(A T, B T) T :
+Larger<T>(A T, B T) T Public :
     Return IIf(A > B, A, B)
 ;
 
-Wrap<T>(X T) TBox<T> :
+Wrap<T>(X T) TBox<T> Public :
     Return TBox(FItem := X)
 ;

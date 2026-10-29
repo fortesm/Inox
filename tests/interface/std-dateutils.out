@@ -1,0 +1,9 @@
+== interface of Std.DateUtils: what the modules that use it see (r3.99)
+
+Export Use Std.DateTime
+
+ToISO8601(T TDateTime) String Public
+
+FromISO8601(S String) TDateTime Public
+
+FormatDateTime(T TDateTime, Pattern String) String Public

@@ -1,0 +1,25 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+Type
+    TPerson Struct Public
+        FTag String
+    Public
+        FName String := ""
+    ;
+
+NewPerson(Name String) TPerson Public :
+    Return TPerson(FTag := "p1", FName := Name)
+;
+
+TPerson.UpdateName(Self mut, Name String) Public :
+    Self.FName := Name
+;
+
+TPerson.Tag(Self) String Public :
+    Return Self.FTag
+;

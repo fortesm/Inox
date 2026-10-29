@@ -1000,11 +1000,12 @@ bool SemanticAnalyzer::looksLikeIdentifier(std::string_view text)
     const auto isIdentifierStart = [](char ch) {
         return std::isalpha(static_cast<unsigned char>(ch)) || ch == '_';
     };
+    // r3.99: a type of another module is qualified, `Bank.Accounts.TAccount`.
     const auto isIdentifierPart = [](char ch) {
-        return std::isalnum(static_cast<unsigned char>(ch)) || ch == '_';
+        return std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == '.';
     };
 
-    if (!isIdentifierStart(text.front())) {
+    if (!isIdentifierStart(text.front()) || text.back() == '.' || text.find("..") != std::string_view::npos) {
         return false;
     }
     for (char ch : text.substr(1)) {

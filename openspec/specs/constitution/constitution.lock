@@ -14,17 +14,24 @@ spec.md#G7 OpenSpec carries every change	1152cd5cd0bf4853	constitution
 spec.md#G7 High-risk changes wait for design approval	471d4dfc4f7e3cd2	constitution
 spec.md#G8 The lock	e3d8b06f2031a704	constitution
 spec.md#CANON-1 Identity of Inox	7fc3e6d9b452398d	constitution
-spec.md#CANON-1 Post-object-oriented design	69bafd532db2ea1c	method-reuse
+spec.md#CANON-1 Post-object-oriented design	b9b696c3861f2275	modules-encapsulation
 spec.md#CANON-1 Safety defaults	579a8963240512e4	constitution
 spec.md#CANON-2 Names are case-insensitive	34febe6d17f2bbd8	constitution
 spec.md#CANON-2 Comments and literals	64712528802a82fe	input-chars-exponents
 spec.md#CANON-2 Digit separator	006404ba593459d4	constitution
 spec.md#CANON-2 Symbols	ac2950b644f0074d	not-equal-operator
-spec.md#CANON-2 Reserved words and predefined names	2de88340d502b56e	ada-modulus
+spec.md#CANON-2 Reserved words and predefined names	80b1fb2700b55182	modules-encapsulation
+spec.md#CANON-2 Contextual words	c3cfd03019c5be97	modules-encapsulation
 spec.md#CANON-2 Words Inox does not have	26d08a59b30da9d4	keyword-review
-spec.md#CANON-3 Modules and Use	a016d047491d856a	syntax-review
-spec.md#CANON-3 Module resolution	87deaf60cefa2a59	constitution
-spec.md#CANON-3 Visibility	cc7082a5f84021ec	constitution
+spec.md#CANON-3 Modules and Use	010d92c7bf0fddaa	modules-encapsulation
+spec.md#CANON-3 Use is not transitive	7c4f4979b4b29613	modules-encapsulation
+spec.md#CANON-3 Names of a module	f6c44357c2d25632	modules-encapsulation
+spec.md#CANON-3 Aliases and selective use	7a194883bba3fcc1	modules-encapsulation
+spec.md#CANON-3 Module resolution	0ffe7d1157e4131e	modules-encapsulation
+spec.md#CANON-3 The Std name	bf27f4414a61e7b1	modules-encapsulation
+spec.md#CANON-3 Visibility	e1c7668ee07c6b45	modules-encapsulation
+spec.md#CANON-3 Nothing public exposes something private	000ffb6690e937c6	modules-encapsulation
+spec.md#CANON-3 Struct encapsulation	c330510f1d2b0a53	modules-encapsulation
 spec.md#CANON-4 Semicolon closes, colon declares	fa0c21e30dd35647	state-without-colon
 spec.md#CANON-4 Control structures use no colon	5efc6a9619e1419f	constitution
 spec.md#CANON-4 One statement per line	8ee77f1d6ea33df1	constitution
@@ -119,7 +126,7 @@ spec.md#CANON-17 A File closes itself	ad1cb7932ba552c2	constitution
 spec.md#CANON-17 Text in files	1a59a7ef5bb0ee53	constitution
 spec.md#CANON-17 File system functions	b0aa61e9bafcb323	constitution
 spec.md#CANON-17 File errors are exceptions	bc7b1e4c7018bea9	constitution
-spec.md#CANON-18 Library principles	247dc55ac8637e02	module-pairs
+spec.md#CANON-18 Library principles	d3c8ccd3b16c7863	modules-encapsulation
 spec.md#CANON-18 Library modules	3ec3d16f901ce61b	datetime-systemutils
 spec.md#CANON-18 Planned modules	9b116f6d28c62302	datetime-systemutils
 spec.md#CANON-19 Run-time faults are traps	b35d7570f0992acd	constitution
@@ -135,12 +142,14 @@ spec.md#CANON-20 Mandatory parentheses	a91280e7e8bcf866	constitution
 spec.md#CANON-21 The test suite is part of the law	d2378e914a8ad594	constitution
 spec.md#CANON-21 Test layers	3dd5f11b490b5d34	constitution
 spec.md#CANON-23 LLVM backend and the clang driver	7017ebec86d19fdf	constitution
-spec.md#CANON-23 Lowering rules	caad16b92452433a	ada-modulus
+spec.md#CANON-23 Lowering rules	3ca6cd63c20ca6c7	optimize-default
 spec.md#CANON-23 Valid IR or a clear stop	b65face9199b56ba	constitution
-spec.md#CANON-23 Driver commands	e9b4dbcb3de5ddad	datetime-systemutils
+spec.md#CANON-23 Driver commands	e9b4dbcb3de5ddad	modules-encapsulation
+spec.md#CANON-23 Module interface and search path	1bf457e20a3fb804	modules-encapsulation
+spec.md#CANON-23 Optimization	5f9e565dc706e3d4	optimize-default
 spec.md#CANON-24 Design by contract	44eb53736bce7681	design-by-contract
 spec.md#CANON-24 Old and Result	ae9cb1852f6c7ede	design-by-contract
-spec.md#CANON-24 Struct invariants	98e810a4ab5089d2	design-by-contract
+spec.md#CANON-24 Struct invariants	de952e4d1b79c944	modules-encapsulation
 spec.md#CANON-24 Contracts of an Override	b8caf27d3082c3f8	design-by-contract
 spec.md#CANON-24 Loop contracts	07f43b682ba43010	design-by-contract
 spec.md#CANON-24 A broken contract is a trap	63aeaccab75ee7d1	design-by-contract
@@ -155,8 +164,8 @@ spec.md#VERSIONING Canon revision	7325a37130b8e81e	constitution
 spec.md#FUTURE Concurrency	7e4363bb408956d2	constitution
 spec.md#FUTURE Generics and static proof	110e927eff28ea2f	generics
 spec.md#FUTURE Ownership, absence and failure	259867a5bbb3b43d	remove-var-diagnostic
-spec.md#FUTURE Modules, variants and numbers	7ea193a9056667f1	keyword-review
-spec.md#FUTURE Encapsulation, routine types and lifecycle	3686397c32ddfc3b	encapsulation
+spec.md#FUTURE Modules, variants and numbers	74cd4f796f2a95f3	modules-encapsulation
+spec.md#FUTURE Encapsulation, routine types and lifecycle	87303995a5b889fc	modules-encapsulation
 engineering.md#preamble	60703a2fce444e01	constitution
 engineering.md#Sources of influence	32a192c5bf83b9ac	constitution
 engineering.md#E1. Shallow control flow	0af555ce8718f759	constitution

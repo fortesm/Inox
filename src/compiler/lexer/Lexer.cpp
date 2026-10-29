@@ -17,13 +17,13 @@ namespace inox::compiler::lexer {
 namespace {
 
 // CANON-2 reserved words (r3.76: 42).
-constexpr std::array<std::string_view, 42> kKeywords = {
+constexpr std::array<std::string_view, 43> kKeywords = {
     "use", "type", "const", "state", "struct", "enum",
     "if", "elif", "else", "unless", "while", "repeat", "until",
     "for", "in", "step", "case", "try", "except", "on", "do", "ensure", "raise", "retry",
     "with", "mut", "ref", "mod", "rem", "and", "xor", "or", "not",
     "shr", "shl", "return",
-    "pre", "pos", "old", "invariant", "variant", "override"
+    "pre", "pos", "old", "invariant", "variant", "override", "public"
 };
 
 // CANON-2 predefined names (r3.76): identifiers that keep their meaning and

@@ -327,6 +327,7 @@ TypeRef SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression& cal
         static_cast<const ast::IdentifierExpression&>(*call.arguments()[1]);
     const types::StructField* field = resolveStructField(baseType, fieldIdentifier.name());
     if (field != nullptr) {
+        requireFieldVisible(baseType, *field);
         result_.setExpressionType(fieldIdentifier, field->type);
         return field->type;
     }
@@ -341,6 +342,7 @@ TypeRef SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression& cal
         }
     }
     if (signature != nullptr) {
+        requireMethodVisible(*signature);
         if (signature->parameters.empty()) {
             throw SemanticError("method " + signature->name + " must declare an explicit receiver parameter");
         }
@@ -393,6 +395,7 @@ TypeRef SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpression&
         throw SemanticError("unknown method " + methodIdentifier.name() + " for " + types::nameOf(receiverType));
     }
 
+    requireMethodVisible(*signature);
     if (signature->parameters.empty()) {
         throw SemanticError("method " + signature->name + " must declare an explicit receiver parameter");
     }
@@ -417,8 +420,8 @@ TypeRef SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpression&
     result_.bind(call, symbol);
 
     for (std::size_t index = 0; index < call.arguments().size(); ++index) {
-        const TypeRef argumentType = analyzeExpression(*call.arguments()[index]);
         const FunctionParameter& parameter = signature->parameters[index + 1];
+        const TypeRef argumentType = analyzeExpressionFor(*call.arguments()[index], parameter.type);
         if (parameter.mode != PassMode::Value) {
             continue;
         }
@@ -479,6 +482,9 @@ TypeRef SemanticAnalyzer::analyzeConstruction(const ast::CallExpression& call, T
         const std::string& fieldName =
             static_cast<const ast::IdentifierExpression&>(named->left()).name();
         const types::StructField* field = resolveStructField(type, fieldName);
+        if (field != nullptr) {
+            requireFieldVisible(type, *field);
+        }
         if (field == nullptr) {
             if (const auto reused = findReusedMember(type, fieldName); reused && !reused->isMethod) {
                 throw SemanticError(fieldName + " belongs to the reused part " + reused->path.front() +
@@ -512,6 +518,12 @@ TypeRef SemanticAnalyzer::analyzeConstruction(const ast::CallExpression& call, T
         const bool bornEmpty =
             field.type != nullptr && (field.type->isLink() || field.type->isOptionOwn());
         const bool isStruct = field.type != nullptr && field.type->isStruct();
+        if (!named && !field.hasDefault && !field.isPublic && !bornEmpty && outsideModuleOf(type) &&
+            (!isStruct || !requiredFieldWithoutDefault(field.type).empty())) {
+            throw SemanticError(type->name() + " is built only in " + moduleOfType(type) + " (r3.99): its private "
+                                "field " + field.name + " has no default; call a routine of " + moduleOfType(type) +
+                                " that builds it");
+        }
         if (!named && !field.hasDefault && !isStruct && !bornEmpty) {
             if (field.type != nullptr && field.type->isOwn()) {
                 throw SemanticError("construction omits the owner " + type->name() + "." + field.name +

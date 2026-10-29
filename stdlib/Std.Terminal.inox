@@ -39,19 +39,21 @@
 Type
     TKeyKind (KeyChar, KeyUp, KeyDown, KeyLeft, KeyRight, KeyHome, KeyEnd, KeyPageUp, KeyPageDown,
               KeyEnter, KeyBackspace, KeyDelete, KeyTab, KeyEscape,
-              KeyF1, KeyF2, KeyF3, KeyF4, KeyF5, KeyF6, KeyF7, KeyF8, KeyF9, KeyF10, KeyF11, KeyF12)
+              KeyF1, KeyF2, KeyF3, KeyF4, KeyF5, KeyF6, KeyF7, KeyF8, KeyF9, KeyF10, KeyF11, KeyF12) Public
 
-    TKey Struct
+    TKey Struct Public
+    Public
         Kind TKeyKind := KeyChar
         Ch Char := '\0'
         Ctrl Bool := False
         Alt Bool := False
     ;
 
-    TScreenSize Struct
+    TScreenSize Struct Public
+    Public
         Rows Integer := 24
         Cols Integer := 80
     ;
 
     TColor (Black, Red, Green, Yellow, Blue, Magenta, Cyan, White,
-            Gray, BrightRed, BrightGreen, BrightYellow, BrightBlue, BrightMagenta, BrightCyan, BrightWhite)
+            Gray, BrightRed, BrightGreen, BrightYellow, BrightBlue, BrightMagenta, BrightCyan, BrightWhite) Public

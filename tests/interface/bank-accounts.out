@@ -1,0 +1,22 @@
+== interface of Accounts: what the modules that use it see (r3.99)
+
+Type
+    TAccount Struct Public
+        invariant Self.FBalance >= 0.00, "a balance is never negative"
+    Public
+        FOwner String := ""
+    ;
+
+Const MaxWithdrawal Public := Currency(1_000.00)
+
+OpenAccount(Owner String) TAccount Public
+
+TAccount.Deposit(Self mut, Amount Currency) Public
+    pre Amount > 0.00, "a deposit is positive"
+
+TAccount.Withdraw(Self mut, Amount Currency) Public
+    pre Self.CanWithdraw(Amount), "a withdrawal is positive, covered and within the limit"
+
+TAccount.CanWithdraw(Self, Amount Currency) Bool Public
+
+TAccount.Balance(Self) Currency Public

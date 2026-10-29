@@ -276,7 +276,7 @@ TypeRef SemanticAnalyzer::resolveWrittenType(std::string_view written)
         if (types::isArraySpelling(written)) {
             throw SemanticError("malformed array type: " + std::string(written));
         }
-        throw SemanticError("unknown type: " + std::string(written));
+        throw SemanticError("unknown type: " + unknownNameText(written));
     }
     return resolveTypeSyntax(*syntax, written);
 }
@@ -332,7 +332,7 @@ TypeRef SemanticAnalyzer::resolveTypeSyntax(const types::TypeSyntax& syntax, std
     if (detail::equalsIgnoreCase(syntax.name, "File")) {
         throw SemanticError("unknown type: File (it is declared in Std.Files: add `Use Std.Files`)");
     }
-    throw SemanticError("unknown type: " + std::string(written));
+    throw SemanticError("unknown type: " + unknownNameText(written));
 }
 
 // CANON-13: a fixed array type resolves its bounds (literals or Const names)

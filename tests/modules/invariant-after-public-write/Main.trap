@@ -1,0 +1,1 @@
+Inox runtime error: invariant violated: Shop.TStock: Self.FQuantity >= 0: a quantity is never negative

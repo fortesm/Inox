@@ -617,6 +617,27 @@ run_driver_command_tests() {
     else
         record_fail "inox run passes arguments and keeps Halt's status" "exit code: $args_exit" "actual output: $output"
     fi
+    # r3.98 (CANON-23): programs are built with -O2; `--debug` before the
+    # file builds them with -O0, and after the file it is the program's word.
+    output="$("$inox_exe" run --debug "$repo_root/tests/integration/system/args.inox" "um arg" --debug 2>/dev/null)"
+    args_exit=$?
+    if [[ $args_exit -eq 2 && "$output" == $'1: um arg\n2: --debug' ]]; then
+        record_pass "inox run --debug builds without optimization; --debug after the file is an argument"
+    else
+        record_fail "inox run --debug builds without optimization; --debug after the file is an argument" "exit code: $args_exit" "actual output: $output"
+    fi
+    output="$("$inox_exe" --debug "$repo_root/tests/runtime/math-expressions.inox" 2>/dev/null)"
+    if [[ $? -eq 0 && "$output" == "$(sed 's/\r$//' "$repo_root/tests/runtime/math-expressions.out")" ]]; then
+        record_pass "inox --debug: math-expressions gives the same values without optimization"
+    else
+        record_fail "inox --debug: math-expressions gives the same values without optimization"
+    fi
+    output="$("$inox_exe" run --debug "$repo_root/tests/runtime/shl-overflow.inox" 2>&1 >/dev/null)"
+    if [[ $? -ne 0 && "$output" == *"Inox runtime error: integer overflow"* ]]; then
+        record_pass "inox run --debug: a trap stops the program without optimization"
+    else
+        record_fail "inox run --debug: a trap stops the program without optimization" "actual output: $output"
+    fi
 }
 run_driver_command_tests
 run_driver_execution_test "$repo_root/tests/integration/exceptions/typed-ensure.inox" "$repo_root/tests/integration/exceptions/typed-ensure.out"
@@ -645,6 +666,91 @@ run_runtime_tree "$repo_root/tests/integration/input"
 run_runtime_tree "$repo_root/tests/runtime"
 run_examples "$repo_root/examples" "$repo_root/tests/examples"
 run_diagnostic_tree "$repo_root/tests/diagnostics"
+
+# r3.99 (CANON-3): each directory of tests/modules is a program of several
+# modules; Main.inox is its entry file. Main.out: it runs with exactly that
+# output; Main.err: it is rejected with an error containing that text;
+# Main.trap: it stops at run time with that diagnostic.
+run_module_programs() {
+    local root="$repo_root/tests/modules"
+    [[ -d "$root" ]] || return 0
+    while IFS= read -r -d '' directory; do
+        local entry="$directory/Main.inox"
+        local rel
+        rel="$(relative_path "$directory")"
+        if [[ -f "$directory/Main.trap" ]]; then
+            run_driver_trap_test "$entry" ""
+        elif [[ -f "$directory/Main.out" ]]; then
+            run_driver_execution_test "$entry" "$directory/Main.out"
+        elif [[ -f "$directory/Main.err" ]]; then
+            local expected actual exit_code
+            expected="$(sed 's/\r$//' "$directory/Main.err")"
+            actual="$("$inox_exe" --emit-llvm "$entry" 2>&1 >/dev/null)"
+            exit_code=$?
+            actual="$(printf '%s' "$actual" | sed 's/\r$//')"
+            if [[ $exit_code -ne 0 && "$actual" == *"$expected"* ]]; then
+                record_pass "$rel diagnostic"
+            else
+                record_fail "$rel diagnostic" "expected error containing: $expected" "actual error: $actual"
+            fi
+        else
+            record_fail "$rel" "missing Main.out or Main.err"
+        fi
+    done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
+}
+run_module_programs
+
+# r3.99: driver cases with their own arguments or environment. `out`: the
+# driver succeeds and prints exactly the file's text; `fail`: it fails with
+# an error containing the text. INOX_PATH is set for the case only.
+run_driver_case() {
+    local label="$1" kind="$2" expected="$3" inox_path="$4"
+    shift 4
+    if [[ "$kind" == "out" ]] && ! command -v clang >/dev/null 2>&1 && [[ "$1" == "run" ]]; then
+        echo "[SKIP] $label (clang not found)"
+        return 0
+    fi
+    local actual exit_code
+    if [[ -n "$inox_path" ]]; then
+        actual="$(cd "$repo_root" && INOX_PATH="$inox_path" "$inox_exe" "$@" 2>&1 < /dev/null)"
+    else
+        actual="$(cd "$repo_root" && env -u INOX_PATH "$inox_exe" "$@" 2>&1 < /dev/null)"
+    fi
+    exit_code=$?
+    actual="$(printf '%s' "$actual" | sed 's/\r$//')"
+    if [[ "$kind" == "out" ]]; then
+        local wanted
+        wanted="$(sed 's/\r$//' "$repo_root/$expected")"
+        if [[ $exit_code -eq 0 && "$actual" == "$wanted" ]]; then
+            record_pass "$label"
+        else
+            record_fail "$label" "exit code: $exit_code" "expected output: $wanted" "actual output: $actual"
+        fi
+    elif [[ $exit_code -ne 0 && "$actual" == *"$expected"* ]]; then
+        record_pass "$label"
+    else
+        record_fail "$label" "exit code: $exit_code" "expected error containing: $expected" "actual: $actual"
+    fi
+}
+sp="tests/search-path"
+run_driver_case "D1: --path before INOX_PATH, missing entry skipped" out "$sp/Main.out" \
+    "$repo_root/$sp/missing:$repo_root/$sp/inox-path" run --path "$sp/lib" "$sp/Main.inox"
+run_driver_case "D1: INOX_PATH alone" out "$sp/Main.env-only.out" "$repo_root/$sp/inox-path" run "$sp/Main.inox"
+run_driver_case "D1: --path to a missing directory" fail \
+    "--path does not point to an existing directory" "" run --path "$sp/nowhere" "$sp/Main.inox"
+run_driver_case "D2: a program file named Std.*" fail "the name Std.Thing is reserved" "" check "$sp/Std.Thing.inox"
+run_driver_case "E2: examples/bank runs" out "tests/examples/bank.out" "" run examples/bank/Main.inox
+run_driver_case "E2: bank balance not writable outside" fail "FBalance is not Public in Bank.Accounts" "" \
+    run --path examples/bank "$sp/bank/BalanceWrite.inox"
+run_driver_case "E2: bank balance not readable outside" fail "FBalance is not Public in Bank.Accounts" "" \
+    run --path examples/bank "$sp/bank/BalanceRead.inox"
+run_driver_case "E2: bank overdraw stops at the contract" fail \
+    "precondition violated: Bank.Accounts.TAccount.Withdraw" "" run --path examples/bank "$sp/bank/Overdraw.inox"
+run_driver_case "B4: inox interface of Bank.Accounts" out "tests/interface/bank-accounts.out" "" \
+    interface examples/bank/Bank/Accounts.inox
+run_driver_case "B4: inox interface of Bank" out "tests/interface/bank.out" "" interface examples/bank/Bank.inox
+run_driver_case "B4: inox interface of Std.DateUtils" out "tests/interface/std-dateutils.out" "" \
+    interface stdlib/Std.DateUtils.inox
 run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 
 # grammar/grammar.ebnf must agree with the constitution, the lexer and the parser.
