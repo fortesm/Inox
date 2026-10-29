@@ -360,6 +360,12 @@ private:
     const ast::ModuleNode* program_ = nullptr;
     std::string currentModule_;
     void enterModule(const std::string& module);
+    std::unordered_map<std::string, std::string> typeModules_;
+    std::string moduleOfType(TypeRef type) const;
+    bool outsideModuleOf(TypeRef type) const;
+    void requireFieldVisible(TypeRef structType, const types::StructField& field) const;
+    void requireMethodVisible(const FunctionSignature& signature) const;
+    void requireBuildableHere(TypeRef type) const;
     std::string unknownNameText(std::string_view name) const;
     bool filesVisible_ = false;    // Std.Files: the File type and the basic operations
     bool ioUtilsVisible_ = false;  // Std.IOUtils: the conveniences (it uses Std.Files)

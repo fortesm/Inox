@@ -60,6 +60,9 @@ struct StructField {
     // r3.82: the field's type is a type parameter of a generic struct
     // (`FValue T`); it never has an implicit value, whatever T becomes.
     bool fromTypeParameter = false;
+    // r3.99: a field after the line `Public` of its struct (or a reused
+    // part) is reached by other modules; the others only by the struct's.
+    bool isPublic = true;
 };
 
 class Type {

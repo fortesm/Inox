@@ -58,6 +58,8 @@ void SemanticAnalyzer::registerFunctionSignatureIn(const ast::FunctionDeclaratio
     FunctionSignature signature;
     signature.name = function.name();
     signature.isOverride = function.isOverride();
+    signature.isPublic = function.isPublic();
+    signature.module = function.module();
 
     const std::size_t dot = ast::methodDot(function.name());
     const bool isAssociatedMethod = dot != std::string::npos;
@@ -243,6 +245,68 @@ void SemanticAnalyzer::enterModule(const std::string& module)
     for (const ModuleIntrinsic& function : kModuleIntrinsics) {
         if (sees(function.module)) {
             intrinsicModules_.insert(std::string(function.module));
+        }
+    }
+}
+
+// r3.99: the module that declares a struct (a generic instance is its
+// template's), "" for a type of no module.
+std::string SemanticAnalyzer::moduleOfType(TypeRef type) const
+{
+    if (type == nullptr) {
+        return {};
+    }
+    std::string name = type->name();
+    if (const std::size_t angle = name.find('<'); angle != std::string::npos) {
+        name.resize(angle);
+    }
+    const auto found = typeModules_.find(normalizeName(name));
+    return found != typeModules_.end() ? found->second : std::string();
+}
+
+bool SemanticAnalyzer::outsideModuleOf(TypeRef type) const
+{
+    const std::string module = moduleOfType(type);
+    return !module.empty() && !currentModule_.empty() && !equalsIgnoreCase(module, currentModule_);
+}
+
+// r3.99 (C1): a private field is reached only in its struct's module.
+void SemanticAnalyzer::requireFieldVisible(TypeRef structType, const types::StructField& field) const
+{
+    if (!field.isPublic && outsideModuleOf(structType)) {
+        throw SemanticError(field.name + " is not Public in " + moduleOfType(structType) + " (r3.99): only " +
+                            moduleOfType(structType) + " reaches the private fields of " + structType->name());
+    }
+}
+
+// r3.99: a method without Public is called only in its module. The methods
+// the compiler makes (`__invariant`, `__Name_body`) are its own.
+void SemanticAnalyzer::requireMethodVisible(const FunctionSignature& signature) const
+{
+    const std::size_t dot = ast::methodDot(signature.name);
+    const std::string method = dot == std::string::npos ? signature.name : signature.name.substr(dot + 1);
+    if (signature.isPublic || signature.module.empty() || currentModule_.empty() ||
+        method.rfind("__", 0) == 0 || equalsIgnoreCase(signature.module, currentModule_)) {
+        return;
+    }
+    throw SemanticError(method + " is not Public in " + signature.module + " (r3.99): only " + signature.module +
+                        " calls the private methods of its types");
+}
+
+// r3.99 (C2): outside its module, a struct whose private fields have no
+// default is built only by a routine of its module.
+void SemanticAnalyzer::requireBuildableHere(TypeRef type) const
+{
+    if (type == nullptr || !type->isStruct() || !outsideModuleOf(type)) {
+        return;
+    }
+    for (const types::StructField& field : type->fields()) {
+        const bool bornEmpty = field.type != nullptr && (field.type->isLink() || field.type->isOptionOwn());
+        if (!field.isPublic && !field.hasDefault && !bornEmpty &&
+            (field.type == nullptr || !field.type->isStruct() || !requiredFieldWithoutDefault(field.type).empty())) {
+            throw SemanticError(type->name() + " is built only in " + moduleOfType(type) + " (r3.99): its private "
+                                "field " + field.name + " has no default; call a routine of " +
+                                moduleOfType(type) + " that builds it");
         }
     }
 }
@@ -561,6 +625,7 @@ void SemanticAnalyzer::registerStructDeclaration(const ast::TypeDeclaration& dec
         throw SemanticError("type already declared: " + declaration.name);
     }
     declareOrThrow(declaration.name, SymbolKind::Type);
+    typeModules_[normalizeName(declaration.name)] = declaration.module;
     const TypeRef structType = types().declareStruct(declaration.name);
 
     std::vector<types::StructField> fields;
@@ -581,6 +646,7 @@ void SemanticAnalyzer::registerStructDeclaration(const ast::TypeDeclaration& dec
         field.defaultValue = fieldDeclaration.defaultValue;
         field.fillDefault = fieldDeclaration.fillDefault;
         field.isPart = fieldDeclaration.isPart;
+        field.isPublic = fieldDeclaration.isPublic || fieldDeclaration.isPart;
         fields.push_back(std::move(field));
         written.push_back(fieldDeclaration.typeName);
     }
@@ -885,6 +951,7 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
             if (const std::string owner = ownerFieldWithoutDefault(type); !owner.empty()) {
                 throw SemanticError(owner + " is an owner without default: give " + name + " a value");
             }
+            requireBuildableHere(type);
             if (const std::string field = requiredFieldWithoutDefault(type); !field.empty()) {
                 throw SemanticError(requiredFieldMessage(name, type, field));
             }

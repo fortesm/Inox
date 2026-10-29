@@ -1,0 +1,24 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.99 (C3): reusing a struct of another module does not open its
+== private fields, neither from outside nor from the new struct's methods.
+Use People.Being
+
+Type
+    TPerson Struct (TBeing)
+        FName String := "Ana"
+    ;
+
+TPerson.Peek(Self) Integer :
+    Return Self.FSecret
+;
+
+Main :
+    P TPerson
+    PutLn(P.Peek)
+;

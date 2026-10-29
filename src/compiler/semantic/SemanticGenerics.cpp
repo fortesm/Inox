@@ -169,6 +169,7 @@ void SemanticAnalyzer::registerGenericTemplates(const ast::ModuleNode& module)
         for (const ast::TypeDeclaration& declaration : static_cast<const ast::SectionDeclaration&>(*item).types()) {
             if (declaration.kind == ast::TypeDeclarationKind::Struct && !declaration.typeParameters.empty()) {
                 declareOrThrow(declaration.name, SymbolKind::Type);
+                typeModules_[normalizeName(declaration.name)] = declaration.module;
                 genericStructs_.emplace(normalizeName(declaration.name), &declaration);
             }
         }
@@ -510,6 +511,7 @@ TypeRef SemanticAnalyzer::instantiateStruct(const ast::TypeDeclaration& generic,
                                      declaration.defaultValue};
             field.fillDefault = declaration.fillDefault;
             field.fromTypeParameter = !replace(declaration.typeName).empty();
+            field.isPublic = declaration.isPublic;
             fields.push_back(std::move(field));
         }
         types().setStructFields(type, std::move(fields));

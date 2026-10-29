@@ -385,6 +385,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
                 throw SemanticError(owner + " is an owner without default: build " + var.name() +
                                     " with its owners given");
             }
+            requireBuildableHere(type);
             if (const std::string field = requiredFieldWithoutDefault(type); !field.empty()) {
                 throw SemanticError(requiredFieldMessage(var.name(), type, field));
             }

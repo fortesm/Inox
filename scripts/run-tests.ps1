@@ -912,7 +912,8 @@ Invoke-DiagnosticTree "tests\diagnostics"
 
 # r3.99 (CANON-3): each directory of tests/modules is a program of several
 # modules; Main.inox is its entry file. Main.out: it runs with exactly that
-# output; Main.err: it is rejected with an error containing that text.
+# output; Main.err: it is rejected with an error containing that text;
+# Main.trap: it stops at run time with that diagnostic.
 $modulesRoot = Join-Path $repoRoot "tests\modules"
 if (Test-Path -LiteralPath $modulesRoot) {
     Get-ChildItem -LiteralPath $modulesRoot -Directory | Sort-Object Name | ForEach-Object {
@@ -921,7 +922,10 @@ if (Test-Path -LiteralPath $modulesRoot) {
         $entry = Get-Item -LiteralPath (Join-Path $directory.FullName "Main.inox")
         $outPath = Join-Path $directory.FullName "Main.out"
         $errPath = Join-Path $directory.FullName "Main.err"
-        if (Test-Path -LiteralPath $outPath) {
+        $trapPath = Join-Path $directory.FullName "Main.trap"
+        if (Test-Path -LiteralPath $trapPath) {
+            Invoke-DriverTrapTest -TestFile $entry
+        } elseif (Test-Path -LiteralPath $outPath) {
             Invoke-RunDriverTest -TestFile $entry -ExpectedOutputFile (Get-Item -LiteralPath $outPath)
         } elseif (Test-Path -LiteralPath $errPath) {
             $expected = ((Get-Content -LiteralPath $errPath -Raw) -replace "`r`n", "`n") -replace "`n+$", ""

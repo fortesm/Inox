@@ -669,7 +669,8 @@ run_diagnostic_tree "$repo_root/tests/diagnostics"
 
 # r3.99 (CANON-3): each directory of tests/modules is a program of several
 # modules; Main.inox is its entry file. Main.out: it runs with exactly that
-# output; Main.err: it is rejected with an error containing that text.
+# output; Main.err: it is rejected with an error containing that text;
+# Main.trap: it stops at run time with that diagnostic.
 run_module_programs() {
     local root="$repo_root/tests/modules"
     [[ -d "$root" ]] || return 0
@@ -677,7 +678,9 @@ run_module_programs() {
         local entry="$directory/Main.inox"
         local rel
         rel="$(relative_path "$directory")"
-        if [[ -f "$directory/Main.out" ]]; then
+        if [[ -f "$directory/Main.trap" ]]; then
+            run_driver_trap_test "$entry" ""
+        elif [[ -f "$directory/Main.out" ]]; then
             run_driver_execution_test "$entry" "$directory/Main.out"
         elif [[ -f "$directory/Main.err" ]]; then
             local expected actual exit_code
