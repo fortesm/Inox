@@ -753,7 +753,7 @@ run_driver_case "B4: inox interface of Std.DateUtils" out "tests/interface/std-d
     interface stdlib/Std.DateUtils.inox
 run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 
-# grammar/grammar.ebnf must agree with the constitution, the lexer and the parser.
+# docs/grammar/grammar.ebnf must agree with the constitution, the lexer and the parser.
 run_grammar_consistency() {
     local python_exe=""
     if command -v python3 >/dev/null 2>&1; then
@@ -761,27 +761,27 @@ run_grammar_consistency() {
     elif command -v python >/dev/null 2>&1; then
         python_exe="python"
     else
-        echo "[SKIP] grammar/grammar.ebnf consistency (Python 3 not found)"
+        echo "[SKIP] docs/grammar/grammar.ebnf consistency (Python 3 not found)"
         return
     fi
     local output
     output="$("$python_exe" "$repo_root/tools/grammar_consistency.py" "$repo_root" 2>&1)"
     if [[ $? -eq 0 ]]; then
-        record_pass "grammar/grammar.ebnf consistency"
+        record_pass "docs/grammar/grammar.ebnf consistency"
     else
         local details=()
         while IFS= read -r line; do
             [[ "$line" == *FAIL* || "$line" == "       "* ]] && details+=("$line")
         done <<< "$output"
-        record_fail "grammar/grammar.ebnf consistency" "${details[@]}"
+        record_fail "docs/grammar/grammar.ebnf consistency" "${details[@]}"
     fi
 }
 run_grammar_consistency
 
 # `inox --version` must match the version and revision at the top of
-# openspec/specs/constitution/revisions.md (constitution VERSIONING).
+# docs/openspec/specs/constitution/revisions.md (constitution VERSIONING).
 run_version_check() {
-    local revisions="$repo_root/openspec/specs/constitution/revisions.md"
+    local revisions="$repo_root/docs/openspec/specs/constitution/revisions.md"
     local language revision expected actual
     # "Language version: Inox 0.2.0 pre-alpha"; the program prints
     # MAJOR.MINOR.RELEASE.BUILD, BUILD being set by each build.

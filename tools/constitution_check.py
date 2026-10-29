@@ -7,7 +7,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """The lock of the Inox constitution (G8) and the test references of every spec (G5).
 
-openspec/specs/constitution/spec.md and engineering.md are the law. They are
+docs/openspec/specs/constitution/spec.md and engineering.md are the law. They are
 split into units (the text before `## Requirements` and each `### Requirement:`
 of spec.md; the text before the first `## ` and each `## ` section of
 engineering.md). constitution.lock records, per unit, a hash of its text and
@@ -18,7 +18,7 @@ proposal.md quotes Marcelo Fortes).
 Commands
   check    fail if a unit differs from its hash, is missing from the lock or
            was removed without relocking, if an approval names no approved
-           change, or if a spec under openspec/specs names a tests/,
+           change, or if a spec under docs/openspec/specs names a tests/,
            examples/, tools/ or scripts/ file that does not exist
   relock --approval CHANGE [UNIT ...]
            record the current text of the given units (all changed, new and
@@ -37,10 +37,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CONSTITUTION = ROOT / "openspec" / "specs" / "constitution"
+CONSTITUTION = ROOT / "docs" / "openspec" / "specs" / "constitution"
 LOCK = CONSTITUTION / "constitution.lock"
-SPECS = ROOT / "openspec" / "specs"
-CHANGES = ROOT / "openspec" / "changes"
+SPECS = ROOT / "docs" / "openspec" / "specs"
+CHANGES = ROOT / "docs" / "openspec" / "changes"
 LOCKED_FILES = ("spec.md", "engineering.md")
 REFERENCE_RE = re.compile(r"(?<![\w/.-])((?:tests|examples|tools|scripts)/[\w./-]*\w\.\w+)")
 LOCK_HEADER = (
