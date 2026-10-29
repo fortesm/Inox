@@ -28,8 +28,23 @@ namespace inox::compiler::semantic {
 
 using namespace detail;
 
+namespace {
+
+// r3.99: internal names of routines of other modules join the module with
+// `::` (`Std.Math::Max`); a message shows `Std.Math.Max`. Inox source never
+// writes `::`.
+std::string shownMessage(std::string message)
+{
+    for (std::size_t at = message.find("::"); at != std::string::npos; at = message.find("::", at)) {
+        message.replace(at, 2, ".");
+    }
+    return message;
+}
+
+} // namespace
+
 SemanticError::SemanticError(std::string message)
-    : std::runtime_error(std::move(message))
+    : std::runtime_error(shownMessage(std::move(message)))
 {
 }
 
@@ -45,6 +60,7 @@ SemanticAnalyzer::SemanticAnalyzer()
 const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
 {
     result_.clear();
+    program_ = &module;
 
     if (module.name().empty()) {
         throw SemanticError("module must have a name");

@@ -145,6 +145,8 @@ inox build file.inox       build the program; prints the executable path
 inox run --debug file.inox build without optimization (also inox --debug file.inox, inox build --debug)
 inox check file.inox       parse and check the program
 inox emit-llvm file.inox   print the LLVM IR
+inox interface file.inox   print what the modules that use it see
+inox run --path lib file.inox  also look in lib for used modules (repeatable)
 inox help                  print the commands
 inox version               print the version</code></pre>
 <p><code>--run</code>, <code>--build</code>, <code>--emit-llvm</code>, <code>--help</code> and <code>--version</code> are accepted as aliases. For compiler development, <code>--parse-only</code>, <code>--dump-tokens</code> and <code>--dump-types</code> show the parser's view, the tokens and the resolved types.</p>
@@ -152,7 +154,7 @@ inox version               print the version</code></pre>
 <p>Checking and IR emission do not require Clang when using a prebuilt compiler. Building and running currently require <code>clang</code> in <code>PATH</code>.</p>
 </section>
 <section id="stdlib-output"><h2>Standard library discovery and output directory</h2>
-<p>The standard library has <code>Std.System</code> (the prelude, always available, formerly <code>Std.Core</code>), <code>Std.IO</code>, <code>Std.Math</code>, <code>Std.Errors</code> (the exception types), <code>Std.Debug</code> and the pairs <code>Std.Files</code> / <code>Std.IOUtils</code> and <code>Std.Strings</code> / <code>Std.StrUtils</code>, <code>Std.DateTime</code> / <code>Std.DateUtils</code>, <code>Std.SystemUtils</code> and <code>Std.Terminal</code> (keys, cursor, colors). Modules come in pairs: <code>Std.X</code> holds a subject's types and fundamental operations, and <code>Std.XUtils</code> the conveniences built on them (using <code>Std.XUtils</code> also gives everything of <code>Std.X</code>).</p>
+<p>The standard library has <code>Std.System</code> (the prelude, always available, formerly <code>Std.Core</code>), <code>Std.IO</code>, <code>Std.Math</code>, <code>Std.Errors</code> (the exception types), <code>Std.Debug</code> and the pairs <code>Std.Files</code> / <code>Std.IOUtils</code> and <code>Std.Strings</code> / <code>Std.StrUtils</code>, <code>Std.DateTime</code> / <code>Std.DateUtils</code>, <code>Std.SystemUtils</code> and <code>Std.Terminal</code> (keys, cursor, colors). Modules come in pairs: <code>Std.X</code> holds a subject's types and fundamental operations, and <code>Std.XUtils</code> the conveniences built on them; <code>Std.XUtils</code> passes <code>Std.X</code> on with <code>Export Use</code>, so using it also gives everything of <code>Std.X</code>. <code>Std</code> names only this library: a program cannot declare a <code>Std.*</code> module.</p>
 <p><code>Use Std.Debug</code> gives <code>Assert(Condition)</code> and <code>Assert(Condition, Message)</code>. When the condition is false the program stops at once, like an overflow: no handler catches it and no <code>ensure</code> runs. Assert is never compiled out.</p>
 <pre><code>Use Std.Debug
 
@@ -184,22 +186,58 @@ export INOX_OUTPUT_DIR=&quot;$HOME/tools/inox-linux-x64/output&quot;</code></pre
 <pre><code>PutLn
 putln
 PUTLN</code></pre>
-<p>Inox has 42 reserved words, which never name anything: <code>Use Type Const State Struct Enum if elif else unless while repeat until for in step case try except On do ensure raise retry with mut ref mod rem and xor or not shr shl Return pre pos old invariant variant Override</code>.</p>
+<p>Inox has 43 reserved words, which never name anything: <code>Use Type Const State Struct Enum if elif else unless while repeat until for in step case try except On do ensure raise retry with mut ref mod rem and xor or not shr shl Return pre pos old invariant variant Override Public</code>. <code>Export</code> and <code>as</code> are words only in <code>Export Use</code> and <code>Use M as A</code>; elsewhere they are ordinary names.</p>
 <p><code>True</code>, <code>False</code>, <code>Exit</code>, <code>leave</code>, <code>continue</code>, <code>IIf</code>, <code>Fill</code>, <code>bitand</code>, <code>bitor</code>, <code>bitxor</code> and <code>bitnot</code> are predefined names, as <code>Break</code> and <code>Exit</code> in Pascal: they always keep their meaning and can never be declared (a variable, parameter, routine, type or Const named <code>True</code> is an error), but they may name fields and methods (<code>Porta.Exit</code>). <code>Main</code>, <code>Var</code> and <code>Module</code> are ordinary names: the program starts at the routine named Main. Words such as <code>Self</code>, <code>Result</code> and <code>None</code> mean something only where they appear.</p>
 <p><code>{</code> and <code>}</code> are reserved for a future construct; blocks close with <code>;</code>.</p>
 <p>Line comments use <code>==</code>:</p>
 <pre><code>X := 10  == comment until end of line</code></pre>
 <p>Real literals have a fraction and may end with an exponent: <code>3.14</code>, <code>1.5e3</code>, <code>2.0E-7</code>; <code>1e3</code> is an error (write <code>1.0e3</code>). String literals use double quotes. Character literals use single quotes. <code>Char</code> is a Unicode scalar value, not a byte and not a grapheme cluster.</p>
 </section>
-<section id="modules"><h2>Modules and Use</h2>
-<p>A file is a module, named after the file: <code>Calc.Core.inox</code> (or <code>Calc/Core.inox</code>) is the module <code>Calc.Core</code>, and there is no header. The program's own file may have any name. A file starts with the modules it uses:</p>
-<pre><code>Use Std.IO
-Use Calc.Core
+<section id="modules"><h2>Modules, Use and visibility</h2>
+<p>A file is a module, named after the file: <code>Calc.Core.inox</code> (or <code>Calc/Core.inox</code>) is the module <code>Calc.Core</code>, and there is no header. The program's own file may have any name. A file starts with the modules it uses. <code>Use</code> declares semantic dependencies: it is not textual inclusion and not a C-style <code>#include</code>.</p>
+<p>Everything a module declares is private to it unless it is <code>Public</code>, the last word of a header (canon r3.99). In a struct, the private fields come first and the line <code>Public</code> opens the public ones:</p>
+<pre><code>== Bank/Accounts.inox, the module Bank.Accounts
+Type
+    TAccount Struct Public
+        FBalance Currency := 0.00          == private: only Bank.Accounts reaches it
+        invariant Self.FBalance &gt;= 0.00, &quot;a balance is never negative&quot;
+    Public
+        FOwner String := &quot;&quot;
+    ;
+
+Const MaxWithdrawal Public := Currency(1_000.00)
+
+OpenAccount(Owner String) TAccount Public :
+    Return TAccount(FOwner := Owner)
+;
+
+TAccount.Deposit(Self mut, Amount Currency) Public :
+    pre Amount &gt; 0.00, &quot;a deposit is positive&quot;
+    Self.FBalance += Amount
+;
+
+TAccount.Balance(Self) Currency Public :
+    Return Self.FBalance
+;</code></pre>
+<p>Another module changes a balance only through <code>Deposit</code>; writing or reading <code>A.FBalance</code> outside Bank.Accounts is an error. A struct with a private field without a default is built only by its own module, so a routine of the module is its constructor. A struct that reuses a part from another module sees only the part's public members, and a write to a public field from outside still checks the invariant. A State variable is never public. Nothing public exposes something private: a public routine does not name a private type, and a method is declared in its type's module.</p>
+<p><code>Use</code> is not transitive: a module sees only what it uses itself. <code>Export Use M</code> passes M on to whoever uses this module, so <code>Bank.inox</code> can gather the bank:</p>
+<pre><code>== Bank.inox
+Export Use Bank.Accounts
+Export Use Bank.Reports
+
+== Main.inox
+Use Bank
 
 Main :
-    PutLn(Sum(1, 2))        == a routine of Calc.Core
+    A := OpenAccount(&quot;Marcelo&quot;)
+    A.Deposit(500.00)
+    PutLn(A.FOwner, &quot;: &quot;, A.Balance)
 ;</code></pre>
-<p><code>Use</code> declares semantic dependencies. It is not textual inclusion and not a C-style <code>#include</code>. Standard modules are resolved through the standard-library search path.</p>
+<p>Each module has its own names. A name is the module's own declaration first, then the one public declaration of that name among the modules it uses; when two used modules have it, the compiler does not choose and asks for the qualified name. The module's name qualifies, an alias gives a shorter one in this file, and a list takes only some names unqualified:</p>
+<pre><code>Use Bank.Accounts                     == Bank.Accounts.Fee(10), Bank.Accounts.TAccount
+Use Bank.Loans as Loans               == Loans.Fee(10); only the alias qualifies
+Use Bank.Reports.(PrintStatement)     == PrintStatement unqualified, the rest qualified</code></pre>
+<p>A used module is searched in the program file's directory, then in each <code>--path</code> directory, then in each <code>INOX_PATH</code> entry (separated by <code>;</code> on Windows and <code>:</code> elsewhere), then in the standard library; the first file found is the module. <code>inox interface Bank/Accounts.inox</code> prints what other modules see: the public types and fields, the invariants, the public Consts and the headers of the public routines with their contracts. <code>examples/bank</code> is the whole program.</p>
 </section>
 <section id="blocks"><h2>Blocks and statement syntax</h2>
 <p>Inox uses <code>;</code> to close blocks. It is not a general statement terminator.</p>

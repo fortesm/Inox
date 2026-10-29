@@ -9,6 +9,7 @@
 
 
 #include <algorithm>
+#include <cctype>
 #include <utility>
 
 namespace inox::compiler::ast {
@@ -64,8 +65,80 @@ const std::vector<std::string>& ModuleNode::loadedModules() const
     return loadedModules_;
 }
 
-UseDeclaration::UseDeclaration(std::vector<std::string> path)
-    : AstNode(AstNodeKind::UseDeclaration), path_(std::move(path))
+namespace {
+
+std::string lowered(std::string_view text)
+{
+    std::string result(text);
+    for (char& ch : result) {
+        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    }
+    return result;
+}
+
+} // namespace
+
+std::vector<std::string> ModuleNode::visibleModules(const std::string& module) const
+{
+    for (const auto& [name, modules] : visibleModules_) {
+        if (lowered(name) == lowered(module)) {
+            return modules;
+        }
+    }
+    return loadedModules_;
+}
+
+void ModuleNode::setVisibleModules(const std::string& module, std::vector<std::string> modules)
+{
+    visibleModules_.emplace_back(module, std::move(modules));
+}
+
+bool ModuleNode::reservesRoot(const std::string& module, std::string_view root) const
+{
+    for (const auto& [name, reserved] : reservedRoots_) {
+        if (lowered(name) == lowered(module) && lowered(reserved) == lowered(root)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void ModuleNode::addReservedRoot(const std::string& module, std::string root)
+{
+    reservedRoots_.emplace_back(module, std::move(root));
+}
+
+std::string ModuleNode::nameHint(const std::string& module, std::string_view name) const
+{
+    const std::string key = lowered(module) + '\x1f' + lowered(name);
+    for (const auto& [entry, hint] : nameHints_) {
+        if (entry == key) {
+            return hint;
+        }
+    }
+    return {};
+}
+
+void ModuleNode::setNameHint(const std::string& module, std::string_view name, std::string hint)
+{
+    const std::string key = lowered(module) + '\x1f' + lowered(name);
+    for (auto& [entry, existing] : nameHints_) {
+        if (entry == key) {
+            return;
+        }
+    }
+    nameHints_.emplace_back(key, std::move(hint));
+}
+
+UseDeclaration::UseDeclaration(std::vector<std::string> path, bool exported, std::string alias,
+                               std::vector<std::string> names, bool selective, std::size_t line)
+    : AstNode(AstNodeKind::UseDeclaration),
+      path_(std::move(path)),
+      exported_(exported),
+      alias_(std::move(alias)),
+      names_(std::move(names)),
+      selective_(selective),
+      line_(line)
 {
 }
 
@@ -133,8 +206,18 @@ FunctionDeclaration::FunctionDeclaration(std::string name,
 
 std::size_t methodDot(std::string_view routineName)
 {
-    const std::size_t dot = routineName.find('.');
-    return dot < routineName.find('<') ? dot : std::string_view::npos;
+    // r3.99: a type of another module is named `Bank.Accounts.TAccount`, so
+    // the method's dot is the last one before any type arguments.
+    // A routine of another module is `Std.Math::Max`: its module's dots are
+    // not a method's.
+    const std::size_t angle = routineName.find('<');
+    const std::string_view head = routineName.substr(0, angle);
+    const std::size_t routine = head.rfind("::");
+    const std::size_t dot = head.rfind('.');
+    if (dot == std::string_view::npos || (routine != std::string_view::npos && dot < routine)) {
+        return std::string_view::npos;
+    }
+    return dot;
 }
 
 const std::vector<std::string>& FunctionDeclaration::typeParameters() const

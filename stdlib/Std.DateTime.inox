@@ -22,25 +22,25 @@
 == precondition: the program stops with "precondition violated".
 
 Type
-    TDateTime Range 0..315_537_897_599_999_999
-    TDate Range 0..3_652_058
-    TDuration Range -9_223_372_036_854_775_807..9_223_372_036_854_775_807
-    TDayOfWeek (Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday)
+    TDateTime Range 0..315_537_897_599_999_999 Public
+    TDate Range 0..3_652_058 Public
+    TDuration Range -9_223_372_036_854_775_807..9_223_372_036_854_775_807 Public
+    TDayOfWeek (Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday) Public
 
-Const MicrosPerSecond := 1_000_000
-Const MicrosPerMinute := 60_000_000
-Const MicrosPerHour := 3_600_000_000
-Const MicrosPerDay := 86_400_000_000
+Const MicrosPerSecond Public := 1_000_000
+Const MicrosPerMinute Public := 60_000_000
+Const MicrosPerHour Public := 3_600_000_000
+Const MicrosPerDay Public := 86_400_000_000
 
 == Intrinsics (libinoxrt):
 ==   NowUTC TDateTime                    == the clock, in UTC
 ==   UTCOffset(T TDateTime) TDuration     == local time minus UTC at the UTC instant T
 
-IsLeapYear(Y Integer) Bool :
+IsLeapYear(Y Integer) Bool Public :
     Return (Y mod 4 = 0 and Y mod 100 # 0) or Y mod 400 = 0
 ;
 
-DaysInMonth(Y Integer, M Integer) Integer :
+DaysInMonth(Y Integer, M Integer) Integer Public :
     pre M >= 1 and M <= 12, "a month is 1..12"
     Days Integer := 31
     case M
@@ -61,14 +61,14 @@ DaysFromCivil(Y Integer, M Integer, D Integer) Integer :
     Return Era * 146097 + DayOfEra - 306
 ;
 
-EncodeDate(Y Integer, M Integer, D Integer) TDate :
+EncodeDate(Y Integer, M Integer, D Integer) TDate Public :
     pre Y >= 1 and Y <= 9999, "a year is 1..9999"
     pre M >= 1 and M <= 12, "a month is 1..12"
     pre D >= 1 and D <= DaysInMonth(Y, M), "the day exists in its month"
     Return TDate(DaysFromCivil(Y, M, D))
 ;
 
-EncodeDateTime(Y Integer, M Integer, D Integer, H Integer, N Integer, S Integer) TDateTime :
+EncodeDateTime(Y Integer, M Integer, D Integer, H Integer, N Integer, S Integer) TDateTime Public :
     pre H >= 0 and H <= 23, "an hour is 0..23"
     pre N >= 0 and N <= 59, "a minute is 0..59"
     pre S >= 0 and S <= 59, "a second is 0..59"
@@ -76,16 +76,16 @@ EncodeDateTime(Y Integer, M Integer, D Integer, H Integer, N Integer, S Integer)
     Return TDateTime(Days * MicrosPerDay + H * MicrosPerHour + N * MicrosPerMinute + S * MicrosPerSecond)
 ;
 
-DateOf(T TDateTime) TDate :
+DateOf(T TDateTime) TDate Public :
     Return TDate(T / MicrosPerDay)
 ;
 
-DateTimeOf(D TDate) TDateTime :
+DateTimeOf(D TDate) TDateTime Public :
     Return TDateTime(D * MicrosPerDay)
 ;
 
 == The year, month and day of T (H. Hinnant's civil_from_days).
-DecodeDate(T TDateTime, ref mut Y Integer, ref mut M Integer, ref mut D Integer) :
+DecodeDate(T TDateTime, ref mut Y Integer, ref mut M Integer, ref mut D Integer) Public :
     Z Integer := T / MicrosPerDay + 306
     Era Integer := Z / 146097
     DayOfEra Integer := Z - Era * 146097
@@ -97,7 +97,7 @@ DecodeDate(T TDateTime, ref mut Y Integer, ref mut M Integer, ref mut D Integer)
     Y := YearOfEra + Era * 400 + IIf(M <= 2, 1, 0)
 ;
 
-Year(T TDateTime) Integer :
+Year(T TDateTime) Integer Public :
     Y Integer := 0
     M Integer := 0
     D Integer := 0
@@ -105,7 +105,7 @@ Year(T TDateTime) Integer :
     Return Y
 ;
 
-Month(T TDateTime) Integer :
+Month(T TDateTime) Integer Public :
     Y Integer := 0
     M Integer := 0
     D Integer := 0
@@ -113,7 +113,7 @@ Month(T TDateTime) Integer :
     Return M
 ;
 
-Day(T TDateTime) Integer :
+Day(T TDateTime) Integer Public :
     Y Integer := 0
     M Integer := 0
     D Integer := 0
@@ -121,50 +121,50 @@ Day(T TDateTime) Integer :
     Return D
 ;
 
-Hour(T TDateTime) Integer :
+Hour(T TDateTime) Integer Public :
     Return T mod MicrosPerDay / MicrosPerHour
 ;
 
-Minute(T TDateTime) Integer :
+Minute(T TDateTime) Integer Public :
     Return T mod MicrosPerHour / MicrosPerMinute
 ;
 
-Second(T TDateTime) Integer :
+Second(T TDateTime) Integer Public :
     Return T mod MicrosPerMinute / MicrosPerSecond
 ;
 
-MicroSecond(T TDateTime) Integer :
+MicroSecond(T TDateTime) Integer Public :
     Return T mod MicrosPerSecond
 ;
 
 == 0001-01-01 was a Monday.
-DayOfWeek(T TDateTime) TDayOfWeek :
+DayOfWeek(T TDateTime) TDayOfWeek Public :
     Return TDayOfWeek(T / MicrosPerDay mod 7)
 ;
 
-AddDays(T TDateTime, Days Integer) TDateTime :
+AddDays(T TDateTime, Days Integer) TDateTime Public :
     Return TDateTime(T + Days * MicrosPerDay)
 ;
 
-AddSeconds(T TDateTime, Count Integer) TDateTime :
+AddSeconds(T TDateTime, Count Integer) TDateTime Public :
     Return TDateTime(T + Count * MicrosPerSecond)
 ;
 
 == Whole days between A and B, whatever their order.
-DaysBetween(A TDateTime, B TDateTime) Integer :
+DaysBetween(A TDateTime, B TDateTime) Integer Public :
     Return IIf(A > B, A - B, B - A) / MicrosPerDay
 ;
 
-ToLocal(T TDateTime) TDateTime :
+ToLocal(T TDateTime) TDateTime Public :
     Return TDateTime(T + UTCOffset(T))
 ;
 
 == The UTC instant of a local time (the offset of the instant it names).
-ToUTC(T TDateTime) TDateTime :
+ToUTC(T TDateTime) TDateTime Public :
     Guess Integer := T - UTCOffset(T)
     Return TDateTime(T - UTCOffset(TDateTime(Guess)))
 ;
 
-Now TDateTime :
+Now TDateTime Public :
     Return ToLocal(NowUTC)
 ;

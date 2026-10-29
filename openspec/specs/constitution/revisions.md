@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.98
+Canon revision: r3.99
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -445,3 +445,37 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   optimization policy: "Sim, e deixe essa opção por default, posteriormente
   faremos otimizações setadas no codigo fonte ara o llvm". Change
   `optimize-default`.
+- r3.99 — 2026-10-29 — Modules and encapsulation (0.4). Each module has its
+  own names: its own first, then the one public name among the modules it
+  uses, two of them an ambiguity error (A1); `Bank.Accounts.Fee` reaches a
+  public name of a used or re-exported module, and no variable takes a
+  module's name (A2); `Use Bank.Accounts as Accounts`, local to its file,
+  after which only the alias qualifies (A3); `Use Bank.Accounts.(Deposit,
+  Withdraw)`, the list before `as` (A4). Everything is private unless
+  `Public`, written last in a header (after the result type and
+  `Override`, before `:`) and as the line that opens a struct's public
+  fields; `Use` is not transitive; `Export` exists only as `Export Use M`;
+  State is never Public (B3); a method is declared in its type's module and
+  nothing public exposes something private. Struct encapsulation per
+  module (C1), a private field without default makes the type built only by
+  its module (C2), reuse across modules sees public members (C3), invariants
+  are checked after outside writes to public fields (C4); read-only fields
+  later (C5). Search order: the entry directory, `--path`, `INOX_PATH`, the
+  standard library (D1); `Std` reserved to the standard library (D2);
+  `inox interface` (B4); `examples/bank` is the acceptance program (E2).
+  Also: a method argument is analyzed against its parameter type, like a
+  routine argument. Marcelo Fortes, 2026-10-26: private by default with
+  `Public` and `Use` not transitive, `Export` only as `Export Use`;
+  2026-10-29: "Na parte 1, aceito sua recomendação ... Na parte dois,
+  também acato sua regra proposta" (A1), "Acatada as proostas" (A2),
+  "Usaremos Bank.Accounts as Accounts como apelidos" (A3), "`use
+  bank.accounts.(deposit, withdraw)`" (A4), "Xonfirmado" (Public after
+  Override), "São equivalentes e não uma imposição de sintaxe. A quebra de
+  linha em inox só influencia para identificar onde termina uma instrução
+  de uma linha exatamente igual a Ruby" (header layout), "B4 aprovado",
+  "`State` nunca é `Public` ... aprovado", C1 to C4 "se não for contra a
+  proposta da linguagem de alta segurança como Rust, Spark/Ada e Ada",
+  "C5 para depois", D1 with "futuramente teremos uma ferramenta de buscar e
+  baixar pacotes", D2 "acato sua proposta", "um PR só com um commit por
+  etapa aprovado" (E1), the bank in `examples/bank/` approved (E2). Change
+  `modules-encapsulation`.

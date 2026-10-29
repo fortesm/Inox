@@ -1,0 +1,15 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.99 (C2): a private field without default means only the struct's
+== module builds it; outside, its routine NewPerson does.
+Use People
+
+Main :
+    P TPerson
+    PutLn(P.FName)
+;

@@ -243,7 +243,8 @@ none of their mistakes.
 
 ### Requirement: CANON-1 Post-object-oriented design
 Inox SHALL have no classes, classical inheritance, Java-style interfaces,
-mixins, duck typing, class taxonomies or OO visibility model. `Struct` is
+mixins, duck typing, class taxonomies or OO visibility model: visibility
+belongs to the module (CANON-3), never to a class. `Struct` is
 data; free functions, subroutines and associated methods declared outside
 the struct are behavior; `P.Method(args)` is sugar for a static call;
 composition replaces inheritance: a struct reuses other structs' fields and
@@ -325,7 +326,7 @@ their use (Marcelo Fortes, 2026-10-16).
 The reserved words SHALL be: Use Type Const State Struct Enum if elif else
 unless while repeat until for in step case try except On do ensure raise
 retry with mut ref mod rem and xor or not shr shl Return pre pos old
-invariant variant Override. Predefined names, never declared but free as
+invariant variant Override Public. Predefined names, never declared but free as
 field and method names: True False Exit leave continue IIf Fill bitand
 bitor bitxor bitnot. `Main`, `Var` and `Module` are ordinary names (2026-10-16).
 
@@ -336,6 +337,14 @@ bitor bitxor bitnot. `Main`, `Var` and `Module` are ordinary names (2026-10-16).
 #### Scenario: Reserved words
 - **WHEN** a program declares a variable named Old or Do
 - **THEN** it is rejected (tests/diagnostics/old-reserved.inox, tests/diagnostics/do-reserved.inox)
+
+### Requirement: CANON-2 Contextual words
+`Export` SHALL be a word only in `Export Use M`, and `as` only in `Use M as
+A` (r3.99); elsewhere both are ordinary names.
+
+#### Scenario: Export and As as names
+- **WHEN** a program names a variable Export and a parameter As
+- **THEN** both work (tests/runtime/contextual-words.inox)
 
 ### Requirement: CANON-2 Words Inox does not have
 `End`/`end` SHALL NOT be a keyword and never closes a block. `break` and
@@ -355,8 +364,8 @@ arm of a `case` is `else` (r3.74).
 A source file SHALL be one logical module named after its file, with no
 header (Marcelo Fortes, 2026-10-16): `Calc.Core.inox` or `Calc/Core.inox`
 is the module `Calc.Core`; the entry file may have any name. `Use Name`
-declares a semantic dependency: the compiler loads that module's types and
-signatures; it is never textual inclusion or manual linking.
+declares a semantic dependency: the compiler loads that module's public
+types and signatures; it is never textual inclusion or manual linking.
 
 #### Scenario: Multi-file program
 - **WHEN** `Main` uses `Math.Basic` from its own directory
@@ -366,23 +375,121 @@ signatures; it is never textual inclusion or manual linking.
 - **WHEN** a file starts with `Module Name`
 - **THEN** it is rejected (tests/diagnostics/module-header-removed.inox)
 
+### Requirement: CANON-3 Use is not transitive
+A module SHALL see only the modules it uses itself. `Export Use M` passes
+M's public declarations on to the modules that use it, without changing
+what is public in M; `Export` exists only in that form (Marcelo Fortes,
+2026-10-26).
+
+#### Scenario: Use is not transitive; Export Use passes a module on
+- **WHEN** Main uses a module that uses another, or one that re-exports another with `Export Use`
+- **THEN** the first's dependency is not visible to Main (tests/modules/use-not-transitive/Main.inox, tests/modules/library-not-transitive/Main.inox) and the re-exported one is (tests/modules/export-use/Main.inox, tests/modules/std-pair-reexports/Main.inox)
+
+### Requirement: CANON-3 Names of a module
+Each module SHALL have its own names (Marcelo Fortes, 2026-10-29). A name
+written without qualification is the module's own declaration first, then
+the one public declaration of that name among the modules it uses; two of
+them is an ambiguity error, never a choice of the compiler. `M.Name`
+(`Bank.Accounts.Fee`) reaches a public declaration of a module the file
+uses or that one re-exports to it; a method is still called on its value;
+no variable takes the name of a used module or alias.
+
+#### Scenario: Own names first, ambiguity is an error
+- **WHEN** a module declares a name a used module also has, or uses two modules with the same public name
+- **THEN** its own wins (tests/modules/own-name-first/Main.inox, tests/modules/same-private-names/Main.inox) and the unqualified use is rejected, naming the qualified forms (tests/modules/ambiguous-import/Main.inox)
+
+#### Scenario: Qualified names
+- **WHEN** a program writes `Bank.Accounts.Fee(10)`, a qualified type, a private name qualified, or a variable named like a used module
+- **THEN** the first two work (tests/modules/qualified-names/Main.inox) and the others are rejected (tests/modules/private-qualified/Main.inox, tests/modules/variable-named-module/Main.inox)
+
+### Requirement: CANON-3 Aliases and selective use
+`Use Bank.Accounts as Accounts` SHALL name the module `Accounts` in this
+file only, and then only the alias qualifies; `Export Use ... as` is an
+error. `Use Bank.Accounts.(Deposit, Withdraw)` takes only the listed public
+names unqualified, with parentheses even for one name and the list before
+`as`; a name the module declares itself cannot be listed, and the others
+stay reachable qualified (Marcelo Fortes, 2026-10-29).
+
+#### Scenario: Aliases
+- **WHEN** a program uses two modules through aliases, writes the full name after an alias, writes `Export Use ... as`, or names a variable like an alias
+- **THEN** the first works (tests/modules/alias-qualified/Main.inox) and the others are rejected (tests/modules/alias-hides-full-name/Main.inox, tests/modules/export-use-alias/Main.inox, tests/modules/variable-named-alias/Main.inox)
+
+#### Scenario: Selective use
+- **WHEN** a program lists names in `Use M.(...)`, with and without `as`, reads a public name it did not list, or lists a private, unknown or own name, or nothing
+- **THEN** the listed names work and the rest stay qualified (tests/modules/selective-import/Main.inox, tests/modules/selective-with-alias/Main.inox), and the others are rejected (tests/modules/selective-limits/Main.inox, tests/modules/selective-private/Main.inox, tests/modules/selective-unknown/Main.inox, tests/modules/selective-own-name/Main.inox, tests/modules/selective-empty/Main.inox)
+
 ### Requirement: CANON-3 Module resolution
-`Use A.B` SHALL look for `A.B.inox`, then `A/B.inox`, first in the directory
-of the entry file, then in the standard-library directory (CANON-19).
-Dependencies load recursively; a cycle is a compile error.
+`Use A.B` SHALL look for `A.B.inox`, then `A/B.inox`, in the directory of
+the entry file, then in each `--path` directory in order (an error when
+one is not a directory), then in each `INOX_PATH` entry (`;` separates them
+on Windows, `:` elsewhere; a missing entry is skipped), then in the
+standard-library directory (CANON-19); the first file found is the module
+(Marcelo Fortes, 2026-10-29). Dependencies load recursively; a cycle is a
+compile error.
 
 #### Scenario: Cycle
 - **WHEN** two modules use each other
 - **THEN** compilation fails (tests/integration/cycles/Cycle.A.inox)
 
-### Requirement: CANON-3 Visibility
-Every symbol of a module SHALL be public. `Export`, interface/body
-separation, aliases, selective imports and visibility controls are reserved
-for the future (FUTURE).
+#### Scenario: Search order
+- **WHEN** a module is found through `--path` and INOX_PATH, through INOX_PATH alone, or `--path` names a missing directory
+- **THEN** `--path` wins over INOX_PATH, a missing INOX_PATH entry is skipped, and the missing `--path` is an error (scripts/run-tests.sh, scripts/run-tests.ps1: "D1: --path before INOX_PATH, missing entry skipped", "D1: INOX_PATH alone", "D1: --path to a missing directory")
 
-#### Scenario: Imported routines
-- **WHEN** a module calls a routine of a module it uses
-- **THEN** the call resolves without any export declaration (tests/integration/modules/Main.inox)
+### Requirement: CANON-3 The Std name
+`Std` SHALL name the standard library (Marcelo Fortes, 2026-10-29): `Use
+Std.X` looks only there, and a module named `Std` or `Std.*` anywhere else
+is an error, never a replacement.
+
+#### Scenario: Std is reserved
+- **WHEN** a Std.Math file stands beside a program that uses Std.Math, or a program file is named Std.Thing
+- **THEN** both are rejected (tests/modules/std-reserved/Main.inox; scripts/run-tests.sh, scripts/run-tests.ps1: "D2: a program file named Std.*")
+
+### Requirement: CANON-3 Visibility
+Every declaration of a module SHALL be private unless it is `Public`
+(Marcelo Fortes, 2026-10-26). `Public` is the last word of a header: of a
+type (`TPerson Struct(TBeing) Public`), of a routine or method, after its
+result type and `Override`, just before `:`
+(`TPerson.UpdateName(Self mut, Name String) String Public :`), and of a
+Const (`Const MaxRate Public := 0.05`). A State variable is never public:
+other modules reach it through the module's public routines.
+
+#### Scenario: Private by default
+- **WHEN** a module calls a private routine of a module it uses, or the two declare the same private name
+- **THEN** the call is rejected (tests/modules/private-routine/Main.inox) and the names do not collide (tests/modules/same-private-names/Main.inox)
+
+#### Scenario: A name alone on its header line
+- **WHEN** a type's name stands alone on its line and its header follows on the next
+- **THEN** it declares the same type (tests/runtime/type-header-line-break.inox)
+
+### Requirement: CANON-3 Nothing public exposes something private
+A method SHALL be declared in the module of its type. A public routine does
+not name a private type, a private type has no public method or field, and
+a public struct does not reuse a private one (r3.99, as in Ada and Rust).
+
+#### Scenario: Exposing something private
+- **WHEN** a public routine names a private type, a private type has a public method or field, a public struct reuses a private one, or a method is declared outside its type's module
+- **THEN** each is rejected (tests/modules/public-exposes-private-type/Main.inox, tests/modules/public-method-private-type/Main.inox, tests/modules/public-fields-private-type/Main.inox, tests/modules/public-reuses-private/Main.inox, tests/modules/method-in-other-module/Main.inox)
+
+### Requirement: CANON-3 Struct encapsulation
+A struct's fields SHALL be private to its module unless they follow its
+`Public` line, after the private ones (Marcelo Fortes, 2026-10-29). A
+private field or method is read, written, constructed or called only in
+its type's module. A struct with a private field without default is built
+only by its module (`TName(...)`, a bare declaration, `New`). Reuse across
+modules (CANON-9) offers only the part's public members. Read-only fields
+come later.
+
+#### Scenario: The balance of an account
+- **WHEN** another module changes an account only through its public methods, or reads, writes, constructs or calls a private member
+- **THEN** the first runs (tests/modules/encapsulated-account/Main.inox, examples/bank/Main.inox) and the others are rejected (tests/modules/private-field-read/Main.inox, tests/modules/private-field-write/Main.inox, tests/modules/private-field-construction/Main.inox, tests/modules/private-field-with/Main.inox, tests/modules/private-method/Main.inox)
+
+#### Scenario: Built only by its module
+- **WHEN** another module declares or constructs a struct with a private field without default, or gets it from the module's routine
+- **THEN** the first two are rejected (tests/modules/built-only-in-module/Main.inox, tests/modules/built-only-in-module-construction/Main.inox) and the routine works (tests/modules/built-by-module-routine/Main.inox)
+
+#### Scenario: Reuse and invariants across modules
+- **WHEN** a struct reuses a part from another module, or another module breaks an invariant through a public field
+- **THEN** only the part's public members are offered (tests/modules/reuse-sees-public/Main.inox, tests/modules/reuse-private-field/Main.inox) and the invariant traps (tests/modules/invariant-after-public-write/Main.inox)
 
 ### Requirement: CANON-4 Semicolon closes, colon declares
 `;` SHALL close blocks and is not a statement terminator. `:` has one
@@ -1504,8 +1611,8 @@ The standard library SHALL live in `stdlib/` as Inox modules, portable across
 Windows and Linux, without garbage collection, unsafe features or C interop.
 Modules come in pairs: `Std.X` holds a subject's types, data and
 fundamental operations, the ones nearly every program needs; `Std.XUtils`
-holds the conveniences built on them, uses `Std.X` and gives everything of
-it. No module is a catch-all.
+holds the conveniences built on them and passes `Std.X` on with `Export
+Use Std.X` (r3.99). No module is a catch-all.
 
 #### Scenario: A module pair
 - **WHEN** a program uses `Std.IOUtils`, or only `Std.Files`
@@ -1719,6 +1826,17 @@ arguments, and a run ends with the program's exit status (r3.92).
 - **WHEN** `inox run args.inox "um arg" "dois"` runs a program that prints its arguments and halts with their count
 - **THEN** it prints both and the run ends with status 2 (scripts/run-tests.sh, scripts/run-tests.ps1: "inox run passes arguments and keeps Halt's status", tests/integration/system/args.inox)
 
+### Requirement: CANON-23 Module interface and search path
+`inox interface file.inox` SHALL print what other modules see of a module:
+its `Export Use` lines, public types with their public fields and
+invariants, public Consts, and the headers of its public routines with
+their contracts. `--path <dir>` before the file, repeatable, adds a
+directory where used modules are searched (CANON-3; r3.99).
+
+#### Scenario: A module's interface
+- **WHEN** `inox interface` reads Bank.Accounts, Bank and Std.DateUtils
+- **THEN** it prints their public surface (scripts/run-tests.sh, scripts/run-tests.ps1: "B4: inox interface of Bank.Accounts", "B4: inox interface of Bank", "B4: inox interface of Std.DateUtils")
+
 ### Requirement: CANON-23 Optimization
 `inox run`, `inox build` and `inox file.inox` SHALL build an optimized
 program (clang -O2) by default; `--debug` before the file builds it without
@@ -1758,11 +1876,12 @@ A struct's `invariant` SHALL hold, together with the invariants of the
 structs it reuses, on every new value (construction or defaults), before
 and after every method called on it from outside (`Self` calls excepted),
 and after a field or a ref mut argument is changed from outside its own
-methods.
+methods. An invariant may name private fields (CANON-3), and a write to a
+public field from another module checks it too (r3.99).
 
 #### Scenario: Broken invariants
 - **WHEN** a method, a field write, a ref mut argument or a construction breaks an invariant
-- **THEN** the program traps (tests/runtime/contract-invariant-method.inox, tests/runtime/contract-invariant-field.inox, tests/runtime/contract-invariant-ref-mut.inox, tests/runtime/contract-invariant-construction.inox)
+- **THEN** the program traps (tests/runtime/contract-invariant-method.inox, tests/runtime/contract-invariant-field.inox, tests/runtime/contract-invariant-ref-mut.inox, tests/runtime/contract-invariant-construction.inox, tests/modules/invariant-after-public-write/Main.inox)
 
 ### Requirement: CANON-24 Contracts of an Override
 An Override SHALL inherit the contracts of the methods it replaces, as
@@ -1940,28 +2059,29 @@ values.
 - **THEN** it is rejected (tests/diagnostics/mut-reserved.inox)
 
 ### Requirement: FUTURE Modules, variants and numbers
-`Export` visibility, interface/body separation and a package manager SHALL
-extend modules. Variant structs (a value that is one of several structs,
-examined with `case`) are how a collection mixes kinds without subtyping
+A package tool, downloading packages into a folder of the CANON-3 search
+order, SHALL extend modules (2026-10-29). Variant structs (one of several
+structs, examined with `case`) are how a collection mixes kinds without
+subtyping
 (Marcelo Fortes, 2026-10-14: "Sim, registre isso"). Metadata tags (JSON,
 databases), BigCurrency, symbolic mathematics and `Float(Soma / N)` as the
 exact quotient of two integers (2026-10-16) are later directions. Each
 needs an approved design.
 
-#### Scenario: All symbols public today
-- **WHEN** a module uses another
-- **THEN** every symbol is visible without `Export` (tests/integration/modules/Main.inox)
+#### Scenario: No package tool yet
+- **WHEN** a program uses a module that no searched directory holds
+- **THEN** it is not found until the package tool exists (test to add)
 
 ### Requirement: FUTURE Encapsulation, routine types and lifecycle
-Encapsulation SHALL come from an approved design close to Object Pascal
-and Rust (Marcelo Fortes, 2026-10-14: "algo bem semelhante a do
-ObjectPascal + Rust mas precisamos desenhar ainda"). Routine types (a
+Encapsulation is CANON-3 (r3.99); read-only fields, which other modules
+read and only their module writes, SHALL come from a later design (Marcelo
+Fortes, 2026-10-29: "C5 para depois"). Routine types (a
 routine kept in a variable, field or parameter, as Pascal's procedural
 types) are recorded with the recommendation: named routines without
 captured variables first, closures only after safe pointers. Whether Inox needs constructors and destructors is
 the maintainer's open analysis.
 
 #### Scenario: Not yet in the language
-- **WHEN** a program declares a private field or a routine type
+- **WHEN** a program declares a read-only field or a routine type
 - **THEN** it is not accepted until the design is approved (test to add)
 

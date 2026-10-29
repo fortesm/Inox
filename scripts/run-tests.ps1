@@ -909,6 +909,122 @@ Invoke-RuntimeTree "tests\integration\input"
 Invoke-RuntimeTree "tests\runtime"
 Invoke-Examples
 Invoke-DiagnosticTree "tests\diagnostics"
+
+# r3.99 (CANON-3): each directory of tests/modules is a program of several
+# modules; Main.inox is its entry file. Main.out: it runs with exactly that
+# output; Main.err: it is rejected with an error containing that text;
+# Main.trap: it stops at run time with that diagnostic.
+$modulesRoot = Join-Path $repoRoot "tests\modules"
+if (Test-Path -LiteralPath $modulesRoot) {
+    Get-ChildItem -LiteralPath $modulesRoot -Directory | Sort-Object Name | ForEach-Object {
+        $directory = $_
+        $relative = [System.IO.Path]::GetRelativePath($repoRoot, $directory.FullName)
+        $entry = Get-Item -LiteralPath (Join-Path $directory.FullName "Main.inox")
+        $outPath = Join-Path $directory.FullName "Main.out"
+        $errPath = Join-Path $directory.FullName "Main.err"
+        $trapPath = Join-Path $directory.FullName "Main.trap"
+        if (Test-Path -LiteralPath $trapPath) {
+            Invoke-DriverTrapTest -TestFile $entry
+        } elseif (Test-Path -LiteralPath $outPath) {
+            Invoke-RunDriverTest -TestFile $entry -ExpectedOutputFile (Get-Item -LiteralPath $outPath)
+        } elseif (Test-Path -LiteralPath $errPath) {
+            $expected = ((Get-Content -LiteralPath $errPath -Raw) -replace "`r`n", "`n") -replace "`n+$", ""
+            $actual = & $InoxExe "--emit-llvm" $entry.FullName 2>&1 | Out-String
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -ne 0 -and $actual.Contains($expected)) {
+                $script:passed++
+                Write-Host "[PASS] $relative diagnostic"
+            } else {
+                $script:failed++
+                Write-Host "[FAIL] $relative diagnostic"
+                Write-Host "       expected error containing: $expected"
+                Write-Host "       actual error: $actual"
+            }
+        } else {
+            $script:failed++
+            Write-Host "[FAIL] $relative"
+            Write-Host "       missing Main.out or Main.err"
+        }
+    }
+}
+# r3.99: driver cases with their own arguments or environment. "out": the
+# driver succeeds and prints exactly the file's text; "fail": it fails with
+# an error containing the text. INOX_PATH is set for the case only.
+function Invoke-DriverCase {
+    param(
+        [string]$Label,
+        [string]$Kind,
+        [string]$Expected,
+        [string]$InoxPath,
+        [string[]]$Arguments
+    )
+    if ($Kind -eq "out" -and $Arguments[0] -eq "run" -and $null -eq (Get-Command clang -ErrorAction SilentlyContinue)) {
+        Write-Host "[SKIP] $Label (clang not found)"
+        return
+    }
+    $savedPath = $env:INOX_PATH
+    Push-Location $repoRoot
+    try {
+        if ([string]::IsNullOrEmpty($InoxPath)) {
+            Remove-Item Env:INOX_PATH -ErrorAction SilentlyContinue
+        } else {
+            $env:INOX_PATH = $InoxPath
+        }
+        $actual = (& $InoxExe @Arguments 2>&1 | Out-String)
+        $exitCode = $LASTEXITCODE
+    } finally {
+        Pop-Location
+        if ($null -eq $savedPath) {
+            Remove-Item Env:INOX_PATH -ErrorAction SilentlyContinue
+        } else {
+            $env:INOX_PATH = $savedPath
+        }
+    }
+    $actual = ($actual -replace "`r`n", "`n") -replace "`n+$", ""
+    if ($Kind -eq "out") {
+        $wanted = ((Get-Content -LiteralPath (Join-Path $repoRoot $Expected) -Raw) -replace "`r`n", "`n") -replace "`n+$", ""
+        $ok = $exitCode -eq 0 -and $actual -eq $wanted
+    } else {
+        $wanted = $Expected
+        $ok = $exitCode -ne 0 -and $actual.Contains($wanted)
+    }
+    if ($ok) {
+        $script:passed++
+        Write-Host "[PASS] $Label"
+    } else {
+        $script:failed++
+        Write-Host "[FAIL] $Label"
+        Write-Host "       exit code: $exitCode"
+        Write-Host "       expected: $wanted"
+        Write-Host "       actual: $actual"
+    }
+}
+$sp = "tests/search-path"
+$sep = [System.IO.Path]::PathSeparator
+Invoke-DriverCase "D1: --path before INOX_PATH, missing entry skipped" "out" "$sp/Main.out" `
+    ((Join-Path $repoRoot "$sp/missing") + $sep + (Join-Path $repoRoot "$sp/inox-path")) `
+    @("run", "--path", "$sp/lib", "$sp/Main.inox")
+Invoke-DriverCase "D1: INOX_PATH alone" "out" "$sp/Main.env-only.out" (Join-Path $repoRoot "$sp/inox-path") `
+    @("run", "$sp/Main.inox")
+Invoke-DriverCase "D1: --path to a missing directory" "fail" "--path does not point to an existing directory" "" `
+    @("run", "--path", "$sp/nowhere", "$sp/Main.inox")
+Invoke-DriverCase "D2: a program file named Std.*" "fail" "the name Std.Thing is reserved" "" `
+    @("check", "$sp/Std.Thing.inox")
+Invoke-DriverCase "E2: examples/bank runs" "out" "tests/examples/bank.out" "" @("run", "examples/bank/Main.inox")
+Invoke-DriverCase "E2: bank balance not writable outside" "fail" "FBalance is not Public in Bank.Accounts" "" `
+    @("run", "--path", "examples/bank", "$sp/bank/BalanceWrite.inox")
+Invoke-DriverCase "E2: bank balance not readable outside" "fail" "FBalance is not Public in Bank.Accounts" "" `
+    @("run", "--path", "examples/bank", "$sp/bank/BalanceRead.inox")
+Invoke-DriverCase "E2: bank overdraw stops at the contract" "fail" `
+    "precondition violated: Bank.Accounts.TAccount.Withdraw" "" `
+    @("run", "--path", "examples/bank", "$sp/bank/Overdraw.inox")
+Invoke-DriverCase "B4: inox interface of Bank.Accounts" "out" "tests/interface/bank-accounts.out" "" `
+    @("interface", "examples/bank/Bank/Accounts.inox")
+Invoke-DriverCase "B4: inox interface of Bank" "out" "tests/interface/bank.out" "" `
+    @("interface", "examples/bank/Bank.inox")
+Invoke-DriverCase "B4: inox interface of Std.DateUtils" "out" "tests/interface/std-dateutils.out" "" `
+    @("interface", "stdlib/Std.DateUtils.inox")
+
 Invoke-ModeExitTest `
     -Mode "--emit-llvm" `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\cycles\Cycle.A.inox")) `

@@ -42,6 +42,9 @@ struct FunctionSignature {
     const types::Type* returnType = nullptr;
     // A method `T.M(...) Override :` replaces a method T reuses (CANON-9).
     bool isOverride = false;
+    // r3.99: `... Public :`, and the module the routine was written in.
+    bool isPublic = false;
+    std::string module;
 };
 
 // Compile-time value of a module `Const`, resolved by semantic analysis.

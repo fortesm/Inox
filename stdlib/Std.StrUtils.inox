@@ -26,4 +26,4 @@
 ==
 == White_Space and case follow Unicode, the same in every language.
 
-Use Std.Strings
+Export Use Std.Strings

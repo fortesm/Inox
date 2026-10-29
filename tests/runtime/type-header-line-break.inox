@@ -1,0 +1,44 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.99: a line break only ends a complete line (as in Ruby), so a type
+== name may stand alone on its line and its header follow on the next.
+Type
+    TBeing Struct Public
+        FAlive Bool := True
+    ;
+    TPerson
+        Struct(TBeing) Public
+        FTag String := "t"
+    Public
+        FName String := "Ana"
+    ;
+    TPlain
+        Struct
+        FValue Integer := 7
+    ;
+    TDigit
+        Range 0..9
+    TColor
+        (Red, Green, Blue)
+    TSize
+        Enum
+        Small
+        Large
+    ;
+
+Main :
+    P TPerson
+    Q TPlain
+    D TDigit := 9
+    PutLn(P.FName + " " + P.FTag)
+    PutLn(P.FAlive)
+    PutLn(Q.FValue)
+    PutLn(D)
+    PutLn(Green)
+    PutLn(Large)
+;

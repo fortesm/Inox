@@ -1,0 +1,39 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+Type
+    TAccount Struct Public
+        FBalance Currency := 0.00
+        FHistory Integer := 0
+        invariant Self.FBalance >= 0.00, "the balance is never negative"
+    Public
+        FOwner String := ""
+    ;
+
+TAccount.Deposit(Self mut, Amount Currency) Public :
+    pre Amount > 0.00, "a positive deposit"
+    Self.FBalance += Amount
+    Self.Log
+;
+
+TAccount.Withdraw(Self mut, Amount Currency) Public :
+    pre Amount > 0.00 and Amount <= Self.FBalance, "enough balance"
+    Self.FBalance -= Amount
+    Self.Log
+;
+
+TAccount.Balance(Self) Currency Public :
+    Return Self.FBalance
+;
+
+TAccount.Log(Self mut) :
+    Self.FHistory += 1
+;
+
+OpenAccount(Owner String) TAccount Public :
+    Return TAccount(FOwner := Owner)
+;

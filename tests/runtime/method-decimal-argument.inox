@@ -1,0 +1,24 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== A method argument is analyzed against its parameter type, like a routine
+== argument: a decimal literal passed to a Currency parameter is a Currency.
+Type
+    TWallet Struct
+        FBalance Currency := 0.00
+    ;
+
+TWallet.Deposit(Self mut, Amount Currency) :
+    Self.FBalance += Amount
+;
+
+Main :
+    W TWallet
+    W.Deposit(500.00)
+    W.Deposit(0.25)
+    PutLn(W.FBalance)
+;

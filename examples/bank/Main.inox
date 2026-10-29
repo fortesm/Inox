@@ -1,0 +1,30 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== The acceptance program of Inox 0.4 (r3.99): a bank in several modules.
+== Main uses only Bank, which re-exports Bank.Accounts and Bank.Reports
+== with Export Use. A balance changes only through Deposit and Withdraw:
+== FBalance is private to Bank.Accounts, and their contracts and the
+== account's invariant keep it from going negative.
+Use Bank
+
+Main :
+    A := OpenAccount("Marcelo")
+    A.Deposit(500.00)
+    A.Withdraw(120.00)
+    B := OpenAccount("Maria")
+    B.Deposit(80.00)
+    PrintStatement(A)
+    PrintStatement(B)
+    PutLn("Total: ", Total(A, B))
+    PutLn("Largest withdrawal: ", Bank.Accounts.MaxWithdrawal)
+    if A.CanWithdraw(1_000.00)
+        PutLn("Marcelo can withdraw 1000.00")
+    else
+        PutLn("Marcelo cannot withdraw 1000.00")
+    ;
+;

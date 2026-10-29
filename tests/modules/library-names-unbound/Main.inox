@@ -1,0 +1,19 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.99: the entry file may declare names a library writes for its own
+== locals and helpers (Text, ZeroPadded, Y); neither side sees the other.
+Use Std.DateUtils
+
+ZeroPadded(N Integer) String :
+    Return "#" + String(N)
+;
+
+Main :
+    Text := ZeroPadded(7)
+    PutLn(Text, " ", FormatDateTime(EncodeDateTime(2026, 10, 29, 9, 5, 0), "dd/mm/yyyy hh:nn"))
+;

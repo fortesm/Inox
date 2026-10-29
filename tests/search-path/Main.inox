@@ -1,0 +1,17 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.99 (D1): a Use is searched in the entry file's directory, then each
+== --path, then each INOX_PATH entry, then the standard library; the first
+== file found is the module, and a missing INOX_PATH entry is skipped.
+Use Greeting
+Use Farewell
+
+Main :
+    Greet
+    Wave
+;

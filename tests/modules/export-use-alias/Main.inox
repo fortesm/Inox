@@ -1,0 +1,13 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== r3.99 (A3): an alias is local to its file, so `Export Use ... as` is
+== an error.
+Export Use Bank.Accounts as Accounts
+
+Main :
+    PutLn(Accounts.Fee(10))
+;

@@ -41,12 +41,22 @@ const ModuleIntrinsic* SemanticAnalyzer::moduleIntrinsic(std::string_view name) 
     return function != nullptr && intrinsicModules_.contains(std::string(function->module)) ? function : nullptr;
 }
 
+// A type of the intrinsic's module (`TKey` of Std.Terminal): declared in
+// that module, so its name is qualified (r3.99).
+TypeRef SemanticAnalyzer::intrinsicType(const ModuleIntrinsic& function, std::string_view name)
+{
+    if (const TypeRef qualified = types().lookup(std::string(function.module) + "." + std::string(name))) {
+        return qualified;
+    }
+    return types().lookup(std::string(name));
+}
+
 TypeRef SemanticAnalyzer::intrinsicResultType(const ModuleIntrinsic& function)
 {
     if (function.result == "Void") {
         return types().voidType();
     }
-    const TypeRef type = types().lookup(std::string(function.result));
+    const TypeRef type = intrinsicType(function, function.result);
     if (type == nullptr) {
         throw SemanticError(std::string(function.result) + " is not declared: " + std::string(function.module) +
                             " was not loaded");
@@ -89,7 +99,7 @@ TypeRef SemanticAnalyzer::analyzeIntrinsicCall(const ast::CallExpression& call, 
         const TypeRef expected = expectedName == "Integer"  ? types().int64Type()
                                  : expectedName == "Bool"   ? types().boolType()
                                  : expectedName == "String" ? types().stringType()
-                                                            : types().lookup(std::string(expectedName));
+                                                            : intrinsicType(function, expectedName);
         const ast::Expression& argument = *call.arguments()[index];
         const TypeRef actual = analyzeExpressionFor(argument, expected);
         if (expected == nullptr || !canAssignValue(expected, actual, argument)) {

@@ -100,7 +100,7 @@ private:
     ast::StatementPtr parseDiscardStatement();
 
     ast::AstNodePtr parseModuleItem();
-    ast::AstNodePtr parseUseDeclaration();
+    ast::AstNodePtr parseUseDeclaration(bool exported);
     ast::AstNodePtr parseSectionDeclaration(ast::SectionKind sectionKind);
     ast::TypeDeclaration parseTypeDeclaration();
     ast::StructFieldDeclaration parseStructField();

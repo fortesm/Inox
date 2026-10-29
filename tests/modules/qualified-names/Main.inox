@@ -1,0 +1,18 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== r3.99 (A2): with the module's name, both Fee are reached; so are a
+== public type, its public field and a public Const.
+Use Bank.Accounts
+Use Bank.Loans
+
+Main :
+    PutLn(Bank.Accounts.Fee(10), " ", Bank.Loans.Fee(10))
+    A Bank.Accounts.TAccount
+    A.FOwner := "Ana"
+    PutLn(A.FOwner, " ", Bank.Accounts.MaxDeposit)
+;
