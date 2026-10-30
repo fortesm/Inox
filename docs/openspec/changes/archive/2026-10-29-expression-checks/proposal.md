@@ -7,18 +7,11 @@ saying the program was "valid Inox". The differential test of arithmetic
 wrapped every operation in parentheses, so it never tested precedence.
 
 Approval (Marcelo Fortes, 2026-10-23), answering whether to fix it, and
-improve the message of a chain of comparisons, in a small PR: "sim porém
-faça muito mais testes com expressões matemáticas para testar."
+improve the message of a chain of comparisons, in a small PR: yes, with many more tests of mathematical expressions
 
 Risk: low (diagnostics and tests; valid programs get the same IR).
 
-Decision on the open point (Marcelo Fortes, 2026-10-23): "colho a opção 1:
-shl deve detectar overflow tanto em Integer quanto em UInt64. [...] A regra
-deve ser uniforme: nenhuma operação de deslocamento à esquerda poderá perder
-informação silenciosamente. [...] Operações de deslocamento com
-truncamento modular, quando disponibilizadas, deverão possuir nomes e
-contratos distintos. Recomendo corrigir Integer shl no mesmo PR dos testes
-que identificaram o problema".
+Decision on the open point (Marcelo Fortes, 2026-10-23): option 1: `shl` detects overflow on Integer and UInt64 alike; no left shift loses information silently; a truncating shift, if it comes, has its own name and contract; fix Integer `shl` in the PR of the tests that found it.
 
 Status: **implemented** (canon r3.97).
 

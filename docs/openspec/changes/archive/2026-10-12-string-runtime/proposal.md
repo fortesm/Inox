@@ -8,8 +8,7 @@ text — exception messages, file I/O, string input — needs a settled runtime
 representation first (CANON-17 defers String input "until the runtime ABI is
 settled"). This is item 5 of the order approved on 2026-10-12.
 
-Approval (Marcelo Fortes, 2026-10-12): "Todas as tomadas de decisão dos pontos
-1 a 5 foram verificadas e eleitas para serem acatadas." Item 5: String as an
+Approval (Marcelo Fortes, 2026-10-12): decisions 1 to 5 approved. Item 5: String as an
 immutable, reference-counted value (Claude's proposal, accepted).
 
 Risk: high (exception cleanup in Itanium landing pads and MSVC funclets, a new runtime ABI, memory ownership). Implementation waits for Marcelo's approval of design.md.
@@ -27,7 +26,7 @@ Risk: high (exception cleanup in Itanium landing pads and MSVC funclets, a new r
   `Exit`, `leave`, and exception unwinding (cleanup in the landing pads on
   Linux and in the funclets on Windows/MSVC).
 
-Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message "Decisões que dependem de mim"); they are now Layer A (canon v3.50):
+Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message decisions that depend on the maintainer); they are now Layer A (canon v3.50):
 - **Q1. String input: `GetLn(S)` reads a line into a String variable: yes.**
   The line excludes the newline; invalid UTF-8 is invalid input (kind 6).
   As built: invalid UTF-8 has its own fault, kind 13 "invalid UTF-8 input"

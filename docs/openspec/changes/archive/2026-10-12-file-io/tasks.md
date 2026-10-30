@@ -1,7 +1,7 @@
 ## 0. Decisions
 
-- [x] 0.1 F1–F7 approved (2026-10-12, "Tudo aprovado"), with I/O errors usable in try/except On/ensure
-- [x] 0.2 Design approval (Risk: high) before code (2026-10-12, "100% aprovado!"); string-runtime merged first
+- [x] 0.1 F1–F7 approved (2026-10-12, all approved), with I/O errors usable in try/except On/ensure
+- [x] 0.2 Design approval (Risk: high) before code (2026-10-12, approved in full); string-runtime merged first
 
 ## 1. Runtime
 

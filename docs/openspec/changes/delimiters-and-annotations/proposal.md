@@ -4,10 +4,9 @@ Inox uses `|` only between `case` alternatives and does not use `{ }` at
 all (CANON-2; `{ }` as block delimiters is refused by "The idea of the
 syntax"). The maintainer wants both to carry a meaning that makes Inox
 easier for the programmer and for the compiler, and that sets it apart
-from other compiled languages. Marcelo Fortes, 2026-10-16: "Uma facilidade
-e comodidade que fosse um diferencial da linguagem frente a outras
-linguagens"; "Sim, isso são só especulações e elucubrações de idéias e
-brain storming, não batemos o martelo ainda".
+from other compiled languages. Marcelo Fortes, 2026-10-16: a convenience
+that sets the language apart; these are speculations and brainstorming,
+nothing is decided.
 
 This change records the brainstorm (a conversation of the maintainer with
 another assistant, passed on 2026-10-16, and this session's analysis) so
@@ -20,12 +19,12 @@ concurrency and generics).
 
 ## Already settled by the maintainer
 
-- **No interpolation in Strings.** "Não gostaria de usar {varivável} no
-  maio da string como Ruby, prefiro usar o estilo Pascal; ObjectPascal
-  funciona muito bem sem necessidade de um simbolo a mais" (2026-10-16).
+- **No interpolation in Strings** (2026-10-16): no `{variable}` inside a
+  String as in Ruby; Inox keeps the Pascal style, which needs no extra
+  symbol.
   `PutLn("Total: ", X)` stays the way to mix text and values.
-- **Same look as Ruby's `|x|`, different meaning.** "Pensei em usar a mesma
-  construção, visualmente idêntica, mas com semântica diferente". Ruby's
+- **Same look as Ruby's `|x|`, different meaning**: the same visual
+  construction with another semantics. Ruby's
   `|x|` declares block parameters (`[1, 2].each do |x| ... end`); copying
   that would add little.
 
@@ -58,8 +57,8 @@ instead of inferring it, and a value not listed cannot be used inside.
 Later, for closures (change `routine-types`): `|Link(Banco)| (Id Integer)`,
 where `( )` are the arguments of each call and `| |` what the closure
 keeps from where it was made. The brainstorm advises against using `| |`
-for block-local variables or as a second parameter list ("gaveta
-sintática").
+for block-local variables or as a second parameter list (a syntactic
+catch-all).
 
 ### `{ }`: two strong candidates, at most one
 
@@ -73,8 +72,8 @@ sintática").
   answers decision 1 of `generics` (constraints) if constraints come.
 
 Rejected in the brainstorm: `{ }` for blocks or bare scopes; using it as a
-general attribute list. A third reading of the maintainer's "parametrização
-especializada" is static value parameters (`TBuffer{256}`, like Ada generic
+general attribute list. A third reading of the maintainer's "specialized
+parametrization" is static value parameters (`TBuffer{256}`, like Ada generic
 formal objects); generics with `<N Integer>` may cover it.
 
 Weaker: Set literals `{A, B}` (CANON-13 says `[A, B]`), map literals.

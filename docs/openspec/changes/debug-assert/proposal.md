@@ -2,7 +2,7 @@
 
 `Std.Debug.Assert` was reserved "until canonical trap/abort behavior
 exists" (open question 3 of `revisions.md`). The maintainer chose the trap
-(Marcelo Fortes, 2026-10-13: "3 escolho a alternativa A"): a failed Assert
+(Marcelo Fortes, 2026-10-13, alternative A of open question 3): a failed Assert
 stops the program like an overflow.
 
 Risk: normal (a branch to the existing runtime-fault function; no exception

@@ -1,10 +1,6 @@
 ## Why
 
-Strings had only `=` and `#`. Marcelo Fortes, 2026-10-12: "Comparação de
-ordem entre Strings (<, >, como no Pascal) também já deveria existir ... e
-deve estar descrito na especificação. E não só isso, também >=, <=, #, not,
-invertendo o operador, unless, combinados com or, and. enfim, tudo que uma
-linguagem profissional e um compilador exige!"
+Strings had only `=` and `#`. Marcelo Fortes, 2026-10-12: Strings are ordered as in Pascal (<, >, >=, <=, #, not, unless, combined with or and and), as a professional language and compiler require, and the specification says so
 
 Checking this found a wider hole: the analyzer accepted `<` on Strings, `=`
 and `<` on structs, `<` on Bool, and even `=` on two Bool variables, and the
@@ -19,11 +15,8 @@ design.md needed.
   byte over UTF-8, a prefix first: Unicode code point order, case-sensitive,
   not a locale collation.
 - Bool `=` and `#` are lowered in their own width (they produced invalid IR).
-- Bool is ordered false < true (Marcelo Fortes, 2026-10-12: "Bool deve ter
-  ordem (false < true, como no Pascal e no Ada)!"; canon v3.57).
-- Structs are never compared (Marcelo Fortes, 2026-10-12: "Structs não deve
-  comparar com =/#, campo a campo. Como em Pascal. Permanece erro, com a
-  orientação de comparar os campos."; canon v3.57). Both used to be accepted
+- Bool is ordered false < true (Marcelo Fortes, 2026-10-12: Bool is ordered, false < true, as in Pascal and Ada; canon v3.57).
+- Structs are never compared (Marcelo Fortes, 2026-10-12: structs are not compared with =/#; compare them field by field, as in Pascal; it stays an error that says so; canon v3.57). Both used to be accepted
   and miscompiled.
 - Runtime: `__inox_str_compare(ptr, ptr) -> i32` in libinoxrt.
 

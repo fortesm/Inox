@@ -106,8 +106,7 @@ Recorded at implementation (canon r3.78); the approved design stands
 otherwise.
 
 - **Position.** `Pos` became a reserved word in r3.76, so the search
-  function is `Position(Sub, S)` (Marcelo Fortes, 2026-10-17: "Position(Sub,
-  S) (Recommended)").
+  function is `Position(Sub, S)` (Marcelo Fortes, 2026-10-17: `Position(Sub, S)` chosen).
 - **Status out-parameter.** Instead of a null result, every runtime function
   that can fail takes `ptr status` last and sets it: 0 ok, 1 out of range,
   2 out of memory. One module helper, `@__inox_str_fault(i32)`, maps 1 to
@@ -139,4 +138,4 @@ otherwise.
   runtime; before, the generated code was not instrumented on such machines
   and the bug above went unseen.
 
-Design approval: **approved** (Marcelo Fortes, 2026-10-13: "Std.Strings / Std.StrUtils: o design espera a sua aprovação (aprovado)"; canon r3.65).
+Design approval: **approved** (Marcelo Fortes, 2026-10-13: the Std.Strings / Std.StrUtils design approved; canon r3.65).

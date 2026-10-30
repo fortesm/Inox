@@ -9,15 +9,11 @@ the console was never set to UTF-8 there, and nothing could read a key or
 move the cursor. A function called as a statement compiled and dropped its
 result (the `function-result-discarded` gap of `tools/backend_gaps.py`).
 
-Request (Marcelo Fortes, 2026-10-21): "Implemente: Versão 0.3, números,
-texto e biblioteca básica: [...] A ABI definitiva de I/O no console; A
-decisão sobre função chamada como comando; E o que é necessário para um
-editor de texto. Se houver decisões a tomar me questione."
+Request (Marcelo Fortes, 2026-10-21): implement version 0.3 (numbers, text and the basic library): the definitive console I/O ABI, the decision on a function called as a statement, and what a text editor needs; ask about any decision to take
 
 Approval (Marcelo Fortes, 2026-10-21), answering the decisions proposed to
 him (E1, E2, F1, F2 below; the others belong to the next changes of 0.3):
-"E1 Sim / E2 como em Ada / F1 Sim para tudo Std.Terminal é o nome padrão /
-F2 Sim / F3 Sim / Faça em Pr Serparados para ser mais fácil de testar".
+E1 yes, E2 as in Ada, F1 yes with Std.Terminal as the name, F2 and F3 yes; separate PRs, easier to test.
 
 Risk: high (the runtime ABI changes for every program: every program now
 links libinoxrt, and console I/O moves into it).

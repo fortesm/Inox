@@ -1,4 +1,4 @@
-## Decisions (approved, Marcelo Fortes, 2026-10-13: "Aprovo tudo como você sugeriu 1a, 2a, 3b e 4a+b")
+## Decisions (approved by Marcelo Fortes, 2026-10-13: 1a, 2a, 3b, 4a+b)
 
 1. **Declaring reuse, 1a**: `TAssinatura Struct (TPessoa)`, Delphi-like; the
    first line says what is reused; several parts are allowed:

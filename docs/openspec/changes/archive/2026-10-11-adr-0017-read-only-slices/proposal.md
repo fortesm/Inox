@@ -1,11 +1,11 @@
 ## ADR-0017 — Read-only slices  (Status: Accepted, 2026-10-11)
 
-> Imported verbatim from `docs/INOX_CANONICAL.md` (canon v3.48, lines 1877-1902) on 2026-10-12, approved by Marcelo Fortes, 2026-10-12: "Os ADRs viram mudanças arquivadas no OpenSpec."
+> Imported verbatim from `docs/INOX_CANONICAL.md` (canon v3.48, lines 1877-1902) on 2026-10-12, approved by Marcelo Fortes, 2026-10-12 (the ADRs become archived OpenSpec changes).
 
 ## Decision
 
 Decision (Marcelo Fortes, 2026-10-11, approving the order "Array, then ref,
-then a read-only Slice (A[5..10])": "Ok Faça logo tudo na sua ordem!"). The
+then a read-only Slice (A[5..10])": do everything, in the proposed order). The
 idea comes from the design discussion with ChatGPT on Go slices, adapted to
 Inox safety: a slice is a bounded view, read-only, that never outlives its
 array.

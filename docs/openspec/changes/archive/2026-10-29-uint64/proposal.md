@@ -6,8 +6,7 @@ values above Int64.Max do not fit that model. The backend rejects any UInt64
 local today (`uint64-local` GAP). This is item 3 of the order approved on
 2026-10-12.
 
-Approval (Marcelo Fortes, 2026-10-12): "Todas as tomadas de decisão dos pontos
-1 a 5 foram verificadas e eleitas para serem acatadas." Item 3: UInt64.
+Approval (Marcelo Fortes, 2026-10-12): decisions 1 to 5 approved. Item 3: UInt64.
 
 Risk: normal.
 
@@ -28,8 +27,8 @@ Status: **implemented** (canon r3.79); design.md records where the code differs.
 - Constants follow the v3.44 rule: a constant that fits is read as UInt64; a
   negative constant is a compile-time range error.
 
-Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message "Decisões que dependem de mim"); they are now Layer A (canon v3.50):
-- **Q1. Literals above Int64.Max: accepted ("→ Sim").** In a UInt64 context
+Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message decisions that depend on the maintainer); they are now Layer A (canon v3.50):
+- **Q1. Literals above Int64.Max: accepted (yes).** In a UInt64 context
   only, an integer literal (decimal or `$`/`0x` hex) may be up to 2^64-1, like
   the decimal-literal rule of CHANGE LOG v3.3. Elsewhere a literal must still
   fit Int64 (CANON-19).

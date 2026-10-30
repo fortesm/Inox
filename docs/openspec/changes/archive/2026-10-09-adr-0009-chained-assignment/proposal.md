@@ -1,6 +1,6 @@
 ## ADR-0009 — Chained assignment  (Status: Accepted, 2026-10-09)
 
-> Imported verbatim from `docs/INOX_CANONICAL.md` (canon v3.48, lines 2066-2081) on 2026-10-12, approved by Marcelo Fortes, 2026-10-12: "Os ADRs viram mudanças arquivadas no OpenSpec."
+> Imported verbatim from `docs/INOX_CANONICAL.md` (canon v3.48, lines 2066-2081) on 2026-10-12, approved by Marcelo Fortes, 2026-10-12 (the ADRs become archived OpenSpec changes).
 
 ## Decision
 

@@ -44,9 +44,9 @@ openspec/specs/constitution/
   With the canon retired into the constitution by the maintainer's
   decision, they are law under it; they detail, and may never contradict,
   the constitution. They are not locked: they change through ordinary
-  approved OpenSpec changes, as before.
+  approved. OpenSpec changes, as before.
 
-## What was removed or corrected (the "higienização")
+## What was removed or corrected (the cleaning)
 
 Duplicates (kept once): AGENT RULES (twice), DEV-2 (twice), GROUP FUTURE
 (twice), B-WORKS, B-PARSED, B-GAPS, B-EXAMPLES (twice each), the

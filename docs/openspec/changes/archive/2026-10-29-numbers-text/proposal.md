@@ -6,13 +6,11 @@ line into fields, and prints reals that say exactly what they hold
 (`printf("%f")` showed six decimals: `0.1` as `0.100000`, `1e-7` as
 `0.000000`).
 
-Request (Marcelo Fortes, 2026-10-21): "Implemente: Versão 0.3, números,
-texto e biblioteca básica: [...] Conversão entre número e texto, Split/Join
-e literais com expoente [...]".
+Request (Marcelo Fortes, 2026-10-21): implement version 0.3: conversions between numbers and text, Split/Join and literals with exponents.
 
 Approval (Marcelo Fortes, 2026-10-21), answering the decisions proposed to
 him, of which this change carries B1 (for integers and reals), B2 (for
-integers and reals), B3 and B4: "B Acatado todos". B4 moves Split/Join to
+integers and reals), B3 and B4: B approved in full. B4 moves Split/Join to
 0.5, with the collections, and gives FieldCount/Field now.
 
 Risk: normal (new runtime functions; every Float output changes text, so

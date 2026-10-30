@@ -1,21 +1,18 @@
 ## Why
 
-Marcelo Fortes, 2026-10-13: "Talvez já fosse melhor pularmos para o peso
-pesado da linguagem: Ponteiros, Composição com reuso de subrotinas,
-Generics". Composition is decided (change `method-reuse`); what remains is
-generics, "da forma mais simples possível e depois podemos evoluir" (Marcelo
+Marcelo Fortes, 2026-10-13: perhaps move on to the heavy parts of the language: pointers, composition with reuse of routines, generics. Composition is decided (change `method-reuse`); what remains is
+generics, in the simplest possible form, to grow later (Marcelo
 Fortes, 2026-10-13). Pointers use them: a list of owners is `Vector<Own<T>>`
 (change `safe-pointers` builds `Own<T>` and `Handle<T>` in without waiting).
 
 Already law: generic arguments are written `<T>`, and `<...>` is generic only
-in type position (CANON-8: "[T] pode gerar ambiguidade e problemas com
-Arrays X[i]"). `Slice<T>` is the one generic type implemented. FUTURE: no
+in type position (CANON-8: `[T]` could be ambiguous with array indexing `X[i]`). `Slice<T>` is the one generic type implemented. FUTURE: no
 traits, protocols or interfaces as nominal entities.
 
 Status: **approved and implemented** (canon r3.77). Risk: high (a new
 compiler phase: instantiation). The three decisions of design.md were
 answered with the recommendations:
-Marcelo Fortes, 2026-10-17: "Acato suas recomendações. Para as três perguntas."
+Marcelo Fortes, 2026-10-17: the recommendations for the three questions are approved
 No constraints for now (`{ }` stays reserved), inference only, and T may be
 any type, also one that is only moved, with the error at the instance.
 

@@ -1,9 +1,9 @@
 ## Why
 
 Object-oriented languages run code when a value is born (constructor) and
-when it dies (destructor). Marcelo Fortes, 2026-10-14: "eu preciso analisar
-o caso dos construtores e destrutores, e se precisaremos", and "Registre
-tudo isso para eu não me perder ou esquecer".
+when it dies (destructor). Marcelo Fortes, 2026-10-14: whether Inox needs
+constructors and destructors is his open analysis, recorded here so that
+nothing is lost.
 
 Status: **open analysis of the maintainer** (FUTURE "Encapsulation, routine
 types and lifecycle", r3.70). Nothing is decided; no code.

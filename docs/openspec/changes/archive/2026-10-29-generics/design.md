@@ -1,5 +1,4 @@
-Approved by Marcelo Fortes, 2026-10-17 (quoted in proposal.md): "Acato suas
-recomendações. Para as três perguntas." The decisions below are answered
+Approved by Marcelo Fortes, 2026-10-17 (quoted in proposal.md): the recommendations for the three questions are approved. The decisions below are answered
 with their recommendations; decision 3 is the recommendation given in the
 conversation, broader than the first text of this design (see Decisions).
 

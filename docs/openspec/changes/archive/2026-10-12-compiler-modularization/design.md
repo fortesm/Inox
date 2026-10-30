@@ -61,5 +61,4 @@ jobs. A step that cannot keep the IR identical is wrong, not the snapshot.
 
 ## Design approval
 
-Approved by Marcelo Fortes on 2026-10-12: "Aprovo a modularização antes dos
-Arquivos, nesses moldes que você descreveu."
+Approved by Marcelo Fortes on 2026-10-12: the modularization comes before files, as described

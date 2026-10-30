@@ -6,8 +6,7 @@ Today the parser accepts the declarations but `TSuit` is "unknown type", the
 CANON-5 rule 5 strict initialization is not enforced, and `case` cannot check
 enum coverage (ADR-0011). This is item 4 of the order approved on 2026-10-12.
 
-Approval (Marcelo Fortes, 2026-10-12): "Todas as tomadas de decisão dos pontos
-1 a 5 foram verificadas e eleitas para serem acatadas." Item 4: Enum, Range
+Approval (Marcelo Fortes, 2026-10-12): decisions 1 to 5 approved. Item 4: Enum, Range
 and Set.
 
 Risk: normal.
@@ -34,7 +33,7 @@ Implemented in three phases, each its own PR and green gates:
   default; `in`, `=`, `#`, `<=`, `>=`; `Union`, `Intersection`, `Difference`,
   `SymmetricDifference`, `With`, `Without`.
 
-Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message "Decisões que dependem de mim"); they are now Layer A (canon v3.50; Q3 in v3.51):
+Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message decisions that depend on the maintainer); they are now Layer A (canon v3.50; Q3 in v3.51):
 - **Q1. Storing into a Range: implicit check, as for Natural (ADR-0015).** An
   Integer value stored into a Range variable is checked at run time (new fault
   kind 11, "value out of range"); a constant outside the range is a compile
@@ -49,7 +48,7 @@ Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message "
   checked (trap past the ends): yes.**
 - **Q6. Sets: functions returning a new set (`S := With(S, Club)`,
   `U := Union(A, B)`) plus the literal `[Club, Heart]` in a Set-typed context
-  ("-> sim").**
+  (yes).**
 - **Q7. Set base: at most 256 elements; above that is a compile error.**
 
 Out of scope: enum literal values other than 0..N-1, Range or Enum as array

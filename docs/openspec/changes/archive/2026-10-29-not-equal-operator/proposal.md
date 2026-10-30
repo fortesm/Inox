@@ -4,9 +4,7 @@
 C, Java, Rust, Go and Python write `!=`. The maintainer decided both are
 valid, and that `!` alone stays out of the language.
 
-Approval (Marcelo Fortes, 2026-10-21): "Deve ser adotado o operador !=
-paralelo ao operador #, ambos são válidos — if a != b é válido; if ! (a = b)
-é inválido deve ser o operador not".
+Approval (Marcelo Fortes, 2026-10-21): `!=` is adopted next to `#`, both valid: `if a != b` is valid; `if ! (a = b)` is invalid, negation being `not`.
 
 Risk: low (one lexer rule). Status: **implemented** (canon r3.87).
 

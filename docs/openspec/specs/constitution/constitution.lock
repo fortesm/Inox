@@ -1,18 +1,18 @@
 # constitution.lock - written by tools/constitution_check.py relock; never edit by hand.
 # One line per locked unit: unit <TAB> sha256 prefix <TAB> approving OpenSpec change.
-# A unit changes only through relock --approval <change>, where <change> quotes
+# A unit changes only through relock --approval <change>, where <change> records
 # Marcelo Fortes's approval (constitution G2, G8).
-spec.md#preamble	99252000533f52ae	docs-layout
+spec.md#preamble	19debf43caa9fc74	decisions-not-dialogue
 spec.md#G1 The law wins on design, the code on status	3cd4e7bd04e698d5	constitution
 spec.md#G1 Disagreements are reported, never resolved silently	8899495ce452175e	docs-layout
-spec.md#G2 Authority	0299475d5418bbc0	docs-layout
-spec.md#G3 Every decision is recorded	5ebf41d13bfad975	constitution
+spec.md#G2 Authority	b485a225f6bbd6ec	decisions-not-dialogue
+spec.md#G3 Every decision is recorded	ac09ce1d15b3f49c	decisions-not-dialogue
 spec.md#G4 No silent scope expansion	d918598ff21a108f	constitution
 spec.md#G5 Verifiability	ad1341bc29076ed7	docs-layout
 spec.md#G6 Engineering quality is constitutional	dd60e78810848770	docs-layout
 spec.md#G7 OpenSpec carries every change	8d04837002782d8e	docs-layout
-spec.md#G7 High-risk changes wait for design approval	5920cdb1f8c507bb	docs-layout
-spec.md#G8 The lock	e3d8b06f2031a704	constitution
+spec.md#G7 High-risk changes wait for design approval	4eb7116c9261fe28	decisions-not-dialogue
+spec.md#G8 The lock	18add63f2c44e00a	decisions-not-dialogue
 spec.md#CANON-1 Identity of Inox	7fc3e6d9b452398d	constitution
 spec.md#CANON-1 Post-object-oriented design	b9b696c3861f2275	modules-encapsulation
 spec.md#CANON-1 Safety defaults	579a8963240512e4	constitution
@@ -68,12 +68,12 @@ spec.md#CANON-8 Modulus and remainder	5b169f3d6db18cac	ada-modulus
 spec.md#CANON-8 Overflow is never silent	614aba4ebbefff21	constitution
 spec.md#CANON-8 Division by zero and power	33b25bdf2d857453	ada-modulus
 spec.md#CANON-8 Generic syntax	86290950744f92d4	generics
-spec.md#CANON-8 Generic instances	f1cb99e31378061c	generics
+spec.md#CANON-8 Generic instances	20f9303da735e1ca	decisions-not-dialogue
 spec.md#CANON-8 Type arguments are inferred	e820ebe2b699c413	generics
 spec.md#CANON-9 Structs are nominal value types	dc875c23516647e8	method-reuse
 spec.md#CANON-9 Fields	9c34d16a35318065	array-fill
 spec.md#CANON-9 Associated methods	fad873f99ec30d01	constitution
-spec.md#CANON-9 Method reuse	acc8de932d91e277	method-reuse
+spec.md#CANON-9 Method reuse	f3b5441df3cbfee0	decisions-not-dialogue
 spec.md#CANON-9 Methods of built-in types	32a2985898e98345	method-reuse
 spec.md#CANON-9 Named construction	03a7f232bee036de	array-fill
 spec.md#CANON-9 Structs are not compared	8271b9ae445cd83b	constitution
@@ -147,7 +147,7 @@ spec.md#CANON-23 Valid IR or a clear stop	b65face9199b56ba	constitution
 spec.md#CANON-23 Driver commands	e9b4dbcb3de5ddad	modules-encapsulation
 spec.md#CANON-23 Module interface and search path	1bf457e20a3fb804	modules-encapsulation
 spec.md#CANON-23 Optimization	5f9e565dc706e3d4	optimize-default
-spec.md#CANON-24 Design by contract	44eb53736bce7681	design-by-contract
+spec.md#CANON-24 Design by contract	e085f54f2e9c9f7d	decisions-not-dialogue
 spec.md#CANON-24 Old and Result	ae9cb1852f6c7ede	design-by-contract
 spec.md#CANON-24 Struct invariants	de952e4d1b79c944	modules-encapsulation
 spec.md#CANON-24 Contracts of an Override	b8caf27d3082c3f8	design-by-contract
@@ -160,13 +160,13 @@ spec.md#CANON-25 Access through pointers	9e23e9a9fe0f36f2	safe-pointers
 spec.md#CANON-25 Owners in routines and contracts	1edd22537220a8fe	safe-pointers
 spec.md#VERSIONING The version number	4913b3727284db7b	constitution
 spec.md#VERSIONING Who changes the version	e46c8f8021c054c4	release-0.4
-spec.md#VERSIONING Releases follow the version	6206dc44a0502719	release-0.4
+spec.md#VERSIONING Releases follow the version	bea2fabf564b7136	decisions-not-dialogue
 spec.md#VERSIONING Canon revision	7325a37130b8e81e	constitution
 spec.md#FUTURE Concurrency	7e4363bb408956d2	constitution
 spec.md#FUTURE Generics and static proof	110e927eff28ea2f	generics
 spec.md#FUTURE Ownership, absence and failure	259867a5bbb3b43d	remove-var-diagnostic
-spec.md#FUTURE Modules, variants and numbers	74cd4f796f2a95f3	modules-encapsulation
-spec.md#FUTURE Encapsulation, routine types and lifecycle	87303995a5b889fc	modules-encapsulation
+spec.md#FUTURE Modules, variants and numbers	3954b270b6b014e1	decisions-not-dialogue
+spec.md#FUTURE Encapsulation, routine types and lifecycle	70a2105b7e9dc933	decisions-not-dialogue
 engineering.md#preamble	60703a2fce444e01	constitution
 engineering.md#Sources of influence	32a192c5bf83b9ac	constitution
 engineering.md#E1. Shallow control flow	0af555ce8718f759	constitution

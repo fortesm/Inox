@@ -13,7 +13,7 @@ of spec.md; the text before the first `## ` and each `## ` section of
 engineering.md). constitution.lock records, per unit, a hash of its text and
 the OpenSpec change that approved that text. A change to the law is accepted
 only when the lock was updated through an approved change (one whose
-proposal.md quotes Marcelo Fortes).
+proposal.md records Marcelo Fortes's approval).
 
 Commands
   check    fail if a unit differs from its hash, is missing from the lock or
@@ -46,7 +46,7 @@ REFERENCE_RE = re.compile(r"(?<![\w/.-])((?:tests|examples|tools|scripts)/[\w./-
 LOCK_HEADER = (
     "# constitution.lock - written by tools/constitution_check.py relock; never edit by hand.\n"
     "# One line per locked unit: unit <TAB> sha256 prefix <TAB> approving OpenSpec change.\n"
-    "# A unit changes only through relock --approval <change>, where <change> quotes\n"
+    "# A unit changes only through relock --approval <change>, where <change> records\n"
     "# Marcelo Fortes's approval (constitution G2, G8).\n"
 )
 
@@ -118,14 +118,14 @@ def write_lock(entries: dict[str, tuple[str, str]], order: list[str]) -> None:
 
 
 def approval_problem(change: str) -> str | None:
-    """None when `change` is an OpenSpec change whose proposal quotes Marcelo Fortes."""
+    """None when `change` is an OpenSpec change whose proposal records Marcelo Fortes's approval."""
     candidates = [CHANGES / change] + sorted((CHANGES / "archive").glob(f"*-{change}"))
     for folder in candidates:
         proposal = folder / "proposal.md"
         if proposal.is_file():
             if "Marcelo Fortes" in proposal.read_text(encoding="utf-8"):
                 return None
-            return f"the proposal of change {change} does not quote Marcelo Fortes"
+            return f"the proposal of change {change} does not record Marcelo Fortes's approval"
     return f"no OpenSpec change named {change}"
 
 

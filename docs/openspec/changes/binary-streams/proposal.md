@@ -1,7 +1,7 @@
 ## Why
 
-Marcelo Fortes, 2026-10-13: "teste tudo que pode ser feito com arquivos
-texto, binário, stream". Text files exist (CANON-17, `examples/file_io.inox`
+Marcelo Fortes asked on 2026-10-13 for everything that can be done with text
+files, binary files and streams to be tested. Text files exist (CANON-17, `examples/file_io.inox`
 tests all of them); CANON-17 leaves "binary I/O, directories, positions and
 other encodings" to later changes. This is the change for binary files and
 positions, and the direction for streams.

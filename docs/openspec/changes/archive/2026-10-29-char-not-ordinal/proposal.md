@@ -4,8 +4,7 @@ Writing the constitution showed that the analyzer accepted `Length(S)` on a
 String and `Ord(C)` on a Char (both then stopped in the backend), although
 the law reserves String lengths for `Std.StrUtils` (CANON-14) and defines
 `Ord` for enum values (CANON-13), with every Char conversion explicit. The
-maintainer confirmed (Marcelo Fortes, 2026-10-12): "Excelente não pode ter
-isso para char mesmo!"
+maintainer confirmed (Marcelo Fortes, 2026-10-12): confirmed: not for Char either
 
 Risk: normal (semantic analysis only).
 

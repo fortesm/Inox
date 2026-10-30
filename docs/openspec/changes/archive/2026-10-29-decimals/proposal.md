@@ -4,12 +4,10 @@ Fourth change of 0.3 (`docs/ROADMAP.md`): Currency and Crypto, the exact
 decimals of CANON-8, had names and no values. Money and quantities of coins
 need exact arithmetic and a rounding rule written down.
 
-Request (Marcelo Fortes, 2026-10-21): "Implemente: Versão 0.3, números,
-texto e biblioteca básica: Currency e Crypto; [...]".
+Request (Marcelo Fortes, 2026-10-21): implement version 0.3: Currency and Crypto.
 
 Approval (Marcelo Fortes, 2026-10-21, repeated on 2026-10-22), answering
-the decisions proposed to him: "A Acatado todos / B Acatado todos / C
-Acatado todos". This change carries A1-A5, and B1, B2 and C2 for Currency
+the decisions proposed to him: A, B and C approved in full. This change carries A1-A5, and B1, B2 and C2 for Currency
 and Crypto.
 
 Risk: normal (new values and runtime functions; no change to exception

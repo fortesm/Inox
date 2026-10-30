@@ -8,8 +8,7 @@ Two of the String-runtime bugs came from that coupling: a second, duplicated
 call path that forgot `invoke`, and a driver that guessed from the IR text
 whether the runtime library was needed.
 
-Approval (Marcelo Fortes, 2026-10-12): "Aprovo a modularização antes dos
-Arquivos, nesses moldes que você descreveu." The molds, as sent in chat:
+Approval (Marcelo Fortes, 2026-10-12): the modularization comes before files, as described. The molds, as sent in chat:
 modules by responsibility; a Strategy only for the exception ABI (Itanium /
 MSVC); one table of the libinoxrt functions, from which declarations are
 emitted and which tells the driver which runtime is needed; the analyzer

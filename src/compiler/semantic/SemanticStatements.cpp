@@ -820,8 +820,7 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
     }
 
     // Without `else` the choices must cover every value of the selector
-    // type (Marcelo Fortes, 2026-10-09, about the arm now spelled `else`: "otherwise deve ser obrigatório sempre
-    // que os braços não cobrirem todos os valores possíveis").
+    // type; otherwise `else` is required (Marcelo Fortes, 2026-10-09).
     if (!domain.provable) {
         throw SemanticError("case on " + selectorType->name() +
                             " cannot be proven to cover every value; add an 'else' arm (ADR-0011)");

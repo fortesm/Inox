@@ -15,8 +15,7 @@ CANON-23 mentioned an optimization policy without defining one.
 | Python | about 47 s |
 
 Approval (Marcelo Fortes, 2026-10-23), to the proposal of an optimization
-policy: "Sim, e deixe essa opção por default, posteriormente faremos
-otimizações setadas no codigo fonte ara o llvm".
+policy: yes, as the default; optimizations set in the source for LLVM come later.
 
 Risk: normal (every built program changes its machine code; the generated
 IR does not change).

@@ -8,7 +8,12 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 This file tracks the versions of Inox, the language and its compiler, which
 share one version (constitution VERSIONING). Numbers such as `v3.57` or
 `r3.61` are canon revisions, entries of the decision log
-(`openspec/specs/constitution/revisions.md`), not versions.
+(`docs/openspec/specs/constitution/revisions.md`), not versions.
+
+## Unreleased
+
+### Changed
+- The records state decisions, in English (canon r3.102, change `decisions-not-dialogue`): the constitution, the specs, the OpenSpec changes, the revision log, the history, the roadmap and code comments no longer quote chat messages; each says what was decided, by Marcelo Fortes, and when.
 
 ## 0.4.0 pre-alpha
 

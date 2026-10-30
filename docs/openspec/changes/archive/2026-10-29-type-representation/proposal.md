@@ -10,14 +10,7 @@ re-parses routine signatures from their tokens and rebuilds struct layouts
 from the AST, duplicating the analyzer. Generic types (`TPar<String,
 Own<TNo>>`) and the substitution of `T` would make this fragile.
 
-Marcelo Fortes, 2026-10-17: "Vamos seguir o plano. Primeira etapa Primeiro
-prepara o compilador com a refatoracao. Tipos de verdade, a regra é clara e
-simples mapear os tipos que o llvm já oferece. Clonar comandos. Code gen lê
-os tipos da análise. Lembre-se use as boas práticas. Evite erros clássicos
-de arquitetura e implementação de compiladores. Não repita erros e más
-decisões de outras linguagens o código-fonte não pode ter alta acoplagem,
-não pode ser propenso à regressões, prefira isolar features de forma
-modular que grandes monólitos. Só finalizar partimos para etapa 2".
+Marcelo Fortes, 2026-10-17: follow the plan; first, the refactoring: real types mapping LLVM's types, cloning of statements, codegen reading the types of the analysis; good practices, avoiding the classic architecture and implementation mistakes of compilers.
 
 Status: approved (above). Risk: high (rewrites how a compiler phase
 represents types). No language change: every program compiles to the same

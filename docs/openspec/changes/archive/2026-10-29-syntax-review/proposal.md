@@ -3,19 +3,11 @@
 A second review of the syntax, after `keyword-review` (r3.74).
 Marcelo Fortes, 2026-10-16:
 
-- "Estou seriamente inclinado remover Module da sintaxe seguida de um nome e
-  resolver o nome do módulo pelo nome do seu arquivo"; then "Tirar o
-  `Module` e usar o nome do arquivo simplifica também o parser".
-- "Estou propenso a remover then da sintaxe também, e o seu if se tornar
-  iif"; then "`IIf(C, A, B)` com parênteses no lugar de `if C then A else B`
-  aprovado".
-- "Leave e continue deixam de ser palavras reservadas ficam como o break
-  continue do Pascal".
-- "with não tem do a palavra reservada do é para paralelismo como o go de
-  golang. Se var não é mais usado deixa de ser palavra reservada e fica
-  palavra comum para mensagem de migração".
-- "Reservadas pre, pos, old, invariant, override"; then "`variant` entra
-  nas reservadas sim".
+- remove `Module` and its name from the syntax, and take the module's name from its file; then removing `Module` and using the file's name also simplifies the parser.
+- remove `then` from the syntax, and the conditional becomes `IIf`; then `IIf(C, A, B)` with parentheses instead of `if C then A else B`, approved.
+- `leave` and `continue` are no longer reserved words, like Pascal's `Break` and `Continue`.
+- `with` has no `do`; `do` is the word for parallelism, like Go's `go`; `var`, no longer used, stops being reserved and becomes an ordinary word for a migration message.
+- `pre`, `pos`, `old`, `invariant` and `override` become reserved, then `variant` too.
 
 Status: implemented (canon r3.76). Risk: medium (every program had a
 `Module` header; the conditional expression changes spelling).

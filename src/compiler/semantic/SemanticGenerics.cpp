@@ -6,8 +6,8 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // SemanticAnalyzer: generic routines and structs (CANON-8, r3.77, OpenSpec
-// change generics), in their simplest form (Marcelo Fortes, 2026-10-13: "da
-// forma mais simples possível e depois podemos evoluir"):
+// change generics), in their simplest form, to grow later (Marcelo Fortes,
+// 2026-10-13):
 //
 // - A generic routine or struct is a template. It is never checked alone:
 //   each use with its types makes an instance (`Max<Int64>`, `TPair<String,

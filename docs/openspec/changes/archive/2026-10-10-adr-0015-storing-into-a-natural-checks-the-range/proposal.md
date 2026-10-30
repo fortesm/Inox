@@ -1,11 +1,10 @@
 ## ADR-0015 — Storing into a Natural checks the range implicitly  (Status: Accepted, 2026-10-10)
 
-> Imported verbatim from `docs/INOX_CANONICAL.md` (canon v3.48, lines 1935-1952) on 2026-10-12, approved by Marcelo Fortes, 2026-10-12: "Os ADRs viram mudanças arquivadas no OpenSpec."
+> Imported verbatim from `docs/INOX_CANONICAL.md` (canon v3.48, lines 1935-1952) on 2026-10-12, approved by Marcelo Fortes, 2026-10-12 (the ADRs become archived OpenSpec changes).
 
 ## Decision
 
-Decision (Marcelo Fortes, 2026-10-10): "Façamos como Ada, a atribuição faria
-essa checagem sozinha, sem conversão escrita".
+Decision (Marcelo Fortes, 2026-10-10): as in Ada, an assignment checks the range by itself, with no conversion written.
 1. When an Integer value is stored into a Natural — initialization,
    assignment, compound assignment, argument, return, field — the range
    0..Int64.Max is checked at run time. No conversion is written:

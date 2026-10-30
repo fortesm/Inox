@@ -1,11 +1,11 @@
 ## ADR-0016 — `ref` and `ref mut` parameters  (Status: Accepted, 2026-10-11)
 
-> Imported verbatim from `docs/INOX_CANONICAL.md` (canon v3.48, lines 1903-1934) on 2026-10-12, approved by Marcelo Fortes, 2026-10-12: "Os ADRs viram mudanças arquivadas no OpenSpec."
+> Imported verbatim from `docs/INOX_CANONICAL.md` (canon v3.48, lines 1903-1934) on 2026-10-12, approved by Marcelo Fortes, 2026-10-12 (the ADRs become archived OpenSpec changes).
 
 ## Decision
 
 Decision (Marcelo Fortes, 2026-10-11, approving the order "Array, then ref T /
-ref mut T parameters, then Slice": "Ok Faça logo tudo na sua ordem!"). The
+ref mut T parameters, then Slice": do everything, in the proposed order). The
 spelling follows the direction already recorded in the canon (`ref X T`,
 `ref mut X T`); the rules are the safe subset agreed in the design discussion
 with ChatGPT (many readers or one writer, references never outlive the call).

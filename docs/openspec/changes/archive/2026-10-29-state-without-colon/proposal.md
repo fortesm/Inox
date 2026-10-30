@@ -2,15 +2,9 @@
 
 CANON-4 gives `:` one meaning — it declares a routine and opens its body —
 but the State section was written `State :` … `;`, the only other use of
-`:`. The maintainer decided (Marcelo Fortes, 2026-10-12): "O State não deve
-usar :", and explained the idea behind it: "Mas eu precisava de um caractere
-que dissesse que ali começaria o corpo da sub-rotina dai veio o : … : é
-desnecessário em outros blocos como if, for, while, with, etc... A ideia de
-Inox é escrever menos. Fazer mais."; "`:` tanto serve para abrir o bloco
-quanto serve para dizer pro compilador que esse Sum(...) é uma subrotina!".
-The section keeps its closing `;` (Marcelo Fortes, 2026-10-13: "State fecha
-com ;"; an earlier answer "Igual ao Type" came from a truncated message and
-is withdrawn).
+`:`. The maintainer decided (Marcelo Fortes, 2026-10-12): State takes no `:`, and explained the idea behind it: a character was needed to say where a routine's body begins, hence `:`; it is needless in other blocks such as if, for, while and with; Inox is about writing less and doing more; `:` both opens the block and tells the compiler that `Sum(...)` is a routine.
+The section keeps its closing `;` (Marcelo Fortes, 2026-10-13; an earlier answer, the same as Type, came from
+a truncated message and is withdrawn).
 
 Risk: normal (parser of one section; no lowering, runtime or ownership
 change).

@@ -1827,8 +1827,8 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
     }
 
     // `State` opens its variables at the line break and closes them with
-    // `;`, like a control structure; it has no ':' (CANON-4, Marcelo Fortes,
-    // 2026-10-12: "O State não deve usar :"; 2026-10-13: "State fecha com ;").
+    // `;`, like a control structure; it has no ':' (CANON-4; decided by
+    // Marcelo Fortes on 2026-10-12 and 2026-10-13).
     if (sectionKind == ast::SectionKind::State) {
         if (check(TokenKind::Colon)) {
             errorAtCurrent("'State' has no ':' (CANON-4): ':' only declares a routine; write 'State', "

@@ -7,8 +7,7 @@ neither: `Float(I)`, `Integer(F)`, `Float32(X)` and a Float `Const` were
 "not yet implemented", so Std.Math wrote `Pi`, `Tau` and `E` as functions.
 They are the last item of 0.2 in `docs/ROADMAP.md` before the release.
 
-Approval (Marcelo Fortes, 2026-10-19), of the plan to do "as conversões de
-Float e as Consts de Float" next: "Conbinado, prossiga". This closes a
+Approval (Marcelo Fortes, 2026-10-19), of the plan to do the Float conversions and the Float Consts next, agreed. This closes a
 conformance gap of existing law; the choices below that the law does not
 spell out are implemented and listed as open question 3 for his
 confirmation (G4).

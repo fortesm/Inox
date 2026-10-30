@@ -1,6 +1,6 @@
 ## Why
 
-The article Marcelo shared on 2026-10-12 ("A Trindade Técnica", SDD with
+The article Marcelo shared on 2026-10-12 (the technical trinity, SDD with
 agents) and tonight's own incidents point to three gaps in how changes are
 made, not in the language:
 
@@ -11,9 +11,8 @@ made, not in the language:
 - The no-regression check of the item 2 refactor (IR and types of every
   program before and after) was an improvised script.
 
-Approval (Marcelo Fortes, 2026-10-12): "Faça os três ajustes, adote o que
-vale adotar, me chame atenção sobre mudanças, atualize o openspec sempre."
-In the same message: "TNome := Integer deve ser erro".
+Approval (Marcelo Fortes, 2026-10-12): make the three adjustments, adopt what is worth adopting, flag every change, keep OpenSpec up to date
+In the same message: `TName := Integer` is an error.
 
 Risk: normal (tooling and process; no compiler code).
 

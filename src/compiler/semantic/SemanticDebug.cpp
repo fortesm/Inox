@@ -6,8 +6,8 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // SemanticAnalyzer: Std.Debug (OpenSpec change debug-assert). A failed
-// Assert is a deterministic trap like an overflow (CANON-19; Marcelo
-// Fortes, 2026-10-13: "3 escolho a alternativa A").
+// Assert is a deterministic trap like an overflow (CANON-19; decided by
+// Marcelo Fortes, 2026-10-13).
 
 #include "SemanticAnalyzer.h"
 

@@ -78,7 +78,7 @@ check of `enum-range-set`. Reported to the maintainer in the pull request.
 
 ## Design approval
 
-Approved by Marcelo Fortes on 2026-10-12 ("Então tudo aprovado.", answering
+Approved by Marcelo Fortes on 2026-10-12 (all approved, answering
 the design summary sent in chat). The two simplifications above ("When a
 String is released", "Exceptions") were made after that approval while
 studying the existing exception lowering; they are reported to him in the

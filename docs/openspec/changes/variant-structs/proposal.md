@@ -15,9 +15,8 @@ which CANON-9 rejects. The direction recorded here keeps CANON-9: a
 **variant struct**, a value that is one of several structs, examined with
 `case`.
 
-Marcelo Fortes, 2026-10-14, after the explanation above ("Se um dia a lista
-misturada fizer falta, o caminho natural no Inox é um tipo variante com
-case"): "Sim, registre isso".
+Marcelo Fortes, 2026-10-14, recorded the direction: if a mixed collection is
+ever needed, Inox's way is a variant type examined with `case`.
 
 Status: **direction recorded**, design to be written after change
 `enum-range-set` (the variant's tag is an enum). Risk: high (new type

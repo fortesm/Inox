@@ -7,8 +7,7 @@ maintainer accepted a String selector with strict rules and kept Floats out.
 
 Approval (Marcelo Fortes, 2026-10-19), on the proposal (String: literals and
 String Consts only, no ranges, `else` always, a repeated String an error,
-exact byte comparison; Float: no, equality of reals is unsafe): "Sim acatado
-!" On Ada's `others`: Inox's `else` is that arm (r3.74).
+exact byte comparison; Float: no, equality of reals is unsafe): approved. On Ada's `others`: Inox's `else` is that arm (r3.74).
 
 Risk: normal (analysis and lowering of one statement form).
 

@@ -3,8 +3,7 @@
 The maintainer wants the documentation of the language in one place:
 `grammar/` and `openspec/` move under `docs/`.
 
-Marcelo Fortes, 2026-10-29: "desejo que os diretórios grammar e OpenSpec
-sejam movidos para docs." OpenSpec 1.14 looks for a fixed `openspec/`
+Marcelo Fortes, 2026-10-29: move the grammar and OpenSpec directories under docs. OpenSpec 1.14 looks for a fixed `openspec/`
 directory at its project root, so three ways were offered: (A) move it and
 make `docs/` OpenSpec's root, (B) move it and leave a symbolic link, (C)
 move only `grammar/`. Approval: "A".

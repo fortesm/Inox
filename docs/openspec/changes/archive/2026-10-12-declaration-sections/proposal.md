@@ -7,8 +7,7 @@ field declaration", diagnostics carry no line, and every new declaration form
 (Enum, Range, String fields) would need three more scanners. This is item 2 of
 the order approved on 2026-10-12, and it unblocks items 4 and 5.
 
-Approval (Marcelo Fortes, 2026-10-12): "Todas as tomadas de decisão dos pontos
-1 a 5 foram verificadas e eleitas para serem acatadas." Item 2: structured
+Approval (Marcelo Fortes, 2026-10-12): decisions 1 to 5 approved. Item 2: structured
 parser for the sections, arrays in struct and in State.
 
 ## What Changes

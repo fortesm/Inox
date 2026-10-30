@@ -8,7 +8,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 A plan, not law: the order in which the law of
 `docs/openspec/specs/constitution/` is implemented. Status is in
 `docs/STATUS.md`. Renumbered on 2026-10-12 for the version scheme of r3.60
-(Marcelo Fortes: "Sim esse roadmap é antigo pode renumerar"); the old
+(decided by Marcelo Fortes); the old
 0.1.x–0.9.x plan of 2026-06 is in `docs/history/canon-changelog.md`. A
 MINOR version closes when its list is done; the contents of a later MINOR
 may still move.
@@ -68,11 +68,10 @@ after 1.0      concurrency with data-race safety (Chapel, Go, Rust, Delphi's
 
 Stages (constitution VERSIONING): pre-alpha until the 1.0 scope is complete,
 then alpha, beta and stable. What belongs to the 1.0 scope is the
-maintainer's decision. Marcelo Fortes, 2026-10-21: concurrency comes after
-1.0 ("Concorrência pode entrar após 1.0"); 1.0 has no fixed date ("Não nos
-preocuparemos se a saída de inox 1.0 pode ser após o Natal"); visibility
-(0.4) comes before collections (0.5): "Visibilidade antes"; the interface
-with C libraries comes after 1.0 ("Sim, isso é depois da versão 1.0").
+maintainer's decision. Marcelo Fortes decided on 2026-10-21: concurrency
+comes after 1.0; 1.0 has no fixed date and may come after Christmas 2026;
+visibility (0.4) comes before collections (0.5); the interface with C
+libraries comes after 1.0.
 
 ## Next work (OpenSpec changes, in the maintainer's order)
 
@@ -121,8 +120,7 @@ with C libraries comes after 1.0 ("Sim, isso é depois da versão 1.0").
   by the release workflow, which publishes every new version merged into
   main (r3.101).
 - 0.3, decided by Marcelo Fortes on 2026-10-21 (A1-F3) and delivered in
-  five pull requests ("Faça em Pr Serparados para ser mais fácil de
-  testar"): `console-abi-terminal` (the console in libinoxrt, a function is
+  five separate pull requests, one per change, to be tested apart: `console-abi-terminal` (the console in libinoxrt, a function is
   not a statement, Std.Terminal; done, r3.88); `input-chars-exponents`
   (`Get(C)`, `EndOfInput`, Get of reals, Char classification, real literals
   with exponents; done, r3.89); `numbers-text` (conversions between
