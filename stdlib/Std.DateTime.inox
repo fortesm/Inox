@@ -36,104 +36,104 @@ Const MicrosPerDay Public := 86_400_000_000
 ==   NowUTC TDateTime                    == the clock, in UTC
 ==   UTCOffset(T TDateTime) TDuration     == local time minus UTC at the UTC instant T
 
-IsLeapYear(Y Integer) Bool Public :
-    Return (Y mod 4 = 0 and Y mod 100 # 0) or Y mod 400 = 0
+IsLeapYear(Year Integer) Bool Public :
+    Return (Year mod 4 = 0 and Year mod 100 # 0) or Year mod 400 = 0
 ;
 
-DaysInMonth(Y Integer, M Integer) Integer Public :
-    pre M >= 1 and M <= 12, "a month is 1..12"
+DaysInMonth(Year Integer, Month Integer) Integer Public :
+    pre Month >= 1 and Month <= 12, "a month is 1..12"
     Days Integer := 31
-    case M
+    case Month
         4 | 6 | 9 | 11 Days := 30
-        2 Days := IIf(IsLeapYear(Y), 29, 28)
+        2 Days := IIf(IsLeapYear(Year), 29, 28)
         else Days := 31
     ;
     Return Days
 ;
 
 == Days since 0001-01-01 of a valid date (H. Hinnant's days_from_civil).
-DaysFromCivil(Y Integer, M Integer, D Integer) Integer :
-    Shifted Integer := IIf(M <= 2, Y - 1, Y)
+DaysFromCivil(Year Integer, Month Integer, Day Integer) Integer :
+    Shifted Integer := IIf(Month <= 2, Year - 1, Year)
     Era Integer := Shifted / 400
     YearOfEra Integer := Shifted - Era * 400
-    DayOfYear Integer := (153 * IIf(M > 2, M - 3, M + 9) + 2) / 5 + D - 1
+    DayOfYear Integer := (153 * IIf(Month > 2, Month - 3, Month + 9) + 2) / 5 + Day - 1
     DayOfEra Integer := YearOfEra * 365 + YearOfEra / 4 - YearOfEra / 100 + DayOfYear
     Return Era * 146097 + DayOfEra - 306
 ;
 
-EncodeDate(Y Integer, M Integer, D Integer) TDate Public :
-    pre Y >= 1 and Y <= 9999, "a year is 1..9999"
-    pre M >= 1 and M <= 12, "a month is 1..12"
-    pre D >= 1 and D <= DaysInMonth(Y, M), "the day exists in its month"
-    Return TDate(DaysFromCivil(Y, M, D))
+EncodeDate(Year Integer, Month Integer, Day Integer) TDate Public :
+    pre Year >= 1 and Year <= 9999, "a year is 1..9999"
+    pre Month >= 1 and Month <= 12, "a month is 1..12"
+    pre Day >= 1 and Day <= DaysInMonth(Year, Month), "the day exists in its month"
+    Return TDate(DaysFromCivil(Year, Month, Day))
 ;
 
-EncodeDateTime(Y Integer, M Integer, D Integer, H Integer, N Integer, S Integer) TDateTime Public :
-    pre H >= 0 and H <= 23, "an hour is 0..23"
-    pre N >= 0 and N <= 59, "a minute is 0..59"
-    pre S >= 0 and S <= 59, "a second is 0..59"
-    Days Integer := Integer(EncodeDate(Y, M, D))
-    Return TDateTime(Days * MicrosPerDay + H * MicrosPerHour + N * MicrosPerMinute + S * MicrosPerSecond)
+EncodeDateTime(Year Integer, Month Integer, Day Integer, Hour Integer, Minute Integer, Second Integer) TDateTime Public :
+    pre Hour >= 0 and Hour <= 23, "an hour is 0..23"
+    pre Minute >= 0 and Minute <= 59, "a minute is 0..59"
+    pre Second >= 0 and Second <= 59, "a second is 0..59"
+    Days Integer := Integer(EncodeDate(Year, Month, Day))
+    Return TDateTime(Days * MicrosPerDay + Hour * MicrosPerHour + Minute * MicrosPerMinute + Second * MicrosPerSecond)
 ;
 
 DateOf(T TDateTime) TDate Public :
     Return TDate(T / MicrosPerDay)
 ;
 
-DateTimeOf(D TDate) TDateTime Public :
-    Return TDateTime(D * MicrosPerDay)
+DateTimeOf(Date TDate) TDateTime Public :
+    Return TDateTime(Date * MicrosPerDay)
 ;
 
 == The year, month and day of T (H. Hinnant's civil_from_days).
-DecodeDate(T TDateTime, ref mut Y Integer, ref mut M Integer, ref mut D Integer) Public :
+DecodeDate(T TDateTime, ref mut Year Integer, ref mut Month Integer, ref mut Day Integer) Public :
     Z Integer := T / MicrosPerDay + 306
     Era Integer := Z / 146097
     DayOfEra Integer := Z - Era * 146097
     YearOfEra Integer := (DayOfEra - DayOfEra / 1460 + DayOfEra / 36524 - DayOfEra / 146096) / 365
     DayOfYear Integer := DayOfEra - (365 * YearOfEra + YearOfEra / 4 - YearOfEra / 100)
     MonthPart Integer := (5 * DayOfYear + 2) / 153
-    D := DayOfYear - (153 * MonthPart + 2) / 5 + 1
-    M := IIf(MonthPart < 10, MonthPart + 3, MonthPart - 9)
-    Y := YearOfEra + Era * 400 + IIf(M <= 2, 1, 0)
+    Day := DayOfYear - (153 * MonthPart + 2) / 5 + 1
+    Month := IIf(MonthPart < 10, MonthPart + 3, MonthPart - 9)
+    Year := YearOfEra + Era * 400 + IIf(Month <= 2, 1, 0)
 ;
 
-Year(T TDateTime) Integer Public :
-    Y Integer := 0
-    M Integer := 0
-    D Integer := 0
-    DecodeDate(T, Y, M, D)
-    Return Y
+YearOf(T TDateTime) Integer Public :
+    Year Integer := 0
+    Month Integer := 0
+    Day Integer := 0
+    DecodeDate(T, Year, Month, Day)
+    Return Year
 ;
 
-Month(T TDateTime) Integer Public :
-    Y Integer := 0
-    M Integer := 0
-    D Integer := 0
-    DecodeDate(T, Y, M, D)
-    Return M
+MonthOf(T TDateTime) Integer Public :
+    Year Integer := 0
+    Month Integer := 0
+    Day Integer := 0
+    DecodeDate(T, Year, Month, Day)
+    Return Month
 ;
 
-Day(T TDateTime) Integer Public :
-    Y Integer := 0
-    M Integer := 0
-    D Integer := 0
-    DecodeDate(T, Y, M, D)
-    Return D
+DayOf(T TDateTime) Integer Public :
+    Year Integer := 0
+    Month Integer := 0
+    Day Integer := 0
+    DecodeDate(T, Year, Month, Day)
+    Return Day
 ;
 
-Hour(T TDateTime) Integer Public :
+HourOf(T TDateTime) Integer Public :
     Return T mod MicrosPerDay / MicrosPerHour
 ;
 
-Minute(T TDateTime) Integer Public :
+MinuteOf(T TDateTime) Integer Public :
     Return T mod MicrosPerHour / MicrosPerMinute
 ;
 
-Second(T TDateTime) Integer Public :
+SecondOf(T TDateTime) Integer Public :
     Return T mod MicrosPerMinute / MicrosPerSecond
 ;
 
-MicroSecond(T TDateTime) Integer Public :
+MicroSecondOf(T TDateTime) Integer Public :
     Return T mod MicrosPerSecond
 ;
 

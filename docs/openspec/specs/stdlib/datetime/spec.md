@@ -19,11 +19,12 @@ range").
 - **THEN** they are days 0 and 3652058, a Monday and a Friday (tests/runtime/datetime.inox)
 
 ### Requirement: Encoding and decoding
-`EncodeDate(Y, M, D)` and `EncodeDateTime(Y, M, D, H, N, S)` SHALL check
-their parts with preconditions (a day that does not exist stops the
-program); `DecodeDate`, `Year`, `Month`, `Day`, `Hour`, `Minute`, `Second`,
-`MicroSecond`, `DayOfWeek` (a `TDayOfWeek`, Monday first), `DateOf`,
-`DateTimeOf`, `IsLeapYear` and `DaysInMonth` read them back (D3).
+`EncodeDate(Year, Month, Day)` and `EncodeDateTime(Year, Month, Day, Hour,
+Minute, Second)` SHALL check their parts with preconditions (a day that
+does not exist stops the program); `DecodeDate`, `YearOf`, `MonthOf`,
+`DayOf`, `HourOf`, `MinuteOf`, `SecondOf`, `MicroSecondOf`, `DayOfWeek` (a
+`TDayOfWeek`, Monday first), `DateOf`, `DateTimeOf`, `IsLeapYear` and
+`DaysInMonth` read them back (D3).
 
 #### Scenario: A date and a wrong one
 - **WHEN** a program encodes and decodes 2026-10-22 05:57:30, then encodes 2026-02-29
@@ -37,6 +38,28 @@ two zones, UTC and the system's (D2).
 #### Scenario: Days and zones
 - **WHEN** a program adds 70 days, measures them both ways and converts a winter instant to local time and back
 - **THEN** it gets 2026-12-31, 70 and 70, and the same instant (tests/runtime/datetime.inox)
+
+### Requirement: Order and names of the parts
+The parts of a date SHALL come in the order of ISO 8601, year, month, day,
+with full names (`Year`, `Month`, `Day`, `Hour`, `Minute`, `Second`), and
+the functions that read one part SHALL end in `Of` (`YearOf(T)`), as in
+Delphi's DateUtils, since a parameter cannot hide a routine (decided by
+Marcelo Fortes, 2026-10-30).
+
+#### Scenario: Full names
+- **WHEN** a program calls `EncodeDateTime(2026, 10, 22, 5, 57, 30)` and reads it back with `YearOf` .. `SecondOf`
+- **THEN** every part comes back (tests/runtime/datetime.inox)
+
+### Requirement: Exchange and regional formats
+ISO 8601 (`2026-10-30`, `2026-10-30T13:00:00`) SHALL be the format of
+exchange: `ToISO8601` writes it and `FromISO8601` reads it. A regional
+format such as `dd/mm/yyyy` is written only when a program asks for it
+with `FormatDateTime`; no function takes a regional format as its default
+(decided by Marcelo Fortes, 2026-10-30).
+
+#### Scenario: ISO 8601 and a regional pattern
+- **WHEN** a program writes an instant with `ToISO8601` and with `FormatDateTime(T, "dd/mm/yyyy")`
+- **THEN** the first is ISO 8601 and the second the requested regional form (tests/runtime/dateutils.inox)
 
 ### Requirement: Text
 Std.DateUtils SHALL give `ToISO8601(T)`, `FromISO8601(S)` (date, optional

@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.104
+Canon revision: r3.105
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -27,6 +27,13 @@ stands.
    capture clause (`Name`, `Move(X)`, `Link(X)`), `{ }` as an effect or a
    requirement clause, `@` annotations; no String interpolation and `{ }`
    reserved (decided, r3.74).
+
+3. **Mixing Range types** (open since 0.3): today a Range of Integer is a
+   subtype, as Ada's `subtype`: values of `TDigit` and `TPercent` mix freely
+   in an expression, the result is an Integer, and a store into a Range is
+   checked (`value out of range`). The alternative is distinct types, as
+   Ada's `type T is range ...`: mixing needs a written conversion
+   (`TPercent(D)`), which catches unit mistakes at compile time.
 
 ## Revision log
 
@@ -468,3 +475,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `utils/` each with a README saying what belongs there; the test runners
   work in a temporary directory. No rule changes. Decided by
   Marcelo Fortes, 2026-10-30. Change `repo-layout`.
+- r3.105 — 2026-10-30 — Std.DateTime names its parts in full, in the order
+  of ISO 8601: `EncodeDate(Year, Month, Day)`, `EncodeDateTime(Year, Month,
+  Day, Hour, Minute, Second)`; the functions that read a part take the
+  suffix `Of`, as in Delphi's DateUtils (`YearOf`, `MonthOf`, `DayOf`,
+  `HourOf`, `MinuteOf`, `SecondOf`, `MicroSecondOf`), since a parameter
+  cannot hide a routine. ISO 8601 is the format of exchange; regional
+  formats such as `dd/mm/yyyy` come only from `FormatDateTime`. The open
+  question of mixing Range types is recorded. Decided by Marcelo Fortes,
+  2026-10-30. Change `datetime-names`.
