@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Resolve-Path (Join-Path $scriptDir "..")
+$repoRoot = Resolve-Path (Join-Path $scriptDir "..\..")
 
 $packageName = "inox-windows-x64"
 $distRoot = Join-Path $repoRoot "dist"
@@ -77,12 +77,9 @@ if (Test-Path -LiteralPath (Join-Path $repoRoot "licenses")) {
     Copy-DirectoryContents -Source (Join-Path $repoRoot "licenses") -Destination (Join-Path $packageRoot "licenses")
 }
 
-foreach ($legalFile in @("LICENSE", "LICENSE.md", "NOTICE.md", "AUTHORS.md", "TRADEMARK.md")) {
-    $candidate = Join-Path $repoRoot $legalFile
-    if (Test-Path -LiteralPath $candidate) {
-        Copy-Item -LiteralPath $candidate -Destination (Join-Path $packageRoot $legalFile) -Force
-    }
-}
+# LICENSE at the package root; AUTHORS, NOTICE, TRADEMARK and the license
+# notice come with licenses/ above.
+Copy-Item -LiteralPath (Join-Path $repoRoot "LICENSE") -Destination (Join-Path $packageRoot "LICENSE") -Force
 
 $releaseReadme = Join-Path $repoRoot "docs\release\README.md"
 $rootReadme = Join-Path $repoRoot "README.md"

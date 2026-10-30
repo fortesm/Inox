@@ -9,7 +9,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 
 The Inox compiler, standard library, runtime components, official examples,
 tests and tools are made available under the Mozilla Public License Version 2.0.
-See `LICENSE` for the complete license text.
+See `../LICENSE` (or `MPL-2.0.txt` here) for the complete license text.
 
 The name "Inox", the Inox project identity, logos, marks and official branding
 are governed separately by `TRADEMARK.md`. The MPL 2.0 does not grant trademark

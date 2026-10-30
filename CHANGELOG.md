@@ -13,6 +13,7 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 ## Unreleased
 
 ### Changed
+- Repository layout (canon r3.104, change `repo-layout`): `src/runtime/`, `tools/scripts/` (the test runners: `bash tools/scripts/run-tests.sh`), `tests/ci/`, `docs/BUILD.md`, legal notices in `licenses/`; `contrib/`, `include/`, `libs/` and `utils/` each say in a README what belongs there; tests no longer leave files in the repository.
 - Test and example programs use English names and texts (canon r3.103, change `english-programs`): about 130 identifiers and the Portuguese strings of the programs, with their expected outputs, and the code illustrations of the documents.
 - The records state decisions, in English (canon r3.102, change `decisions-not-dialogue`): the constitution, the specs, the OpenSpec changes, the revision log, the history, the roadmap and code comments no longer quote chat messages; each says what was decided, by Marcelo Fortes, and when.
 

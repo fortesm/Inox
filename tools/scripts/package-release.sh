@@ -7,7 +7,7 @@ set -euo pipefail
 configuration="${1:-Release}"
 package_name="${2:-inox-linux-x64}"
 explicit_compiler_path="${3:-}"
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 compiler_path=""
 if [[ -n "$explicit_compiler_path" ]]; then
@@ -55,9 +55,9 @@ for law_file in spec.md engineering.md revisions.md; do
 done
 [[ -d "$repo_root/licenses" ]] && cp -R "$repo_root/licenses/." "$package_root/licenses/"
 
-for legal_file in LICENSE LICENSE.md NOTICE.md AUTHORS.md TRADEMARK.md; do
-    [[ -f "$repo_root/$legal_file" ]] && cp "$repo_root/$legal_file" "$package_root/$legal_file"
-done
+# LICENSE at the package root; AUTHORS, NOTICE, TRADEMARK and the license
+# notice come with licenses/ above.
+cp "$repo_root/LICENSE" "$package_root/LICENSE"
 
 if [[ -f "$repo_root/docs/release/README.md" ]]; then
     cp "$repo_root/docs/release/README.md" "$package_root/README.md"

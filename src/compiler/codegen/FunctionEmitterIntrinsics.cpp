@@ -6,7 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // FunctionEmitter: Std.Terminal (change console-abi-terminal, r3.88). Every
-// routine is one call into libinoxrt (runtime/ConsoleRuntime.cpp); ReadKey
+// routine is one call into libinoxrt (src/runtime/ConsoleRuntime.cpp); ReadKey
 // and ScreenSize build their struct from the Int64 the library returns.
 
 #include "FunctionEmitter.h"

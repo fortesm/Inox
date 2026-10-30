@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.103
+Canon revision: r3.104
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -462,3 +462,9 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `FBalance`, `TNode`, `Hearts`); names of people and places and Unicode
   test data stay. No rule changes. Decided by Marcelo Fortes, 2026-10-30.
   Change `english-programs`.
+- r3.104 — 2026-10-30 — Repository layout: `tests/ci/`, `src/runtime/`,
+  `tools/scripts/`, `docs/BUILD.md`, the legal notices in `licenses/`
+  (`LICENSE` stays at the root); `contrib/`, `include/`, `libs/` and
+  `utils/` each with a README saying what belongs there; the test runners
+  work in a temporary directory. No rule changes. Decided by
+  Marcelo Fortes, 2026-10-30. Change `repo-layout`.

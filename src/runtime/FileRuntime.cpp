@@ -26,7 +26,7 @@
 #include "NumberText.h"
 #include "StringBlock.h"
 
-#include "../src/compiler/exceptions/ExceptionTypes.h"
+#include "../compiler/exceptions/ExceptionTypes.h"
 
 #include <cerrno>
 #include <cstddef>

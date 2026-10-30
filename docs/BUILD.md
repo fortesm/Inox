@@ -27,7 +27,7 @@ Clang with the MSVC ABI (`x86_64-pc-windows-msvc`).
 ```powershell
 cmake --preset windows-clang-msvc
 cmake --build --preset windows-clang-msvc-debug
-pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1 -InoxExe .\build\windows-clang-msvc\Debug\inox.exe
+pwsh -ExecutionPolicy Bypass -File .\tools\scripts\run-tests.ps1 -InoxExe .\build\windows-clang-msvc\Debug\inox.exe
 ```
 
 Release: `cmake --build --preset windows-clang-msvc-release` (compiler at
@@ -42,7 +42,7 @@ distributed.
 ```bash
 cmake --preset linux-clang-debug
 cmake --build --preset linux-clang-debug
-bash scripts/run-tests.sh build/linux-clang-debug/inox
+bash tools/scripts/run-tests.sh build/linux-clang-debug/inox
 ```
 
 Release: `cmake --preset linux-clang-release && cmake --build --preset
@@ -66,7 +66,7 @@ compiler change, run the gates that apply and say in the report which ran:
 # AddressSanitizer + UndefinedBehaviorSanitizer, also with a 1 MiB stack
 CXX=g++ cmake -S . -B build-san -G Ninja -DCMAKE_BUILD_TYPE=Debug -DINOX_ENABLE_ASAN=ON -DINOX_ENABLE_UBSAN=ON
 cmake --build build-san
-(ulimit -s 1024; bash scripts/run-tests.sh build-san/inox)
+(ulimit -s 1024; bash tools/scripts/run-tests.sh build-san/inox)
 python3 tools/mutation_fuzz.py build-san/inox --seed 1
 python3 tools/mutation_fuzz.py build-san/inox --seed 7
 python3 tools/backend_gaps.py build/inox            # 0 BUG; --markdown for docs/BACKEND_GAPS.md
@@ -122,11 +122,11 @@ flows.
 ## Release packages
 
 ```bash
-bash scripts/package-release.sh Release inox-linux-x64 build-linux/inox
+bash tools/scripts/package-release.sh Release inox-linux-x64 build-linux/inox
 ```
 
 ```powershell
-pwsh -File .\scripts\package-release.ps1     # uses build\Release\inox.exe
+pwsh -File .\tools\scripts\package-release.ps1     # uses build\Release\inox.exe
 ```
 
 Each package (`dist/inox-<platform>-x64.zip`, published as a GitHub Release

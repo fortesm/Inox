@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 //
-// Unit tests for runtime/StringFunctions.cpp (OpenSpec change std-strings,
+// Unit tests for src/runtime/StringFunctions.cpp (OpenSpec change std-strings,
 // task 1.3): concatenation, in-place append, positions and the Unicode
 // functions. Every String made here is released, so a leak shows under the
 // sanitizer build.

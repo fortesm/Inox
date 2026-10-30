@@ -92,15 +92,15 @@ set(INOX_COMPILER_SOURCES
 )
 
 add_library(inoxrt STATIC
-    runtime/ConsoleRuntime.cpp
-    runtime/DecimalRuntime.cpp
-    runtime/ExceptionRuntime.cpp
-    runtime/FileRuntime.cpp
-    runtime/NumberText.cpp
-    runtime/OwnRuntime.cpp
-    runtime/StringRuntime.cpp
-    runtime/StringFunctions.cpp
-    runtime/SystemRuntime.cpp
+    src/runtime/ConsoleRuntime.cpp
+    src/runtime/DecimalRuntime.cpp
+    src/runtime/ExceptionRuntime.cpp
+    src/runtime/FileRuntime.cpp
+    src/runtime/NumberText.cpp
+    src/runtime/OwnRuntime.cpp
+    src/runtime/StringRuntime.cpp
+    src/runtime/StringFunctions.cpp
+    src/runtime/SystemRuntime.cpp
 )
 
 inox_apply_compiler_options(inoxrt)
@@ -119,8 +119,8 @@ if(CMAKE_CXX_COMPILER_TARGET MATCHES "msvc" OR MSVC OR CMAKE_CXX_SIMULATE_ID STR
     target_compile_definitions(inoxrt PRIVATE _ITERATOR_DEBUG_LEVEL=0)
 endif()
 
-# Unit tests of the runtime library, run by scripts/run-tests.sh and
-# scripts/run-tests.ps1 when found next to the compiler.
+# Unit tests of the runtime library, run by tools/scripts/run-tests.sh and
+# tools/scripts/run-tests.ps1 when found next to the compiler.
 add_executable(inoxrt-tests tests/runtime-unit/StringRuntimeTests.cpp tests/runtime-unit/FileRuntimeTests.cpp
     tests/runtime-unit/OwnRuntimeTests.cpp tests/runtime-unit/StringFunctionsTests.cpp)
 target_link_libraries(inoxrt-tests PRIVATE inoxrt)

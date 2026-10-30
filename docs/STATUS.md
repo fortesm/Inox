@@ -61,7 +61,7 @@ each version added.
   `Same`; a definite-move analysis over every path; owners freed when
   overwritten, at `Free`, at routine exit (also by an exception) and when
   their declaration runs again, without recursion; owner parameters and
-  results; contracts on owner parameters. Runtime `runtime/OwnRuntime.cpp`;
+  results; contracts on owner parameters. Runtime `src/runtime/OwnRuntime.cpp`;
   the leak check covers the pointer programs.
 - Generics (CANON-8, r3.77): generic routines (`Max<T>(A T, B T) T :`) and
   generic structs (`TPair<K, V> Struct`), one instance per list of types,
@@ -109,7 +109,7 @@ each version added.
 - Text files: Std.Files (type and basic operations) / Std.IOUtils
   (conveniences).
 - Console (r3.88): libinoxrt owns standard output and input
-  (`runtime/ConsoleRuntime.cpp`) and every program links it; prompts are
+  (`src/runtime/ConsoleRuntime.cpp`) and every program links it; prompts are
   flushed before input; Windows consoles run in UTF-8 with VT sequences.
 - A function or method called as a statement is a compile error (r3.88,
   as in Ada).
@@ -126,7 +126,7 @@ each version added.
   (Assert), Std.Files, Std.IOUtils, Std.Strings, Std.StrUtils, Std.Terminal,
   Std.DateTime, Std.DateUtils, Std.SystemUtils.
 - Windows x64 and Linux x64 run the full suite in CI
-  (`ci/windows-known-failures.txt` is empty).
+  (`tests/ci/windows-known-failures.txt` is empty).
 
 ## Conformance gaps (the law is ahead of the code)
 

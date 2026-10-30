@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # Build and test Inox on every pull request and on main.
 # Linux must pass the full suite. Windows (MSVC ABI) must not fail any test
-# outside ci/windows-known-failures.txt (the EH-v3.16a exception tests until the
+# outside tests/ci/windows-known-failures.txt (the EH-v3.16a exception tests until the
 # MSVC exception bridge lands).
 name: CI
 
@@ -38,7 +38,7 @@ jobs:
       - name: Build
         run: cmake --build --preset linux-clang-debug
       - name: Test suite
-        run: bash scripts/run-tests.sh build/linux-clang-debug/inox
+        run: bash tools/scripts/run-tests.sh build/linux-clang-debug/inox
       - name: Backend gaps (0 BUG, emitted IR checked by clang)
         run: python3 tools/backend_gaps.py build/linux-clang-debug/inox
       - name: Exception state lifetime (every captured state released)
@@ -83,8 +83,8 @@ jobs:
       - name: Test suite (known EH-v3.16a failures tolerated)
         shell: pwsh
         run: |
-          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-tests.ps1 -InoxExe build/windows-clang-msvc/Debug/inox.exe *>&1 | Tee-Object -FilePath test-output.txt
-          python tools/ci_known_failures.py test-output.txt ci/windows-known-failures.txt
+          pwsh -NoProfile -ExecutionPolicy Bypass -File tools/scripts/run-tests.ps1 -InoxExe build/windows-clang-msvc/Debug/inox.exe *>&1 | Tee-Object -FilePath test-output.txt
+          python tools/ci_known_failures.py test-output.txt tests/ci/windows-known-failures.txt
       - name: Failure details as an annotation
         if: always()
         shell: pwsh
@@ -102,7 +102,7 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-windows-eh-poc.ps1 -InoxExe build/windows-clang-msvc/Debug/inox.exe *>&1 | Tee-Object -FilePath eh-poc-output.txt
+          pwsh -NoProfile -ExecutionPolicy Bypass -File tools/scripts/run-windows-eh-poc.ps1 -InoxExe build/windows-clang-msvc/Debug/inox.exe *>&1 | Tee-Object -FilePath eh-poc-output.txt
           $code = $LASTEXITCODE
           $text = ((Get-Content eh-poc-output.txt -Raw) -replace "`r", "") -replace "`n", "%0A"
           Write-Host "::warning title=MSVC EH PoC output::$text"

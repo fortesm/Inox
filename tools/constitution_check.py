@@ -19,7 +19,7 @@ Commands
   check    fail if a unit differs from its hash, is missing from the lock or
            was removed without relocking, if an approval names no approved
            change, or if a spec under docs/openspec/specs names a tests/,
-           examples/, tools/ or scripts/ file that does not exist
+           examples/ or tools/ file that does not exist
   relock --approval CHANGE [UNIT ...]
            record the current text of the given units (all changed, new and
            removed units when none is given) as approved by CHANGE
@@ -42,7 +42,7 @@ LOCK = CONSTITUTION / "constitution.lock"
 SPECS = ROOT / "docs" / "openspec" / "specs"
 CHANGES = ROOT / "docs" / "openspec" / "changes"
 LOCKED_FILES = ("spec.md", "engineering.md")
-REFERENCE_RE = re.compile(r"(?<![\w/.-])((?:tests|examples|tools|scripts)/[\w./-]*\w\.\w+)")
+REFERENCE_RE = re.compile(r"(?<![\w/.-])((?:tests|examples|tools)/[\w./-]*\w\.\w+)")
 LOCK_HEADER = (
     "# constitution.lock - written by tools/constitution_check.py relock; never edit by hand.\n"
     "# One line per locked unit: unit <TAB> sha256 prefix <TAB> approving OpenSpec change.\n"

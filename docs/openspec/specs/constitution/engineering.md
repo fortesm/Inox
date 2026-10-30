@@ -146,9 +146,9 @@ hidden or called success. A green suite alone never proves the absence of
 regressions (Marcelo Fortes, 2026-10-09): a compiler change is verified by
 every check below that applies, and its report says which ran.
 
-- `scripts/run-tests.sh` and `scripts/run-tests.ps1` — specified behavior;
+- `tools/scripts/run-tests.sh` and `tools/scripts/run-tests.ps1` — specified behavior;
   the same checks on both; Windows failures must equal
-  `ci/windows-known-failures.txt` (empty today); the suite also builds with
+  `tests/ci/windows-known-failures.txt` (empty today); the suite also builds with
   the `linux-clang-debug` preset against libstdc++ 14;
 - the suite on an AddressSanitizer + UndefinedBehaviorSanitizer build, also
   with a 1 MiB stack (`ulimit -s 1024`, the Windows default);

@@ -10,4 +10,4 @@ License Version 2.0.
 
 Future contributors should be listed here in a reasonable and non-misleading
 manner. This file is for project credit; the legal license terms are in
-`LICENSE` and the contribution rules are in `CONTRIBUTING.md`.
+`../LICENSE` and the contribution rules are in `../CONTRIBUTING.md`.

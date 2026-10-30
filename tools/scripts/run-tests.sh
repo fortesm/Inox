@@ -8,7 +8,7 @@
 
 set -uo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 inox_exe="${1:-}"
 
 if [[ -z "$inox_exe" ]]; then
@@ -28,6 +28,17 @@ if [[ -z "$inox_exe" ]]; then
 elif [[ "$inox_exe" != /* ]]; then
     inox_exe="$repo_root/$inox_exe"
 fi
+
+# Programs under test create and delete files in their current directory;
+# they run from a temporary one, so nothing is left in the repository. The
+# build artifacts still go to build/inox-artifacts.
+export INOX_OUTPUT_DIR="${INOX_OUTPUT_DIR:-$repo_root/build/inox-artifacts}"
+# From a temporary directory the library is not found through the current
+# directory, and tests/integration/stdlib would be found first.
+export INOX_STDLIB="${INOX_STDLIB:-$repo_root/stdlib}"
+work_dir="$(mktemp -d)"
+trap 'rm -rf "$work_dir"' EXIT
+cd "$work_dir" || exit 1
 
 if [[ ! -f "$inox_exe" || ! -x "$inox_exe" ]]; then
     echo "Inox executable not found: $inox_exe"

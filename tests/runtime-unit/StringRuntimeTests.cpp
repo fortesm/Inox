@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 // Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 //
-// Unit tests for runtime/StringRuntime.cpp (OpenSpec change string-runtime,
-// task 1.3); FileRuntimeTests.cpp adds those of runtime/FileRuntime.cpp.
-// Built as inoxrt-tests next to the compiler and run by scripts/run-tests.sh
-// and scripts/run-tests.ps1 on Linux and Windows.
+// Unit tests for src/runtime/StringRuntime.cpp (OpenSpec change string-runtime,
+// task 1.3); FileRuntimeTests.cpp adds those of src/runtime/FileRuntime.cpp.
+// Built as inoxrt-tests next to the compiler and run by tools/scripts/run-tests.sh
+// and tools/scripts/run-tests.ps1 on Linux and Windows.
 
 #include <cstdint>
 #include <cstdio>

@@ -15,12 +15,15 @@ The Inox project intentionally does **not** use the MPL notice "Incompatible Wit
 
 ## Project identity and credits
 
-Copyright, authorship, contribution, and trademark information are documented in the repository root:
+Copyright, authorship and trademark information are in this directory,
+next to the license; how to contribute is in the repository root:
 
-- `../NOTICE.md`
-- `../AUTHORS.md`
+- `LICENSE.md` (the project's license notice; the full MPL-2.0 text is
+  `../LICENSE` and `MPL-2.0.txt`)
+- `NOTICE.md`
+- `AUTHORS.md`
+- `TRADEMARK.md`
 - `../CONTRIBUTING.md`
-- `../TRADEMARK.md`
 
 ## Third-party licenses
 

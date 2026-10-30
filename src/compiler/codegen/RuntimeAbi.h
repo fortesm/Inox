@@ -7,7 +7,7 @@
 
 // The functions of libinoxrt that generated code calls (OpenSpec change
 // compiler-modularization, step 3). This table is the one place that names
-// them and their exact LLVM declarations; runtime/*.cpp implements them.
+// them and their exact LLVM declarations; src/runtime/*.cpp implements them.
 // A module that declares any of them must be linked with libinoxrt.
 
 #pragma once
@@ -18,18 +18,18 @@
 namespace inox::compiler::codegen::detail {
 
 enum class RuntimeFunction {
-    // Exception transport (runtime/ExceptionRuntime.cpp), declared together.
+    // Exception transport (src/runtime/ExceptionRuntime.cpp), declared together.
     Raise,
     ExceptionCapture,
     ExceptionType,
     ExceptionRelease,
     ExceptionRethrow,
-    // String runtime (runtime/StringRuntime.cpp), declared on first use.
+    // String runtime (src/runtime/StringRuntime.cpp), declared on first use.
     StringRetain,
     StringRelease,
     StringEqual,
     StringCompare,
-    // Std.Strings / Std.StrUtils and `+` (runtime/StringFunctions.cpp). A
+    // Std.Strings / Std.StrUtils and `+` (src/runtime/StringFunctions.cpp). A
     // result is owned; the last parameter of a function that makes a String
     // receives its status (1 out of range, 2 out of memory).
     StringConcat,
@@ -75,7 +75,7 @@ enum class RuntimeFunction {
     // The classes and the case of a Char (r3.89, change input-chars-exponents).
     CharIs,
     CharCase,
-    // File runtime (runtime/FileRuntime.cpp), declared on first use. The
+    // File runtime (src/runtime/FileRuntime.cpp), declared on first use. The
     // functions without `nounwind` raise Inox exceptions (F3).
     FileOpen,
     FileRetain,
@@ -94,7 +94,7 @@ enum class RuntimeFunction {
     FileExists,
     FileDelete,
     FileRename,
-    // Console (runtime/ConsoleRuntime.cpp, change console-abi-terminal): every
+    // Console (src/runtime/ConsoleRuntime.cpp, change console-abi-terminal): every
     // module declares them; Main calls RuntimeInit first and the fault
     // function RuntimeShutdown before it stops.
     RuntimeInit,
@@ -117,7 +117,7 @@ enum class RuntimeFunction {
     ConsolePutFloat32,
     ConsolePutDecimal,
     ConsoleGetDecimal,
-    // Std.SystemUtils and the clock of Std.DateTime (runtime/SystemRuntime.cpp,
+    // Std.SystemUtils and the clock of Std.DateTime (src/runtime/SystemRuntime.cpp,
     // r3.92), declared on first use. A String result is owned (+1).
     SystemParamCount,
     SystemParamStr,
@@ -129,7 +129,7 @@ enum class RuntimeFunction {
     SystemPlatformName,
     ClockNowUTC,
     ClockUTCOffset,
-    // Std.Terminal (runtime/ConsoleRuntime.cpp), declared on first use.
+    // Std.Terminal (src/runtime/ConsoleRuntime.cpp), declared on first use.
     TerminalRawMode,
     TerminalReadKey,
     TerminalScreenSize,
@@ -140,7 +140,7 @@ enum class RuntimeFunction {
     TerminalResetColor,
     TerminalShowCursor,
     TerminalFlush,
-    // Owned blocks of safe pointers (runtime/OwnRuntime.cpp).
+    // Owned blocks of safe pointers (src/runtime/OwnRuntime.cpp).
     OwnAlloc,
     OwnFree,
 };

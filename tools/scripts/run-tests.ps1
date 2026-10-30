@@ -53,7 +53,7 @@ function Invoke-InoxWithInput {
     }
 }
 
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if ([string]::IsNullOrWhiteSpace($InoxExe)) {
     $candidateExecutables = @(
         (Join-Path $repoRoot "build\windows-clang-msvc\Debug\inox.exe"),
@@ -82,6 +82,21 @@ if (-not (Test-Path -LiteralPath $InoxExe -PathType Leaf)) {
     Write-Host "  Linux:   cmake --preset linux-clang-debug; cmake --build --preset linux-clang-debug"
     exit 1
 }
+
+# Programs under test create and delete files in their current directory;
+# they run from a temporary one, so nothing is left in the repository. The
+# build artifacts still go to build\inox-artifacts.
+if ([string]::IsNullOrEmpty($env:INOX_OUTPUT_DIR)) {
+    $env:INOX_OUTPUT_DIR = Join-Path $repoRoot "build\inox-artifacts"
+}
+# From a temporary directory the library is not found through the current
+# directory, and tests\integration\stdlib would be found first.
+if ([string]::IsNullOrEmpty($env:INOX_STDLIB)) {
+    $env:INOX_STDLIB = Join-Path $repoRoot "stdlib"
+}
+$workDir = Join-Path ([System.IO.Path]::GetTempPath()) ("inox-tests-" + [System.Guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Path $workDir -Force | Out-Null
+Push-Location $workDir
 
 $passed = 0
 $failed = 0
@@ -1091,6 +1106,9 @@ foreach ($unit in @(@("inoxrt-tests", "inoxrt unit tests"), @("inox-compiler-tes
 $total = $passed + $failed
 Write-Host ""
 Write-Host "Summary: $passed passed, $failed failed, $total total"
+
+Pop-Location
+Remove-Item -LiteralPath $workDir -Recurse -Force -ErrorAction SilentlyContinue
 
 if ($failed -ne 0) {
     exit 1

@@ -12,7 +12,7 @@ if (-not $IsWindows) {
     throw "The MSVC EH PoC runs only on Windows."
 }
 
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if ([string]::IsNullOrWhiteSpace($InoxExe)) {
     $InoxExe = Join-Path $repoRoot "build\windows-clang-msvc\Debug\inox.exe"
 } elseif (-not [System.IO.Path]::IsPathRooted($InoxExe)) {
