@@ -1051,7 +1051,7 @@ if ($null -eq $pythonExe) {
 # `inox --version` must match the version and revision at the top of
 # docs/openspec/specs/constitution/revisions.md (constitution VERSIONING).
 $revisionsText = Get-Content -LiteralPath (Join-Path $repoRoot "docs\openspec\specs\constitution\revisions.md") -Raw
-# "Language version: Inox 0.2.0 pre-alpha"; the program prints
+# "Language version: Inox 0.4.0 pre-alpha"; the program prints
 # MAJOR.MINOR.RELEASE.BUILD, BUILD being set by each build.
 $languageMatch = [regex]::Match($revisionsText, "(?m)^Language version: Inox ([0-9]+\.[0-9]+\.[0-9]+) ([a-z-]+)")
 $revisionMatch = [regex]::Match($revisionsText, "(?m)^Canon revision: (r[0-9.]+)")

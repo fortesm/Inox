@@ -1,0 +1,204 @@
+# SPDX-License-Identifier: MPL-2.0
+# Releases follow the version (constitution VERSIONING, r3.101).
+#
+# On every push to main, the version is read from
+# src/compiler/support/Version.h. When its tag vMAJOR.MINOR.RELEASE does not
+# exist yet, Linux and Windows are built in Release, tested, packaged,
+# extracted into a clean directory and run as a user would (engineering
+# E23); then the tag and the release are created, with the version's
+# CHANGELOG section as notes, as the latest release. A push that keeps the
+# version publishes nothing. Only the maintainer changes the version.
+#
+# A pull request that touches the version, the packaging or this workflow
+# runs everything except the publication: a rehearsal before the merge.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - scripts/package-release.*
+      - src/compiler/support/**
+      - CMakeLists.txt
+      - CHANGELOG.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Version and tag
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      stage: ${{ steps.read.outputs.stage }}
+      publish: ${{ steps.read.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read Version.h and look for the tag
+        id: read
+        shell: bash
+        run: |
+          header=src/compiler/support/Version.h
+          part() { sed -n "s/.*kVersion$1 = \([0-9]*\);.*/\1/p" "$header"; }
+          version="$(part Major).$(part Minor).$(part Release)"
+          stage="$(sed -n 's/.*kVersionStage = "\(.*\)";.*/\1/p' "$header")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "stage=$stage" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
+            echo "v$version already exists: nothing to publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "v$version is new: it will be published."
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Release notes from CHANGELOG.md
+        if: steps.read.outputs.publish == 'true'
+        shell: bash
+        run: |
+          version="${{ steps.read.outputs.version }}"
+          awk -v heading="## $version " '
+            index($0, heading) == 1 { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [[ ! -s release-notes.md ]]; then
+            echo "::error::CHANGELOG.md has no section '## $version ...'"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: steps.read.outputs.publish == 'true'
+        with:
+          name: release-notes
+          path: release-notes.md
+
+  linux:
+    name: Linux package
+    needs: version
+    if: needs.version.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # BUILD is the commit count (VERSIONING)
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang ninja-build zip
+      - name: Build (Release)
+        run: |
+          cmake --preset linux-clang-release
+          cmake --build --preset linux-clang-release
+      - name: Test suite (Release compiler)
+        run: bash scripts/run-tests.sh build/linux-clang-release/inox
+      - name: Package
+        run: bash scripts/package-release.sh Release inox-linux-x64 build/linux-clang-release/inox
+      - name: Smoke test of the extracted package
+        shell: bash
+        run: |
+          smoke="$RUNNER_TEMP/smoke"
+          rm -rf "$smoke" && mkdir -p "$smoke"
+          unzip -q dist/inox-linux-x64.zip -d "$smoke"
+          cd "$smoke"
+          source inox-linux-x64/set-inox-env.sh
+          inox version | grep -F "inox ${{ needs.version.outputs.version }}."
+          inox run inox-linux-x64/examples/hello.inox > hello.txt
+          diff <(sed 's/\r$//' hello.txt) <(sed 's/\r$//' "$GITHUB_WORKSPACE/tests/examples/hello.out")
+          # Only PATH, no INOX_* variable: the compiler finds its library and
+          # runtime beside itself (E23: library discovery).
+          env -i HOME="$HOME" PATH="$smoke/inox-linux-x64/bin:/usr/bin:/bin" \
+            bash -c "cd '$smoke' && inox run inox-linux-x64/examples/math-showcase.inox" > math.txt
+          diff <(sed 's/\r$//' math.txt) <(sed 's/\r$//' "$GITHUB_WORKSPACE/tests/examples/math-showcase.out")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inox-linux-x64
+          path: dist/inox-linux-x64.zip
+
+  windows:
+    name: Windows package
+    needs: version
+    if: needs.version.outputs.publish == 'true'
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # BUILD is the commit count (VERSIONING)
+      - name: Developer environment (MSVC x64)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Build (Release)
+        run: |
+          cmake --preset windows-clang-msvc
+          cmake --build --preset windows-clang-msvc-release
+      - name: Test suite (Release compiler; known EH failures tolerated)
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-tests.ps1 -InoxExe build/windows-clang-msvc/Release/inox.exe *>&1 | Tee-Object -FilePath test-output.txt
+          python tools/ci_known_failures.py test-output.txt ci/windows-known-failures.txt
+      - name: Package
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/package-release.ps1 -CompilerExe build/windows-clang-msvc/Release/inox.exe
+      - name: Smoke test of the extracted package
+        shell: pwsh
+        run: |
+          $smoke = Join-Path $env:RUNNER_TEMP "smoke"
+          if (Test-Path $smoke) { Remove-Item $smoke -Recurse -Force }
+          Expand-Archive -Path dist/inox-windows-x64.zip -DestinationPath $smoke
+          $root = Join-Path $smoke "inox-windows-x64"
+          $env:INOX_STDLIB = Join-Path $root "stdlib"
+          $env:INOX_OUTPUT_DIR = Join-Path $root "output"
+          $inox = Join-Path $root "bin\inox.exe"
+          Push-Location $smoke
+          $version = (& $inox version | Out-String)
+          if (-not $version.Contains("inox ${{ needs.version.outputs.version }}.")) { throw "unexpected version: $version" }
+          $hello = (& $inox run (Join-Path $root "examples\hello.inox") | Out-String) -replace "`r`n", "`n"
+          Pop-Location
+          $expected = (Get-Content -Raw tests/examples/hello.out) -replace "`r`n", "`n"
+          if ($hello.TrimEnd() -ne $expected.TrimEnd()) { throw "hello.inox printed: $hello" }
+          # Only PATH, no INOX_* variable: the compiler finds its library and
+          # runtime beside itself (E23: library discovery).
+          Remove-Item Env:INOX_STDLIB, Env:INOX_OUTPUT_DIR -ErrorAction SilentlyContinue
+          $env:PATH = (Join-Path $root "bin") + [System.IO.Path]::PathSeparator + $env:PATH
+          Push-Location $smoke
+          $math = (& inox run (Join-Path $root "examples\math-showcase.inox") | Out-String) -replace "`r`n", "`n"
+          Pop-Location
+          $expectedMath = (Get-Content -Raw tests/examples/math-showcase.out) -replace "`r`n", "`n"
+          if ($math.TrimEnd() -ne $expectedMath.TrimEnd()) { throw "math-showcase.inox printed: $math" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inox-windows-x64
+          path: dist/inox-windows-x64.zip
+
+  publish:
+    name: Tag and publish
+    needs: [version, linux, windows]
+    if: needs.version.outputs.publish == 'true' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+      - name: Create the tag and the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version="${{ needs.version.outputs.version }}"
+          gh release create "v$version" \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "Inox $version ${{ needs.version.outputs.stage }}" \
+            --notes-file assets/release-notes/release-notes.md \
+            --latest \
+            assets/inox-linux-x64/inox-linux-x64.zip \
+            assets/inox-windows-x64/inox-windows-x64.zip

@@ -2013,7 +2013,19 @@ releases use `vMAJOR.MINOR.RELEASE`.
 
 #### Scenario: One source of numbers
 - **WHEN** the version changes
-- **THEN** `src/compiler/support/Version.h` and the top of revisions.md change together (scripts/run-tests.sh)
+- **THEN** `src/compiler/support/Version.h` and the top of revisions.md change together, and the build reads its project version from Version.h (scripts/run-tests.sh, CMakeLists.txt)
+
+### Requirement: VERSIONING Releases follow the version
+When a push to `main` carries a version without its tag
+`vMAJOR.MINOR.RELEASE`, CI SHALL publish it by itself: Linux and Windows
+packages built in Release, tested and run as a user would (E23), with the
+version's CHANGELOG section as notes and the stage in the title, as the
+latest release (Marcelo Fortes, 2026-10-29: "quando muda na main"). A push
+that keeps the version publishes nothing; old releases stay as history.
+
+#### Scenario: Publishing a version
+- **WHEN** the version in Version.h changes on main
+- **THEN** the release workflow tags it and publishes both packages (.github/workflows/release.yml)
 
 ### Requirement: VERSIONING Canon revision
 The canon revision `rN.NN` SHALL number a set of recorded decisions (G3) and

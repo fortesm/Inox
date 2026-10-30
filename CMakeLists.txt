@@ -7,8 +7,17 @@
 
 cmake_minimum_required(VERSION 3.25)
 
+# The version has one source, src/compiler/support/Version.h (constitution
+# VERSIONING); the project version is read from it, never written here.
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/src/compiler/support/Version.h" _inox_version_lines
+     REGEX "kVersion(Major|Minor|Release) = [0-9]+")
+foreach(_part Major Minor Release)
+    string(REGEX MATCH "kVersion${_part} = ([0-9]+)" _ "${_inox_version_lines}")
+    set(_inox_version_${_part} "${CMAKE_MATCH_1}")
+endforeach()
+
 project(InoxCompiler
-    VERSION 0.2.0
+    VERSION ${_inox_version_Major}.${_inox_version_Minor}.${_inox_version_Release}
     LANGUAGES CXX
 )
 

@@ -10,40 +10,44 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 `r3.61` are canon revisions, entries of the decision log
 (`openspec/specs/constitution/revisions.md`), not versions.
 
-## 0.4.0 pre-alpha — in progress
+## 0.4.0 pre-alpha
+
+Modules and encapsulation, with the work planned for 0.3 (numbers, text and
+the basic library), which was never released apart (canon r3.101).
 
 ### Added
 - Modules and encapsulation (canon r3.99, CANON-3, change `modules-encapsulation`). Each module has its own names: a name is the module's own declaration first, then the one public declaration among the modules it uses, and two of them is an error that names the qualified forms. `Bank.Accounts.Fee` reaches a public name of a used module; `Use Bank.Accounts as Accounts` gives it a name local to the file; `Use Bank.Accounts.(Deposit, Withdraw)` takes only those names unqualified. Everything is private unless `Public`, the last word of a header (`TPerson Struct(TBeing) Public`, `TPerson.Rename(Self mut, Name String) String Public :`, `Const MaxRate Public := 0.05`) or the line that opens a struct's public fields; State is never public. `Use` is not transitive, and `Export Use M` passes M on (the library pairs use it). A struct's private fields and methods are reached only in its module, a struct with a private field without default is built only there, reuse across modules sees public members, and an outside write to a public field still checks the invariant. `--path <dir>` and `INOX_PATH` add directories where modules are searched; `Std` names only the standard library. `inox interface File.inox` prints what other modules see. `examples/bank` is a bank in four files.
 
 ### Changed
 - `Public` is a reserved word; `Export` and `as` are words only in `Export Use` and `Use M as A`. A program that used another module now marks with `Public` what that module offers.
-
+- Releases follow the version (canon r3.101): when a push to `main` carries a version that has no tag yet, CI builds Linux and Windows in Release, runs the suite, packages, extracts and runs the packages, and publishes `vMAJOR.MINOR.RELEASE` as the latest release, with this changelog's section as notes and the stage in its title. The build reads its version from `Version.h`. 34 completed OpenSpec changes are archived.
 - The grammar and OpenSpec live under `docs/` (canon r3.100, change `docs-layout`): `docs/grammar/grammar.ebnf` and `docs/openspec/`. OpenSpec commands run from `docs/` (`cd docs && openspec validate --all --strict`). `docs/openspec/config.yaml` was invalid YAML and OpenSpec had been ignoring the project's rules; it is fixed.
 
 ### Fixed
+- The packaged compiler run through PATH (`inox run f.inox` after `set-inox-env`) did not find libinoxrt beside itself: it took the directory it was run from for its own. It now asks the operating system where it is (Linux, Windows, macOS, FreeBSD), and searches PATH as a last resort. Found by the new release smoke test.
 - A method argument was not analyzed against its parameter: `A.Deposit(500.00)` with a Currency parameter was rejected as Float64. It is analyzed like a routine argument.
 
-## 0.3.0 pre-alpha — in progress
+### From 0.3: numbers, text and the basic library
 
-### Changed
+#### Changed
 - Programs are optimized by default (canon r3.98, CANON-23, change `optimize-default`): `inox run`, `inox build` and `inox file.inox` call clang with `-O2`, and `--debug` before the file builds with `-O0`. Before, every program was built without optimization: an arithmetic loop of 300 million steps took 1.99 s and now takes 0.41 s, the time of the same loop in C -O2. Checks are unchanged.
 
-### Fixed
+#### Fixed
 - `shl` on an Integer dropped the bits that left Int64 silently (`(2 ^ 62) shl 2` was 0); it is now the product A * 2^N, checked as on UInt64: a constant beyond Int64 is a compile error, a run-time one stops with "integer overflow" (canon r3.97, CANON-8, change `expression-checks`). Found by the new expression test.
 - `4(5 * (2 + 2))` and `(2 + 3)(4)` were accepted by the analyzer as calls and failed only in code generation; they are now rejected naming the `*` to write, as is `X(2)` for a variable (change `expression-checks`). `1 < X < 10` gets a message that comparisons are not chained.
 
-### Tests
+#### Tests
 - The arithmetic differential test is rewritten: random expressions with only the parentheses CANON-20 requires, checked against an independent parser and evaluator of the law, folded and at run time, and with expressions that must trap; `tests/runtime/math-expressions.inox` holds 152 written expressions.
 
-### Changed
+#### Changed
 - `mod` and `rem` as in Ada (canon r3.96, CANON-8, change `ada-modulus`): `mod` now has the sign of the divisor (`-7 mod 2` is 1, it was -1), and the new reserved word `rem` gives the remainder with the sign of the dividend (`-7 rem 2` is -1, what `mod` gave before). With non-negative operands both are as before.
 - `/` divides as in Ada (canon r3.95, CANON-8, change `integer-slash`): two integers give the integer division, truncated toward zero, which `div` gave before; two reals or two decimals their division. An integer and a real are never mixed without a conversion. `/=` now divides an Integer too, and a constant zero divisor of integer `/` is a compile error. `mod` is unchanged.
 
-### Removed
+#### Removed
 - `div` is no longer a reserved word (canon r3.95): it is an ordinary name, and `A div 2` is a parse error. Every program, test, example and the standard library now write `/`.
 - The migration diagnostic for the old `Var` block (canon r3.94, CANON-4, change `remove-var-diagnostic`): `Var` is an ordinary name, and a `Var` block or `Var X := 1` now fails with the generic message of any unexpected text. `mut` stays reserved.
 
-### Added
+#### Added
 - Explicit discard (canon r3.93, CANON-7, change `discard-results`): `_ := F(X)` calls a function or a method for its effect and drops its result on purpose; a function alone as a statement (E2) and an unread local (OPEN-4) stay compile errors, and the E2 message now shows both `X := F(...)` and `_ := F(...)`. `_` is a discard target, not a variable: it is never read, declared, compounded or chained, and only a call with a result is discarded (not a literal, a variable, a field, an operation, a conversion or a construction). The call runs once, with its exceptions and contracts, and an owned result is released. **Fixed:** a line at module level that is no declaration (`+ Integer : ... ;`) was silently ignored; it is now an error.
 - Std.DateTime, Std.DateUtils and Std.SystemUtils (canon r3.92, CANON-18, CANON-23, change `datetime-systemutils`). A `TDateTime` counts microseconds since 0001-01-01 (proleptic Gregorian), a `TDate` days, a `TDuration` microseconds; `EncodeDate`, `EncodeDateTime` (a date that does not exist breaks a precondition), `DecodeDate`, `Year` .. `MicroSecond`, `DayOfWeek`, `AddDays`, `AddSeconds`, `DaysBetween`, `IsLeapYear`, `DaysInMonth`, `NowUTC`, `Now`, `ToLocal`, `ToUTC` (UTC and the system's zone only). Std.DateUtils: `ToISO8601`, `FromISO8601` (raises `ConversionError`), `FormatDateTime` with Delphi's codes. Std.SystemUtils: `ParamCount`, `ParamStr(I)`, `GetEnv`, `EnvExists`, `Halt(Code)`, `Sleep(Ms)`, `CurrentDir`, `PlatformName`, UTF-8 on every system. `inox run file A B` and `inox file A B` pass arguments to the program, and a non-zero exit status is reported and returned. `examples/edit.inox`: a micro-editor with Emacs keys. **Changed:** a missing module is now diagnosed with Std.Process as the example of a module not yet written.
 - Currency and Crypto (canon r3.91, CANON-8, CANON-17, CANON-19, change `decimals`): Currency is an exact decimal with 6 places (an Int64 scaled by 10^6), Crypto one with 18 (an Int128 scaled by 10^18). A literal where one is expected, or next to one (`Price * 3`), is read exactly; more places than the type holds or a value beyond it is a compile error. `+` and `-` are exact; `*` and `/` are exact and then rounded half to even to the type's places; an Integer variable, a Float or the other decimal is converted explicitly (`Price * Currency(Count)`). `Integer(C)` truncates; `Std.Math` gains `Round` (half to even) and `Trunc` for reals and decimals; `Crypto(C)` is exact and `Currency(Cr)` rounds half to even; `Currency(S)` reads text. A decimal is written with at least two decimals (`19.99`, `5.00`, `0.123456`) and read by `Get`. Decimals live in locals, parameters, results, fields, arrays, State and Consts (`Const Fee := Currency(2.5)`). New runtime error "decimal overflow".

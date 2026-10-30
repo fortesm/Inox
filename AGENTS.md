@@ -287,6 +287,13 @@ time. Each names where it bit.
   must see every `[FAIL]`: a driver case named by a label counts by its
   label (it once counted only `.inox` paths, and a broken `--debug` case
   passed unseen). In PowerShell, `2>&1 1>$null` discards both streams.
+- **Releases publish themselves.** `.github/workflows/release.yml` publishes
+  `vMAJOR.MINOR.RELEASE` when a push to main carries a version without a
+  tag (r3.101): a change of `Version.h` is a release, and its CHANGELOG
+  section (`## X.Y.Z ...`) is required, or the workflow fails.
+- **argv[0] is not the executable's path.** `inox` run through PATH gives
+  argv[0] = "inox"; `support::executableDirectory` asks the operating
+  system first, or the packaged compiler misses its libinoxrt (r3.101).
 - **GitHub GraphQL is blocked here.** Use `gh api` REST routes (`gh pr view`
   and `gh pr create` fail); job logs come from check-run annotations.
 
@@ -302,7 +309,7 @@ time. Each names where it bit.
 - Do not use `git add .`; add only task-scoped paths.
 - Every language change updates code, tests, the specs, `docs/site/index.html`, `CHANGELOG.md`, `docs/STATUS.md` and a revision line in `docs/openspec/specs/constitution/revisions.md`.
 - If a feature is in the law but not implemented, record it as a conformance gap in `docs/STATUS.md` instead of changing the spec.
-- Versions (constitution VERSIONING): MAJOR.MINOR.RELEASE.BUILD plus a stage, in `src/compiler/support/Version.h` (`0.2.0`, `pre-alpha`); MAJOR, MINOR, RELEASE and the stage change only by the maintainer's decision. BUILD is never edited: `cmake/InoxBuildNumber.cmake` writes the commit count at every build (CI needs `fetch-depth: 0`). Revisions are `r3.NN` (never "version"); update `kCanonRevision` and the top of `revisions.md` together — the suite checks `inox --version` against it.
+- Versions (constitution VERSIONING): MAJOR.MINOR.RELEASE.BUILD plus a stage, in `src/compiler/support/Version.h` (`0.4.0`, `pre-alpha`; CMake reads it from there); MAJOR, MINOR, RELEASE and the stage change only by the maintainer's decision. BUILD is never edited: `cmake/InoxBuildNumber.cmake` writes the commit count at every build (CI needs `fetch-depth: 0`). Revisions are `r3.NN` (never "version"); update `kCanonRevision` and the top of `revisions.md` together — the suite checks `inox --version` against it.
 - Licensing: MPL-2.0 without the "Incompatible With Secondary Licenses" notice; preserve copyright and SPDX headers in every file.
 - Lower every block (function bodies, loop bodies, `if`/`elif`/`else` branches, `try` regions) through the single statement dispatcher in the LLVM emitter. Do not add per-container lists of allowed statements; a construct that lowers in one block must lower in every block context where semantic analysis accepts it (v3.21). Context rules such as `leave`/`continue` only inside a loop, `until` only inside a repeat, or `Retry` only in a handler belong to the semantic analyzer, not to the emitter.
 - Run `python tools/backend_gaps.py <inox>` after backend changes: 0 BUG is required, and with clang on PATH it also checks that the emitted IR is accepted.
