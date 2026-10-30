@@ -2,8 +2,8 @@ true false true false false true
 true true true true true true
 true true true true
 true false true true true
-unless: Ana antes de ana
-elif: vazio e ordem
+unless: Ana before ana
+elif: empty and order
 ana água true
 1 true
 3

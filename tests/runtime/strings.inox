@@ -19,7 +19,7 @@ Type
     ;
 
 State
-    Greeting String := "Olá"
+    Greeting String := "Hello"
 ;
 
 Shout(Text String) String :
@@ -69,9 +69,9 @@ Main :
 
     Team TTeam
     Team.FLeader.FName := "Eva"
-    Team.FTags[1] := "rápido"
+    Team.FTags[1] := "quick"
     Copy TTeam := Team
-    Copy.FTags[1] := "lento"
+    Copy.FTags[1] := "slow"
     PutLn(Team.FLeader.FName, " ", Team.FTags[1], " ", Copy.FTags[1], " [", Team.FTags[2], "]")
 
     X String := "x"
@@ -81,11 +81,11 @@ Main :
     Greeting := Greeting
 
     for K in 1..3
-        Line String := "volta"
+        Line String := "round"
         Line := Shout(Line)
     ;
     with P
-        .FName := "Fim"
+        .FName := "End"
     ;
     PutLn(P.FName)
 ;

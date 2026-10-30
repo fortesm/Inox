@@ -6,12 +6,12 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-11: a routine without a result is not a `with` target.
-Mostrar :
+Show :
     PutLn(1)
 ;
 
 Main :
-    with Mostrar
+    with Show
         PutLn(2)
     ;
 ;

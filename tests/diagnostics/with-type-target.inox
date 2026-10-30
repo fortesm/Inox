@@ -7,12 +7,12 @@
 
 == CANON-11: the target of `with` is a variable or a value, never a type.
 Type
-    TCliente Struct
-        FNome String := ""
+    TClient Struct
+        FName String := ""
     ;
 
 Main :
-    with TCliente
-        .FNome := "Coho Vineyard"
+    with TClient
+        .FName := "Coho Vineyard"
     ;
 ;

@@ -9,53 +9,53 @@
 == and left by an exception (leak-checked by string_leak_check).
 Type
     TItem Struct
-        FTexto String := ""
-        FProximo Option<Own<TItem>>
+        FText String := ""
+        FNext Option<Own<TItem>>
     ;
-    TPar Struct
+    TCouple Struct
         FA Own<TItem>
         FB String := ""
     ;
 
-Ler String :
+ReadIt String :
     S := ""
     GetLn(S)
     Return S
 ;
 
-Empilhar(Topo Option<Own<TItem>>, Texto String) Own<TItem> :
-    Novo := New(TItem(FTexto := Texto))
-    Novo.FProximo := Move(Topo)
-    Return Move(Novo)
+Push(Top Option<Own<TItem>>, Text String) Own<TItem> :
+    NewValue := New(TItem(FText := Text))
+    NewValue.FNext := Move(Top)
+    Return Move(NewValue)
 ;
 
-Falhar(Item Own<TItem>) :
-    PutLn("antes de falhar: ", Item.FTexto)
+Fail(Item Own<TItem>) :
+    PutLn("before fail: ", Item.FText)
     Raise IOError
 ;
 
 Main :
-    Pilha Option<Own<TItem>>
+    Stack Option<Own<TItem>>
     for I in 1..3
-        Pilha := Empilhar(Move(Pilha), Ler)
+        Stack := Push(Move(Stack), ReadIt)
     ;
-    Topo := Link(Pilha)
-    while Alive(Topo)
-        PutLn("item ", Topo.FTexto)
-        Topo := Link(Topo.FProximo)
+    Top := Link(Stack)
+    while Alive(Top)
+        PutLn("item ", Top.FText)
+        Top := Link(Top.FNext)
     ;
-    Par := TPar(FA := New(TItem(FTexto := Ler)), FB := Ler)
-    Outro := Move(Par)
-    PutLn("par ", Outro.FA.FTexto, " ", Outro.FB)
-    Value(Outro.FA) := TItem(FTexto := Ler)
-    PutLn("trocado ", Outro.FA.FTexto)
+    Couple := TCouple(FA := New(TItem(FText := ReadIt)), FB := ReadIt)
+    Other := Move(Couple)
+    PutLn("couple ", Other.FA.FText, " ", Other.FB)
+    Value(Other.FA) := TItem(FText := ReadIt)
+    PutLn("swapped ", Other.FA.FText)
     try
-        Falhar(New(TItem(FTexto := Ler)))
+        Fail(New(TItem(FText := ReadIt)))
     except
         On IOError
-            PutLn("a exceção liberou o item")
+            PutLn("the exception freed the item")
         ;
     ;
-    Pilha := None
-    PutLn("fim")
+    Stack := None
+    PutLn("end")
 ;

@@ -1,7 +1,7 @@
 1: 11
-2: vazio
+2: empty
 3: 33
 arr 10 21 0
-texto 42 42
-global 7, contador 99
+text 42 42
+global 7, counter 99
 with 2

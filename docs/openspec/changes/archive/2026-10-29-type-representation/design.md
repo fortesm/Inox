@@ -44,7 +44,7 @@ a `switch`; the type module only records what a kind is. Aliases (`Integer`,
 is its canonical spelling, exactly as the diagnostics print it today.
 
 `TypeSyntax` reads the written form the parser produces (`Array[1..Size]
-Byte`, `Link<Array[1..5] TContato>`) into a tree; the analyzer resolves the
+Byte`, `Link<Array[1..5] TContact>`) into a tree; the analyzer resolves the
 tree into a `Type`, applying the language rules and their messages. It
 replaces `support/ArrayType` and `support/PointerType`.
 

@@ -14,102 +14,102 @@
 Use Std.Strings
 
 Type
-    TNo Struct
-        FValor Integer
-        FNome String := ""
+    TNode Struct
+        FValue Integer
+        FName String := ""
     ;
-    TContador Struct
+    TCounter Struct
         FTotal Integer := 0
     ;
-    TNota Struct
-        FTexto String := ""
-        FPeso Integer := 1
+    TGrade Struct
+        FText String := ""
+        FWeight Integer := 1
     ;
 
 State
-    Chamadas Integer := 0
+    Calls Integer := 0
 ;
 
-Registrar(Texto String) Integer :
-    Chamadas += 1
-    PutLn(Texto)
-    Return Chamadas
+Record(Text String) Integer :
+    Calls += 1
+    PutLn(Text)
+    Return Calls
 ;
 
-Proximo Integer :
-    Chamadas += 1
-    Return Chamadas
+NextOne Integer :
+    Calls += 1
+    Return Calls
 ;
 
-Saudacao(Nome String) String :
-    Chamadas += 1
-    Return "olá, " + Nome + "!"
+Saudacao(Name String) String :
+    Calls += 1
+    Return "hello, " + Name + "!"
 ;
 
-NovoNo(Valor Integer) Own<TNo> :
-    Chamadas += 1
-    Return New(TNo(FValor := Valor, FNome := "nó " + String(Valor)))
+NewNode(Amount Integer) Own<TNode> :
+    Calls += 1
+    Return New(TNode(FValue := Amount, FName := "nó " + String(Amount)))
 ;
 
-Nota(Texto String) TNota :
-    Chamadas += 1
-    Return TNota(FTexto := Texto + " (cópia)")
+Grade(Text String) TGrade :
+    Calls += 1
+    Return TGrade(FText := Text + " (copy)")
 ;
 
-Preco(Unidades Integer) Currency :
-    Chamadas += 1
-    Return 19.99 * Currency(Unidades)
+Price(Units Integer) Currency :
+    Calls += 1
+    Return 19.99 * Currency(Units)
 ;
 
-Primeiro<T>(A T, B T) T :
-    Chamadas += 1
+First<T>(A T, B T) T :
+    Calls += 1
     Return A
 ;
 
-Ler(Texto String) Integer :
-    Chamadas += 1
-    Return Integer(Texto)
+ReadIt(Text String) Integer :
+    Calls += 1
+    Return Integer(Text)
 ;
 
-TContador.Somar(Self mut, N Integer) Integer :
+TCounter.Add(Self mut, N Integer) Integer :
     Self.FTotal += N
     Return Self.FTotal
 ;
 
-TContador.Dobrar(Self mut) Integer :
+TCounter.DoubleIt(Self mut) Integer :
     Self.FTotal *= 2
     Return Self.FTotal
 ;
 
 Main :
-    _ := Registrar("um efeito")
-    _ := Proximo
+    _ := Record("an effect")
+    _ := NextOne
     _ := Saudacao("Marcelo")
-    _ := NovoNo(7)
-    _ := Nota("rascunho")
-    _ := Preco(3)
-    _ := Primeiro("a", "b")
+    _ := NewNode(7)
+    _ := Grade("draft")
+    _ := Price(3)
+    _ := First("a", "b")
     _ := UpperCase("discarded")
-    PutLn("chamadas: ", Chamadas)
+    PutLn("calls: ", Calls)
 
-    C TContador
-    _ := C.Somar(5)
-    _ := C.Dobrar
+    C TCounter
+    _ := C.Add(5)
+    _ := C.DoubleIt
     PutLn("total: ", C.FTotal)
 
     for I in 1..1000
         _ := Saudacao(String(I))
     ;
-    PutLn("chamadas: ", Chamadas)
+    PutLn("calls: ", Calls)
 
-    _ := Ler("42")
+    _ := ReadIt("42")
     try
-        _ := Ler("quarenta e dois")
+        _ := ReadIt("forty-two")
         PutLn("never")
     except
         On ConversionError
             PutLn("the exception goes through the discard")
         ;
     ;
-    PutLn("chamadas: ", Chamadas)
+    PutLn("calls: ", Calls)
 ;

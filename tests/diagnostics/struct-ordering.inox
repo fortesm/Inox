@@ -15,6 +15,6 @@ Main :
     P TPoint := TPoint(FX := 1)
     Q TPoint := TPoint(FX := 2)
     if P < Q
-        PutLn("menor")
+        PutLn("smaller")
     ;
 ;

@@ -2,11 +2,11 @@
 
 ### Requirement: Method reuse
 `TName Struct (TPart, ...)` SHALL reuse each struct listed: the part is a
-field named after its type (`A.TPessoa`), written first, and the struct also
+field named after its type (`A.TPerson`), written first, and the struct also
 offers the part's fields and methods directly, at every level. A reused
-method runs on its part: `A.UpdateNome(X)` is `A.TPessoa.UpdateNome(X)`.
+method runs on its part: `A.UpdateName(X)` is `A.TPerson.UpdateName(X)`.
 A struct is never its part: there is no subtyping. Construction names the
-part: `TAssinatura(TPessoa := P)`.
+part: `TSubscription(TPerson := P)`.
 
 #### Scenario: Fields and methods through the parts
 - **WHEN** a struct reuses one that reuses a third, and the program calls and assigns their members directly, through `with` and by the full path
@@ -37,7 +37,7 @@ itself.
 
 ### Requirement: Override replaces a reused method
 A method with the name of a reused method SHALL be marked `Override`
-(`TAssinatura.Title(Self) String Override :`) and keep its signature: the
+(`TSubscription.Title(Self) String Override :`) and keep its signature: the
 parameters after `Self`, their modes, the result and `Self` or `Self mut`.
 It replaces the reused methods for callers of the struct; they stay
 reachable by their path. `Override` on anything else is an error.

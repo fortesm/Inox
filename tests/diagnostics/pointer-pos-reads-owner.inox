@@ -7,15 +7,15 @@
 
 == Safe pointers and CANON-24: a pos clause reads an owner the routine takes only through old.
 Type
-    TNo Struct
-        FValor Integer := 0
+    TNode Struct
+        FValue Integer := 0
     ;
 
-Usar(P Own<TNo>) Integer :
-    pos Result = P.FValor
-    Return P.FValor
+Apply(P Own<TNode>) Integer :
+    pos Result = P.FValue
+    Return P.FValue
 ;
 
 Main :
-    PutLn(Usar(New(TNo)))
+    PutLn(Apply(New(TNode)))
 ;

@@ -1,12 +1,12 @@
 ## Why
 
 Object-oriented languages let a library accept "anything that knows how to
-Desenhar" and call types it does not know (frameworks, plugins, GUI events).
+Draw" and call types it does not know (frameworks, plugins, GUI events).
 Inox rejects interfaces and protocols as nominal entities (FUTURE "Generics
 and static proof"), and variant structs are closed. What fills the gap
 without a new kind of type is a **routine type**: a routine kept in a
 variable, a field or a parameter, as Pascal's procedural types
-(`TComparacao = function(A, B: Integer): Boolean`,
+(`TComparison = function(A, B: Integer): Boolean`,
 `Button1.OnClick := Button1Click`).
 
 Recorded at the request of Marcelo Fortes, 2026-10-14.
@@ -20,19 +20,19 @@ One sort, several orders:
 
 ```
 Type
-    TComparacao Routine (A Integer, B Integer) Bool
+    TComparison Routine (A Integer, B Integer) Bool
 
-Crescente(A Integer, B Integer) Bool :
+Ascending(A Integer, B Integer) Bool :
     Return A < B
 ;
-Decrescente(A Integer, B Integer) Bool :
+Descending(A Integer, B Integer) Bool :
     Return A > B
 ;
 
-Ordenar(ref mut V Array[1..5] Integer, AntesDe TComparacao) :
+Sort(ref mut V Array[1..5] Integer, Before TComparison) :
     for I in 1..4
         for J in I + 1..5
-            if AntesDe(V[J], V[I])
+            if Before(V[J], V[I])
                 T := V[I]
                 V[I] := V[J]
                 V[J] := T
@@ -42,9 +42,9 @@ Ordenar(ref mut V Array[1..5] Integer, AntesDe TComparacao) :
 ;
 
 Main :
-    Notas Array[1..5] Integer
-    Ordenar(Notas, Crescente)          == the routine itself, not its result
-    Ordenar(Notas, Decrescente)
+    Grades Array[1..5] Integer
+    Sort(Grades, Ascending)          == the routine itself, not its result
+    Sort(Grades, Descending)
 ;
 ```
 
@@ -52,16 +52,16 @@ Behavior per value, not per type (a game):
 
 ```
 Type
-    TReacao Routine (Self mut TSoldado)
-    TSoldado Struct
-        FVida Integer := 100
-        FAoVerInimigo TReacao := Atacar        == every soldier keeps its own reaction
+    TReacao Routine (Self mut TSoldier)
+    TSoldier Struct
+        FLife Integer := 100
+        FOnSeeEnemy TReacao := Attack        == every soldier keeps its own reaction
     ;
 
-if S.FVida < 20
-    S.FAoVerInimigo := Fugir                   == this wounded soldier changes behavior
+if S.FLife < 20
+    S.FOnSeeEnemy := Flee                   == this wounded soldier changes behavior
 ;
-S.FAoVerInimigo(S)
+S.FOnSeeEnemy(S)
 ```
 
 | | `Override` (CANON-9, implemented) | Routine type |

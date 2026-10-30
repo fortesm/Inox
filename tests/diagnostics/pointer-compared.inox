@@ -7,13 +7,13 @@
 
 == Safe pointers: Same, Alive and Value, never = on pointers.
 Type
-    TNo Struct
-        FValor Integer := 0
-        FProximo Option<Own<TNo>>
+    TNode Struct
+        FValue Integer := 0
+        FNext Option<Own<TNode>>
     ;
 
 Main :
-    P := New(TNo)
+    P := New(TNode)
     L := Link(P)
     PutLn(L = Link(P))
 ;

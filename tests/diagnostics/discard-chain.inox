@@ -7,24 +7,24 @@
 
 == r3.93: a discard stands alone; it is not chained.
 Type
-    TPonto Struct
+    TPoint Struct
         FX Integer := 0
     ;
 
-Dobro(N Integer) Integer :
+Twice(N Integer) Integer :
     Return 2 * N
 ;
 
-Mostrar(Texto String) :
-    PutLn(Texto)
+Show(Text String) :
+    PutLn(Text)
 ;
 
-TPonto.Limpar(Self mut) :
+TPoint.Clear(Self mut) :
     Self.FX := 0
 ;
 
 Main :
     A := 0
-    _ := A := Dobro(1)
+    _ := A := Twice(1)
     PutLn(A)
 ;

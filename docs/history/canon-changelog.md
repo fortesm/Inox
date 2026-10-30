@@ -36,7 +36,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #         Layer B). Decisions F1–F7 approved by Marcelo Fortes on 2026-10-12
 #         (all approved, with I/O errors usable in try / except On /
 #         ensure, not only with Retry, and the basic file functions); design
-#         approved on 2026-10-12 ("100% aprovado!") with the module pair
+#         approved on 2026-10-12 (approved in full) with the module pair
 #         Std.Files (the File type) / Std.IOUtils (the functions). OpenSpec
 #         change `file-io`, Risk: high.
 #   - Layer A, CANON-17 "Files": a File closes itself when the routine that
@@ -251,9 +251,9 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 # v3.51 — 2026-10-12 — enum printing decided (Layer A, Marcelo Fortes,
 #         2026-10-12: answer (a), the literal's name). Closes the item left open
 #         in v3.50: `PutLn(E)` and `Put(E)` print the enum literal's name as it
-#         is spelled in its declaration (`Copas` for `TNaipe (Paus, Ouros,
-#         Copas, Espadas)`); `Ord(E)` gives the ordinal. Enum literals are
-#         identifiers, never strings: `TNaipe ("Paus", ...)` is not an enum.
+#         is spelled in its declaration (`Hearts` for `TCardSuit (Clubs, Diamonds,
+#         Hearts, Spades)`); `Ord(E)` gives the ordinal. Enum literals are
+#         identifiers, never strings: `TCardSuit ("Clubs", ...)` is not an enum.
 #
 # v3.50 — 2026-10-12 — Layer A decisions for UInt64, Enum/Range/Set and String
 #         (Marcelo Fortes, 2026-10-12, answering item by item the open
@@ -1264,7 +1264,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     Named-only (positional invalid); `:=` separator (keeps `:` exclusive to
 #     function declaration); order free; omitted field uses default or is an error
 #     if a scalar without default; duplicate/unknown field is an error; empty
-#     `Tipo()` invalid (use `C TPoint` for all-defaults). Closes OPEN-1.
+#     `TType()` invalid (use `C TPoint` for all-defaults). Closes OPEN-1.
 #
 # v3.1 — 2026-06-14 — approved by Marcelo Fortes
 #   - DIVISION BY ZERO: constant divisor zero is a COMPILE-TIME ERROR; dynamic

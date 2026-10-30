@@ -1,9 +1,9 @@
 FileNotFound
 ensure 1
-IOError pega FileNotFound
-tentativa 1: não existe, criando
+IOError catch FileNotFound
+attempt 1: missing, creating
 ensure 2
-tentativa 2: criado no handler
+attempt 2: created in the handler
 ensure 2
-Else: ler um arquivo aberto para escrita
-IOError: arquivo fechado
+Else: reading a file open for writing
+IOError: file closed

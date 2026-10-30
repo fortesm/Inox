@@ -1,14 +1,14 @@
 ## Why
 
 Before generics, the compiler must stop carrying types as text. Today a type
-is a string such as `"Array[1..5] TContato"` or `"Own<TNo>"`: the analyzer
+is a string such as `"Array[1..5] TContact"` or `"Own<TNode>"`: the analyzer
 and the code generator each re-read it with their own small parsers
 (`support/ArrayType`, `support/PointerType`), compare it with literals
 (`== "Int64"`, `== "String"`), and keep separate lists of the same facts
 (the integer ranges are written in three places). The code generator also
 re-parses routine signatures from their tokens and rebuilds struct layouts
-from the AST, duplicating the analyzer. Generic types (`TPar<String,
-Own<TNo>>`) and the substitution of `T` would make this fragile.
+from the AST, duplicating the analyzer. Generic types (`TCouple<String,
+Own<TNode>>`) and the substitution of `T` would make this fragile.
 
 Marcelo Fortes, 2026-10-17: follow the plan; first, the refactoring: real types mapping LLVM's types, cloning of statements, codegen reading the types of the analysis; good practices, avoiding the classic architecture and implementation mistakes of compilers.
 

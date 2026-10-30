@@ -7,12 +7,12 @@
 
 == Safe pointers: an owner is never empty.
 Type
-    TNo Struct
-        FValor Integer := 0
-        FProximo Option<Own<TNo>>
+    TNode Struct
+        FValue Integer := 0
+        FNext Option<Own<TNode>>
     ;
 
 Main :
-    P Own<TNo>
-    PutLn(P.FValor)
+    P Own<TNode>
+    PutLn(P.FValue)
 ;

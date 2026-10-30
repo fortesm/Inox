@@ -11,7 +11,7 @@
 == Strings); the sanitizer gate runs this test with leak detection.
 Type
     TPet Struct
-        FName String := "sem nome"
+        FName String := "no name"
         FKind String
         FLegs Integer := 4
     ;
@@ -39,7 +39,7 @@ Main :
 
     NoPet TPet
     Pets Array[1..3] TPet := Fill(NoPet)
-    Pets[1] := MakePet(First, "gato")
+    Pets[1] := MakePet(First, "cat")
     Pets[2].FName := Second
     PutLn(Pets[1].FName, " ", Pets[1].FKind, " ", Pets[2].FName, " [", Pets[2].FKind, "] ", Pets[3].FName, " ", Pets[3].FLegs)
 

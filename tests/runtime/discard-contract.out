@@ -1,3 +1,3 @@
 4 is even
-Inox runtime error: precondition violated: Metade: N mod 2 = 0: N is even
+Inox runtime error: precondition violated: Half: N mod 2 = 0: N is even
 inox: program stopped by an Inox runtime error (exit code 70)

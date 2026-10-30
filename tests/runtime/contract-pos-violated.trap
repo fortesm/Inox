@@ -1,1 +1,1 @@
-Inox runtime error: postcondition violated: TConta.DepositarErrado: Self.FSaldo = old Self.FSaldo + Valor
+Inox runtime error: postcondition violated: TAccount.DepositWrong: Self.FBalance = old Self.FBalance + Amount

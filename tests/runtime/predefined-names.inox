@@ -10,17 +10,17 @@
 == may name fields and methods, never a variable, a parameter, a routine, a
 == type or a Const. Main is an ordinary name. A case ends with `else`.
 Type
-    TPorta Struct
+    TDoor Struct
         Exit Integer := 6
         Main Bool := TRUE
-        True String := "campo"
+        True String := "field"
     ;
 
-TPorta.BitAnd(Self, Mask Integer) Integer :
+TDoor.BitAnd(Self, Mask Integer) Integer :
     Return Self.Exit bitand Mask
 ;
 
-TPorta.Abrir(Self mut) :
+TDoor.OpenIt(Self mut) :
     if Self.Main
         Self.Exit += 1
         Exit
@@ -28,20 +28,20 @@ TPorta.Abrir(Self mut) :
     Self.Exit := 0
 ;
 
-Classificar(N Integer) String :
+Classify(N Integer) String :
     case N
         0 Return "zero"
-        1..9 Return "pequeno"
-        else Return "grande"
+        1..9 Return "small"
+        else Return "large"
     ;
 ;
 
 Main :
-    P TPorta
+    P TDoor
     PutLn(P.Exit, " ", P.Main, " ", P.True)
-    P.Abrir
+    P.OpenIt
     PutLn(P.Exit, " ", P.BitAnd(3))
     PutLn(5 BITOR 2, " ", 6 BitXor 3, " ", bitnot 0)
     PutLn(true, " ", False, " ", not FALSE)
-    PutLn(Classificar(0), " ", Classificar(7), " ", Classificar(42))
+    PutLn(Classify(0), " ", Classify(7), " ", Classify(42))
 ;

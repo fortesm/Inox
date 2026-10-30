@@ -7,18 +7,18 @@
 
 == Safe pointers: an Own field is given in the construction.
 Type
-    TNo Struct
-        FValor Integer := 0
-        FProximo Option<Own<TNo>>
+    TNode Struct
+        FValue Integer := 0
+        FNext Option<Own<TNode>>
     ;
 
 Type
-    TCaixa Struct
-        FConteudo Own<TNo>
-        FRotulo String := ""
+    TCrate Struct
+        FContent Own<TNode>
+        FLabel String := ""
     ;
 
 Main :
-    D := TCaixa(FRotulo := "vazia")
-    PutLn(D.FRotulo)
+    D := TCrate(FLabel := "emptyone")
+    PutLn(D.FLabel)
 ;

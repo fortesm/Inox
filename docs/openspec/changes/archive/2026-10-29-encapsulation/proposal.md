@@ -32,6 +32,6 @@ writes to public fields.
 3. Can a struct with hidden fields be built with named construction outside
    its module, or only through a routine of the module?
 4. Hidden fields and method reuse (CANON-9): does a struct that reuses
-   `TPessoa` see the hidden fields of its part?
+   `TPerson` see the hidden fields of its part?
 5. With hidden fields, the invariant check after outside writes (CANON-24)
    becomes unnecessary for them, as in Eiffel.

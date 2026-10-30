@@ -1,15 +1,15 @@
-soma 10, primeiro um 1
-X 7, espião 7, mesmo true
-ponto 6, soma 6, tabela 9
+sum 10, first one 1
+X 7, spy 7, same true
+point 6, sum 6, table 9
 P 111 113 2
-vivo depois de Free: false
-de novo: 3, o Link antigo continua morto: false
-vazado vivo: false
-movido 1
-contado 10
-filho docs, pai raiz, vivo true
-depois de None: false false
-depois de Free: false
-caixa 8 dentro
-cópia 4, novo 40 true
-longa 5000050000
+alive after Free: false
+again: 3, the old Link stays dead: false
+leaked alive: false
+moved 1
+counted 10
+child docs, parent root, alive true
+after None: false false
+after Free: false
+box 8 inside
+copy 4, new 40 true
+longtext 5000050000

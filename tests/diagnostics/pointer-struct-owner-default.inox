@@ -7,18 +7,18 @@
 
 == Safe pointers: a struct holding an Own field has no default value.
 Type
-    TNo Struct
-        FValor Integer := 0
-        FProximo Option<Own<TNo>>
+    TNode Struct
+        FValue Integer := 0
+        FNext Option<Own<TNode>>
     ;
 
 Type
-    TCaixa Struct
-        FConteudo Own<TNo>
-        FRotulo String := ""
+    TCrate Struct
+        FContent Own<TNode>
+        FLabel String := ""
     ;
 
 Main :
-    D TCaixa
-    PutLn(D.FRotulo)
+    D TCrate
+    PutLn(D.FLabel)
 ;

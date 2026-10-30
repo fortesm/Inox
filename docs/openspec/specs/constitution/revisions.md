@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.102
+Canon revision: r3.103
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -137,7 +137,7 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   detected, never dangling (permissive with detection); it is named
   `Link<T>`, not Handle, to avoid confusion with Delphi's and Windows'
   handles; `Value`, `New` and `Free` keep their names; an absent owner is
-  `Option<Own<TNo>>`. Decided by Marcelo Fortes. Change `safe-pointers` (design
+  `Option<Own<TNode>>`. Decided by Marcelo Fortes. Change `safe-pointers` (design
   awaiting approval, no code).
 - r3.73 — 2026-10-16 — Safe pointers become law (CANON-25: Owners, Moves
   are checked, Links, Access through pointers, Owners in routines and
@@ -155,7 +155,7 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   meaning and can never be declared (free as field and method names);
   `Main` is an ordinary name; `step`, `on` and `mut` stay reserved. `{` and
   `}` are reserved until generics and concurrency show their use. `div` and
-  `/` stay as they are; `Float(Soma / N)` as the exact quotient is a FUTURE
+  `/` stay as they are; `Float(Sum / N)` as the exact quotient is a FUTURE
   direction. Marcelo Fortes, 2026-10-16. Change `keyword-review`.
 - r3.75 — 2026-10-16 — CANON-11 says what `with` does with its target: a
   variable or a value, never a type, evaluated once on entry; `.Member`
@@ -457,3 +457,8 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   history, the roadmap and code comments becomes the decision it carried,
   in English, with his name and the date; no decision changes. Decided by
   Marcelo Fortes, 2026-10-29. Change `decisions-not-dialogue`.
+- r3.103 — 2026-10-30 — Test and example programs and the code
+  illustrations of the documents use English names and texts (`TAccount`,
+  `FBalance`, `TNode`, `Hearts`); names of people and places and Unicode
+  test data stay. No rule changes. Decided by Marcelo Fortes, 2026-10-30.
+  Change `english-programs`.

@@ -8,15 +8,15 @@
 == A freed block reused by a new object of the same size: an old Link
 == never matches it (the generation changed).
 Type
-    TPeca Struct
-        FPeso Integer := 0
+    TPiece Struct
+        FWeight Integer := 0
     ;
 
 Main :
-    A := New(TPeca(FPeso := 1))
-    Velha := Link(A)
+    A := New(TPiece(FWeight := 1))
+    Stale := Link(A)
     Free(A)
-    B := New(TPeca(FPeso := 2))
-    PutLn("novo ", B.FPeso, ", velha viva: ", Alive(Velha))
-    PutLn(Velha.FPeso)
+    B := New(TPiece(FWeight := 2))
+    PutLn("newvalue ", B.FWeight, ", stale alive: ", Alive(Stale))
+    PutLn(Stale.FWeight)
 ;

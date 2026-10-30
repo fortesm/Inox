@@ -10,12 +10,12 @@ Main :
     Header[3] := $58   == 'X'
     Header[4] := 1
     try
-        Out := CreateBinary("dados.bin")
+        Out := CreateBinary("data.bin")
         WriteBytes(Out, Header[..])          == a Slice<Byte>
         Write(Out, Int32(-2), 2.5, true)     == 4 + 8 + 1 bytes, little-endian
         Close(Out)
 
-        Input := OpenBinary("dados.bin")
+        Input := OpenBinary("data.bin")
         PutLn(Size(Input))                   == 17
         Magic Array[1..4] Byte
         Count := ReadBytes(Input, Magic)     == fills the array; bytes read (4)
@@ -27,10 +27,10 @@ Main :
         PutLn(Count, " ", Magic[1], " ", N, " ", X, " ", Flag, " ", Position(Input), " ", ReadByte(Input))
     except
         On FileNotFound
-            PutLn("dados.bin não existe")
+            PutLn("data.bin does not exist")
         ;
         On IOError
-            PutLn("erro de E/S")
+            PutLn("I/O error")
         ;
     ;
 ;

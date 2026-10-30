@@ -7,36 +7,36 @@
 
 == CANON-24: a new value satisfies its invariant.
 Type
-    TConta Struct
-        FSaldo Integer := 0
-        invariant Self.FSaldo >= 0, "saldo nunca negativo"
+    TAccount Struct
+        FBalance Integer := 0
+        invariant Self.FBalance >= 0, "the balance is never negative"
     ;
 
-TConta.Depositar(Self mut, Valor Integer) :
-    pre Valor > 0, "depósito positivo"
-    pos Self.FSaldo = old Self.FSaldo + Valor
-    Self.FSaldo += Valor
+TAccount.Deposit(Self mut, Amount Integer) :
+    pre Amount > 0, "a positive deposit"
+    pos Self.FBalance = old Self.FBalance + Amount
+    Self.FBalance += Amount
 ;
 
-TConta.DepositarErrado(Self mut, Valor Integer) :
-    pos Self.FSaldo = old Self.FSaldo + Valor
-    Self.FSaldo += Valor + 1
+TAccount.DepositWrong(Self mut, Amount Integer) :
+    pos Self.FBalance = old Self.FBalance + Amount
+    Self.FBalance += Amount + 1
 ;
 
-TConta.Zerar(Self mut) :
-    Self.FSaldo := -1
+TAccount.Reset(Self mut) :
+    Self.FBalance := -1
 ;
 
-Dobro(N Integer) Integer :
+Twice(N Integer) Integer :
     pos Result = 2 * N
     Return N + N + 1
 ;
 
-Ajustar(ref mut Valor Integer, Novo Integer) :
-    Valor := Novo
+Adjust(ref mut Amount Integer, NewValue Integer) :
+    Amount := NewValue
 ;
 
 Main :
-    C := TConta(FSaldo := -3)
-    PutLn(C.FSaldo)
+    C := TAccount(FBalance := -3)
+    PutLn(C.FBalance)
 ;

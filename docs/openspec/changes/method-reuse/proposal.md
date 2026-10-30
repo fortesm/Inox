@@ -17,10 +17,10 @@ compile time; no runtime, no dispatch table, no subtyping).
 ## What Changes
 
 - `TName Struct (TPart, ...)` reuses structs. Each part is a field named
-  after its type (`A.TPessoa`); its fields and methods are offered by the
+  after its type (`A.TPerson`); its fields and methods are offered by the
   struct directly, at every level (decision 1a).
 - A reused method runs on its part (delegation, decision 2a):
-  `A.UpdateNome(X)` is `A.TPessoa.UpdateNome(X)`.
+  `A.UpdateName(X)` is `A.TPerson.UpdateName(X)`.
 - `TName.Method(...) Override :` replaces a reused method for callers of the
   struct, with the same signature; without `Override`, a method with a
   reused name is an error (decision 3b).
@@ -28,7 +28,7 @@ compile time; no runtime, no dispatch table, no subtyping).
   name, is an error at the struct's declaration. No subtyping: a struct is
   never its part.
 - Methods of built-in value types: `String.UpdateStr(Self mut, V String) :`
-  and `A.FPlano.UpdateStr("x")`; `Self mut` is the caller's variable
+  and `A.FPlan.UpdateStr("x")`; `Self mut` is the caller's variable
   (decision 4a). A field of `Self mut` is a writable place for `ref mut`
   arguments (decision 4b).
 - Conformance fixes found on the way: `Self` (read-only) can no longer

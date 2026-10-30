@@ -7,21 +7,21 @@
 
 == CANON-9 method reuse (OpenSpec change method-reuse): `Struct (TPart)`
 == offers the fields and methods of TPart at every level, a reused method
-== runs on its part (delegation: TPessoa.Show calls TPessoa.Title), Override
+== runs on its part (delegation: TPerson.Show calls TPerson.Title), Override
 == replaces a reused method for callers of the outer struct, and the full
 == path always works. Built-in type methods (String.UpdateStr) act on fields.
 Type
-    TEndereco Struct
-        FRua String := ""
-        FCidade String := ""
+    TAddress Struct
+        FStreet String := ""
+        FCity String := ""
     ;
-    TPessoa Struct (TEndereco)
+    TPerson Struct (TAddress)
         FId Integer := 0
-        FNome String := ""
+        FName String := ""
     ;
-    TAssinatura Struct (TPessoa)
+    TSubscription Struct (TPerson)
         FIdAss Integer := 0
-        FPlano String := ""
+        FPlan String := ""
     ;
     TA Struct
         FX Integer := 1
@@ -33,27 +33,27 @@ Type
         FZ Integer := 3
     ;
 
-TEndereco.Mudar(Self mut, Rua String, Cidade String) :
-    Self.FRua := Rua
-    Self.FCidade := Cidade
+TAddress.Change(Self mut, Street String, City String) :
+    Self.FStreet := Street
+    Self.FCity := City
 ;
 
-TPessoa.UpdateNome(Self mut, Nome String) :
-    if Nome # ""
-        Self.FNome := Nome
+TPerson.UpdateName(Self mut, Name String) :
+    if Name # ""
+        Self.FName := Name
     ;
 ;
 
-TPessoa.Title(Self) String :
-    Return "Pessoa"
+TPerson.Title(Self) String :
+    Return "Person"
 ;
 
-TPessoa.Show(Self) :
-    PutLn(Self.Title, ": ", Self.FNome, " (", Self.FCidade, ")")
+TPerson.Show(Self) :
+    PutLn(Self.Title, ": ", Self.FName, " (", Self.FCity, ")")
 ;
 
-TAssinatura.Title(Self) String Override :
-    Return "Assinante"
+TSubscription.Title(Self) String Override :
+    Return "Subscriber"
 ;
 
 String.UpdateStr(Self mut, Value String) :
@@ -78,28 +78,28 @@ TC.Show(Self) Override :
 ;
 
 Main :
-    A TAssinatura
-    A.UpdateNome("Marcelo")
-    A.Mudar("Rua A", "Recife")
-    A.FPlano.UpdateStr("Plano9")
-    A.FPlano.UpdateStr("")
-    A.TPessoa.TEndereco.Mudar("Rua B", "Natal")
-    PutLn(A.FNome, " ", A.FCidade, " ", A.FRua, " ", A.FPlano)
-    PutLn(A.Title, " / ", A.TPessoa.Title)
+    A TSubscription
+    A.UpdateName("Marcelo")
+    A.Change("Street A", "Recife")
+    A.FPlan.UpdateStr("Plan9")
+    A.FPlan.UpdateStr("")
+    A.TPerson.TAddress.Change("Street B", "Natal")
+    PutLn(A.FName, " ", A.FCity, " ", A.FStreet, " ", A.FPlan)
+    PutLn(A.Title, " / ", A.TPerson.Title)
     A.Show
     A.FId := 7
-    PutLn(A.FId, " ", A.TPessoa.FId)
+    PutLn(A.FId, " ", A.TPerson.FId)
     with A
-        .FNome := "Com with"
-        .UpdateNome("Com with 2")
+        .FName := "With with"
+        .UpdateName("With with 2")
     ;
-    PutLn(A.FNome)
+    PutLn(A.FName)
     B := A
-    B.UpdateNome("Copia")
-    PutLn(A.FNome, " ", B.FNome)
-    P := TPessoa(FNome := "Parte")
-    D := TAssinatura(TPessoa := P, FPlano := "Ouro")
-    PutLn(D.FNome, " ", D.FPlano)
+    B.UpdateName("Duplicate")
+    PutLn(A.FName, " ", B.FName)
+    P := TPerson(FName := "Part")
+    D := TSubscription(TPerson := P, FPlan := "Gold")
+    PutLn(D.FName, " ", D.FPlan)
     C TC
     C.Show
     PutLn(C.FX + C.FY + C.FZ)

@@ -8,17 +8,17 @@
 == A Link to a freed object never reaches it: the use traps (kind 16),
 == also inside try (change safe-pointers).
 Type
-    TConta Struct
-        FSaldo Integer := 0
+    TAccount Struct
+        FBalance Integer := 0
     ;
 
 Main :
-    Conta := New(TConta(FSaldo := 10))
-    Visao := Link(Conta)
-    PutLn("saldo ", Visao.FSaldo)
-    Free(Conta)
+    Account := New(TAccount(FBalance := 10))
+    View := Link(Account)
+    PutLn("balance ", View.FBalance)
+    Free(Account)
     try
-        PutLn("depois ", Visao.FSaldo)
+        PutLn("after ", View.FBalance)
     except
         PutLn("caught")
     ;

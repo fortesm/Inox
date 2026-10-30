@@ -7,12 +7,12 @@
 
 == Safe pointers: an array of owners holds Option<Own<T>>, filled with None.
 Type
-    TNo Struct
-        FValor Integer := 0
-        FProximo Option<Own<TNo>>
+    TNode Struct
+        FValue Integer := 0
+        FNext Option<Own<TNode>>
     ;
 
 Main :
-    A Array[1..3] Own<TNo>
+    A Array[1..3] Own<TNode>
     PutLn(Length(A))
 ;

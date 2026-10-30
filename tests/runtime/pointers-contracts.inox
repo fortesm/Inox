@@ -8,20 +8,20 @@
 == Safe pointers and contracts (CANON-24): a pre reads an owner the routine
 == takes, a pos reads what it held through old, and a Link parameter.
 Type
-    TNo Struct
-        FValor Integer := 0
+    TNode Struct
+        FValue Integer := 0
     ;
 
-Somar(P Own<TNo>, L Link<TNo>) Integer :
-    pre P.FValor > 0, "valor positivo"
-    pre Alive(L), "o link vive"
-    pos Result = old P.FValor + old L.FValor
-    Return P.FValor + L.FValor
+Add(P Own<TNode>, L Link<TNode>) Integer :
+    pre P.FValue > 0, "a positive amount"
+    pre Alive(L), "the link is alive"
+    pos Result = old P.FValue + old L.FValue
+    Return P.FValue + L.FValue
 ;
 
 Main :
-    A := New(TNo(FValor := 2))
-    B := New(TNo(FValor := 3))
-    PutLn(Somar(Move(A), Link(B)))
-    PutLn(Somar(New(TNo(FValor := 10)), Link(B)))
+    A := New(TNode(FValue := 2))
+    B := New(TNode(FValue := 3))
+    PutLn(Add(Move(A), Link(B)))
+    PutLn(Add(New(TNode(FValue := 10)), Link(B)))
 ;

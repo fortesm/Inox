@@ -1,8 +1,8 @@
-1: [Olá 42 true 2.5]
-2: [sem quebra]
+1: [Hello 42 true 2.5]
+2: [no line break]
 3: [-7]
-4: [anexada]
-depois do fim: [] true
-volta 1: Olá 42 true 2.5
-volta 2: Olá 42 true 2.5
+4: [appended]
+after the end: [] true
+round 1: Hello 42 true 2.5
+round 2: Hello 42 true 2.5
 false

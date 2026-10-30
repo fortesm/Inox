@@ -8,7 +8,7 @@
 Use Std.IO
 
 Main :
-    PutLn("Ciclo numero ", 3)
+    PutLn("Loop number ", 3)
     PutLn("A", 10, "B", true)
     Put("A", 1)
     PutLn("B", 2)

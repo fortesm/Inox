@@ -6,6 +6,6 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 Main :
-    Valor Integer := 1
-    valor Integer := 2
+    Amount Integer := 1
+    amount Integer := 2
 ;

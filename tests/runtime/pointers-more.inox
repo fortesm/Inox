@@ -7,37 +7,37 @@
 
 == Safe pointers: arrays of optional owners, owned arrays, owned Strings and
 == Integers (with a method), State owners and Links to State, with on an owner.
-Const Tamanho := 3
+Const Size := 3
 
 Type
-    TNo Struct
-        FValor Integer := 0
+    TNode Struct
+        FValue Integer := 0
     ;
 
 State
-    Global Option<Own<TNo>>
-    Contador Integer := 0
+    Global Option<Own<TNode>>
+    Counter Integer := 0
 ;
 
-Integer.Dobro(Self) Integer :
+Integer.Twice(Self) Integer :
     Return Self * 2
 ;
 
 Main :
     == An array of optional owners.
-    A Array[1..Tamanho] Option<Own<TNo>> := Fill(None)
-    A[1] := New(TNo(FValor := 11))
-    A[3] := New(TNo(FValor := 33))
-    for I in 1..Tamanho
+    A Array[1..Size] Option<Own<TNode>> := Fill(None)
+    A[1] := New(TNode(FValue := 11))
+    A[3] := New(TNode(FValue := 33))
+    for I in 1..Size
         L := Link(A[I])
         if Alive(L)
-            PutLn(I, ": ", L.FValor)
+            PutLn(I, ": ", L.FValue)
         else
-            PutLn(I, ": vazio")
+            PutLn(I, ": empty")
         ;
     ;
     == An owned array, indexed and linked through its owner.
-    T Array[1..Tamanho] Integer := Fill(0)
+    T Array[1..Size] Integer := Fill(0)
     T[2] := 20
     Arr := New(T)
     Arr[1] := 10
@@ -45,18 +45,18 @@ Main :
     Value(E) := Value(E) + 1
     PutLn("arr ", Arr[1], " ", Arr[2], " ", Arr[3])
     == An owned String and an owned Integer with a method.
-    S := New("texto")
+    S := New("text")
     N := New(21)
-    PutLn(Value(S), " ", Value(N).Dobro, " ", N.Dobro)
+    PutLn(Value(S), " ", Value(N).Twice, " ", N.Twice)
     == State: an owner and a Link to a State variable.
-    Global := New(TNo(FValor := 7))
-    LC := Link(Contador)
+    Global := New(TNode(FValue := 7))
+    LC := Link(Counter)
     Value(LC) := 99
-    PutLn("global ", Link(Global).FValor, ", contador ", Contador)
+    PutLn("global ", Link(Global).FValue, ", counter ", Counter)
     == with on an owner.
-    P := New(TNo(FValor := 1))
+    P := New(TNode(FValue := 1))
     with P
-        .FValor := .FValor + 1
+        .FValue := .FValue + 1
     ;
-    PutLn("with ", P.FValor)
+    PutLn("with ", P.FValue)
 ;

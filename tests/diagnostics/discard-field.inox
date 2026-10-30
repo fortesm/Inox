@@ -7,24 +7,24 @@
 
 == r3.93: a field is a value, not a call.
 Type
-    TPonto Struct
+    TPoint Struct
         FX Integer := 0
     ;
 
-Dobro(N Integer) Integer :
+Twice(N Integer) Integer :
     Return 2 * N
 ;
 
-Mostrar(Texto String) :
-    PutLn(Texto)
+Show(Text String) :
+    PutLn(Text)
 ;
 
-TPonto.Limpar(Self mut) :
+TPoint.Clear(Self mut) :
     Self.FX := 0
 ;
 
 Main :
-    P TPonto
+    P TPoint
     P.FX := 3
     _ := P.FX
 ;

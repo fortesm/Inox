@@ -7,16 +7,16 @@
 
 == Safe pointers: the place of a Link is read twice, so its indices have no side effects.
 Type
-    TNo Struct
-        FValor Integer := 0
+    TNode Struct
+        FValue Integer := 0
     ;
 
-Indice Integer :
+Index Integer :
     Return 1
 ;
 
 Main :
     A Array[1..2] Integer := Fill(0)
-    L := Link(A[Indice])
+    L := Link(A[Index])
     PutLn(Value(L))
 ;

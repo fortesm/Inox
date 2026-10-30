@@ -46,7 +46,7 @@ ownership).
    `Option` exists only around `Own`. Target: with change `generics`,
    they become ordinary generic types of the type representation, and
    `Option<T>` works for any T; `Vector<Own<T>>` (the design's
-   `FFilhos`) comes with `Vector<T>`.
+   `FChildren`) comes with `Vector<T>`.
 
 Not gaps (decided elsewhere): an array of owners is
 `Array[...] Option<Own<T>>` by design; how pointers cross threads is
