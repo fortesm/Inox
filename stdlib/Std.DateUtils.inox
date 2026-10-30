@@ -34,10 +34,10 @@ ToISO8601(T TDateTime) String Public :
     M Integer := 0
     D Integer := 0
     DecodeDate(T, Y, M, D)
-    Text := ZeroPadded(Y, 4) + "-" + ZeroPadded(M, 2) + "-" + ZeroPadded(D, 2) + "T" + ZeroPadded(Hour(T), 2) + ":" +
-            ZeroPadded(Minute(T), 2) + ":" + ZeroPadded(Second(T), 2)
-    if MicroSecond(T) # 0
-        Text += "." + ZeroPadded(MicroSecond(T), 6)
+    Text := ZeroPadded(Y, 4) + "-" + ZeroPadded(M, 2) + "-" + ZeroPadded(D, 2) + "T" + ZeroPadded(HourOf(T), 2) + ":" +
+            ZeroPadded(MinuteOf(T), 2) + ":" + ZeroPadded(SecondOf(T), 2)
+    if MicroSecondOf(T) # 0
+        Text += "." + ZeroPadded(MicroSecondOf(T), 6)
     ;
     Return Text
 ;
@@ -183,14 +183,14 @@ FormatDateTime(T TDateTime, Pattern String) String Public :
             case Lower
                 'm' Value := M
                 'd' Value := D
-                'h' Value := Hour(T)
-                'n' Value := Minute(T)
-                else Value := Second(T)
+                'h' Value := HourOf(T)
+                'n' Value := MinuteOf(T)
+                else Value := SecondOf(T)
             ;
             Text += IIf(Count = 2, ZeroPadded(Value, 2), String(Value))
             At += Count
         elif Lower = 'z' and RunLength(Pattern, At, 3) = 3
-            Text += ZeroPadded(MicroSecond(T) / 1000, 3)
+            Text += ZeroPadded(MicroSecondOf(T) / 1000, 3)
             At += 3
         else
             Text += String(C)
