@@ -342,6 +342,13 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             const TypeRef initializerType = analyzeExpressionFor(*var.initializer(), type);
             if (type == nullptr) {
                 type = initializerType;
+                // range-types: `N := M + 1` declares a TMeters, checked on
+                // the way in (CANON-13).
+                if (const TypeRef family = rangeFamilyOf(*var.initializer(), initializerType);
+                    family != nullptr && family != type) {
+                    type = family;
+                    result_.requireRangeCheck(*var.initializer(), family);
+                }
                 if (isFileType(type)) {
                     requireFreshFile(*var.initializer());
                 }

@@ -5,10 +5,11 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== CANON-13 Range (change enum-range-set): a Range of Integer is a subtype
-== of its base. Storing into it checks the bounds (Q1, implicitly, as for
-== Natural); a constant inside the bounds needs no check; its arithmetic is
-== Integer; Low, High, Succ and Pred (Q5); a Range in fields with a
+== CANON-13 Range (change enum-range-set, range-types): a Range of Integer
+== is a type of its own. Storing into it checks the bounds (Q1); a constant
+== inside the bounds needs no check; its arithmetic stays in the Range and is
+== checked when stored; Integer(M) leaves it and TMonth(I) enters it; Low,
+== High, Succ and Pred (Q5); a Range in fields with a
 == default, array elements, parameters, results, case without else, for
 == over Low..High, Get, TMonth(I), `in` with A..B, and bounds from a Const.
 Const Last := 12
@@ -36,14 +37,14 @@ Half(M TMonth) String :
 
 Main :
     M TMonth := 12
-    N := M + 1
+    N := Integer(M) + 1
     T TTemp := -40
     D TDate
     D.FMonth := Next(M)
     Months Array[1..2] TMonth := Fill(1)
     Months[1] := 3
     I := 7
-    Months[2] := I
+    Months[2] := TMonth(I)
     PutLn(M, " ", N, " ", T, " ", D.FMonth, " ", Months[1] + Months[2], " ", Succ(Months[1]), " ", Pred(M))
     PutLn(Low(TMonth), " ", High(TTemp), " ", TMonth(I - 1), " ", Half(M), " ", Half(Months[1]), " ", -T)
     for K in Low(TMonth)..High(TMonth) step 4

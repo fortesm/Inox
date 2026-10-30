@@ -346,11 +346,16 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
             constantIntegerValue(conditional.thenValue(), constant) && constant >= 0) {
             return elseType;
         }
-        // A Range and its base meet in the base (CANON-13).
-        const auto base = [](TypeRef type) { return type != nullptr && type->isRange() ? type->rangeBase() : type; };
-        if (thenType != elseType && (base(thenType) != thenType || base(elseType) != elseType) &&
-            base(thenType) == base(elseType)) {
-            return base(thenType);
+        // A Range branch meets a constant, or a value computed in the same
+        // Range, in the base; the expression belongs to the Range (CANON-13,
+        // range-types).
+        if (const TypeRef family = requireOneRangeFamily(conditional.thenValue(), thenType, conditional.elseValue(),
+                                                         elseType, "a conditional expression")) {
+            const auto base = [](TypeRef type) { return type != nullptr && type->isRange() ? type->rangeBase() : type; };
+            if (thenType != elseType && base(thenType) == base(elseType)) {
+                rangeFamilies_[&expression] = family;
+                return base(thenType);
+            }
         }
         if (!typesMatch(thenType, elseType)) {
             throw SemanticError("the branches of a conditional expression have different types: " +
@@ -533,16 +538,24 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
                     throw SemanticError("an owner is never copied: give it away with Move(X), or build a new "
                                         "one with New(...)");
                 }
+                // range-types: `N := M + 1` declares a TMeters, checked on
+                // the way in (CANON-13).
+                TypeRef declaredType = inferredType;
+                if (const TypeRef family = rangeFamilyOf(expression.right(), inferredType);
+                    family != nullptr && family != inferredType) {
+                    declaredType = family;
+                    result_.requireRangeCheck(expression.right(), family);
+                }
                 declareOrThrow(
                     identifier.name(),
                     SymbolKind::Variable,
-                    inferredType,
+                    declaredType,
                     true);
                 trackLocal(identifier.name());
                 const Symbol& declared = resolveOrThrow(identifier.name());
                 result_.bind(identifier, declared);
                 result_.setExpressionType(identifier, declared.type);
-                return inferredType;
+                return declaredType;
             }
 
             const Symbol& target = resolveOrThrow(identifier.name());
@@ -691,13 +704,48 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
     // so `U = 18446744073709551615` and `U + 1` read the literal as a UInt64.
     TypeRef leftType = nullptr;
     TypeRef rightType = nullptr;
+    TypeRef leftDeclared = nullptr;
+    TypeRef rightDeclared = nullptr;
     if (isLiteralAboveInt64(expression.left()) && !isUInt64Type(integerContext_)) {
-        rightType = integerFamily(analyzeExpression(expression.right()));
-        leftType = integerFamily(analyzeWithIntegerContext(expression.left(), rightType));
+        rightDeclared = analyzeExpression(expression.right());
+        rightType = integerFamily(rightDeclared);
+        leftDeclared = analyzeWithIntegerContext(expression.left(), rightType);
+        leftType = integerFamily(leftDeclared);
     } else {
-        leftType = integerFamily(analyzeExpression(expression.left()));
-        rightType = integerFamily(analyzeWithIntegerContext(
-            expression.right(), integerContext_ != nullptr ? integerContext_ : leftType));
+        leftDeclared = analyzeExpression(expression.left());
+        leftType = integerFamily(leftDeclared);
+        rightDeclared = analyzeWithIntegerContext(expression.right(),
+                                                  integerContext_ != nullptr ? integerContext_ : leftType);
+        rightType = integerFamily(rightDeclared);
+    }
+    // CANON-13 (range-types, as in Ada): a Range is a type of its own. Its
+    // values compute and compare with values of the same Range and with
+    // constants; the result of its arithmetic belongs to it (`M + 1` is a
+    // TMeters, checked when it is stored).
+    if (op != ast::BinaryOperator::And && op != ast::BinaryOperator::Or && op != ast::BinaryOperator::Xor) {
+        if (const TypeRef family = requireOneRangeFamily(expression.left(), leftDeclared, expression.right(),
+                                                         rightDeclared,
+                                                         "operator '" + std::string(binaryOperatorName(op)) + "'")) {
+            switch (op) {
+            case ast::BinaryOperator::Add:
+            case ast::BinaryOperator::Subtract:
+            case ast::BinaryOperator::Multiply:
+            case ast::BinaryOperator::Power:
+            case ast::BinaryOperator::Divide:
+            case ast::BinaryOperator::Modulo:
+            case ast::BinaryOperator::Remainder:
+            case ast::BinaryOperator::ShiftLeft:
+            case ast::BinaryOperator::ShiftRight:
+            case ast::BinaryOperator::BitAnd:
+            case ast::BinaryOperator::BitXor:
+            case ast::BinaryOperator::BitOr:
+            case ast::BinaryOperator::Range:
+                rangeFamilies_[&expression] = family;
+                break;
+            default:
+                break;
+            }
+        }
     }
 
     // CANON-8 (universal integer literal, as in Ada): a constant Integer
@@ -963,8 +1011,9 @@ TypeRef SemanticAnalyzer::analyzeUnaryExpression(const ast::UnaryExpression& exp
         if (expression.op() == ast::UnaryOperator::Minus && operandType == types().naturalType()) {
             return types().int64Type();
         }
-        if (operandType != nullptr && operandType->isRange()) {
-            return operandType->rangeBase();
+        if (const TypeRef family = rangeFamilyOf(expression.operand(), operandType)) {
+            rangeFamilies_[&expression] = family; // `-M` is a TMeters (range-types)
+            return family->rangeBase();
         }
         return operandType;
     case ast::UnaryOperator::Not:
@@ -979,8 +1028,9 @@ TypeRef SemanticAnalyzer::analyzeUnaryExpression(const ast::UnaryExpression& exp
         if (operandType == types().naturalType()) {
             return types().int64Type();
         }
-        if (operandType != nullptr && operandType->isRange()) {
-            return operandType->rangeBase();
+        if (const TypeRef family = rangeFamilyOf(expression.operand(), operandType)) {
+            rangeFamilies_[&expression] = family;
+            return family->rangeBase();
         }
         return operandType;
     case ast::UnaryOperator::Old:

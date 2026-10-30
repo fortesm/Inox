@@ -1,0 +1,42 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-13 (range-types, as in Ada): a Range is a type of its own. Values of
+== one Range compute and compare together and with constants; the result
+== belongs to the Range (`D + D` is a TMeters, and `N := D * 2` declares
+== one). Integer(D) and TMeters(I) cross explicitly, also between two
+== Ranges. A Range value indexes an array; Put, PutLn and String(D)
+== take it as it is; a set of the Range tests it.
+Type
+    TMeters Range 0..1000
+    TSeconds Range 0..60
+    TDigit Range 0..9
+
+Twice(N Integer) Integer :
+    Return N * 2
+;
+
+Farther(D TMeters) TMeters :
+    Return IIf(D < 900, D + 100, D)
+;
+
+Main :
+    D TMeters := 300
+    E TMeters := D + D
+    N := D * 2
+    S TSeconds := 60
+    I := 7
+    PutLn(E, " ", N, " ", -D + 1000, " ", D - 100 = 200, " ", D < E, " ", Farther(D))
+    PutLn(Twice(Integer(D)), " ", Integer(D) + I, " ", TMeters(I) + D, " ", TMeters(S) + D, " ", TSeconds(D / 10))
+    Squares Array[0..9] Integer := Fill(0)
+    for K in Low(TDigit)..High(TDigit)
+        Squares[K] := Integer(K) * Integer(K)
+    ;
+    G TDigit := 9
+    Seen Set<TDigit> := [1, 9]
+    PutLn(Squares[G], " ", String(G), " ", G in Seen, " ", G in 0..5, " ", 3 in Seen)
+;

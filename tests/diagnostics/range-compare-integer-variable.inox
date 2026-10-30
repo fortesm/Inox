@@ -1,0 +1,17 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== CANON-13 (range-types): a Range is compared with values of its Range and
+== with constants, never with an Integer variable.
+Type
+    TMonth Range 1..12
+
+Main :
+    M TMonth := 12
+    Last := 12
+    PutLn(M = 12)
+    PutLn(M = Last)
+;

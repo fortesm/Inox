@@ -120,8 +120,9 @@ public:
     bool isOwn() const noexcept { return kind_ == TypeKind::Own; }
     bool isOptionOwn() const noexcept { return kind_ == TypeKind::Option; }
     bool isLink() const noexcept { return kind_ == TypeKind::Link; }
-    // Range (CANON-13): an Integer subtype `TMonth Range 1..12` holding
-    // minValue..maxValue; its arithmetic is its base's (Int64).
+    // Range (CANON-13): an Integer Range `TMonth Range 1..12` holding
+    // minValue..maxValue, a type of its own (range-types); its values are
+    // Int64 values in the generated code.
     bool isRange() const noexcept { return kind_ == TypeKind::Integer && element_ != nullptr; }
     const Type* rangeBase() const noexcept { return isRange() ? element_ : nullptr; }
     // A Range over Char (`TLetter Range 'A'..'Z'`, char-values): a Char type

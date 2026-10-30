@@ -1,0 +1,1 @@
+operator '*' mixes TMeters and Integer (CANON-13): write TMeters(X) to work in TMeters, or Integer(X) to work in Integer

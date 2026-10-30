@@ -12,8 +12,11 @@
 == D1. A TDateTime is the number of microseconds since 0001-01-01T00:00:00
 == of the proleptic Gregorian calendar, up to 9999-12-31T23:59:59.999999; a
 == TDate the number of days since 0001-01-01; a TDuration a number of
-== microseconds. They are Ranges of Integer, so they compare with = # < <= >
-== >= and are stored checked: a value outside is "value out of range".
+== microseconds. They are Ranges of Integer, each a type of its own
+== (CANON-13): a TDateTime never mixes with a TDuration or an Integer without
+== a conversion, Integer(T) or TDateTime(I). Values of one of them compare
+== with = # < <= > >= and are stored checked: a value outside is "value out
+== of range".
 ==
 == D2. Two zones only: UTC and the zone of the system. NowUTC and
 == UTCOffset(T) are carried out by libinoxrt; the rest is Inox below.
@@ -77,16 +80,16 @@ EncodeDateTime(Year Integer, Month Integer, Day Integer, Hour Integer, Minute In
 ;
 
 DateOf(T TDateTime) TDate Public :
-    Return TDate(T / MicrosPerDay)
+    Return TDate(Integer(T) / MicrosPerDay)
 ;
 
 DateTimeOf(Date TDate) TDateTime Public :
-    Return TDateTime(Date * MicrosPerDay)
+    Return TDateTime(Integer(Date) * MicrosPerDay)
 ;
 
 == The year, month and day of T (H. Hinnant's civil_from_days).
 DecodeDate(T TDateTime, ref mut Year Integer, ref mut Month Integer, ref mut Day Integer) Public :
-    Z Integer := T / MicrosPerDay + 306
+    Z Integer := Integer(T) / MicrosPerDay + 306
     Era Integer := Z / 146097
     DayOfEra Integer := Z - Era * 146097
     YearOfEra Integer := (DayOfEra - DayOfEra / 1460 + DayOfEra / 36524 - DayOfEra / 146096) / 365
@@ -122,47 +125,47 @@ DayOf(T TDateTime) Integer Public :
 ;
 
 HourOf(T TDateTime) Integer Public :
-    Return T mod MicrosPerDay / MicrosPerHour
+    Return Integer(T) mod MicrosPerDay / MicrosPerHour
 ;
 
 MinuteOf(T TDateTime) Integer Public :
-    Return T mod MicrosPerHour / MicrosPerMinute
+    Return Integer(T) mod MicrosPerHour / MicrosPerMinute
 ;
 
 SecondOf(T TDateTime) Integer Public :
-    Return T mod MicrosPerMinute / MicrosPerSecond
+    Return Integer(T) mod MicrosPerMinute / MicrosPerSecond
 ;
 
 MicroSecondOf(T TDateTime) Integer Public :
-    Return T mod MicrosPerSecond
+    Return Integer(T) mod MicrosPerSecond
 ;
 
 == 0001-01-01 was a Monday.
 DayOfWeek(T TDateTime) TDayOfWeek Public :
-    Return TDayOfWeek(T / MicrosPerDay mod 7)
+    Return TDayOfWeek(Integer(T) / MicrosPerDay mod 7)
 ;
 
 AddDays(T TDateTime, Days Integer) TDateTime Public :
-    Return TDateTime(T + Days * MicrosPerDay)
+    Return TDateTime(Integer(T) + Days * MicrosPerDay)
 ;
 
 AddSeconds(T TDateTime, Count Integer) TDateTime Public :
-    Return TDateTime(T + Count * MicrosPerSecond)
+    Return TDateTime(Integer(T) + Count * MicrosPerSecond)
 ;
 
 == Whole days between A and B, whatever their order.
 DaysBetween(A TDateTime, B TDateTime) Integer Public :
-    Return IIf(A > B, A - B, B - A) / MicrosPerDay
+    Return Integer(IIf(A > B, A - B, B - A)) / MicrosPerDay
 ;
 
 ToLocal(T TDateTime) TDateTime Public :
-    Return TDateTime(T + UTCOffset(T))
+    Return TDateTime(Integer(T) + Integer(UTCOffset(T)))
 ;
 
 == The UTC instant of a local time (the offset of the instant it names).
 ToUTC(T TDateTime) TDateTime Public :
-    Guess Integer := T - UTCOffset(T)
-    Return TDateTime(T - UTCOffset(TDateTime(Guess)))
+    Guess Integer := Integer(T) - Integer(UTCOffset(T))
+    Return TDateTime(Integer(T) - Integer(UTCOffset(TDateTime(Guess))))
 ;
 
 Now TDateTime Public :

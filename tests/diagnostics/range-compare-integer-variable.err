@@ -1,0 +1,1 @@
+operator '=' mixes TMonth and Integer (CANON-13): write TMonth(X) to work in TMonth, or Integer(X) to work in Integer

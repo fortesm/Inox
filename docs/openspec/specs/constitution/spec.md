@@ -1225,13 +1225,20 @@ assignment and by-value passing move it in O(1) and invalidate the source;
 
 ### Requirement: CANON-13 Range
 `TMonth Range 1..12` and `TLetter Range 'A'..'Z'` SHALL be single lines of a
-`Type` section. Storing an Integer into a Range variable is range-checked
-implicitly ("value out of range"); a constant outside is a compile error;
-Range arithmetic yields the base type.
+`Type` section. An Integer Range is a type of its own, as Ada's
+`type T is range`: its values mix only with values of the same Range and
+with constants, its arithmetic yields the Range, and the result is
+range-checked when stored ("value out of range"); a constant outside is a
+compile error. `Integer(X)` and `T(X)` convert explicitly, also between two
+Ranges (r3.106).
 
 #### Scenario: Range declarations
 - **WHEN** a Range has no `Low..High`
 - **THEN** it is rejected (tests/diagnostics/range-without-bounds.inox); a Range value is checked when stored, at run time and for a constant (tests/runtime/ranges.inox, tests/runtime/range-runtime-out-of-range.inox, tests/diagnostics/range-constant-out-of-range.inox)
+
+#### Scenario: Range types do not mix
+- **WHEN** a program mixes two Ranges, or a Range and an Integer variable, in an expression, an assignment or an argument
+- **THEN** it is rejected (tests/diagnostics/range-mix-two-ranges.inox, tests/diagnostics/range-mix-integer-variable.inox, tests/diagnostics/range-into-integer-parameter.inox); with written conversions it runs (tests/runtime/range-types.inox)
 
 ### Requirement: CANON-13 Enum
 An enum SHALL be short `TSuit (Club, Diamond)` or multi-line `TDay Enum` …

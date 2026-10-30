@@ -256,6 +256,16 @@ private:
     // any overflow, division by zero or out-of-range shift is a compile error.
     void foldConstantExpression(const ast::Expression& expression);
     bool constantIntegerValue(const ast::Expression& expression, std::int64_t& value) const;
+    // CANON-13 (range-types): the Range type a value belongs to: its own type
+    // when that is a Range, else the Range its arithmetic was computed in
+    // (`M + 1` belongs to TMeters); nullptr for any other value.
+    TypeRef rangeFamilyOf(const ast::Expression& expression, TypeRef type) const;
+    // A constant Integer that belongs to no Range: it mixes with any Range.
+    bool isUniversalInteger(const ast::Expression& expression, TypeRef type) const;
+    // The Range two operands share, nullptr when neither has one; mixing two
+    // Ranges, or a Range with an Integer value, is an error (as in Ada).
+    TypeRef requireOneRangeFamily(const ast::Expression& left, TypeRef leftType, const ast::Expression& right,
+                                  TypeRef rightType, const std::string& context);
     // The constant with its domain: unsigned when the expression is a UInt64.
     bool integerConstant(const ast::Expression& expression, detail::IntegerConstant& value) const;
     void foldUnsignedBinary(const ast::BinaryExpression& binary, std::uint64_t a, std::uint64_t b);
@@ -376,6 +386,9 @@ private:
     bool stringsVisible_ = false;  // Std.Strings: Length, Substr, Pos, case
     bool strUtilsVisible_ = false; // Std.StrUtils: the conveniences (it uses Std.Strings)
     std::unordered_map<const ast::Expression*, std::int64_t> constants_;
+    // CANON-13 (range-types): expressions computed in a Range (`M + 1`),
+    // typed in its base for code generation.
+    std::unordered_map<const ast::Expression*, TypeRef> rangeFamilies_;
     // Char Consts (`Const Letter := 'A'`) by normalized name, as Unicode scalar
     // values; used for static case choices (ADR-0011).
     std::unordered_map<std::string, std::int64_t> charConstants_;

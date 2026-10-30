@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.105
+Canon revision: r3.106
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -27,13 +27,6 @@ stands.
    capture clause (`Name`, `Move(X)`, `Link(X)`), `{ }` as an effect or a
    requirement clause, `@` annotations; no String interpolation and `{ }`
    reserved (decided, r3.74).
-
-3. **Mixing Range types** (open since 0.3): today a Range of Integer is a
-   subtype, as Ada's `subtype`: values of `TDigit` and `TPercent` mix freely
-   in an expression, the result is an Integer, and a store into a Range is
-   checked (`value out of range`). The alternative is distinct types, as
-   Ada's `type T is range ...`: mixing needs a written conversion
-   (`TPercent(D)`), which catches unit mistakes at compile time.
 
 ## Revision log
 
@@ -484,3 +477,13 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   formats such as `dd/mm/yyyy` come only from `FormatDateTime`. The open
   question of mixing Range types is recorded. Decided by Marcelo Fortes,
   2026-10-30. Change `datetime-names`.
+- r3.106 — 2026-10-30 — Range types (CANON-13), as in Ada: an Integer
+  Range is a type of its own (`type T is range`), no longer a subtype. Its
+  values combine in arithmetic, comparisons, `in` and IIf with values of the
+  same Range and with constants; the result belongs to the Range and is
+  checked when stored; `N := M + 1` declares a value of the Range. Two
+  Ranges, or a Range and an Integer value, mix only through a written
+  conversion (`Integer(X)`, `T(X)`), in expressions, assignments and
+  arguments; a Range value indexes an array and is taken as it is by Put,
+  PutLn and `String(X)`. Char Ranges are unchanged. Closes open question 3.
+  Decided by Marcelo Fortes, 2026-10-30. Change `range-types`.
