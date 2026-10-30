@@ -7,17 +7,17 @@
 
 == CANON-5: a String Const is a value like a literal: printed, stored,
 == passed and compared.
-Const Nome := "dados.txt"
-Const Vazio := ""
+Const Name := "data.txt"
+Const Empty := ""
 
-Mostrar(S String) :
+Show(S String) :
     PutLn("[", S, "]")
 ;
 
 Main :
-    PutLn(Nome)
-    Copia := Nome
-    Mostrar(Nome)
-    Mostrar(Vazio)
-    PutLn(Copia = Nome, " ", Nome # Vazio)
+    PutLn(Name)
+    Duplicate := Name
+    Show(Name)
+    Show(Empty)
+    PutLn(Duplicate = Name, " ", Name # Empty)
 ;

@@ -20,16 +20,16 @@ with lifetimes are checked here at run time with one comparison.
 
 | Operation | Pascal | C | Inox |
 |---|---|---|---|
-| Pointer type | `PNo = ^TNo` | `struct No *` | `Own<TNo>`, `Link<TNo>` |
-| Create | `New(P)` | `malloc(...)` | `P := New(TNo(FValor := 1))` |
-| Field | `P^.FValor` | `p->valor` | `P.FValor` |
+| Pointer type | `PNo = ^TNode` | `struct No *` | `Own<TNode>`, `Link<TNode>` |
+| Create | `New(P)` | `malloc(...)` | `P := New(TNode(FValue := 1))` |
+| Field | `P^.FValue` | `p->amount` | `P.FValue` |
 | Whole value | `P^` | `*p` | `Value(P)` |
 | Address of a variable | `@X` | `&x` | `Link(X)`: any variable, field or array element |
 | Non-owning reference to a heap object | — | — | `Link(P)` |
 | Free | `Dispose(P)` (unsafe) | `free(p)` (unsafe) | `Free(P)` (safe) |
 | Still there? | — | — | `Alive(H)` |
 | Give ownership away | — | — | `Q := Move(P)` |
-| Nothing | `nil` | `NULL` | an empty Link (`L := None`); an absent owner is `Option<Own<TNo>>` = `None` |
+| Nothing | `nil` | `NULL` | an empty Link (`L := None`); an absent owner is `Option<Own<TNode>>` = `None` |
 
 Types follow `Slice<T>` (CANON-8); operations follow the built-in routines
 (`Length(A)`, `Ord(E)`). `Own`, `Link`, `New`, `Free`, `Alive`, `Move` and
@@ -40,35 +40,35 @@ Types follow `Slice<T>` (CANON-8); operations follow the built-in routines
 ```
 == A routine returns a new object, as in Go, without a collector:
 == the caller becomes its owner.
-NovoInimigo(Vida Integer) Own<TInimigo> :
-    Return New(TInimigo(FVida := Vida))
+NewEnemy(Life Integer) Own<TEnemy> :
+    Return New(TEnemy(FLife := Life))
 ;
 
 Type
-    TInimigo Struct
-        FVida Integer := 100
+    TEnemy Struct
+        FLife Integer := 100
     ;
-    TSoldado Struct
-        FAlvo Link<TInimigo>              == born empty: Alive(FAlvo) = false
+    TSoldier Struct
+        FTarget Link<TEnemy>              == born empty: Alive(FTarget) = false
     ;
-    TPasta Struct
-        FNome String := ""
-        FPai Link<TPasta>                 == points to the parent, does not own it
-        FFilhos Vector<Own<TPasta>>         == the parent owns its children (with Vector)
+    TFolder Struct
+        FName String := ""
+        FParent Link<TFolder>                 == points to the parent, does not own it
+        FChildren Vector<Own<TFolder>>         == the parent owns its children (with Vector)
     ;
 
 Main :
-    Orc := NovoInimigo(100)                 == Main owns the orc
-    S TSoldado
-    S.FAlvo := Link(Orc)
-    S.FAlvo.FVida -= 30                     == checked: alive
+    Orc := NewEnemy(100)                 == Main owns the orc
+    S TSoldier
+    S.FTarget := Link(Orc)
+    S.FTarget.FLife -= 30                     == checked: alive
     Free(Orc)                               == the orc dies now
-    if Alive(S.FAlvo)
-        S.FAlvo.FVida -= 30
+    if Alive(S.FTarget)
+        S.FTarget.FLife -= 30
     else
-        PutLn("procurar outro alvo")
+        PutLn("look for another target")
     ;
-    S.FAlvo.FVida -= 30                     == trap: "use of a freed object"
+    S.FTarget.FLife -= 30                     == trap: "use of a freed object"
 ;                                           == anything still owned is freed here
 ```
 
@@ -77,71 +77,71 @@ A navigator over an array of records (Marcelo Fortes's example,
 whose fields are read and written in place, with no copy.
 
 ```
-Const Tamanho := 5
+Const Size := 5
 
 Type
-    TContato Struct
-        FNome String := ""
-        FTelefone String := ""
-        FIdade Integer := 0
+    TContact Struct
+        FName String := ""
+        FPhone String := ""
+        FAge Integer := 0
     ;
-    TNavegador Struct
-        FTabela Link<Array[1..Tamanho] TContato>
+    TNavigator Struct
+        FTable Link<Array[1..Size] TContact>
         FIndice Integer := 1
     ;
 
-TNavegador.Primeiro(Self mut) :
+TNavigator.First(Self mut) :
     Self.FIndice := 1
 ;
-TNavegador.Ultimo(Self mut) :
-    Self.FIndice := Tamanho
+TNavigator.Last(Self mut) :
+    Self.FIndice := Size
 ;
-TNavegador.Proximo(Self mut) :
-    pre not Self.NoFim, "não há próximo"
+TNavigator.NextOne(Self mut) :
+    pre not Self.AtEnd, "there is a next one"
     Self.FIndice += 1
 ;
-TNavegador.Anterior(Self mut) :
-    pre not Self.NoInicio, "não há anterior"
+TNavigator.Previous(Self mut) :
+    pre not Self.AtStart, "there is a previous one"
     Self.FIndice -= 1
 ;
-TNavegador.NoInicio(Self) Bool :
+TNavigator.AtStart(Self) Bool :
     Return Self.FIndice = 1
 ;
-TNavegador.NoFim(Self) Bool :
-    Return Self.FIndice = Tamanho
+TNavigator.AtEnd(Self) Bool :
+    Return Self.FIndice = Size
 ;
-TNavegador.Atual(Self) Link<TContato> :
-    Return Link(Self.FTabela[Self.FIndice])   == the record inside the array
+TNavigator.Current(Self) Link<TContact> :
+    Return Link(Self.FTable[Self.FIndice])   == the record inside the array
 ;
 
 Main :
-    Contatos Array[1..Tamanho] TContato
-    Contatos[1] := TContato(FNome := "Ana", FTelefone := "1111", FIdade := 30)
+    Contacts Array[1..Size] TContact
+    Contacts[1] := TContact(FName := "Ana", FPhone := "1111", FAge := 30)
     ...
-    Nav := TNavegador(FTabela := Link(Contatos))  == Link of a local: no cost
-    Nav.Primeiro
-    PutLn(Nav.Atual.FNome, " - ", Nav.Atual.FTelefone)
-    Nav.Ultimo
-    Nav.Atual.FIdade += 1                           == writes the record itself
-    PutLn(Contatos[Tamanho].FIdade)
+    Nav := TNavigator(FTable := Link(Contacts))  == Link of a local: no cost
+    Nav.First
+    PutLn(Nav.Current.FName, " - ", Nav.Current.FPhone)
+    Nav.Last
+    Nav.Current.FAge += 1                           == writes the record itself
+    PutLn(Contacts[Size].FAge)
 ;
 ```
 
 "Next" in an array is the index plus one, never pointer arithmetic; in a
-doubly linked list it is a pointer (`FProximo Option<Own<TNo>>`,
-`FAnterior Link<TNo>`).
+doubly linked list it is a pointer (`FNext Option<Own<TNode>>`,
+`FPrevious Link<TNode>`).
 
 A Link that outlives its variable compiles, and is detected:
 
 ```
-Vazar Link<Integer> :
+Leak Link<Integer> :
     X Integer := 42
     Return Link(X)          == compiles: X is placed in a generation block
 ;
 
 Main :
-    H := Vazar
-    if Alive(H)               == false: X ended with Vazar
+    H := Leak
+    if Alive(H)               == false: X ended with Leak
         PutLn(Value(H))
     ;
     PutLn(Value(H))           == trap: "use of a freed object", never garbage
@@ -224,7 +224,7 @@ Q := P              == error: "an owner is never copied: use Move(P)"
 
 Marcelo Fortes, 2026-10-16: the name is `Link`, not to be confused with
 Delphi's or Windows' handles; `Value` stays; `Free` and `New` stay; an
-absent owner is `Option<Own<TNo>>`, with the word `Optional` only if it
+absent owner is `Option<Own<TNode>>`, with the word `Optional` only if it
 proves a real convenience.
 
 - `Link<T>`, `Link(X)` (not "Handle": Delphi's `THandle` and Windows
@@ -236,7 +236,7 @@ proves a real convenience.
   returns its owner (no constructor; Go's `new`, Rust's `Box::new`);
   `Free(P)` is optional and safe (P unusable afterwards, every Link to the
   object not Alive: FreeAndNil for every reference at once).
-- An owner that may be absent is `Option<Own<TNo>>`, born `None`. An `Own`
+- An owner that may be absent is `Option<Own<TNode>>`, born `None`. An `Own`
   given where an Option is expected is wrapped without `Some(...)`;
   `Link(X)` of an Option that is `None` is an empty Link; `Alive` tests
   both.
@@ -287,7 +287,7 @@ for later:
   through `old P.Field` (`old P` of an owner is an error: an owner is never
   copied). Struct invariants are not checked after a write through a
   pointer.
-- `New(TNo)` creates an object with its defaults, besides `New(V)`.
+- `New(TNode)` creates an object with its defaults, besides `New(V)`.
 - A function result that is an owner cannot be discarded yet (the backend
   gap of functions called as statements).
 

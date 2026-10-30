@@ -22,7 +22,7 @@ Fortes, so that none of it is lost. The law is
 | Contracts | `pre`, `pos`, `invariant`, `variant`, as in Eiffel (most OO languages have none) | CANON-24; `examples/contracts.inox` |
 
 A behavior is written once per **type**, never per value: a thousand
-soldiers in one array share one `Correr`, in Inox as in C or Java.
+soldiers in one array share one `Run`, in Inox as in C or Java.
 
 ## Gaps, and the answer recorded for each
 
@@ -30,7 +30,7 @@ soldiers in one array share one `Correr`, in Inox as in C or Java.
 |---|---|---|---|
 | 1 | One collection that mixes kinds, where one call runs each element's own version (dynamic dispatch) | Variant structs: a value that is one of several structs, examined with `case`; never subtyping. Today: one array per kind, as the Entity Component System of game engines | FUTURE (r3.69), change `variant-structs`, after `enum-range-set` |
 | 2 | Open extension: a library calls types it does not know (frameworks, plugins, GUI events) through an interface | Routine types (a routine kept in a variable, field or parameter, as Pascal's procedural types); named routines first, closures after safe pointers. With generics, they cover most uses of interfaces | FUTURE (r3.70), change `routine-types` |
-| 3 | Generic code over "anything that has `Correr`" | Generics in their simplest form: each use is checked with its real types, one compiled copy per type | Design awaiting approval, change `generics` |
+| 3 | Generic code over "anything that has `Run`" | Generics in their simplest form: each use is checked with its real types, one compiled copy per type | Design awaiting approval, change `generics` |
 | 4 | Shared objects and graphs (two lists see the same soldier, trees, parent links) | Safe pointers without counting or collector: one owner `Own<T>`, checked references `Link<T>` (generation per use), no null; arenas later as an option | Implemented (r3.73, CANON-25), change `safe-pointers` |
 | 5 | Encapsulation (`private` fields) | A design close to Object Pascal and Rust | FUTURE (r3.70), change `encapsulation`, design to write |
 | 6 | Constructors and destructors | Today: defaults, named construction, module routines and invariants; String and File clean themselves. Whether more is needed is open | Maintainer's analysis (r3.70), change `lifecycle` |

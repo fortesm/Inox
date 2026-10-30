@@ -271,7 +271,7 @@ Keywords and identifiers SHALL be case-insensitive (`PutLn`, `putln` and
 conflict. Documentation uses one canonical spelling.
 
 #### Scenario: Case-only difference
-- **WHEN** a scope declares `Valor` and then `valor`
+- **WHEN** a scope declares `Amount` and then `amount`
 - **THEN** it is a redeclaration error (tests/semantic/invalid/case-insensitive-redeclaration.inox)
 
 ### Requirement: CANON-2 Comments and literals
@@ -1017,7 +1017,7 @@ reused one only when marked `Override`. No subtyping. (Marcelo Fortes,
 ### Requirement: CANON-9 Methods of built-in types
 A built-in value type SHALL accept associated methods like a struct's:
 `String.UpdateStr(Self mut, Value String) :` serves every String variable
-or field (`A.FPlano.UpdateStr("x")`). `Self` is a copy, `Self mut` the
+or field (`A.FPlan.UpdateStr("x")`). `Self` is a copy, `Self mut` the
 caller's variable; a method belongs to its exact type.
 
 #### Scenario: Methods of String and Integer
@@ -1247,12 +1247,12 @@ string.
 ### Requirement: CANON-13 Enum operations
 `Low(T)`, `High(T)`, `Succ` and `Pred` (checked) SHALL apply to enum and
 range types; enum ranges are valid in `for`; `PutLn(E)` prints the
-literal's name as declared (`Copas`); an enum variable needs an
+literal's name as declared (`Hearts`); an enum variable needs an
 initializer (CANON-5).
 
 #### Scenario: Printing an enum
-- **WHEN** `PutLn(E)` runs with E = Copas
-- **THEN** it prints `Copas` (tests/runtime/enums.inox); Succ past the last literal stops the program (tests/runtime/enum-succ-past-end.inox)
+- **WHEN** `PutLn(E)` runs with E = Hearts
+- **THEN** it prints `Hearts` (tests/runtime/enums.inox); Succ past the last literal stops the program (tests/runtime/enum-succ-past-end.inox)
 
 ### Requirement: CANON-13 Set
 `Set<T>` SHALL be a finite mathematical set over an Enum or finite Range
@@ -2074,7 +2074,7 @@ structs, examined with `case`) are how a collection mixes kinds without
 subtyping
 (a direction recorded by Marcelo Fortes,
 2026-10-14). Metadata tags (JSON,
-databases), BigCurrency, symbolic mathematics and `Float(Soma / N)` as the
+databases), BigCurrency, symbolic mathematics and `Float(Sum / N)` as the
 exact quotient of two integers (2026-10-16) are later directions. Each
 needs an approved design.
 

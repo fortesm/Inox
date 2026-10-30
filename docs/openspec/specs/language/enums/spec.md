@@ -74,8 +74,8 @@ a compile error).
 declaration; `Ord(E)` SHALL give its ordinal.
 
 #### Scenario: Name and ordinal
-- **WHEN** `Naipe TNaipe := Copas` with `TNaipe (Paus, Ouros, Copas, Espadas)` and the program runs `PutLn(Naipe)` and `PutLn(Ord(Naipe))`
-- **THEN** it prints `Copas` and `2` (tests/runtime/enums.inox)
+- **WHEN** `Suit TCardSuit := Hearts` with `TCardSuit (Clubs, Diamonds, Hearts, Spades)` and the program runs `PutLn(Suit)` and `PutLn(Ord(Suit))`
+- **THEN** it prints `Hearts` and `2` (tests/runtime/enums.inox)
 
 ### Requirement: Enums in aggregates
 An enum struct field SHALL have a literal default or be given in the

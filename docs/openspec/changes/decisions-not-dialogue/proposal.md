@@ -33,6 +33,6 @@ Status: **implemented** (canon r3.102).
   when.
 - Unicode test data stays (`"água😀"`, `"héllo wörld"`, an argument
   `"ção"`): it tests non-ASCII text and is not prose.
-- Identifiers and strings in Portuguese inside test and example programs
-  (`TConta`, `FSaldo`, `"sem nome"`) are a separate step, since their
-  expected outputs and diagnostics change with them.
+- Portuguese identifiers and strings inside test and example programs are
+  translated by the next change, `english-programs`, since their expected
+  outputs and diagnostics change with them.

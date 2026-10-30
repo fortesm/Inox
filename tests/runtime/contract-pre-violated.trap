@@ -1,1 +1,1 @@
-Inox runtime error: precondition violated: TConta.Depositar: Valor > 0: depósito positivo
+Inox runtime error: precondition violated: TAccount.Deposit: Amount > 0: a positive deposit

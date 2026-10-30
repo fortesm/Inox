@@ -7,15 +7,15 @@
 
 == Safe pointers: an owner given away in a loop needs a new value before the next round.
 Type
-    TNo Struct
-        FValor Integer := 0
-        FProximo Option<Own<TNo>>
+    TNode Struct
+        FValue Integer := 0
+        FNext Option<Own<TNode>>
     ;
 
 Main :
-    P := New(TNo)
+    P := New(TNode)
     for I in 1..2
         Q := Move(P)
-        PutLn(Q.FValor, I)
+        PutLn(Q.FValue, I)
     ;
 ;

@@ -14,14 +14,14 @@ Use Std.IOUtils
 Main :
     Path String := "inox-test-files-text.txt"
     F := Create(Path)
-    WriteLn(F, "Olá ", 42, " ", true, " ", 2.5)
-    Write(F, "sem quebra")
+    WriteLn(F, "Hello ", 42, " ", true, " ", 2.5)
+    Write(F, "no line break")
     WriteLn(F)
     WriteLn(F, -7)
     Close(F)
 
     G := OpenAppend(Path)
-    WriteLn(G, "anexada")
+    WriteLn(G, "appended")
     Close(G)
 
     Count Integer := 0
@@ -31,11 +31,11 @@ Main :
         Count += 1
         PutLn(Count, ": [", Line, "]")
     ;
-    PutLn("depois do fim: [", ReadLn(R), "] ", Eof(R))
+    PutLn("after the end: [", ReadLn(R), "] ", Eof(R))
 
     for Round in 1..2
         Again := OpenRead(Path)
-        PutLn("volta ", Round, ": ", ReadLn(Again))
+        PutLn("round ", Round, ": ", ReadLn(Again))
         == Each round closes the file of the previous one when it stores the
         == new one; the last stays open until Main ends (F1), so it is closed
         == here: Windows does not delete an open file.

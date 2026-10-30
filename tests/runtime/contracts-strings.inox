@@ -8,40 +8,40 @@
 == Contracts over Strings: old copies of Strings, a String Result and an
 == invariant on a String field; checked for leaks by string_leak_check.
 Type
-    TNome Struct
-        FNome String := "anônimo"
-        FAnterior String := ""
-        invariant Self.FNome # "", "o nome nunca é vazio"
+    TName Struct
+        FName String := "anonymous"
+        FPrevious String := ""
+        invariant Self.FName # "", "the name is never empty"
     ;
 
-TNome.Trocar(Self mut, Novo String) :
-    pre Novo # "", "novo nome"
-    pos Self.FAnterior = old Self.FNome
-    pos Self.FNome = Novo
-    Self.FAnterior := Self.FNome
-    Self.FNome := Novo
+TName.Swap(Self mut, NewValue String) :
+    pre NewValue # "", "newvalue name"
+    pos Self.FPrevious = old Self.FName
+    pos Self.FName = NewValue
+    Self.FPrevious := Self.FName
+    Self.FName := NewValue
 ;
 
-TNome.Atual(Self) String :
-    pos Result = Self.FNome
-    Return Self.FNome
+TName.Current(Self) String :
+    pos Result = Self.FName
+    Return Self.FName
 ;
 
-Escolher(A String, B String, PrimeiroA Bool) String :
+Choose(A String, B String, FirstA Bool) String :
     pos Result = A or Result = B
-    if PrimeiroA
+    if FirstA
         Return A
     ;
     Return B
 ;
 
 Main :
-    N TNome
+    N TName
     for I in 1..3
-        N.Trocar(Escolher("Ana", "Bia", I mod 2 = 1))
-        PutLn(N.FAnterior, " -> ", N.Atual)
+        N.Swap(Choose("Ana", "Bia", I mod 2 = 1))
+        PutLn(N.FPrevious, " -> ", N.Current)
     ;
-    M TNome := TNome(FNome := "Caio")
-    M.Trocar(N.Atual)
-    PutLn(M.FAnterior, " -> ", M.FNome)
+    M TName := TName(FName := "Caio")
+    M.Swap(N.Current)
+    PutLn(M.FPrevious, " -> ", M.FName)
 ;

@@ -15,8 +15,8 @@ Assignment and passing SHALL behave as copies, because Strings are immutable.
 - **THEN** it prints an empty field, and T prints "abc" (tests/runtime/strings.inox)
 
 #### Scenario: Literal field default
-- **WHEN** a struct declares `FName String := "sem nome"` and a program prints that field of a declared value and of an array element
-- **THEN** each prints "sem nome" (tests/runtime/strings-aggregates.inox)
+- **WHEN** a struct declares `FName String := "no name"` and a program prints that field of a declared value and of an array element
+- **THEN** each prints "no name" (tests/runtime/strings-aggregates.inox)
 
 #### Scenario: Default of the wrong type
 - **WHEN** an Integer field has the default `"12"`, or a String field has the default `12`

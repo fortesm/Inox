@@ -8,9 +8,9 @@
 == CANON-14: comparing Strings uses the String runtime even when the program
 == owns no String and raises nothing, so the driver must link libinoxrt.
 IsYes(Answer String) Bool :
-    Return Answer = "sim"
+    Return Answer = "yes"
 ;
 
 Main :
-    PutLn("a" = "b", " ", "x" # "x", " ", IsYes("sim"))
+    PutLn("a" = "b", " ", "x" # "x", " ", IsYes("yes"))
 ;

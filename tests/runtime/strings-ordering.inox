@@ -32,14 +32,14 @@ Main :
     PutLn(not (A = B), " ", not (A < B), " ", A < B and B < U, " ", A > B or C > A, " ", A < B xor C < A)
 
     unless A >= B
-        PutLn("unless: ", A, " antes de ", B)
+        PutLn("unless: ", A, " before ", B)
     ;
     if A > B
-        PutLn("errado")
+        PutLn("wrong")
     elif A <= B and not (E # "")
-        PutLn("elif: vazio e ordem")
+        PutLn("elif: empty and order")
     else
-        PutLn("errado")
+        PutLn("wrong")
     ;
     PutLn(Larger(A, B), " ", Larger(U, B), " ", Larger(E, E) = "")
 

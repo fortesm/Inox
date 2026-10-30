@@ -1,1 +1,1 @@
-Inox runtime error: invariant violated: TConta: Self.FSaldo >= 0: saldo nunca negativo
+Inox runtime error: invariant violated: TAccount: Self.FBalance >= 0: the balance is never negative

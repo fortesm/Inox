@@ -14,7 +14,7 @@ Main :
     Path String := "inox-test-files-missing.txt"
     try
         F := OpenRead(Path)
-        PutLn("inesperado ", ReadLn(F))
+        PutLn("unexpected ", ReadLn(F))
     except
         On FileNotFound
             PutLn("FileNotFound")
@@ -27,7 +27,7 @@ Main :
         DeleteFile(Path)
     except
         On IOError
-            PutLn("IOError pega FileNotFound")
+            PutLn("IOError catch FileNotFound")
         ;
     ;
 
@@ -35,13 +35,13 @@ Main :
     try
         Tries += 1
         F := OpenRead(Path)
-        PutLn("tentativa ", Tries, ": ", ReadLn(F))
+        PutLn("attempt ", Tries, ": ", ReadLn(F))
         Close(F)
     except
         On FileNotFound
-            PutLn("tentativa ", Tries, ": não existe, criando")
+            PutLn("attempt ", Tries, ": missing, creating")
             G := Create(Path)
-            WriteLn(G, "criado no handler")
+            WriteLn(G, "created in the handler")
             Close(G)
             Retry(1)
         ;
@@ -54,18 +54,18 @@ Main :
         PutLn(ReadLn(W))
     except
         On FileNotFound
-            PutLn("inesperado")
+            PutLn("unexpected")
         ;
         Else
-            PutLn("Else: ler um arquivo aberto para escrita")
+            PutLn("Else: reading a file open for writing")
         ;
     ;
     Close(W)
     try
-        WriteLn(W, "depois de Close")
+        WriteLn(W, "after Close")
     except
         On IOError
-            PutLn("IOError: arquivo fechado")
+            PutLn("IOError: file closed")
         ;
     ;
     DeleteFile(Path)

@@ -9,19 +9,19 @@
 == checked at every `.Member`; freeing its object inside the body stops the
 == program at the next use, never reading freed memory.
 Type
-    TNotas Struct
+    TGrades Struct
         FTotal Integer := 0
     ;
-    TCliente Struct
-        FNotas TNotas
+    TClient Struct
+        FGrades TGrades
     ;
 
 Main :
-    P := New(TCliente)
-    with P.FNotas
+    P := New(TClient)
+    with P.FGrades
         .FTotal := 1
         Free(P)
-        PutLn("liberado")
+        PutLn("freed")
         .FTotal := 2
     ;
 ;

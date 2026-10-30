@@ -8,133 +8,133 @@
 == Safe pointers (change safe-pointers): Own, Option<Own>, Link, New, Free,
 == Move, Value, Alive, Same, None; leak-checked by string_leak_check.
 Type
-    TNo Struct
-        FValor Integer := 0
-        FNome String := ""
-        FProximo Option<Own<TNo>>
+    TNode Struct
+        FValue Integer := 0
+        FName String := ""
+        FNext Option<Own<TNode>>
     ;
     TPasta Struct
-        FNome String := ""
-        FPai Link<TPasta>
-        FFilho Option<Own<TPasta>>
+        FName String := ""
+        FParent Link<TPasta>
+        FChild Option<Own<TPasta>>
     ;
-    TCaixa Struct
-        FConteudo Own<TNo>
-        FRotulo String := "caixa"
+    TCrate Struct
+        FContent Own<TNode>
+        FLabel String := "box"
     ;
-    TPonto Struct
+    TPoint Struct
         FX Integer := 0
         FY Integer := 0
     ;
 
-TPonto.Mover(Self mut, DX Integer) :
+TPoint.Relocate(Self mut, DX Integer) :
     Self.FX += DX
 ;
 
-TPonto.Soma(Self) Integer :
+TPoint.Sum(Self) Integer :
     Return Self.FX + Self.FY
 ;
 
-NovaLista(N Integer) Own<TNo> :
-    Lista := New(TNo(FValor := 1, FNome := "um"))
-    Atual := Link(Lista)
+NewList(N Integer) Own<TNode> :
+    List := New(TNode(FValue := 1, FName := "one"))
+    Current := Link(List)
     for I in 2..N
-        Atual.FProximo := New(TNo(FValor := I))
-        Atual := Link(Atual.FProximo)
+        Current.FNext := New(TNode(FValue := I))
+        Current := Link(Current.FNext)
     ;
-    Return Move(Lista)
+    Return Move(List)
 ;
 
-Somar(Inicio Link<TNo>) Integer :
+Add(Start Link<TNode>) Integer :
     Total := 0
-    N := Inicio
+    N := Start
     while Alive(N)
-        Total += N.FValor
-        N := Link(N.FProximo)
+        Total += N.FValue
+        N := Link(N.FNext)
     ;
     Return Total
 ;
 
-Contar(Lista Own<TNo>) Integer :
-    Return Somar(Link(Lista))
+CountUp(List Own<TNode>) Integer :
+    Return Add(Link(List))
 ;
 
-Vazar Link<Integer> :
+Leak Link<Integer> :
     X Integer := 42
     Return Link(X)
 ;
 
-NovaCaixa(Valor Integer) TCaixa :
-    Return TCaixa(FConteudo := New(TNo(FValor := Valor, FNome := "dentro")))
+NewBox(Amount Integer) TCrate :
+    Return TCrate(FContent := New(TNode(FValue := Amount, FName := "inside")))
 ;
 
 Main :
     == A list built by a routine, owned by Main.
-    L := NovaLista(4)
-    PutLn("soma ", Somar(Link(L)), ", primeiro ", L.FNome, " ", L.FValor)
+    L := NewList(4)
+    PutLn("sum ", Add(Link(L)), ", first ", L.FName, " ", L.FValue)
 
     == A Link to a variable, written through it.
     X Integer := 10
     Espiao := Link(X)
     Value(Espiao) := 7
-    PutLn("X ", X, ", espião ", Value(Espiao), ", mesmo ", Same(Espiao, Link(X)))
+    PutLn("X ", X, ", spy ", Value(Espiao), ", same ", Same(Espiao, Link(X)))
 
     == A Link to a field and to an element.
-    Pt TPonto
+    Pt TPoint
     LX := Link(Pt.FX)
     Value(LX) := 5
-    Pt.Mover(1)
-    Tabela Array[1..3] Integer := Fill(0)
-    LE := Link(Tabela[2])
+    Pt.Relocate(1)
+    Table Array[1..3] Integer := Fill(0)
+    LE := Link(Table[2])
     Value(LE) := 9
-    PutLn("ponto ", Pt.FX, ", soma ", Pt.Soma, ", tabela ", Tabela[2])
+    PutLn("point ", Pt.FX, ", sum ", Pt.Sum, ", table ", Table[2])
 
     == Methods through an owner and a Link.
-    P := New(TPonto(FX := 1, FY := 2))
-    P.Mover(10)
+    P := New(TPoint(FX := 1, FY := 2))
+    P.Relocate(10)
     LP := Link(P)
-    LP.Mover(100)
-    PutLn("P ", P.FX, " ", LP.Soma, " ", Value(P).FY)
+    LP.Relocate(100)
+    PutLn("P ", P.FX, " ", LP.Sum, " ", Value(P).FY)
 
     == Free: every Link to the object dies.
     Free(P)
-    PutLn("vivo depois de Free: ", Alive(LP))
-    P := New(TPonto(FX := 3))
-    PutLn("de novo: ", P.FX, ", o Link antigo continua morto: ", Alive(LP))
+    PutLn("alive after Free: ", Alive(LP))
+    P := New(TPoint(FX := 3))
+    PutLn("again: ", P.FX, ", the old Link stays dead: ", Alive(LP))
 
     == A Link that outlives its variable is detected.
-    H := Vazar
-    PutLn("vazado vivo: ", Alive(H))
+    H := Leak
+    PutLn("leaked alive: ", Alive(H))
 
     == Move: the owner changes hands; to a routine, which frees it.
     Q := Move(L)
-    PutLn("movido ", Q.FValor)
-    PutLn("contado ", Contar(Move(Q)))
+    PutLn("moved ", Q.FValue)
+    PutLn("counted ", CountUp(Move(Q)))
 
     == An Option field: None frees the child; Free empties it.
-    Raiz := New(TPasta(FNome := "raiz"))
-    Raiz.FFilho := New(TPasta(FNome := "docs", FPai := Link(Raiz)))
-    Filho := Link(Raiz.FFilho)
-    PutLn("filho ", Filho.FNome, ", pai ", Filho.FPai.FNome, ", vivo ", Alive(Filho))
-    Raiz.FFilho := None
-    PutLn("depois de None: ", Alive(Filho), " ", Alive(Raiz.FFilho))
-    Raiz.FFilho := New(TPasta(FNome := "fotos"))
-    Free(Raiz.FFilho)
-    PutLn("depois de Free: ", Alive(Raiz.FFilho))
+    Root := New(TPasta(FName := "root"))
+    Root.FChild := New(TPasta(FName := "docs", FParent := Link(Root)))
+    Child := Link(Root.FChild)
+    PutLn("child ", Child.FName, ", parent ", Child.FParent.FName, ", alive ", Alive(Child))
+    Root.FChild := None
+    PutLn("after None: ", Alive(Child), " ", Alive(Root.FChild))
+    Root.FChild := New(TPasta(FName := "photos"))
+    Free(Root.FChild)
+    PutLn("after Free: ", Alive(Root.FChild))
 
     == A value that holds an owner moves like one.
-    C := NovaCaixa(8)
+    C := NewBox(8)
     D := Move(C)
-    PutLn(D.FRotulo, " ", D.FConteudo.FValor, " ", D.FConteudo.FNome)
+    PutLn(D.FLabel, " ", D.FContent.FValue, " ", D.FContent.FName)
 
     == Value: a copy of the whole object; replacing it keeps its Links.
-    V := New(TPonto(FX := 4, FY := 6))
+    V := New(TPoint(FX := 4, FY := 6))
     LV := Link(V)
-    Copia := Value(V)
-    Value(V) := TPonto(FX := 40, FY := 60)
-    PutLn("cópia ", Copia.FX, ", novo ", LV.FX, " ", Alive(LV))
+    Duplicate := Value(V)
+    Value(V) := TPoint(FX := 40, FY := 60)
+    PutLn("copy ", Duplicate.FX, ", new ", LV.FX, " ", Alive(LV))
 
     == A long list is freed without recursion.
-    Longa := NovaLista(100000)
-    PutLn("longa ", Somar(Link(Longa)))
+    LongText := NewList(100000)
+    PutLn("longtext ", Add(Link(LongText)))
 ;

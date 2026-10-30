@@ -37,7 +37,7 @@ ownership, runtime ABI). No code before the design is approved.
 - **Names and absence** (2026-10-16): `Link<T>`, not to be confused with
   Delphi's or Windows' handles, replaces
   `Handle<T>`; `Value`, `New` and `Free` stay; an absent owner is
-  `Option<Own<TNo>>` (the word `Optional` as a second spelling is not
+  `Option<Own<TNode>>` (the word `Optional` as a second spelling is not
   adopted for now; see design.md).
 - **An empty Link:** a Link may be born empty (`Alive` is false), so it
   serves as "no parent" without an `Option`.
@@ -51,7 +51,7 @@ ownership, runtime ABI). No code before the design is approved.
   variable, field or array element (`Link(X)`). Each use checks a generation
   number, so it never reaches a freed or reused object: `Alive(H)` tests
   it, and the use of a dead Link is a trap. A Link is born empty.
-- Field access with a dot (`P.FValor`, `H.FValor`), never `^` or `->`;
+- Field access with a dot (`P.FValue`, `H.FValue`), never `^` or `->`;
   `Value(P)` is the whole value. No arithmetic, no integer-to-pointer
   conversion, no null.
 - Arenas: a possible optional optimization later. `Pointer<T>`, address

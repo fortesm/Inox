@@ -7,15 +7,15 @@
 
 == Safe pointers: an owner given away on one branch is given away after the if.
 Type
-    TNo Struct
-        FValor Integer := 0
-        FProximo Option<Own<TNo>>
+    TNode Struct
+        FValue Integer := 0
+        FNext Option<Own<TNode>>
     ;
 
 Main :
-    P := New(TNo)
-    if P.FValor = 0
+    P := New(TNode)
+    if P.FValue = 0
         Free(P)
     ;
-    PutLn(P.FValor)
+    PutLn(P.FValue)
 ;

@@ -7,12 +7,12 @@
 
 == A Link is born empty; using it traps (kind 16).
 Type
-    TNo Struct
-        FValor Integer := 0
+    TNode Struct
+        FValue Integer := 0
     ;
 
 Main :
-    L Link<TNo>
-    PutLn("vazio vivo: ", Alive(L))
-    L.FValor := 1
+    L Link<TNode>
+    PutLn("empty alive: ", Alive(L))
+    L.FValue := 1
 ;

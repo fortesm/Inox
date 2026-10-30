@@ -40,13 +40,13 @@ brainstorm's own spellings were illustrative.
 task, later a closure) says how each outer value enters it:
 
 ```
-do |Move(Pedido), Link(Log), Tentativas|
-    Enviar(Pedido, Tentativas)
-    Log.Write("enviado")
+do |Move(Order), Link(Log), Attempts|
+    Send(Order, Attempts)
+    Log.Write("sent")
 ;
 ```
 
-- a plain name is a copy (`Tentativas`);
+- a plain name is a copy (`Attempts`);
 - `Move(X)` gives an owner to the block; using X afterwards is the
   compile error of CANON-25;
 - `Link(X)` is a checked reference, never dangling.
@@ -54,7 +54,7 @@ do |Move(Pedido), Link(Log), Tentativas|
 The items reuse the built-ins of CANON-25, so the clause adds no reserved
 word. The compiler learns every crossing of the boundary from the source
 instead of inferring it, and a value not listed cannot be used inside.
-Later, for closures (change `routine-types`): `|Link(Banco)| (Id Integer)`,
+Later, for closures (change `routine-types`): `|Link(Bank)| (Id Integer)`,
 where `( )` are the arguments of each call and `| |` what the closure
 keeps from where it was made. The brainstorm advises against using `| |`
 for block-local variables or as a second parameter list (a syntactic
@@ -80,7 +80,7 @@ Weaker: Set literals `{A, B}` (CANON-13 says `[A, B]`), map literals.
 
 ### Annotations, separate from both
 
-`@Test`, `@Deprecated("Use Novo")`, later `@Serializable`, `@Property`
+`@Test`, `@Deprecated("Use NewValue")`, later `@Serializable`, `@Property`
 (GUI designers, ORMs, test runners): metadata for tools and libraries, so
 that frameworks do not need new reserved words. Rules from the
 brainstorm: what changes the meaning of a program belongs to the language

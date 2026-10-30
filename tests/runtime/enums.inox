@@ -8,14 +8,14 @@
 == CANON-13 Enum (change enum-range-set): short and multi-line enums,
 == ordinals from 0, comparison by ordinal, Ord, TEnum(I), Low, High, Succ,
 == Pred, enum ranges in for, PutLn prints the name as declared (Q3: with
-== TNaipe, PutLn(Naipe) prints Copas), WriteLn writes it, and enums in
+== TCardSuit, PutLn(Suit) prints Hearts), WriteLn writes it, and enums in
 == fields with a default, array elements (filled, Fill(Club), r3.81), State,
 == parameters, results and a generic routine.
 Use Std.IOUtils
 
 Type
     TSuit (Club, Diamond, Heart, Spade)
-    TNaipe (Paus, Ouros, Copas, Espadas)
+    TCardSuit (Clubs, Diamonds, Hearts, Spades)
     TDay Enum
         Monday
         Tuesday
@@ -40,9 +40,9 @@ Max<T>(A T, B T) T :
 
 Main :
     PutLn(Ord(Heart), " ", Club < Spade, " ", Heart = Heart, " ", Heart # Club, " ", Spade >= Spade)
-    Naipe TNaipe := Copas
-    PutLn(Naipe)
-    PutLn(Ord(Naipe))
+    Suit TCardSuit := Hearts
+    PutLn(Suit)
+    PutLn(Ord(Suit))
     for S in Diamond..Spade
         PutLn(Ord(S), " ", S)
     ;
@@ -57,7 +57,7 @@ Main :
     Trump := Pred(Trump)
     PutLn(C.FSuit, " ", Hand[1], " ", Hand[3], " ", Trump)
     F := Create("enums.txt")
-    WriteLn(F, Naipe, " ", Ord(D), " ", D)
+    WriteLn(F, Suit, " ", Ord(D), " ", D)
     Close(F)
     R := OpenRead("enums.txt")
     PutLn(ReadLn(R))

@@ -11,56 +11,56 @@
 == variant, contracts on a method of a built-in type, recursion, a body that
 == raises (its pos is not checked) and a String in old.
 Type
-    TPessoa Struct
-        FNome String := ""
-        FIdade Integer := 0
-        invariant Self.FIdade >= 0, "idade não negativa"
+    TPerson Struct
+        FName String := ""
+        FAge Integer := 0
+        invariant Self.FAge >= 0, "a non-negative age"
     ;
-    TCliente Struct (TPessoa)
-        FLimite Integer := 0
-        invariant Self.FLimite <= 1000
+    TClient Struct (TPerson)
+        FLimit Integer := 0
+        invariant Self.FLimit <= 1000
     ;
 
-TPessoa.Aniversario(Self mut, Anos Integer) :
-    pre Anos > 0 and Anos < 5
-    pos Self.FIdade = old Self.FIdade + Anos
-    Self.FIdade += Anos
+TPerson.Birthday(Self mut, Years Integer) :
+    pre Years > 0 and Years < 5
+    pos Self.FAge = old Self.FAge + Years
+    Self.FAge += Years
 ;
 
-TPessoa.Renomear(Self mut, Nome String) :
-    pre Nome # ""
-    pos Self.FNome = Nome
-    pos Self.FNome # old Self.FNome or Nome = old Self.FNome
-    Self.FNome := Nome
+TPerson.Rename(Self mut, Name String) :
+    pre Name # ""
+    pos Self.FName = Name
+    pos Self.FName # old Self.FName or Name = old Self.FName
+    Self.FName := Name
 ;
 
-TPessoa.Idade(Self) Integer :
-    pos Result = Self.FIdade
-    Return Self.FIdade
+TPerson.Age(Self) Integer :
+    pos Result = Self.FAge
+    Return Self.FAge
 ;
 
-TCliente.Aniversario(Self mut, Anos Integer) Override :
-    pre else Anos >= 5 and Anos < 100
-    pos then Self.FLimite = old Self.FLimite
-    Self.TPessoa.FIdade += Anos
+TClient.Birthday(Self mut, Years Integer) Override :
+    pre else Years >= 5 and Years < 100
+    pos then Self.FLimit = old Self.FLimit
+    Self.TPerson.FAge += Years
 ;
 
-String.Trocar(Self mut, Novo String) :
-    pre Novo # ""
-    pos Self = Novo
-    Self := Novo
+String.Swap(Self mut, NewValue String) :
+    pre NewValue # ""
+    pos Self = NewValue
+    Self := NewValue
 ;
 
-Fatorial(N Integer) Integer :
+Factorial(N Integer) Integer :
     pre N >= 0 and N <= 20
     pos Result >= 1
     if N = 0
         Return 1
     ;
-    Return N * Fatorial(N - 1)
+    Return N * Factorial(N - 1)
 ;
 
-Raiz(N Integer) Integer :
+Root(N Integer) Integer :
     pre N >= 0
     pos Result * Result <= N and (Result + 1) * (Result + 1) > N
     R := 0
@@ -72,7 +72,7 @@ Raiz(N Integer) Integer :
     Return R
 ;
 
-Somar(N Integer) Integer :
+Add(N Integer) Integer :
     pre N >= 0
     pos Result = N * (N + 1) / 2
     Total := 0
@@ -83,9 +83,9 @@ Somar(N Integer) Integer :
     Return Total
 ;
 
-Contar(N Integer) Integer :
+CountUp(N Integer) Integer :
     I := N
-    Passos := 0
+    Steps := 0
     repeat
         invariant I >= 0
         variant I
@@ -93,12 +93,12 @@ Contar(N Integer) Integer :
             leave
         ;
         I -= 1
-        Passos += 1
+        Steps += 1
     ;
-    Return Passos
+    Return Steps
 ;
 
-Falhar(N Integer) Integer :
+Fail(N Integer) Integer :
     pos Result = N + 1
     if N > 0
         Raise RangeError
@@ -107,20 +107,20 @@ Falhar(N Integer) Integer :
 ;
 
 Main :
-    C TCliente
-    C.Renomear("Ana")
-    C.Aniversario(3)                == pre of TPessoa (inherited)
-    C.Aniversario(40)               == pre else of TCliente
-    PutLn(C.FNome, " ", C.Idade, " ", C.FLimite)
-    C.FLimite := 1000
+    C TClient
+    C.Rename("Ana")
+    C.Birthday(3)                == pre of TPerson (inherited)
+    C.Birthday(40)               == pre else of TClient
+    PutLn(C.FName, " ", C.Age, " ", C.FLimit)
+    C.FLimit := 1000
     S := "x"
-    S.Trocar("y")
-    PutLn(S, " ", Fatorial(10), " ", Raiz(99), " ", Raiz(100), " ", Somar(10), " ", Contar(4))
+    S.Swap("y")
+    PutLn(S, " ", Factorial(10), " ", Root(99), " ", Root(100), " ", Add(10), " ", CountUp(4))
     try
-        PutLn(Falhar(1))
+        PutLn(Fail(1))
     except
         On RangeError
-            PutLn("RangeError: o pos de Falhar não é verificado")
+            PutLn("RangeError: the pos of Fail is not checked")
         ;
     ;
 ;

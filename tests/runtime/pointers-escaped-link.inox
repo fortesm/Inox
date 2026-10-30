@@ -7,13 +7,13 @@
 
 == A Link to a variable of a routine that returned: detected (kind 16),
 == never the stack memory that held it (change safe-pointers).
-Vazar Link<Integer> :
+Leak Link<Integer> :
     X Integer := 42
     Return Link(X)
 ;
 
 Main :
-    H := Vazar
-    PutLn("vivo: ", Alive(H))
+    H := Leak
+    PutLn("alive: ", Alive(H))
     PutLn(Value(H))
 ;

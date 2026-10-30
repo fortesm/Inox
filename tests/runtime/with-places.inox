@@ -11,95 +11,95 @@
 == changes inside the body, or a call in the index, does not move it), and
 == every `.Member` acts on that storage, never on a copy.
 Type
-    TNotas Struct
+    TGrades Struct
         FTotal Integer := 0
-        FUltima String := ""
+        FLast String := ""
     ;
-    TCliente Struct
-        FNome String := ""
-        FNotas TNotas
+    TClient Struct
+        FName String := ""
+        FGrades TGrades
     ;
 
-TNotas.Add(Self mut, Texto String) :
+TGrades.Add(Self mut, Text String) :
     Self.FTotal += 1
-    Self.FUltima := Texto
+    Self.FLast := Text
 ;
 
 State
-    GCliente TCliente
-    GChamadas Integer := 0
+    GClient TClient
+    GCalls Integer := 0
 ;
 
-Proximo(N Integer) Integer :
-    GChamadas += 1
+NextOne(N Integer) Integer :
+    GCalls += 1
     Return N + 1
 ;
 
-Anotar(ref mut C TCliente) :
-    with C.FNotas
-        .Add("do parâmetro")
+Annotate(ref mut C TClient) :
+    with C.FGrades
+        .Add("do coupleâmetro")
     ;
 ;
 
-Mostrar(C TCliente) :
-    with C.FNotas
-        PutLn(C.FNome, ": ", .FTotal, " notas, a última ", .FUltima)
+Show(C TClient) :
+    with C.FGrades
+        PutLn(C.FName, ": ", .FTotal, " grades, the last ", .FLast)
     ;
 ;
 
 Main :
-    C TCliente
+    C TClient
     with C
-        .FNome := "Ana"
-        with .FNotas
-            .Add("primeira")
+        .FName := "Ana"
+        with .FGrades
+            .Add("first")
         ;
     ;
-    with C.FNotas
-        .Add("segunda")
-        Pausa
-        .Add("terceira")
+    with C.FGrades
+        .Add("second")
+        Pause
+        .Add("third")
     ;
-    Anotar(C)
-    Mostrar(C)
+    Annotate(C)
+    Show(C)
 
-    Vazio TCliente
-    A Array[1..3] TCliente := Fill(Vazio)
+    Empty TClient
+    A Array[1..3] TClient := Fill(Empty)
     I := 2
     with A[I]
-        .FNome := "Bia"
+        .FName := "Bia"
         I := 3
-        .FNotas.FTotal := 5
+        .FGrades.FTotal := 5
     ;
-    PutLn(A[2].FNome, " ", A[2].FNotas.FTotal, " ", A[3].FNotas.FTotal, " ", I)
-    with A[Proximo(0)].FNotas
+    PutLn(A[2].FName, " ", A[2].FGrades.FTotal, " ", A[3].FGrades.FTotal, " ", I)
+    with A[NextOne(0)].FGrades
         .Add("a")
         .Add("b")
     ;
-    PutLn(GChamadas, " ", A[1].FNotas.FTotal)
+    PutLn(GCalls, " ", A[1].FGrades.FTotal)
 
-    with GCliente
-        .FNome := "Caio"
+    with GClient
+        .FName := "Caio"
     ;
-    PutLn(GCliente.FNome)
+    PutLn(GClient.FName)
 
-    P := New(TCliente)
+    P := New(TClient)
     with P
-        .FNome := "Dani"
+        .FName := "Dani"
     ;
-    with P.FNotas
-        .Add("pelo dono")
+    with P.FGrades
+        .Add("through the owner")
     ;
     L := Link(P)
-    with L.FNotas
-        .Add("pelo Link")
+    with L.FGrades
+        .Add("through the Link")
     ;
     with Value(L)
-        .FNome := "Daniela"
+        .FName := "Daniela"
     ;
-    PutLn(P.FNome, " ", P.FNotas.FTotal, " ", P.FNotas.FUltima)
+    PutLn(P.FName, " ", P.FGrades.FTotal, " ", P.FGrades.FLast)
 ;
 
-Pausa :
+Pause :
     PutLn("...")
 ;

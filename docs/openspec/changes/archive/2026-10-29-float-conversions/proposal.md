@@ -45,7 +45,7 @@ Choices awaiting confirmation (open question 3 in revisions.md):
 3. Pi, Tau and E are Consts.
 
 Out of scope: real literals with exponents (`1.0e3`; the grammar has none),
-`Float(Soma / N)` as an exact quotient (FUTURE), conversions between text
+`Float(Sum / N)` as an exact quotient (FUTURE), conversions between text
 and numbers, decimals (0.3).
 
 ## Capabilities

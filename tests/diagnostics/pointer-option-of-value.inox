@@ -7,9 +7,9 @@
 
 == Safe pointers: Option is for an owner that may be absent until generics.
 Type
-    TNo Struct
-        FValor Integer := 0
-        FProximo Option<Own<TNo>>
+    TNode Struct
+        FValue Integer := 0
+        FNext Option<Own<TNode>>
     ;
 
 Main :

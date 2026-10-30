@@ -10,78 +10,78 @@
 == and an exception keep every String owned once (string_leak_check runs
 == this program). A field of `Self mut` is a writable place for ref mut.
 Type
-    TEndereco Struct
-        FCidade String := ""
+    TAddress Struct
+        FCity String := ""
     ;
-    TPessoa Struct (TEndereco)
-        FNome String := ""
+    TPerson Struct (TAddress)
+        FName String := ""
     ;
-    TAssinatura Struct (TPessoa)
-        FPlano String := ""
+    TSubscription Struct (TPerson)
+        FPlan String := ""
     ;
 
 State
-    Global TAssinatura
+    Global TSubscription
 ;
 
-TEndereco.Mudar(Self mut, Cidade String) :
-    Self.FCidade := Cidade
+TAddress.Change(Self mut, City String) :
+    Self.FCity := City
 ;
 
-TPessoa.UpdateNome(Self mut, Nome String) :
-    Self.FNome := Nome
+TPerson.UpdateName(Self mut, Name String) :
+    Self.FName := Name
 ;
 
-TPessoa.Describe(Self) String :
-    Return Self.FNome
+TPerson.Describe(Self) String :
+    Return Self.FName
 ;
 
 SetName(ref mut Field String, Value String) :
     Field := Value
 ;
 
-TPessoa.Rename(Self mut, Nome String) :
-    SetName(Self.FNome, Nome)
+TPerson.Rename(Self mut, Name String) :
+    SetName(Self.FName, Name)
 ;
 
-ShowAll(P TAssinatura) :
-    PutLn(P.Describe, " em ", P.FCidade)
+ShowAll(P TSubscription) :
+    PutLn(P.Describe, " in ", P.FCity)
 ;
 
-Preencher(ref mut P TAssinatura, Nome String) :
-    P.UpdateNome(Nome)
-    P.Mudar("Olinda")
+FillIn(ref mut P TSubscription, Name String) :
+    P.UpdateName(Name)
+    P.Change("Olinda")
 ;
 
-Make(Nome String) TAssinatura :
-    R TAssinatura
-    R.Rename(Nome)
+Make(Name String) TSubscription :
+    R TSubscription
+    R.Rename(Name)
     Return R
 ;
 
 Main :
-    Vazia TAssinatura
-    L Array[1..2] TAssinatura := Fill(Vazia)
-    L[1].UpdateNome("Um")
-    L[2].Rename("Dois")
-    L[2].Mudar("Recife")
+    EmptyOne TSubscription
+    L Array[1..2] TSubscription := Fill(EmptyOne)
+    L[1].UpdateName("Um")
+    L[2].Rename("Two")
+    L[2].Change("Recife")
     for I in 1..2
         ShowAll(L[I])
     ;
-    Global.UpdateNome("Global")
-    Global.Mudar("Natal")
+    Global.UpdateName("Global")
+    Global.Change("Natal")
     ShowAll(Global)
-    X TAssinatura
-    Preencher(X, "Preenchido")
+    X TSubscription
+    FillIn(X, "Filled")
     ShowAll(X)
-    Y := Make("Feito")
+    Y := Make("Done")
     ShowAll(Y)
     try
-        Y.Rename("Antes")
+        Y.Rename("Before")
         Raise RangeError
     except
         On RangeError
-            PutLn("capturada: ", Y.FNome)
+            PutLn("caught: ", Y.FName)
         ;
     ;
 ;

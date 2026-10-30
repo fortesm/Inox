@@ -1,1 +1,1 @@
-Inox runtime error: postcondition violated: Dobro: Result = 2 * N
+Inox runtime error: postcondition violated: Twice: Result = 2 * N

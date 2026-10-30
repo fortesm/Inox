@@ -15,7 +15,7 @@ Main :
     for I in 1..3
         Even := I mod 2 = 0
         if Even > F
-            PutLn(I, " par")
+            PutLn(I, " couple")
         ;
     ;
 ;

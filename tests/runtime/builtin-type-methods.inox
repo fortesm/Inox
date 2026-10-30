@@ -17,7 +17,7 @@ Integer.Inc(Self mut) :
 ;
 
 Bool.Text(Self) String :
-    Return IIf(Self, "sim", "não")
+    Return IIf(Self, "yes", "no")
 ;
 
 Float.Half(Self) Float :

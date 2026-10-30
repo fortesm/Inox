@@ -1,3 +1,3 @@
 53
-Inox runtime error: precondition violated: TCliente.Aniversario: (Anos > 0 and Anos < 5) or else (Anos >= 5 and Anos < 100)
+Inox runtime error: precondition violated: TClient.Birthday: (Years > 0 and Years < 5) or else (Years >= 5 and Years < 100)
 inox: program stopped by an Inox runtime error (exit code 70)

@@ -13,7 +13,7 @@ Approval (Marcelo Fortes, 2026-10-21):
   an ordinary loss of precision is no error; `Float32(F)` does not saturate at the largest finite number `Float32Unchecked(F)` is
   named as an idea, not an approved syntax.
 - Literals: confirmed without change; an untyped real literal takes the expected type, while a typed expression never changes precision implicitly; the compiler converts the decimal literal straight to the final type, never necessarily through Float64.
-- Constants: "Prefiro claramente o modelo Ada/Go": Pi, Tau and E untyped
+- Constants: the Ada/Go model: Pi, Tau and E untyped
   until the context resolves them, kept with many digits.
 - Also: NaN and the infinities are preserved by a conversion; underflow gives
   a subnormal or a signed zero; Float32 expressions are not evaluated in

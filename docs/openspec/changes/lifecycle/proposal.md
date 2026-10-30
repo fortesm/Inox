@@ -11,9 +11,9 @@ types and lifecycle", r3.70). Nothing is decided; no code.
 ## What Inox has today
 
 - Birth: every variable is born with a value (CANON-5): field defaults
-  (`FVida Integer := 100`) and named construction
-  (`TConta(TTitular := T, FSaldo := 10)`). A routine of the module
-  (`NovaConta(Nome String) TConta`) plays the constructor when the value
+  (`FLife Integer := 100`) and named construction
+  (`TAccount(THolder := T, FBalance := 10)`). A routine of the module
+  (`NewAccount(Name String) TAccount`) plays the constructor when the value
   needs computation, and a struct `invariant` (CANON-24) checks every new
   value.
 - Death: String and File clean themselves (reference counting; a File
@@ -29,7 +29,7 @@ types and lifecycle", r3.70). Nothing is decided; no code.
 2. Destructors: they matter when a value owns something the runtime does
    not know (a texture, a socket, a lock), above all with `Own<T>` (change
    `safe-pointers`), where the owner's release is the moment to
-   release it. Options: none; a reserved method (`TName.Finalizar(Self
+   release it. Options: none; a reserved method (`TName.Finalize(Self
    mut)`, like Rust's Drop or Delphi's destructor) called exactly once when
    the value dies; or only `ensure` blocks.
 3. Order of destruction of parts (CANON-9) and of array elements; what

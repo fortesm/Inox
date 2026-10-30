@@ -7,22 +7,22 @@
 
 == r3.93: an operation on a result is not a call; discard the call alone.
 Type
-    TPonto Struct
+    TPoint Struct
         FX Integer := 0
     ;
 
-Dobro(N Integer) Integer :
+Twice(N Integer) Integer :
     Return 2 * N
 ;
 
-Mostrar(Texto String) :
-    PutLn(Texto)
+Show(Text String) :
+    PutLn(Text)
 ;
 
-TPonto.Limpar(Self mut) :
+TPoint.Clear(Self mut) :
     Self.FX := 0
 ;
 
 Main :
-    _ := Dobro(2) + 1
+    _ := Twice(2) + 1
 ;

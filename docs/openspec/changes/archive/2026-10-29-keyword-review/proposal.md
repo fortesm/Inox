@@ -7,8 +7,8 @@ program and test that uses a removed word).
 
 ## Decisions (Marcelo Fortes, 2026-10-16)
 
-- `div` and `/` stay as they are; later, a conversion such as `Media := Float(Soma / N)` may give the exact quotient:
-  integer `/` stays a compile error naming `div`; `Float(Soma / N)` as the
+- `div` and `/` stay as they are; later, a conversion such as `Media := Float(Sum / N)` may give the exact quotient:
+  integer `/` stays a compile error naming `div`; `Float(Sum / N)` as the
   exact quotient is a FUTURE direction (never a truncation followed by a
   conversion).
 - `{ }` stays reserved until generics and concurrency show the need: `{` and `}` are reserved (CANON-2).
@@ -21,7 +21,7 @@ program and test that uses a removed word).
   names.
 - `main` becomes an ordinary name, no longer a reserved word: `Main` is an
   ordinary name; the program starts at the routine named Main.
-- "`step`, `on` e `mut` continuam reservadas".
+- `step`, `on` and `mut` stay reserved.
 
 Result: 41 reserved words (from 50).
 
@@ -57,7 +57,7 @@ They are two operations, not two spellings: `/` is the quotient in the
 reals (`7.0 / 2.0` = 3.5), `div` the integer quotient truncated toward
 zero (`7 div 2` = 3, `-7 div 2` = -3; `mod` takes the dividend's sign,
 `-7 mod 2` = -1). The rule exists so that `/` never silently drops the
-fraction (`Media := Soma / N`, the classic C bug).
+fraction (`Media := Sum / N`, the classic C bug).
 
 Options:
 
@@ -65,6 +65,6 @@ Options:
   keyword; the reader always knows that `/` is exact.
 - **B. Ada's way**: `/` on two integers truncates, `/` on Floats is exact,
   no `div`. Safe enough in a language without implicit integer-to-Float
-  conversion (Inox has none: `M Float := Soma / N` is a type error), but
-  `PutLn(Soma / N)` prints 3 where 3.5 may be expected. Saves `div`.
+  conversion (Inox has none: `M Float := Sum / N` is a type error), but
+  `PutLn(Sum / N)` prints 3 where 3.5 may be expected. Saves `div`.
 - **C. C's way** without a type error: refused (silent truncation).

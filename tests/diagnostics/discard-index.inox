@@ -7,23 +7,23 @@
 
 == r3.93: an array element is a value, not a call.
 Type
-    TPonto Struct
+    TPoint Struct
         FX Integer := 0
     ;
 
-Dobro(N Integer) Integer :
+Twice(N Integer) Integer :
     Return 2 * N
 ;
 
-Mostrar(Texto String) :
-    PutLn(Texto)
+Show(Text String) :
+    PutLn(Text)
 ;
 
-TPonto.Limpar(Self mut) :
+TPoint.Clear(Self mut) :
     Self.FX := 0
 ;
 
 Main :
-    A Array[1..2] Integer := Fill(Dobro(1))
+    A Array[1..2] Integer := Fill(Twice(1))
     _ := A[1]
 ;

@@ -7,22 +7,22 @@
 
 == Safe pointers and CANON-24: old of an owner would copy it.
 Type
-    TNo Struct
-        FValor Integer := 0
+    TNode Struct
+        FValue Integer := 0
     ;
 
-TNo.Trocar(Self mut, P Own<TNo>) :
-    pos Self.FValor = 1
-    Self.FValor := P.FValor
+TNode.Swap(Self mut, P Own<TNode>) :
+    pos Self.FValue = 1
+    Self.FValue := P.FValue
 ;
 
-Guardar(ref mut D Option<Own<TNo>>) :
+Store(ref mut D Option<Own<TNode>>) :
     pos Alive(old D)
-    D := New(TNo)
+    D := New(TNode)
 ;
 
 Main :
-    O Option<Own<TNo>>
-    Guardar(O)
+    O Option<Own<TNode>>
+    Store(O)
     PutLn(Alive(O))
 ;

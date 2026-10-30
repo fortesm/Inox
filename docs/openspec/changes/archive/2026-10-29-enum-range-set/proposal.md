@@ -39,9 +39,9 @@ Decisions (Marcelo Fortes answered on 2026-10-12, item by item, in his message d
   kind 11, "value out of range"); a constant outside the range is a compile
   error; arithmetic on Range values yields the base type.
 - **Q2. `TEnum(I)` fault: kind 8, "integer conversion out of range".**
-- **Q3. Printing an enum: the literal's name ("Resposta (a) o nome Copas",
-  2026-10-12, canon v3.51).** With `Naipe TNaipe := Copas`, `PutLn(Naipe)`
-  prints `Copas`, spelled as in the declaration; `PutLn(Ord(Naipe))` prints
+- **Q3. Printing an enum: the literal's name (answer (a): the literal's name,
+  2026-10-12, canon v3.51).** With `Suit TCardSuit := Hearts`, `PutLn(Suit)`
+  prints `Hearts`, spelled as in the declaration; `PutLn(Ord(Suit))` prints
   `2`.
 - **Q4. Same literal in two enums: forbidden.**
 - **Q5. `Low(T)`/`High(T)` on enum and range types: yes; `Succ`/`Pred`,

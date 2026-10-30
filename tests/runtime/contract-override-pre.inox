@@ -8,27 +8,27 @@
 == CANON-24: an Override's precondition is the inherited one or else its own
 == pre else (Eiffel's require else).
 Type
-    TPessoa Struct
-        FIdade Integer := 0
+    TPerson Struct
+        FAge Integer := 0
     ;
-    TCliente Struct (TPessoa)
-        FLimite Integer := 0
+    TClient Struct (TPerson)
+        FLimit Integer := 0
     ;
 
-TPessoa.Aniversario(Self mut, Anos Integer) :
-    pre Anos > 0 and Anos < 5
-    Self.FIdade += Anos
+TPerson.Birthday(Self mut, Years Integer) :
+    pre Years > 0 and Years < 5
+    Self.FAge += Years
 ;
 
-TCliente.Aniversario(Self mut, Anos Integer) Override :
-    pre else Anos >= 5 and Anos < 100
-    Self.TPessoa.FIdade += Anos
+TClient.Birthday(Self mut, Years Integer) Override :
+    pre else Years >= 5 and Years < 100
+    Self.TPerson.FAge += Years
 ;
 
 Main :
-    C TCliente
-    C.Aniversario(3)
-    C.Aniversario(50)
-    PutLn(C.FIdade)
-    C.Aniversario(200)
+    C TClient
+    C.Birthday(3)
+    C.Birthday(50)
+    PutLn(C.FAge)
+    C.Birthday(200)
 ;

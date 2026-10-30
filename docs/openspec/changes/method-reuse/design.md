@@ -1,25 +1,25 @@
 ## Decisions (approved by Marcelo Fortes, 2026-10-13: 1a, 2a, 3b, 4a+b)
 
-1. **Declaring reuse, 1a**: `TAssinatura Struct (TPessoa)`, Delphi-like; the
+1. **Declaring reuse, 1a**: `TSubscription Struct (TPerson)`, Delphi-like; the
    first line says what is reused; several parts are allowed:
-   `TCliente Struct (TPessoa, TContato)`. (Rejected: a bare type line, Go;
-   a `Reuse TPessoa` line.)
+   `TClient Struct (TPerson, TContact)`. (Rejected: a bare type line, Go;
+   a `Reuse TPerson` line.)
 2. **Self in a reused method, 2a (delegation)**: the method runs on the
-   part, so it behaves the same wherever it is reused; `TPessoa.Show`
-   calling `Self.Title` calls `TPessoa.Title` even when `TAssinatura`
+   part, so it behaves the same wherever it is reused; `TPerson.Show`
+   calling `Self.Title` calls `TPerson.Title` even when `TSubscription`
    overrides `Title`. (Rejected: rebinding Self to the outer struct, the
    static "virtual" of the ChatGPT discussion.)
 3. **A method with a reused name, 3b**: allowed only with `Override`, which
    replaces it for callers of the struct; the reused one stays reachable by
-   its path (`A.TPessoa.Title`). (Rejected: forbidding it.)
+   its path (`A.TPerson.Title`). (Rejected: forbidding it.)
 4. **Operations on a field, 4a + 4b**: methods of built-in types
    (`String.UpdateStr`, Delphi helpers) and routines with `ref mut`
-   parameters (`UpdateStr(A.FPlano, "x")`), both allowed.
+   parameters (`UpdateStr(A.FPlan, "x")`), both allowed.
 
 ## Rules
 
 - A part is a field named after its type. Construction names the part:
-  `TAssinatura(TPessoa := P, FPlano := "x")`; a reused field in a
+  `TSubscription(TPerson := P, FPlan := "x")`; a reused field in a
   construction is an error that says so.
 - The members a struct offers: its fields, its methods, and for each part,
   the part's fields, methods and offered members (a part's own `Override`
@@ -32,10 +32,10 @@
   or changes the signature (parameters after `Self`, their modes, the
   result, and `Self` or `Self mut`). A struct that reuses itself, even
   indirectly, contains itself.
-- The analyzer rewrites `A.FNome` and `A.UpdateNome(X)` to the explicit path
-  (`A.TPessoa.FNome`); codegen sees ordinary field access and static calls.
-- No subtyping: a `TAssinatura` is never passed where a `TPessoa` is
-  expected; `A.TPessoa` is the part.
+- The analyzer rewrites `A.FName` and `A.UpdateName(X)` to the explicit path
+  (`A.TPerson.FName`); codegen sees ordinary field access and static calls.
+- No subtyping: a `TSubscription` is never passed where a `TPerson` is
+  expected; `A.TPerson` is the part.
 - A method of a built-in type belongs to that exact type (an Integer
   method is not a Byte method); `Self` is a copy, `Self mut` the caller's
   variable, which must be writable. Methods of arrays and File do not exist.
