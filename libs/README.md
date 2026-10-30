@@ -13,7 +13,8 @@ exact version:
 - a library bundled into the release packages.
 
 Inox has none today: it uses only the C++20 standard library, and LLVM
-and Clang are found on the system. Before adding a library, record why it
+and Clang are found on the system. Every library follows the layout of `libs/_template/`. Before adding a
+library, record why it
 cannot be a system dependency, and add its license to `licenses/`. Inox's
 own libraries are not vendored here: the standard library is `stdlib/`,
 and community Inox libraries will come with the package tool (FUTURE).

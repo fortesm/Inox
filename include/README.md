@@ -13,6 +13,9 @@ Public C and C++ headers that programs outside this repository include:
 - the declarations a tool needs to read Inox's output, if one is ever
   published as a stable interface.
 
+The headers live in `include/inox/` (`#include <inox/inox.h>`), and
+`include/inox/detail/` holds what they need but programs should not use.
+
 Headers used only inside the compiler or the runtime stay next to their
 sources in `src/compiler/` and `src/runtime/`. A header here is a promise
 to users: changing it is a change to a public interface.

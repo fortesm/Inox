@@ -15,7 +15,16 @@ tests or its release guarantees:
 - integrations with other tools (build systems, CI templates);
 - community examples and experiments that are not official examples.
 
-Each contribution goes in its own folder (`contrib/vscode/`,
-`contrib/vim/`) with a README naming its maintainer and how to use it.
+Each contribution goes in its own folder, with a README naming its
+maintainer and how to use it:
+
+- `vscode/`, `vim/`, `emacs/`, `sublime-text/`, `notepad-plus-plus/`,
+  `jetbrains/` — editor support;
+- `tree-sitter/` — one grammar for Neovim, Helix, Zed and GitHub;
+- `shell-completions/` — completion of the `inox` driver for `bash/`,
+  `zsh/`, `fish/` and `powershell/`;
+- `ci-templates/` — `github-actions/` and `gitlab-ci/` jobs for Inox projects;
+- `docker/` — a container image with Inox, clang and the library.
+
 Code that the compiler or the runtime needs never goes here: it belongs in
 `src/`.

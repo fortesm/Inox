@@ -23,7 +23,12 @@ Status: **implemented** (canon r3.104).
 6. `contrib/`, `include/`, `libs/` and `utils/` stay, each with a README
    saying what belongs there (a later decision of the same day: they are
    common in projects and may become useful); `tools/.gitkeep` and
-   `.aiderignore` are removed.
+   `.aiderignore` are removed. Their planned structure, one README per
+   folder: `contrib/` vscode, vim, emacs, sublime-text, notepad-plus-plus,
+   jetbrains, tree-sitter, shell-completions (bash, zsh, fish, powershell),
+   ci-templates (github-actions, gitlab-ci), docker; `include/inox/` (and
+   `detail/`); `libs/_template/`; `utils/` inox-fmt, inox-lint, inox-pkg,
+   inox-lsp.
 7. The test runners run every program from a temporary directory, so the
    files tests create never land in the repository; build artifacts still
    go to `build/inox-artifacts`, and `INOX_STDLIB` points to the

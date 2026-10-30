@@ -12,6 +12,10 @@ the compiler itself:
 - the package tool that finds and downloads Inox packages (FUTURE);
 - a language server for editors.
 
+One folder per program: `inox-fmt/`, `inox-lint/`, `inox-pkg/`,
+`inox-lsp/`. They reuse the compiler's library (`inox-compiler`), so they
+never disagree with the language.
+
 Tools for developing Inox itself (test runners, checkers, generators,
 packaging) are in `tools/`; utilities here are for the people who write Inox
 programs.
