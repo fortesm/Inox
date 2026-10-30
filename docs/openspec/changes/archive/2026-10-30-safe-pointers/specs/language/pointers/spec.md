@@ -85,7 +85,8 @@ reached through `Link(X)`; reading its fields directly is an error.
 `Own<T>`, `Link<T>` and `Option<Own<T>>` SHALL be types of variables,
 fields, parameters, results, array elements (`Link` and `Option` only:
 every element is born empty) and State. `Option<X>` for any X other than
-an owner waits for generics; a pointer to a pointer or to a slice is an
+an owner is an error until `Option<T>`, after methods of generic
+structs (ROADMAP); a pointer to a pointer or to a slice is an
 error. An owner variable is born with New or Move; a struct holding an
 `Own` field has no default value; `None` needs a declared type.
 

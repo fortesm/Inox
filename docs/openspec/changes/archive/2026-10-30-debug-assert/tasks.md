@@ -8,4 +8,4 @@
 
 - [x] 2.1 Constitution CANON-18, CANON-19; relock; spec `stdlib/debug`; Std.Debug.inox; manual; STATUS; CHANGELOG
 - [x] 2.2 Suite; ASan+UBSan with a 1 MiB stack; mutation fuzz seeds 1 and 7; backend_gaps 0 BUG; openspec validate; constitution_check
-- [ ] 2.3 Linux and Windows CI green
+- [x] 2.3 Linux and Windows CI green (main green since the merge)

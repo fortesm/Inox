@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.106
+Canon revision: r3.107
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -487,3 +487,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   arguments; a Range value indexes an array and is taken as it is by Put,
   PutLn and `String(X)`. Char Ranges are unchanged. Closes open question 3.
   Decided by Marcelo Fortes, 2026-10-30. Change `range-types`.
+- r3.107 — 2026-10-30 — The spec deltas of `debug-assert`,
+  `design-by-contract`, `method-reuse` and `safe-pointers` are folded into
+  the capability specs: new `stdlib/debug`, `language/contracts` and
+  `language/pointers`; `language/structs` gains method reuse, `Override`
+  and methods of built-in types. Two texts follow later law: `Option<X>` of
+  a value waits for `Option<T>` (generics exist since r3.77), and an
+  invariant over a public field is checked after a write from another
+  module (r3.99). No rule changes. Decided by Marcelo Fortes, 2026-10-30.
+  Change `fold-spec-deltas`.
