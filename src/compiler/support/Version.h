@@ -6,7 +6,7 @@
 // share one version. MAJOR, MINOR, RELEASE and the stage change only by the
 // maintainer's decision; BUILD is generated at every build
 // (cmake/InoxBuildNumber.cmake). The canon revision numbers the recorded
-// decisions (openspec/specs/constitution/revisions.md), not a version.
+// decisions (docs/openspec/specs/constitution/revisions.md), not a version.
 // scripts/run-tests.sh checks all of it against the top of revisions.md.
 
 #pragma once
@@ -23,7 +23,7 @@ inline constexpr unsigned kVersionMinor = 2;    // 0..999
 inline constexpr unsigned kVersionRelease = 0;  // 0..999
 // kBuildNumber (0..9999) comes from InoxBuildNumber.h.
 inline constexpr std::string_view kVersionStage = "pre-alpha";
-inline constexpr std::string_view kCanonRevision = "r3.99";
+inline constexpr std::string_view kCanonRevision = "r3.100";
 
 // "0.2.0.206"
 inline std::string versionText()

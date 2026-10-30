@@ -18,6 +18,8 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 ### Changed
 - `Public` is a reserved word; `Export` and `as` are words only in `Export Use` and `Use M as A`. A program that used another module now marks with `Public` what that module offers.
 
+- The grammar and OpenSpec live under `docs/` (canon r3.100, change `docs-layout`): `docs/grammar/grammar.ebnf` and `docs/openspec/`. OpenSpec commands run from `docs/` (`cd docs && openspec validate --all --strict`). `docs/openspec/config.yaml` was invalid YAML and OpenSpec had been ignoring the project's rules; it is fixed.
+
 ### Fixed
 - A method argument was not analyzed against its parameter: `A.Deposit(500.00)` with a Currency parameter was rejected as Float64. It is analyzed like a routine argument.
 

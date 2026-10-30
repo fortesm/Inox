@@ -6,7 +6,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 # Implementation status
 
 What the compiler does today, against the law in
-`openspec/specs/constitution/` (status layer, G1: this page follows the
+`docs/openspec/specs/constitution/` (status layer, G1: this page follows the
 code and may be updated by anyone to match it; it never changes the law).
 Verified on 2026-10-21 against Inox 0.2.0 pre-alpha, canon r3.98.
 `docs/BACKEND_GAPS.md` is the generated, measured list of constructs the

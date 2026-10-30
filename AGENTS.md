@@ -4,11 +4,11 @@ This file is the operational contract for AI agents working on Inox.
 
 ## Start here
 
-Before any task, read `openspec/specs/constitution/spec.md` — the law of
+Before any task, read `docs/openspec/specs/constitution/spec.md` — the law of
 Inox: what it is, its syntax and semantics, and who decides — then
 `engineering.md` and `revisions.md` next to it (current version, revision
 and open questions). The detail of a topic is in
-`openspec/specs/{language,stdlib}/<topic>/spec.md`; what the compiler does today is
+`docs/openspec/specs/{language,stdlib}/<topic>/spec.md`; what the compiler does today is
 `docs/STATUS.md`. This file only says how to work in this repository; it
 does not restate the language rules, so they cannot drift apart.
 
@@ -19,8 +19,17 @@ silently: fix the mismatch explicitly or ask Marcelo for a decision
 
 ## OpenSpec workflow (adopted 2026-10-12, canon v3.48)
 
+- OpenSpec lives in `docs/openspec` and the grammar in `docs/grammar`
+  (r3.100). `docs/` is OpenSpec's project root: run every `openspec`
+  command from `docs/` (`cd docs && openspec validate --all --strict`); its
+  printed paths (`openspec/changes/<name>`) are relative to `docs/`. The
+  repository tools (`tools/constitution_check.py`, `tools/*.py`) still run
+  from the repository root. From the repository root `openspec list --json`
+  reports `"root": null`: never run `openspec new` or `openspec init` there,
+  which would create a second, empty `openspec/`.
+
 - Every language or compiler change starts as an OpenSpec change in
-  `openspec/changes/<name>/` (proposal, spec deltas, design, tasks), created
+  `docs/openspec/changes/<name>/` (proposal, spec deltas, design, tasks), created
   with `/opsx:propose` or `openspec new change <name>`.
 - A Layer A change is implemented only when its proposal quotes Marcelo
   Fortes's approval with the date. Open questions stay listed in the proposal
@@ -28,13 +37,13 @@ silently: fix the mismatch explicitly or ask Marcelo for a decision
 - Implement with `/opsx:apply`, ticking `tasks.md`. The E19 gates are the last
   tasks of every change.
 - After the PR is merged, archive with `/opsx:archive` (or
-  `openspec archive <name> -y`), which folds the deltas into `openspec/specs/`.
+  `openspec archive <name> -y`), which folds the deltas into `docs/openspec/specs/`.
 - `openspec validate --all --strict` must pass (CI runs it). Set
   `OPENSPEC_TELEMETRY=0`.
 - Specs describe Inox programs and diagnostics, never C++ internals; every
   scenario names its test or says "test to add".
 - The constitution is locked (G8). After an approved change edits
-  `openspec/specs/constitution/spec.md` or `engineering.md`, run
+  `docs/openspec/specs/constitution/spec.md` or `engineering.md`, run
   `python3 tools/constitution_check.py relock --approval <change>`; CI runs
   `check`, which also fails when a spec names a test file that does not
   exist. Every approved change adds a revision line to `revisions.md`.
@@ -286,12 +295,12 @@ time. Each names where it bit.
 - Keep the compiler portable C++20.
 - Validate Linux with `cmake --build build` and `bash scripts/run-tests.sh`.
 - Both runners include `tools/grammar_consistency.py`: a change to syntax, the
-  lexer keywords or CANON-20 must update `grammar/grammar.ebnf` in the same PR.
+  lexer keywords or CANON-20 must update `docs/grammar/grammar.ebnf` in the same PR.
 - The quality gates and their commands are in `BUILD_AND_TEST_INSTRUCTIONS.md`
   (engineering E19).
 - Validate Windows with `cmake --build build --config Debug` and `pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1`.
 - Do not use `git add .`; add only task-scoped paths.
-- Every language change updates code, tests, the specs, `docs/site/index.html`, `CHANGELOG.md`, `docs/STATUS.md` and a revision line in `openspec/specs/constitution/revisions.md`.
+- Every language change updates code, tests, the specs, `docs/site/index.html`, `CHANGELOG.md`, `docs/STATUS.md` and a revision line in `docs/openspec/specs/constitution/revisions.md`.
 - If a feature is in the law but not implemented, record it as a conformance gap in `docs/STATUS.md` instead of changing the spec.
 - Versions (constitution VERSIONING): MAJOR.MINOR.RELEASE.BUILD plus a stage, in `src/compiler/support/Version.h` (`0.2.0`, `pre-alpha`); MAJOR, MINOR, RELEASE and the stage change only by the maintainer's decision. BUILD is never edited: `cmake/InoxBuildNumber.cmake` writes the commit count at every build (CI needs `fetch-depth: 0`). Revisions are `r3.NN` (never "version"); update `kCanonRevision` and the top of `revisions.md` together — the suite checks `inox --version` against it.
 - Licensing: MPL-2.0 without the "Incompatible With Secondary Licenses" notice; preserve copyright and SPDX headers in every file.

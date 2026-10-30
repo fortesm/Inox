@@ -51,7 +51,7 @@ cp "$runtime_path" "$package_root/bin/libinoxrt.a"
 cp "$repo_root/docs/site/index.html" "$package_root/docs/index.html"
 mkdir -p "$package_root/docs/constitution"
 for law_file in spec.md engineering.md revisions.md; do
-    cp "$repo_root/openspec/specs/constitution/$law_file" "$package_root/docs/constitution/$law_file"
+    cp "$repo_root/docs/openspec/specs/constitution/$law_file" "$package_root/docs/constitution/$law_file"
 done
 [[ -d "$repo_root/licenses" ]] && cp -R "$repo_root/licenses/." "$package_root/licenses/"
 

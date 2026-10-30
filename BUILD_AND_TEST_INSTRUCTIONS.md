@@ -2,7 +2,7 @@
 
 How to build the Inox compiler, run the regression suite and the other
 quality gates, and produce release packages. Operational guidance only: the
-law is `openspec/specs/constitution/` (the quality gates are E19 of its
+law is `docs/openspec/specs/constitution/` (the quality gates are E19 of its
 `engineering.md`), the current state is `docs/STATUS.md`.
 
 ## Who needs what
@@ -74,7 +74,7 @@ python3 tools/eh_state_balance.py build/inox build/libinoxrt.a
 python3 tools/string_leak_check.py build/inox
 python3 tools/calc_differential_test.py --inox build/inox   # 2000 expressions and 60 traps
 python3 tools/grammar_consistency.py
-OPENSPEC_TELEMETRY=0 openspec validate --all --strict --no-interactive
+(cd docs && OPENSPEC_TELEMETRY=0 openspec validate --all --strict --no-interactive)
 python3 tools/constitution_check.py check
 # a refactor that must not change behavior
 python3 tools/ir_snapshot.py record build/inox /tmp/snap    # before

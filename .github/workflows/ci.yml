@@ -51,6 +51,8 @@ jobs:
       - name: OpenSpec (specs and changes valid)
         env:
           OPENSPEC_TELEMETRY: '0'
+        # OpenSpec lives in docs/openspec: docs/ is its project root (r3.100).
+        working-directory: docs
         run: npx -y @fission-ai/openspec@1.14.1 validate --all --strict --no-interactive
       - name: Constitution lock (law unchanged unless approved; named tests exist)
         run: python3 tools/constitution_check.py check

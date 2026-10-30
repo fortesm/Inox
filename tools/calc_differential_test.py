@@ -12,7 +12,7 @@ Random expression trees are rendered as Inox text with only the parentheses
 that the CANON-20 precedence table requires (so the compiler's precedence and
 associativity are exercised, not bypassed), plus a few redundant ones. The
 expected value does not come from Inox: the text is parsed again by a small
-recursive-descent parser written from the law (grammar/grammar.ebnf, CANON-20,
+recursive-descent parser written from the law (docs/grammar/grammar.ebnf, CANON-20,
 the mixing rules) and evaluated with Inox's semantics:
 
   integers   Int64, checked: a case whose value leaves Int64 at any step is
@@ -129,7 +129,7 @@ LOGICAL = {"and", "or", "xor"}
 
 
 class Parser:
-    """Recursive descent over the CANON-20 levels (grammar/grammar.ebnf)."""
+    """Recursive descent over the CANON-20 levels (docs/grammar/grammar.ebnf)."""
 
     def __init__(self, text):
         self.tokens = tokenize(text)

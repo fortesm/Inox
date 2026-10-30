@@ -6,7 +6,7 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 # Roadmap to 1.0
 
 A plan, not law: the order in which the law of
-`openspec/specs/constitution/` is implemented. Status is in
+`docs/openspec/specs/constitution/` is implemented. Status is in
 `docs/STATUS.md`. Renumbered on 2026-10-12 for the version scheme of r3.60
 (Marcelo Fortes: "Sim esse roadmap é antigo pode renumerar"); the old
 0.1.x–0.9.x plan of 2026-06 is in `docs/history/canon-changelog.md`. A

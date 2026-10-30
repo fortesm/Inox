@@ -11,7 +11,7 @@ interfaces. This page keeps, in one place, what object-oriented languages
 point: already in the language, decided for the future, or still open.
 Recorded on 2026-10-14 (canon r3.69 and r3.70) at the request of Marcelo
 Fortes: "Registre tudo isso para eu não me perder ou esquecer". The law is
-`openspec/specs/constitution/spec.md`; this page only points to it.
+`docs/openspec/specs/constitution/spec.md`; this page only points to it.
 
 ## Already in Inox
 

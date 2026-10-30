@@ -30,7 +30,7 @@ The canonical language rules are documented in:
 
 - `docs/decisions/ADR-0006-inox-0.1-constitution.md`
 - `docs/canonical/language-reference.md`
-- `grammar/grammar.ebnf`
+- `docs/grammar/grammar.ebnf`
 - `AGENTS.md`
 
 Do not reintroduce deprecated or forbidden syntax such as `End`, `then`, `do`,

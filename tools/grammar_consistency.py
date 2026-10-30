@@ -5,9 +5,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
-"""Checks that grammar/grammar.ebnf agrees with the constitution, the lexer and the parser.
+"""Checks that docs/grammar/grammar.ebnf agrees with the constitution, the lexer and the parser.
 
-The grammar mirrors the constitution, openspec/specs/constitution/spec.md (G1).
+The grammar mirrors the constitution, docs/openspec/specs/constitution/spec.md (G1).
 This tool does not prove the parser accepts exactly the grammar; it catches the
 drift that has happened before:
 
@@ -320,8 +320,8 @@ def check_parser(rules, parser_text):
 
 def main(argv):
     root = Path(argv[1]) if len(argv) > 1 else Path(__file__).resolve().parent.parent
-    grammar = (root / "grammar" / "grammar.ebnf").read_text(encoding="utf-8")
-    canon = (root / "openspec" / "specs" / "constitution" / "spec.md").read_text(encoding="utf-8")
+    grammar = (root / "docs" / "grammar" / "grammar.ebnf").read_text(encoding="utf-8")
+    canon = (root / "docs" / "openspec" / "specs" / "constitution" / "spec.md").read_text(encoding="utf-8")
     lexer = (root / "src" / "compiler" / "lexer" / "Lexer.cpp").read_text(encoding="utf-8")
     parser = (root / "src" / "compiler" / "parser" / "Parser.cpp").read_text(encoding="utf-8")
 
