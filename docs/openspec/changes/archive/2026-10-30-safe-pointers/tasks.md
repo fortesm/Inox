@@ -27,5 +27,5 @@
 
 ## 6. Gates
 
-- [ ] 6.1 Suite, ASan+UBSan, fuzz seeds 1 and 7, leak check, backend_gaps, eh_state_balance, grammar, openspec, constitution, MSVC IR
-- [ ] 6.2 Linux and Windows CI green
+- [x] 6.1 Suite, ASan+UBSan, fuzz seeds 1 and 7, leak check, backend_gaps, eh_state_balance, grammar, openspec, constitution, MSVC IR (run on main at r3.107, change fold-spec-deltas; MSVC through the Windows CI)
+- [x] 6.2 Linux and Windows CI green (main green since the merge)
