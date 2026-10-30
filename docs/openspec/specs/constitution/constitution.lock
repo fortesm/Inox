@@ -159,7 +159,8 @@ spec.md#CANON-25 Links	40b349936e46e6ca	safe-pointers
 spec.md#CANON-25 Access through pointers	9e23e9a9fe0f36f2	safe-pointers
 spec.md#CANON-25 Owners in routines and contracts	1edd22537220a8fe	safe-pointers
 spec.md#VERSIONING The version number	4913b3727284db7b	constitution
-spec.md#VERSIONING Who changes the version	59a96df0746489b0	constitution
+spec.md#VERSIONING Who changes the version	e46c8f8021c054c4	release-0.4
+spec.md#VERSIONING Releases follow the version	6206dc44a0502719	release-0.4
 spec.md#VERSIONING Canon revision	7325a37130b8e81e	constitution
 spec.md#FUTURE Concurrency	7e4363bb408956d2	constitution
 spec.md#FUTURE Generics and static proof	110e927eff28ea2f	generics

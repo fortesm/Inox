@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 # Inox revisions
 
-Language version: Inox 0.2.0 pre-alpha
-Canon revision: r3.100
+Language version: Inox 0.4.0 pre-alpha
+Canon revision: r3.101
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -487,3 +487,15 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   Marcelo Fortes, 2026-10-29: "desejo que os diretórios grammar e OpenSpec
   sejam movidos para docs", and, of the three ways offered, "A". Change
   `docs-layout`.
+- r3.101 — 2026-10-29 — Inox becomes 0.4.0 pre-alpha: 0.3 (numbers, text,
+  the basic library) was never released apart and ships inside 0.4 with
+  modules and encapsulation. Releases follow the version: a push to `main`
+  whose version has no tag yet publishes `vMAJOR.MINOR.RELEASE` with the
+  Linux and Windows packages, tested as E23 says, as the latest release with
+  the stage in its title (the manual's download links follow the latest);
+  the build reads its version from Version.h. The
+  `v0.1.0-test` release stays as history. 34 completed OpenSpec changes
+  are archived (their deltas were already in the specs). Marcelo Fortes,
+  2026-10-29: "ir direto para 0.4", "sim, pode arquivar histórico", on
+  publishing: "quando muda na main", on the old release: "manter com
+  histórico". Change `release-0.4`.

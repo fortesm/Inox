@@ -1,3 +1,9 @@
+param(
+    # The Release compiler; by default build\Release\inox.exe, or the
+    # windows-clang-msvc preset's build\windows-clang-msvc\Release\inox.exe.
+    [string] $CompilerExe = ""
+)
+
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -8,7 +14,14 @@ $distRoot = Join-Path $repoRoot "dist"
 $packageRoot = Join-Path $distRoot $packageName
 $zipPath = Join-Path $distRoot "$packageName.zip"
 
-$compilerExe = Join-Path $repoRoot "build\Release\inox.exe"
+$compilerExe = $CompilerExe
+if ([string]::IsNullOrWhiteSpace($compilerExe)) {
+    $compilerExe = Join-Path $repoRoot "build\Release\inox.exe"
+    $presetExe = Join-Path $repoRoot "build\windows-clang-msvc\Release\inox.exe"
+    if (!(Test-Path -LiteralPath $compilerExe) -and (Test-Path -LiteralPath $presetExe)) {
+        $compilerExe = $presetExe
+    }
+}
 
 if (!(Test-Path -LiteralPath $compilerExe)) {
     throw "Release compiler not found: $compilerExe. Run: cmake --build build --config Release"
@@ -57,7 +70,7 @@ Copy-Item -LiteralPath $runtimeLib -Destination (Join-Path $packageRoot "bin\ino
 Copy-Item -LiteralPath (Join-Path $repoRoot "docs\site\index.html") -Destination (Join-Path $packageRoot "docs\index.html") -Force
 New-Item -ItemType Directory -Path (Join-Path $packageRoot "docs\constitution") -Force | Out-Null
 foreach ($lawFile in @("spec.md", "engineering.md", "revisions.md")) {
-    Copy-Item -LiteralPath (Join-Path $repoRoot "openspec\specs\constitution\$lawFile") -Destination (Join-Path $packageRoot "docs\constitution\$lawFile") -Force
+    Copy-Item -LiteralPath (Join-Path $repoRoot "docs\openspec\specs\constitution\$lawFile") -Destination (Join-Path $packageRoot "docs\constitution\$lawFile") -Force
 }
 
 if (Test-Path -LiteralPath (Join-Path $repoRoot "licenses")) {

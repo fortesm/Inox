@@ -31,7 +31,8 @@ may still move.
                DateUtils, Std.SystemUtils (done, r3.92); console I/O in
                libinoxrt (done, r3.88); a function is not a statement (done,
                r3.88); Std.Terminal (done, r3.88) and a micro-editor
-               (examples/edit.inox, done, r3.92) that accepts 0.3
+               (examples/edit.inox, done, r3.92) that accepts 0.3;
+               never released apart: it ships in 0.4 (r3.101)
 0.4            modules and encapsulation (done, r3.99): private by default
                with Public, Export Use, qualified names, aliases, selective
                imports, the search path (--path, INOX_PATH), inox
@@ -116,7 +117,9 @@ with C libraries comes after 1.0 ("Sim, isso é depois da versão 1.0").
 - `case-strings` — `case` on a String (done, r3.85).
 - `float-policy` and `not-equal-operator` — the floating-point policy and
   `!=` (done, r3.86 and r3.87).
-- The v0.2.0 release (the maintainer's, on the site).
+- Releases: 0.2 was never tagged; 0.4.0 is the first version published
+  by the release workflow, which publishes every new version merged into
+  main (r3.101).
 - 0.3, decided by Marcelo Fortes on 2026-10-21 (A1-F3) and delivered in
   five pull requests ("Faça em Pr Serparados para ser mais fácil de
   testar"): `console-abi-terminal` (the console in libinoxrt, a function is
