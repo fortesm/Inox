@@ -45,7 +45,7 @@ Inox is at version 0.3.0, pre-alpha: the complete compiler pipeline (lexer → p
 
 ## Building
 
-See [`BUILD_AND_TEST_INSTRUCTIONS.md`](BUILD_AND_TEST_INSTRUCTIONS.md) for current build, test, and release instructions on Windows and Linux.
+See [`docs/BUILD.md`](docs/BUILD.md) for current build, test, and release instructions on Windows and Linux.
 
 ## Documentation
 

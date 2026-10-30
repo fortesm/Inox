@@ -1144,7 +1144,7 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1</code></pre>
 <p>Linux development build:</p>
 <pre><code>cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++
 cmake --build build
-bash scripts/run-tests.sh</code></pre>
+bash tools/scripts/run-tests.sh</code></pre>
 <p>Expected test result:</p>
 <pre><code>Summary: 305 passed, 0 failed, 305 total</code></pre>
 </section>

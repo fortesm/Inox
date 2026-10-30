@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 //
-// Unit tests for runtime/FileRuntime.cpp (OpenSpec change file-io), run with
+// Unit tests for src/runtime/FileRuntime.cpp (OpenSpec change file-io), run with
 // the String runtime tests by inoxrt-tests. The Inox exception a failure
 // raises is checked by the runtime tests (tests/runtime/files-*.inox); here a
 // failure only has to throw.

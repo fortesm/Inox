@@ -19,7 +19,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/release.yml
-      - scripts/package-release.*
+      - tools/scripts/package-release.*
       - src/compiler/support/**
       - CMakeLists.txt
       - CHANGELOG.md
@@ -40,6 +40,9 @@ jobs:
       version: ${{ steps.read.outputs.version }}
       stage: ${{ steps.read.outputs.stage }}
       publish: ${{ steps.read.outputs.publish }}
+      # A pull request always builds and tests the packages (a rehearsal);
+      # a push to main builds them only to publish a new version.
+      build: ${{ steps.read.outputs.publish == 'true' || github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
       - name: Read Version.h and look for the tag
@@ -82,7 +85,7 @@ jobs:
   linux:
     name: Linux package
     needs: version
-    if: needs.version.outputs.publish == 'true'
+    if: needs.version.outputs.build == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -97,9 +100,9 @@ jobs:
           cmake --preset linux-clang-release
           cmake --build --preset linux-clang-release
       - name: Test suite (Release compiler)
-        run: bash scripts/run-tests.sh build/linux-clang-release/inox
+        run: bash tools/scripts/run-tests.sh build/linux-clang-release/inox
       - name: Package
-        run: bash scripts/package-release.sh Release inox-linux-x64 build/linux-clang-release/inox
+        run: bash tools/scripts/package-release.sh Release inox-linux-x64 build/linux-clang-release/inox
       - name: Smoke test of the extracted package
         shell: bash
         run: |
@@ -124,7 +127,7 @@ jobs:
   windows:
     name: Windows package
     needs: version
-    if: needs.version.outputs.publish == 'true'
+    if: needs.version.outputs.build == 'true'
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
@@ -141,11 +144,11 @@ jobs:
       - name: Test suite (Release compiler; known EH failures tolerated)
         shell: pwsh
         run: |
-          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-tests.ps1 -InoxExe build/windows-clang-msvc/Release/inox.exe *>&1 | Tee-Object -FilePath test-output.txt
-          python tools/ci_known_failures.py test-output.txt ci/windows-known-failures.txt
+          pwsh -NoProfile -ExecutionPolicy Bypass -File tools/scripts/run-tests.ps1 -InoxExe build/windows-clang-msvc/Release/inox.exe *>&1 | Tee-Object -FilePath test-output.txt
+          python tools/ci_known_failures.py test-output.txt tests/ci/windows-known-failures.txt
       - name: Package
         shell: pwsh
-        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/package-release.ps1 -CompilerExe build/windows-clang-msvc/Release/inox.exe
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/scripts/package-release.ps1 -CompilerExe build/windows-clang-msvc/Release/inox.exe
       - name: Smoke test of the extracted package
         shell: pwsh
         run: |

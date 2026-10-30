@@ -4,9 +4,9 @@
 # Marcelo Fortes's approval (constitution G2, G8).
 spec.md#preamble	19debf43caa9fc74	decisions-not-dialogue
 spec.md#G1 The law wins on design, the code on status	3cd4e7bd04e698d5	constitution
-spec.md#G1 Disagreements are reported, never resolved silently	8899495ce452175e	docs-layout
+spec.md#G1 Disagreements are reported, never resolved silently	10aba5d1d7a4aff9	repo-layout
 spec.md#G2 Authority	b485a225f6bbd6ec	decisions-not-dialogue
-spec.md#G3 Every decision is recorded	ac09ce1d15b3f49c	decisions-not-dialogue
+spec.md#G3 Every decision is recorded	689fe7db6a1786b7	repo-layout
 spec.md#G4 No silent scope expansion	d918598ff21a108f	constitution
 spec.md#G5 Verifiability	ad1341bc29076ed7	docs-layout
 spec.md#G6 Engineering quality is constitutional	dd60e78810848770	docs-layout
@@ -27,8 +27,8 @@ spec.md#CANON-3 Modules and Use	010d92c7bf0fddaa	modules-encapsulation
 spec.md#CANON-3 Use is not transitive	7c4f4979b4b29613	modules-encapsulation
 spec.md#CANON-3 Names of a module	f6c44357c2d25632	modules-encapsulation
 spec.md#CANON-3 Aliases and selective use	7a194883bba3fcc1	modules-encapsulation
-spec.md#CANON-3 Module resolution	0ffe7d1157e4131e	modules-encapsulation
-spec.md#CANON-3 The Std name	bf27f4414a61e7b1	modules-encapsulation
+spec.md#CANON-3 Module resolution	38d921b5ef006fd8	repo-layout
+spec.md#CANON-3 The Std name	6dd6049ebb4188cd	repo-layout
 spec.md#CANON-3 Visibility	e1c7668ee07c6b45	modules-encapsulation
 spec.md#CANON-3 Nothing public exposes something private	000ffb6690e937c6	modules-encapsulation
 spec.md#CANON-3 Struct encapsulation	c330510f1d2b0a53	modules-encapsulation
@@ -139,14 +139,14 @@ spec.md#CANON-19 Compiler limits	2ea229dba96e0ae7	constitution
 spec.md#CANON-20 Operator precedence	1735231177adf8e3	constitution
 spec.md#CANON-20 Associativity	d963058f4f15fd1a	constitution
 spec.md#CANON-20 Mandatory parentheses	a91280e7e8bcf866	constitution
-spec.md#CANON-21 The test suite is part of the law	d2378e914a8ad594	constitution
+spec.md#CANON-21 The test suite is part of the law	bddcdfcc3527ad3f	repo-layout
 spec.md#CANON-21 Test layers	3dd5f11b490b5d34	constitution
-spec.md#CANON-23 LLVM backend and the clang driver	7017ebec86d19fdf	constitution
+spec.md#CANON-23 LLVM backend and the clang driver	d963b0876a24df66	repo-layout
 spec.md#CANON-23 Lowering rules	3ca6cd63c20ca6c7	optimize-default
 spec.md#CANON-23 Valid IR or a clear stop	b65face9199b56ba	constitution
-spec.md#CANON-23 Driver commands	e9b4dbcb3de5ddad	modules-encapsulation
-spec.md#CANON-23 Module interface and search path	1bf457e20a3fb804	modules-encapsulation
-spec.md#CANON-23 Optimization	5f9e565dc706e3d4	optimize-default
+spec.md#CANON-23 Driver commands	d297c3904edec6f0	repo-layout
+spec.md#CANON-23 Module interface and search path	362444245c27d1e6	repo-layout
+spec.md#CANON-23 Optimization	aa5aa6b8c56b702f	repo-layout
 spec.md#CANON-24 Design by contract	e085f54f2e9c9f7d	decisions-not-dialogue
 spec.md#CANON-24 Old and Result	ae9cb1852f6c7ede	design-by-contract
 spec.md#CANON-24 Struct invariants	de952e4d1b79c944	modules-encapsulation
@@ -158,10 +158,10 @@ spec.md#CANON-25 Moves are checked	585dd7739690f2d6	safe-pointers
 spec.md#CANON-25 Links	40b349936e46e6ca	safe-pointers
 spec.md#CANON-25 Access through pointers	9e23e9a9fe0f36f2	safe-pointers
 spec.md#CANON-25 Owners in routines and contracts	1edd22537220a8fe	safe-pointers
-spec.md#VERSIONING The version number	4913b3727284db7b	constitution
-spec.md#VERSIONING Who changes the version	e46c8f8021c054c4	release-0.4
+spec.md#VERSIONING The version number	80beea51ad367016	repo-layout
+spec.md#VERSIONING Who changes the version	d76c70d3fe676bd0	repo-layout
 spec.md#VERSIONING Releases follow the version	bea2fabf564b7136	decisions-not-dialogue
-spec.md#VERSIONING Canon revision	7325a37130b8e81e	constitution
+spec.md#VERSIONING Canon revision	c50837d85f0fcfba	repo-layout
 spec.md#FUTURE Concurrency	7e4363bb408956d2	constitution
 spec.md#FUTURE Generics and static proof	110e927eff28ea2f	generics
 spec.md#FUTURE Ownership, absence and failure	259867a5bbb3b43d	remove-var-diagnostic
@@ -187,7 +187,7 @@ engineering.md#E15. Valid LLVM IR or a clear stop	f6cc69fcf3dbf7a7	constitution
 engineering.md#E16. Every behavior and every fix has tests	1ad4f8eeb1b2b179	constitution
 engineering.md#E17. Design patterns that earn their place	60599020ba37f2e2	constitution
 engineering.md#E18. Modern C++ baseline	fb3c6be1a9286106	constitution
-engineering.md#E19. Quality gates	165dab7b6ea8d372	docs-layout
+engineering.md#E19. Quality gates	3cc7d45b946eb963	repo-layout
 engineering.md#E20. Refactoring	8ef6bec77e01fcbd	constitution
 engineering.md#E21. Module structure of the compiler	664a5ebb7a021d5b	constitution
 engineering.md#E22. Backend strategy: clang as the external driver	5b5aa2a8be636d1a	roadmap-renumber

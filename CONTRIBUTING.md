@@ -43,11 +43,11 @@ Before submitting changes, run:
 
 ```powershell
 cmake --build build --config Debug
-pwsh -ExecutionPolicy Bypass -File .\scripts\run-tests.ps1
+pwsh -ExecutionPolicy Bypass -File .\tools\scripts\run-tests.ps1
 ```
 
 On Unix-like systems, run the equivalent CMake build and:
 
 ```sh
-bash ./scripts/run-tests.sh ./build/inox
+bash ./tools/scripts/run-tests.sh ./build/inox
 ```

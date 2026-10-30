@@ -142,7 +142,7 @@ language rules.
 
 #### Scenario: The grammar mirrors the law
 - **WHEN** the precedence table of CANON-20 and the level annotations of `docs/grammar/grammar.ebnf` differ
-- **THEN** the suite fails (tools/grammar_consistency.py, run by scripts/run-tests.sh)
+- **THEN** the suite fails (tools/grammar_consistency.py, run by tools/scripts/run-tests.sh)
 
 ### Requirement: G2 Authority
 Only Marcelo Fortes SHALL approve a change to the law. An agent may propose a
@@ -165,7 +165,7 @@ intentional.
 
 #### Scenario: Revision and version agree
 - **WHEN** `inox --version` runs
-- **THEN** it prints the version and revision at the top of revisions.md, with any BUILD (scripts/run-tests.sh and scripts/run-tests.ps1, "inox --version matches the constitution")
+- **THEN** it prints the version and revision at the top of revisions.md, with any BUILD (tools/scripts/run-tests.sh and tools/scripts/run-tests.ps1, "inox --version matches the constitution")
 
 ### Requirement: G4 No silent scope expansion
 A behavior that the law does not cover SHALL NOT be inferred from another
@@ -432,7 +432,7 @@ compile error.
 
 #### Scenario: Search order
 - **WHEN** a module is found through `--path` and INOX_PATH, through INOX_PATH alone, or `--path` names a missing directory
-- **THEN** `--path` wins over INOX_PATH, a missing INOX_PATH entry is skipped, and the missing `--path` is an error (scripts/run-tests.sh, scripts/run-tests.ps1: "D1: --path before INOX_PATH, missing entry skipped", "D1: INOX_PATH alone", "D1: --path to a missing directory")
+- **THEN** `--path` wins over INOX_PATH, a missing INOX_PATH entry is skipped, and the missing `--path` is an error (tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1: "D1: --path before INOX_PATH, missing entry skipped", "D1: INOX_PATH alone", "D1: --path to a missing directory")
 
 ### Requirement: CANON-3 The Std name
 `Std` SHALL name the standard library (Marcelo Fortes, 2026-10-29): `Use
@@ -441,7 +441,7 @@ is an error, never a replacement.
 
 #### Scenario: Std is reserved
 - **WHEN** a Std.Math file stands beside a program that uses Std.Math, or a program file is named Std.Thing
-- **THEN** both are rejected (tests/modules/std-reserved/Main.inox; scripts/run-tests.sh, scripts/run-tests.ps1: "D2: a program file named Std.*")
+- **THEN** both are rejected (tests/modules/std-reserved/Main.inox; tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1: "D2: a program file named Std.*")
 
 ### Requirement: CANON-3 Visibility
 Every declaration of a module SHALL be private unless it is `Public`
@@ -1763,7 +1763,7 @@ from the language rules, never from capturing the compiler.
 
 #### Scenario: Both runners agree
 - **WHEN** the suite runs on Linux and Windows
-- **THEN** both pass with the same checks (scripts/run-tests.sh, scripts/run-tests.ps1, .github/workflows/ci.yml)
+- **THEN** both pass with the same checks (tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1, .github/workflows/ci.yml)
 
 ### Requirement: CANON-21 Test layers
 Tests SHALL live in layers: `tests/lexer`, `tests/parser`, `tests/semantic`,
@@ -1786,7 +1786,7 @@ LLVM or clang. Replacing clang follows `engineering.md` E22.
 
 #### Scenario: Toolchain failure is reported
 - **WHEN** clang or the linker fails during `--build`
-- **THEN** the driver names the tool, its exit code and its own messages (scripts/run-tests.sh, "run-hello --build (toolchain diagnostics)")
+- **THEN** the driver names the tool, its exit code and its own messages (tools/scripts/run-tests.sh, "run-hello --build (toolchain diagnostics)")
 
 ### Requirement: CANON-23 Lowering rules
 Integer `/` SHALL lower to `sdiv` (`udiv` for UInt64), `rem` to `srem` and
@@ -1819,11 +1819,11 @@ arguments, and a run ends with the program's exit status (r3.92).
 
 #### Scenario: Commands and aliases
 - **WHEN** a program is run with `inox file`, `inox run` and `--run`, checked with `inox check`, and `inox help`, `inox version` and `inox run` without a file are called
-- **THEN** each behaves as stated (scripts/run-tests.sh, scripts/run-tests.ps1: "inox check <file>", "inox help", "inox version = inox --version", "inox run without a file is an error", tests/integration/run-hello.inox)
+- **THEN** each behaves as stated (tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1: "inox check <file>", "inox help", "inox version = inox --version", "inox run without a file is an error", tests/integration/run-hello.inox)
 
 #### Scenario: Arguments and status
 - **WHEN** `inox run args.inox "um arg" "dois"` runs a program that prints its arguments and halts with their count
-- **THEN** it prints both and the run ends with status 2 (scripts/run-tests.sh, scripts/run-tests.ps1: "inox run passes arguments and keeps Halt's status", tests/integration/system/args.inox)
+- **THEN** it prints both and the run ends with status 2 (tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1: "inox run passes arguments and keeps Halt's status", tests/integration/system/args.inox)
 
 ### Requirement: CANON-23 Module interface and search path
 `inox interface file.inox` SHALL print what other modules see of a module:
@@ -1834,7 +1834,7 @@ directory where used modules are searched (CANON-3; r3.99).
 
 #### Scenario: A module's interface
 - **WHEN** `inox interface` reads Bank.Accounts, Bank and Std.DateUtils
-- **THEN** it prints their public surface (scripts/run-tests.sh, scripts/run-tests.ps1: "B4: inox interface of Bank.Accounts", "B4: inox interface of Bank", "B4: inox interface of Std.DateUtils")
+- **THEN** it prints their public surface (tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1: "B4: inox interface of Bank.Accounts", "B4: inox interface of Bank", "B4: inox interface of Std.DateUtils")
 
 ### Requirement: CANON-23 Optimization
 `inox run`, `inox build` and `inox file.inox` SHALL build an optimized
@@ -1846,7 +1846,7 @@ for LLVM is a later design.
 
 #### Scenario: Optimized and debug builds
 - **WHEN** the whole suite runs optimized, and a run with `--debug` passes `--debug` after the file, computes 157 expressions and traps
-- **THEN** every result, trap and diagnostic is the same (scripts/run-tests.sh, scripts/run-tests.ps1: "inox run --debug builds without optimization; --debug after the file is an argument", "inox --debug: math-expressions gives the same values without optimization", "inox run --debug: a trap stops the program without optimization")
+- **THEN** every result, trap and diagnostic is the same (tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1: "inox run --debug builds without optimization; --debug after the file is an argument", "inox --debug: math-expressions gives the same values without optimization", "inox run --debug: a trap stops the program without optimization")
 
 ### Requirement: CANON-24 Design by contract
 Routines and structs SHALL carry Eiffel's contracts (Marcelo Fortes,
@@ -1999,7 +1999,7 @@ compiled history, set by every build, never by hand; 0 outside git).
 
 #### Scenario: Version output
 - **WHEN** `inox --version` runs
-- **THEN** it prints MAJOR.MINOR.RELEASE.BUILD and the stage (scripts/run-tests.sh)
+- **THEN** it prints MAJOR.MINOR.RELEASE.BUILD and the stage (tools/scripts/run-tests.sh)
 
 ### Requirement: VERSIONING Who changes the version
 MAJOR, MINOR, RELEASE and the stage SHALL change only by the maintainer's
@@ -2010,7 +2010,7 @@ releases use `vMAJOR.MINOR.RELEASE`.
 
 #### Scenario: One source of numbers
 - **WHEN** the version changes
-- **THEN** `src/compiler/support/Version.h` and the top of revisions.md change together, and the build reads its project version from Version.h (scripts/run-tests.sh, CMakeLists.txt)
+- **THEN** `src/compiler/support/Version.h` and the top of revisions.md change together, and the build reads its project version from Version.h (tools/scripts/run-tests.sh, CMakeLists.txt)
 
 ### Requirement: VERSIONING Releases follow the version
 When a push to `main` carries a version without its tag
@@ -2031,7 +2031,7 @@ is never a version; entries up to v3.57 keep their `v3.xx` labels. `inox
 
 #### Scenario: Revision in the version line
 - **WHEN** `inox --version` runs
-- **THEN** it ends with the canon revision at the top of revisions.md (scripts/run-tests.sh, scripts/run-tests.ps1)
+- **THEN** it ends with the canon revision at the top of revisions.md (tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1)
 
 ### Requirement: FUTURE Concurrency
 Concurrency SHALL follow Chapel-style structured parallelism and Go-inspired

@@ -7,7 +7,7 @@
 
 // FunctionEmitter: the file functions of Std.Files and Std.IOUtils (OpenSpec
 // changes file-io and module-pairs).
-// Each is one call into runtime/FileRuntime.cpp. A File value is an owned
+// Each is one call into src/runtime/FileRuntime.cpp. A File value is an owned
 // reference like a String: a function that opens a file returns it owned
 // (+1), held for the statement and moved into its variable; the routine's
 // owned slots release (close) it at every exit and in the cleanup pad.
