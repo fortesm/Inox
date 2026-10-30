@@ -1,7 +1,7 @@
 ## 1. Decision
 
 - [x] 1.1 Design discussed and decided (r3.71, r3.72)
-- [x] 1.2 Design approved (Marcelo Fortes, 2026-10-16: "Tudo aprovado, prossiga como o usual")
+- [x] 1.2 Design approved (Marcelo Fortes, 2026-10-16)
 
 ## 2. Runtime
 

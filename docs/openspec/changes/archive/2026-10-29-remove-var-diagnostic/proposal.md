@@ -6,12 +6,7 @@ diagnostic for the old `Var ... ;` block (`atRemovedVar`, the message "the
 still required it. Nobody but the maintainer writes Inox yet, so the
 stable language is born without any trace of `var`.
 
-Approval (Marcelo Fortes, 2026-10-23): "Deve ser removido, ninguém usa Inox
-ainda, a não ser eu. A versão estável já vai nascer sem var. Se esta
-palavra for digitada, o compilador deve se comportar exatamente como
-qualquer outro identificador não reconhecido e emitir uma mensagem
-genérica. Essa regra deve ser eliminada do cânone e atualizado os .md do
-openspec".
+Approval (Marcelo Fortes, 2026-10-23): remove it: nobody else uses Inox yet, the stable language is born without `var`; the word behaves as any unknown identifier, with a generic message; the rule leaves the canon and the OpenSpec documents.
 
 Risk: low (only diagnostics change; valid programs get the same IR).
 

@@ -6,7 +6,7 @@ A routine or a struct MAY declare type parameters after its name,
 checked or compiled alone: each use with its types SHALL make an instance
 (`Max<Int64>`, `TPair<String, Int64>`), a copy with the type parameters
 replaced, checked and compiled like ordinary code, once per list of types.
-(Marcelo Fortes, 2026-10-17: "Acato suas recomendações.")
+(Marcelo Fortes, 2026-10-17: the recommendations are approved)
 
 #### Scenario: Generic routines
 - **WHEN** a program calls generic routines with Integers, Floats, Strings, Bools, arrays, slices and ref mut arguments, and one generic routine calls another

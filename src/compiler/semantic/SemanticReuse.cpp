@@ -6,8 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // SemanticAnalyzer: method reuse (CANON-9; OpenSpec change method-reuse;
-// Marcelo Fortes, 2026-10-13: "Aprovo tudo como você sugeriu 1a, 2a, 3b e
-// 4a+b").
+// design approved by Marcelo Fortes, 2026-10-13).
 //
 // `TSubscriber Struct (TPerson)` reuses TPerson: the part is a field named
 // TPerson, and TSubscriber also offers TPerson's fields and methods directly,

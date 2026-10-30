@@ -2,21 +2,21 @@
 
 ```
 Type
-    TPilha Struct
-        FItens Array[1..5] Integer
-        FQuantidade Integer := 0
-        invariant Self.FQuantidade >= 0 and Self.FQuantidade <= 5
+    TStack Struct
+        FItems Array[1..5] Integer
+        FCount Integer := 0
+        invariant Self.FCount >= 0 and Self.FCount <= 5
     ;
 
-TPilha.Empilhar(Self mut, X Integer) :
-    pre Self.FQuantidade < 5, "a pilha não está cheia"
-    pos Self.FQuantidade = old Self.FQuantidade + 1
-    Self.FQuantidade += 1
-    Self.FItens[Self.FQuantidade] := X
+TStack.Push(Self mut, X Integer) :
+    pre Self.FCount < 5, "the stack is not full"
+    pos Self.FCount = old Self.FCount + 1
+    Self.FCount += 1
+    Self.FItems[Self.FCount] := X
 ;
 
-TPilhaContada.Empilhar(Self mut, X Integer) Override :
-    pos then Self.FOperacoes = old Self.FOperacoes + 1
+TCountedStack.Push(Self mut, X Integer) Override :
+    pos then Self.FOperations = old Self.FOperations + 1
     ...
 ;
 

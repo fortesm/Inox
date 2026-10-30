@@ -7,8 +7,7 @@ weekday, a clock, a ring buffer) whatever the sign of X. The open point of
 change `integer-slash` asked whether to follow Ada (`mod` as in Ada and a
 new `rem`).
 
-Approval (Marcelo Fortes, 2026-10-23): "Sim, siga a regra de Ada para o
-modulus".
+Approval (Marcelo Fortes, 2026-10-23): `mod` follows Ada's rule.
 
 Risk: normal (`mod` changes value when the operands have different signs;
 with non-negative operands, as every use in the repository, nothing

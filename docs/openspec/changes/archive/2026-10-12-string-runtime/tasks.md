@@ -2,7 +2,7 @@
 
 - [x] 0.1 Record Marcelo's answers to Q1 (GetLn into String), Q2 (non-atomic counts), Q3 (keep concatenation reserved) and Q4 (String without initializer)
 
-- [x] 0.2 Marcelo approves design.md (Risk: high) before any code (2026-10-12, "Então tudo aprovado.")
+- [x] 0.2 Marcelo approves design.md (Risk: high) before any code (2026-10-12, all approved)
 
 ## 1. Runtime
 

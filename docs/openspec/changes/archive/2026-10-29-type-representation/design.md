@@ -1,5 +1,4 @@
-Approved by Marcelo Fortes, 2026-10-17 (quoted in proposal.md): "Tipos de
-verdade, a regra é clara e simples mapear os tipos que o llvm já oferece."
+Approved by Marcelo Fortes, 2026-10-17 (quoted in proposal.md): real types, with a clear and simple rule: map the types LLVM already offers
 
 ## Principles
 

@@ -1,6 +1,6 @@
 ## ADR-0005 — Consolidated 0.1 Language Decisions  (Status: Accepted)
 
-> Imported verbatim from `docs/INOX_CANONICAL.md` (canon v3.48, lines 1805-1828) on 2026-10-12, approved by Marcelo Fortes, 2026-10-12: "Os ADRs viram mudanças arquivadas no OpenSpec."
+> Imported verbatim from `docs/INOX_CANONICAL.md` (canon v3.48, lines 1805-1828) on 2026-10-12, approved by Marcelo Fortes, 2026-10-12 (the ADRs become archived OpenSpec changes).
 
 ## Decision
 

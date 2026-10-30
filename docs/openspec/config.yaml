@@ -20,7 +20,7 @@ context: |
   docs/STATUS.md. History: revisions.md, docs/history,
   docs/openspec/changes/archive. OpenSpec commands run from docs/.
   Authority: Marcelo Fortes is the sole design authority. A change to the law
-  is accepted only when the proposal quotes his approval; agents may propose,
+  is accepted only when the proposal records his approval; agents may propose,
   never decide. Status follows the code; the law never follows the code. If
   two sources disagree, stop and report; never pick one silently.
   Non-negotiables: no classes/inheritance/null; `;` closes blocks; `End` is
@@ -34,7 +34,10 @@ context: |
   CHANGELOG.md and docs/grammar/grammar.ebnf when syntax changes. A change to
   constitution text relocks it: tools/constitution_check.py relock
   --approval <change>.
-  Write artifacts in English; Marcelo's approval quotes stay in Portuguese.
+  Write everything in English. A record states the technical decision, who
+  approved it (Marcelo Fortes) and the date, never the words of a
+  conversation: no quotations of chats in documents, specs, changes,
+  revisions, CHANGELOG or code comments.
 
 rules:
   proposal:
@@ -42,8 +45,10 @@ rules:
       State the constitution requirements (G/CANON anchors) and ADRs the
       change touches.
     - >-
-      For a change to the law, quote Marcelo Fortes's approval with its date,
-      or mark the proposal "Awaiting approval" and do not implement it.
+      For a change to the law, record Marcelo Fortes's approval with its date
+      and state each decision as a technical rule in English (never a
+      quotation of a conversation), or mark the proposal "Awaiting approval"
+      and do not implement it.
     - >-
       State what is out of scope and which existing behavior must not change.
     - >-
@@ -62,8 +67,8 @@ rules:
     - >-
       Describe the lowering to LLVM IR and the runtime faults involved.
     - >-
-      For `Risk: high`, end with "Design approval:" and Marcelo's quote and
-      date, or "Awaiting design approval".
+      For `Risk: high`, end with "Design approval: Marcelo Fortes, <date>",
+      or "Awaiting design approval".
   tasks:
     - >-
       End with the E19 gates (suite, ASan+UBSan with a 1 MiB stack, mutation

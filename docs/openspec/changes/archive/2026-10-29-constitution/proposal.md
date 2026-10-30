@@ -10,16 +10,8 @@ language rules and had drifted from them (`Var` blocks, `[T]` generics). A
 reader without the history of a conversation could not tell law from status
 from history, and each session had to be told again what was decided.
 
-Approval (Marcelo Fortes, 2026-10-12): "Ok, estamos combinados, o arquivo
-canonica.md pode sobreviver minimizado e devidamente higienizado dentro de
-`openspec/specs/constitution/`, Ele deve ser editado por você para refletir
-as suas necessidades, e remover todas as incosistências, incoerências e
-redundâncias desnecessárias, o motivo? essa janela de sessão pode expirar
-você pode perder todo o contexto e precisarei explicar tudo novamente, a
-ideia de usarmos o OpenSpec é justamente acabar com esse ciclo interminável
-das LLMs perderem o contexto e simplesmente esquecerem tudo que decidimos."
-It follows the proposal he agreed to earlier the same day ("estamos
-combinados"): the permanent ("pétreo") core lives in OpenSpec, locked by a
+Approval (Marcelo Fortes, 2026-10-12): the canon survives, minimized and cleaned, inside the OpenSpec constitution, edited to reflect what the agents need and to remove every inconsistency, incoherence and needless redundancy, because a session's context can be lost.
+It follows the proposal he agreed to earlier the same day: the permanent (unchangeable) core lives in OpenSpec, locked by a
 hash file and a CI check, changeable only by his approval.
 
 Risk: normal (documentation, tools and CI; no compiler behavior changes).

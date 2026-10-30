@@ -2,15 +2,11 @@
 
 Inox has no inheritance (CANON-1), and composition of data was all it had:
 reusing a struct's methods in another struct meant forwarding methods at
-every level. Marcelo Fortes asked for "Composição com reuso de subrotinas"
+every level. Marcelo Fortes asked for composition with reuse of routines
 (2026-10-13) and, after comparing Go embedding, Rust traits, a micro-contract
-and Object Pascal classes, chose composition with reuse of methods:
-"Então mediante tudo isso podemos ter uma forma de composição mais
-simplificada que a de rust pois não somos afetados por muito que ele tem.
-Vamos só ressiginficar as coisas, troque herança por reaproveitamento de
-métodos isso já satifaz!" and approved the four decisions of design.md:
-"Aprovo tudo como você sugeriu 1a, 2a, 3b e 4a+b" (Marcelo Fortes,
-2026-10-13). The ChatGPT discussion he shared (micro-contract, receiver
+and Object Pascal classes, chose composition with reuse of methods, simpler
+than Rust's: inheritance is replaced by the reuse of methods. He approved
+the four decisions of design.md (1a, 2a, 3b, 4a+b) on 2026-10-13. The ChatGPT discussion he shared (micro-contract, receiver
 rebinding, member mapping) was read and set aside by that choice: the
 contract and the mapping are not needed while every reused member keeps its
 name.

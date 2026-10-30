@@ -8,8 +8,7 @@ rejected, and arrays of Char are refused. Char values are the next item of
 0.2 in `docs/ROADMAP.md`.
 
 Approval (Marcelo Fortes, 2026-10-19), of the eight recommendations below as
-they were proposed to him: "Ok, então, neste caso, está tudo acatado.
-Prossiga com nosso padrão."
+they were proposed to him: all approved; proceed as usual
 
 Risk: normal (two new functions in libinoxrt's String table, the same
 shape as Substr; no change to an existing runtime function, exception

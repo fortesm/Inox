@@ -5,14 +5,11 @@ one by one and must know when its input ends; numbers are read as reals, not
 only integers; a Char is classified (letter, digit, space) before it is
 used; and real literals need exponents for very large and very small values.
 
-Request (Marcelo Fortes, 2026-10-21): "Implemente: Versão 0.3, números,
-texto e biblioteca básica: [...] Conversão entre número e texto, Split/Join
-e literais com expoente; `Get(C)` e classificação de Char [...]".
+Request (Marcelo Fortes, 2026-10-21): implement version 0.3: conversions between numbers and text, Split/Join, literals with exponents, `Get(C)` and Char classification.
 
 Approval (Marcelo Fortes, 2026-10-21), answering the decisions proposed to
 him, of which this change carries B5, C1, C2 (for Float and Float32) and
-C3: "A Acatado todos / B Acatado todos / C Acatado todos / [...] Faça em Pr
-Serparados para ser mais fácil de testar".
+C3: A, B and C approved in full; separate PRs, easier to test.
 
 Risk: normal (new runtime functions, a lexer rule, no change to an existing
 runtime function, exception lowering or memory ownership).

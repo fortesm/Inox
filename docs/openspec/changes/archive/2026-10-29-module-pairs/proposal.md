@@ -3,10 +3,8 @@
 The rule of r3.58 put only "definitions and general data, like a C header"
 in `Std.X` and every function in `Std.XUtils`. While planning
 `Std.Strings`, the maintainer asked for usable functions in `Std.Strings`
-(Marcelo Fortes, 2026-10-13: "como se trata de uma biblioteca para ajudar o
-usuário deve ter funções utilizáveis pelo usuário"), and approved moving the
-basic file functions too: "3) Arquivos muda isso também o básico fica em
-Std.Files e as comodidades para Std.IOUtils".
+(Marcelo Fortes, 2026-10-13: a library for the user has functions the user can call), and approved moving the
+basic file functions too: 3) the same split for files: the basics in Std.Files and the conveniences in Std.IOUtils.
 
 Risk: normal (which module declares a name; no lowering, runtime or
 ownership change).

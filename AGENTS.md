@@ -31,8 +31,11 @@ silently: fix the mismatch explicitly or ask Marcelo for a decision
 - Every language or compiler change starts as an OpenSpec change in
   `docs/openspec/changes/<name>/` (proposal, spec deltas, design, tasks), created
   with `/opsx:propose` or `openspec new change <name>`.
-- A Layer A change is implemented only when its proposal quotes Marcelo
-  Fortes's approval with the date. Open questions stay listed in the proposal
+- A Layer A change is implemented only when its proposal records Marcelo
+  Fortes's approval with the date. Records state the technical decision in
+  English, who approved it and when; they never transcribe a conversation
+  (no chat quotations in docs, specs, changes, revisions, CHANGELOG or code
+  comments, r3.102). Open questions stay listed in the proposal
   until he answers them; agents implement only the approved parts.
 - Implement with `/opsx:apply`, ticking `tasks.md`. The E19 gates are the last
   tasks of every change.
@@ -48,8 +51,8 @@ silently: fix the mismatch explicitly or ask Marcelo for a decision
   `check`, which also fails when a spec names a test file that does not
   exist. Every approved change adds a revision line to `revisions.md`.
 - High-risk changes (proposal says `Risk: high`) wait for Marcelo's approval
-  of `design.md` before any code is written; the approval is quoted in the
-  design with its date. A change is high-risk when it touches exception
+  of `design.md` before any code is written; the design records the approval
+  with its date. A change is high-risk when it touches exception
   lowering (Itanium or MSVC funclets), the runtime ABI, memory ownership, or
   rewrites a compiler phase. Other changes go from approved proposal to code.
 - A refactor that must not change behavior records `tools/ir_snapshot.py`
@@ -290,7 +293,9 @@ time. Each names where it bit.
 - **Releases publish themselves.** `.github/workflows/release.yml` publishes
   `vMAJOR.MINOR.RELEASE` when a push to main carries a version without a
   tag (r3.101): a change of `Version.h` is a release, and its CHANGELOG
-  section (`## X.Y.Z ...`) is required, or the workflow fails.
+  section (`## X.Y.Z ...`) is required, or the workflow fails. Between
+  releases, CHANGELOG entries go under `## Unreleased`; the PR that changes
+  the version renames that heading to `## X.Y.Z <stage>`.
 - **argv[0] is not the executable's path.** `inox` run through PATH gives
   argv[0] = "inox"; `support::executableDirectory` asks the operating
   system first, or the packaged compiler misses its libinoxrt (r3.101).

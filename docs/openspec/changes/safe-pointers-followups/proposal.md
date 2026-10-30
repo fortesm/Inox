@@ -2,9 +2,8 @@
 
 Change `safe-pointers` (canon r3.73, CANON-25, PR #58) implemented the
 approved design with deviations and gaps, recorded in its design.md ("As
-implemented") and in `docs/STATUS.md`. Marcelo Fortes, 2026-10-16:
-"Excelente, registre onde a implementação difere do design e as lacunas
-para corrigirmos futuramente". This change keeps them as work to do, one
+implemented") and in `docs/STATUS.md`. Marcelo Fortes asked on 2026-10-16
+for the deviations and the gaps to be recorded, to be fixed later. This change keeps them as work to do, one
 task each, so none is lost. No language change is decided here: each item
 that touches the law goes through its own approval.
 

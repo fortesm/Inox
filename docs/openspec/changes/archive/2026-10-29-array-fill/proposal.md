@@ -10,33 +10,11 @@ is a reserved word.
 
 Approval (Marcelo Fortes, 2026-10-18):
 
-- On enums in aggregates: "Entre as três alternativas originais, eu
-  escolheria a estrita como regra definitiva, acompanhada de um mecanismo
-  simples para inicialização de arrays." The mechanism: "uma operação mínima
-  de preenchimento uniforme, inspirada no (others => valor) de Ada e no
-  [valor; tamanho] de Rust, sem precisar implementar imediatamente todos os
-  literais de arrays."
-- The law, in his words: "Todos os arrays da linguagem Inox, independentemente
-  do tipo de seus elementos, exigem inicialização explícita na declaração. A
-  expressão Fill(Value) inicializa integralmente o array de destino com o
-  valor especificado, observando as regras de tipos, cópia e construção. A
-  inicialização implícita com zero, falso, primeiro literal de enum ou
-  defaults dos componentes não é permitida para o array como um todo."
-- On Fill: "Recomendo que Fill(X) seja uma expressão de inicialização
-  contextual, cujo tipo e dimensões sejam determinados pelo array de
-  destino"; "Fill(X) deve produzir um array completamente inicializado, e
-  não depender de um array preexistente sem valor definido"; "A regra também
-  deve funcionar para arrays multidimensionais e tipos compostos, respeitando
-  as regras de cópia e construção dos elementos."
-- On structs: "Eu manteria separada a regra já existente para inicialização
-  de estruturas por defaults de seus campos. Isso permite preservar: P
-  TPoint".
-- On the set functions: "A função with deveria mudar de nome"; "Minha
-  preferência seria Include(S, X), acompanhado de Exclude(S, X),
-  substituindo o par atual With/Without." With a reservation: "em
-  Pascal/Delphi, Include e Exclude modificam diretamente o conjunto passado
-  como argumento. Se, na Inox, forem funções puras que retornam um novo
-  valor, essa diferença deverá ficar expressa no contrato." The contract is
+- On enums in aggregates: of the three original alternatives, the strict one is the final rule, with a simple mechanism to initialize arrays. The mechanism: a minimal uniform fill, inspired by Ada's `(others => value)` and Rust's `[value; size]`, without all array literals at once
+- The law, in his words: every Inox array, whatever its element type, is initialized explicitly where it is declared; `Fill(Value)` initializes the whole target with the value, following the rules of types, copy and construction; there is no implicit initialization with zero, false or empty
+- On Fill: `Fill(X)` is a contextual initialization expression whose type and dimensions come from the target array; `Fill(X)` produces a fully initialized array and never depends on an existing array without a defined value; the rule also works for multidimensional arrays and composite types, following the copy and construction rules of the elements
+- On structs: the existing rule of struct field defaults stays separate, which keeps `P TPoint`.
+- On the set functions: the function `With` is renamed; `Include(S, X)` and `Exclude(S, X)` replace `With`/`Without`. With a reservation: in Pascal and Delphi, Include and Exclude change the set they receive; in Inox they are pure functions returning a new value, and the contract says so. The contract is
   expressed by the compiler: a call that drops the new set is an error that
   shows `S := Include(S, X)` (proposed in the same conversation, not
   objected to).
@@ -48,20 +26,8 @@ memory ownership change).
 Status: **implemented** (canon r3.81 and r3.82, one PR).
 
 Approval of r3.82 (Marcelo Fortes, 2026-10-18), answering the question this
-change first left open: "Eu fecharia as duas questões aplicando um princípio
-único à Inox: a inicialização explícita não pode ser contornada pelo fato de
-um valor estar dentro de uma Struct, de um Array ou de um tipo genérico."
-For array fields: "exigir := Fill(...) no campo ou o fornecimento explícito
-do array durante a construção"; for type parameters: "um campo cujo tipo é
-um parâmetro genérico T não possui default implícito, independentemente do
-tipo concreto utilizado na instanciação"; and "Estruturas aninhadas somente
-admitem construção por defaults quando todos os seus componentes puderem ser
-inicializados conforme as regras aplicáveis. A ausência de um campo
-obrigatório constitui erro de compilação. Nenhuma especialização genérica
-pode introduzir silenciosamente um valor padrão que não seja garantido pelo
-contrato do tipo genérico." Decision: "aprovar ambas as correções no mesmo
-PR, incluindo os testes de estruturas aninhadas e especializações
-genéricas." His examples write `TBox<TStatus>(FValue := Pending)`; type
+change first left open: both questions are closed by one principle: explicit initialization cannot be bypassed because a value sits inside a Struct, an Array or a generic type
+For array fields: the field requires `:= Fill(...)` or the array is given in the construction; for type parameters: a field whose type is a type parameter T has no implicit default, whatever the concrete type of the instance; and nested structs are built from defaults only when every component can be; a missing required field is a compile error; no generic instance silently introduces a default the generic type does not guarantee. Decision: both corrections in one PR, with tests of nested structs and generic instances. His examples write `TBox<TStatus>(FValue := Pending)`; type
 arguments are never written in an expression (r3.77), so the tests write
 `A TBox<TStatus> := TBox(FValue := Pending)`.
 

@@ -1,5 +1,4 @@
-Design approved by Marcelo Fortes, 2026-10-16: "Tudo aprovado, prossiga
-como o usual".
+Design approved by Marcelo Fortes, 2026-10-16.
 
 ## The rule
 
@@ -171,7 +170,7 @@ Q := P              == error: "an owner is never copied: use Move(P)"
    recursion, so a long list cannot overflow the stack.
 6. `Link(X)` makes a Link of an owned object, of any variable (local,
    parameter, State), of a field or of an array element (Marcelo Fortes,
-   2026-10-15/16: "Corretamente! É isso mesmo"; "1 - Com Handle"). A Link
+   2026-10-15/16). A Link
    is copied freely, keeps nothing alive, and is born empty.
 7. Every access through a Link checks its generation: a dead or empty
    Link traps (CANON-19, "use of a freed object"); `Alive(H)` asks without
@@ -182,8 +181,8 @@ Q := P              == error: "an owner is never copied: use Move(P)"
    two references reach the same object, and `Value(A) = Value(B)` compares
    contents.
 9. A pointer cannot be printed, converted to a number, or built from one.
-10. **Permissive with detection** (Marcelo Fortes, 2026-10-16: "2 -
-    permissivo com detecção"): a Link may go anywhere (returned, stored
+10. **Permissive with detection** (Marcelo Fortes,
+    2026-10-16): a Link may go anywhere (returned, stored
     in a field, an array or State), as freely as a Pascal pointer. The
     compiler chooses the cost: when a Link provably stays inside the block
     of the variable it points to, the variable stays on the stack and the
@@ -223,10 +222,10 @@ Q := P              == error: "an owner is never copied: use Move(P)"
 
 ## Names and absence (decided 2026-10-16)
 
-Marcelo Fortes, 2026-10-16: "1 Trocar para Link e não confundir com o
-Handle do Delphi ou do Windows / 2 Value / 3 Free e new ficam como estão /
-4 acatado o dono com Option<Own<TNo>> e com a palavra Optional se for uma
-boa conveniência".
+Marcelo Fortes, 2026-10-16: the name is `Link`, not to be confused with
+Delphi's or Windows' handles; `Value` stays; `Free` and `New` stay; an
+absent owner is `Option<Own<TNo>>`, with the word `Optional` only if it
+proves a real convenience.
 
 - `Link<T>`, `Link(X)` (not "Handle": Delphi's `THandle` and Windows
   handles are integers; a Link is typed, opaque and checked). `Ref` is
@@ -242,8 +241,8 @@ boa conveniência".
   `Link(X)` of an Option that is `None` is an empty Link; `Alive` tests
   both.
 - The word `Optional` as a second spelling of `Option<...>` is **not
-  adopted for now**, at the maintainer's condition "se for uma boa
-  conveniência": it would be a second way to write the same type, and with
+  adopted for now**, at the maintainer's condition that it be a real
+  convenience: it would be a second way to write the same type, and with
   the wrapping above the `Option` appears only in the declaration of the
   field. To be reconsidered with change `generics`, when `Option<T>` is
   used everywhere.

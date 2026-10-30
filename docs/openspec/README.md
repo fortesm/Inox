@@ -28,7 +28,7 @@ openspec/
   moves the folder to `archive/` with its date.
 - The constitution (`spec.md`, `engineering.md`) is locked: a change to its
   text is accepted only after `python3 tools/constitution_check.py relock
-  --approval <change>`, where the change quotes Marcelo Fortes's approval.
+  --approval <change>`, where the change records Marcelo Fortes's approval.
 
 ## Where OpenSpec lives
 
@@ -42,7 +42,8 @@ The repository tools (`tools/constitution_check.py`,
 ## Workflow
 
 1. `/opsx:propose` (or `openspec new change <name>`): write the proposal. A
-   change to the law quotes Marcelo Fortes's dated approval; open questions
+   change to the law records Marcelo Fortes's dated approval and states the
+   decision in English, never a quotation of a conversation; open questions
    stay listed until he answers.
 2. Marcelo reviews the proposal (and, for `Risk: high`, the design).
 3. `/opsx:apply`: implement, ticking `tasks.md`; the E19 gates come last.

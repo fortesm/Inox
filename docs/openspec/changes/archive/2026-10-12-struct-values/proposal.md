@@ -7,8 +7,7 @@ nested structs, other scalar field types and arrays of struct are legal Inox
 (CANON-5, CANON-9, CANON-13) and stop at code generation or semantic analysis
 today. This is item 1 of the order approved on 2026-10-12.
 
-Approval (Marcelo Fortes, 2026-10-12): "Todas as tomadas de decisão dos pontos
-1 a 5 foram verificadas e eleitas para serem acatadas." Item 1: struct
+Approval (Marcelo Fortes, 2026-10-12): decisions 1 to 5 approved. Item 1: struct
 initializers and arrays of struct.
 
 ## What Changes

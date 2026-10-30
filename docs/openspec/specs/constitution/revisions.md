@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.101
+Canon revision: r3.102
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -39,24 +39,21 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `engineering.md`), locked by `constitution.lock` and
   `tools/constitution_check.py`; the capability specs become law under it;
   stale status, duplicates and superseded text dropped (list in the
-  change). Marcelo Fortes, 2026-10-12: "o arquivo canonica.md pode
-  sobreviver minimizado e devidamente higienizado dentro de
-  `openspec/specs/constitution/`, Ele deve ser editado por você para
-  refletir as suas necessidades, e remover todas as incosistências,
-  incoerências e redundâncias desnecessárias". Change `constitution`.
+  change). Decided by Marcelo Fortes, 2026-10-12: the canon survives,
+  minimized and cleaned, inside the OpenSpec constitution, edited to remove
+  every inconsistency, incoherence and needless redundancy. Change
+  `constitution`.
 - r3.62 — 2026-10-12 — Three decisions. (1) `State` has no `:` and keeps
   its closing `;`; the forms `State :`, `Name : Type` and `Const Name : Type`
   are rejected; the constitution records the idea of the syntax and of `:`
-  in the maintainer's words (Marcelo Fortes: "O State não deve usar :"; "A
-  ideia de Inox é escrever menos. Fazer mais."; 2026-10-13: "State fecha com
-  ;"). Change `state-without-colon`.
+  (decided by Marcelo Fortes on 2026-10-12, and on 2026-10-13 that
+  State closes with `;`). Change `state-without-colon`.
   (2) `Length` of a String and `Ord` of a Char are rejected, as the law
-  already said (Marcelo Fortes: "Excelente não pode ter isso para char
-  mesmo!"). Change `char-not-ordinal`. (3) The roadmap is renumbered for
-  the version scheme and E22 names no versions (Marcelo Fortes: "Sim esse
-  roadmap é antigo pode renumerar"). Change `roadmap-renumber`.
-- r3.63 — 2026-10-13 — The three open questions answered (Marcelo Fortes:
-  "Concordo com 1 , 2. 3 escolho a alternativa A"). (1) The driver has
+  already said (confirmed by Marcelo Fortes). Change `char-not-ordinal`. (3) The roadmap is renumbered for
+  the version scheme and E22 names no versions (approved by Marcelo
+  Fortes). Change `roadmap-renumber`.
+- r3.63 — 2026-10-13 — The three open questions answered by Marcelo Fortes
+  (1 and 2 as proposed, alternative A for 3). (1) The driver has
   subcommands: `inox file.inox` and `inox run` build and run, `inox build`,
   `inox check`, `inox emit-llvm`, `inox help`, `inox version`; the `--`
   switches stay as aliases. Change `driver-commands`. (2) An exception
@@ -71,19 +68,16 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   basic operations; Std.IOUtils keeps Exists, DeleteFile, RenameFile.
   Std.Strings decisions: `+` concatenates without repeated copies,
   positions count code points from 1, `Length(S)`, `Substr`, `Trim`,
-  `LTrim`, `RTrim`, Delphi-style names (Marcelo Fortes: "Length(S) ewm vez
-  de charlenghth (aprovado)"; "Concatenação com + (aprovado)"; "Arquivos
-  muda isso também o básico fica em Std.Files e as comodidades para
-  Std,IOUtils"). Changes `module-pairs` (implemented) and `std-strings`
+  `LTrim`, `RTrim`, Delphi-style names; `Length(S)` rather than `CharLength`; the
+  same split for files, basics in Std.Files and conveniences in Std.IOUtils
+  (approved by Marcelo Fortes). Changes `module-pairs` (implemented) and `std-strings`
   (design awaiting approval).
 - r3.65 — 2026-10-13 — Two answers and three designs. (1) The `std-strings`
-  design is approved (Marcelo Fortes: "Std.Strings / Std.StrUtils: o design
-  espera a sua aprovação (aprovado)"); its implementation may start.
+  design is approved by Marcelo Fortes; its implementation may start.
   Change `std-strings`. (2) A function called as a statement (its result
   thrown away) stays as it is: accepted by the analyzer and reported by the
   backend as "not yet implemented" (a backend gap, `docs/BACKEND_GAPS.md`);
-  the law adds no rule (Marcelo Fortes: "Deixe como está pois ele diz que
-  esse método não foi implementado ainda"). (3) Designs proposed, awaiting
+  the law adds no rule (decided by Marcelo Fortes). (3) Designs proposed, awaiting
   decisions: changes `generics`, `composition`, `safe-pointers`, and
   `binary-streams` (binary files and streams, which CANON-17 leaves to a
   later change).
@@ -97,9 +91,9 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   so; FUTURE no longer plans nominal protocols or traits. Conformance fixes:
   `Self` and value parameters cannot be written, `with` follows its target,
   a `Self mut` method needs a writable receiver. The `composition` design
-  (embedding, protocols) is replaced. Marcelo Fortes: "troque herança por
-  reaproveitamento de métodos isso já satifaz!"; "Aprovo tudo como você
-  sugeriu 1a, 2a, 3b e 4a+b". Change `method-reuse`.
+  (embedding, protocols) is replaced: inheritance gives way to the reuse of methods.
+  Approved by Marcelo Fortes (decisions 1a, 2a, 3b, 4a+b). Change
+  `method-reuse`.
 - r3.67 — 2026-10-14 — Design by contract, as in Eiffel (CANON-24): `pre`
   and `pos` on the first lines of a routine (`old X`, `Result`), `invariant`
   in a Struct (with the invariants of the structs it reuses), `pre else` and
@@ -107,32 +101,26 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   contract is a CANON-19 trap; contracts are always checked and only read.
   Differences from Eiffel recorded in the change (trap instead of exception,
   no monitoring levels, invariants after outside writes, messages instead of
-  tags). FUTURE now names generics and static proof. Marcelo Fortes:
-  "implemente design by contract exatamente igual eiffel a diferença é que
-  as palavras reservadas pre para precondições e pos para poscondições".
-  Change `design-by-contract`.
+  tags). FUTURE now names generics and static proof. Decided by Marcelo
+  Fortes: Eiffel's design by contract, with the reserved words `pre` and
+  `pos`. Change `design-by-contract`.
 - r3.68 — 2026-10-14 — Contracts are checked in every build through 1.0,
   with no switch that turns them off (CANON-24); Eiffel-style monitoring
-  levels chosen per module are FUTURE work after 1.0, next to static proof.
-  Marcelo Fortes: "Adicionar estilo de níveis de monitoramento Eiffel-style
-  [...] per módulo mais tarde (implementação futura) e manter os checks
-  always on [...] para a versão 1.0". Change `design-by-contract`.
+  levels chosen per module are FUTURE work after 1.0, next to static proof
+  (decided by Marcelo Fortes). Change `design-by-contract`.
 - r3.69 — 2026-10-14 — Variant structs (a value that is one of several
   structs, examined with `case`) are recorded in FUTURE as the way a
   collection mixes kinds without subtyping; behavior stays written once per
-  type through method reuse (`examples/reuse-army.inox`). Marcelo Fortes:
-  "Sim, registre isso". Change `variant-structs` (direction; design after
+  type through method reuse (`examples/reuse-army.inox`). Recorded at the request of Marcelo Fortes.
+  Change `variant-structs` (direction; design after
   `enum-range-set`).
 - r3.70 — 2026-10-14 — New FUTURE "Encapsulation, routine types and
-  lifecycle": encapsulation from a design close to Object Pascal and Rust
-  ("algo bem semelhante a do ObjectPascal + Rust mas precisamos desenhar
-  ainda"); routine types (Pascal procedural types) recorded with the
+  lifecycle": encapsulation from a design close to Object Pascal and Rust,
+  still to be designed; routine types (Pascal procedural types) recorded with the
   recommendation of named routines first and closures after safe pointers;
-  constructors and destructors left to the maintainer's analysis
-  ("preciso analisar o caso dos construtores e destrutores, e se
-  precisaremos"). Marcelo Fortes: "Sim registre no future para não nos
-  perdermos a questão do encapsulamento. Registre tudo isso para eu não me
-  perder ou esquecer". Changes `encapsulation`, `routine-types`,
+  constructors and destructors left to the maintainer's analysis of
+  whether Inox needs them. Recorded at the request of Marcelo Fortes.
+  Changes `encapsulation`, `routine-types`,
   `lifecycle` (directions); `docs/OOP_COMPARISON.md`.
 - r3.71 — 2026-10-15 — Safe pointers without reference counting, garbage
   collection or arenas: every heap object has one owner (`Own<T>`, created
@@ -140,19 +128,16 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   away with `Move`), and every other reference is a `Handle<T>` checked by a
   generation on each use (`Alive` tests it; a dead Handle traps; a Handle
   is born empty). Arenas may come later as an optional optimization.
-  Marcelo Fortes: "se usarmos contagem por referência, ficamos igual a
-  Delphi e isso tem problemas. então essas estariam descartadas"; "não
-  quero ter de forma alguma, garbage collection"; "depois podemos ter arena
-  no futuro opcionalmente"; "Acatado: um `Handle` pode simplesmente nascer
-  vazio". Change `safe-pointers` (design awaiting approval, no code).
+  Decided by Marcelo Fortes: no reference counting (it would repeat
+  Delphi's problems), no garbage collection in any form, arenas maybe
+  later, and a Handle may be born empty. Change `safe-pointers` (design awaiting approval, no code).
 - r3.72 — 2026-10-16 — Safe pointers, completed: a non-owning reference
   may point to any variable, field or array element, not only to an owned
-  object ("1 - Com Handle"); it may go anywhere, and one that outlives its
-  variable is detected, never dangling ("2 - permissivo com detecção"); it
-  is named `Link<T>`, not Handle ("Trocar para Link e não confundir com o
-  Handle do Delphi ou do Windows"); `Value`, `New` and `Free` keep their
-  names; an absent owner is `Option<Own<TNo>>` ("acatado o dono com
-  Option<Own<TNo>>"). Marcelo Fortes. Change `safe-pointers` (design
+  object; it may go anywhere, and one that outlives its variable is
+  detected, never dangling (permissive with detection); it is named
+  `Link<T>`, not Handle, to avoid confusion with Delphi's and Windows'
+  handles; `Value`, `New` and `Free` keep their names; an absent owner is
+  `Option<Own<TNo>>`. Decided by Marcelo Fortes. Change `safe-pointers` (design
   awaiting approval, no code).
 - r3.73 — 2026-10-16 — Safe pointers become law (CANON-25: Owners, Moves
   are checked, Links, Access through pointers, Owners in routines and
@@ -162,8 +147,8 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `Link`, `Alive`, `Same`, a definite-move analysis, generation-checked
   Links to owned objects, locals, fields, elements and State, and the
   runtime traps "use of a freed object or an empty Link" and "use of an
-  owner after Move or Free". Approval: Marcelo Fortes, 2026-10-16: "Tudo
-  aprovado, prossiga como o usual". Change `safe-pointers`.
+  owner after Move or Free". Approved by Marcelo Fortes,
+  2026-10-16. Change `safe-pointers`.
 - r3.74 — 2026-10-16 — Fewer reserved words (50 → 41): the last arm of a
   `case` is `else`, not `otherwise`; `True`, `False`, `Exit`, `bitand`,
   `bitor`, `bitxor` and `bitnot` are predefined names that keep their
@@ -176,7 +161,7 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   variable or a value, never a type, evaluated once on entry; `.Member`
   acts on its storage and, through a pointer, is checked at each use. Any
   place is now lowered as a target, and a type as target gets a message
-  naming the problem. Marcelo Fortes, 2026-10-16: "concordo Implemtne".
+  naming the problem. Approved by Marcelo Fortes, 2026-10-16.
   Change `with-places`.
 - r3.76 — 2026-10-16 — Second syntax review: no `Module` header, a file is
   a module named after the file (CANON-3); the conditional expression is
@@ -196,8 +181,8 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   an expression, and T may be any type, also one that is only moved, with
   the error at the instance ("in Max<TPoint>, used in Main"). Methods of
   generic structs, and invariants and reused parts in them, come later.
-  Marcelo Fortes, 2026-10-17: "Acato suas recomendações. Para as três
-  perguntas." Change `generics`.
+  The three decisions approved by Marcelo Fortes, 2026-10-17. Change
+  `generics`.
 - r3.78 — 2026-10-17 — Std.Strings and Std.StrUtils implemented (CANON-14,
   CANON-18, CANON-19): `+` joins Strings and `+=` appends, in place when
   the String alone holds its block; no implicit conversion to String.
@@ -208,7 +193,7 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   follow Unicode. A position outside a String traps with "string index out
   of range" (fault kind 15). `S[I]` and `GraphemeLength` stay reserved.
   `Pos` is a reserved word since r3.76, so the search function is
-  `Position`: Marcelo Fortes, 2026-10-17: "Position(Sub, S) (Recommended)".
+  `Position(Sub, S)`, approved by Marcelo Fortes, 2026-10-17.
   Design approved in r3.65. Change `std-strings`.
 - r3.79 — 2026-10-18 — UInt64 implemented (CANON-8): UInt64/UInteger holds
   0..2^64-1 everywhere an integer lives; arithmetic, power and shifts trap on
@@ -218,8 +203,7 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   files print and read it unsigned. Q1 to Q3 as decided in r3.50: a literal
   up to 2^64-1 only in a UInt64 context, no unary minus, no mixing without a
   written conversion. A UInt64 Const is written `Const K := UInt64(...)`.
-  Marcelo Fortes, 2026-10-12: "Todas as tomadas de decisão dos pontos 1 a 5
-  foram verificadas e eleitas para serem acatadas." Change `uint64`.
+  Decisions 1 to 5 approved by Marcelo Fortes, 2026-10-12. Change `uint64`.
 - r3.80 — 2026-10-18 — Enum, Range and Set implemented (CANON-5, CANON-13,
   CANON-19): enums are nominal ordinals with Ord, checked TEnum(I), Low,
   High, checked Succ/Pred, comparison, enum `for` and `case` coverage, and
@@ -228,9 +212,7 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   Set<T> over an Enum or Range of at most 256 values with `in`, =, #, <=,
   >=, the six functions and the literal `[A, B]`. The decisions of
   2026-10-12 (Q1–Q7, r3.50 and r3.51). Enums in aggregates start at the
-  first literal (open question 2). Marcelo Fortes, 2026-10-12: "Todas as
-  tomadas de decisão dos pontos 1 a 5 foram verificadas e eleitas para
-  serem acatadas." Change `enum-range-set`.
+  first literal (open question 2). Approved by Marcelo Fortes, 2026-10-12. Change `enum-range-set`.
 - r3.81 — 2026-10-18 — Open question 2 answered: the strict rule for every
   array. Every local and State array, whatever its element type, is
   initialized where it is declared; `Fill(Value)` (a predefined name, like
@@ -241,16 +223,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   TPoint`). The set functions `With`/`Without` become `Include`/`Exclude`
   (the old names are rejected with the new ones); the six set functions
   never change their arguments, so a call as a statement is an error.
-  Marcelo Fortes, 2026-10-18: "Entre as três alternativas originais, eu
-  escolheria a estrita como regra definitiva, acompanhada de um mecanismo
-  simples para inicialização de arrays"; "Todos os arrays da linguagem
-  Inox, independentemente do tipo de seus elementos, exigem inicialização
-  explícita na declaração. A expressão Fill(Value) inicializa integralmente
-  o array de destino com o valor especificado, observando as regras de
-  tipos, cópia e construção"; "Eu manteria separada a regra já existente
-  para inicialização de estruturas por defaults de seus campos"; "Minha
-  preferência seria Include(S, X), acompanhado de Exclude(S, X),
-  substituindo o par atual With/Without." Array fields of structs stay open
+  Decided by Marcelo Fortes, 2026-10-18: the strict rule is final, with a
+  simple mechanism to initialize arrays; every array, whatever its element
+  type, is initialized explicitly where it is declared; `Fill(Value)` fills
+  the whole target following the rules of types, copy and construction; the
+  existing rule of struct field defaults stays separate; `Include(S, X)` and
+  `Exclude(S, X)` replace `With`/`Without`. Array fields of structs stay open
   (question 3). Change `array-fill`.
 - r3.82 — 2026-10-18 — Open question 3 answered: initialization is
   transitive over aggregates and type parameters (CANON-5, CANON-9). A
@@ -262,13 +240,11 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   parts included. A field whose type uses a type parameter never has a
   default, whatever the instance (`D TBox<Integer>` is an error). Scalar,
   String, Set and pointer fields keep their zero, "", empty and None.
-  Marcelo Fortes, 2026-10-18: "a inicialização explícita não pode ser
-  contornada pelo fato de um valor estar dentro de uma Struct, de um Array
-  ou de um tipo genérico"; "Nenhuma especialização genérica pode introduzir
-  silenciosamente um valor padrão que não seja garantido pelo contrato do
-  tipo genérico"; "aprovar ambas as correções no mesmo PR, incluindo os
-  testes de estruturas aninhadas e especializações genéricas." Change
-  `array-fill`.
+  Decided by Marcelo Fortes, 2026-10-18: explicit initialization cannot be
+  bypassed because a value sits inside a Struct, an Array or a generic
+  type; no generic instance may silently introduce a default the generic
+  type does not guarantee; both corrections in one PR, with tests of nested
+  structs and generic instances. Change `array-fill`.
 - r3.83 — 2026-10-19 — Char values (CANON-14, CANON-5): a Char literal
   takes the escapes of Strings and its quote (`'\n'`, `'\''`), never a
   surrogate; `Char(I)` is checked (kind 8), `Integer(C)` gives the code
@@ -280,9 +256,8 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   write the character in UTF-8; a Char field has a default or is given in
   the construction (r3.82); Chars live in locals, parameters, results,
   fields, State, arrays (stored in 32 bits), Consts and generic instances.
-  `Get(C)` comes later. Marcelo Fortes, 2026-10-19, on the eight
-  recommendations: "Ok, então, neste caso, está tudo acatado. Prossiga com
-  nosso padrão." Change `char-values`.
+  `Get(C)` comes later. The eight recommendations approved by Marcelo Fortes, 2026-10-19.
+  Change `char-values`.
 - r3.84 — 2026-10-21 — Float conversions and Float Consts (CANON-8, CANON-5):
   `Float(I)` and `Float32(I)` round an integer (a UInt64 read unsigned);
   `Float(G)` widens a Float32 exactly and `Float32(F)` rounds, trapping
@@ -292,17 +267,16 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   conversion into a number takes a number (Bool, String and enum rejected
   with the way to write them); a real literal is a Float32 where a Float32
   is expected; real Consts are folded at compile time, and Std.Math's Pi,
-  Tau and E become Consts. Marcelo Fortes, 2026-10-19, on the plan to do
-  "as conversões de Float e as Consts de Float" next: "Conbinado,
-  prossiga". The choices marked in the change's proposal await his
+  Tau and E become Consts. Marcelo Fortes approved on 2026-10-19 the plan to do
+  the Float conversions and the Float Consts next. The choices marked in the change's proposal await his
   confirmation (open question 3). Change `float-conversions`.
 - r3.85 — 2026-10-21 — `case` on a String (CANON-12, ADR-0011): the
   selector may be a String; each choice is a String literal or a String
   Const, compared byte for byte as `=` compares; no ranges; the same String
   twice is an overlap; `else` (Ada's `others`) is always required; a Float
-  is never a selector. Marcelo Fortes, 2026-10-19, on the proposal (String
-  yes with these rules, Float no): "Sim acatado !"; on `others`: `else` is
-  that arm (r3.74). Change `case-strings`.
+  is never a selector. Approved by Marcelo Fortes, 2026-10-19 (String
+  yes with these rules, Float no); `else` is the arm of Ada's `others`
+  (r3.74). Change `case-strings`.
 - r3.86 — 2026-10-21 — Open question 3 answered, the floating-point policy
   (CANON-8): `Float32(F)` rounds as IEEE 754 (ties to even), a loss of
   precision being no error; a finite F whose rounding overflows stops the
@@ -316,16 +290,13 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   numbers and Go's untyped constants; Std.Math's Pi, Tau and E are such
   Consts, written with more digits than either type holds. An unchecked
   conversion to an infinity (`Float32Unchecked`) is an idea, not approved.
-  Marcelo Fortes, 2026-10-21: "Eu adotaria um modelo verificado para
-  Float32(F), inspirado em Ada, mas com regras mais determinísticas";
-  "Eu confirmaria essa decisão sem alterações" (literals); "Prefiro
-  claramente o modelo Ada/Go" (constants); "Não faria Float32(F)
-  simplesmente saturar". Change `float-policy`.
+  Decided by Marcelo Fortes, 2026-10-21: a checked model for `Float32(F)`,
+  inspired by Ada with more deterministic rules; the rule for literals
+  confirmed unchanged; the Ada/Go model for constants; no saturation.
+  Change `float-policy`.
 - r3.87 — 2026-10-21 — `!=` is inequality, the same operator as `#`, both
   valid; a lone `!` is not an operator, negation is `not` (CANON-2).
-  Marcelo Fortes, 2026-10-21: "Deve ser adotado o operador != paralelo ao
-  operador #, ambos são válidos"; "if ! (a = b) é inválido deve ser o
-  operador not". Change `not-equal-operator`.
+  Decided by Marcelo Fortes, 2026-10-21. Change `not-equal-operator`.
 - r3.88 — 2026-10-21 — The console and Std.Terminal (0.3). E1: the console
   belongs to libinoxrt and every program links it; Put, PutLn, Get, GetLn
   and Std.Terminal reach it only through the runtime; on Windows the
@@ -336,9 +307,9 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   ClearScreen, ClearLine, SetColor/ResetColor (16 colors), ShowCursor,
   Flush; ReadKey past the end of input traps "end of input" (CANON-18,
   CANON-19). F2: the terminal is given back however the program ends.
-  Marcelo Fortes, 2026-10-21: "E1 Sim / E2 como em Ada / F1 Sim para tudo
-  Std.Terminal é o nome padrão / F2 Sim / F3 Sim / Faça em Pr Serparados
-  para ser mais fácil de testar". Change `console-abi-terminal`.
+  Approved by Marcelo Fortes, 2026-10-21 (E1, E2 as in Ada, F1 with the
+  name Std.Terminal, F2, F3), delivered in separate pull requests. Change
+  `console-abi-terminal`.
 - r3.89 — 2026-10-21 — Reading characters and reals, Char classes, real
   exponents (0.3). B5: a real literal may end with an exponent after its
   fraction (`1.5e3`, `2.0E-7`); `1e3` is an error; a real literal beyond
@@ -348,9 +319,8 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   strictly; "invalid number input" is a new trap category (CANON-17,
   CANON-19); Currency and Crypto follow with their values. C3: Std.Strings
   classifies a Char by Unicode (IsLetter, IsDigit, IsSpace, IsUpper,
-  IsLower, IsPunctuation) and maps its case (CANON-14). Marcelo Fortes,
-  2026-10-21: "A Acatado todos / B Acatado todos / C Acatado todos".
-  Change `input-chars-exponents`.
+  IsLower, IsPunctuation) and maps its case (CANON-14). Approved by Marcelo
+  Fortes, 2026-10-21. Change `input-chars-exponents`.
 - r3.90 — 2026-10-21 — Numbers and text (0.3). B1: `String(N)` and
   `String(F)` write a number as Put does; `FormatFloat(F, Decimals)`
   (Std.Strings). B2: `Integer(S)`, every integer type, `Float(S)` and
@@ -359,8 +329,8 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   shortest text that reads back as the same value of its type (`0.1`,
   `2.5`, `1500.0`, `1.0e16`), everywhere a real is written (CANON-17). B4:
   Split and Join move to 0.5 with the collections; `FieldCount(S, Sep)` and
-  `Field(S, Sep, I)` (Std.StrUtils) now (CANON-14). Marcelo Fortes,
-  2026-10-21: "B Acatado todos". Change `numbers-text`.
+  `Field(S, Sep, I)` (Std.StrUtils) now (CANON-14). Approved by Marcelo
+  Fortes, 2026-10-21. Change `numbers-text`.
 - r3.91 — 2026-10-22 — Currency and Crypto have values (0.3, CANON-8). A1:
   `*` and `/` of decimals are exact and then rounded half to even to the
   type's places. A2: a literal next to a decimal takes its type (`Price *
@@ -370,8 +340,8 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   without error. A5: a decimal is written with at least two decimals and no
   trailing zeros after them. `Get`, `String(C)` and `Currency(S)` read and
   write decimals (B1, B2, C2); "decimal overflow" is a new trap category
-  (CANON-19). Marcelo Fortes, 2026-10-21 (repeated 2026-10-22): "A Acatado
-  todos". Change `decimals`.
+  (CANON-19). Approved by Marcelo Fortes, 2026-10-21 and 2026-10-22. Change
+  `decimals`.
 - r3.92 — 2026-10-22 — Dates, the system and the micro-editor (0.3). D1: a
   TDateTime is the microseconds since 0001-01-01 (proleptic Gregorian),
   with TDate and TDuration. D2: two zones, UTC and the system's. D3:
@@ -381,69 +351,58 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   Std.SystemUtils (ParamCount, ParamStr, GetEnv, EnvExists, Halt, Sleep,
   CurrentDir, PlatformName); running other programs after 1.0; `inox run`
   gives the words after the file to the program and keeps its exit status
-  (CANON-18, CANON-23). F3: `examples/edit.inox` accepts 0.3. Marcelo
-  Fortes, 2026-10-21 (repeated 2026-10-22): "D1 Acatado / D2 Acatado / D3
-  Acatados todos / D4 R: `ParamCount`, `ParamStr(I)`, `GetEnv(Name)`,
-  `EnvExists(Name)`, `Halt(Code)` para sair com um código, `Sleep(Ms)`,
-  `CurrentDir` e `PlatformName` / [...] / F3 Sim". Change
-  `datetime-systemutils`.
+  (CANON-18, CANON-23). F3: `examples/edit.inox` accepts 0.3. Approved by
+  Marcelo Fortes, 2026-10-21 and 2026-10-22 (D1 to D4 with the listed
+  Std.SystemUtils functions, F3). Change `datetime-systemutils`.
 - r3.93 (2026-10-22) — CANON-7 Explicit discard: `_ := Call` drops the
   result of a function or method call on purpose; E2 and OPEN-4 stay
   compile errors. `_` is a discard target without storage, declaration or
   name; only a call with a result may be discarded, never a literal, a
   variable, a field, an operation, a conversion or a construction. A line at
   module level that is no declaration is now an error (it was ignored).
-  Marcelo Fortes, 2026-10-22: "Decisão final: opção 2, com `_ :=`,
-  restrita inicialmente a chamadas que retornem valor. Manter E2 e OPEN-4
-  como erros de compilação. Aprovaria essa alteração em PR separado, com
-  testes cobrindo chamada isolada, descarte explícito, variável não lida e
-  descarte inválido." Change `discard-results`.
+  Decided by Marcelo Fortes, 2026-10-22: option 2, `_ :=`, at first only for
+  calls with a result; E2 and OPEN-4 stay compile errors; a separate PR with
+  tests of a lone call, an explicit discard, an unread variable and invalid
+  discards. Change `discard-results`.
 - r3.94 (2026-10-23) — CANON-4: the migration diagnostic for the old `Var`
   block, `Var X := ...` and a module `Var` section is removed; `Var` is an
   ordinary name and such text fails with the generic message of any
-  unexpected text. `mut` stays reserved. Marcelo Fortes, 2026-10-23: "Deve
-  ser removido, ninguém usa Inox ainda, a não ser eu. A versão estável já
-  vai nascer sem var. Se esta palavra for digitada, o compilador deve se
-  comportar exatamente como qualquer outro identificador não reconhecido e
-  emitir uma mensagem genérica. Essa regra deve ser eliminada do cânone e
-  atualizado os .md do openspec". Change `remove-var-diagnostic`.
+  unexpected text. `mut` stays reserved. Decided by Marcelo Fortes, 2026-10-23: nobody else uses Inox yet, so the
+  stable language is born without `Var`; the word behaves as any unknown
+  identifier, with the generic message; the rule leaves the canon and the
+  OpenSpec documents. Change `remove-var-diagnostic`.
 - r3.95 (2026-10-23) — CANON-2, CANON-5, CANON-8, CANON-19, CANON-20,
   CANON-23: `div` is no longer a reserved word; as in Ada, `/` of two
   integers is the integer division, truncated toward zero (`div` before),
   of two reals or two decimals their division, and the operands are never
   mixed without a conversion. `/=` divides an Integer too; a constant zero
   divisor of integer `/` is a compile error; integer `/` lowers to the
-  checked sdiv/udiv helpers. `mod` is unchanged. Marcelo Fortes,
-  2026-10-23: "valtando ao div e / vamos eliminar a palavra resrvada div
-  / Ada usa o caractere `/` tanto para a divisão inteira quanto para a
-  divisão real (ponto flutuante). O compilador decide qual operação
-  realizar com base no tipo dos operandos envolvidos. [...] o mesmo pode
-  ser imiplementado em Inox?". Change `integer-slash`.
+  checked sdiv/udiv helpers. `mod` is unchanged. Decided by Marcelo Fortes,
+  2026-10-23: `div` is no longer a reserved word, and `/` serves integer
+  and real division as in Ada, the operation chosen by the operand types.
+  Change `integer-slash`.
 - r3.96 (2026-10-23) — CANON-2, CANON-8, CANON-19, CANON-20, CANON-23: as
   in Ada, `mod` has the sign of the divisor (`-7 mod 2` is 1) and the new
   reserved word `rem` the sign of the dividend (`-7 rem 2` is -1), with
   A = (A / B) * B + A rem B; on UInt64 both are the unsigned remainder.
-  Marcelo Fortes, 2026-10-23, to the question whether `mod` should follow
-  Ada (`mod` as in Ada and a new `rem`): "Sim, siga a regra de Ada para o
-  modulus". Change `ada-modulus`.
+  Decided by Marcelo Fortes, 2026-10-23: `mod` follows Ada, with a new
+  `rem`. Change `ada-modulus`.
 - r3.97 (2026-10-23) — CANON-8 Checked left shift, CANON-19: `A shl N` is
   the product A * 2^N whenever it fits A's type, on Integer as on UInt64; a
   constant beyond it is a compile error and a run-time one a trap ("integer
   overflow"), never silently lost bits; Int64 `shl` dropped them before.
   A deliberately truncating shift, if it comes, has its own name (such as
-  `WrappingShl`). Marcelo Fortes, 2026-10-23: "colho a opção 1: shl deve
-  detectar overflow tanto em Integer quanto em UInt64. [...] A regra deve
-  ser uniforme: nenhuma operação de deslocamento à esquerda poderá perder
-  informação silenciosamente. [...] Recomendo corrigir Integer shl no mesmo
-  PR dos testes que identificaram o problema". Change `expression-checks`.
+  `WrappingShl`). Decided by Marcelo Fortes, 2026-10-23 (option 1): `shl` detects overflow
+  on Integer and on UInt64 alike, no left shift ever loses information
+  silently, and Integer `shl` is fixed in the same PR as the tests that
+  found the problem. Change `expression-checks`.
 - r3.98 (2026-10-23) — CANON-23 Optimization, Lowering rules: programs are
   built with clang -O2 by default and `--debug` before the file builds them
   with -O0; optimization never changes what a program does (no nsw/nuw, every
   check an explicit trap). Measured: an arithmetic loop went from 1.99 s to
   0.41 s, the time of C -O2. Optimization chosen in the source for LLVM is a
-  later design. Marcelo Fortes, 2026-10-23, to the proposal of an
-  optimization policy: "Sim, e deixe essa opção por default, posteriormente
-  faremos otimizações setadas no codigo fonte ara o llvm". Change
+  later design. Decided by Marcelo Fortes, 2026-10-23: optimization is
+  the default; optimizations set in the source for LLVM come later. Change
   `optimize-default`.
 - r3.99 — 2026-10-29 — Modules and encapsulation (0.4). Each module has its
   own names: its own first, then the one public name among the modules it
@@ -464,28 +423,20 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   standard library (D1); `Std` reserved to the standard library (D2);
   `inox interface` (B4); `examples/bank` is the acceptance program (E2).
   Also: a method argument is analyzed against its parameter type, like a
-  routine argument. Marcelo Fortes, 2026-10-26: private by default with
-  `Public` and `Use` not transitive, `Export` only as `Export Use`;
-  2026-10-29: "Na parte 1, aceito sua recomendação ... Na parte dois,
-  também acato sua regra proposta" (A1), "Acatada as proostas" (A2),
-  "Usaremos Bank.Accounts as Accounts como apelidos" (A3), "`use
-  bank.accounts.(deposit, withdraw)`" (A4), "Xonfirmado" (Public after
-  Override), "São equivalentes e não uma imposição de sintaxe. A quebra de
-  linha em inox só influencia para identificar onde termina uma instrução
-  de uma linha exatamente igual a Ruby" (header layout), "B4 aprovado",
-  "`State` nunca é `Public` ... aprovado", C1 to C4 "se não for contra a
-  proposta da linguagem de alta segurança como Rust, Spark/Ada e Ada",
-  "C5 para depois", D1 with "futuramente teremos uma ferramenta de buscar e
-  baixar pacotes", D2 "acato sua proposta", "um PR só com um commit por
-  etapa aprovado" (E1), the bank in `examples/bank/` approved (E2). Change
+  routine argument. Decided by Marcelo Fortes on 2026-10-26 (private by
+  default with `Public`, `Use` not transitive, `Export` only as `Export
+  Use`) and on 2026-10-29 (A1 to A4; `Public` last in a header, after
+  `Override`; the header layouts are equivalent, a line break only ending a
+  complete one-line statement, as in Ruby; B3, B4; C1 to C4 following Rust
+  and Ada/SPARK; C5 deferred; D1, with a future package tool; D2; one PR
+  with a commit per stage, E1; the bank of `examples/bank/`, E2). Change
   `modules-encapsulation`.
 - r3.100 — 2026-10-29 — The grammar and OpenSpec move under `docs/`:
   `docs/grammar/grammar.ebnf` and `docs/openspec/` (the constitution, the
   capability specs, the changes). `docs/` is OpenSpec's project root, so
   every `openspec` command runs from `docs/`. `config.yaml` becomes valid
   YAML (OpenSpec had been ignoring it). No rule of the language changes.
-  Marcelo Fortes, 2026-10-29: "desejo que os diretórios grammar e OpenSpec
-  sejam movidos para docs", and, of the three ways offered, "A". Change
+  Decided by Marcelo Fortes, 2026-10-29 (option A of three). Change
   `docs-layout`.
 - r3.101 — 2026-10-29 — Inox becomes 0.4.0 pre-alpha: 0.3 (numbers, text,
   the basic library) was never released apart and ships inside 0.4 with
@@ -495,7 +446,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   the stage in its title (the manual's download links follow the latest);
   the build reads its version from Version.h. The
   `v0.1.0-test` release stays as history. 34 completed OpenSpec changes
-  are archived (their deltas were already in the specs). Marcelo Fortes,
-  2026-10-29: "ir direto para 0.4", "sim, pode arquivar histórico", on
-  publishing: "quando muda na main", on the old release: "manter com
-  histórico". Change `release-0.4`.
+  are archived (their deltas were already in the specs). Decided by Marcelo Fortes,
+  2026-10-29: straight to 0.4, archive the completed changes, publish when
+  the version changes on main, keep the old release as history. Change
+  `release-0.4`.
+- r3.102 — 2026-10-29 — Records state decisions, in English (G2, G3, G7,
+  G8): a record says what was decided, who approved it and when; it never
+  transcribes a conversation. Every quotation of the maintainer's chat
+  messages in the constitution, the specs, the changes, this log, the
+  history, the roadmap and code comments becomes the decision it carried,
+  in English, with his name and the date; no decision changes. Decided by
+  Marcelo Fortes, 2026-10-29. Change `decisions-not-dialogue`.

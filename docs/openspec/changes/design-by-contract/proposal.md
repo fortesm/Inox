@@ -1,13 +1,11 @@
 ## Why
 
-Marcelo Fortes, 2026-10-14: "agora implemente design by contract
-exatamente igual eiffel a diferença é que as palavras reservadas pre para
-precondições e pos para poscondições ensure deve ser outra palavra que não
-conflite com o ensure de exceções varra a documentação de eiffel na
-internet se houver implementações mais moderna e melhores me avise talvez
-de java [...] se assegura de checar se llvm oferece primitivas que auxiliam
-este desenho. Façao resto usual em documentar, testar e gerar codigo e
-atualizar as especificações".
+Marcelo Fortes, 2026-10-14: implement design by contract exactly as Eiffel,
+except that the reserved words are `pre` for preconditions and `pos` for
+postconditions; Eiffel's `ensure` takes another word, so that it never
+conflicts with `ensure` of exceptions; look for more modern implementations
+of Eiffel's ideas, and for LLVM primitives that help this design; then
+document, test, generate code and update the specifications as usual.
 
 Inox already reserved `Pre`, `Pos` and `Invariant` (FUTURE) and has
 `Std.Debug.Assert` (Eiffel's `check`). Eiffel's `ensure` is Inox's `pos`, so
@@ -38,9 +36,8 @@ checks at call sites); every rule has a test.
 2. **Always checked through 1.0.** Eiffel lets each class choose a
    monitoring level (by default only `require`). Inox checks every contract,
    like Assert, which is never compiled out. Marcelo Fortes, 2026-10-14:
-   "Adicionar estilo de níveis de monitoramento Eiffel-style [...] per
-   módulo mais tarde (implementação futura) e manter os checks always on
-   [...] para a versão 1.0". Monitoring levels per module are a FUTURE
+   Eiffel-style monitoring levels per module come later, and the checks stay
+   always on through 1.0. Monitoring levels per module are a FUTURE
    change after 1.0.
 3. **Invariants after outside writes.** Eiffel forbids writing another
    object's attributes; Inox has no visibility yet, so a field write or a ref

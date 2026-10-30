@@ -4,12 +4,11 @@ Inox's last published release was `v0.1.0-test` (2026-06-02, made by
 hand); 0.2 was never tagged, and 0.3 and 0.4 were merged without a version
 number. Marcelo Fortes decided, on 2026-10-29:
 
-- the version: "ir direto para 0.4";
-- the completed OpenSpec changes: "sim, pode arquivar histórico";
-- releases: "Algumas tags e releases ainda estão em 0.1 elas devem
-  acompanhar a nossa evolução do compilador automaticamente"; of the two
-  triggers offered, "quando muda na main"; for the old release, "manter
-  com histórico".
+- the version goes straight to 0.4.0; 0.3 is not released apart;
+- the completed OpenSpec changes are archived;
+- tags and releases follow the compiler by themselves, published when the
+  version changes on main;
+- the old `v0.1.0-test` release stays as history.
 
 Risk: normal (CI, packaging and the version number; the language does not
 change).

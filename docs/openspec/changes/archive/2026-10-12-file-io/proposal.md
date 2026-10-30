@@ -7,7 +7,7 @@ asked for files next (2026-10-12): the design discussion he had with ChatGPT
 listed the operations and the safety goals, but no code was written.
 
 Approval (Marcelo Fortes, 2026-10-12, answering decisions F1–F7 sent in
-chat): "Tudo aprovado", with the note that I/O errors appear in
+chat): all approved, with the note that I/O errors appear in
 `try ... except On <error> ... ensure ... ;`, not only with `Retry`, and
 that the basic file functions must exist.
 

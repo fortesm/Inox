@@ -337,14 +337,14 @@ P.X := P.Y := 0</code></pre>
 ;</code></pre>
 <p><code>Exit</code> is reserved for early return from subroutines without a value. Functions with a return type must use <code>Return Expression</code>.</p>
 <p>A function is not a statement, as in Ada (canon r3.88): its result is used. <code>Add(1, 2)</code> alone, a function without arguments written alone, or <code>C.Next</code> alone for a method with a result, are compile errors that show the two ways: <code>X := Add(...)</code>, or <code>_ := Add(...)</code> to drop the result on purpose (canon r3.93). <code>_</code> is not a variable: it is only the target of a discard, never read or declared. Only a call with a result is discarded, never a literal, a variable, a field, an operation or a conversion, so <code>_ := N</code> cannot pass for a read of N. The call runs once, with its effects, its exceptions and its contracts. A subroutine is called as a statement, without <code>_ :=</code>.</p>
-<pre><code>Registrar(Texto String) Integer :
-    Chamadas += 1
-    PutLn(Texto)
-    Return Chamadas
+<pre><code>Record(Text String) Integer :
+    Calls += 1
+    PutLn(Text)
+    Return Calls
 ;
 
 Main :
-    _ := Registrar("início")     == called for its effect; the number is dropped
+    _ := Record("start")        == called for its effect; the number is dropped
 ;</code></pre>
 <h3>Parameters: by value, ref and ref mut</h3>
 <p>A parameter is normally an immutable copy. Two forms pass a reference to the caller's storage instead:</p>

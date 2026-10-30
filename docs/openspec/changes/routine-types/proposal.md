@@ -9,8 +9,7 @@ variable, a field or a parameter, as Pascal's procedural types
 (`TComparacao = function(A, B: Integer): Boolean`,
 `Button1.OnClick := Button1Click`).
 
-Marcelo Fortes, 2026-10-14: "Registre tudo isso para eu não me perder ou
-esquecer, agora compreendo o que são tipos de rotinas."
+Recorded at the request of Marcelo Fortes, 2026-10-14.
 
 Status: **direction recorded** (FUTURE "Encapsulation, routine types and
 lifecycle", r3.70). No code before the design is approved.

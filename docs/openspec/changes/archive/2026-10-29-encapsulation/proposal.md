@@ -5,10 +5,8 @@ struct can be written from outside it; a struct invariant (CANON-24) is
 checked after such a write, but the write is not prevented. Object-oriented
 languages hide fields behind `private`.
 
-Marcelo Fortes, 2026-10-14: "é previsto encapsulamento para Inox, algo bem
-semelhante a do ObjectPascal + Rust mas precisamos desenhar ainda", and
-"Sim registre no future para não nos perdermos a questão do
-encapsulamento".
+Marcelo Fortes, 2026-10-14: Inox will have encapsulation, close to Object Pascal and Rust, still to be designed, and
+record encapsulation in FUTURE so it is not lost.
 
 Status: **superseded** by `modules-encapsulation` (r3.99), which answers
 the questions below: private by default, privacy per module, a struct with

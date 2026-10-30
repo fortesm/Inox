@@ -3,7 +3,7 @@
 The canon recorded a goal for the driver — subcommands `inox run`, `inox
 build`, `inox check` instead of `--` switches — and left it open (open
 question 1 of `revisions.md`, r3.61). Asked, the maintainer agreed with the
-recommendation (Marcelo Fortes, 2026-10-13: "Concordo com 1 , 2."): the
+recommendation (Marcelo Fortes, 2026-10-13: 1 and 2 approved): the
 subcommands become the user's contract and the switches stay as aliases.
 The same answer settles question 2: an exception binding is exempt from the
 unread-local rule only until exceptions have readable members.

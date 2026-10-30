@@ -5,26 +5,18 @@ measure, slice, search, trim or change the case of one. The maintainer
 registered the modules (canon v3.57, r3.58) and decided their shape on
 2026-10-13 (Marcelo Fortes):
 
-- "Operador de concatenação é + mas sem repetir a recopia na memória da
-  string que o delphi faz se não houver jeito use strigbuild igual do
-  delphi".
-- "posições começam com 1 contam caracteres code points como no delphi a
-  diferença é que eu queria uma função chamada Substr() como no java ao
-  invés de Copy e também quero Trim() , RTrim(), LTrim()."
-- Std.Strings must hold usable functions, not only definitions ("deve ter
-  funções utilizáveis pelo usuário"); "Std.StrUtils, com nomes no estilo
-  Delphi Sim"; "Length(S) em vez de charlenghth (aprovado)"; "Concatenação
-  com + (aprovado)". The module rule itself changed in change
+- `+` concatenates without Delphi's repeated copying, with a string builder like Delphi's if needed.
+- positions start at 1 and count code points, as in Delphi, with `Substr()` as in Java instead of Copy, plus `Trim()`, `RTrim()`, `LTrim()`
+- Std.Strings must hold usable functions, not only definitions (it has functions the user can call); Std.StrUtils with Delphi-style names: yes; `Length(S)` rather than `CharLength` (approved); concatenation with `+` (approved). The module rule itself changed in change
   `module-pairs` (r3.64).
-- Language-neutral, Unicode rules (2026-10-12): "Não queria ficar preso a um
-  idioma específico".
+- Language-neutral, Unicode rules (2026-10-12): not tied to one human language.
 
 Risk: high (new runtime ABI functions; in-place append changes how String
 blocks are owned). Design approved 2026-10-13 (canon r3.65).
 
 Status: **implemented** (canon r3.78). `Pos` became a reserved word in
 r3.76, so the search function is named `Position`:
-Marcelo Fortes, 2026-10-17: "Position(Sub, S) (Recommended)"
+Marcelo Fortes, 2026-10-17: `Position(Sub, S)` chosen
 
 ## What Changes
 

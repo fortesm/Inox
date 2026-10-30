@@ -3,9 +3,8 @@
 ## Purpose
 The constitution of Inox: the language law and the rules that govern it. It
 is the minimized, consolidated successor of `docs/INOX_CANONICAL.md`, which
-was retired at canon revision r3.61 (Marcelo Fortes, 2026-10-12: "o arquivo
-canonica.md pode sobreviver minimizado e devidamente higienizado dentro de
-`openspec/specs/constitution/`"). Its purpose is that nobody — human or AI,
+was retired at canon revision r3.61 (decided by Marcelo Fortes, 2026-10-12: the canon survives, minimized and
+cleaned, as this constitution). Its purpose is that nobody — human or AI,
 with or without the history of a conversation — has to be told again what
 Inox has already decided.
 
@@ -39,8 +38,7 @@ and in `engineering.md`, the tables below included, is locked by
 
 ## The idea of the syntax: write less, do more
 Inox removes the verbosity of Ada and Pascal and the cryptic symbols of C,
-C++ and Rust (Marcelo Fortes, 2026-10-12: "A ideia de Inox é escrever menos.
-Fazer mais."). A Pascal routine needs `procedure`, `begin` and `end`; Ada
+C++ and Rust (Marcelo Fortes, 2026-10-12: Inox is about writing less and doing more). A Pascal routine needs `procedure`, `begin` and `end`; Ada
 needs `is` and `end`; C needs `{` and `}`. Inox keeps only what carries
 meaning:
 
@@ -56,8 +54,7 @@ Sum(A Integer, B Integer) Integer :                   Inox
 
 The `:` does two jobs at once: after a name and a signature it tells the
 compiler that this is a subroutine, and it opens the body, like `begin` or
-`{` ("`:` tanto serve para abrir o bloco quanto serve para dizer pro
-compilador que esse Sum(...) é uma subrotina"). Nothing else needs it:
+`{`. Nothing else needs it:
 control structures and `State` open their body at the line break, `Type`
 and `Const` are declarators, and `;` closes every block. A `:` without
 a name and a signature before it is meaningless, so a bare `:` block does
@@ -153,16 +150,18 @@ change, in an OpenSpec change marked "Awaiting approval", and never applies a
 proposal as fact. Open questions stay open until he answers them; an agent
 implements only the approved parts.
 
-#### Scenario: Approval is quoted
+#### Scenario: Approval is recorded
 - **WHEN** an OpenSpec change modifies the law
-- **THEN** its proposal quotes Marcelo Fortes's approval with its date, or says "Awaiting approval" and no code implements it (docs/openspec/config.yaml rules; review)
+- **THEN** its proposal records Marcelo Fortes's approval with its date and states the decision, or says "Awaiting approval" and no code implements it (docs/openspec/config.yaml rules; review)
 
 ### Requirement: G3 Every decision is recorded
 Every approved change to the law SHALL be recorded in the OpenSpec change
-(archived after the merge, with the maintainer's words), in a revision line
-of `revisions.md`, in the specs, and in `CHANGELOG.md` when the compiler
-changes. Records are append-only. If the code contradicts a recent decision,
-the code is behind; the decision is intentional.
+(archived after the merge), in a revision line of `revisions.md`, in the
+specs, and in `CHANGELOG.md` when the compiler changes. A record states the
+technical decision in English, who approved it and when; it never
+transcribes a conversation. Records are append-only. If the code
+contradicts a recent decision, the code is behind; the decision is
+intentional.
 
 #### Scenario: Revision and version agree
 - **WHEN** `inox --version` runs
@@ -216,14 +215,14 @@ written.
 
 #### Scenario: Design approval
 - **WHEN** a high-risk change is implemented
-- **THEN** its design.md ends with "Design approval:" and the maintainer's quote and date (docs/openspec/config.yaml rules)
+- **THEN** its design.md ends with "Design approval:", the maintainer's name and the date (docs/openspec/config.yaml rules)
 
 ### Requirement: G8 The lock
 This file and `engineering.md` SHALL be protected by `constitution.lock`:
 the hash of each unit and the OpenSpec change that approved its text. Text
 that differs from its hash fails CI. Locked text changes only through
 `python3 tools/constitution_check.py relock --approval <change>`, where the
-change exists and quotes Marcelo Fortes.
+change exists and records Marcelo Fortes's approval.
 
 #### Scenario: An unapproved edit
 - **WHEN** a locked requirement is edited, added or removed without a relock through an approved change
@@ -942,8 +941,8 @@ A generic routine or struct SHALL be a template: each use with its types
 makes an instance (`Max<Int64>`, `TPair<String, Int64>`), checked and
 compiled like ordinary code, one compiled copy per list of types. There are
 no constraints: T may be any type, and an operation T lacks is an error of
-the instance that needs it. Marcelo Fortes, 2026-10-17, on the three
-decisions: "Acato suas recomendações."
+the instance that needs it. Marcelo Fortes approved the three decisions on
+2026-10-17.
 
 #### Scenario: No constraints: the instance reports what T lacks
 - **WHEN** a program calls `Max` with two structs
@@ -1005,7 +1004,7 @@ type that brings its fields and methods to the struct, at every level; a
 reused method runs on its part. A name reached by two paths, or hidden by
 the struct's own field, is an error at the declaration; a method replaces a
 reused one only when marked `Override`. No subtyping. (Marcelo Fortes,
-2026-10-13: "troque herança por reaproveitamento de métodos".)
+2026-10-13: inheritance is replaced by the reuse of methods.)
 
 #### Scenario: Reuse through parts
 - **WHEN** a struct reuses a struct that reuses a third and overrides one method
@@ -1851,9 +1850,7 @@ for LLVM is a later design.
 
 ### Requirement: CANON-24 Design by contract
 Routines and structs SHALL carry Eiffel's contracts (Marcelo Fortes,
-2026-10-14: "implemente design by contract exatamente igual eiffel a
-diferença é que as palavras reservadas pre para precondições e pos para
-poscondições"): `pre` (Eiffel require) on the first lines of a routine,
+2026-10-14: Eiffel's design by contract, written with `pre` and `pos`): `pre` (Eiffel require) on the first lines of a routine,
 checked on every call; `pos` (Eiffel ensure), checked on every normal
 return; `invariant` in a Struct. Details: `language/contracts`.
 
@@ -2020,7 +2017,7 @@ When a push to `main` carries a version without its tag
 `vMAJOR.MINOR.RELEASE`, CI SHALL publish it by itself: Linux and Windows
 packages built in Release, tested and run as a user would (E23), with the
 version's CHANGELOG section as notes and the stage in the title, as the
-latest release (Marcelo Fortes, 2026-10-29: "quando muda na main"). A push
+latest release (decided by Marcelo Fortes, 2026-10-29). A push
 that keeps the version publishes nothing; old releases stay as history.
 
 #### Scenario: Publishing a version
@@ -2075,7 +2072,8 @@ A package tool, downloading packages into a folder of the CANON-3 search
 order, SHALL extend modules (2026-10-29). Variant structs (one of several
 structs, examined with `case`) are how a collection mixes kinds without
 subtyping
-(Marcelo Fortes, 2026-10-14: "Sim, registre isso"). Metadata tags (JSON,
+(a direction recorded by Marcelo Fortes,
+2026-10-14). Metadata tags (JSON,
 databases), BigCurrency, symbolic mathematics and `Float(Soma / N)` as the
 exact quotient of two integers (2026-10-16) are later directions. Each
 needs an approved design.
@@ -2086,8 +2084,8 @@ needs an approved design.
 
 ### Requirement: FUTURE Encapsulation, routine types and lifecycle
 Encapsulation is CANON-3 (r3.99); read-only fields, which other modules
-read and only their module writes, SHALL come from a later design (Marcelo
-Fortes, 2026-10-29: "C5 para depois"). Routine types (a
+read and only their module writes, SHALL come from a later design (deferred by Marcelo
+Fortes, 2026-10-29). Routine types (a
 routine kept in a variable, field or parameter, as Pascal's procedural
 types) are recorded with the recommendation: named routines without
 captured variables first, closures only after safe pointers. Whether Inox needs constructors and destructors is

@@ -3,7 +3,7 @@
 `docs/ROADMAP.md` kept the 0.1.x–0.9.x plan of 2026-06, written before the
 version scheme of r3.60 (Inox is 0.2.0 pre-alpha, with arrays, Strings and
 files already done). The maintainer decided (Marcelo Fortes, 2026-10-12):
-"Sim esse roadmap é antigo pode renumerar".
+the roadmap is old; renumber it.
 
 Risk: normal (documentation).
 

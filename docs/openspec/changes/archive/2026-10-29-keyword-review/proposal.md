@@ -1,35 +1,25 @@
 ## Why
 
-Marcelo Fortes, 2026-10-16: "Quero resolver ainda a possibilidade de
-reduzir palavras reservadas" and "Quero analisar a questão da divisão de
-inteiros usando só div e não / pelas nossas regras pois estão me parecendo
-tolice pois tanto div quanto / vão dividir exceto que haja uma diferença
-da implementação de ambos". This change records the analysis and the decisions.
+Marcelo Fortes, 2026-10-16: reduce the number of reserved words and review integer division with `div` and not `/`, which seems needless when both divide. This change records the analysis and the decisions.
 
 Status: **decided and implemented** (canon r3.74). Risk: medium (every
 program and test that uses a removed word).
 
 ## Decisions (Marcelo Fortes, 2026-10-16)
 
-- "div e / ficam exatamente como estão no futuro podemos fazer um tipo de
-  cast para `Media := Soma / N`. Algo como [...] `Media := Float(Soma / N)`":
+- `div` and `/` stay as they are; later, a conversion such as `Media := Float(Soma / N)` may give the exact quotient:
   integer `/` stays a compile error naming `div`; `Float(Soma / N)` as the
   exact quotient is a FUTURE direction (never a truncation followed by a
   conversion).
-- "O `{ }` eu manteria reservado até generics e concorrência mostrarem a
-  necessidade": `{` and `}` are reserved (CANON-2).
-- "otherwise -> else economisa uma palavra": the last arm of a `case` is
+- `{ }` stays reserved until generics and concurrency show the need: `{` and `}` are reserved (CANON-2).
+- `otherwise` becomes `else`, saving a word: the last arm of a `case` is
   `else`; `otherwise` gets a message naming `else`.
-- "exit continua não vira return mas vira nome comum deixa de ser palavra
-  reservada", "true e false vira nome comum", "`bitand` `bitor` `bitxor`
-  `bitnot` continuam mas não são mais palavra reservada", and "Nome
-  predefinido: contínuo, não podendo virar variáveis, porque ferem regras
-  da linguagem, devendo retornar um erro pro usuário": `True`, `False`,
+- `exit` stays, not as `return`, and is no longer a reserved word, `true` and `false` become ordinary names, `bitand`, `bitor`, `bitxor` and `bitnot` stay, no longer reserved words, and predefined names keep their meaning and can never become variables, which would break the language's rules; doing so is an error: `True`, `False`,
   `Exit`, `bitand`, `bitor`, `bitxor`, `bitnot` are predefined names, with
   their meaning unchanged; declaring one (variable, parameter, routine,
   type, Const, State) is an error; they are free as field and method
   names.
-- "main vira nome comum deixa de ser palavra reservada": `Main` is an
+- `main` becomes an ordinary name, no longer a reserved word: `Main` is an
   ordinary name; the program starts at the routine named Main.
 - "`step`, `on` e `mut` continuam reservadas".
 

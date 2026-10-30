@@ -7,18 +7,12 @@ that joins Ada/SPARK's safety, Rust and Go's contextual inference and IEEE
 754's predictability.
 
 Approval (Marcelo Fortes, 2026-10-21):
-- `Float32(F)`: "Eu adotaria um modelo verificado para Float32(F), inspirado
-  em Ada, mas com regras mais determinísticas": a constant that does not fit
+- `Float32(F)`: a checked model for `Float32(F)`, inspired by Ada, with more deterministic rules: a constant that does not fit
   is a compile error; at run time, a controlled failure when a finite value
   would overflow to an infinity; otherwise IEEE 754 rounding, ties to even;
-  "Perda normal de precisão não constitui erro"; "Não faria Float32(F)
-  simplesmente saturar no maior número finito." `Float32Unchecked(F)` is
-  named as an idea, "não uma sintaxe já aprovada".
-- Literals: "Eu confirmaria essa decisão sem alterações"; "um literal real
-  ainda não tipado pode receber o tipo esperado, enquanto uma expressão já
-  tipada não muda de precisão implicitamente"; "o compilador deve converter
-  o literal decimal diretamente para o tipo final, evitando passar
-  obrigatoriamente por Float64".
+  an ordinary loss of precision is no error; `Float32(F)` does not saturate at the largest finite number `Float32Unchecked(F)` is
+  named as an idea, not an approved syntax.
+- Literals: confirmed without change; an untyped real literal takes the expected type, while a typed expression never changes precision implicitly; the compiler converts the decimal literal straight to the final type, never necessarily through Float64.
 - Constants: "Prefiro claramente o modelo Ada/Go": Pi, Tau and E untyped
   until the context resolves them, kept with many digits.
 - Also: NaN and the infinities are preserved by a conversion; underflow gives

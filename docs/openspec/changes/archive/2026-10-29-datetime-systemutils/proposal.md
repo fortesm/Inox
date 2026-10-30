@@ -4,15 +4,9 @@ Last change of 0.3 (`docs/ROADMAP.md`): dates and times, the program's
 system (command line, environment, exit status), and the program that
 accepts 0.3 — a micro-editor built with what 0.3 gives.
 
-Request (Marcelo Fortes, 2026-10-21): "Implemente: Versão 0.3, [...]
-Std.DateTime e Std.SystemUtils; [...] E o que é necessário para um editor
-de texto."
+Request (Marcelo Fortes, 2026-10-21): implement version 0.3: Std.DateTime, Std.SystemUtils, and what a text editor needs
 
-Approval (Marcelo Fortes, 2026-10-21, repeated on 2026-10-22): "D1
-Acatado / D2 Acatado / D3 Acatados todos / D4 R: `ParamCount`,
-`ParamStr(I)`, `GetEnv(Name)`, `EnvExists(Name)`, `Halt(Code)` para sair
-com um código, `Sleep(Ms)`, `CurrentDir` e `PlatformName` / [...] / F3 Sim
-/ Faça em Pr Serparados para ser mais fácil de testar".
+Approval (Marcelo Fortes, 2026-10-21, repeated on 2026-10-22): D1 to D3 approved; D4: `ParamCount`, `ParamStr(I)`, `GetEnv(Name)`, `EnvExists(Name)`, `Halt(Code)` to exit with a code, `Sleep(Ms)`, `CurrentDir` and `PlatformName`; F3 yes; separate PRs, easier to test.
 
 Risk: normal (new modules mostly written in Inox, a few runtime functions;
 Main now receives the command line, which changes the signature of every

@@ -6,38 +6,11 @@ all. `F(X)` alone broke E2, and `R := F(X)` without reading R broke OPEN-4.
 The open point of change `console-abi-terminal` asked the maintainer what
 to do; three options were set out (keep it, `_ :=`, OPEN-4 as a warning).
 
-Approval (Marcelo Fortes, 2026-10-22): "Minha escolha para a Inox é a
-opção 2: descarte explícito com `_ := Expressão`. Eu manteria
-integralmente a E2 e a OPEN-4, sem transformar erros em avisos. [...] Mas
-faria uma distinção importante: `_` não deve ser uma variável especial.
-Deve ser um destino sintático de descarte, sem identidade, tipo próprio,
-armazenamento ou participação no escopo. [...] Para proteger ainda mais a
-OPEN-4, inicialmente restringiria o descarte explícito a resultados de
-chamadas de funções ou métodos. [...] Na Inox, eu estabeleceria desde já
-que `_ :=` não suprime exceções, falhas de execução, verificações de
-contratos ou outras obrigações semânticas."
+Approval (Marcelo Fortes, 2026-10-22): option 2: an explicit discard `_ := Expression`; E2 and OPEN-4 stay in full, no error becomes a warning; `_` is no special variable but a syntactic discard target, without identity, type, storage or scope
 
-His wording for the constitution: "E2 — Descarte explícito de resultados.
-Uma chamada de função que produza valor não poderá ser utilizada
-isoladamente como comando. O resultado deverá ser consumido por uma
-expressão válida ou descartado explicitamente mediante `_ :=
-FunctionCall`. O símbolo `_` constitui um destino de descarte, não um
-identificador de variável. Não possui armazenamento, não introduz
-declaração, não participa da resolução de nomes e não está sujeito à
-OPEN-4. A expressão à direita deverá constituir uma chamada de função ou
-método que produza valor. Sua avaliação ocorrerá exatamente uma vez,
-preservando os efeitos observáveis e todas as obrigações semânticas
-aplicáveis. O descarte explícito não constitui leitura artificial de outra
-variável para fins de satisfação da OPEN-4. Chamadas de procedimentos sem
-retorno permanecem válidas como comandos, sem utilização de `_ :=`. Tipos
-ou funções sujeitos a obrigações especiais de tratamento de resultados
-poderão proibir o descarte, conforme contratos estabelecidos
-separadamente."
+His wording for the constitution: E2, explicit discard of results: a function call that produces a value is not a statement alone; its result is consumed by a valid expression or discarded explicitly with `_ := FunctionCall`; `_` is a discard target, not an identifier
 
-Decision: "Decisão final: opção 2, com `_ :=`, restrita inicialmente a
-chamadas que retornem valor. Manter E2 e OPEN-4 como erros de compilação.
-Aprovaria essa alteração em PR separado, com testes cobrindo chamada
-isolada, descarte explícito, variável não lida e descarte inválido."
+Decision: final decision: option 2, `_ :=`, at first only for calls with a result; E2 and OPEN-4 stay compile errors; a separate PR with tests of a lone call, an explicit discard, an unread variable and invalid discards
 
 Risk: low (a new statement form; programs without `_` get the same IR).
 

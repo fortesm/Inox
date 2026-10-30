@@ -6,8 +6,8 @@
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 == CANON-19 (r3.63): a failed Assert is a deterministic trap, like an
-== overflow: no handler, Else, plain except or ensure runs (Marcelo Fortes,
-== 2026-10-13: "3 escolho a alternativa A").
+== overflow: no handler, Else, plain except or ensure runs (decided by Marcelo
+== Fortes, 2026-10-13).
 Use Std.Debug
 
 Main :

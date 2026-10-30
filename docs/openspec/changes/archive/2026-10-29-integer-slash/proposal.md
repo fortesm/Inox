@@ -6,19 +6,7 @@ both and lets the operands' type decide; Inox already never mixes an
 integer and a real without a conversion, so the type always decides
 without ambiguity.
 
-Approval (Marcelo Fortes, 2026-10-23): "valtando ao div e / vamos eliminar
-a palavra resrvada div / Ada usa o caractere `/` tanto para a divisão
-inteira quanto para a divisão real (ponto flutuante). O compilador decide
-qual operação realizar com base no tipo dos operandos envolvidos. Divisão
-Inteira (`Integer / Integer`): Se os dois valores envolvidos forem do tipo
-`Integer` (inteiros), o operador `/` realiza a divisão inteira, truncando
-qualquer parte decimal em direção ao zero. Divisão Real (`Float / Float`):
-Se os valores forem decimais (`Float` ou outro tipo de ponto
-flutuante/fixo), o operador `/` realiza a divisão aritmética real
-convencional. Nota de segurança: Por ser uma linguagem com tipagem
-extremamente forte, Ada não permite misturar tipos diretamente (como `5 /
-2.0`) sem realizar uma conversão de tipo explícita / o mesmo pode ser
-imiplementado em Inox?"
+Approval (Marcelo Fortes, 2026-10-23): `div` stops being a reserved word; as in Ada, `/` serves integer and real division, the operation chosen by the operand types: integer division for two integers, real division for two reals
 
 Risk: normal (every integer division in the repository is rewritten; the
 generated IR of each is unchanged).

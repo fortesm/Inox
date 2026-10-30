@@ -4,8 +4,7 @@
 The `Type`, `Const` and `State` declaration sections (CANON-5): which entries
 each section holds and how malformed entries are reported. Part of the Inox
 law, detailing the constitution (`docs/openspec/specs/constitution`). There is no
-type alias form `TName := Type` (Marcelo Fortes, 2026-10-12: "TNome := Integer
-deve ser erro").
+type alias form: `TName := Type` is an error (Marcelo Fortes, 2026-10-12).
 
 ## Requirements
 

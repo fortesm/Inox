@@ -47,6 +47,6 @@ an owned resource released by the same exit and exception cleanup.
 
 ## Design approval
 
-Approved by Marcelo Fortes on 2026-10-12: "100% aprovado!", answering the
+Approved by Marcelo Fortes on 2026-10-12: approved in full, answering the
 design summary sent in chat with the module pair Std.Files (the File type)
 / Std.IOUtils (the functions).

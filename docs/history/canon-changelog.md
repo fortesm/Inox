@@ -13,10 +13,9 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 # ============================================================================
 #
 # r3.60 — 2026-10-12 — version scheme; file rules approved.
-#         Marcelo Fortes, 2026-10-12: "Tudo 100% aprovado, Canonize!";
-#         "quero definir essa nomenclatura de versao XX.XXX.XXX.XXXX ONDE se
-#         divide em MAIOR VERSAO, MENOR VERSAO, RELEASE, BUILD ... A versao
-#         atual é 0.2.0.build indefindo. Pré-Alfa".
+#         Marcelo Fortes, 2026-10-12: approved in full;
+#         the version is MAJOR.MINOR.RELEASE.BUILD; the current
+#         version is 0.2.0, BUILD not yet defined, pre-alpha.
 #   - Layer A, CANON-17 "Files": the rules settled while implementing r3.59
 #     are approved: the file names exist only with `Use Std.IOUtils` (the
 #     File type also with `Use Std.Files`); RenameFile raises AlreadyExists
@@ -35,7 +34,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #
 # r3.59 — 2026-10-12 — text files: Std.Files and Std.IOUtils (Layer A and
 #         Layer B). Decisions F1–F7 approved by Marcelo Fortes on 2026-10-12
-#         ("Tudo aprovado", with I/O errors usable in try / except On /
+#         (all approved, with I/O errors usable in try / except On /
 #         ensure, not only with Retry, and the basic file functions); design
 #         approved on 2026-10-12 ("100% aprovado!") with the module pair
 #         Std.Files (the File type) / Std.IOUtils (the functions). OpenSpec
@@ -73,15 +72,13 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     tools/string_leak_check.py also runs the file programs.
 #
 # r3.58 — 2026-10-12 — naming of the standard library; versioning.
-#         Marcelo Fortes, 2026-10-12: "Std.Core muda para Std.System";
-#         "Std.Strings deve ficar somente definições e dados gerais de strings
-#         semelhante a um arquivo .h de C. Já Std.StrUtils ficam funções que
-#         auxiliam a vida do programador para manipular strings pode fazer uso
-#         de Std.Strings, o mesmo vale para Std.DateTime -> Std.DateUtils,
-#         StdFiles -> Std.IoUtils e subsequentes, para não termos um módulo
-#         saco de tudo, podemos ter um Std.SystemUtils com somente funções
-#         específicas de sistema."; "Quero mudar aquele versionamento 3.XX ...
-#         A linguagem eu diria uma versão 0.2 ou 0.3 pré-alpha."
+#         Marcelo Fortes, 2026-10-12: Std.Core becomes Std.System;
+#         Std.Strings holds only the definitions and general
+#         data of Strings, like a C header; Std.StrUtils holds the conveniences
+#         and may use Std.Strings; the same for Std.DateTime/Std.DateUtils and
+#         Std.Files/Std.IOUtils; no catch-all module, and a Std.SystemUtils with
+#         only system functions; the 3.XX numbering changes; the language is a 0.2
+#         or 0.3 pre-alpha
 #   - Layer A, CANON-18: `Std.Core` is renamed `Std.System` (the implicit
 #     prelude, like Delphi's System unit).
 #   - Layer A, CANON-18: library modules come in pairs. `Std.X` holds only
@@ -102,11 +99,9 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     #37, #38); `std-strings` and `file-io` follow the module pairs.
 #
 # v3.57 — 2026-10-12 — two Layer A decisions and a planned library module.
-#         Marcelo Fortes, 2026-10-12: "Bool deve ter ordem (false < true,
-#         como no Pascal e no Ada)!"; "Structs não deve comparar com =/#,
-#         campo a campo. Como em Pascal. Permanece erro, com a orientação de
-#         comparar os campos."; "Registre essas funções de biblioteca no
-#         futuro -> Std.Strings." OpenSpec changes `comparisons` (updated)
+#         Marcelo Fortes, 2026-10-12: Bool is ordered, false < true, as in Pascal and Ada; structs are not compared with =/#; compare them
+#         field by field, as in Pascal; it stays an error that says so; record these library functions as future
+#         Std.Strings work OpenSpec changes `comparisons` (updated)
 #         and `std-strings` (planned).
 #   - Layer A, CANON-8: Bool is ordered, false < true; every comparison
 #     operator applies (replaces the provisional v3.56 error).
@@ -123,9 +118,8 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     backend_gaps probe `bool-equality` becomes `bool-comparison`.
 #
 # v3.56 — 2026-10-12 — String ordering (Layer A) and comparison operand rules.
-#         Marcelo Fortes, 2026-10-12: "Comparação de ordem entre Strings
-#         (<, >, como no Pascal) também já deveria existir ... também >=, <=,
-#         #, not, invertendo o operador, unless, combinados com or, and".
+#         Marcelo Fortes, 2026-10-12: Strings are ordered (<, >, <=, >=, #, not,
+#         unless, combined with or and and), as in Pascal.
 #         OpenSpec change `comparisons`.
 #   - Layer A, CANON-14: `<` `>` `<=` `>=` order Strings, as in the Wirth
 #     family: byte by byte over UTF-8, the shorter first when one is a prefix
@@ -147,7 +141,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 # v3.55 — 2026-10-12 — String runtime (Layer B; CANON-14 and CANON-17 now
 #         state the v3.50 decisions as implemented). OpenSpec change
 #         `string-runtime`, Risk: high; design approved by Marcelo Fortes on
-#         2026-10-12 ("Então tudo aprovado.").
+#         2026-10-12 (all approved).
 #   - A String value is a pointer to an immutable, reference-counted block in
 #     libinoxrt (`runtime/StringRuntime.cpp`); literals and `""` are immortal.
 #     Strings live in locals, parameters, results, struct fields (with or
@@ -176,9 +170,9 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     backend_gaps GAP=2, OK=45.
 #
 # v3.54 — 2026-10-12 — workflow safeguards and one Layer A confirmation
-#         (Marcelo Fortes, 2026-10-12: "Faça os três ajustes, adote o que vale
-#         adotar, me chame atenção sobre mudanças, atualize o openspec sempre";
-#         "TNome := Integer deve ser erro"). OpenSpec change
+#         (Marcelo Fortes, 2026-10-12: make the three adjustments, adopt what is worth
+#         adopting, flag every change, keep OpenSpec up to date;
+#         `TName := Integer` is an error). OpenSpec change
 #         `workflow-safeguards`.
 #   - Layer A, CANON-5: a Type section declares Struct, Range and Enum types
 #     only; `TName := Type` is an error. Inox has no type alias form (the
@@ -255,7 +249,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     fields; String fields wait for the String runtime.
 #
 # v3.51 — 2026-10-12 — enum printing decided (Layer A, Marcelo Fortes,
-#         2026-10-12: "Resposta (a) o nome Copas"). Closes the item left open
+#         2026-10-12: answer (a), the literal's name). Closes the item left open
 #         in v3.50: `PutLn(E)` and `Put(E)` print the enum literal's name as it
 #         is spelled in its declaration (`Copas` for `TNaipe (Paus, Ouros,
 #         Copas, Espadas)`); `Ord(E)` gives the ordinal. Enum literals are
@@ -287,9 +281,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     input.
 #
 # v3.49 — 2026-10-12 — migration of this document to OpenSpec, phases 1 and 3a
-#         (plan approved by Marcelo Fortes on 2026-10-12: "Aprovo o plano de
-#         migração em fases."; "Os ADRs viram mudanças arquivadas no
-#         OpenSpec."). No Layer A rule changes; this document stays the law (G7).
+#         (plan approved by Marcelo Fortes on 2026-10-12: phased migration plan approved; the ADRs become archived OpenSpec changes). No Layer A rule changes; this document stays the law (G7).
 #   - Phase 1, inventory: `tools/canon_trace.py` splits this document into
 #     units that cover every line; `openspec/migration/CANON_MAP.md` records
 #     each unit's hash, status (planned, mirrored, copied, approved, duplicate,
@@ -314,9 +306,8 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     3 duplicate, 36 structural, 196 planned.
 #
 # v3.48 — 2026-10-12 — OpenSpec adopted for specifications and changes
-#         (governance G7, requested by Marcelo Fortes on 2026-10-12: "quero
-#         usar o OpenSpec, para gerenciar e coordenar as especificações da
-#         linguagem e do compilador"). No Layer A language rule changes.
+#         (governance G7, requested by Marcelo Fortes on 2026-10-12: OpenSpec manages and coordinates the specifications
+#         of the language and the compiler). No Layer A language rule changes.
 #   - `openspec/` (OpenSpec 1.14.1): `config.yaml` carries the Inox context and
 #     the proposal/spec/design/task rules; `.claude/` holds the `/opsx:*`
 #     commands and skills.
@@ -326,9 +317,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     `language/module-state` (CANON-5 Const and State), `language/fixed-
 #     arrays` (CANON-13 Array), `language/ref-parameters` (ADR-0016),
 #     `language/slices` (ADR-0017). This document stays the law for them (G7).
-#   - Open changes for the order approved on 2026-10-12 ("Todas as tomadas de
-#     decisão dos pontos 1 a 5 foram verificadas e eleitas para serem
-#     acatadas"): `struct-values`, `declaration-sections`, `uint64`,
+#   - Open changes for the order approved on 2026-10-12 (decisions 1 to 5 approved): `struct-values`, `declaration-sections`, `uint64`,
 #     `enum-range-set`, `string-runtime`. Their open questions (UInt64 Q1–Q3,
 #     Enum/Range/Set Q1–Q7, String Q1–Q4) await the maintainer.
 #   - AGENTS.md truth hierarchy corrected: it still named the removed
@@ -350,8 +339,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #
 # v3.46 — 2026-10-11 — ADR-0016: `ref X T` and `ref mut X T` parameters
 #         (Layer A, approved by Marcelo Fortes on 2026-10-11 as part of the
-#         order "Array, then ref, then Slice": "Ok Faça logo tudo na sua
-#         ordem!"). `ref` becomes a keyword (50).
+#         order "Array, then ref, then Slice": do everything, in the proposed order). `ref` becomes a keyword (50).
 #   - Rules in ADR-0016: exact type, writable place for `ref mut`, no other
 #     argument may use a `ref mut` variable, references never outlive the call.
 #   - Layer B: a reference parameter is an LLVM `ptr` to the caller's slot,
@@ -448,8 +436,8 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #
 # v3.40 — 2026-10-10 — ADR-0015: storing into a Natural checks the range
 #         implicitly, as in Ada (Layer A, decided by Marcelo Fortes on
-#         2026-10-10: "Façamos como Ada, a atribuição faria essa checagem
-#         sozinha, sem conversão escrita").
+#         2026-10-10: as in Ada, an assignment checks the range by itself,
+#         with no conversion written).
 #   - Supersedes ADR-0014 points 3 and 4 where they require `Natural(X)`:
 #     initialization, assignment, compound assignment, argument passing,
 #     return and field initialization of a Natural from an Integer value are
@@ -466,10 +454,8 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     removed: those programs are valid now.
 #
 # v3.39 — 2026-10-10 — ADR-0014: Natural, Byte and the closed numeric set
-#         (Layer A, decided by Marcelo Fortes on 2026-10-10: "se vocês chegaram
-#         a um consenso semelhante ao Ada2005 sem negativo ... acato registre no
-#         canônico"; "sem double! Deixe float"; "Não existem variant nem
-#         olevariant em inox").
+#         (Layer A, decided by Marcelo Fortes on 2026-10-10: the Ada 2005 consensus, without negatives, is
+#         accepted and recorded in the canon; no Double, Float stays; Inox has no Variant or OleVariant).
 #   - Natural is the non-negative subtype of Integer, 0..Int64.Max, with the
 #     Int64 (i64) representation; it is no longer described as UInt64 with
 #     floor 0. UInt64 stays a distinct type. The CANON-8 table row changes.
@@ -496,8 +482,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     its premise (Natural = UInt64) is superseded.
 #
 # v3.38 — 2026-10-10 — OPEN-5 closed (Layer A, decided by Marcelo Fortes on
-#         2026-10-10: "Acatado aceitar só Const Nome := Valor e usar
-#         UInt8($FF)").
+#         2026-10-10: only `Const Name := Value`, with `UInt8($FF)`).
 #   - A Const is written `Const Name := Value` only. Its type is the type of
 #     the value; a conversion chooses another type: `Const Mask := UInt8($FF)`.
 #   - Layer B: the parser rejected nothing before; `Const Mask UInt8 := $FF` is
@@ -521,11 +506,9 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 # v3.36 — 2026-10-10 — maintainer decisions recorded from the design chat with
 #         ChatGPT that were missing here (documentation only; no compiler
 #         change). Found by reading the whole chat on Marcelo's request.
-#   - FUTURE-1: the concurrency construct is spelled `do`, not `go` ("tome
-#     nota em Inox não é go e sim do"). `do` is already reserved.
-#   - Generics: `<T>` replaces `[T]` ("uso de <T> para Generics em vez de [T],
-#     a questão é pragmática ... [T] pode gerar ambiguidade e problemas com
-#     Arrays X[i]"). Layer A now writes `Vector<T>`/`Set<T>` everywhere it is
+#   - FUTURE-1: the concurrency construct is spelled `do`, not `go` (in Inox it is `do`, not `go`). `do` is already reserved.
+#   - Generics: `<T>` replaces `[T]` (`<T>` for generics instead of `[T]`, for a
+#         pragmatic reason: `[T]` could be ambiguous with array indexing `X[i]`). Layer A now writes `Vector<T>`/`Set<T>` everywhere it is
 #     normative (the locked ADR-0006 text and old changelog entries keep their
 #     historical spelling); `<...>` is generic syntax only in type position
 #     (ChatGPT's point). Layer B: the compiler still spells generics `[T]`, a
@@ -536,9 +519,8 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     3.16, 3.17, ...").
 #
 # v3.35 — 2026-10-10 — ADR-0013: conditional expression (Layer A, decided by
-#         Marcelo Fortes in the design chat with ChatGPT: "Ok ficaremos com algo
-#         abrangente como em Result := if X < 0 then -X else if X > Limit then
-#         Limit else X"; the five properties are the ones ChatGPT fixed there).
+#         Marcelo Fortes in the design chat with ChatGPT: a general form, as in `Result := if X < 0 then -X
+#         else if X > Limit then Limit else X`; the five properties are the ones ChatGPT fixed there).
 #   - `if C then A else B` is an expression that selects a value. `then` and
 #     `else` are mandatory; each branch is an expression, never a block; only
 #     the chosen branch is evaluated; the condition is Bool and the branches
@@ -554,9 +536,8 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     `conditional-as-statement`.
 #
 # v3.34 — 2026-10-10 — `0xFF` next to `$FF` (Layer A, decided by Marcelo Fortes
-#         on 2026-10-10: "$FF e 0xFF juntos. Facilita para quem vem de C ...
-#         uma das poucas comodidades pragmáticas do Inox que viola ter uma forma
-#         só", like `i += 1` next to `i := i + 1`).
+#         on 2026-10-10: `$FF` and `0xFF` both, easier for those coming from C:
+#         one of Inox's few pragmatic conveniences that break the one-way rule, like `i += 1` next to `i := i + 1`).
 #   - CANON-2: a hexadecimal literal is `$` or `0x`/`0X` followed by hex digits,
 #     with the digit separator `_` between digits. `0xFF` and `$FF` are the
 #     same literal; later phases see `$FF`. A leading zero never means octal:
@@ -567,9 +548,8 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     diagnostic `hex-0x-missing-digit`. Probe `hex-0x`.
 #
 # v3.33 — 2026-10-10 — ADR-0012: compound assignment (Layer A, decided by
-#         Marcelo Fortes in the ChatGPT design chat: "Quero dar suporte à +=
-#         -= *= /= ^= ... i := i + 1 continua valendo, mas quero adicionar esta
-#         convivência e inclusive atualizar os exemplos"; the semantics are the
+#         Marcelo Fortes in the ChatGPT design chat: `+= -= *= /= ^=` are supported; `i := i + 1` stays
+#         valid next to them, and the examples are updated; the semantics are the
 #         ones ChatGPT proposed there).
 #   - `L += R`, `L -= R`, `L *= R`, `L /= R`, `L ^= R` mean `L := L op R` with L
 #     evaluated once. `/=` is valid only where `/` is (never for Integer:
@@ -590,9 +570,8 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     `compound-assignment`.
 #
 # v3.32 — 2026-10-10 — OPEN-4 closed: unread locals are errors (Layer A,
-#         decided by Marcelo Fortes on 2026-10-10: "seguirmos como Go e dar erro
-#         quando uma variável é criada e nunca usada ... só dar o erro resolva a
-#         situação para todos os casos", without a `_` placeholder syntax).
+#         decided by Marcelo Fortes on 2026-10-10: as in Go, a variable created and never used is an
+#         error, which settles every case, without a `_` placeholder syntax).
 #   - CANON-5 rule 7 is restated: a misspelled name in FORM 1 declares a new
 #     variable (rule 1), and since nothing reads it the compiler rejects it:
 #     "local variable never read: Coutner". Rules 1 and 7 no longer conflict.
@@ -626,8 +605,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     `digit-separators`.
 #
 # v3.30 — 2026-10-10 — grammar mirror rebuilt and checked (Layer B; no language
-#         change). Requested by Marcelo Fortes: "acho que o arquivo grammar.ebnf
-#         está completamente errado e desatualizado".
+#         change). Requested by Marcelo Fortes: grammar.ebnf is wrong and out of date.
 #   - `grammar/grammar.ebnf` is rewritten from this document and covers v3.24 to
 #     v3.29: CANON-20 levels 1–16 with `..`/`in` non-associative, `:=` at
 #     statement level only (chains, named arguments), grouped declarations,
@@ -648,10 +626,9 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     check ("[SKIP]" when Python 3 is missing).
 #
 # v3.29 — 2026-10-09 — ADR-0011: `case` in the Ada/SPARK style, adapted to Inox
-#         (Layer A, decided by Marcelo Fortes on 2026-10-09: "Uma sintaxe
-#         semelhante a Ada2005, Spark/Ada ... adaptado às regras e Sintaxe de
-#         inox"; "otherwise deve ser obrigatório sempre que os braços não
-#         cobrirem todos os valores possíveis").
+#         (Layer A, decided by Marcelo Fortes on 2026-10-09: a syntax like Ada 2005 and SPARK, adapted to Inox's
+#         rules and syntax; `otherwise` is required whenever the arms do not
+#         cover every possible value).
 #   - Choices: a static value or a static range `A..B`; `|` separates the
 #     alternatives of an arm (a new token, punctuation only; bitwise or stays
 #     `bitor`). The comma is a migration error. Overlap anywhere in the case,
@@ -709,7 +686,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     `case-ada-choices` (GAP until lowering).
 #
 # v3.28 — 2026-10-09 — ADR-0010: `for I in A..B step S` (Layer A, decided by
-#         Marcelo Fortes on 2026-10-09: "Para o for use o step como kotlin").
+#         Marcelo Fortes on 2026-10-09: `for` takes `step`, as in Kotlin).
 #   - `step` is a reserved word (the lexer has 48 keywords). The bounds of the
 #     header are full range-level expressions (CANON-20 level 10):
 #     `for I in 1..N + 1 step 2` runs from 1 to N + 1.
@@ -745,8 +722,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     step). Probe `for-step-expression-bounds`.
 #
 # v3.27 — 2026-10-09 — ADR-0009: chained assignment; `:=` is a statement (Layer
-#         A, decided by Marcelo Fortes on 2026-10-09: "Inox deve suportar
-#         A := B := C := D := E := 4").
+#         A, decided by Marcelo Fortes on 2026-10-09: Inox supports `A := B := C := D := E := 4`).
 #   - CANON-5 gains "Assignment is a statement; chained assignment".
 #     `A := B := C := X` evaluates X once and stores it in C, then B, then A.
 #     Each target follows rule 1 (first appearance declares, FORM 1). Targets
@@ -801,8 +777,8 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     construction is not lowered yet).
 #
 # v3.26 — 2026-10-09 — grouped declarations (Layer A, decided by Marcelo Fortes
-#         on 2026-10-09: "Duas variáveis na mesma linha: A, B Integer := 2 é
-#         perfeitamente legal!").
+#         on 2026-10-09: two variables on one line, `A, B Integer := 2`,
+#         are legal).
 #   - CANON-5 gains "Grouped declarations": `A, B, C T := X` declares every name
 #     with type T. X is evaluated EXACTLY ONCE; the first name receives the
 #     value and each later name is initialized from the first, in order, with
@@ -822,8 +798,8 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #
 # v3.25 — 2026-10-09 — a bare `:` block inside a routine is illegal (Layer A
 #         clarification of CANON-4, decided by Marcelo Fortes on 2026-10-09:
-#         "Esse bloco Main : / : / PutLn(1) / ; / ; É completamente ilegal!!
-#         Deve ser registrado no canônico e corrigido no compilador!").
+#         the block `Main : / : / PutLn(1) / ; / ;` is illegal;
+#         record it in the canon and fix the compiler).
 #   - CANON-4 already gave `:` one meaning (it declares a function or
 #     subroutine and opens its body). It now states the consequence: a `:` that
 #     opens a block anywhere inside a routine body, at any depth, is illegal.
@@ -834,8 +810,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     `colon-block-in-loop` (inside a `while` body).
 #
 # v3.24 — 2026-10-09 — ADR-0008: `..` and `in` in the precedence table (Layer A
-#         change approved by Marcelo Fortes on 2026-10-09: "Aprovo a precedência
-#         que tomaram! Para .. e in").
+#         change approved by Marcelo Fortes on 2026-10-09: the precedence chosen for `..` and `in` is approved).
 #   - CANON-20 gains two levels between `bitor` and the relational operators:
 #     `..` (range construction, level 10) and `in` (membership, level 11). The
 #     levels below are renumbered as integers: relational 12, `and` 13, `xor`
@@ -858,8 +833,8 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #
 # v3.23 — 2026-10-09 — CANON-5 enforcement (Layer B: the implementation now
 #         follows existing Layer A law; no language change). Requested by Marcelo
-#         Fortes on 2026-10-09: "Variável escalar sem valor inicial são proibidas
-#         em Inox"; "o parser não deveria mais aceitar [Var]".
+#         Fortes on 2026-10-09: a scalar variable without an initial value is
+#         forbidden in Inox; the parser no longer accepts [Var].
 #   - Semantic analysis rejects a scalar declaration without an initializer
 #     (CANON-5 rule 3), for locals and for `State` declarations ("State scalars
 #     still require initializers"): "scalar declaration requires initializer:
@@ -1192,7 +1167,7 @@ spelling (`finally`, `break`, `Var`, `[T]`); the law is the constitution.
 #     different bitwise families, or mixing bitwise with shift; parentheses stay
 #     optional elsewhere. Parser implements the guard; added examples/
 #     operator-precedence.inox and 7 parser tests (3 valid, 4 invalid). This
-#     table is IMMUTABLE: changing it requires a human-approved ADR.
+#     table is IMMUTABLE: changing it requires a human-approved. ADR.
 #
 # v3.12 — 2026-06-16 — approved by Marcelo Fortes
 #   - Added COMPILER MODULE ARCHITECTURE DIRECTIVE (SECTION 31): how the

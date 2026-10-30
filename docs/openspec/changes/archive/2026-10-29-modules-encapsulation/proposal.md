@@ -21,34 +21,25 @@ Status: **implemented** (canon r3.99).
 ## Approvals (Marcelo Fortes)
 
 - 2026-10-26: private by default, `Public` marks what other modules see
-  through `Use`; `Use` is not transitive; `Export` only as `Export Use M`,
-  which passes M's public names on without changing them.
+  through `Use`; `Use` is not transitive; `Export` exists only as `Export
+  Use M`, which passes M's public names on without changing them.
 - 2026-10-29, header syntax: `Public` is the last word of a header, after
-  the result type and `Override`: "Correto e a sintaxe correta. Se
-  retornasse um valor (no caso uma string), seria:
-  TPerson.UpDateName(Self mut, Name String) String Public :", then
-  "Xonfirmado". The struct model `TPerson Struct(TBeing) Public`, private
-  fields, then a `Public` line: "Está correto". Line breaks: "São
-  equivalentes e não uma imposição de sintaxe. A quebra de linha em inox
-  só influencia para identificar onde termina uma instrução de uma linha
-  exatamente igual a Ruby".
-- A1 (own names first, two imported names an ambiguity error): "Esse é um
-  problema clássico de ambiguidade. Na parte 1, aceito sua recomendação,
-  deve ficar como Delphi e Rust... Na parte dois, também acato sua regra
-  proposta".
-- A2 (qualified names): "Acatada as proostas".
-- A3 (aliases): "Usaremos Bank.Accounts as Accounts como apelidos, já que
-  temos uma hierarquia mais segura que Delphi, como você explicou."
-- A4 (selective use): "`use bank.accounts.(deposit, withdraw)`".
-- B3 (State never Public), B4 (`inox interface`), Const Public: approved.
-- C1 to C4: approved "se não for contra a proposta da linguagem de alta
-  segurança como Rust , Spark/Ada e Ada" (they follow Rust and Ada/SPARK);
-  C5: "C5 para depois".
-- D1 (search order): approved, with "futuramente teremos uma ferramenta de
-  buscar e baixar pacotes". D2 (`Std` reserved): "mediante isso acato sua
-  proposta".
-- E1: "um PR só com um commit por etapa aprovado"; E2: the bank in several
-  files (`examples/bank/`) as the acceptance program, approved.
+  the result type and `Override`
+  (`TPerson.UpDateName(Self mut, Name String) String Public :`); the struct
+  model `TPerson Struct(TBeing) Public`, private fields first, then a
+  `Public` line. The header layouts are equivalent: a line break only marks
+  where a one-line statement ends, as in Ruby.
+- A1: the module's own name first, as in Delphi and Rust; two imported
+  names are an ambiguity error.
+- A2: qualified names, as proposed.
+- A3: aliases written `Use Bank.Accounts as Accounts`.
+- A4: selective use written `Use Bank.Accounts.(Deposit, Withdraw)`.
+- B3 (State never Public), B4 (`inox interface`), Const Public.
+- C1 to C4, which follow Rust and Ada/SPARK; C5 deferred.
+- D1 (search order), with a package tool to come later; D2 (`Std`
+  reserved).
+- E1: one PR with one commit per stage; E2: the bank in several files
+  (`examples/bank/`) as the acceptance program.
 
 ## What Changes
 

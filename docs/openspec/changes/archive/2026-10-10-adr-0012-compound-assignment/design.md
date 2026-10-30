@@ -1,6 +1,6 @@
 # ADR-0012 — design record
 
-> Imported verbatim from `docs/INOX_CANONICAL.md` (canon v3.48, lines 2007-2020) on 2026-10-12, approved by Marcelo Fortes, 2026-10-12: "Os ADRs viram mudanças arquivadas no OpenSpec."
+> Imported verbatim from `docs/INOX_CANONICAL.md` (canon v3.48, lines 2007-2020) on 2026-10-12, approved by Marcelo Fortes, 2026-10-12 (the ADRs become archived OpenSpec changes).
 
 ## Rationale and consequences
 
