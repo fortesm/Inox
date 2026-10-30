@@ -11,8 +11,9 @@ detailing the constitution (CANON-18).
 A `TDateTime` SHALL be the microseconds since 0001-01-01T00:00:00 of the
 proleptic Gregorian calendar, to 9999-12-31T23:59:59.999999; a `TDate` the
 days since 0001-01-01; a `TDuration` microseconds (D1). They are Ranges of
-Integer: compared with `= # < <= > >=`, stored checked ("value out of
-range").
+Integer, each a type of its own (CANON-13): compared with `= # < <= > >=`,
+stored checked ("value out of range"), and mixed with each other or with an
+Integer only through `Integer(T)` or `TDateTime(I)`.
 
 #### Scenario: Ends of the calendar
 - **WHEN** a program encodes 0001-01-01 and 9999-12-31 and asks their weekdays

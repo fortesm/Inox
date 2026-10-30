@@ -48,7 +48,7 @@ Main :
     Total TScore := 0
     Suits Set<TSuit>
     for I in 1..4
-        Total := Total + Points(Hand[I].FRank)
+        Total := Total + TScore(Points(Hand[I].FRank))
         Suits := Include(Suits, Hand[I].FSuit)
         PutLn(Hand[I].FRank, " of ", Hand[I].FSuit, " (", Color(Hand[I].FSuit), "): ", Points(Hand[I].FRank))
     ;

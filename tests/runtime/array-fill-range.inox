@@ -10,7 +10,7 @@ Type
     TMonth Range 1..12
 
 Main :
-    I := 13
-    Months Array[1..3] TMonth := Fill(I)
+    M TMonth := 12
+    Months Array[1..3] TMonth := Fill(M + 1)
     PutLn(Months[1])
 ;

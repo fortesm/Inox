@@ -120,15 +120,21 @@ std::string SemanticAnalyzer::normalizeName(std::string_view name)
     return normalized;
 }
 
+namespace {
+
+// The name a program writes for an integer type: Integer for Int64.
+std::string integerTypeName(TypeRef type)
+{
+    return type == nullptr ? std::string("<unknown>") : type->name() == "Int64" ? std::string("Integer") : type->name();
+}
+
+} // namespace
+
 bool SemanticAnalyzer::canAssign(TypeRef targetType, TypeRef valueType) const
 {
     // CANON-8 (v3.39): Natural is the non-negative subtype of Integer; a
     // Natural value is always a valid Integer.
     if (targetType == types().int64Type() && valueType == types().naturalType()) {
-        return true;
-    }
-    // CANON-13: a Range value is always a valid value of its base.
-    if (valueType != nullptr && valueType->isRange() && targetType == valueType->rangeBase()) {
         return true;
     }
     // A value of a Char Range is a Char (change char-values).
@@ -156,6 +162,16 @@ bool SemanticAnalyzer::canAssignValue(TypeRef targetType, TypeRef valueType, con
         }
         requireFreshFile(value);
         return true;
+    }
+    // CANON-13 (range-types, as in Ada): a Range is a type of its own. Its
+    // value reaches an Integer through Integer(X), and an Integer value
+    // reaches it through the Range's conversion; only a constant crosses.
+    if (targetType != nullptr && valueType != nullptr && targetType->isInteger() && !targetType->isRange() &&
+        !targetType->isEnum()) {
+        if (const TypeRef family = rangeFamilyOf(value, valueType)) {
+            throw SemanticError(family->name() + " and " + integerTypeName(targetType) +
+                                " are different types (CANON-13): write " + integerTypeName(targetType) + "(X)");
+        }
     }
     if (canAssign(targetType, valueType)) {
         return true;
@@ -188,8 +204,21 @@ bool SemanticAnalyzer::canAssignValue(TypeRef targetType, TypeRef valueType, con
     if (targetType != nullptr && targetType->isRange() && valueType != nullptr && valueType->isInteger() &&
         (valueType == types().int64Type() || valueType == types().naturalType() ||
          valueType->rangeBase() == types().int64Type())) {
+        // range-types: a value of another Range, or an Integer value, is
+        // converted explicitly; a value computed in this Range (`M + 1`) is
+        // checked against its bounds at run time.
+        const TypeRef family = rangeFamilyOf(value, valueType);
+        if (family != nullptr && family != targetType) {
+            throw SemanticError(family->name() + " and " + targetType->name() +
+                                " are different types (CANON-13): write " + targetType->name() + "(X)");
+        }
         std::int64_t constant = 0;
-        if (constantIntegerValue(value, constant)) {
+        if (family == nullptr && !isUniversalInteger(value, valueType)) {
+            throw SemanticError(integerTypeName(valueType) + " and " + targetType->name() +
+                                " are different types (CANON-13): write " + targetType->name() +
+                                "(X), which checks the bounds");
+        }
+        if (family == nullptr && constantIntegerValue(value, constant)) {
             if (constant < targetType->minValue() || constant > targetType->maxValue()) {
                 throw SemanticError("value out of range for " + targetType->name() + ": " +
                                     std::to_string(constant) + " (it holds " +
@@ -252,6 +281,52 @@ bool SemanticAnalyzer::canAssignValue(TypeRef targetType, TypeRef valueType, con
         return true;
     }
     return false;
+}
+
+TypeRef SemanticAnalyzer::rangeFamilyOf(const ast::Expression& expression, TypeRef type) const
+{
+    if (type != nullptr && type->isRange()) {
+        return type;
+    }
+    const auto found = rangeFamilies_.find(&expression);
+    return found == rangeFamilies_.end() ? nullptr : found->second;
+}
+
+bool SemanticAnalyzer::isUniversalInteger(const ast::Expression& expression, TypeRef type) const
+{
+    std::int64_t constant = 0;
+    return (type == types().int64Type() || type == types().naturalType()) &&
+           rangeFamilyOf(expression, type) == nullptr && constantIntegerValue(expression, constant);
+}
+
+TypeRef SemanticAnalyzer::requireOneRangeFamily(const ast::Expression& left, TypeRef leftType,
+                                                const ast::Expression& right, TypeRef rightType,
+                                                const std::string& context)
+{
+    const TypeRef leftFamily = rangeFamilyOf(left, leftType);
+    const TypeRef rightFamily = rangeFamilyOf(right, rightType);
+    if (leftFamily == nullptr && rightFamily == nullptr) {
+        return nullptr;
+    }
+    if (leftFamily != nullptr && rightFamily != nullptr) {
+        if (leftFamily != rightFamily) {
+            throw SemanticError(context + " mixes " + leftFamily->name() + " and " + rightFamily->name() +
+                                " (CANON-13): convert one, " + leftFamily->name() + "(X) or " +
+                                rightFamily->name() + "(X)");
+        }
+        return leftFamily;
+    }
+    const TypeRef family = leftFamily != nullptr ? leftFamily : rightFamily;
+    const ast::Expression& other = leftFamily != nullptr ? right : left;
+    const TypeRef otherType = leftFamily != nullptr ? rightType : leftType;
+    if (otherType == nullptr || !otherType->isInteger() || otherType->isEnum() ||
+        isUniversalInteger(other, otherType)) {
+        return family; // a constant, or a type the other rules reject
+    }
+    const std::string otherName = integerTypeName(otherType);
+    throw SemanticError(context + " mixes " + family->name() + " and " + otherName + " (CANON-13): write " +
+                        family->name() + "(X) to work in " + family->name() + ", or " + otherName + "(X) to work in " +
+                        otherName);
 }
 
 bool SemanticAnalyzer::typesMatch(TypeRef left, TypeRef right)

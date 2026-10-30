@@ -60,7 +60,7 @@ Main :
     Show(H.FSuits)
     Seen := Include(Seen, 100)
     Seen := Include(Seen, 0)
-    N := 50
+    N TPercent := 50
     PutLn(100 in Seen, " ", 0 in Seen, " ", N in Seen, " ", 101 in Seen, " ", -1 in Seen)
     Big Set<TFlags> := [1, 200, 129]
     PutLn(200 in Big, " ", 129 in Big, " ", 128 in Big, " ", 1 in Big, " ", Big = [1, 129, 200])

@@ -1,0 +1,1 @@
+operator '+' mixes TMeters and TSeconds (CANON-13): convert one, TMeters(X) or TSeconds(X)

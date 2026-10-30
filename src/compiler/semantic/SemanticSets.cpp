@@ -154,6 +154,11 @@ TypeRef SemanticAnalyzer::analyzeMembership(const ast::BinaryExpression& express
         static_cast<const ast::BinaryExpression&>(right).op() == ast::BinaryOperator::Range) {
         const TypeRef value = analyzeExpression(expression.left());
         const TypeRef range = analyzeExpression(right);
+        // range-types: a Range value is tested against bounds of its Range
+        // or constants, never against Integer values (CANON-13).
+        const auto& bounds = static_cast<const ast::BinaryExpression&>(right);
+        requireOneRangeFamily(expression.left(), value, bounds.left(), result_.typeOf(bounds.left()), "'in'");
+        requireOneRangeFamily(expression.left(), value, bounds.right(), result_.typeOf(bounds.right()), "'in'");
         const auto family = [](TypeRef type) { return type != nullptr && type->isRange() ? type->rangeBase() : type; };
         if (value == nullptr || range == nullptr || !(family(value) == family(range) ||
                                                       (isIntegerType(value) && isIntegerType(range) &&
@@ -181,6 +186,16 @@ TypeRef SemanticAnalyzer::analyzeMembership(const ast::BinaryExpression& express
     }
     const TypeRef base = setType->element();
     const TypeRef value = analyzeExpressionFor(expression.left(), base);
+    if (base->isRange()) {
+        const TypeRef family = rangeFamilyOf(expression.left(), value);
+        if ((family != nullptr && family != base) ||
+            (family == nullptr && value != nullptr && value->isInteger() && !value->isEnum() &&
+             !isUniversalInteger(expression.left(), value))) {
+            throw SemanticError("'in' tests a " + base->name() + " in " + setType->name() + ", got " +
+                                (family != nullptr ? family->name() : types::nameOf(value)) +
+                                " (CANON-13): write " + base->name() + "(X)");
+        }
+    }
     // A Range set accepts any Integer value: one outside the Range is not in it.
     // A Char Range set accepts any Char the same way (change char-values).
     const bool charFits = base->isCharRange() && value != nullptr && value->isChar();
