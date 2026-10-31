@@ -52,6 +52,10 @@ rules:
     - >-
       State what is out of scope and which existing behavior must not change.
     - >-
+      For a compiler change, name the phases it touches
+      (docs/ARCHITECTURE.md) and update that file when a phase boundary, an
+      owner or a deviation changes.
+    - >-
       State the risk, `Risk: high` or `Risk: normal`. High when the change
       touches exception lowering, the runtime ABI, memory ownership, or
       rewrites a compiler phase; a high-risk change waits for Marcelo's dated

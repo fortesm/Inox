@@ -180,7 +180,7 @@ engineering.md#E7. No deep navigation into another subsystem	36ece1c359e91d6a	co
 engineering.md#E8. Behavior over getters and setters	daca3553e152ff1c	constitution
 engineering.md#E9. Explicit ownership and lifetime	f3c9baa65fbce229	constitution
 engineering.md#E10. Minimal mutable and global state	6955047b0a077722	constitution
-engineering.md#E11. Compiler phase boundaries	be3736b1982f98c8	constitution
+engineering.md#E11. Compiler phase boundaries	d89a823e053c68a9	phase-contracts
 engineering.md#E12. Platform code is isolated	9324d5ff194ba145	constitution
 engineering.md#E13. No silent failure	219140743840d464	constitution
 engineering.md#E14. Diagnostics are compiler output	c05ef57c12f04fe6	constitution
@@ -190,6 +190,6 @@ engineering.md#E17. Design patterns that earn their place	60599020ba37f2e2	const
 engineering.md#E18. Modern C++ baseline	fb3c6be1a9286106	constitution
 engineering.md#E19. Quality gates	3cc7d45b946eb963	repo-layout
 engineering.md#E20. Refactoring	8ef6bec77e01fcbd	constitution
-engineering.md#E21. Module structure of the compiler	664a5ebb7a021d5b	constitution
+engineering.md#E21. Module structure of the compiler	acf290db54f30723	phase-contracts
 engineering.md#E22. Backend strategy: clang as the external driver	5b5aa2a8be636d1a	roadmap-renumber
 engineering.md#E23. Examples, releases and documentation	731005369caf160d	constitution
