@@ -41,7 +41,7 @@ Inox is aimed at systems where correctness and predictability matter:
 
 The reference compiler is written in portable C++20 and targets LLVM. Windows x64 (Clang, MSVC ABI) and Linux x64 are the primary targets; both run the full regression suite in CI, including native exception handling (MSVC funclets on Windows, Itanium landing pads on Linux). The language core does not rely on a tracing garbage collector; memory management favors explicit ownership, moves, and deterministic resource control (arenas may come later as an option).
 
-Inox is at version 0.3.0, pre-alpha: the complete compiler pipeline (lexer → parser → semantic analysis → LLVM IR → executable) works, and the language and its standard library are growing toward 1.0. What works today and what is still missing is in [`docs/STATUS.md`](docs/STATUS.md).
+Inox is at version 0.4.0, pre-alpha (the version is defined in `src/compiler/support/Version.h`): the complete compiler pipeline (lexer → parser → semantic analysis → LLVM IR → executable) works, and the language and its standard library are growing toward 1.0. What works today and what is still missing is in [`docs/STATUS.md`](docs/STATUS.md).
 
 ## Building
 

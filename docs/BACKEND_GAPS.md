@@ -5,13 +5,11 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 
 # Backend gaps (semantic analysis accepts, LLVM backend does not lower)
 
-Status: measured on 2026-10-09 against v3.18, re-measured against v3.20
-(keyword rename only; results unchanged) and against v3.21 (compositional
-statement lowering: 7 gaps closed, 3 probes added, none of them a gap); table
-re-measured against canon r3.64 and r3.88 (the `function-result-discarded`
-probe left: calling a function as a statement is an error since r3.88, no
-gap is left). Layer B — describes the
-implementation, not the language.
+Status: every CI run on Linux and Windows runs these probes and fails on
+any BUG. Last full re-measurement: 2026-10-31, canon r3.108 (commit
+af6c464): OK=54, no GAP, no BUG. Earlier measurements (v3.18
+to r3.88) are in the history of this file. Layer B — describes the implementation,
+not the language.
 
 ## Why this file exists
 

@@ -186,8 +186,6 @@ they are rejected now.)
 - Exception handlers are matched by the written type name
   (`exceptions/ExceptionTypes`); the exception hierarchy (identifiers,
   parents) is not part of `types::Type` yet.
-- Std.DateTime types are Ranges of Integer: a TDateTime and a TDate can be
-  mixed in arithmetic without an error.
 - Std.Terminal on Windows is checked by the CI suite only through files and
   pipes; raw mode and key reading in a real Windows console were not run
   by an agent (no Windows console here).
