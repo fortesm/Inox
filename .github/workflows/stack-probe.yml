@@ -32,6 +32,8 @@ jobs:
       - name: Smallest stack reserve that passes
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Continue"
+          $PSNativeCommandUseErrorActionPreference = $false
           $env:INOX_STDLIB = (Resolve-Path stdlib).Path
           function Probe($exe, $file, $mode) {
             $lo = 256KB; $hi = 4MB
@@ -40,7 +42,7 @@ jobs:
               $copy = Join-Path $env:RUNNER_TEMP ("probe-" + [guid]::NewGuid() + ".exe")
               Copy-Item $exe $copy
               editbin /nologo /STACK:$mid $copy | Out-Null
-              & $copy $mode $file *> $null
+              & $copy $mode $file 2>&1 | Out-Null
               $ok = ($LASTEXITCODE -eq 0)
               Remove-Item $copy
               if ($ok) { $hi = $mid } else { $lo = $mid }
@@ -53,5 +55,6 @@ jobs:
             $baseExe = (Resolve-Path ..\base\build\windows-clang-msvc\Debug\inox.exe).Path
             $h = Probe $headExe $file $pair[1]
             $b = Probe $baseExe $file $pair[1]
-            Write-Output ("{0} {1}: base {2} KiB, head {3} KiB" -f $pair[0], $pair[1], $b, $h)
+            Write-Output ("::warning::{0} {1}: base {2} KiB, head {3} KiB" -f $pair[0], $pair[1], $b, $h)
           }
+          exit 0
