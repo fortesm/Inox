@@ -1097,3 +1097,104 @@ change for D8 (`read-only-through-owners`), prepared as artifacts only;
 ADR-0016 updated if the results confirm the semantics; (5) `forall`
 resumed with real payroll and financial programs before any parallel
 runtime.
+
+## 27. Surface syntax (decided 2026-10-31)
+
+Decided by Marcelo Fortes, 2026-10-31, after a discussion of alternatives
+(`forall`, `parallel for`, one `do` for both roles, an implicit join at
+the end of every routine, an explicit `Wait` on a future). This fixes the
+spelling and the static rules; the grammar, the constitution and the
+compiler change only when concurrency is implemented, each through its own
+change. `| |` and `{ }` stay reserved, with no semantics decided.
+
+| Construct | Meaning |
+|---|---|
+| `do for I in A..B` … `;` | The iterations run concurrently under the rules of D2 (5.4, 13.4, 14); the loop's `;` waits for all of them |
+| `sync` … `;` | A scope of structured tasks: every task started inside it has finished when control leaves it |
+| `do Routine(...)` | Starts a task of the innermost `sync`; valid only inside a `sync` |
+| `X := do F(...)` | Starts a task whose result is published in `X` when its `sync` ends |
+| `Sum`, `Product`, `Min`, `Max`, `Count` `(I in A..B, Expression)` | Parallel, deterministic reductions with the semantics of D7 (17) |
+
+Examples (illustrative, not grammar):
+
+```text
+do for I in Low(Staff)..High(Staff)
+    Pay[I] := Gross(Staff[I], Rates)
+;
+Total := Sum(I in Low(Pay)..High(Pay), Pay[I])
+
+sync
+    do Archive(Move(Batch1))
+    do Archive(Move(Batch2))
+    Log("archiving")                  == runs in the parent meanwhile
+;
+
+sync
+    Price := do Quote(Supplier1, Order)
+    Freight := do Quote(Supplier2, Order)
+;
+Total := Price + Freight
+```
+
+### 27.1 Rules of `sync` and `do`
+1. `sync` is a new reserved word (CANON-2, when implemented; no program,
+   test or library module uses the name today). It only delimits a group of
+   tasks and guarantees their completion; it is not a mutex and creates no
+   critical region.
+2. Every exit of a `sync` waits for its tasks: the normal `;`, `Return`,
+   `leave` and an exception. On an exception of the parent, tasks not yet
+   started are cancelled, started tasks finish and run their cleanup, and
+   then the exception continues (D5, 18, 23, 26).
+3. `do` asks for a concurrent unit of work; it does not mean a thread. The
+   runtime distributes the work over its pool (16).
+4. A task is always a call. Its arguments say what crosses: a value is
+   copied, `Move(P)` transfers an owner (the rule of 22 ends older Links),
+   a `ref mut` argument is an exclusive loan until the end of the `sync`,
+   a `ref` (read-only) argument is an error (tasks borrow nothing, 13.3).
+   No block is a task and nothing is captured.
+5. `do for` waits at its own `;` and needs no `sync`.
+6. The end of a `sync` is the obligatory point where its tasks are
+   synchronized and their results published; other operations (`do for`,
+   I/O, channels) may also block.
+
+### 27.2 Results of tasks
+1. **Pending result.** After `X := do F(...)`, the destination `X` is
+   unavailable while its result is pending: reading it, assigning it
+   (also by another task), `Move`, `Free`, `Link`, and passing it by
+   reference are compile errors. The compiler keeps "pending result" as a
+   state of the variable, as it keeps "moved" today (the move analysis);
+   it is not a type.
+2. **Its own `sync`.** Each result belongs to the `sync` that started its
+   task: the `;` of an inner `sync` publishes only the results of that
+   scope. The destination must be declared outside that `sync`, so that it
+   lives after it.
+
+   ```text
+   sync
+       Price := do Quote(Supplier1, Order)
+       sync
+           Freight := do Quote(Supplier2, Order)
+       ;
+       PutLn(Freight)                == allowed
+       PutLn(Price)                  == error: result still pending
+   ;
+   PutLn(Price)                      == allowed
+   ```
+3. **Safe publication.** The compiler and the runtime keep each pending
+   result in internal storage (task descriptors, result slots); no
+   `Future<T>` type is visible, there is no `Wait`, and no read blocks.
+   When the `sync` ends, the runtime publishes the results of the tasks
+   that succeeded (the end of a task happens-before the end of its `sync`,
+   15.1) and raises a failure under D5.
+
+### 27.3 Reductions
+`Sum`, `Product`, `Min`, `Max` and `Count` are not reserved or predefined:
+`Count` names parameters in the library (`AddSeconds(T, Count Integer)`)
+and `Std.Math` has `Min(A, B)` and `Max(A, B)`. A reduction is recognized
+by its form, a range binder `I in A..B` as the first argument; every other
+call keeps its meaning.
+
+### 27.4 Left to the runtime and the libraries
+Admission limits and back pressure (a server that starts a task per
+connection must not accumulate tasks without bound) belong to the runtime
+and the network library, with no syntax.

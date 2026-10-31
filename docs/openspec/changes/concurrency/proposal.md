@@ -9,7 +9,7 @@ machine, with strong, verifiable guarantees against data races, without
 making the programmer manage threads, locks or a borrow system, and
 without an overly sophisticated compiler.
 
-Status: **closed** (revision 4 approved as technical direction by Marcelo Fortes, 2026-10-31; section 26 of design.md). No code, no change to the
+Status: **closed** (revision 4 approved as technical direction by Marcelo Fortes, 2026-10-31; section 26 of design.md; surface syntax decided the same day, section 27). No code, no change to the
 constitution or the specs. `design.md` holds the study, the alternatives,
 a recommendation and the decisions that belong to the maintainer.
 
