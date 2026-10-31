@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.110
+Canon revision: r3.111
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -526,3 +526,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   hierarchy in the types. OpenSpec proposals of compiler changes name the
   phases they touch. Decided by Marcelo Fortes, 2026-10-31, after three
   external reviews. Change `phase-contracts`.
+- r3.111 — 2026-10-31 — E19: every quality gate runs in CI. The Gates
+  workflow runs the suite on an ASan+UBSan build with a 1 MiB stack, the
+  mutation fuzz on that build (seeds 1 and 7) and the differential test on
+  every pull request that touches code, tests or tools, on every push to
+  main and every night, and the IR snapshot against the base on a pull
+  request labelled `refactor`; the CI workflow adds `tools/version_check.py`
+  (the version and the canon revision agree in every document). Deviation
+  D7 of `docs/ARCHITECTURE.md` is closed. Foundation step F1, decided by
+  Marcelo Fortes, 2026-10-31. Change `ci-gates`.

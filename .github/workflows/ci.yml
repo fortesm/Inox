@@ -56,6 +56,8 @@ jobs:
         run: npx -y @fission-ai/openspec@1.14.1 validate --all --strict --no-interactive
       - name: Constitution lock (law unchanged unless approved; named tests exist)
         run: python3 tools/constitution_check.py check
+      - name: Version and canon revision agree in every document
+        run: python3 tools/version_check.py
 
   windows:
     name: Windows (clang, MSVC ABI, Debug)

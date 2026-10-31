@@ -1,0 +1,169 @@
+# SPDX-License-Identifier: MPL-2.0
+# The quality gates of engineering E19 that the CI workflow does not run
+# (change ci-gates, foundation step F1, canon r3.111): the suite on an
+# AddressSanitizer + UndefinedBehaviorSanitizer build with a 1 MiB stack,
+# mutation fuzzing on that build (seeds 1 and 7), the differential test of
+# arithmetic, and, for a pull request labelled `refactor`, the IR snapshot of
+# every program before and after.
+#
+# Runs on every pull request that touches the compiler, the runtime, the
+# library, the tests or the tools; on every push to main; every night, so a
+# failure that depends on the runner shows up even without a change; and by
+# hand. Each job keeps its log as an artifact.
+name: Gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    paths:
+      - src/**
+      - stdlib/**
+      - tests/**
+      - examples/**
+      - tools/**
+      - cmake/**
+      - CMakeLists.txt
+      - CMakePresets.json
+      - .github/workflows/gates.yml
+  schedule:
+    - cron: "17 4 * * *"   # every night, 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sanitized-suite:
+    name: Suite under ASan+UBSan, 1 MiB stack
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # BUILD is the commit count (VERSIONING)
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang ninja-build g++
+      - name: Build (g++, ASan+UBSan)
+        # The sanitizer runtimes come with g++ (docs/BUILD.md).
+        run: |
+          CXX=g++ CC=gcc cmake -S . -B build/san -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+            -DINOX_ENABLE_ASAN=ON -DINOX_ENABLE_UBSAN=ON
+          cmake --build build/san
+      - name: Test suite with a 1 MiB stack
+        shell: bash
+        run: |
+          ulimit -s 1024
+          bash tools/scripts/run-tests.sh build/san/inox 2>&1 | tee sanitized-suite.txt
+          test "${PIPESTATUS[0]}" -eq 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sanitized-suite
+          path: sanitized-suite.txt
+
+  fuzz:
+    name: Mutation fuzz (seed ${{ matrix.seed }}, ASan+UBSan)
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [1, 7]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang ninja-build g++
+      - name: Build (g++, ASan+UBSan)
+        run: |
+          CXX=g++ CC=gcc cmake -S . -B build/san -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+            -DINOX_ENABLE_ASAN=ON -DINOX_ENABLE_UBSAN=ON
+          cmake --build build/san
+      - name: Fuzz (no CRASH, TIMEOUT or CGERR)
+        shell: bash
+        run: |
+          python3 tools/mutation_fuzz.py build/san/inox --seed ${{ matrix.seed }} \
+            --save-dir fuzz-findings 2>&1 | tee fuzz.txt
+          test "${PIPESTATUS[0]}" -eq 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fuzz-seed-${{ matrix.seed }}
+          path: |
+            fuzz.txt
+            fuzz-findings/
+          if-no-files-found: ignore
+
+  differential:
+    name: Arithmetic against an independent oracle
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang ninja-build
+      - name: Build
+        run: |
+          cmake --preset linux-clang-debug
+          cmake --build --preset linux-clang-debug
+      - name: Differential test (seeds 1 and 7)
+        shell: bash
+        run: |
+          for seed in 1 7; do
+            python3 tools/calc_differential_test.py --inox build/linux-clang-debug/inox --seed "$seed"
+          done 2>&1 | tee differential.txt
+          test "${PIPESTATUS[0]}" -eq 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: differential
+          path: differential.txt
+
+  ir-snapshot:
+    name: IR snapshot against the base (refactor)
+    # A refactor must not change what the compiler says about any program
+    # (E19, E20). Programs the pull request adds are reported, not failed.
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'refactor')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang ninja-build
+      - name: Build the base and the head
+        run: |
+          git worktree add ../base "${{ github.event.pull_request.base.sha }}"
+          (cd ../base && cmake --preset linux-clang-debug && cmake --build --preset linux-clang-debug)
+          cmake --preset linux-clang-debug
+          cmake --build --preset linux-clang-debug
+      - name: Record with the base, compare with the head
+        shell: bash
+        run: |
+          python3 tools/ir_snapshot.py record ../base/build/linux-clang-debug/inox snapshot
+          allow=()
+          while IFS= read -r added; do
+            allow+=(--allow "$added")
+          done < <(git diff --name-only --diff-filter=A "${{ github.event.pull_request.base.sha }}" HEAD -- '*.inox')
+          python3 tools/ir_snapshot.py compare build/linux-clang-debug/inox snapshot "${allow[@]}" 2>&1 \
+            | tee ir-snapshot.txt
+          test "${PIPESTATUS[0]}" -eq 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ir-snapshot
+          path: ir-snapshot.txt
