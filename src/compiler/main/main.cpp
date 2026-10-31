@@ -137,21 +137,54 @@ std::string displayPath(const fs::path& path)
     return path.generic_string();
 }
 
+// The file being parsed, for a parse error (E14).
+fs::path& fileBeingParsed()
+{
+    static fs::path file;
+    return file;
+}
+
+// The file being parsed, and the file of the module it is (named as the
+// parser will name it: the expected name, or the file's stem).
+void noteFileBeingParsed(const fs::path& sourcePath, const std::string& name)
+{
+    fileBeingParsed() = sourcePath;
+    moduleFiles()[lowerName(name.empty() ? sourcePath.stem().string() : name)] = sourcePath;
+}
+
+// No local beyond those it always had: parseSource is below the parser's
+// recursion on the stack.
 std::unique_ptr<ModuleNode> parseSource(const fs::path& sourcePath, std::string name)
 {
-    try {
-        const std::string source = readFile(sourcePath);
-        inox::compiler::lexer::Lexer lexer(source);
-        auto tokens = lexer.tokenize();
-        throwOnInvalidToken(tokens);
-        inox::compiler::parser::Parser parser(std::move(tokens));
-        auto module = parser.parseModule(name.empty() ? sourcePath.stem().string() : std::move(name));
-        moduleFiles()[lowerName(module->name())] = sourcePath;
-        return module;
-    } catch (inox::compiler::parser::ParseError& error) {
-        error.setPath(displayPath(sourcePath));
-        throw;
+    noteFileBeingParsed(sourcePath, name);
+    const std::string source = readFile(sourcePath);
+    inox::compiler::lexer::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    throwOnInvalidToken(tokens);
+    inox::compiler::parser::Parser parser(std::move(tokens));
+    return parser.parseModule(name.empty() ? sourcePath.stem().string() : std::move(name));
+}
+
+// E14: `path:line:column: kind: message`, the form editors and tools read.
+// Out of line: main's frame is on the stack below every recursive phase,
+// and the compiler runs on the 1 MiB main-thread stack of Windows.
+void printParseError(const inox::compiler::parser::ParseError& error, const std::string& entryPath)
+{
+    std::cerr << displayPath(fileBeingParsed().empty() ? fs::path(entryPath) : fileBeingParsed()) << ':'
+              << error.location().line << ':' << error.location().column << ": parse error: " << error.what()
+              << '\n';
+}
+
+void printSemanticError(const inox::compiler::semantic::SemanticError& error)
+{
+    std::string where;
+    if (const auto file = moduleFiles().find(lowerName(error.module())); file != moduleFiles().end()) {
+        where = displayPath(file->second) + ':';
     }
+    if (error.position().known()) {
+        where += std::to_string(error.position().line) + ':' + std::to_string(error.position().column) + ':';
+    }
+    std::cerr << where << (where.empty() ? "" : " ") << "semantic error: " << error.what() << '\n';
 }
 
 std::string useModuleName(const UseDeclaration& declaration)
@@ -761,20 +794,10 @@ int main(int argc, char** argv)
             inox::compiler::semantic::SemanticDumper(std::cout, semanticResult).dump(*module);
         }
     } catch (const inox::compiler::parser::ParseError& error) {
-        // E14: path:line:column: kind: message, the form editors and tools read.
-        std::cerr << (error.path().empty() ? displayPath(fs::path(sourcePath)) : error.path()) << ':'
-                  << error.location().line << ':' << error.location().column << ": parse error: "
-                  << error.what() << '\n';
+        printParseError(error, sourcePath);
         return 1;
     } catch (const inox::compiler::semantic::SemanticError& error) {
-        std::string where;
-        if (const auto file = moduleFiles().find(lowerName(error.module())); file != moduleFiles().end()) {
-            where = displayPath(file->second) + ':';
-        }
-        if (error.position().known()) {
-            where += std::to_string(error.position().line) + ':' + std::to_string(error.position().column) + ':';
-        }
-        std::cerr << where << (where.empty() ? "" : " ") << "semantic error: " << error.what() << '\n';
+        printSemanticError(error);
         return 1;
     } catch (const inox::compiler::codegen::CodegenUnsupported& error) {
         // The program passed the semantic analyzer: the construct is legal

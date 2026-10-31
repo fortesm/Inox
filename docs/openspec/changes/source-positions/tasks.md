@@ -33,3 +33,14 @@ changed, each only by the new `path:line:column:` prefix (checked by
 rewriting it back to the old form); one program added. Stack needed by the
 boundary tests (Linux Debug): runtime 899 KiB on main, 896 KiB here; parser
 896 KiB on both.
+
+Windows: the first CI run overflowed the 1 MiB stack in the boundary tests
+(Windows Debug), although every recursive frame was unchanged on Linux.
+The frames below the recursion had grown: `main` (+496 bytes, the new
+printing code in its catch blocks), `parseSource` (+16), and
+`SemanticAnalyzer::analyze` (+64 with a try, +72 with a wrapper). The
+printing moved to `printParseError`/`printSemanticError`, the file is noted
+before parsing, and the analyzer no longer catches: a `SemanticError` takes
+the place the analyzer keeps in `diagnosticPlace()` when it is made. Every
+frame on the path is now at or below its size on main (`-fstack-usage`);
+`docs/ARCHITECTURE.md` records the stack budget rule.

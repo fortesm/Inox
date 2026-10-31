@@ -28,13 +28,9 @@ public:
     ParseError(std::string message, lexer::SourceLocation location);
 
     const lexer::SourceLocation& location() const;
-    // The file the error is in, set by the driver (E14).
-    const std::string& path() const { return path_; }
-    void setPath(std::string path) { path_ = std::move(path); }
 
 private:
     lexer::SourceLocation location_;
-    std::string path_;
 };
 
 class Parser {
@@ -226,6 +222,9 @@ private:
     // Source positions (change source-positions).
     ast::ExpressionPtr leafLiteral(ast::LiteralKind kind);
     void beginStatement();
+    void stampHere(ast::SourcePosition& position) const;
+    void stampAt(ast::SourcePosition& position, const lexer::Token& token) const;
+    ast::AstNodePtr stampItem(ast::AstNodePtr item);
     void finishStatement(std::vector<ast::StatementPtr>& statements, ast::StatementPtr statement);
     ast::ExpressionPtr leafIdentifier();
     void stampStatement(ast::Statement& statement);

@@ -27,6 +27,19 @@ namespace detail {
 struct IntegerConstant;
 }
 
+// Where the analysis is, while it runs (change source-positions): the start
+// of the statement or declaration being checked, and its module. A
+// SemanticError made during the analysis takes it.
+struct DiagnosticPlace {
+    ast::SourcePosition position;
+    std::string module;
+    bool active = false;
+};
+DiagnosticPlace& diagnosticPlace();
+void beginDiagnosticPlace();
+void clearDiagnosticPosition();
+void endDiagnosticPlace();
+
 // A semantic diagnostic. The analyzer attaches where it was found (E14,
 // change source-positions): the module and the start of the statement or
 // declaration being checked; the driver turns the module into its file.
@@ -405,9 +418,6 @@ private:
     // statement or declaration being checked, and its module.
     void notePosition(const ast::SourcePosition& position);
     void notePosition(const ast::AstNode& item);
-    const SemanticResult& analyzeProgram(const ast::ModuleNode& module);
-    ast::SourcePosition errorPosition_;
-    std::string errorModule_;
     std::string currentModule_;
     void enterModule(const std::string& module);
     std::unordered_map<std::string, std::string> typeModules_;

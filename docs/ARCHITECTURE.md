@@ -39,10 +39,20 @@ Every diagnostic is `path:line:column: kind: message` (`parse error`,
 `semantic error`), the form editors and tools read. The parser stamps
 leaves and statements (`leafLiteral`, `leafIdentifier`, `stampStatement`);
 `ast::startOf` gives the start of any expression. Module resolution and
-contract lowering attach the item they were working on; the analyzer
-attaches the statement or declaration it was checking (`notePosition`) at
-its one entry point, so no recursive frame grows; the driver turns the
-module into its file (`moduleFiles`).
+contract lowering attach the item they were working on; while the
+analyzer runs, it keeps the statement or declaration it checks in
+`diagnosticPlace()` (`notePosition`), and a `SemanticError` takes that place
+when it is made: no try and no added frame below the analysis. The driver
+turns the module into its file (`moduleFiles`).
+
+**Stack budget.** The compiler runs on the 1 MiB main-thread stack of
+Windows, and the boundary tests (`limits-boundary-ok`) sit close to it in
+the Windows Debug build. A change to a function that is on the stack while
+the parser or the analyzer recurses (the recursive functions themselves,
+and those below them: `main`, the module loader, `parseSource`,
+`Parser::parseModule`, `SemanticAnalyzer::analyze`) must not grow its
+frame: compare with `-fstack-usage` against main, and move new work into
+out-of-line helpers.
 
 ### 1. Lexer
 - **In:** the text of one file. **Out:** tokens with line and column.

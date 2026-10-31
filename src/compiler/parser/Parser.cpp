@@ -212,12 +212,8 @@ std::unique_ptr<ast::ModuleNode> Parser::parseModule(std::string name)
     auto module = std::make_unique<ast::ModuleNode>(std::move(name));
 
     while (!isAtEnd()) {
-        const lexer::SourceLocation start = peek().location;
-        ast::AstNodePtr item = parseModuleItem();
-        if (item != nullptr && !item->position().known()) {
-            item->setPosition({start.line, start.column});
-        }
-        module->items().push_back(std::move(item));
+        beginStatement();
+        module->items().push_back(stampItem(parseModuleItem()));
     }
 
     return module;
@@ -377,6 +373,29 @@ ast::ExpressionPtr Parser::leafIdentifier()
     auto node = std::make_unique<ast::IdentifierExpression>(previous().lexeme);
     node->setPosition({previous().location.line, previous().location.column});
     return node;
+}
+
+// A module item starts at its first token; like a statement, the start is
+// kept on the member stack (parseModule is below the recursion).
+ast::AstNodePtr Parser::stampItem(ast::AstNodePtr item)
+{
+    const lexer::Token& start = tokens_[statementStarts_.back()];
+    statementStarts_.pop_back();
+    if (item != nullptr && !item->position().known()) {
+        item->setPosition({start.location.line, start.location.column});
+    }
+    return item;
+}
+
+void Parser::stampHere(ast::SourcePosition& position) const
+{
+    stampAt(position, peek());
+}
+
+void Parser::stampAt(ast::SourcePosition& position, const lexer::Token& token) const
+{
+    position.line = token.location.line;
+    position.column = token.location.column;
 }
 
 void Parser::beginStatement()
@@ -1926,7 +1945,7 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
     const lexer::Token& name = consume(TokenKind::Identifier, "expected a type name in the Type section");
     declaration.name = name.lexeme;
     declaration.line = name.location.line;
-    declaration.position = {name.location.line, name.location.column};
+    stampAt(declaration.position, name);
     if (check(TokenKind::Less) && peek().location.line == name.location.line) {
         declaration.typeParameters = parseTypeParameters(name);
         if (!checkKeyword("struct")) {
@@ -2140,7 +2159,7 @@ ast::VariableDeclaration Parser::parseSectionVariable(ast::SectionKind sectionKi
 {
     const bool isConst = sectionKind == ast::SectionKind::Const;
     ast::VariableDeclaration declaration;
-    declaration.position = {peek().location.line, peek().location.column};
+    stampHere(declaration.position);
     if (check(TokenKind::ColonEqual)) {
         errorAtCurrent("expected a name before ':='");
     }
@@ -2148,7 +2167,7 @@ ast::VariableDeclaration Parser::parseSectionVariable(ast::SectionKind sectionKi
                                        isConst ? "expected a Const name" : "expected a State variable name");
     declaration.name = name.lexeme;
     declaration.line = name.location.line;
-    declaration.position = {name.location.line, name.location.column};
+    stampAt(declaration.position, name);
     if (check(TokenKind::Comma)) {
         errorAtCurrent(isConst ? "a Const declares one name"
                                : "grouped declarations in State are not supported yet; declare one name per line");
