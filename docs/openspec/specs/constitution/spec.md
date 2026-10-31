@@ -255,7 +255,7 @@ methods (CANON-9) and never becomes them.
 
 ### Requirement: CANON-1 Safety defaults
 Inox SHALL have no universal `null` or `nil`, no unsafe pointers in the safe
-core, no silent integer overflow, no integer `/`, no unchecked indexing, no
+core, no silent integer overflow, no unchecked integer division, no unchecked indexing, no
 implicit narrowing and no implicit aliasing; parameters are immutable by
 default and a receiver is mutated only through `Self mut`. The core needs no
 tracing garbage collector: memory follows ownership, moves and deterministic
