@@ -15,7 +15,7 @@ spec.md#G7 High-risk changes wait for design approval	4eb7116c9261fe28	decisions
 spec.md#G8 The lock	18add63f2c44e00a	decisions-not-dialogue
 spec.md#CANON-1 Identity of Inox	7fc3e6d9b452398d	constitution
 spec.md#CANON-1 Post-object-oriented design	b9b696c3861f2275	modules-encapsulation
-spec.md#CANON-1 Safety defaults	579a8963240512e4	constitution
+spec.md#CANON-1 Safety defaults	a83657b87787156a	canon1-integer-division
 spec.md#CANON-2 Names are case-insensitive	07385aaec86c3e3d	english-programs
 spec.md#CANON-2 Comments and literals	64712528802a82fe	input-chars-exponents
 spec.md#CANON-2 Digit separator	006404ba593459d4	constitution

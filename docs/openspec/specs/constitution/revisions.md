@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.107
+Canon revision: r3.108
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -496,3 +496,9 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   invariant over a public field is checked after a write from another
   module (r3.99). No rule changes. Decided by Marcelo Fortes, 2026-10-30.
   Change `fold-spec-deltas`.
+- r3.108 — 2026-10-30 — CANON-1 Safety defaults follows r3.95: it said
+  "no integer `/`", from before `/` of two integers became the integer
+  division; it now says "no unchecked integer division" (a zero divisor
+  and `Int64.Min / -1` trap, a constant zero divisor is a compile error).
+  No rule changes. Decided by Marcelo Fortes, 2026-10-30. Change
+  `canon1-integer-division`.
