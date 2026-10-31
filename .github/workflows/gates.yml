@@ -4,7 +4,8 @@
 # AddressSanitizer + UndefinedBehaviorSanitizer build with a 1 MiB stack,
 # mutation fuzzing on that build (seeds 1 and 7), the differential test of
 # arithmetic, and, for a pull request labelled `refactor`, the IR snapshot of
-# every program before and after.
+# every program before and after; and, for a pull request that changes the
+# compiler, the stack budget of Windows Debug (change windows-stack, r3.113).
 #
 # Runs on every pull request that touches the compiler, the runtime, the
 # library, the tests or the tools; on every push to main; every night, so a
@@ -167,3 +168,87 @@ jobs:
         with:
           name: ir-snapshot
           path: ir-snapshot.txt
+
+  windows-stack:
+    name: Windows Debug stack budget
+    # E19 (change windows-stack, r3.113): the compiler reserves 8 MiB of stack
+    # on Windows. Measured on Windows Debug, the smallest stack reserve with
+    # which the boundary tests pass must stay below half of it (4096 KiB), and
+    # must not grow more than 5% (at least 32 KiB) over the base: the larger
+    # reserve never hides a regression. Only for pull requests that change
+    # the compiler or its build.
+    if: github.event_name == 'pull_request'
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Does the pull request change the compiler?
+        id: scope
+        shell: bash
+        run: |
+          if git diff --quiet "${{ github.event.pull_request.base.sha }}" HEAD -- src/compiler src/runtime CMakeLists.txt CMakePresets.json cmake .github/workflows/gates.yml; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No compiler change: nothing to measure."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: steps.scope.outputs.run == 'true'
+        with:
+          arch: x64
+      - name: Build the head and the base (Debug)
+        if: steps.scope.outputs.run == 'true'
+        shell: pwsh
+        run: |
+          cmake --preset windows-clang-msvc
+          cmake --build --preset windows-clang-msvc-debug --target inox
+          git worktree add ..\base ${{ github.event.pull_request.base.sha }}
+          Push-Location ..\base
+          cmake --preset windows-clang-msvc
+          cmake --build --preset windows-clang-msvc-debug --target inox
+          Pop-Location
+      - name: Measure the smallest stack reserve that passes
+        if: steps.scope.outputs.run == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Continue"
+          $PSNativeCommandUseErrorActionPreference = $false
+          $env:INOX_STDLIB = (Resolve-Path stdlib).Path
+          # editbin sets the reserve of a copy of the executable; a binary
+          # search finds the smallest one with which the test succeeds.
+          function Measure-Stack($exe, $file, $mode) {
+            $lo = 128KB; $hi = 8MB
+            while ($hi - $lo -gt 4KB) {
+              $mid = [int](($lo + $hi) / 2)
+              $copy = Join-Path $env:RUNNER_TEMP ("stack-" + [guid]::NewGuid() + ".exe")
+              Copy-Item $exe $copy
+              editbin /nologo /STACK:$mid $copy | Out-Null
+              & $copy $mode $file 2>&1 | Out-Null
+              $ok = ($LASTEXITCODE -eq 0)
+              Remove-Item $copy
+              if ($ok) { $hi = $mid } else { $lo = $mid }
+            }
+            return [int]($hi / 1KB)
+          }
+          $headExe = (Resolve-Path build\windows-clang-msvc\Debug\inox.exe).Path
+          $baseExe = (Resolve-Path ..\base\build\windows-clang-msvc\Debug\inox.exe).Path
+          $failed = $false
+          foreach ($case in @(@("tests\runtime\limits-boundary-ok.inox", "--emit-llvm"),
+                              @("tests\parser\valid\limits-boundary-ok.inox", "--parse-only"))) {
+            $file = (Resolve-Path $case[0]).Path
+            $head = Measure-Stack $headExe $file $case[1]
+            $base = Measure-Stack $baseExe $file $case[1]
+            $allowed = [Math]::Max($base + 32, [int]($base * 1.05))
+            Write-Output ("::notice::{0} {1}: base {2} KiB, head {3} KiB (limit {4} KiB, half the reserve 4096 KiB)" -f $case[0], $case[1], $base, $head, $allowed)
+            if ($head -gt 4096) {
+              Write-Output ("::error::{0}: {1} KiB is more than half the 8 MiB reserve" -f $case[0], $head)
+              $failed = $true
+            }
+            if ($head -gt $allowed) {
+              Write-Output ("::error::{0}: {1} KiB grew more than 5% over the base ({2} KiB): find the frame that grew (-fstack-usage, docs/ARCHITECTURE.md)" -f $case[0], $head, $base)
+              $failed = $true
+            }
+          }
+          if ($failed) { exit 1 }
+          exit 0

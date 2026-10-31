@@ -46,6 +46,10 @@ void endDiagnosticPlace();
 // frame that can throw one (most of the recursive analysis). The compiler
 // stops at the first error, so one place is enough: `semanticErrorPlace()`
 // is the place of the last SemanticError made, which the driver prints.
+// Every handler of a SemanticError rethrows it or a new one made from it
+// (generic instances add their name); none swallows one, so the last error
+// made is the one the driver catches. Both places are thread_local: a
+// compilation on another thread has its own.
 class SemanticError final : public std::runtime_error {
 public:
     explicit SemanticError(std::string message);
