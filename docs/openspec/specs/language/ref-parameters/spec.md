@@ -23,6 +23,18 @@ field or array element. Writes SHALL keep the type's checks.
 - **WHEN** a routine assigns its `ref` parameter
 - **THEN** the compiler rejects it (tests/diagnostics/ref-readonly-assignment.inox)
 
+### Requirement: A routine header is checked as it is written
+A routine header SHALL be `Name(P, ...) R`, each parameter `X T`, `ref X T`
+or `ref mut X T`, and a method's first parameter may be `Self` or
+`Self mut` without a type. A mistake in a header SHALL be a parse error at
+the token where it is found: a missing parameter name or type, a missing
+`,` or `)`, a trailing comma, a reserved word as a parameter name, or more
+than one result type.
+
+#### Scenario: Header mistakes are parse errors with a position
+- **WHEN** a header has a trailing comma, a reserved word as a parameter name, a parameter without a type, two result types, or `mut X T`
+- **THEN** each is a parse error at its line and column (tests/diagnostics/routine-header-trailing-comma.inox, routine-header-reserved-word, routine-header-missing-type, routine-header-two-results, mut-parameter-reserved)
+
 ### Requirement: Reference arguments are exact and writable
 A reference argument SHALL have exactly the parameter's type. A `ref mut`
 argument SHALL be a writable place: a mutable local, a State variable, a

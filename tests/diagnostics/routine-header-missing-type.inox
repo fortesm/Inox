@@ -1,0 +1,15 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== F3 (r3.114): a header error points at the token, not the routine.
+Show(X) :
+    PutLn(1)
+;
+
+Main :
+    Show(1)
+;

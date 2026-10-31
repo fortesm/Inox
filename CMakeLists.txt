@@ -178,6 +178,7 @@ add_executable(inox-compiler-tests
     tests/compiler-unit/TypesTests.cpp
     tests/compiler-unit/TypeLayoutTests.cpp
     tests/compiler-unit/AstCloneTests.cpp
+    tests/compiler-unit/RoutineHeaderTests.cpp
 )
 target_link_libraries(inox-compiler-tests PRIVATE inox-compiler)
 inox_apply_compiler_options(inox-compiler-tests)

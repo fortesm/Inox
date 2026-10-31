@@ -90,9 +90,11 @@ public:
         for (const auto& item : module.items()) {
             if (item->kind() == ast::AstNodeKind::FunctionDeclaration) {
                 const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
-                for (const std::string& token : function.signatureTokens()) {
-                    text(token);
+                for (const ast::ParameterDeclaration& parameter : function.parameters()) {
+                    text(parameter.name);
+                    text(parameter.typeName);
                 }
+                text(function.resultTypeName());
                 for (const ast::ContractClause& clause : function.contracts()) {
                     expression(*clause.condition);
                 }
@@ -709,9 +711,11 @@ private:
                 function.setName(own->second->internal + "." + method);
             }
         }
-        for (std::string& token : function.signatureTokens()) {
-            token = rewriteText(token);
+        for (ast::ParameterDeclaration& parameter : function.header().parameters) {
+            parameter.name = rewriteText(parameter.name);
+            parameter.typeName = rewriteText(parameter.typeName);
         }
+        function.header().resultTypeName = rewriteText(function.resultTypeName());
         for (ast::ContractClause& clause : function.contracts()) {
             clause.condition = rewrite(*clause.condition);
         }
@@ -810,8 +814,13 @@ private:
                     }
                 }
                 if (function.isPublic()) {
-                    for (const std::string& token : function.signatureTokens()) {
-                        if (const Decl* hidden = privateTypeIn(module, token)) {
+                    std::vector<std::string> written;
+                    for (const ast::ParameterDeclaration& parameter : function.parameters()) {
+                        written.push_back(parameter.typeName);
+                    }
+                    written.push_back(function.resultTypeName());
+                    for (const std::string& type : written) {
+                        if (const Decl* hidden = privateTypeIn(module, type)) {
                             throw SemanticError(function.name() + " is Public, but its header names " +
                                                 hidden->original + ", which is not (r3.99): a public routine never "
                                                 "exposes a private type");

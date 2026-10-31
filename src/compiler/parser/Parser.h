@@ -108,6 +108,7 @@ private:
     ast::VariableDeclaration parseSectionVariable(ast::SectionKind sectionKind);
     void expectEndOfDeclarationLine(std::size_t line, const char* what);
     ast::AstNodePtr parseFunctionDeclaration();
+    ast::RoutineHeader parseRoutineHeader(const lexer::Token& name, const std::string& functionName);
     std::string parseQualifiedName(std::string_view message);
 
     std::vector<ast::StatementPtr> parseBlockBody();

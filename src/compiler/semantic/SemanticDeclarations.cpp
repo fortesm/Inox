@@ -54,7 +54,6 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
 void SemanticAnalyzer::registerFunctionSignatureIn(const ast::FunctionDeclaration& function)
 {
     notePosition(function);
-    const auto& tokens = function.signatureTokens();
 
     FunctionSignature signature;
     signature.name = function.name();
@@ -66,96 +65,39 @@ void SemanticAnalyzer::registerFunctionSignatureIn(const ast::FunctionDeclaratio
     const bool isAssociatedMethod = dot != std::string::npos;
     const std::string receiverType = isAssociatedMethod ? function.name().substr(0, dot) : std::string{};
 
-    std::size_t index = 0;
-    if (!tokens.empty() && tokens.front() == "(") {
-        index = 1;
-        if (index < tokens.size() && tokens[index] == ")") {
-            throw SemanticError("empty parentheses are not allowed in declarations: " + function.name());
-        }
-
-        while (index < tokens.size() && tokens[index] != ")") {
-            // ADR-0016: `ref X T` and `ref mut X T` pass by reference.
-            PassMode mode = PassMode::Value;
-            if (equalsIgnoreCase(tokens[index], "ref")) {
-                ++index;
-                mode = PassMode::Ref;
-                if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
-                    ++index;
-                    mode = PassMode::RefMut;
-                }
-                if (isAssociatedMethod && signature.parameters.empty()) {
-                    throw SemanticError("the receiver of a method is Self or Self mut, never ref (ADR-0016)");
-                }
+    // The parser checked the header's syntax (F3); what remains is what the
+    // types and the other parameters say.
+    for (const ast::ParameterDeclaration& written : function.parameters()) {
+        const PassMode mode = written.mode == ast::ParameterDeclaration::Mode::Ref      ? PassMode::Ref
+                              : written.mode == ast::ParameterDeclaration::Mode::RefMut ? PassMode::RefMut
+                                                                                        : PassMode::Value;
+        TypeRef parameterType = nullptr;
+        if (written.isReceiver) {
+            parameterType = resolveWrittenType(receiverType);
+            if (!parameterType->isStruct() && (types::isArraySpelling(receiverType) || isFileType(parameterType))) {
+                throw SemanticError("methods belong to structs and built-in value types; " + receiverType +
+                                    " cannot have methods: " + function.name());
             }
-            if (equalsIgnoreCase(tokens[index], "mut")) {
-                throw SemanticError("mutable parameters are reserved for a future Inox version: use a local variable or return a new value");
-            }
-            if (!looksLikeIdentifier(tokens[index])) {
-                throw SemanticError("expected parameter name in function: " + function.name());
-            }
-            const std::string parameterName = tokens[index++];
-            TypeRef parameterType = nullptr;
-
-            if (isAssociatedMethod && signature.parameters.empty() && equalsIgnoreCase(parameterName, "Self")) {
-                // `Self mut` may change the receiver; `Self` only reads it
-                // (CANON-9). A method of a built-in type (`String.Trim`) has
-                // the same two receivers: `Self mut` is the caller's variable.
-                if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
-                    ++index;
-                    mode = PassMode::RefMut;
-                }
-                parameterType = resolveWrittenType(receiverType);
-                if (!parameterType->isStruct() &&
-                    (types::isArraySpelling(receiverType) || isFileType(parameterType))) {
-                    throw SemanticError("methods belong to structs and built-in value types; " +
-                                        receiverType + " cannot have methods: " + function.name());
-                }
-            } else {
-                if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
-                    throw SemanticError("mutable parameters are reserved for a future Inox version: use a local variable or return a new value");
-                }
-                if (index >= tokens.size() ||
-                    (!looksLikeIdentifier(tokens[index]) && !types::isArraySpelling(tokens[index]) &&
-                     !types::isGenericSpelling(tokens[index]))) {
-                    throw SemanticError("expected type for parameter: " + parameterName);
-                }
-                parameterType = resolveWrittenType(tokens[index]);
-                if (mode != PassMode::Value && parameterType->isSlice()) {
-                    throw SemanticError("a slice is already a view: pass it without ref (ADR-0017)");
-                }
-                ++index;
-            }
-
-            for (const FunctionParameter& parameter : signature.parameters) {
-                if (equalsIgnoreCase(parameter.name, parameterName)) {
-                    throw SemanticError("duplicate parameter: " + parameterName);
-                }
-            }
-            if (mode != PassMode::RefMut) {
-                rejectFileIn(parameterType, "passed by value or as ref; write `ref mut " + parameterName + " File`");
-            }
-            signature.parameters.push_back(FunctionParameter{parameterName, parameterType, mode});
-
-            if (index < tokens.size() && tokens[index] == ",") {
-                ++index;
-            } else if (index >= tokens.size() || tokens[index] != ")") {
-                throw SemanticError("expected ',' or ')' in function: " + function.name());
+        } else {
+            parameterType = resolveWrittenType(written.typeName);
+            if (mode != PassMode::Value && parameterType->isSlice()) {
+                throw SemanticError("a slice is already a view: pass it without ref (ADR-0017)");
             }
         }
 
-        if (index >= tokens.size() || tokens[index] != ")") {
-            throw SemanticError("expected ')' in function: " + function.name());
+        for (const FunctionParameter& parameter : signature.parameters) {
+            if (equalsIgnoreCase(parameter.name, written.name)) {
+                throw SemanticError("duplicate parameter: " + written.name);
+            }
         }
-        ++index;
+        if (mode != PassMode::RefMut) {
+            rejectFileIn(parameterType, "passed by value or as ref; write `ref mut " + written.name + " File`");
+        }
+        signature.parameters.push_back(FunctionParameter{written.name, parameterType, mode});
     }
 
-    if (index < tokens.size()) {
-        if (index + 1 != tokens.size() ||
-            (!looksLikeIdentifier(tokens[index]) && !types::isArraySpelling(tokens[index]) &&
-             !types::isGenericSpelling(tokens[index]))) {
-            throw SemanticError("invalid return type in function: " + function.name());
-        }
-        signature.returnType = resolveWrittenType(tokens[index]);
+    if (!function.resultTypeName().empty()) {
+        signature.returnType = resolveWrittenType(function.resultTypeName());
         rejectFileIn(signature.returnType, "returned by " + function.name());
         if (signature.returnType->isSlice()) {
             throw SemanticError("a slice cannot be returned: it would outlive its array (ADR-0017)");

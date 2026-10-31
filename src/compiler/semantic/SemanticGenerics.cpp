@@ -57,42 +57,16 @@ bool isLiteralArgument(const ast::Expression& expression)
                ast::AstNodeKind::LiteralExpression;
 }
 
-struct WrittenParameter {
-    std::string type;
-    PassMode mode = PassMode::Value;
-};
-
-// The written parameter types and result of a generic routine's signature;
-// its full check happens when an instance's signature is registered.
-std::vector<WrittenParameter> writtenParameters(const std::vector<std::string>& tokens, std::string& result)
+// An instance's header: the template's, with its type arguments for its
+// type parameters. Out of line, so the frame of instantiateRoutine, which
+// nested generic calls stack up, stays as it was (engineering E19).
+void substituteHeaderTypes(ast::RoutineHeader& header,
+                           const std::function<std::string(std::string_view)>& replace)
 {
-    std::vector<WrittenParameter> parameters;
-    std::size_t index = 0;
-    if (!tokens.empty() && tokens.front() == "(") {
-        index = 1;
-        while (index < tokens.size() && tokens[index] != ")") {
-            WrittenParameter parameter;
-            if (equalsIgnoreCase(tokens[index], "ref")) {
-                parameter.mode = PassMode::Ref;
-                ++index;
-                if (index < tokens.size() && equalsIgnoreCase(tokens[index], "mut")) {
-                    parameter.mode = PassMode::RefMut;
-                    ++index;
-                }
-            }
-            index += 1;  // the name
-            if (index < tokens.size()) {
-                parameter.type = tokens[index++];
-            }
-            parameters.push_back(std::move(parameter));
-            if (index < tokens.size() && tokens[index] == ",") {
-                ++index;
-            }
-        }
-        ++index;
+    for (ast::ParameterDeclaration& parameter : header.parameters) {
+        parameter.typeName = types::substituteTypeNames(parameter.typeName, replace);
     }
-    result = index < tokens.size() ? tokens[index] : std::string{};
-    return parameters;
+    header.resultTypeName = types::substituteTypeNames(header.resultTypeName, replace);
 }
 
 std::string parameterList(const std::vector<std::string>& parameters)
@@ -279,8 +253,8 @@ TypeRef SemanticAnalyzer::analyzeGenericCall(const ast::FunctionDeclaration& gen
                                              const ast::CallExpression* call)
 {
     const std::vector<std::string>& parameters = generic.typeParameters();
-    std::string writtenResult;
-    const std::vector<WrittenParameter> written = writtenParameters(generic.signatureTokens(), writtenResult);
+    const std::string& writtenResult = generic.resultTypeName();
+    const std::vector<ast::ParameterDeclaration>& written = generic.parameters();
     const std::size_t count = call != nullptr ? call->arguments().size() : 0;
     if (count != written.size()) {
         throw SemanticError("function " + generic.name() + " expects " + std::to_string(written.size()) +
@@ -309,7 +283,7 @@ TypeRef SemanticAnalyzer::analyzeGenericCall(const ast::FunctionDeclaration& gen
             if (isLiteralArgument(*call->arguments()[index]) != literals) {
                 continue;
             }
-            const auto pattern = types::readTypeSyntax(written[index].type);
+            const auto pattern = types::readTypeSyntax(written[index].typeName);
             if (literals) {
                 TypeRef context = nullptr;
                 if (pattern && pattern->form == types::TypeSyntax::Form::Named) {
@@ -551,10 +525,6 @@ const FunctionSignature& SemanticAnalyzer::instantiateRoutine(const ast::Functio
         return {};
     };
 
-    std::vector<std::string> tokens;
-    for (const std::string& token : generic.signatureTokens()) {
-        tokens.push_back(types::substituteTypeNames(token, replace));
-    }
     ast::CloneRewriters rewrite;
     rewrite.typeName = [&](const std::string& written) { return types::substituteTypeNames(written, replace); };
     // A type parameter named in an expression (`New(T)`, `T(F := X)`).
@@ -567,8 +537,9 @@ const FunctionSignature& SemanticAnalyzer::instantiateRoutine(const ast::Functio
         }
         return nullptr;
     };
-    auto made = std::make_unique<ast::FunctionDeclaration>(name, std::move(tokens),
+    auto made = std::make_unique<ast::FunctionDeclaration>(name, generic.header(),
                                                            ast::cloneStatements(generic.body(), rewrite));
+    substituteHeaderTypes(made->header(), replace);
     made->copyModuleFrom(generic);
     made->setPosition(generic.position());  // an instance is where its template is
     const ast::FunctionDeclaration& instance = result_.addInstance(std::move(made));

@@ -347,10 +347,31 @@ private:
 // arguments (`Max<Array[1..3] Int64>`), which never make it a method.
 std::size_t methodDot(std::string_view routineName);
 
+// One parameter of a routine header (F3, r3.114): `X T`, `ref X T`,
+// `ref mut X T`, or the receiver of a method, `Self` or `Self mut`, which
+// has no written type (it is the method's struct). The type is the front
+// end's spelling (types/TypeSyntax.h) until types are structured (F4).
+struct ParameterDeclaration {
+    enum class Mode { Value, Ref, RefMut };
+
+    std::string name;
+    std::string typeName;  // empty for the receiver
+    Mode mode = Mode::Value;
+    bool isReceiver = false;
+};
+
+// The parameters and result a routine header writes: `(A T, ref B U) R`.
+// No parameters means no parentheses (empty ones are a parse error); an
+// empty result type means a procedure.
+struct RoutineHeader {
+    std::vector<ParameterDeclaration> parameters;
+    std::string resultTypeName;
+};
+
 class FunctionDeclaration final : public AstNode {
 public:
     FunctionDeclaration(std::string name,
-                        std::vector<std::string> signatureTokens,
+                        RoutineHeader header,
                         std::vector<StatementPtr> body,
                         bool isOverride = false,
                         std::vector<ContractClause> contracts = {},
@@ -362,7 +383,12 @@ public:
     // analyzer checks and compiles a copy per use.
     const std::vector<std::string>& typeParameters() const;
     bool isGeneric() const { return !typeParameters_.empty(); }
-    const std::vector<std::string>& signatureTokens() const;
+    // The header the parser built (F3): parameters in order, then the result.
+    const RoutineHeader& header() const { return header_; }
+    RoutineHeader& header() { return header_; }
+    const std::vector<ParameterDeclaration>& parameters() const { return header_.parameters; }
+    const std::string& resultTypeName() const { return header_.resultTypeName; }
+    bool isFunction() const { return !header_.resultTypeName.empty(); }
     const std::vector<StatementPtr>& body() const;
     // `TName.Method(...) [Type] Override :` replaces a reused method (CANON-9).
     bool isOverride() const;
@@ -373,7 +399,6 @@ public:
     std::vector<StatementPtr> takeBody();
     std::vector<ContractClause>& contracts() { return contracts_; }
     std::vector<StatementPtr>& body() { return body_; }
-    std::vector<std::string>& signatureTokens() { return signatureTokens_; }
     void setName(std::string name) { name_ = std::move(name); }
     // r3.99: `... Public :` puts the routine in its module's interface; the
     // module is the one it was written in (module resolution). A routine
@@ -392,7 +417,7 @@ private:
     bool isPublic_ = false;
     std::string module_;
     std::string name_;
-    std::vector<std::string> signatureTokens_;
+    RoutineHeader header_;
     std::vector<StatementPtr> body_;
     bool isOverride_ = false;
     std::vector<ContractClause> contracts_;
