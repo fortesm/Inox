@@ -276,18 +276,18 @@ void SemanticAnalyzer::requireWritableReceiver(const FunctionSignature& signatur
     if (const TypeRef type = result_.typeOf(receiver); type != nullptr && (type->isOwn() || type->isLink())) {
         if (type->isOwn()) {
             if (const Symbol* owner = readOnlyOwnerRoot(receiver, true)) {
-                throw SemanticError("method " + signature.name +
-                                    " changes its receiver (Self mut), which is read-only: " +
-                                    readOnlyOwnerMessage(*owner));
+                throwReadOnlyOwner("method " + signature.name +
+                                       " changes its receiver (Self mut), which is read-only: ",
+                                   *owner);
             }
         }
         return;
     }
     if (writableRoot(receiver) == nullptr) {
         if (const Symbol* owner = readOnlyOwnerRoot(receiver)) {
-            throw SemanticError("method " + signature.name +
-                                " changes its receiver (Self mut), which is read-only: " +
-                                readOnlyOwnerMessage(*owner));
+            throwReadOnlyOwner("method " + signature.name +
+                                   " changes its receiver (Self mut), which is read-only: ",
+                               *owner);
         }
         throw SemanticError("method " + signature.name +
                             " changes its receiver (Self mut): call it on a mutable variable, a field or "

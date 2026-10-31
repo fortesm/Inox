@@ -65,3 +65,10 @@ Results (2026-10-31, unidentified cloud container, no .inox-machine):
 - backend_gaps OK=54; eh_state_balance 2/2; string_leak_check 62/62;
   grammar_consistency 5/5; openspec validate 37/37; constitution_check 191 units, 0 problems.
 - No existing test or example changed its result.
+- Stack: the first CI run failed on Windows (Debug, 1 MiB main-thread
+  stack) in `limits-boundary-ok` with a stack overflow: the new checks had
+  grown the frames of the recursive `analyzeBinaryExpression` (+64 bytes)
+  and `analyzeStatement` (+16 bytes). They now live in out-of-line helpers
+  (`rejectReadOnlyOwnerTarget`, `markWithBinding`); `-fstack-usage` shows
+  both frames back to the size of main (4216 and 5448 bytes), and the
+  deepest boundary test needs no more stack than with the compiler of main.

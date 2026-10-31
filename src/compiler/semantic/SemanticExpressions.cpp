@@ -599,9 +599,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             // a field is written only through a mutable variable, `Self mut`
             // or a `ref mut` parameter (CANON-9, ADR-0016).
             if (writableRoot(expression.left()) == nullptr) {
-                if (const Symbol* owner = readOnlyOwnerRoot(expression.left())) {
-                    throw SemanticError("assignment target is read-only: " + readOnlyOwnerMessage(*owner));
-                }
+                rejectReadOnlyOwnerTarget(expression.left(), "assignment target is read-only: ");
                 throw SemanticError(
                     "assignment target is not mutable: " +
                     (root->kind() == ast::AstNodeKind::IdentifierExpression
@@ -634,10 +632,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             }
             targetType = analyzeExpression(expression.left());
             if (writableRoot(expression.left()) == nullptr) {
-                if (const Symbol* owner = readOnlyOwnerRoot(expression.left())) {
-                    throw SemanticError("array element assignment target is read-only: " +
-                                        readOnlyOwnerMessage(*owner));
-                }
+                rejectReadOnlyOwnerTarget(expression.left(), "array element assignment target is read-only: ");
                 throw SemanticError("array element assignment requires a mutable array variable");
             }
             if (rootSymbol != nullptr && !rootWasRead) {
@@ -669,9 +664,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             // unless the owner is reached through a read-only reference
             // (change read-only-through-owners).
             targetType = analyzeExpression(expression.left());
-            if (const Symbol* owner = readOnlyOwnerRoot(expression.left())) {
-                throw SemanticError("assignment target is read-only: " + readOnlyOwnerMessage(*owner));
-            }
+            rejectReadOnlyOwnerTarget(expression.left(), "assignment target is read-only: ");
         } else {
             throw SemanticError("assignment target must be an identifier, field or array element");
         }
@@ -1231,6 +1224,25 @@ bool SemanticAnalyzer::isDeepReadOnlyPlace(const ast::Expression& expression) co
     const Symbol* symbol =
         symbols_.currentScope().resolve(static_cast<const ast::IdentifierExpression&>(*root).name());
     return symbol != nullptr && symbol->deepReadOnly && !symbol->isMutable;
+}
+
+void SemanticAnalyzer::rejectReadOnlyOwnerTarget(const ast::Expression& target, const char* prefix) const
+{
+    if (const Symbol* owner = readOnlyOwnerRoot(target)) {
+        throwReadOnlyOwner(prefix, *owner);
+    }
+}
+
+void SemanticAnalyzer::markWithBinding(const ast::WithStatement& withStatement)
+{
+    if (isDeepReadOnlyPlace(withStatement.target())) {
+        symbols_.currentScope().markDeepReadOnly(withStatement.bindingName());
+    }
+}
+
+void SemanticAnalyzer::throwReadOnlyOwner(std::string_view prefix, const Symbol& root) const
+{
+    throw SemanticError(std::string(prefix) + readOnlyOwnerMessage(root));
 }
 
 std::string SemanticAnalyzer::readOnlyOwnerMessage(const Symbol& root) const

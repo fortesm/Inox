@@ -286,7 +286,7 @@ TypeRef SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const ast
         // A Link is a capability to write: never made from a place that is
         // read-only through its owners (change read-only-through-owners).
         if (const Symbol* owner = readOnlyOwnerRoot(argument, type != nullptr && type->isOwn())) {
-            throw SemanticError("Link would allow writing a read-only place: " + readOnlyOwnerMessage(*owner));
+            throwReadOnlyOwner("Link would allow writing a read-only place: ", *owner);
         }
         if (isPointer(type)) {
             return types().link(type->pointerTarget());
@@ -352,8 +352,7 @@ TypeRef SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const ast
         const Symbol* writable = writableRoot(argument);
         if (writable == nullptr) {
             if (const Symbol* owner = readOnlyOwnerRoot(argument)) {
-                throw SemanticError(written + " changes its argument, which is read-only: " +
-                                    readOnlyOwnerMessage(*owner));
+                throwReadOnlyOwner(written + " changes its argument, which is read-only: ", *owner);
             }
         }
         // A value parameter belongs to the routine; a `ref` parameter only

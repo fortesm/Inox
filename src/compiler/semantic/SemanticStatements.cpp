@@ -718,9 +718,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             writableRoot(withStatement.target()) != nullptr);
         // `with` on a read-only reference, or on a place owned through one,
         // only reads what the target owns (change read-only-through-owners).
-        if (isDeepReadOnlyPlace(withStatement.target())) {
-            symbols_.currentScope().markDeepReadOnly(withStatement.bindingName());
-        }
+        markWithBinding(withStatement);
         analyzeStatements(withStatement.body(), false);
         leaveScope();
         break;
