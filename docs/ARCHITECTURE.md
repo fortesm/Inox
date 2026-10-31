@@ -46,9 +46,11 @@ when it is made and keeps it beside the error (`semanticErrorPlace()`): no
 try, no added frame below the analysis, and no larger exception object. The driver
 turns the module into its file (`moduleFiles`).
 
-**Stack budget.** The compiler runs on the 1 MiB main-thread stack of
-Windows, and the boundary tests (`limits-boundary-ok`) sit close to it in
-the Windows Debug build. A change to a function that is on the stack while
+**Stack budget.** The compiler reserves 8 MiB of stack on Windows (r3.113;
+the default would be 1 MiB) and has 8 MiB on Linux. The boundary tests
+(`limits-boundary-ok`) need about 961 KiB in a Windows Debug build; the
+Gates job `windows-stack` measures it on every compiler pull request and
+fails above half the reserve or on a growth of more than 5%. A change to a function that is on the stack while
 the parser or the analyzer recurses (the recursive functions themselves,
 and those below them: `main`, the module loader, `parseSource`,
 `Parser::parseModule`, `SemanticAnalyzer::analyze`) must not grow its

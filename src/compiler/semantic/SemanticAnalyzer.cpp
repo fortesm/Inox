@@ -45,7 +45,7 @@ std::string shownMessage(std::string message)
 
 DiagnosticPlace& diagnosticPlace()
 {
-    static DiagnosticPlace place;
+    thread_local DiagnosticPlace place;
     return place;
 }
 
@@ -69,7 +69,7 @@ namespace {
 
 DiagnosticPlace& lastErrorPlace()
 {
-    static DiagnosticPlace place;
+    thread_local DiagnosticPlace place;
     return place;
 }
 

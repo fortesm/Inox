@@ -1,0 +1,22 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Change windows-stack (r3.113): the position of an error stays with the error
+== through nested generic instances: the line of the innermost body, not of
+== the routines that used it.
+Inner<T>(X T) T :
+    Return X * "two"
+;
+
+Outer<T>(X T) T :
+    Y T := Inner(X)
+    Return Y
+;
+
+Main :
+    PutLn(Outer(3))
+;

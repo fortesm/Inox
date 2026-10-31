@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.112
+Canon revision: r3.113
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -546,3 +546,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   had no position. Deviation D1 of `docs/ARCHITECTURE.md` is closed.
   Foundation step F2, decided by Marcelo Fortes, 2026-10-31. Change
   `source-positions`.
+- r3.113 — 2026-10-31 — E19: the compiler `inox.exe` reserves 8 MiB of
+  stack on Windows (virtual reserve, not committed memory; the programs
+  Inox builds keep the default). Measured on Windows Debug, the boundary
+  tests of CANON-19 needed 961 KiB of the default 1 MiB. A Gates job
+  measures that need on every pull request that changes the compiler and
+  fails when it passes half the reserve (4096 KiB) or grows more than 5%
+  (at least 32 KiB) over the base. The depth limits of CANON-19 do not
+  change. The place of a semantic error is thread_local. Decided by
+  Marcelo Fortes, 2026-10-31. Change `windows-stack`.

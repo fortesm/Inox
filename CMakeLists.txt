@@ -164,6 +164,14 @@ target_link_libraries(inox PRIVATE inox-compiler)
 inox_apply_compiler_options(inox)
 inox_apply_warnings(inox)
 inox_apply_sanitizers(inox)
+# The compiler's recursive phases need about 961 KiB of stack in a Windows
+# Debug build at the depth limits of CANON-19, too close to the 1 MiB that
+# Windows reserves by default; Linux gives the main thread 8 MiB. Reserve 8
+# MiB for the compiler only (virtual address space, not committed memory);
+# the programs Inox builds keep the default (change windows-stack, r3.113).
+if(WIN32)
+    target_link_options(inox PRIVATE "LINKER:/STACK:8388608")
+endif()
 
 add_executable(inox-compiler-tests
     tests/compiler-unit/main.cpp

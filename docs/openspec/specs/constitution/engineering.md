@@ -189,6 +189,11 @@ every check below that applies, and its report says which ran.
   program before and after; every difference is listed as intended or the
   refactor is not done.
 
+- the stack budget: the compiler reserves 8 MiB of stack on Windows (Linux
+  gives the main thread 8 MiB); on Windows Debug, the smallest reserve with
+  which the boundary tests pass stays below half of it and grows less than
+  5% over the base; the 1 MiB sanitized run above keeps the margin of
+  CANON-19 on Linux;
 - `tools/version_check.py`: the version and the canon revision of
   `Version.h` are the ones `revisions.md`, `README.md`, `CHANGELOG.md` and
   `docs/STATUS.md` state.
@@ -200,7 +205,8 @@ and push; the Gates workflow runs the sanitized suite with a 1 MiB stack,
 the mutation fuzz (seeds 1 and 7) and the differential test on every pull
 request that touches code, tests or tools, on every push to main and every
 night, and the IR snapshot against the base on a pull request labelled
-`refactor`. A gate that fails blocks the merge; its log is kept as an
+`refactor`; on a pull request that changes the compiler it also measures
+the stack budget of Windows Debug (change `windows-stack`, r3.113). A gate that fails blocks the merge; its log is kept as an
 artifact.
 
 Still to come: clang-format, clang-tidy, cppcheck, coverage and complexity
