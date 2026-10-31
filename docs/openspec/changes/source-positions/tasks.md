@@ -54,3 +54,10 @@ in the frame of the function that throws it, so the 48 bytes added to
 `throw SemanticError(...)`, which on Linux (objects on the heap) cost
 nothing. `SemanticError` is back to its size; the place of the last error is
 kept beside it (`semanticErrorPlace()`), which the driver prints.
+
+Measured again after the fix (Windows Debug, smallest stack reserve that
+passes): parsing 451 KiB on main and here; whole compilation of the
+boundary tests 961 KiB on main and here. The temporary measuring job was
+removed. Finding for the maintainer: on Windows Debug the boundary tests
+leave only about 63 KiB of the 1 MiB stack, not the margin of about two
+that CANON-19 states (measured on Linux Debug+ASan).
