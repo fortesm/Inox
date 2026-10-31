@@ -1,0 +1,102 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Change read-only-through-owners: what stays writable when `ref` and a
+== plain `Self` are read-only through their owners.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+    THolder Struct
+        FChild Own<TNode>
+    ;
+    TOuter Struct
+        FHolder Own<THolder>
+    ;
+    TWatch Struct
+        FTarget Link<TNode>
+    ;
+    TBox<T> Struct
+        FItem Own<T>
+    ;
+
+== ref mut writes through two owner levels.
+Deepen(ref mut O TOuter) :
+    O.FHolder.FChild.FValue := 3
+    O.FHolder.FChild.FValue += 1
+;
+
+== A plain ref reads through its owners.
+Read(ref O TOuter) Integer :
+    Return O.FHolder.FChild.FValue
+;
+
+== Self mut writes what the receiver owns, also through a Link it makes.
+THolder.Grow(Self mut, By Integer) :
+    Self.FChild.FValue += By
+    L := Link(Self.FChild)
+    L.FValue := L.FValue + 1
+;
+
+== A plain Self reads what the receiver owns.
+THolder.Current(Self) Integer :
+    Return Self.FChild.FValue
+;
+
+TNode.Bump(Self mut) :
+    Self.FValue += 10
+;
+
+== A value owner parameter belongs to the routine: it writes and links it.
+Consume(P Own<TNode>) Integer :
+    P.FValue := 7
+    L := Link(P)
+    L.FValue := L.FValue + 1
+    Return P.FValue
+;
+
+== A Link is a capability to write, even reached through a ref parameter.
+Signal(ref W TWatch) :
+    W.FTarget.FValue := 99
+;
+
+== with on a writable owner writes; a ref mut owner takes Self mut calls.
+Reset(ref mut H THolder) :
+    with H.FChild
+        .FValue := 0
+    ;
+    H.FChild.Bump
+;
+
+== A generic instance with ref mut writes through its owner field.
+Store<T>(ref mut B TBox<T>, X T) :
+    Value(B.FItem) := X
+;
+
+Main :
+    O TOuter := TOuter(FHolder := New(THolder(FChild := New(TNode))))
+    Deepen(O)
+    PutLn("deep ", Read(O))
+
+    H THolder := THolder(FChild := New(TNode(FValue := 1)))
+    H.Grow(5)
+    PutLn("self mut ", H.Current)
+
+    PutLn("value owner ", Consume(New(TNode)))
+
+    N Own<TNode> := New(TNode)
+    W TWatch := TWatch(FTarget := Link(N))
+    Signal(W)
+    PutLn("through a Link ", N.FValue)
+
+    Reset(H)
+    PutLn("with and Self mut ", H.FChild.FValue)
+
+    B TBox<TNode> := TBox(FItem := New(TNode))
+    Store(B, TNode(FValue := 42))
+    PutLn("generic ", B.FItem.FValue)
+;

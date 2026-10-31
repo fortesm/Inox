@@ -1,0 +1,1 @@
+assignment target is read-only: it is owned through O, a ref parameter; declare ref mut O to change what it owns (ADR-0016)

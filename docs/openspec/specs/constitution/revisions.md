@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.108
+Canon revision: r3.109
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -502,3 +502,15 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   and `Int64.Min / -1` trap, a constant zero divisor is a compile error).
   No rule changes. Decided by Marcelo Fortes, 2026-10-30. Change
   `canon1-integer-division`.
+- r3.109 — 2026-10-31 — CANON-10, CANON-25: read-only is deep through
+  owners. What a `ref` parameter or a plain `Self` owns, through `Own` and
+  `Option<Own>` at any depth, is read-only too: no assignment, no `ref mut`
+  argument, no `Self mut` call, no `Value(P) :=`, no `Free` or `Move`, also
+  inside `with`; and `Link(...)` of such a place is an error. A value
+  parameter of an owner type keeps its objects writable (it belongs to the
+  routine), and a path through a `Link` stays writable (a Link is a
+  capability to write). `Free(P)` of a `ref P Option<Own<T>>`, which
+  emptied the caller's variable, is rejected too. Decision D8 of the
+  exploration `concurrency`; design approved as high risk and
+  implementation authorized by Marcelo Fortes, 2026-10-31. Change
+  `read-only-through-owners`.

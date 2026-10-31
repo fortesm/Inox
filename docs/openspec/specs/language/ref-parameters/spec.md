@@ -41,3 +41,24 @@ SHALL exist only during the call. (Confirmed by Marcelo Fortes, 2026-10-12.)
 #### Scenario: The same variable twice
 - **WHEN** a program calls `Swap(X, X)`
 - **THEN** the compiler rejects it (tests/diagnostics/ref-mut-aliasing.inox)
+
+### Requirement: A ref parameter is read-only through its owners
+What a `ref` parameter owns SHALL be read-only too: a field, an element or
+an object reached from it through `Own<T>` or `Option<Own<T>>`, at any
+depth, SHALL NOT be assigned, passed as `ref mut`, receive a `Self mut`
+call, be written with `Value(P) :=`, be freed or moved, also inside
+`with`; and `Link(...)` of such a place or owner SHALL be an error. A path
+through a `Link<T>` is not read-only. A value parameter of an owner type
+keeps its objects writable: it belongs to the routine.
+
+#### Scenario: Writing what a ref parameter owns
+- **WHEN** a routine with `ref H THolder` writes `H.FChild.FValue`, at one or two owner levels, by assignment, compound assignment, ref mut argument, Self mut call, Value, Free or with
+- **THEN** each is rejected naming H and `ref mut` (tests/diagnostics/ref-owner-write.inox, ref-nested-owner-write, ref-owner-deep, ref-owner-compound, ref-owner-element, ref-owner-ref-mut-argument, ref-owner-self-mut-call, ref-owner-value-write, ref-owner-with, ref-owner-free-option, ref-owner-move-option, ref-option-parameter-free)
+
+#### Scenario: A Link from a ref parameter
+- **WHEN** a routine takes `Link(H.FChild)` with `ref H`, or `Link(P)` with `ref P Own<TNode>`
+- **THEN** it is rejected (tests/diagnostics/link-from-ref-field.inox, link-from-ref-owner, link-from-ref-parameter)
+
+#### Scenario: What stays writable
+- **WHEN** a routine writes through owners of a `ref mut` parameter and of a value owner parameter, links the latter, and writes through a Link field of a `ref` parameter
+- **THEN** each runs (tests/runtime/read-only-through-owners.inox)

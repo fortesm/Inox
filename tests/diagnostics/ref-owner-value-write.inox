@@ -1,0 +1,21 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== change read-only-through-owners: Value(P) := of an owner passed by ref.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+Poke(ref P Own<TNode>) :
+    Value(P) := TNode(FValue := 1)
+;
+
+Main :
+    P Own<TNode> := New(TNode)
+    Poke(P)
+    PutLn(P.FValue)
+;

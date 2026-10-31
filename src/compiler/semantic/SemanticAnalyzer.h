@@ -77,6 +77,15 @@ private:
                                  std::size_t parameterOffset,
                                  const std::vector<ast::ExpressionPtr>& arguments);
     const Symbol* writableRoot(const ast::Expression& expression) const;
+    // The read-only root (a `ref` parameter, a plain `Self`, `with` on one of
+    // them) whose owners a place is reached through; null when the place is
+    // not owned through one. `ownerItself`: the place is an owner whose object
+    // is meant (`Link(P)`, a `Self mut` call on P).
+    const Symbol* readOnlyOwnerRoot(const ast::Expression& expression, bool ownerItself = false) const;
+    std::string readOnlyOwnerMessage(const Symbol& root) const;
+    // A place rooted at a deep read-only symbol, through fields, elements and
+    // owners (not through a Link).
+    bool isDeepReadOnlyPlace(const ast::Expression& expression) const;
 
     void declareModuleItem(const ast::AstNode& item);
     void registerFunctionSignatures(const ast::ModuleNode& module);

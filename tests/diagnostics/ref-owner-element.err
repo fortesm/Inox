@@ -1,0 +1,1 @@
+array element assignment target is read-only: it is owned through P, a ref parameter; declare ref mut P to change what it owns (ADR-0016)

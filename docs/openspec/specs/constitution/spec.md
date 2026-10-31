@@ -1063,6 +1063,16 @@ rejected. Local variables are mutable; a receiver mutates only through
 - **WHEN** a routine writes through `ref mut` and reads through `ref`
 - **THEN** the caller's variable changes and nothing is copied (tests/runtime/ref-parameters.inox)
 
+### Requirement: CANON-10 Read-only through owners
+What a `ref` parameter or a plain `Self` owns SHALL be read-only too,
+through `Own` and `Option<Own>` at any depth, and no `Link` SHALL be made
+from it (r3.109). A value parameter of an owner type owns its objects, and
+a path through a `Link` stays writable.
+
+#### Scenario: Read-only through owners
+- **WHEN** a routine writes or links what a `ref` parameter or a plain `Self` owns, and another writes through `ref mut`, `Self mut`, a value owner parameter and a Link
+- **THEN** the first are rejected and the others run (tests/diagnostics/ref-nested-owner-write.inox, tests/diagnostics/self-owner-write.inox, tests/diagnostics/link-from-ref-field.inox, tests/runtime/read-only-through-owners.inox)
+
 ### Requirement: CANON-10 Scope of locals
 A local SHALL be visible from its declaration to the end of its block; using
 it before or after is an error. Blocks: the routine body, each `if`/`elif`/
@@ -1954,7 +1964,8 @@ emptied is `Option<Own<T>>`. A path the analysis does not follow traps
 
 ### Requirement: CANON-25 Links
 `Link(X)` SHALL reach an owned object, a variable, a field or an element
-without owning it. A Link is copied freely, born empty, and checked on every
+without owning it, never one that is read-only through its owners
+(CANON-10). A Link is copied freely, born empty, and checked on every
 use: an object freed, a block reused, or a variable whose routine returned
 is never reached; `Alive(L)` asks, the use traps (`use of a freed object or
 an empty Link`). A Link to a variable lives until its routine returns or its
@@ -1971,7 +1982,8 @@ declaration runs again; to State, always.
 ### Requirement: CANON-25 Access through pointers
 `P.Field`, `P[I]` and `P.Method` SHALL reach the object of an `Own` or a
 `Link` with the dot; `Value(P)` is the whole object, read or written.
-`Same(A, B)` asks whether two pointers reach one object; `=` on pointers,
+Through a Link the object is writable; through an owner it is as writable
+as the owner's place (CANON-10). `Same(A, B)` asks whether two pointers reach one object; `=` on pointers,
 printing them and converting them to numbers are errors. An `Option<Own<T>>`
 is reached through `Link(X)`, empty when it is `None`.
 

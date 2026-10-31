@@ -1,0 +1,25 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== change read-only-through-owners: a generic instance writes through an owner of a ref parameter.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+    TBox<T> Struct
+        FItem Own<T>
+    ;
+
+Poke<T>(ref B TBox<T>, X T) :
+    Value(B.FItem) := X
+;
+
+Main :
+    B TBox<TNode> := TBox(FItem := New(TNode))
+    Poke(B, TNode(FValue := 1))
+    PutLn(B.FItem.FValue)
+;

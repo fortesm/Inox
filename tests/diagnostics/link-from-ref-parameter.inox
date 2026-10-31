@@ -1,0 +1,22 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== A Link to a ref parameter without owners is rejected as before (change read-only-through-owners, test 3.12b).
+Type
+    TPoint Struct
+        FX Integer := 0
+    ;
+
+Peek(ref X TPoint) :
+    L Link<Integer> := Link(X.FX)
+    PutLn(Value(L))
+;
+
+Main :
+    X TPoint
+    Peek(X)
+;

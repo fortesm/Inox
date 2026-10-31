@@ -36,6 +36,9 @@ struct Symbol {
     // whose initializer is analyzed later).
     const types::Type* type = nullptr;
     bool isMutable = false;
+    // A `ref` parameter, the plain `Self` of a method, or `with` on one of
+    // them: read-only through its owners too (change read-only-through-owners).
+    bool deepReadOnly = false;
 };
 
 class Scope {
@@ -50,6 +53,8 @@ public:
     // module Const whose initializer is an expression). No effect when the
     // symbol already has a type.
     void inferType(std::string_view name, const types::Type* type);
+    // Marks a symbol of this scope read-only through its owners.
+    void markDeepReadOnly(std::string_view name);
     bool containsLocal(std::string_view name) const;
     bool containsInAncestors(std::string_view name) const;
 

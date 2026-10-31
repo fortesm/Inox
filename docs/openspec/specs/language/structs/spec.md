@@ -169,3 +169,18 @@ receiver's variable (ADR-0016).
 #### Scenario: A field of Self mut by reference
 - **WHEN** a Self mut method passes one of its fields to a ref mut parameter
 - **THEN** the field changes (tests/runtime/strings-method-reuse.inox)
+
+### Requirement: A Self receiver is read-only through its owners
+A method whose receiver is `Self` (not `Self mut`) SHALL NOT change what
+the receiver owns: a field, an element or an object reached from `Self`
+through `Own<T>` or `Option<Own<T>>`, at any depth, SHALL be read-only, and
+`Link(...)` of such a place SHALL be an error. A `Self mut` method keeps
+writing through its owners.
+
+#### Scenario: Writing through Self
+- **WHEN** a `Self` method writes `Self.FChild.FValue` or takes `Link(Self.FChild)`
+- **THEN** each is rejected naming `Self mut` (tests/diagnostics/self-owner-write.inox, link-from-self)
+
+#### Scenario: Generic instances
+- **WHEN** a generic routine with `ref B TBox<T>` writes through an owner field and is instantiated
+- **THEN** the instance is rejected (tests/diagnostics/generic-ref-owner-write.inox)

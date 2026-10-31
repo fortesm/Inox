@@ -283,6 +283,11 @@ TypeRef SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const ast
         return type->pointerTarget();
     }
     if (equalsIgnoreCase(name, "Link")) {
+        // A Link is a capability to write: never made from a place that is
+        // read-only through its owners (change read-only-through-owners).
+        if (const Symbol* owner = readOnlyOwnerRoot(argument, type != nullptr && type->isOwn())) {
+            throw SemanticError("Link would allow writing a read-only place: " + readOnlyOwnerMessage(*owner));
+        }
         if (isPointer(type)) {
             return types().link(type->pointerTarget());
         }
@@ -345,8 +350,23 @@ TypeRef SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const ast
         // The place becomes None.
         const bool isVariable = argument.kind() == ast::AstNodeKind::IdentifierExpression;
         const Symbol* writable = writableRoot(argument);
-        if (writable == nullptr && !(isVariable && currentParameters_.contains(
-                                         result_.symbolOf(static_cast<const ast::IdentifierExpression&>(argument))))) {
+        if (writable == nullptr) {
+            if (const Symbol* owner = readOnlyOwnerRoot(argument)) {
+                throw SemanticError(written + " changes its argument, which is read-only: " +
+                                    readOnlyOwnerMessage(*owner));
+            }
+        }
+        // A value parameter belongs to the routine; a `ref` parameter only
+        // reads the caller's variable (change read-only-through-owners).
+        const Symbol* parameter =
+            isVariable ? result_.symbolOf(static_cast<const ast::IdentifierExpression&>(argument)) : nullptr;
+        if (writable == nullptr && parameter != nullptr && currentParameters_.contains(parameter) &&
+            parameter->deepReadOnly) {
+            throw SemanticError(written + " changes its argument " + parameter->name +
+                                ", a ref parameter, which only reads the caller's variable; declare ref mut " +
+                                parameter->name + " (ADR-0016)");
+        }
+        if (writable == nullptr && !(parameter != nullptr && currentParameters_.contains(parameter))) {
             throw SemanticError(written + " changes its argument: give a mutable variable, a field or an element");
         }
         return isFree ? types().voidType() : type;

@@ -1,0 +1,1 @@
+Link would allow writing a read-only place: it is owned through Self, the receiver of a method that is not Self mut; declare Self mut to change what the receiver owns (CANON-9)
