@@ -13,6 +13,7 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 ## Unreleased
 
 ### Changed
+- The compiler phases have written contracts (canon r3.110, E11, change `phase-contracts`): `docs/ARCHITECTURE.md` says what each phase receives, produces and must never do, which files own it, and where the code still deviates (D1-D7). The roadmap gains a foundation milestone before 0.5, with no new language feature (F0-F7).
 - `ref` and `Self` are read-only through owners (canon r3.109, CANON-10, CANON-25, change `read-only-through-owners`). **Breaking:** with `ref H THolder` and `FChild Own<TNode>`, `H.FChild.FValue := 1`, a `ref mut` argument, a `Self mut` call, `Value(P) :=`, `Free`/`Move` or `Link(H.FChild)` on what H owns are now compile errors, and so are the same through a plain `Self`; declare `ref mut H` or `Self mut`. `Free(P)` of a `ref P Option<Own<T>>` is rejected. A value owner parameter and a path through a `Link` stay writable. No existing test or example changes.
 - CANON-1 Safety defaults no longer says "no integer `/`", left over from before r3.95: it says "no unchecked integer division" (canon r3.108, change `canon1-integer-division`). No rule changes.
 - The capability specs cover contracts, safe pointers, method reuse and `Std.Debug` (canon r3.107, change `fold-spec-deltas`): new `language/contracts`, `language/pointers` and `stdlib/debug`; `language/structs` gains method reuse, `Override` and methods of built-in types. The rules were already law; only the specs change.

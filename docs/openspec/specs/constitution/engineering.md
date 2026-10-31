@@ -91,6 +91,26 @@ in v3.18); (2) the result records more decisions; (3) typed nodes replace
 duplicated information; (4) the emitter stops reinterpreting the raw AST;
 (5) a dedicated lowered IR.
 
+Contract of the phases (Marcelo Fortes, 2026-10-31, change
+`phase-contracts`). Each phase receives the output of the one before,
+produces its own, and never does the work of another:
+
+| Phase | Produces | Never |
+|---|---|---|
+| Lexer | tokens with line and column | knows grammar, names or types |
+| Parser | the AST of what was written, with source positions | checks names or types, lowers or desugars, invents names |
+| Module resolution | one program, each name meaning one declaration | types expressions |
+| Contract lowering | checking wrappers and invariant methods | types expressions |
+| Semantic analysis | every type, symbol, instance and decision later phases need, and diagnostics with their position | emits LLVM, leaves a decision to be rediscovered |
+| Code generation | valid LLVM IR or a reported gap | derives a type, resolves a name, re-checks a rule |
+| Driver | the executable | hides a frontend failure |
+
+Only the lowering phases and the two rewrites named in
+`docs/ARCHITECTURE.md` change the AST. That file details each contract,
+names the files that own each phase, and lists the deviations of the code
+from this section, each with the step that removes it; it is updated with
+any change that moves a boundary.
+
 ## E12. Platform code is isolated
 Platform macros and APIs appear only in the portability layer
 (`src/compiler/support/`, small detection headers), `cmake/`, platform
@@ -187,7 +207,7 @@ responsibilities is split along the responsibility seam, never by line
 count. A structural split is proposed as an OpenSpec change, approved by the
 maintainer and verified with `tools/ir_snapshot.py` (the 2026 split of the
 emitter and analyzer, change `compiler-modularization`, is the model);
-`AGENTS.md` keeps the map of where each concern lives.
+`docs/ARCHITECTURE.md` keeps the map of where each concern lives.
 
 ## E22. Backend strategy: clang as the external driver
 The external clang driver is a build-time dependency, not technical debt

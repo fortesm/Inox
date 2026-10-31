@@ -38,6 +38,15 @@ may still move.
                imports, the search path (--path, INOX_PATH), inox
                interface, struct encapsulation per module; read-only
                fields later
+foundation     no new language feature (Marcelo Fortes, 2026-10-31,
+               after external reviews); steps in docs/ARCHITECTURE.md:
+               F0 phase contracts and docs; F1 every E19 gate in CI
+               (nightly) and a version check; F2 source positions in the
+               AST and in every diagnostic; F3 routine headers parsed into
+               structure; F4 written types as structure, generics
+               instantiated on it (high risk); F5 desugaring out of the
+               parser; F6 a typed IR between analysis and codegen, design
+               first (high risk); F7 exception hierarchy in the types
 0.5            ownership and collections: Vector<T> with move semantics and
                Clone, Option<T> and Result<T, E> (TryInteger), Split and
                Join, Self owned; methods of

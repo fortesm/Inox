@@ -9,7 +9,9 @@ Inox: what it is, its syntax and semantics, and who decides — then
 `engineering.md` and `revisions.md` next to it (current version, revision
 and open questions). The detail of a topic is in
 `docs/openspec/specs/{language,stdlib}/<topic>/spec.md`; what the compiler does today is
-`docs/STATUS.md`. This file only says how to work in this repository; it
+`docs/STATUS.md`; how the compiler is built, phase by phase, and which file
+owns what is `docs/ARCHITECTURE.md` (read it before changing the compiler).
+This file only says how to work in this repository; it
 does not restate the language rules, so they cannot drift apart.
 
 When two sources disagree (constitution, capability spec, grammar, manual,
@@ -65,155 +67,11 @@ silently: fix the mismatch explicitly or ask Marcelo for a decision
 
 ## Where things live (compiler sources)
 
-Kept current by the OpenSpec change `compiler-modularization`; read the
-module that owns a concern instead of searching the whole emitter.
-
-- The compiler is the static library `inox-compiler`; the `inox` driver
-  (`main/main.cpp`) and `inox-compiler-tests` (`tests/compiler-unit/`, unit
-  tests of modules that need no whole program, run by both runners) link it.
-- `src/compiler/types/` — the types of a program (OpenSpec change
-  type-representation); depends only on the C++ standard library:
-  - `Type.h` — one immutable type: its kind (Bool, Integer with bits and
-    range, Float, Char, Decimal, String, File, Exception, Struct with
-    fields, Array, Slice, Own, Option, Link, None, Void) and predicates;
-  - `TypeContext.*` — creates and interns every type (equal types are one
-    object, compared by pointer), the built-ins and their aliases, struct
-    declaration and late completion;
-  - `TypeSyntax.*` — reads the written form the parser keeps (`Array[1..N]
-    T`, `Link<T>`) into a tree, for the analyzer to resolve.
-  The analyzer produces types; codegen only reads them (`typeOf`,
-  `declaredType`, `signatureOf` of `SemanticResult`) and never derives one.
-- `src/compiler/ast/AstClone.*` — deep copies of expressions and statements,
-  with an expression rewriter and a type-name rewriter (contracts, generic
-  instances).
-- `src/compiler/ast/ModuleInterface.*` — `inox interface`: a module's public
-  surface printed as Inox from its parsed file.
-- `src/compiler/semantic/ModuleResolution.*` — runs once on the parsed
-  modules, before contract lowering (CANON-3, r3.99): gives declarations of
-  used modules internal qualified names (`Mod::Routine`, `Mod.Type`),
-  resolves every name a module writes (own first, then the one public name
-  of its uses; qualified names, aliases, selective uses), and checks that
-  nothing public exposes something private. Field and method visibility,
-  which need expression types, are the analyzer's (`requireFieldVisible`,
-  `requireMethodVisible`, `requireBuildableHere`).
-
-- `src/compiler/codegen/LlvmIrEmitter.cpp` — the module: globals,
-  declarations, internal helpers, `main` (`LlvmIrEmitter::emit`,
-  `emitFunction`).
-- `codegen/FunctionEmitter.h` — the class that lowers one routine; its
-  member functions live by responsibility in:
-  - `FunctionEmitter.cpp` — construction and the routine body;
-  - `FunctionEmitterControlFlow.cpp` — if, unless, case, loops, Return,
-    Exit, leave, continue, until, with;
-  - `FunctionEmitterExceptions.cpp` — try/except/ensure, Raise, Retry,
-    capture and rethrow (both ABIs);
-  - `FunctionEmitterStatements.cpp` — the statement dispatcher,
-    declarations, assignments, calls;
-  - `FunctionEmitterIo.cpp` — Put/PutLn, Get/GetLn;
-  - `FunctionEmitterStrings.cpp` — String ownership (retain/release, owned
-    slots, statement temporaries) and borrowed reads: in a statement that
-    calls a routine, a String read from State, a `ref` parameter, a pointer
-    path or a `with` binding is retained for the statement;
-  - `FunctionEmitterEnums.cpp` — enum and Range built-ins, and the table of
-    literal names each enum prints from;
-  - `FunctionEmitterSets.cpp` — sets as whole-byte integers, `in` (also
-    `X in A..B`), the set comparisons and functions;
-  - `FunctionEmitterStringFunctions.cpp` — `+` on Strings (one
-    `__inox_str_concat` per chain, `__inox_str_append` in place) and the
-    Std.Strings / Std.StrUtils calls, with their status out-parameter and
-    the module helper `@__inox_str_fault`;
-  - `FunctionEmitterAggregates.cpp` — struct defaults and construction,
-    places, fields, methods, assignment;
-  - `FunctionEmitterArrays.cpp` — indexing, bounds, slices, `Fill`;
-  - `FunctionEmitterExpressions.cpp` — expression types and lowering;
-  - `FunctionEmitterFiles.cpp` — the Std.IOUtils file functions (calls into
-    libinoxrt with `invoke` inside protected regions);
-  - `FunctionEmitterContracts.cpp` — contract checks (`llvm.expect.i1`
-    branch, cold noreturn `__inox_contract_fault`) and struct invariants;
-  - `FunctionEmitterPointers.cpp` — safe pointers (CANON-25): the pointer
-    built-ins, owner frees through generated drop functions, disarming of
-    fresh values, Link construction and generation checks, tombstone
-    blocks for linked locals.
-- `codegen/TypeLayout.*` — the LLVM type of each kind of `types::Type` (the
-  one place an LLVM type is spelled from an Inox type), array storage, struct
-  fields, routine signatures lowered from the analysis, State globals.
-- `codegen/AstQueries.*` — read-only AST walks (`forEachStatement`, "uses
-  try / exceptions").
-- `codegen/LlvmText.*` — names, literals, string constants in IR text.
-- `codegen/Operators.*` — LLVM instruction or predicate of each operator.
-- `codegen/MathBuiltins.*` — Std.Math functions lowered to intrinsics/libm.
-- `codegen/ExceptionAbi.*` — the exception ABI Strategy: `ItaniumExceptionAbi`
-  (landingpad) and `MsvcExceptionAbi` (funclets), chosen once per module by
-  `hostExceptionAbi()`; personality and capture pad. Never test the host
-  OS for exception lowering anywhere else.
-- `codegen/RuntimeAbi.*` — the one table of libinoxrt functions and their
-  exact declarations. Generated code reaches libinoxrt only through
-  `FunctionEmitter::requireRuntime`, which also tells the driver to link it
-  (`LlvmModule::needsInoxRuntime`).
-- `codegen/ModuleContext.h` — what the routines of a module share (module
-  lines, string literal counter, exception ABI, runtime need).
-- `codegen/RuntimeHelpersIr.*` — IR text of the internal helpers: runtime
-  faults (CANON-19), checked arithmetic, console input.
-- Helpers live in `namespace inox::compiler::codegen::detail`.
-- `src/compiler/support/` — the portability layer, the only compiler code
-  that may test the host OS (E12): `Environment`, `FileSystem`, `Platform`,
-  `Process`, and `Version.h` (the version numbers).
-- `contrib/` (community editor support and integrations), `include/` (public C
-  headers, for FFI after 1.0), `libs/` (vendored third-party libraries, none
-  today), `utils/` (programs for Inox users: formatter, package tool) — each
-  README says what belongs there; development tools are in `tools/`.
-- `src/runtime/` — libinoxrt: exception transport, `StringRuntime.cpp`,
-  `StringFunctions.cpp` (concatenation, append and the Std.Strings /
-  Std.StrUtils functions; `UnicodeTables.inc` is generated by
-  `tools/gen_unicode_tables.py`, never edited by hand), `FileRuntime.cpp`, `OwnRuntime.cpp` (generation blocks and per-size free
-  lists of owned objects), `StringBlock.h` (internal); unit tests in
-  `tests/runtime-unit/`.
-- `src/compiler/semantic/SemanticAnalyzer.h` — the analyzer's interface; its
-  member functions live by responsibility in:
-  - `SemanticAnalyzer.cpp` — construction, the entry point, errors;
-  - `SemanticDeclarations.cpp` — routine signatures, scopes and symbols,
-    module items, Type/Const/State sections, structs;
-  - `SemanticBuiltins.cpp` — built-in types and routines (Put/Get, prelude);
-  - `SemanticStatements.cpp` — routine bodies, statements, `case`;
-  - `ConstantEvaluator.cpp` — constant evaluation and folding, static values;
-  - `SemanticExpressions.cpp` — expression typing (operators, indexing,
-    slices, members, side effects);
-  - `SemanticCalls.cpp` — calls, methods, construction, `ref` arguments;
-  - `SemanticTypes.cpp` — written types resolved into `types::Type`, type
-    predicates, assignability;
-  - `SemanticFiles.cpp` — Std.Files / Std.IOUtils: the File type and file
-    functions (visible only with `Use`), the never-copied rule;
-  - `SemanticReuse.cpp` — method reuse (`Struct (TPart)`, `Override`): the
-    members a struct offers through its parts, the declaration errors, and
-    the one AST rewrite of the analyzer (`S.FName` becomes
-    `S.TPerson.FName`, so codegen sees ordinary field access);
-  - `SemanticContracts.cpp` — design by contract (CANON-24): the
-    `__check`/`__pure` intrinsics, read-only contracts, and the places where
-    a struct invariant is checked;
-  - `ContractLowering.cpp` — runs once on the merged program before the
-    analyzer: each routine with `pre`/`pos` (own or inherited through
-    `Override`) becomes a checking wrapper plus a hidden `__Name_body`, and
-    each struct with `invariant` lines gets `TName.__invariant(Self)`; the
-    parser lowers loop `invariant`/`variant` itself;
-  - `SemanticPointers.cpp` — safe pointers (CANON-25): pointer type
-    rules, the pointer built-ins, and the definite-move analysis
-    (`movedOwners_`, merged over every path);
-  - `SemanticDebug.cpp` — Std.Debug: Assert;
-  - `SemanticEnums.cpp` — the ordinal built-ins of enums and Ranges (Ord,
-    Succ, Pred, Low and High of a type) and `TEnum(I)` (CANON-13);
-  - `SemanticSets.cpp` — Set<T>: its base, the literal `[A, B]`, `in`, the
-    six set functions (CANON-13);
-  - `SemanticArrays.cpp` — `Fill(Value)` typed by its target array, and
-    the diagnostic of an array declared without a value (r3.81);
-  - `SemanticStrings.cpp` — Std.Strings / Std.StrUtils (CANON-14): the
-    names visible with their `Use`, argument checks; the table of the
-    functions is `StdStrings.h`, shared with codegen;
-  - `SemanticGenerics.cpp` — generics (CANON-8): templates, inference of
-    type arguments from the arguments or the target, instances of generic
-    routines (copied with `ast::cloneStatements`, checked after the
-    program's routines) and of generic structs; `SemanticResult` keeps the
-    instances, and codegen compiles them like routines of the program;
-  - `SemanticSupport.*` — shared helpers (`semantic::detail`).
+`docs/ARCHITECTURE.md` holds the phases of the compiler, the contract of
+each (what it receives, produces, guarantees and must never do), the
+deviations from that contract, and the map of which file owns each
+concern. Read it before changing the compiler, and update it in the same
+pull request when a phase boundary, an owner or a deviation changes.
 
 ## Known pitfalls (lessons already paid for)
 

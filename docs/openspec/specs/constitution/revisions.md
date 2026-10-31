@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.109
+Canon revision: r3.110
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -514,3 +514,15 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   exploration `concurrency`; design approved as high risk and
   implementation authorized by Marcelo Fortes, 2026-10-31. Change
   `read-only-through-owners`.
+- r3.110 — 2026-10-31 — E11 gains the contract of the compiler phases
+  (what each produces and must never do) and E21 points to
+  `docs/ARCHITECTURE.md`, which details the contracts, the owners of each
+  phase and the deviations of the code (D1-D7), each with its step. The
+  roadmap gains a foundation milestone before 0.5, with no new language
+  feature: F0 phase contracts and documents, F1 every quality gate in CI,
+  F2 source positions, F3 structured routine headers, F4 structured types
+  (high risk), F5 desugaring out of the parser, F6 a typed IR between
+  analysis and codegen (design first, high risk), F7 the exception
+  hierarchy in the types. OpenSpec proposals of compiler changes name the
+  phases they touch. Decided by Marcelo Fortes, 2026-10-31, after three
+  external reviews. Change `phase-contracts`.
