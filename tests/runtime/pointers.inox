@@ -75,9 +75,9 @@ Main :
 
     == A Link to a variable, written through it.
     X Integer := 10
-    Espiao := Link(X)
-    Value(Espiao) := 7
-    PutLn("X ", X, ", spy ", Value(Espiao), ", same ", Same(Espiao, Link(X)))
+    Spy := Link(X)
+    Value(Spy) := 7
+    PutLn("X ", X, ", spy ", Value(Spy), ", same ", Same(Spy, Link(X)))
 
     == A Link to a field and to an element.
     Pt TPoint
