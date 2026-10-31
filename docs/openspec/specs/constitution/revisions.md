@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.113
+Canon revision: r3.114
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -555,3 +555,15 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   (at least 32 KiB) over the base. The depth limits of CANON-19 do not
   change. The place of a semantic error is thread_local. Decided by
   Marcelo Fortes, 2026-10-31. Change `windows-stack`.
+- r3.114 — 2026-10-31 — E11, foundation step F3: the parser builds each
+  routine header as structure (its parameters, with name, `ref`/`ref mut`,
+  receiver and written type, and its result type) and reports the
+  header's syntax errors as parse errors at their token; no later phase
+  reads header tokens. Deviation D3 is closed. Header mistakes the
+  grammar already excluded but the analyzer let through (a trailing comma,
+  a reserved word as a parameter name) are now parse errors; a parameter
+  named Result is checked by name only, and a Public routine's header is
+  checked for private types in its types only. Generated code does not
+  change. The Gates job `ir-snapshot` also accepts the intended
+  differences a change lists in its `ir-snapshot-allow.txt`. Approved by Marcelo Fortes, 2026-10-31 (plan F0-F7). Change
+  `routine-headers`.

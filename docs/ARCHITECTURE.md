@@ -69,7 +69,9 @@ exception objects on the heap, will not show the cost.
 ### 2. Parser
 - **In:** the tokens of one module. **Out:** its AST.
 - **Guarantees:** syntax errors with line and column; the AST says what
-  was written.
+  was written. A routine header is structure (`ast::RoutineHeader`, r3.114):
+  its parameters (name, `ref`/`ref mut`, receiver `Self`/`Self mut`, written
+  type) and its result type; no later phase reads header tokens.
 - **Never:** checks types or names, resolves modules, lowers or desugars a
   construct, invents names (E11).
 - **Owner:** `parser/`, `ast/`.
@@ -137,7 +139,7 @@ that removes it (ROADMAP, "Foundation"); a fix updates this table.
 |---|---|---|---|
 | ~~D1~~ | Closed by F2 (r3.112): AST nodes carry their start (`ast::SourcePosition`; leaves and statements stamped by the parser, kept by `AstClone`); every parse and semantic error prints `path:line:column: kind: message`. The column is that of the statement, declaration or contract clause being checked; a column for each sub-expression comes with the typed IR (F6) | E14 | F2 |
 | D2 | The parser desugars: chained assignment (`pendingStatements_`), `with` bindings (`__with_N`), loop `invariant`/`variant` (`lowerLoopContracts`) | E11 | F5 |
-| D3 | The parser keeps routine headers as text tokens (`signatureTokens`), which the analyzer parses (`registerFunctionSignatureIn`) | E11 | F3 |
+| ~~D3~~ | Closed by F3 (r3.114): the parser builds each routine header (`ast::RoutineHeader`: `ParameterDeclaration` name, mode, receiver, written type; the result type) and reports its syntax errors; module resolution, contract lowering, generics and `inox interface` read that structure, and the analyzer checks only what types say (`registerFunctionSignatureIn`). Parameter and result types stay text until F4 | E11 | F3 |
 | D4 | Types are text in the AST (`typeName`), read by `types::TypeSyntax` in phase 5; generic instances rewrite type names as text (`TypeNameRewriter`) | E11 (steps 3-4) | F4 |
 | D5 | Codegen reads the raw AST beside 13 side tables of `SemanticResult`; no typed or lowered representation between phases 5 and 6 | E11 (steps 3-5) | F6 |
 | D6 | Exception handlers match the written type name; the hierarchy is not in `types::Type` | E11 | F7 |

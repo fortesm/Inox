@@ -1,0 +1,3 @@
+# Intended differences of the IR snapshot (E19), read by the Gates job.
+# The header error of `mut X T` is now a parse error at the token (same message).
+tests/diagnostics/mut-parameter-reserved.inox

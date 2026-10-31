@@ -30,6 +30,11 @@ bool isPointerTypeWord(std::string_view normalized)
 constexpr const char* kDiscardOnlyMessage =
     "'_' is not a name: it only discards the result of a call, _ := F(X) (r3.93)";
 
+// CANON-10: `mut X T` is reserved; a parameter is an immutable copy unless
+// written `ref` or `ref mut`.
+constexpr const char* kMutableParameterMessage =
+    "mutable parameters are reserved for a future Inox version: use a local variable or return a new value";
+
 constexpr const char* kAssignmentInExpressionMessage =
     "':=' is a statement, not an expression (CANON-5): an assignment cannot "
     "appear inside an expression, a condition or an initializer";
@@ -2247,67 +2252,33 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
         }
     }
 
-    std::vector<std::string> signatureTokens;
-
-    while (!isAtEnd() && !check(TokenKind::Colon)) {
-        // CANON-13: an array type in a signature is one type token,
-        // `Array[1..3] Integer`, so later phases read it like any type name;
-        // so is a generic type, `Slice<T>`, `Own<T>`, `TPair<K, V>` (CANON-8).
-        if (check(TokenKind::Identifier) && current_ + 2 < tokens_.size() &&
-            tokens_[current_ + 1].kind == TokenKind::Dot && tokens_[current_ + 2].kind == TokenKind::Identifier &&
-            tokens_[current_ + 2].location.line == peek().location.line) {
-            // r3.99 (A2): a qualified type, `Bank.Accounts.TAccount`.
-            signatureTokens.push_back(parseTypeName("expected type name"));
-            continue;
-        }
-        if (check(TokenKind::Identifier) && current_ + 1 < tokens_.size() &&
-            tokens_[current_ + 1].location.line == peek().location.line &&
-            ((peek().normalized == "array" && tokens_[current_ + 1].kind == TokenKind::LeftBracket) ||
-             tokens_[current_ + 1].kind == TokenKind::Less)) {
-            signatureTokens.push_back(parseTypeName("expected type name"));
-            continue;
-        }
-        if (check(TokenKind::Underscore)) {
-            errorAtCurrent(kDiscardOnlyMessage);
-        }
-        signatureTokens.push_back(tokenText(advance()));
-    }
-
-    if (signatureTokens.size() >= 2 && signatureTokens[0] == "(" && signatureTokens[1] == ")") {
-        errorAt(name, "empty parentheses are not allowed in declarations; omit parentheses when there are no parameters");
-    }
-
     // r3.99: `Public` is the last word of a header, after the result type
     // and `Override`: `TName.Method(Self) Type Override Public :`.
-    const auto lowered = [](std::string word) {
-        for (char& ch : word) {
-            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    for (std::size_t index = current_; index < tokens_.size() && tokens_[index].kind != TokenKind::Colon; ++index) {
+        if (tokens_[index].kind == TokenKind::Underscore) {
+            errorAt(tokens_[index], kDiscardOnlyMessage);
         }
-        return word;
-    };
-    bool isPublic = false;
-    if (!signatureTokens.empty() && lowered(signatureTokens.back()) == "public") {
-        signatureTokens.pop_back();
-        isPublic = true;
-    }
-    for (const std::string& token : signatureTokens) {
-        if (lowered(token) == "public") {
+        if (tokens_[index].normalized == "public" && index + 1 < tokens_.size() &&
+            tokens_[index + 1].kind != TokenKind::Colon) {
             errorAt(name, "'Public' is the last word of a header, just before ':' (r3.99): " + functionName +
                               "(...) Type Override Public :");
         }
     }
+    ast::RoutineHeader header = parseRoutineHeader(name, functionName);
 
     // `Override` ends the signature of a method that replaces a reused one
     // (CANON-9): `TName.Method(Self) Type Override :`.
     bool isOverride = false;
-    const auto isOverrideWord = [&](const std::string& word) { return lowered(word) == "override"; };
-    if (!signatureTokens.empty() && isOverrideWord(signatureTokens.back())) {
+    if (matchKeyword("override")) {
         if (functionName.find('.') == std::string::npos) {
             errorAt(name, "'Override' marks a method that replaces a reused one (CANON-9); " +
                               functionName + " is not a method");
         }
-        signatureTokens.pop_back();
         isOverride = true;
+    }
+    const bool isPublic = matchKeyword("public");
+    if (!check(TokenKind::Colon) && !isAtEnd()) {
+        errorAtCurrent("invalid return type in function: " + functionName);
     }
 
     consume(TokenKind::Colon, "expected ':' after function signature");
@@ -2332,13 +2303,74 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
 
     auto declaration = std::make_unique<ast::FunctionDeclaration>(
         std::move(functionName),
-        std::move(signatureTokens),
+        std::move(header),
         std::move(body),
         isOverride,
         std::move(contracts),
         std::move(typeParameters));
     declaration->setPublic(isPublic);
     return declaration;
+}
+
+// The parameters and result type of a routine header (F3, r3.114):
+// `(ref mut A T, B U) R`. A method's first parameter may be its receiver,
+// `Self` or `Self mut`, written without a type.
+ast::RoutineHeader Parser::parseRoutineHeader(const lexer::Token& name, const std::string& functionName)
+{
+    ast::RoutineHeader header;
+    const bool isMethod = functionName.find('.') != std::string::npos;
+    if (match(TokenKind::LeftParen)) {
+        if (check(TokenKind::RightParen)) {
+            errorAt(name, "empty parentheses are not allowed in declarations; omit parentheses when there are no "
+                          "parameters");
+        }
+        do {
+            ast::ParameterDeclaration parameter;
+            // ADR-0016: `ref X T` and `ref mut X T` pass by reference.
+            if (matchKeyword("ref")) {
+                parameter.mode = ast::ParameterDeclaration::Mode::Ref;
+                if (matchKeyword("mut")) {
+                    parameter.mode = ast::ParameterDeclaration::Mode::RefMut;
+                }
+                if (isMethod && header.parameters.empty()) {
+                    errorAt(previous(), "the receiver of a method is Self or Self mut, never ref (ADR-0016)");
+                }
+            }
+            if (checkKeyword("mut")) {
+                errorAtCurrent(kMutableParameterMessage);
+            }
+            if (!check(TokenKind::Identifier)) {
+                errorAtCurrent("expected parameter name in function: " + functionName);
+            }
+            parameter.name = advance().lexeme;
+            if (isMethod && header.parameters.empty() && previous().normalized == "self") {
+                // `Self mut` may change the receiver; `Self` only reads it
+                // (CANON-9). A method of a built-in type (`String.Trim`)
+                // has the same two receivers.
+                parameter.isReceiver = true;
+                if (matchKeyword("mut")) {
+                    parameter.mode = ast::ParameterDeclaration::Mode::RefMut;
+                }
+            } else {
+                if (checkKeyword("mut")) {
+                    errorAtCurrent(kMutableParameterMessage);
+                }
+                if (!check(TokenKind::Identifier)) {
+                    errorAtCurrent("expected type for parameter: " + parameter.name);
+                }
+                parameter.typeName = parseTypeName("expected type name");
+            }
+            header.parameters.push_back(std::move(parameter));
+            if (!check(TokenKind::Comma) && !check(TokenKind::RightParen)) {
+                errorAtCurrent("expected ',' or ')' in function: " + functionName);
+            }
+        } while (match(TokenKind::Comma));
+        consume(TokenKind::RightParen, "expected ')' in function: " + functionName);
+    }
+    if (check(TokenKind::Identifier)) {
+        header.resultTypeName = parseTypeName("expected type name");
+    }
+    return header;
 }
 
 // `<T, U>`: distinct names, on the line of the name they follow.

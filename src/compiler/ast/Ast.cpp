@@ -189,14 +189,14 @@ const std::vector<std::string>& RawDeclaration::tokens() const
 }
 
 FunctionDeclaration::FunctionDeclaration(std::string name,
-                                         std::vector<std::string> signatureTokens,
+                                         RoutineHeader header,
                                          std::vector<StatementPtr> body,
                                          bool isOverride,
                                          std::vector<ContractClause> contracts,
                                          std::vector<std::string> typeParameters)
     : AstNode(AstNodeKind::FunctionDeclaration),
       name_(std::move(name)),
-      signatureTokens_(std::move(signatureTokens)),
+      header_(std::move(header)),
       body_(std::move(body)),
       isOverride_(isOverride),
       contracts_(std::move(contracts)),
@@ -248,11 +248,6 @@ std::vector<StatementPtr> FunctionDeclaration::takeBody()
 const std::string& FunctionDeclaration::name() const
 {
     return name_;
-}
-
-const std::vector<std::string>& FunctionDeclaration::signatureTokens() const
-{
-    return signatureTokens_;
 }
 
 const std::vector<StatementPtr>& FunctionDeclaration::body() const

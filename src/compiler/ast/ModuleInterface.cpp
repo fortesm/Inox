@@ -25,19 +25,27 @@ std::string typeParameterList(const std::vector<std::string>& parameters)
     return text + ">";
 }
 
-// The header tokens the parser kept, `(`, `Self`, `mut`, `,` ..., spaced as
-// a program writes them.
-std::string signatureText(const std::vector<std::string>& tokens)
+// A routine header as a program writes it: `(Self mut, ref A T) R`.
+std::string headerText(const RoutineHeader& header)
 {
     std::string text;
-    for (std::size_t index = 0; index < tokens.size(); ++index) {
-        const std::string& token = tokens[index];
-        const bool glueLeft = token == "," || token == ")" || (index == 0 && token == "(");
-        const bool previousGlues = index > 0 && tokens[index - 1] == "(";
-        if (!glueLeft && !previousGlues) {
-            text += ' ';
+    for (const ParameterDeclaration& parameter : header.parameters) {
+        text += text.empty() ? "(" : ", ";
+        if (parameter.isReceiver) {
+            text += parameter.name;
+            text += parameter.mode == ParameterDeclaration::Mode::RefMut ? " mut" : "";
+            continue;
         }
-        text += token;
+        text += parameter.mode == ParameterDeclaration::Mode::Ref      ? "ref "
+                : parameter.mode == ParameterDeclaration::Mode::RefMut ? "ref mut "
+                                                                       : "";
+        text += parameter.name + " " + parameter.typeName;
+    }
+    if (!text.empty()) {
+        text += ")";
+    }
+    if (!header.resultTypeName.empty()) {
+        text += " " + header.resultTypeName;
     }
     return text;
 }
@@ -190,7 +198,7 @@ std::string moduleInterface(const ModuleNode& module)
             }
             routines << '\n'
                      << function.name() << typeParameterList(function.typeParameters())
-                     << signatureText(function.signatureTokens()) << (function.isOverride() ? " Override" : "")
+                     << headerText(function.header()) << (function.isOverride() ? " Override" : "")
                      << " Public\n";
             for (const ContractClause& clause : function.contracts()) {
                 routines << "    " << contractLine(clause) << '\n';

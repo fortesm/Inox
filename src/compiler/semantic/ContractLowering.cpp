@@ -231,8 +231,8 @@ private:
             return;
         }
         // Result names the returned value in a pos: no parameter may take it.
-        for (const std::string& token : function.signatureTokens()) {
-            if (lower(token) == "result" && hasPos(routine)) {
+        for (const ast::ParameterDeclaration& parameter : function.parameters()) {
+            if (lower(parameter.name) == "result" && hasPos(routine)) {
                 throw SemanticError(function.name() + ": a parameter named Result would hide the value 'pos' "
                                     "calls Result (CANON-24)");
             }
@@ -264,19 +264,7 @@ private:
 
     static bool hasResult(const ast::FunctionDeclaration& function)
     {
-        const auto& tokens = function.signatureTokens();
-        if (tokens.empty()) {
-            return false;
-        }
-        if (tokens.front() != "(") {
-            return true;  // `F Integer :` — no parameters, a result type
-        }
-        for (std::size_t index = 0; index < tokens.size(); ++index) {
-            if (tokens[index] == ")") {
-                return index + 1 < tokens.size();
-            }
-        }
-        return false;
+        return !function.resultTypeName().empty();
     }
 
     // The methods an Override replaces: for each part (at any depth) the
@@ -512,13 +500,13 @@ private:
 
         // A generic routine's wrapper and body are generic too: each instance
         // of the wrapper calls the instance of the body for the same types.
-        added_.push_back(std::make_unique<ast::FunctionDeclaration>(bodyName, function.signatureTokens(),
+        added_.push_back(std::make_unique<ast::FunctionDeclaration>(bodyName, function.header(),
                                                                     function.takeBody(), false,
                                                                     std::vector<ast::ContractClause>{},
                                                                     function.typeParameters()));
         added_.back()->copyModuleFrom(function);
         added_.back()->setPosition(function.position());
-        auto wrapper = std::make_unique<ast::FunctionDeclaration>(name, function.signatureTokens(),
+        auto wrapper = std::make_unique<ast::FunctionDeclaration>(name, function.header(),
                                                                   std::move(statements), function.isOverride(),
                                                                   std::vector<ast::ContractClause>{},
                                                                   function.typeParameters());
@@ -600,30 +588,10 @@ private:
     static std::vector<Parameter> parameterList(const ast::FunctionDeclaration& function)
     {
         std::vector<Parameter> parameters;
-        const auto& tokens = function.signatureTokens();
-        if (tokens.empty() || tokens.front() != "(") {
-            return parameters;
-        }
-        std::size_t index = 1;
-        while (index < tokens.size() && tokens[index] != ")") {
-            bool byReference = false;
-            if (lower(tokens[index]) == "ref") {
-                byReference = true;
-                ++index;
-                if (index < tokens.size() && lower(tokens[index]) == "mut") {
-                    ++index;
-                }
-            }
-            const std::string name = tokens[index++];
-            std::string type;
-            while (index < tokens.size() && tokens[index] != "," && tokens[index] != ")") {
-                type += tokens[index++];  // the type (or `mut` after Self)
-            }
-            if (lower(name) != "self") {
-                parameters.push_back(Parameter{name, type, byReference});
-            }
-            if (index < tokens.size() && tokens[index] == ",") {
-                ++index;
+        for (const ast::ParameterDeclaration& parameter : function.parameters()) {
+            if (!parameter.isReceiver) {
+                parameters.push_back(Parameter{parameter.name, parameter.typeName,
+                                               parameter.mode != ast::ParameterDeclaration::Mode::Value});
             }
         }
         return parameters;
@@ -633,28 +601,8 @@ private:
     static std::vector<std::string> parameterNames(const ast::FunctionDeclaration& function)
     {
         std::vector<std::string> names;
-        const auto& tokens = function.signatureTokens();
-        if (tokens.empty() || tokens.front() != "(") {
-            return names;
-        }
-        std::size_t index = 1;
-        while (index < tokens.size() && tokens[index] != ")") {
-            if (lower(tokens[index]) == "ref") {
-                ++index;
-                if (index < tokens.size() && lower(tokens[index]) == "mut") {
-                    ++index;
-                }
-            }
-            const std::string name = tokens[index++];
-            if (lower(name) != "self") {
-                names.push_back(name);
-            }
-            while (index < tokens.size() && tokens[index] != "," && tokens[index] != ")") {
-                ++index;  // the type (or `mut` after Self)
-            }
-            if (index < tokens.size() && tokens[index] == ",") {
-                ++index;
-            }
+        for (const Parameter& parameter : parameterList(function)) {
+            names.push_back(parameter.name);
         }
         return names;
     }
@@ -675,7 +623,9 @@ private:
                                            "invariant violated: " + info.name + ": " + text));
             }
             auto invariant = std::make_unique<ast::FunctionDeclaration>(
-                info.name + ".__invariant", std::vector<std::string>{"(", "Self", ")"}, std::move(statements), false);
+                info.name + ".__invariant",
+                ast::RoutineHeader{{ast::ParameterDeclaration{"Self", "", ast::ParameterDeclaration::Mode::Value, true}}, ""},
+                std::move(statements), false);
             if (info.declaration != nullptr) {
                 invariant->setModule(info.declaration->module);
             }
