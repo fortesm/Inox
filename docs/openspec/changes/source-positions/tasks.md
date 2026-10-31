@@ -44,3 +44,13 @@ before parsing, and the analyzer no longer catches: a `SemanticError` takes
 the place the analyzer keeps in `diagnosticPlace()` when it is made. Every
 frame on the path is now at or below its size on main (`-fstack-usage`);
 `docs/ARCHITECTURE.md` records the stack budget rule.
+
+A second Windows run still overflowed. A temporary job measured, on
+Windows Debug, the smallest stack reserve with which the boundary tests
+pass: parsing alone 451 KiB on main and here, but the whole compilation
+961 KiB on main and 1224 KiB here. Under the MSVC ABI a thrown object lives
+in the frame of the function that throws it, so the 48 bytes added to
+`SemanticError` (a position and a module) grew every frame with a
+`throw SemanticError(...)`, which on Linux (objects on the heap) cost
+nothing. `SemanticError` is back to its size; the place of the last error is
+kept beside it (`semanticErrorPlace()`), which the driver prints.

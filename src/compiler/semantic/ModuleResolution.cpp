@@ -859,10 +859,10 @@ private:
 
 public:
     // An error names the item being resolved (E14, change source-positions).
-    void locate(SemanticError& error) const
+    void locate() const
     {
-        if (!error.position().known() && item_ != nullptr) {
-            error.locate(item_->position(), itemModule_);
+        if (item_ != nullptr) {
+            locateSemanticError(item_->position(), itemModule_);
         }
     }
 
@@ -883,8 +883,8 @@ std::unique_ptr<ast::ModuleNode> resolveModules(std::vector<std::unique_ptr<ast:
     Resolver resolver(std::move(modules));
     try {
         return resolver.run();
-    } catch (SemanticError& error) {
-        resolver.locate(error);
+    } catch (const SemanticError&) {
+        resolver.locate();
         throw;
     }
 }

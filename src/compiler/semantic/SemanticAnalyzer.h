@@ -40,25 +40,22 @@ void beginDiagnosticPlace();
 void clearDiagnosticPosition();
 void endDiagnosticPlace();
 
-// A semantic diagnostic. The analyzer attaches where it was found (E14,
-// change source-positions): the module and the start of the statement or
-// declaration being checked; the driver turns the module into its file.
+// A semantic diagnostic. Where it was found (E14, change source-positions)
+// is kept beside it, not in it: on Windows a thrown object lives in the frame
+// of the function that throws it, and a larger SemanticError would grow every
+// frame that can throw one (most of the recursive analysis). The compiler
+// stops at the first error, so one place is enough: `semanticErrorPlace()`
+// is the place of the last SemanticError made, which the driver prints.
 class SemanticError final : public std::runtime_error {
 public:
     explicit SemanticError(std::string message);
-
-    const ast::SourcePosition& position() const { return position_; }
-    const std::string& module() const { return module_; }
-    void locate(ast::SourcePosition position, std::string module)
-    {
-        position_ = position;
-        module_ = std::move(module);
-    }
-
-private:
-    ast::SourcePosition position_;
-    std::string module_;
 };
+
+// The place of the last SemanticError made: what the analyzer was checking
+// when it was made, or what module resolution and contract lowering attach.
+const DiagnosticPlace& semanticErrorPlace();
+// Gives the last SemanticError a place, when it has none.
+void locateSemanticError(ast::SourcePosition position, const std::string& module);
 
 // A type of the analysis; null while not known (OpenSpec change
 // type-representation).

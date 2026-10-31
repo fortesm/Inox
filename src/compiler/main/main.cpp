@@ -177,12 +177,13 @@ void printParseError(const inox::compiler::parser::ParseError& error, const std:
 
 void printSemanticError(const inox::compiler::semantic::SemanticError& error)
 {
+    const inox::compiler::semantic::DiagnosticPlace& place = inox::compiler::semantic::semanticErrorPlace();
     std::string where;
-    if (const auto file = moduleFiles().find(lowerName(error.module())); file != moduleFiles().end()) {
+    if (const auto file = moduleFiles().find(lowerName(place.module)); file != moduleFiles().end()) {
         where = displayPath(file->second) + ':';
     }
-    if (error.position().known()) {
-        where += std::to_string(error.position().line) + ':' + std::to_string(error.position().column) + ':';
+    if (place.position.known()) {
+        where += std::to_string(place.position.line) + ':' + std::to_string(place.position.column) + ':';
     }
     std::cerr << where << (where.empty() ? "" : " ") << "semantic error: " << error.what() << '\n';
 }

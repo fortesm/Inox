@@ -65,12 +65,37 @@ void endDiagnosticPlace()
     diagnosticPlace().active = false;
 }
 
+namespace {
+
+DiagnosticPlace& lastErrorPlace()
+{
+    static DiagnosticPlace place;
+    return place;
+}
+
+} // namespace
+
 SemanticError::SemanticError(std::string message)
     : std::runtime_error(shownMessage(std::move(message)))
 {
-    if (const DiagnosticPlace& place = diagnosticPlace(); place.active && place.position.known()) {
-        position_ = place.position;
-        module_ = place.module;
+    const DiagnosticPlace& place = diagnosticPlace();
+    if (place.active && place.position.known()) {
+        lastErrorPlace() = place;
+    } else {
+        lastErrorPlace() = DiagnosticPlace{};
+    }
+}
+
+const DiagnosticPlace& semanticErrorPlace()
+{
+    return lastErrorPlace();
+}
+
+void locateSemanticError(ast::SourcePosition position, const std::string& module)
+{
+    if (!lastErrorPlace().position.known() && position.known()) {
+        lastErrorPlace().position = position;
+        lastErrorPlace().module = module;
     }
 }
 

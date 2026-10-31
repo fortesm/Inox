@@ -42,7 +42,8 @@ leaves and statements (`leafLiteral`, `leafIdentifier`, `stampStatement`);
 contract lowering attach the item they were working on; while the
 analyzer runs, it keeps the statement or declaration it checks in
 `diagnosticPlace()` (`notePosition`), and a `SemanticError` takes that place
-when it is made: no try and no added frame below the analysis. The driver
+when it is made and keeps it beside the error (`semanticErrorPlace()`): no
+try, no added frame below the analysis, and no larger exception object. The driver
 turns the module into its file (`moduleFiles`).
 
 **Stack budget.** The compiler runs on the 1 MiB main-thread stack of
@@ -52,7 +53,10 @@ the parser or the analyzer recurses (the recursive functions themselves,
 and those below them: `main`, the module loader, `parseSource`,
 `Parser::parseModule`, `SemanticAnalyzer::analyze`) must not grow its
 frame: compare with `-fstack-usage` against main, and move new work into
-out-of-line helpers.
+out-of-line helpers. Under the MSVC ABI a thrown exception object lives in
+the frame of the function that throws it: never make `SemanticError` (or
+any exception thrown during the recursion) larger; Linux, which allocates
+exception objects on the heap, will not show the cost.
 
 ### 1. Lexer
 - **In:** the text of one file. **Out:** tokens with line and column.

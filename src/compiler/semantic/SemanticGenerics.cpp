@@ -570,6 +570,7 @@ const FunctionSignature& SemanticAnalyzer::instantiateRoutine(const ast::Functio
     auto made = std::make_unique<ast::FunctionDeclaration>(name, std::move(tokens),
                                                            ast::cloneStatements(generic.body(), rewrite));
     made->copyModuleFrom(generic);
+    made->setPosition(generic.position());  // an instance is where its template is
     const ast::FunctionDeclaration& instance = result_.addInstance(std::move(made));
     symbols_.globalScope().declare(name, SymbolKind::Function);
     try {

@@ -195,9 +195,9 @@ private:
     {
         try {
             work();
-        } catch (SemanticError& error) {
-            if (!error.position().known() && routine.declaration != nullptr) {
-                error.locate(routine.declaration->position(), routine.declaration->module());
+        } catch (const SemanticError&) {
+            if (routine.declaration != nullptr) {
+                locateSemanticError(routine.declaration->position(), routine.declaration->module());
             }
             throw;
         }
