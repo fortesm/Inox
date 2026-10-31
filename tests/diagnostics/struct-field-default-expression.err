@@ -1,1 +1,1 @@
-parse error at 11:25: the default of struct field FX must be one literal (CANON-9)
+:11:25: parse error: the default of struct field FX must be one literal (CANON-9)

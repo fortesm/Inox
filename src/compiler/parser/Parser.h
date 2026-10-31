@@ -28,9 +28,13 @@ public:
     ParseError(std::string message, lexer::SourceLocation location);
 
     const lexer::SourceLocation& location() const;
+    // The file the error is in, set by the driver (E14).
+    const std::string& path() const { return path_; }
+    void setPath(std::string path) { path_ = std::move(path); }
 
 private:
     lexer::SourceLocation location_;
+    std::string path_;
 };
 
 class Parser {
@@ -218,6 +222,14 @@ private:
     // Statements a loop contract puts before the loop (the variant's start
     // value); appendStatement() emits them before the statement just parsed.
     std::vector<ast::StatementPtr> precedingStatements_;
+
+    // Source positions (change source-positions).
+    ast::ExpressionPtr leafLiteral(ast::LiteralKind kind);
+    void beginStatement();
+    void finishStatement(std::vector<ast::StatementPtr>& statements, ast::StatementPtr statement);
+    ast::ExpressionPtr leafIdentifier();
+    void stampStatement(ast::Statement& statement);
+    std::vector<std::size_t> statementStarts_;  // token index of each statement being parsed
 };
 
 } // namespace inox::compiler::parser

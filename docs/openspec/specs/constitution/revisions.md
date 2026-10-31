@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.111
+Canon revision: r3.112
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -535,3 +535,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   (the version and the canon revision agree in every document). Deviation
   D7 of `docs/ARCHITECTURE.md` is closed. Foundation step F1, decided by
   Marcelo Fortes, 2026-10-31. Change `ci-gates`.
+- r3.112 — 2026-10-31 — E14 conformance: every parse and semantic error
+  says where, as `path:line:column: parse error: message` and
+  `path:line:column: semantic error: message`. AST nodes carry where they
+  start; the line and column of a semantic error are those of the
+  statement, declaration or contract clause being checked (of the item,
+  for module resolution), in the file of its module; an error in a generic
+  instance points at the line of the generic body. Before, a parse error
+  read `parse error at line:column:` without the file, and a semantic error
+  had no position. Deviation D1 of `docs/ARCHITECTURE.md` is closed.
+  Foundation step F2, decided by Marcelo Fortes, 2026-10-31. Change
+  `source-positions`.

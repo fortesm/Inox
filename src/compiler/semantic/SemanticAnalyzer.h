@@ -27,9 +27,24 @@ namespace detail {
 struct IntegerConstant;
 }
 
+// A semantic diagnostic. The analyzer attaches where it was found (E14,
+// change source-positions): the module and the start of the statement or
+// declaration being checked; the driver turns the module into its file.
 class SemanticError final : public std::runtime_error {
 public:
     explicit SemanticError(std::string message);
+
+    const ast::SourcePosition& position() const { return position_; }
+    const std::string& module() const { return module_; }
+    void locate(ast::SourcePosition position, std::string module)
+    {
+        position_ = position;
+        module_ = std::move(module);
+    }
+
+private:
+    ast::SourcePosition position_;
+    std::string module_;
 };
 
 // A type of the analysis; null while not known (OpenSpec change
@@ -386,6 +401,13 @@ private:
     bool hasMain_ = false;
     // r3.99: the program and the module whose declaration is analyzed.
     const ast::ModuleNode* program_ = nullptr;
+    // Where the analysis is (change source-positions): the start of the
+    // statement or declaration being checked, and its module.
+    void notePosition(const ast::SourcePosition& position);
+    void notePosition(const ast::AstNode& item);
+    const SemanticResult& analyzeProgram(const ast::ModuleNode& module);
+    ast::SourcePosition errorPosition_;
+    std::string errorModule_;
     std::string currentModule_;
     void enterModule(const std::string& module);
     std::unordered_map<std::string, std::string> typeModules_;

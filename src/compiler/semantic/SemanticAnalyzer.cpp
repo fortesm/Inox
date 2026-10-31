@@ -57,7 +57,49 @@ SemanticAnalyzer::SemanticAnalyzer()
     declareBuiltinTypes();
 }
 
+// A diagnostic says where it was found (E14, change source-positions): the
+// start of the statement or declaration being checked, in its module.
 const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
+{
+    try {
+        return analyzeProgram(module);
+    } catch (SemanticError& error) {
+        if (!error.position().known() && errorPosition_.known()) {
+            error.locate(errorPosition_, errorModule_);
+        }
+        throw;
+    }
+}
+
+// A position inside the item being checked: its module stays the item's.
+void SemanticAnalyzer::notePosition(const ast::SourcePosition& position)
+{
+    if (position.known()) {
+        errorPosition_ = position;
+    }
+}
+
+// A module item (a routine, a section): its position and its module.
+void SemanticAnalyzer::notePosition(const ast::AstNode& item)
+{
+    errorPosition_ = item.position();
+    switch (item.kind()) {
+    case ast::AstNodeKind::FunctionDeclaration:
+        errorModule_ = static_cast<const ast::FunctionDeclaration&>(item).module();
+        break;
+    case ast::AstNodeKind::SectionDeclaration:
+        errorModule_ = static_cast<const ast::SectionDeclaration&>(item).module();
+        break;
+    default:
+        errorModule_ = currentModule_;
+        break;
+    }
+    if (errorModule_.empty()) {
+        errorModule_ = program_ != nullptr ? program_->name() : std::string{};
+    }
+}
+
+const SemanticResult& SemanticAnalyzer::analyzeProgram(const ast::ModuleNode& module)
 {
     result_.clear();
     program_ = &module;
@@ -75,6 +117,7 @@ const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
 
     registerFunctionSignatures(module);
 
+    errorPosition_ = {};  // the errors of the whole program have no position
     if (!hasMain_) {
         throw SemanticError("module must declare Main");
     }

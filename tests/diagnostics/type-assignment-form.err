@@ -1,1 +1,1 @@
-parse error at 10:12: expected 'Struct', 'Range', 'Enum' or '(' after the type name TCount (CANON-5)
+:10:12: parse error: expected 'Struct', 'Range', 'Enum' or '(' after the type name TCount (CANON-5)

@@ -212,7 +212,12 @@ std::unique_ptr<ast::ModuleNode> Parser::parseModule(std::string name)
     auto module = std::make_unique<ast::ModuleNode>(std::move(name));
 
     while (!isAtEnd()) {
-        module->items().push_back(parseModuleItem());
+        const lexer::SourceLocation start = peek().location;
+        ast::AstNodePtr item = parseModuleItem();
+        if (item != nullptr && !item->position().known()) {
+            item->setPosition({start.line, start.column});
+        }
+        module->items().push_back(std::move(item));
     }
 
     return module;
@@ -354,9 +359,65 @@ ast::StatementPtr Parser::parseStatement()
     return endSimpleStatement(parseExpressionStatement());
 }
 
+// The leaf just consumed, stamped with its position (change
+// source-positions). Out of line, so parsePrimary keeps its stack frame.
+ast::ExpressionPtr Parser::leafLiteral(ast::LiteralKind kind)
+{
+    const lexer::Token& token = previous();
+    std::string text = kind == ast::LiteralKind::Integer || kind == ast::LiteralKind::Float ? tokenText(token)
+                       : kind == ast::LiteralKind::Boolean                                  ? token.normalized
+                                                                                            : token.lexeme;
+    auto node = std::make_unique<ast::LiteralExpression>(kind, std::move(text));
+    node->setPosition({previous().location.line, previous().location.column});
+    return node;
+}
+
+ast::ExpressionPtr Parser::leafIdentifier()
+{
+    auto node = std::make_unique<ast::IdentifierExpression>(previous().lexeme);
+    node->setPosition({previous().location.line, previous().location.column});
+    return node;
+}
+
+void Parser::beginStatement()
+{
+    statementStarts_.push_back(current_);
+}
+
+// A statement, and the statements its desugaring adds before and after it,
+// start where its first token is (change source-positions). The start is
+// kept on a member stack, not in the recursive frames.
+void Parser::stampStatement(ast::Statement& statement)
+{
+    const lexer::Token& start = tokens_[statementStarts_.back()];
+    const ast::SourcePosition position{start.location.line, start.location.column};
+    statementStarts_.pop_back();
+    if (!statement.position().known()) {
+        statement.setPosition(position);
+    }
+    for (auto& preceding : precedingStatements_) {
+        if (!preceding->position().known()) {
+            preceding->setPosition(position);
+        }
+    }
+    for (auto& pending : pendingStatements_) {
+        if (!pending->position().known()) {
+            pending->setPosition(position);
+        }
+    }
+}
+
+// appendStatement is on the recursion of nested blocks: it keeps no local,
+// and its work is done out of line, in finishStatement.
 void Parser::appendStatement(std::vector<ast::StatementPtr>& statements)
 {
-    ast::StatementPtr statement = parseStatement();
+    beginStatement();
+    finishStatement(statements, parseStatement());
+}
+
+void Parser::finishStatement(std::vector<ast::StatementPtr>& statements, ast::StatementPtr statement)
+{
+    stampStatement(*statement);
     for (auto& preceding : precedingStatements_) {
         statements.push_back(std::move(preceding));
     }
@@ -933,34 +994,29 @@ ast::ExpressionPtr Parser::parsePrimary()
     }
 
     if (match(TokenKind::IntegerLiteral)) {
-        return std::make_unique<ast::LiteralExpression>(
-            ast::LiteralKind::Integer, tokenText(previous()));
+        return leafLiteral(ast::LiteralKind::Integer);
     }
 
     if (match(TokenKind::FloatLiteral)) {
-        return std::make_unique<ast::LiteralExpression>(
-            ast::LiteralKind::Float, tokenText(previous()));
+        return leafLiteral(ast::LiteralKind::Float);
     }
 
     if (match(TokenKind::StringLiteral)) {
-        return std::make_unique<ast::LiteralExpression>(
-            ast::LiteralKind::String, previous().lexeme);
+        return leafLiteral(ast::LiteralKind::String);
     }
 
     if (match(TokenKind::CharLiteral)) {
-        return std::make_unique<ast::LiteralExpression>(
-            ast::LiteralKind::Char, previous().lexeme);
+        return leafLiteral(ast::LiteralKind::Char);
     }
 
     if (checkKeyword("true") || checkKeyword("false")) {
-        const lexer::Token& token = advance();
-        return std::make_unique<ast::LiteralExpression>(
-            ast::LiteralKind::Boolean, token.normalized);
+        advance();
+        return leafLiteral(ast::LiteralKind::Boolean);
     }
 
     if (check(TokenKind::Identifier)) {
-        const lexer::Token& token = advance();
-        return std::make_unique<ast::IdentifierExpression>(token.lexeme);
+        advance();
+        return leafIdentifier();
     }
 
     // r3.81: the set function `With(S, X)` became `Include(S, X)`; `with`
@@ -1870,6 +1926,7 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
     const lexer::Token& name = consume(TokenKind::Identifier, "expected a type name in the Type section");
     declaration.name = name.lexeme;
     declaration.line = name.location.line;
+    declaration.position = {name.location.line, name.location.column};
     if (check(TokenKind::Less) && peek().location.line == name.location.line) {
         declaration.typeParameters = parseTypeParameters(name);
         if (!checkKeyword("struct")) {
@@ -2083,6 +2140,7 @@ ast::VariableDeclaration Parser::parseSectionVariable(ast::SectionKind sectionKi
 {
     const bool isConst = sectionKind == ast::SectionKind::Const;
     ast::VariableDeclaration declaration;
+    declaration.position = {peek().location.line, peek().location.column};
     if (check(TokenKind::ColonEqual)) {
         errorAtCurrent("expected a name before ':='");
     }
@@ -2090,6 +2148,7 @@ ast::VariableDeclaration Parser::parseSectionVariable(ast::SectionKind sectionKi
                                        isConst ? "expected a Const name" : "expected a State variable name");
     declaration.name = name.lexeme;
     declaration.line = name.location.line;
+    declaration.position = {name.location.line, name.location.column};
     if (check(TokenKind::Comma)) {
         errorAtCurrent(isConst ? "a Const declares one name"
                                : "grouped declarations in State are not supported yet; declare one name per line");

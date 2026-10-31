@@ -20,6 +20,7 @@
 #include "../support/Version.h"
 
 #include <algorithm>
+#include <map>
 #include <cctype>
 #include <filesystem>
 #include <fstream>
@@ -105,14 +106,52 @@ bool equalsIgnoreCase(std::string_view left, std::string_view right)
 // CANON-3 (r3.76): a file is a module named after the file: the name its
 // Use gives (`Use Calc.Core` finds Calc.Core.inox or Calc/Core.inox), or the
 // file's stem for the entry file.
+// The file each module was read from, for diagnostics (E14): normalized
+// module name to path.
+std::map<std::string, fs::path>& moduleFiles()
+{
+    static std::map<std::string, fs::path> files;
+    return files;
+}
+
+std::string lowerName(std::string_view name)
+{
+    std::string lowered(name);
+    std::transform(lowered.begin(), lowered.end(), lowered.begin(),
+                   [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+    return lowered;
+}
+
+// A path as a diagnostic shows it: relative to the current directory when
+// the file is below it, otherwise as found.
+std::string displayPath(const fs::path& path)
+{
+    std::error_code error;
+    const fs::path current = fs::current_path(error);
+    if (!error) {
+        const fs::path relative = fs::relative(path, current, error);
+        if (!error && !relative.empty() && *relative.begin() != "..") {
+            return relative.generic_string();
+        }
+    }
+    return path.generic_string();
+}
+
 std::unique_ptr<ModuleNode> parseSource(const fs::path& sourcePath, std::string name)
 {
-    const std::string source = readFile(sourcePath);
-    inox::compiler::lexer::Lexer lexer(source);
-    auto tokens = lexer.tokenize();
-    throwOnInvalidToken(tokens);
-    inox::compiler::parser::Parser parser(std::move(tokens));
-    return parser.parseModule(name.empty() ? sourcePath.stem().string() : std::move(name));
+    try {
+        const std::string source = readFile(sourcePath);
+        inox::compiler::lexer::Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+        throwOnInvalidToken(tokens);
+        inox::compiler::parser::Parser parser(std::move(tokens));
+        auto module = parser.parseModule(name.empty() ? sourcePath.stem().string() : std::move(name));
+        moduleFiles()[lowerName(module->name())] = sourcePath;
+        return module;
+    } catch (inox::compiler::parser::ParseError& error) {
+        error.setPath(displayPath(sourcePath));
+        throw;
+    }
 }
 
 std::string useModuleName(const UseDeclaration& declaration)
@@ -722,14 +761,20 @@ int main(int argc, char** argv)
             inox::compiler::semantic::SemanticDumper(std::cout, semanticResult).dump(*module);
         }
     } catch (const inox::compiler::parser::ParseError& error) {
-        std::cerr
-            << "parse error at "
-            << error.location().line << ':'
-            << error.location().column << ": "
-            << error.what() << '\n';
+        // E14: path:line:column: kind: message, the form editors and tools read.
+        std::cerr << (error.path().empty() ? displayPath(fs::path(sourcePath)) : error.path()) << ':'
+                  << error.location().line << ':' << error.location().column << ": parse error: "
+                  << error.what() << '\n';
         return 1;
     } catch (const inox::compiler::semantic::SemanticError& error) {
-        std::cerr << "semantic error: " << error.what() << '\n';
+        std::string where;
+        if (const auto file = moduleFiles().find(lowerName(error.module())); file != moduleFiles().end()) {
+            where = displayPath(file->second) + ':';
+        }
+        if (error.position().known()) {
+            where += std::to_string(error.position().line) + ':' + std::to_string(error.position().column) + ':';
+        }
+        std::cerr << where << (where.empty() ? "" : " ") << "semantic error: " << error.what() << '\n';
         return 1;
     } catch (const inox::compiler::codegen::CodegenUnsupported& error) {
         // The program passed the semantic analyzer: the construct is legal

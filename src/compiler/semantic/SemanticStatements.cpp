@@ -31,6 +31,9 @@ using namespace detail;
 
 void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
 {
+    // A routine the compiler made (no position) does not inherit the
+    // position of the routine analyzed before it.
+    notePosition(function);
     const TypeRef previousReturnType = currentFunctionReturnType_;
     const bool previousSawReturn = currentFunctionSawReturn_;
     const std::string previousRoutine = std::exchange(currentRoutine_, function.name());
@@ -266,6 +269,7 @@ void SemanticAnalyzer::analyzeDiscard(const ast::Expression& expression)
 
 void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
 {
+    notePosition(statement.position());
     switch (statement.kind()) {
     case ast::AstNodeKind::ExitStatement:
         // CANON-12: `Exit` is valid only in subroutines without a return value

@@ -1,1 +1,1 @@
-parse error at 12:16: expected line break after statement
+:12:16: parse error: expected line break after statement
