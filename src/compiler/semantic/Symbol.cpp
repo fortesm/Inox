@@ -29,6 +29,13 @@ const Symbol* Scope::declare(std::string name, SymbolKind kind, const types::Typ
     return inserted ? &iterator->second : nullptr;
 }
 
+void Scope::markDeepReadOnly(std::string_view name)
+{
+    if (auto iterator = symbols_.find(normalize(name)); iterator != symbols_.end()) {
+        iterator->second.deepReadOnly = true;
+    }
+}
+
 void Scope::inferType(std::string_view name, const types::Type* type)
 {
     auto iterator = symbols_.find(normalize(name));

@@ -617,6 +617,11 @@ void SemanticAnalyzer::checkReferenceArguments(const std::string& routine,
         }
         const Symbol* root = writableRoot(*arguments[index]);
         if (root == nullptr) {
+            if (const Symbol* owner = readOnlyOwnerRoot(*arguments[index])) {
+                throwReadOnlyOwner("argument " + std::to_string(index + 1) + " of " + routine +
+                                       " is passed as ref mut, but it is read-only: ",
+                                   *owner);
+            }
             throw SemanticError("argument " + std::to_string(index + 1) + " of " + routine +
                                 " is passed as ref mut and must be a mutable variable, a field or an "
                                 "element of one (ADR-0016)");

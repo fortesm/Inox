@@ -1,0 +1,21 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== change read-only-through-owners: Free of a ref Option<Own> parameter changes the caller's variable.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+Drop(ref P Option<Own<TNode>>) :
+    Free(P)
+;
+
+Main :
+    P Option<Own<TNode>> := New(TNode)
+    Drop(P)
+    PutLn("dropped")
+;

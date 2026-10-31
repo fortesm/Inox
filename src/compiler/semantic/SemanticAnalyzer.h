@@ -77,6 +77,24 @@ private:
                                  std::size_t parameterOffset,
                                  const std::vector<ast::ExpressionPtr>& arguments);
     const Symbol* writableRoot(const ast::Expression& expression) const;
+    // The read-only root (a `ref` parameter, a plain `Self`, `with` on one of
+    // them) whose owners a place is reached through; null when the place is
+    // not owned through one. `ownerItself`: the place is an owner whose object
+    // is meant (`Link(P)`, a `Self mut` call on P).
+    const Symbol* readOnlyOwnerRoot(const ast::Expression& expression, bool ownerItself = false) const;
+    std::string readOnlyOwnerMessage(const Symbol& root) const;
+    // Throws "<prefix><message of root>". Out of line, so the recursive
+    // analysis functions that call it keep their stack frames small.
+    [[noreturn]] void throwReadOnlyOwner(std::string_view prefix, const Symbol& root) const;
+    // Throws "<prefix><message>" when `target` is read-only through its
+    // owners. Out of line for the same reason.
+    void rejectReadOnlyOwnerTarget(const ast::Expression& target, const char* prefix) const;
+    // `with` on a read-only reference, or on a place owned through one, only
+    // reads what the target owns.
+    void markWithBinding(const ast::WithStatement& withStatement);
+    // A place rooted at a deep read-only symbol, through fields, elements and
+    // owners (not through a Link).
+    bool isDeepReadOnlyPlace(const ast::Expression& expression) const;
 
     void declareModuleItem(const ast::AstNode& item);
     void registerFunctionSignatures(const ast::ModuleNode& module);

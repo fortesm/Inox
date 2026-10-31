@@ -1,0 +1,28 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== change read-only-through-owners: an owned field of a ref parameter passed as ref mut.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+    THolder Struct
+        FChild Own<TNode>
+    ;
+Increment(ref mut X Integer) :
+    X += 1
+;
+
+Poke(ref H THolder) :
+    Increment(H.FChild.FValue)
+;
+
+Main :
+    H THolder := THolder(FChild := New(TNode))
+    Poke(H)
+    PutLn(H.FChild.FValue)
+;

@@ -42,9 +42,19 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
     symbols_.pushScope();
     const auto previousParameters = std::exchange(currentParameters_, {});
     if (signature != nullptr) {
-        for (const FunctionParameter& parameter : signature->parameters) {
+        const bool isMethod = ast::methodDot(function.name()) != std::string::npos;
+        for (std::size_t index = 0; index < signature->parameters.size(); ++index) {
+            const FunctionParameter& parameter = signature->parameters[index];
             declareOrThrow(parameter.name, SymbolKind::Variable, parameter.type,
                            parameter.mode == PassMode::RefMut);
+            // A `ref` parameter and the plain `Self` of a method only read,
+            // also what they own (change read-only-through-owners); a value
+            // parameter belongs to the routine.
+            if (parameter.mode == PassMode::Ref ||
+                (isMethod && index == 0 && parameter.mode == PassMode::Value &&
+                 equalsIgnoreCase(parameter.name, "Self"))) {
+                symbols_.currentScope().markDeepReadOnly(parameter.name);
+            }
             currentParameters_.insert(symbols_.currentScope().resolve(parameter.name));
         }
     }
@@ -706,6 +716,9 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         symbols_.currentScope().declare(
             withStatement.bindingName(), SymbolKind::Variable, targetType,
             writableRoot(withStatement.target()) != nullptr);
+        // `with` on a read-only reference, or on a place owned through one,
+        // only reads what the target owns (change read-only-through-owners).
+        markWithBinding(withStatement);
         analyzeStatements(withStatement.body(), false);
         leaveScope();
         break;

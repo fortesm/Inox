@@ -77,7 +77,8 @@ spec.md#CANON-9 Method reuse	f3b5441df3cbfee0	decisions-not-dialogue
 spec.md#CANON-9 Methods of built-in types	835ac3867f111a4e	english-programs
 spec.md#CANON-9 Named construction	03a7f232bee036de	array-fill
 spec.md#CANON-9 Structs are not compared	8271b9ae445cd83b	constitution
-spec.md#CANON-10 Parameters and mutability	4f674605f2f74e7d	method-reuse
+spec.md#CANON-10 Parameters and mutability	4f674605f2f74e7d	read-only-through-owners
+spec.md#CANON-10 Read-only through owners	a865e041130f57cd	read-only-through-owners
 spec.md#CANON-10 Scope of locals	d219e369bba5040a	constitution
 spec.md#CANON-10 No shadowing	374e96362c01e03d	constitution
 spec.md#CANON-10 Loop iterators	29b268cf62e9f413	constitution
@@ -155,8 +156,8 @@ spec.md#CANON-24 Loop contracts	07f43b682ba43010	design-by-contract
 spec.md#CANON-24 A broken contract is a trap	63aeaccab75ee7d1	design-by-contract
 spec.md#CANON-25 Owners	30e0c00976aea35e	safe-pointers
 spec.md#CANON-25 Moves are checked	585dd7739690f2d6	safe-pointers
-spec.md#CANON-25 Links	40b349936e46e6ca	safe-pointers
-spec.md#CANON-25 Access through pointers	9e23e9a9fe0f36f2	safe-pointers
+spec.md#CANON-25 Links	47fb968c24b3ba89	read-only-through-owners
+spec.md#CANON-25 Access through pointers	01016a8cfa50bb65	read-only-through-owners
 spec.md#CANON-25 Owners in routines and contracts	1edd22537220a8fe	safe-pointers
 spec.md#VERSIONING The version number	80beea51ad367016	repo-layout
 spec.md#VERSIONING Who changes the version	d76c70d3fe676bd0	repo-layout

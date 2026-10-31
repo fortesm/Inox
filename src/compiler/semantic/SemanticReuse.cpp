@@ -270,11 +270,25 @@ void SemanticAnalyzer::requireWritableReceiver(const FunctionSignature& signatur
     if (signature.parameters.empty() || signature.parameters.front().mode != PassMode::RefMut) {
         return;
     }
-    // The object of a pointer is changed through it (safe-pointers).
+    // The object of a pointer is changed through it (safe-pointers), unless
+    // the owner is reached through a read-only reference
+    // (change read-only-through-owners).
     if (const TypeRef type = result_.typeOf(receiver); type != nullptr && (type->isOwn() || type->isLink())) {
+        if (type->isOwn()) {
+            if (const Symbol* owner = readOnlyOwnerRoot(receiver, true)) {
+                throwReadOnlyOwner("method " + signature.name +
+                                       " changes its receiver (Self mut), which is read-only: ",
+                                   *owner);
+            }
+        }
         return;
     }
     if (writableRoot(receiver) == nullptr) {
+        if (const Symbol* owner = readOnlyOwnerRoot(receiver)) {
+            throwReadOnlyOwner("method " + signature.name +
+                                   " changes its receiver (Self mut), which is read-only: ",
+                               *owner);
+        }
         throw SemanticError("method " + signature.name +
                             " changes its receiver (Self mut): call it on a mutable variable, a field or "
                             "an element of one (CANON-9)");

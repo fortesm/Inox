@@ -110,3 +110,15 @@ to its body, so a `pos` reads it only through `old X.Field`.
 #### Scenario: Contracts
 - **WHEN** a routine with pre and pos takes an owner and a Link, and a pos reads the owner directly
 - **THEN** the first runs and frees the owner (tests/runtime/pointers-contracts.inox); the second is rejected (tests/diagnostics/pointer-pos-reads-owner.inox)
+
+### Requirement: Links are made only from writable places
+`Link(X)` SHALL be an error when X, or the owner X names, is reached from a
+read-only place (a `ref` parameter, a `Self` receiver that is not
+`Self mut`, or `with` on one of them) through fields, elements and owners:
+a Link is a capability to write and cannot be made from a read-only path.
+A place reached through a Link, a mutable variable, State, a `ref mut`
+parameter, `Self mut` or a value owner parameter may be linked.
+
+#### Scenario: Links from read-only and writable places
+- **WHEN** Links are taken from `ref` and `Self` paths and from writable ones
+- **THEN** the first are rejected and the others run (tests/diagnostics/link-from-ref-owner.inox, tests/runtime/read-only-through-owners.inox)

@@ -599,6 +599,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             // a field is written only through a mutable variable, `Self mut`
             // or a `ref mut` parameter (CANON-9, ADR-0016).
             if (writableRoot(expression.left()) == nullptr) {
+                rejectReadOnlyOwnerTarget(expression.left(), "assignment target is read-only: ");
                 throw SemanticError(
                     "assignment target is not mutable: " +
                     (root->kind() == ast::AstNodeKind::IdentifierExpression
@@ -631,6 +632,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             }
             targetType = analyzeExpression(expression.left());
             if (writableRoot(expression.left()) == nullptr) {
+                rejectReadOnlyOwnerTarget(expression.left(), "array element assignment target is read-only: ");
                 throw SemanticError("array element assignment requires a mutable array variable");
             }
             if (rootSymbol != nullptr && !rootWasRead) {
@@ -658,8 +660,11 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
                    isPointerBuiltinCall("Value", static_cast<const ast::CallExpression&>(expression.left())
                                                      .arguments()
                                                      .size())) {
-            // `Value(P) := X` replaces the whole object (safe-pointers).
+            // `Value(P) := X` replaces the whole object (safe-pointers),
+            // unless the owner is reached through a read-only reference
+            // (change read-only-through-owners).
             targetType = analyzeExpression(expression.left());
+            rejectReadOnlyOwnerTarget(expression.left(), "assignment target is read-only: ");
         } else {
             throw SemanticError("assignment target must be an identifier, field or array element");
         }
@@ -1113,39 +1118,145 @@ bool SemanticAnalyzer::isSideEffectFree(const ast::Expression& expression) const
 // The variable a writable place is rooted at (`X`, `P.F`, `A[I]`), when the
 // place can be written: a mutable local, a State variable or a `ref mut`
 // parameter. Null otherwise.
+//
+// Through a pointer (safe-pointers) the place is the object of the pointer.
+// A Link is a capability to write: the object of a Link is writable
+// wherever the Link was reached from. An owner's object is part of the
+// owner's value (change read-only-through-owners): it is writable when the
+// owner's own place is rooted at a mutable variable, at a value parameter
+// (which belongs to the routine) or at a temporary, and read-only when it
+// is rooted at a `ref` parameter, a plain `Self` or `with` on one of them.
 const Symbol* SemanticAnalyzer::writableRoot(const ast::Expression& expression) const
 {
     const ast::Expression* root = &expression;
+    bool throughOwner = false;
+    while (root->kind() == ast::AstNodeKind::CallExpression) {
+        const auto& call = static_cast<const ast::CallExpression&>(*root);
+        if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().empty()) {
+            return throughOwner ? &pointerTargetRoot_ : nullptr;
+        }
+        const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
+        const bool isValue = equalsIgnoreCase(name, "Value") && call.arguments().size() == 1 &&
+                             isPointerBuiltinCall(name, 1);
+        if (!isValue && name != "__index" && name != "__member") {
+            return throughOwner ? &pointerTargetRoot_ : nullptr;
+        }
+        root = call.arguments()[0].get();
+        const TypeRef baseType = result_.typeOf(*root);
+        if (baseType != nullptr && baseType->isLink()) {
+            return &pointerTargetRoot_;
+        }
+        if (isValue || (baseType != nullptr && baseType->isOwn())) {
+            throughOwner = true;
+        }
+    }
+    if (root->kind() != ast::AstNodeKind::IdentifierExpression) {
+        return throughOwner ? &pointerTargetRoot_ : nullptr;
+    }
+    const Symbol* symbol =
+        symbols_.currentScope().resolve(static_cast<const ast::IdentifierExpression&>(*root).name());
+    if (throughOwner) {
+        // Only an owner rooted at a read-only reference is read-only; one
+        // held by a variable, a value parameter or a call's result is not.
+        return symbol != nullptr && symbol->deepReadOnly && !symbol->isMutable ? nullptr : &pointerTargetRoot_;
+    }
+    if (symbol == nullptr || !symbol->isMutable ||
+        (symbol->kind != SymbolKind::Variable && symbol->kind != SymbolKind::State)) {
+        return nullptr;
+    }
+    return symbol;
+}
+
+const Symbol* SemanticAnalyzer::readOnlyOwnerRoot(const ast::Expression& expression, bool ownerItself) const
+{
+    const ast::Expression* root = &expression;
+    bool throughOwner = ownerItself;
     while (root->kind() == ast::AstNodeKind::CallExpression) {
         const auto& call = static_cast<const ast::CallExpression&>(*root);
         if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().empty()) {
             return nullptr;
         }
         const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
-        // The object of a pointer is written through it (safe-pointers).
-        if (equalsIgnoreCase(name, "Value") && call.arguments().size() == 1 &&
-            isPointerBuiltinCall(name, 1)) {
-            return &pointerTargetRoot_;
-        }
-        if (name != "__index" && name != "__member") {
+        const bool isValue = equalsIgnoreCase(name, "Value") && call.arguments().size() == 1 &&
+                             isPointerBuiltinCall(name, 1);
+        if (!isValue && name != "__index" && name != "__member") {
             return nullptr;
         }
         root = call.arguments()[0].get();
-        if (const TypeRef baseType = result_.typeOf(*root);
-            baseType != nullptr && (baseType->isOwn() || baseType->isLink())) {
-            return &pointerTargetRoot_;
+        const TypeRef baseType = result_.typeOf(*root);
+        if (baseType != nullptr && baseType->isLink()) {
+            return nullptr;
+        }
+        if (isValue || (baseType != nullptr && baseType->isOwn())) {
+            throughOwner = true;
         }
     }
-    if (root->kind() != ast::AstNodeKind::IdentifierExpression) {
+    if (!throughOwner || root->kind() != ast::AstNodeKind::IdentifierExpression) {
         return nullptr;
     }
     const Symbol* symbol =
         symbols_.currentScope().resolve(static_cast<const ast::IdentifierExpression&>(*root).name());
-    if (symbol == nullptr || !symbol->isMutable ||
-        (symbol->kind != SymbolKind::Variable && symbol->kind != SymbolKind::State)) {
-        return nullptr;
+    return symbol != nullptr && symbol->deepReadOnly && !symbol->isMutable ? symbol : nullptr;
+}
+
+bool SemanticAnalyzer::isDeepReadOnlyPlace(const ast::Expression& expression) const
+{
+    const ast::Expression* root = &expression;
+    while (root->kind() == ast::AstNodeKind::CallExpression) {
+        const auto& call = static_cast<const ast::CallExpression&>(*root);
+        if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().empty()) {
+            return false;
+        }
+        const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
+        const bool isValue = equalsIgnoreCase(name, "Value") && call.arguments().size() == 1 &&
+                             isPointerBuiltinCall(name, 1);
+        if (!isValue && name != "__index" && name != "__member") {
+            return false;
+        }
+        root = call.arguments()[0].get();
+        if (const TypeRef baseType = result_.typeOf(*root); baseType != nullptr && baseType->isLink()) {
+            return false;
+        }
     }
-    return symbol;
+    if (root->kind() != ast::AstNodeKind::IdentifierExpression) {
+        return false;
+    }
+    const Symbol* symbol =
+        symbols_.currentScope().resolve(static_cast<const ast::IdentifierExpression&>(*root).name());
+    return symbol != nullptr && symbol->deepReadOnly && !symbol->isMutable;
+}
+
+void SemanticAnalyzer::rejectReadOnlyOwnerTarget(const ast::Expression& target, const char* prefix) const
+{
+    if (const Symbol* owner = readOnlyOwnerRoot(target)) {
+        throwReadOnlyOwner(prefix, *owner);
+    }
+}
+
+void SemanticAnalyzer::markWithBinding(const ast::WithStatement& withStatement)
+{
+    if (isDeepReadOnlyPlace(withStatement.target())) {
+        symbols_.currentScope().markDeepReadOnly(withStatement.bindingName());
+    }
+}
+
+void SemanticAnalyzer::throwReadOnlyOwner(std::string_view prefix, const Symbol& root) const
+{
+    throw SemanticError(std::string(prefix) + readOnlyOwnerMessage(root));
+}
+
+std::string SemanticAnalyzer::readOnlyOwnerMessage(const Symbol& root) const
+{
+    if (root.name.rfind("__with", 0) == 0) {
+        return "it is owned through the target of 'with', which is read-only; the target must be "
+               "reached through ref mut or Self mut to change what it owns (ADR-0016, CANON-9)";
+    }
+    if (equalsIgnoreCase(root.name, "Self")) {
+        return "it is owned through Self, the receiver of a method that is not Self mut; declare Self mut "
+               "to change what the receiver owns (CANON-9)";
+    }
+    return "it is owned through " + root.name + ", a ref parameter; declare ref mut " + root.name +
+           " to change what it owns (ADR-0016)";
 }
 
 } // namespace inox::compiler::semantic
