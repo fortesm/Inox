@@ -81,6 +81,12 @@ python3 tools/ir_snapshot.py record build/inox /tmp/snap    # before
 python3 tools/ir_snapshot.py compare build/inox /tmp/snap   # after
 ```
 
+In CI the Gates job `ir-snapshot` runs that comparison on a pull request
+labelled `refactor`. It accepts the programs the pull request adds and the
+intended differences its OpenSpec change lists, one path per line, in
+`docs/openspec/changes/<name>/ir-snapshot-allow.txt`; any other difference
+fails the job.
+
 Use `-DINOX_ENABLE_ASAN=ON -DINOX_ENABLE_UBSAN=ON`, not raw
 `CMAKE_CXX_FLAGS`, which break the libinoxrt link. The nesting limits of
 `src/compiler/parser/Parser.h` were measured with a 1 MiB stack (the Windows

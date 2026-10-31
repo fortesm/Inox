@@ -52,6 +52,13 @@ Changed output, reported in the pull request:
 - The `Result` check reads parameter names only; the private-type check
   of a Public routine reads types only.
 
+CI (E19, no change of its text): the Gates job `ir-snapshot` could accept
+only the programs a pull request adds, so an intended difference in an
+existing program failed it. It now also accepts the paths that the
+OpenSpec change lists in `ir-snapshot-allow.txt` (here
+`mut-parameter-reserved`). Approved by Marcelo Fortes, 2026-10-31, as a
+condition of F3, restricted to CI.
+
 ## Out of scope
 
 Written types as structure and generics on that structure (F4); the

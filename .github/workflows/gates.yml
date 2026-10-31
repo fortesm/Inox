@@ -135,7 +135,9 @@ jobs:
   ir-snapshot:
     name: IR snapshot against the base (refactor)
     # A refactor must not change what the compiler says about any program
-    # (E19, E20). Programs the pull request adds are reported, not failed.
+    # (E19, E20). Programs the pull request adds are reported, not failed;
+    # so are the intended differences its OpenSpec change lists in
+    # ir-snapshot-allow.txt.
     if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'refactor')
     runs-on: ubuntu-24.04
     steps:
@@ -156,10 +158,24 @@ jobs:
         shell: bash
         run: |
           python3 tools/ir_snapshot.py record ../base/build/linux-clang-debug/inox snapshot
+          base="${{ github.event.pull_request.base.sha }}"
           allow=()
           while IFS= read -r added; do
             allow+=(--allow "$added")
-          done < <(git diff --name-only --diff-filter=A "${{ github.event.pull_request.base.sha }}" HEAD -- '*.inox')
+          done < <(git diff --name-only --diff-filter=A "$base" HEAD -- '*.inox')
+          # E19: a difference the change intends is listed, one path per
+          # line, in `ir-snapshot-allow.txt` of the OpenSpec change that
+          # this pull request adds or edits (r3.114); `#` starts a comment.
+          while IFS= read -r list; do
+            while IFS= read -r line; do
+              path="${line%%#*}"
+              path="$(echo "$path" | xargs)"
+              if [ -n "$path" ]; then
+                echo "intended (declared in $list): $path"
+                allow+=(--allow "$path")
+              fi
+            done < "$list"
+          done < <(git diff --name-only --diff-filter=AM "$base" HEAD -- 'docs/openspec/changes/*/ir-snapshot-allow.txt')
           python3 tools/ir_snapshot.py compare build/linux-clang-debug/inox snapshot "${allow[@]}" 2>&1 \
             | tee ir-snapshot.txt
           test "${PIPESTATUS[0]}" -eq 0

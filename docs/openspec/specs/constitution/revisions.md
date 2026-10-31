@@ -564,5 +564,6 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   a reserved word as a parameter name) are now parse errors; a parameter
   named Result is checked by name only, and a Public routine's header is
   checked for private types in its types only. Generated code does not
-  change. Approved by Marcelo Fortes, 2026-10-31 (plan F0-F7). Change
+  change. The Gates job `ir-snapshot` also accepts the intended
+  differences a change lists in its `ir-snapshot-allow.txt`. Approved by Marcelo Fortes, 2026-10-31 (plan F0-F7). Change
   `routine-headers`.
