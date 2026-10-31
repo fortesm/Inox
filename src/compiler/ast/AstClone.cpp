@@ -30,7 +30,37 @@ ExpressionPtr copyOptional(const Expression* expression, const CloneRewriters& r
 
 } // namespace
 
+namespace {
+
+ExpressionPtr cloneExpressionNode(const Expression& expression, const ExpressionRewriter& rewrite);
+StatementPtr cloneStatementNode(const Statement& statement, const CloneRewriters& rewrite);
+
+} // namespace
+
+// A copy keeps the position of its original (change source-positions), so a
+// diagnostic in a contract wrapper or a generic instance points at the
+// source; a replacement keeps its own position, if it has one.
 ExpressionPtr cloneExpression(const Expression& expression, const ExpressionRewriter& rewrite)
+{
+    ExpressionPtr copy = cloneExpressionNode(expression, rewrite);
+    if (copy != nullptr && !copy->position().known()) {
+        copy->setPosition(expression.position());
+    }
+    return copy;
+}
+
+StatementPtr cloneStatement(const Statement& statement, const CloneRewriters& rewrite)
+{
+    StatementPtr copy = cloneStatementNode(statement, rewrite);
+    if (copy != nullptr && !copy->position().known()) {
+        copy->setPosition(statement.position());
+    }
+    return copy;
+}
+
+namespace {
+
+ExpressionPtr cloneExpressionNode(const Expression& expression, const ExpressionRewriter& rewrite)
 {
     if (rewrite) {
         if (ExpressionPtr replacement = rewrite(expression)) {
@@ -97,6 +127,8 @@ ExpressionPtr cloneExpression(const Expression& expression, const ExpressionRewr
     throw std::logic_error("cloneExpression: not an expression");
 }
 
+} // namespace
+
 std::vector<StatementPtr> cloneStatements(const std::vector<StatementPtr>& statements,
                                           const CloneRewriters& rewrite)
 {
@@ -108,7 +140,9 @@ std::vector<StatementPtr> cloneStatements(const std::vector<StatementPtr>& state
     return copies;
 }
 
-StatementPtr cloneStatement(const Statement& statement, const CloneRewriters& rewrite)
+namespace {
+
+StatementPtr cloneStatementNode(const Statement& statement, const CloneRewriters& rewrite)
 {
     const auto expression = [&](const Expression& node) { return cloneExpression(node, rewrite.expression); };
     const auto body = [&](const std::vector<StatementPtr>& statements) { return cloneStatements(statements, rewrite); };
@@ -217,5 +251,7 @@ StatementPtr cloneStatement(const Statement& statement, const CloneRewriters& re
     }
     throw std::logic_error("cloneStatement: not a statement");
 }
+
+} // namespace
 
 } // namespace inox::compiler::ast

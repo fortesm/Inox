@@ -53,6 +53,7 @@ void SemanticAnalyzer::registerFunctionSignature(const ast::FunctionDeclaration&
 
 void SemanticAnalyzer::registerFunctionSignatureIn(const ast::FunctionDeclaration& function)
 {
+    notePosition(function);
     const auto& tokens = function.signatureTokens();
 
     FunctionSignature signature;
@@ -392,6 +393,7 @@ const Symbol& SemanticAnalyzer::resolveOrThrow(std::string_view name) const
 
 void SemanticAnalyzer::declareModuleItem(const ast::AstNode& item)
 {
+    notePosition(item);
     switch (item.kind()) {
     case ast::AstNodeKind::FunctionDeclaration: {
         const auto& function = static_cast<const ast::FunctionDeclaration&>(item);
@@ -411,6 +413,7 @@ void SemanticAnalyzer::declareModuleItem(const ast::AstNode& item)
 
 void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
 {
+    notePosition(item);
     if (item.kind() == ast::AstNodeKind::FunctionDeclaration) {
         const auto& function = static_cast<const ast::FunctionDeclaration&>(item);
         if (!function.isGeneric()) {  // a template is checked in each instance
@@ -423,6 +426,7 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
         // Const and State initializers are expressions: they are analyzed like
         // any other (CANON-9 named construction, types), not skipped.
         for (const ast::VariableDeclaration& declaration : section.variables()) {
+            notePosition(declaration.position);
             if (declaration.value == nullptr) {
                 result_.setDeclaredType(declaration, resolveWrittenType(declaration.typeName));
                 continue;
@@ -456,6 +460,7 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
 
 void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& section)
 {
+    notePosition(section);
     if (section.sectionKind() == ast::SectionKind::Type) {
         registerTypeSectionSymbols(section);
         return;
@@ -465,6 +470,7 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
                                                                               : SymbolKind::State;
     const bool isMutable = kind == SymbolKind::State;
     for (const ast::VariableDeclaration& declaration : section.variables()) {
+        notePosition(declaration.position);
         // An array type is made canonical when the section is analyzed: its
         // bounds may name a Const declared later in the module.
         const TypeRef type =
@@ -543,7 +549,9 @@ TypeRef SemanticAnalyzer::inferSectionDeclarationType(const ast::Expression* val
 
 void SemanticAnalyzer::registerTypeSectionSymbols(const ast::SectionDeclaration& section)
 {
+    notePosition(section);
     for (const ast::TypeDeclaration& declaration : section.types()) {
+        notePosition(declaration.position);
         if (declaration.kind == ast::TypeDeclarationKind::Struct && declaration.typeParameters.empty()) {
             registerStructDeclaration(declaration);
         } else if (declaration.kind == ast::TypeDeclarationKind::Enum) {
@@ -892,18 +900,22 @@ void SemanticAnalyzer::rejectRecursiveStruct(TypeRef structType) const
 
 void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& section)
 {
+    notePosition(section);
     if (section.sectionKind() == ast::SectionKind::Type) {
         for (const ast::TypeDeclaration& declaration : section.types()) {
+            notePosition(declaration.position);
             if (declaration.kind == ast::TypeDeclarationKind::Range) {
                 resolveRangeBounds(declaration);
             }
         }
         for (const ast::TypeDeclaration& declaration : section.types()) {
+            notePosition(declaration.position);
             if (declaration.kind == ast::TypeDeclarationKind::Struct && declaration.typeParameters.empty()) {
                 completeStructFields(declaration);
             }
         }
         for (const ast::TypeDeclaration& declaration : section.types()) {
+            notePosition(declaration.position);
             if (declaration.kind == ast::TypeDeclarationKind::Struct && declaration.typeParameters.empty()) {
                 validateStructDeclaration(declaration);
             }
@@ -912,6 +924,7 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
     }
 
     for (const ast::VariableDeclaration& declaration : section.variables()) {
+        notePosition(declaration.position);
         if (declaration.typeName.empty()) {
             continue;
         }

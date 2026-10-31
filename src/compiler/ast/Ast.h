@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -96,6 +97,15 @@ enum class SectionKind {
     State
 };
 
+// Where a node starts in its source file (E14; change source-positions).
+// Line 0 means unknown: a node the compiler made that no source text wrote.
+struct SourcePosition {
+    std::size_t line = 0;
+    std::size_t column = 0;
+
+    bool known() const { return line != 0; }
+};
+
 class AstNode {
 public:
     explicit AstNode(AstNodeKind kind);
@@ -103,8 +113,12 @@ public:
 
     AstNodeKind kind() const;
 
+    const SourcePosition& position() const { return position_; }
+    void setPosition(SourcePosition position) { position_ = position; }
+
 private:
     AstNodeKind kind_;
+    SourcePosition position_;
 };
 
 using AstNodePtr = std::unique_ptr<AstNode>;
@@ -261,6 +275,7 @@ enum class TypeDeclarationKind {
 // One declaration of a Type section (CANON-5, CANON-13): a Struct with its
 // fields, a Range with its bounds, or an Enum with its literals.
 struct TypeDeclaration {
+    SourcePosition position;  // where the declaration starts
     TypeDeclarationKind kind = TypeDeclarationKind::Struct;
     std::string name;
     std::size_t line = 0;
@@ -282,6 +297,7 @@ struct TypeDeclaration {
 // takes its type's defaults (`Name TStruct`). The value is parsed as an
 // expression so semantic analysis checks it like any other (ADR-0009, CANON-9).
 struct VariableDeclaration {
+    SourcePosition position;  // where the declaration starts
     std::string name;
     std::string typeName;
     ExpressionPtr value;
@@ -468,6 +484,12 @@ private:
     ExpressionPtr thenValue_;
     ExpressionPtr elseValue_;
 };
+
+// Where an expression starts: its own position, or the position of the
+// first sub-expression that has one (the parser stamps leaves; operators,
+// calls and members start where their first operand starts).
+SourcePosition startOf(const Expression& expression);
+
 
 class BlockStatement final : public Statement {
 public:

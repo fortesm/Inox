@@ -86,10 +86,15 @@ ast::StatementPtr statement(ast::ExpressionPtr expression)
 ast::StatementPtr check(int kind, ast::ExpressionPtr condition, const std::string& message)
 {
     std::vector<ast::ExpressionPtr> arguments;
+    // The check starts where its clause does (change source-positions).
+    const ast::SourcePosition position = ast::startOf(*condition);
     arguments.push_back(literal(ast::LiteralKind::Integer, std::to_string(kind)));
     arguments.push_back(std::move(condition));
     arguments.push_back(literal(ast::LiteralKind::String, message));
-    return statement(std::make_unique<ast::CallExpression>(identifier("__check"), std::move(arguments)));
+    ast::StatementPtr checkStatement =
+        statement(std::make_unique<ast::CallExpression>(identifier("__check"), std::move(arguments)));
+    checkStatement->setPosition(position);
+    return checkStatement;
 }
 
 ast::StatementPtr declare(const std::string& name, ast::ExpressionPtr value)
@@ -133,7 +138,7 @@ public:
     {
         collect();
         for (auto& [key, routine] : routines_) {
-            validateClauses(routine);
+            located(routine, [&] { validateClauses(routine); });
         }
         // Effective contracts first (an Override reads the clauses of the
         // methods it replaces before they are lowered), then lowering.
@@ -144,7 +149,7 @@ public:
         for (auto& [key, routine] : routines_) {
             const Effective& contract = effective.at(key);
             if (!contract.preIsTrue || !contract.pos.empty()) {
-                lowerRoutine(routine, contract);
+                located(routine, [&] { lowerRoutine(routine, contract); });
             }
         }
         for (std::unique_ptr<ast::FunctionDeclaration>& added : added_) {
@@ -180,6 +185,21 @@ private:
                     structs_.emplace(lower(type.name), StructInfo{type.name, std::move(parts), &type});
                 }
             }
+        }
+    }
+
+    // An error about a routine's contracts names where the routine starts
+    // (E14, change source-positions).
+    template <typename Work>
+    static void located(const Routine& routine, Work work)
+    {
+        try {
+            work();
+        } catch (const SemanticError&) {
+            if (routine.declaration != nullptr) {
+                locateSemanticError(routine.declaration->position(), routine.declaration->module());
+            }
+            throw;
         }
     }
 
@@ -497,11 +517,13 @@ private:
                                                                     std::vector<ast::ContractClause>{},
                                                                     function.typeParameters()));
         added_.back()->copyModuleFrom(function);
+        added_.back()->setPosition(function.position());
         auto wrapper = std::make_unique<ast::FunctionDeclaration>(name, function.signatureTokens(),
                                                                   std::move(statements), function.isOverride(),
                                                                   std::vector<ast::ContractClause>{},
                                                                   function.typeParameters());
         wrapper->copyModuleFrom(function);
+        wrapper->setPosition(function.position());
         // The old declaration (an empty shell now) stays alive until the pass
         // ends: `routines_` still points at it.
         retired_.push_back(std::move(program_.items()[routine.index]));

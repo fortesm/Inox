@@ -810,4 +810,38 @@ const std::string& WithStatement::bindingName() const
     return bindingName_;
 }
 
+SourcePosition startOf(const Expression& expression)
+{
+    const Expression* node = &expression;
+    for (;;) {
+        if (node->position().known()) {
+            return node->position();
+        }
+        switch (node->kind()) {
+        case AstNodeKind::BinaryExpression:
+            node = &static_cast<const BinaryExpression*>(node)->left();
+            break;
+        case AstNodeKind::UnaryExpression:
+            node = &static_cast<const UnaryExpression*>(node)->operand();
+            break;
+        case AstNodeKind::ConditionalExpression:
+            node = &static_cast<const ConditionalExpression*>(node)->condition();
+            break;
+        case AstNodeKind::CallExpression: {
+            const auto* call = static_cast<const CallExpression*>(node);
+            const bool synthetic = call->callee().kind() == AstNodeKind::IdentifierExpression &&
+                                   static_cast<const IdentifierExpression&>(call->callee()).name().rfind("__", 0) == 0;
+            if (synthetic && !call->arguments().empty()) {
+                node = call->arguments().front().get();
+            } else {
+                node = &call->callee();
+            }
+            break;
+        }
+        default:
+            return {};
+        }
+    }
+}
+
 } // namespace inox::compiler::ast

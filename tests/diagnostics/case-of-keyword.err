@@ -1,1 +1,1 @@
-parse error at 11:12: expected line break after conditional header
+:11:12: parse error: expected line break after conditional header

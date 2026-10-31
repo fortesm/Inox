@@ -1,1 +1,1 @@
-parse error at 11:9: expected the type of struct field FX on its line
+:11:9: parse error: expected the type of struct field FX on its line

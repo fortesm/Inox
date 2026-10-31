@@ -218,6 +218,17 @@ private:
     // Statements a loop contract puts before the loop (the variant's start
     // value); appendStatement() emits them before the statement just parsed.
     std::vector<ast::StatementPtr> precedingStatements_;
+
+    // Source positions (change source-positions).
+    ast::ExpressionPtr leafLiteral(ast::LiteralKind kind);
+    void beginStatement();
+    void stampHere(ast::SourcePosition& position) const;
+    void stampAt(ast::SourcePosition& position, const lexer::Token& token) const;
+    ast::AstNodePtr stampItem(ast::AstNodePtr item);
+    void finishStatement(std::vector<ast::StatementPtr>& statements, ast::StatementPtr statement);
+    ast::ExpressionPtr leafIdentifier();
+    void stampStatement(ast::Statement& statement);
+    std::vector<std::size_t> statementStarts_;  // token index of each statement being parsed
 };
 
 } // namespace inox::compiler::parser

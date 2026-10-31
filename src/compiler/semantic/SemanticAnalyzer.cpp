@@ -43,9 +43,60 @@ std::string shownMessage(std::string message)
 
 } // namespace
 
+DiagnosticPlace& diagnosticPlace()
+{
+    static DiagnosticPlace place;
+    return place;
+}
+
+void beginDiagnosticPlace()
+{
+    diagnosticPlace() = DiagnosticPlace{};
+    diagnosticPlace().active = true;
+}
+
+void clearDiagnosticPosition()
+{
+    diagnosticPlace().position = ast::SourcePosition{};
+}
+
+void endDiagnosticPlace()
+{
+    diagnosticPlace().active = false;
+}
+
+namespace {
+
+DiagnosticPlace& lastErrorPlace()
+{
+    static DiagnosticPlace place;
+    return place;
+}
+
+} // namespace
+
 SemanticError::SemanticError(std::string message)
     : std::runtime_error(shownMessage(std::move(message)))
 {
+    const DiagnosticPlace& place = diagnosticPlace();
+    if (place.active && place.position.known()) {
+        lastErrorPlace() = place;
+    } else {
+        lastErrorPlace() = DiagnosticPlace{};
+    }
+}
+
+const DiagnosticPlace& semanticErrorPlace()
+{
+    return lastErrorPlace();
+}
+
+void locateSemanticError(ast::SourcePosition position, const std::string& module)
+{
+    if (!lastErrorPlace().position.known() && position.known()) {
+        lastErrorPlace().position = position;
+        lastErrorPlace().module = module;
+    }
 }
 
 SemanticAnalyzer::SemanticAnalyzer()
@@ -57,9 +108,44 @@ SemanticAnalyzer::SemanticAnalyzer()
     declareBuiltinTypes();
 }
 
+
+// A position inside the item being checked: its module stays the item's.
+void SemanticAnalyzer::notePosition(const ast::SourcePosition& position)
+{
+    if (position.known()) {
+        diagnosticPlace().position = position;
+    }
+}
+
+// A module item (a routine, a section): its position and its module.
+void SemanticAnalyzer::notePosition(const ast::AstNode& item)
+{
+    DiagnosticPlace& place = diagnosticPlace();
+    place.position = item.position();
+    switch (item.kind()) {
+    case ast::AstNodeKind::FunctionDeclaration:
+        place.module = static_cast<const ast::FunctionDeclaration&>(item).module();
+        break;
+    case ast::AstNodeKind::SectionDeclaration:
+        place.module = static_cast<const ast::SectionDeclaration&>(item).module();
+        break;
+    default:
+        place.module = currentModule_;
+        break;
+    }
+    if (place.module.empty()) {
+        place.module = program_ != nullptr ? program_->name() : std::string{};
+    }
+}
+
+// A diagnostic says where it was found (E14, change source-positions): the
+// start of the statement or declaration being checked, in its module. The
+// analyzer keeps that place up to date while it runs, and a SemanticError
+// takes it when it is made: no try and no extra frame below the analysis.
 const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
 {
     result_.clear();
+    beginDiagnosticPlace();
     program_ = &module;
 
     if (module.name().empty()) {
@@ -75,6 +161,7 @@ const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
 
     registerFunctionSignatures(module);
 
+    clearDiagnosticPosition();  // the errors of the whole program have no position
     if (!hasMain_) {
         throw SemanticError("module must declare Main");
     }
@@ -94,6 +181,7 @@ const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
     // CANON-8: the instances of generic routines the program uses.
     analyzePendingInstances();
 
+    endDiagnosticPlace();
     return result_;
 }
 

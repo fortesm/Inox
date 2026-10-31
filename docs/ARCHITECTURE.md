@@ -34,6 +34,30 @@ loaded (`Use`), then 3-4 once on the whole program (`loadProgram`), then 5,
 Each phase: what it receives, what it produces, what it guarantees, what it
 must never do, and the files that own it.
 
+### Diagnostics
+Every diagnostic is `path:line:column: kind: message` (`parse error`,
+`semantic error`), the form editors and tools read. The parser stamps
+leaves and statements (`leafLiteral`, `leafIdentifier`, `stampStatement`);
+`ast::startOf` gives the start of any expression. Module resolution and
+contract lowering attach the item they were working on; while the
+analyzer runs, it keeps the statement or declaration it checks in
+`diagnosticPlace()` (`notePosition`), and a `SemanticError` takes that place
+when it is made and keeps it beside the error (`semanticErrorPlace()`): no
+try, no added frame below the analysis, and no larger exception object. The driver
+turns the module into its file (`moduleFiles`).
+
+**Stack budget.** The compiler runs on the 1 MiB main-thread stack of
+Windows, and the boundary tests (`limits-boundary-ok`) sit close to it in
+the Windows Debug build. A change to a function that is on the stack while
+the parser or the analyzer recurses (the recursive functions themselves,
+and those below them: `main`, the module loader, `parseSource`,
+`Parser::parseModule`, `SemanticAnalyzer::analyze`) must not grow its
+frame: compare with `-fstack-usage` against main, and move new work into
+out-of-line helpers. Under the MSVC ABI a thrown exception object lives in
+the frame of the function that throws it: never make `SemanticError` (or
+any exception thrown during the recursion) larger; Linux, which allocates
+exception objects on the heap, will not show the cost.
+
 ### 1. Lexer
 - **In:** the text of one file. **Out:** tokens with line and column.
 - **Guarantees:** every lexical error has a line and a column.
@@ -109,7 +133,7 @@ that removes it (ROADMAP, "Foundation"); a fix updates this table.
 
 | # | Deviation | Law | Step |
 |---|---|---|---|
-| D1 | AST nodes carry no source position; semantic errors have no file, line or column | E14 | F2 |
+| ~~D1~~ | Closed by F2 (r3.112): AST nodes carry their start (`ast::SourcePosition`; leaves and statements stamped by the parser, kept by `AstClone`); every parse and semantic error prints `path:line:column: kind: message`. The column is that of the statement, declaration or contract clause being checked; a column for each sub-expression comes with the typed IR (F6) | E14 | F2 |
 | D2 | The parser desugars: chained assignment (`pendingStatements_`), `with` bindings (`__with_N`), loop `invariant`/`variant` (`lowerLoopContracts`) | E11 | F5 |
 | D3 | The parser keeps routine headers as text tokens (`signatureTokens`), which the analyzer parses (`registerFunctionSignatureIn`) | E11 | F3 |
 | D4 | Types are text in the AST (`typeName`), read by `types::TypeSyntax` in phase 5; generic instances rewrite type names as text (`TypeNameRewriter`) | E11 (steps 3-4) | F4 |

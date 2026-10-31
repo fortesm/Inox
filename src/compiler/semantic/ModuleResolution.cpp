@@ -269,6 +269,7 @@ private:
     {
         for (const auto& item : module.node->items()) {
             switch (item->kind()) {
+            noteItem(module, *item);
             case ast::AstNodeKind::UseDeclaration:
                 module.uses.push_back(static_cast<const ast::UseDeclaration*>(item.get()));
                 break;
@@ -345,6 +346,7 @@ private:
         auto& qualifiers = qualifiers_[&module];
         qualifiers[lower(module.name)] = &module;
         for (const ast::UseDeclaration* use : module.uses) {
+            noteItem(module, *use);
             ModuleInfo* target = find(use->path().front());
             if (target == nullptr) {
                 continue;  // a library module without declarations (Std.Strings)
@@ -674,6 +676,7 @@ private:
     void rewriteModule(ModuleInfo& module, ast::ModuleNode& program)
     {
         for (auto& item : module.node->items()) {
+            noteItem(module, *item);
             if (item->kind() == ast::AstNodeKind::UseDeclaration) {
                 continue;
             }
@@ -782,6 +785,7 @@ private:
     void checkCoherence(const ModuleInfo& module)
     {
         for (const auto& item : module.node->items()) {
+            noteItem(module, *item);
             if (item->kind() == ast::AstNodeKind::FunctionDeclaration) {
                 const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
                 const std::size_t dot = ast::methodDot(function.name());
@@ -852,13 +856,37 @@ private:
     std::vector<std::tuple<std::string, std::string, std::string>> hints_;
     std::set<std::string> excluded_;
     ModuleInfo* current_ = nullptr;
+
+public:
+    // An error names the item being resolved (E14, change source-positions).
+    void locate() const
+    {
+        if (item_ != nullptr) {
+            locateSemanticError(item_->position(), itemModule_);
+        }
+    }
+
+private:
+    void noteItem(const ModuleInfo& module, const ast::AstNode& item)
+    {
+        item_ = &item;
+        itemModule_ = module.name;
+    }
+    const ast::AstNode* item_ = nullptr;
+    std::string itemModule_;
 };
 
 } // namespace
 
 std::unique_ptr<ast::ModuleNode> resolveModules(std::vector<std::unique_ptr<ast::ModuleNode>> modules)
 {
-    return Resolver(std::move(modules)).run();
+    Resolver resolver(std::move(modules));
+    try {
+        return resolver.run();
+    } catch (const SemanticError&) {
+        resolver.locate();
+        throw;
+    }
 }
 
 } // namespace inox::compiler::semantic

@@ -27,10 +27,35 @@ namespace detail {
 struct IntegerConstant;
 }
 
+// Where the analysis is, while it runs (change source-positions): the start
+// of the statement or declaration being checked, and its module. A
+// SemanticError made during the analysis takes it.
+struct DiagnosticPlace {
+    ast::SourcePosition position;
+    std::string module;
+    bool active = false;
+};
+DiagnosticPlace& diagnosticPlace();
+void beginDiagnosticPlace();
+void clearDiagnosticPosition();
+void endDiagnosticPlace();
+
+// A semantic diagnostic. Where it was found (E14, change source-positions)
+// is kept beside it, not in it: on Windows a thrown object lives in the frame
+// of the function that throws it, and a larger SemanticError would grow every
+// frame that can throw one (most of the recursive analysis). The compiler
+// stops at the first error, so one place is enough: `semanticErrorPlace()`
+// is the place of the last SemanticError made, which the driver prints.
 class SemanticError final : public std::runtime_error {
 public:
     explicit SemanticError(std::string message);
 };
+
+// The place of the last SemanticError made: what the analyzer was checking
+// when it was made, or what module resolution and contract lowering attach.
+const DiagnosticPlace& semanticErrorPlace();
+// Gives the last SemanticError a place, when it has none.
+void locateSemanticError(ast::SourcePosition position, const std::string& module);
 
 // A type of the analysis; null while not known (OpenSpec change
 // type-representation).
@@ -386,6 +411,10 @@ private:
     bool hasMain_ = false;
     // r3.99: the program and the module whose declaration is analyzed.
     const ast::ModuleNode* program_ = nullptr;
+    // Where the analysis is (change source-positions): the start of the
+    // statement or declaration being checked, and its module.
+    void notePosition(const ast::SourcePosition& position);
+    void notePosition(const ast::AstNode& item);
     std::string currentModule_;
     void enterModule(const std::string& module);
     std::unordered_map<std::string, std::string> typeModules_;
