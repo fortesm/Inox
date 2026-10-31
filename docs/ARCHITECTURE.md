@@ -115,7 +115,7 @@ that removes it (ROADMAP, "Foundation"); a fix updates this table.
 | D4 | Types are text in the AST (`typeName`), read by `types::TypeSyntax` in phase 5; generic instances rewrite type names as text (`TypeNameRewriter`) | E11 (steps 3-4) | F4 |
 | D5 | Codegen reads the raw AST beside 13 side tables of `SemanticResult`; no typed or lowered representation between phases 5 and 6 | E11 (steps 3-5) | F6 |
 | D6 | Exception handlers match the written type name; the hierarchy is not in `types::Type` | E11 | F7 |
-| D7 | The quality gates of E19 are run by the agent for each pull request, not all by CI (ASan+UBSan suite, mutation fuzz, differential test, IR snapshot) | E19 | F1 |
+| ~~D7~~ | Closed by F1 (r3.111): every gate of E19 runs in CI (`.github/workflows/ci.yml`, `.github/workflows/gates.yml`) | E19 | F1 |
 
 ## Source map
 

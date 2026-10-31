@@ -189,6 +189,20 @@ every check below that applies, and its report says which ran.
   program before and after; every difference is listed as intended or the
   refactor is not done.
 
+- `tools/version_check.py`: the version and the canon revision of
+  `Version.h` are the ones `revisions.md`, `README.md`, `CHANGELOG.md` and
+  `docs/STATUS.md` state.
+
+Where they run (change `ci-gates`, r3.111): the CI workflow runs the suites
+on Linux and Windows, backend_gaps, eh_state_balance, string_leak_check,
+OpenSpec, the constitution lock and the version check on every pull request
+and push; the Gates workflow runs the sanitized suite with a 1 MiB stack,
+the mutation fuzz (seeds 1 and 7) and the differential test on every pull
+request that touches code, tests or tools, on every push to main and every
+night, and the IR snapshot against the base on a pull request labelled
+`refactor`. A gate that fails blocks the merge; its log is kept as an
+artifact.
+
 Still to come: clang-format, clang-tidy, cppcheck, coverage and complexity
 reports.
 

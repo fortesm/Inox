@@ -14,7 +14,8 @@ Usage
   tools/ir_snapshot.py compare <inox> <snapshot-dir> [--allow PATH ...]
 
 `--allow` names a program (repository-relative path) whose outputs may
-differ; the report still lists it, marked "intended". `compare` exits 1 when
+differ, or which may appear or disappear; the report still lists it, marked
+"intended". `compare` exits 1 when
 an unlisted program differs or a program appears or disappears.
 
 The snapshot sets INOX_STDLIB to the repository's stdlib/, so a compiler
@@ -85,8 +86,12 @@ def command_compare(compiler: str, directory: Path, allowed: set[str]) -> int:
     unexpected = 0
     for name in sorted(set(before) | set(after)):
         if name not in before or name not in after:
-            print(f"{'added' if name not in before else 'removed'}: {name}")
-            unexpected += 1
+            # A program named by --allow may appear or disappear (a test the
+            # change adds or removes); any other is unexpected.
+            mark = " (intended)" if name in allowed else ""
+            print(f"{'added' if name not in before else 'removed'}{mark}: {name}")
+            if name not in allowed:
+                unexpected += 1
             continue
         changed = [mode for mode in MODES if before[name][mode] != after[name][mode]]
         if not changed:

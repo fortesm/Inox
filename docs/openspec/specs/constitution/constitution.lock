@@ -188,7 +188,7 @@ engineering.md#E15. Valid LLVM IR or a clear stop	f6cc69fcf3dbf7a7	constitution
 engineering.md#E16. Every behavior and every fix has tests	1ad4f8eeb1b2b179	constitution
 engineering.md#E17. Design patterns that earn their place	60599020ba37f2e2	constitution
 engineering.md#E18. Modern C++ baseline	fb3c6be1a9286106	constitution
-engineering.md#E19. Quality gates	3cc7d45b946eb963	repo-layout
+engineering.md#E19. Quality gates	95fcd16ab3cf3ee6	ci-gates
 engineering.md#E20. Refactoring	8ef6bec77e01fcbd	constitution
 engineering.md#E21. Module structure of the compiler	acf290db54f30723	phase-contracts
 engineering.md#E22. Backend strategy: clang as the external driver	5b5aa2a8be636d1a	roadmap-renumber
