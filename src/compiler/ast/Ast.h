@@ -7,8 +7,12 @@
 
 #pragma once
 
+#include "SourcePosition.h"
+#include "TypeExpr.h"
+
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -95,15 +99,6 @@ enum class SectionKind {
     Type,
     Const,
     State
-};
-
-// Where a node starts in its source file (E14; change source-positions).
-// Line 0 means unknown: a node the compiler made that no source text wrote.
-struct SourcePosition {
-    std::size_t line = 0;
-    std::size_t column = 0;
-
-    bool known() const { return line != 0; }
 };
 
 class AstNode {
@@ -225,12 +220,11 @@ private:
     std::size_t line_ = 0;
 };
 
-// A field of a Struct declaration (CANON-9). `typeName` uses the front end's
-// spelling (`Array[L..H] T`, `Slice<T>` or a name); a default is one literal,
-// with a leading `-` for a negative number.
+// A field of a Struct declaration (CANON-9) and its written type (F4); a
+// default is one literal, with a leading `-` for a negative number.
 struct StructFieldDeclaration {
     std::string name;
-    std::string typeName;
+    TypeExpr type;
     bool hasDefault = false;
     std::string defaultValue;
     // r3.82: `:= Fill(Literal)`, the default of an array field;
@@ -292,14 +286,14 @@ struct TypeDeclaration {
     std::string module;
 };
 
-// One Const or State declaration (CANON-5). `typeName` is empty for the
+// One Const or State declaration (CANON-5). `type` is empty for the
 // inferred form `Name := Expr`; `value` is null for a State declaration that
 // takes its type's defaults (`Name TStruct`). The value is parsed as an
 // expression so semantic analysis checks it like any other (ADR-0009, CANON-9).
 struct VariableDeclaration {
     SourcePosition position;  // where the declaration starts
     std::string name;
-    std::string typeName;
+    std::optional<TypeExpr> type;
     ExpressionPtr value;
     std::string valueText;  // the value as written (inox interface)
     std::size_t line = 0;
@@ -349,23 +343,22 @@ std::size_t methodDot(std::string_view routineName);
 
 // One parameter of a routine header (F3, r3.114): `X T`, `ref X T`,
 // `ref mut X T`, or the receiver of a method, `Self` or `Self mut`, which
-// has no written type (it is the method's struct). The type is the front
-// end's spelling (types/TypeSyntax.h) until types are structured (F4).
+// has no written type (it is the method's struct).
 struct ParameterDeclaration {
     enum class Mode { Value, Ref, RefMut };
 
     std::string name;
-    std::string typeName;  // empty for the receiver
+    std::optional<TypeExpr> type;  // empty for the receiver
     Mode mode = Mode::Value;
     bool isReceiver = false;
 };
 
 // The parameters and result a routine header writes: `(A T, ref B U) R`.
-// No parameters means no parentheses (empty ones are a parse error); an
-// empty result type means a procedure.
+// No parameters means no parentheses (empty ones are a parse error); no
+// result type means a procedure.
 struct RoutineHeader {
     std::vector<ParameterDeclaration> parameters;
-    std::string resultTypeName;
+    std::optional<TypeExpr> resultType;
 };
 
 class FunctionDeclaration final : public AstNode {
@@ -387,8 +380,8 @@ public:
     const RoutineHeader& header() const { return header_; }
     RoutineHeader& header() { return header_; }
     const std::vector<ParameterDeclaration>& parameters() const { return header_.parameters; }
-    const std::string& resultTypeName() const { return header_.resultTypeName; }
-    bool isFunction() const { return !header_.resultTypeName.empty(); }
+    const std::optional<TypeExpr>& resultType() const { return header_.resultType; }
+    bool isFunction() const { return header_.resultType.has_value(); }
     const std::vector<StatementPtr>& body() const;
     // `TName.Method(...) [Type] Override :` replaces a reused method (CANON-9).
     bool isOverride() const;
@@ -551,18 +544,20 @@ public:
     VarStatement(bool isMutable,
                  std::string name,
                  ExpressionPtr initializer,
-                 std::string typeName = {});
+                 std::optional<TypeExpr> type = std::nullopt);
 
     bool isMutable() const;
     const std::string& name() const;
-    const std::string& typeName() const;
+    // The written type of a typed local, `X Integer := 1`; empty when
+    // inferred.
+    const std::optional<TypeExpr>& type() const;
     const Expression* initializer() const;
     ExpressionPtr takeInitializer();
 
 private:
     bool isMutable_ = false;
     std::string name_;
-    std::string typeName_;
+    std::optional<TypeExpr> type_;
     ExpressionPtr initializer_;
 };
 

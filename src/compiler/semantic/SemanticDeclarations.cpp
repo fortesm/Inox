@@ -12,7 +12,6 @@
 
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../types/TypeSyntax.h"
 #include "../lexer/Lexer.h"
 
 #include <algorithm>
@@ -73,13 +72,13 @@ void SemanticAnalyzer::registerFunctionSignatureIn(const ast::FunctionDeclaratio
                                                                                         : PassMode::Value;
         TypeRef parameterType = nullptr;
         if (written.isReceiver) {
-            parameterType = resolveWrittenType(receiverType);
-            if (!parameterType->isStruct() && (types::isArraySpelling(receiverType) || isFileType(parameterType))) {
+            parameterType = resolveTypeName(receiverType);
+            if (!parameterType->isStruct() && isFileType(parameterType)) {
                 throw SemanticError("methods belong to structs and built-in value types; " + receiverType +
                                     " cannot have methods: " + function.name());
             }
         } else {
-            parameterType = resolveWrittenType(written.typeName);
+            parameterType = resolveWrittenType(*written.type);
             if (mode != PassMode::Value && parameterType->isSlice()) {
                 throw SemanticError("a slice is already a view: pass it without ref (ADR-0017)");
             }
@@ -96,8 +95,8 @@ void SemanticAnalyzer::registerFunctionSignatureIn(const ast::FunctionDeclaratio
         signature.parameters.push_back(FunctionParameter{written.name, parameterType, mode});
     }
 
-    if (!function.resultTypeName().empty()) {
-        signature.returnType = resolveWrittenType(function.resultTypeName());
+    if (function.resultType()) {
+        signature.returnType = resolveWrittenType(*function.resultType());
         rejectFileIn(signature.returnType, "returned by " + function.name());
         if (signature.returnType->isSlice()) {
             throw SemanticError("a slice cannot be returned: it would outlive its array (ADR-0017)");
@@ -111,7 +110,7 @@ void SemanticAnalyzer::registerFunctionSignatureIn(const ast::FunctionDeclaratio
             throw SemanticError(function.name() + " is marked Override, but " + receiverType +
                                 " reuses no struct: Override replaces a reused method (CANON-9)");
         }
-        const TypeRef canonical = resolveWrittenType(receiverType);
+        const TypeRef canonical = resolveTypeName(receiverType);
         const std::string canonicalKey = normalizeName(canonical->name() + function.name().substr(dot));
         if (canonicalKey != normalizeName(function.name())) {
             if (functions_.contains(canonicalKey)) {
@@ -370,24 +369,24 @@ void SemanticAnalyzer::analyzeModuleItem(const ast::AstNode& item)
         for (const ast::VariableDeclaration& declaration : section.variables()) {
             notePosition(declaration.position);
             if (declaration.value == nullptr) {
-                result_.setDeclaredType(declaration, resolveWrittenType(declaration.typeName));
+                result_.setDeclaredType(declaration, resolveWrittenType(*declaration.type));
                 continue;
             }
             const TypeRef declaredType =
-                declaration.typeName.empty() ? nullptr : resolveWrittenType(declaration.typeName);
+                declaration.type ? resolveWrittenType(*declaration.type) : nullptr;
             const TypeRef valueType = analyzeExpressionFor(*declaration.value, declaredType);
             rejectFileIn(valueType, std::string(section.sectionKind() == ast::SectionKind::State
                                                     ? "a State variable, "
                                                     : "a Const, ") +
                                         declaration.name);
-            if (declaration.typeName.empty() && valueType != nullptr) {
+            if (!declaration.type && valueType != nullptr) {
                 symbols_.currentScope().inferType(declaration.name, valueType);
             }
             if (section.sectionKind() == ast::SectionKind::Const) {
                 recordConstantExpression(declaration.name, *declaration.value);
             }
-            if (!declaration.typeName.empty()) {
-                const TypeRef declared = resolveWrittenType(declaration.typeName);
+            if (declaration.type) {
+                const TypeRef declared = resolveWrittenType(*declaration.type);
                 if (valueType != nullptr && !canAssignValue(declared, valueType, *declaration.value)) {
                     throw SemanticError("initializer of " + declaration.name + " has type " +
                                         valueType->name() + ", expected " + declared->name());
@@ -416,16 +415,16 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
         // An array type is made canonical when the section is analyzed: its
         // bounds may name a Const declared later in the module.
         const TypeRef type =
-            declaration.typeName.empty() ? inferSectionDeclarationType(declaration.value.get())
-            : types::isArraySpelling(declaration.typeName) ? nullptr
-                                                           : lookupWrittenType(declaration.typeName);
+            !declaration.type           ? inferSectionDeclarationType(declaration.value.get())
+            : declaration.type->isArray() ? nullptr
+                                          : lookupWrittenType(*declaration.type);
         declareOrThrow(declaration.name, kind, type, isMutable);
-        if (type == nullptr && !declaration.typeName.empty() && !types::isArraySpelling(declaration.typeName)) {
-            pendingSectionTypes_.emplace_back(declaration.name, declaration.typeName);
+        if (type == nullptr && declaration.type && !declaration.type->isArray()) {
+            pendingSectionTypes_.emplace_back(declaration.name, ast::spell(*declaration.type));
         }
         if (declaration.value == nullptr) {
             if (kind == SymbolKind::State) {
-                stateDeclarationsWithoutInitializer_.emplace_back(declaration.name, declaration.typeName);
+                stateDeclarationsWithoutInitializer_.emplace_back(declaration.name, &*declaration.type);
             }
             continue;
         }
@@ -579,7 +578,7 @@ void SemanticAnalyzer::registerStructDeclaration(const ast::TypeDeclaration& dec
     const TypeRef structType = types().declareStruct(declaration.name);
 
     std::vector<types::StructField> fields;
-    std::vector<std::string> written;
+    std::vector<const ast::TypeExpr*> written;
     // Duplicate detection by normalized (case-insensitive) name keeps a large
     // struct linear.
     std::unordered_set<std::string> seenFieldNames;
@@ -598,7 +597,7 @@ void SemanticAnalyzer::registerStructDeclaration(const ast::TypeDeclaration& dec
         field.isPart = fieldDeclaration.isPart;
         field.isPublic = fieldDeclaration.isPublic || fieldDeclaration.isPart;
         fields.push_back(std::move(field));
-        written.push_back(fieldDeclaration.typeName);
+        written.push_back(&fieldDeclaration.type);
     }
     types().setStructFields(structType, std::move(fields));
     writtenFieldTypes_.emplace(structType, std::move(written));
@@ -613,8 +612,8 @@ void SemanticAnalyzer::resolveDeclaredTypeNames()
     }
     for (const auto& [structType, written] : writtenFieldTypes_) {
         for (std::size_t index = 0; index < written.size(); ++index) {
-            if (!types::isArraySpelling(written[index]) && !types::isGenericSpelling(written[index])) {
-                types().setStructFieldType(structType, index, types().lookup(written[index]));
+            if (written[index]->isNamed()) {
+                types().setStructFieldType(structType, index, types().lookup(written[index]->name));
             }
         }
     }
@@ -623,13 +622,13 @@ void SemanticAnalyzer::resolveDeclaredTypeNames()
 void SemanticAnalyzer::completeStructFields(const ast::TypeDeclaration& declaration)
 {
     const TypeRef structType = resolveStruct(declaration.name);
-    const std::vector<std::string>& written = writtenFieldTypes_.at(structType);
+    const std::vector<const ast::TypeExpr*>& written = writtenFieldTypes_.at(structType);
     for (std::size_t index = 0; index < written.size(); ++index) {
-        if (types::isArraySpelling(written[index]) || types::isGenericSpelling(written[index])) {
-            if (types::isGenericSpelling(written[index], "Slice")) {
+        if (!written[index]->isNamed()) {
+            if (written[index]->isGeneric("Slice")) {
                 continue;  // rejected by validateStructDeclaration
             }
-            const TypeRef type = resolveWrittenType(written[index]);
+            const TypeRef type = resolveWrittenType(*written[index]);
             types().setStructFieldType(structType, index, type);
         }
     }
@@ -638,16 +637,16 @@ void SemanticAnalyzer::completeStructFields(const ast::TypeDeclaration& declarat
 void SemanticAnalyzer::validateStructDeclaration(const ast::TypeDeclaration& declaration)
 {
     for (const ast::StructFieldDeclaration& field : declaration.fields) {
-        if (types::isGenericSpelling(field.typeName, "Slice")) {
+        if (field.type.isGeneric("Slice")) {
             throw SemanticError("a slice cannot be a struct field (ADR-0017): " + field.name);
         }
-        const TypeRef type = resolveWrittenType(field.typeName);
+        const TypeRef type = resolveWrittenType(field.type);
         rejectFileIn(type, "a struct field, " + field.name);
         if (field.hasDefault && field.fillDefault) {
             validateFillDefault(field.name, type, field.defaultValue);
         } else if (field.hasDefault) {
             if (type->isArray()) {
-                throw SemanticError("the default of an array field fills it, " + field.name + " " + field.typeName +
+                throw SemanticError("the default of an array field fills it, " + field.name + " " + ast::spell(field.type) +
                                     " := Fill(Value) (r3.82)");
             }
             if (type->isPointer()) {
@@ -867,20 +866,20 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
 
     for (const ast::VariableDeclaration& declaration : section.variables()) {
         notePosition(declaration.position);
-        if (declaration.typeName.empty()) {
+        if (!declaration.type) {
             continue;
         }
-        if (types::isGenericSpelling(declaration.typeName, "Slice")) {
+        if (declaration.type->isGeneric("Slice")) {
             throw SemanticError("a slice cannot be a " +
                                 std::string(section.sectionKind() == ast::SectionKind::State ? "State variable"
                                                                                                : "Const") +
                                 " (ADR-0017): " + declaration.name);
         }
-        const TypeRef type = resolveWrittenType(declaration.typeName);
+        const TypeRef type = resolveWrittenType(*declaration.type);
         if (section.sectionKind() == ast::SectionKind::State) {
             rejectFileIn(type, "a State variable, " + declaration.name);
         }
-        if (types::isArraySpelling(declaration.typeName) || types::isGenericSpelling(declaration.typeName)) {
+        if (!declaration.type->isNamed()) {
             symbols_.currentScope().inferType(declaration.name, type);
         }
     }
@@ -889,12 +888,12 @@ void SemanticAnalyzer::validateSectionTypes(const ast::SectionDeclaration& secti
     // structs and sets may use the type-default form `Name TType`; an array
     // is filled, `Fill(Value)` (r3.81).
     if (section.sectionKind() == ast::SectionKind::State) {
-        for (const auto& [name, typeName] : stateDeclarationsWithoutInitializer_) {
-            const TypeRef type = resolveWrittenType(typeName);
+        for (const auto& [name, written] : stateDeclarationsWithoutInitializer_) {
+            const TypeRef type = resolveWrittenType(*written);
             // A Link and an Option<Own<T>> are born empty (safe-pointers).
             const bool bornEmpty = type->isLink() || type->isOptionOwn();
             if (type->isArray()) {
-                throw SemanticError(arrayWithoutInitializer(name, typeName, type));
+                throw SemanticError(arrayWithoutInitializer(name, *written, type));
             }
             if (!type->isStruct() && !type->isSet() && !bornEmpty) {
                 throw SemanticError(type->isOwn()

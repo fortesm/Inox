@@ -17,6 +17,7 @@ int runTypesTests();
 int runTypeLayoutTests();
 int runAstCloneTests();
 int runRoutineHeaderTests();
+int runTypeExprTests();
 } // namespace inox::compiler::unit
 
 int main()
@@ -26,6 +27,7 @@ int main()
     runTypeLayoutTests();
     runAstCloneTests();
     runRoutineHeaderTests();
+    runTypeExprTests();
     if (failureCount() != 0) {
         return 1;
     }

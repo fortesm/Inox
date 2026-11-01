@@ -22,7 +22,6 @@
 #include "../ast/AstClone.h"
 
 #include "SemanticAnalyzer.h"
-#include "../types/TypeSyntax.h"
 
 #include <cctype>
 #include <cstddef>
@@ -179,7 +178,7 @@ private:
                     std::vector<std::string> parts;
                     for (const ast::StructFieldDeclaration& field : type.fields) {
                         if (field.isPart) {
-                            parts.push_back(field.typeName);
+                            parts.push_back(ast::spell(field.type));
                         }
                     }
                     structs_.emplace(lower(type.name), StructInfo{type.name, std::move(parts), &type});
@@ -264,7 +263,7 @@ private:
 
     static bool hasResult(const ast::FunctionDeclaration& function)
     {
-        return !function.resultTypeName().empty();
+        return function.isFunction();
     }
 
     // The methods an Override replaces: for each part (at any depth) the
@@ -526,20 +525,23 @@ private:
 
     // Whether a written type moves (an owner, or a struct or array that
     // holds one): such a value is never copied (safe-pointers).
-    bool movesOnly(const std::string& type, std::set<std::string> seen = {}) const
+    bool movesOnly(const ast::TypeExpr& type, std::set<std::string> seen = {}) const
     {
-        if (types::isGenericSpelling(type, "Own") || types::isGenericSpelling(type, "Option")) {
+        if (type.isGeneric("Own") || type.isGeneric("Option")) {
             return true;
         }
-        if (const auto syntax = types::readTypeSyntax(type); syntax && syntax->form == types::TypeSyntax::Form::Array) {
-            return movesOnly(syntax->argument().spelling(), seen);
+        if (type.isArray()) {
+            return movesOnly(type.element(), seen);
         }
-        const auto info = structs_.find(lower(type));
-        if (info == structs_.end() || !seen.insert(lower(type)).second) {
+        if (!type.isNamed()) {
+            return false;
+        }
+        const auto info = structs_.find(lower(type.name));
+        if (info == structs_.end() || !seen.insert(lower(type.name)).second) {
             return false;
         }
         for (const ast::StructFieldDeclaration& field : info->second.declaration->fields) {
-            if (movesOnly(field.typeName, seen)) {
+            if (movesOnly(field.type, seen)) {
                 return true;
             }
         }
@@ -580,7 +582,7 @@ private:
 
     struct Parameter {
         std::string name;
-        std::string type;
+        ast::TypeExpr type;
         bool byReference = false;
     };
 
@@ -590,7 +592,7 @@ private:
         std::vector<Parameter> parameters;
         for (const ast::ParameterDeclaration& parameter : function.parameters()) {
             if (!parameter.isReceiver) {
-                parameters.push_back(Parameter{parameter.name, parameter.typeName,
+                parameters.push_back(Parameter{parameter.name, *parameter.type,
                                                parameter.mode != ast::ParameterDeclaration::Mode::Value});
             }
         }
@@ -624,7 +626,8 @@ private:
             }
             auto invariant = std::make_unique<ast::FunctionDeclaration>(
                 info.name + ".__invariant",
-                ast::RoutineHeader{{ast::ParameterDeclaration{"Self", "", ast::ParameterDeclaration::Mode::Value, true}}, ""},
+                ast::RoutineHeader{{ast::ParameterDeclaration{"Self", std::nullopt, ast::ParameterDeclaration::Mode::Value, true}},
+                                   std::nullopt},
                 std::move(statements), false);
             if (info.declaration != nullptr) {
                 invariant->setModule(info.declaration->module);

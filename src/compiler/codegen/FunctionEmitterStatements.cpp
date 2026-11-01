@@ -52,13 +52,13 @@ void FunctionEmitter::emitStatementKind(const ast::Statement& statement)
     if (statement.kind() == ast::AstNodeKind::VarStatement) {
         const auto& variable = static_cast<const ast::VarStatement&>(statement);
         if (variable.initializer() == nullptr) {
-            if (variable.typeName().empty()) {
+            if (!variable.type()) {
                 throw CodegenUnsupported(
                     "LLVM emission currently requires local variable initialization");
             }
             emitTypedLocalVariable(variable.name(), semantics_.declaredType(variable));
             emitNewValueInvariant(variable);
-        } else if (!variable.typeName().empty()) {
+        } else if (variable.type()) {
             emitTypedLocalVariable(variable.name(), semantics_.declaredType(variable), variable.initializer());
         } else {
             emitLocalVariable(variable.name(), *variable.initializer());
@@ -175,7 +175,7 @@ void FunctionEmitter::emitVarBlockDeclaration(const ast::Statement& statement)
         if (variable.initializer() == nullptr) {
             emitTypedLocalVariable(variable.name(), semantics_.declaredType(variable));
             emitNewValueInvariant(variable);
-        } else if (!variable.typeName().empty()) {
+        } else if (variable.type()) {
             emitTypedLocalVariable(variable.name(), semantics_.declaredType(variable), variable.initializer());
         } else {
             emitLocalVariable(variable.name(), *variable.initializer());

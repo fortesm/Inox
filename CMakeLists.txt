@@ -32,6 +32,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/ast/Ast.cpp
     src/compiler/ast/AstClone.cpp
     src/compiler/ast/ModuleInterface.cpp
+    src/compiler/ast/TypeExpr.cpp
     src/compiler/codegen/AstQueries.cpp
     src/compiler/codegen/ExceptionAbi.cpp
     src/compiler/codegen/FunctionEmitter.cpp
@@ -84,7 +85,6 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticTypes.cpp
     src/compiler/semantic/Symbol.cpp
     src/compiler/types/TypeContext.cpp
-    src/compiler/types/TypeSyntax.cpp
     src/compiler/support/Environment.cpp
     src/compiler/support/FileSystem.cpp
     src/compiler/support/Platform.cpp
@@ -179,8 +179,11 @@ add_executable(inox-compiler-tests
     tests/compiler-unit/TypeLayoutTests.cpp
     tests/compiler-unit/AstCloneTests.cpp
     tests/compiler-unit/RoutineHeaderTests.cpp
+    tests/compiler-unit/TypeExprTests.cpp
 )
 target_link_libraries(inox-compiler-tests PRIVATE inox-compiler)
+# The corpus round trip of TypeExprTests reads tests/, examples/, stdlib/.
+target_compile_definitions(inox-compiler-tests PRIVATE INOX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 inox_apply_compiler_options(inox-compiler-tests)
 inox_apply_warnings(inox-compiler-tests)
 inox_apply_sanitizers(inox-compiler-tests)

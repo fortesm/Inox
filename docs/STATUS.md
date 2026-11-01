@@ -180,9 +180,6 @@ they are rejected now.)
 - Std.Strings: a statement that calls a routine and names a State or `ref`
   String may get an empty cleanup pad when the String is passed by address
   rather than read (the scan that decides is conservative).
-- Types (change `type-representation`): the parser keeps written type text
-  (`Array[1..N] T`, `Link<T>`), which the analyzer reads with
-  `types::TypeSyntax` and resolves; a typed AST for types is a later step.
 - Exception handlers are matched by the written type name
   (`exceptions/ExceptionTypes`); the exception hierarchy (identifiers,
   parents) is not part of `types::Type` yet.

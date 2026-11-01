@@ -78,7 +78,12 @@ private:
     std::vector<ast::ExpressionPtr> parseArgumentList();
 
     ast::StatementPtr parseTypedLocalStatement();
-    std::string parseTypeName(const char* message);
+    void parseTypeInto(ast::TypeExpr& out, const char* message);
+    void appendReusedPart(std::vector<ast::StructFieldDeclaration>& fields, const lexer::Token& part);
+    void appendStructField(std::vector<ast::StructFieldDeclaration>& fields);
+    void appendSectionVariable(std::vector<ast::VariableDeclaration>& variables, ast::SectionKind sectionKind);
+    void parseTypeArgumentsInto(ast::TypeExpr& out);
+    void parseArrayTypeInto(ast::TypeExpr& out);
     // CANON-8 (r3.77): `<T, U>` after the name of a routine or a struct.
     std::vector<std::string> parseTypeParameters(const lexer::Token& owner);
     void rejectWrittenTypeArguments() const;
@@ -108,7 +113,7 @@ private:
     ast::VariableDeclaration parseSectionVariable(ast::SectionKind sectionKind);
     void expectEndOfDeclarationLine(std::size_t line, const char* what);
     ast::AstNodePtr parseFunctionDeclaration();
-    ast::RoutineHeader parseRoutineHeader(const lexer::Token& name, const std::string& functionName);
+    std::unique_ptr<ast::RoutineHeader> parseRoutineHeader(const lexer::Token& name, const std::string& functionName);
     [[noreturn]] void rejectReceiverType(const std::string& functionName) const;
     std::string parseQualifiedName(std::string_view message);
 

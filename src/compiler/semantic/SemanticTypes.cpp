@@ -13,7 +13,6 @@
 
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
-#include "../types/TypeSyntax.h"
 
 #include <algorithm>
 #include <array>
@@ -344,32 +343,30 @@ void SemanticAnalyzer::declareTypeName(std::string_view name, TypeRef type)
     types().declareName(name, type);
 }
 
-TypeRef SemanticAnalyzer::resolveWrittenType(std::string_view written)
+TypeRef SemanticAnalyzer::resolveWrittenType(const ast::TypeExpr& written)
 {
-    const auto syntax = types::readTypeSyntax(written);
-    if (!syntax) {
-        if (types::isArraySpelling(written)) {
-            throw SemanticError("malformed array type: " + std::string(written));
-        }
-        throw SemanticError("unknown type: " + unknownNameText(written));
-    }
-    return resolveTypeSyntax(*syntax, written);
+    return resolveTypeExpr(written, ast::spell(written));
 }
 
-TypeRef SemanticAnalyzer::lookupWrittenType(std::string_view written)
+TypeRef SemanticAnalyzer::resolveTypeName(std::string_view name)
 {
-    if (!types::isArraySpelling(written) && !types::isGenericSpelling(written)) {
-        return types().lookup(written);
+    return resolveWrittenType(ast::namedType(std::string(name)));
+}
+
+TypeRef SemanticAnalyzer::lookupWrittenType(const ast::TypeExpr& written)
+{
+    if (written.isNamed()) {
+        return types().lookup(written.name);
     }
     return resolveWrittenType(written);
 }
 
-TypeRef SemanticAnalyzer::resolveTypeSyntax(const types::TypeSyntax& syntax, std::string_view written)
+TypeRef SemanticAnalyzer::resolveTypeExpr(const ast::TypeExpr& syntax, std::string_view written)
 {
     switch (syntax.form) {
-    case types::TypeSyntax::Form::Array:
+    case ast::TypeExpr::Form::Array:
         return resolveArrayType(syntax, written);
-    case types::TypeSyntax::Form::Generic:
+    case ast::TypeExpr::Form::Generic:
         if (detail::equalsIgnoreCase(syntax.name, "Set") && syntax.arguments.size() == 1) {
             return resolveSetType(syntax, written);  // CANON-13
         }
@@ -381,8 +378,8 @@ TypeRef SemanticAnalyzer::resolveTypeSyntax(const types::TypeSyntax& syntax, std
             throw SemanticError(syntax.name + " takes one type argument: " + std::string(written));
         }
         if (detail::equalsIgnoreCase(syntax.name, "Slice")) {
-            const std::string elementText = syntax.argument().spelling();
-            const TypeRef element = resolveTypeSyntax(syntax.argument(), elementText);
+            const std::string elementText = ast::spell(syntax.element());
+            const TypeRef element = resolveTypeExpr(syntax.element(), elementText);
             if (!element->isArray() && !element->isNumeric() && !element->isBool() && !element->isEnum()) {
                 throw SemanticError("slices of " + element->name() +
                                     " are not supported yet; use an integer, Float, Bool or array element");
@@ -390,7 +387,7 @@ TypeRef SemanticAnalyzer::resolveTypeSyntax(const types::TypeSyntax& syntax, std
             return types().slice(element);
         }
         return resolvePointerType(syntax, written);
-    case types::TypeSyntax::Form::Named:
+    case ast::TypeExpr::Form::Named:
         break;
     }
     if (const TypeRef type = types().lookup(syntax.name)) {
@@ -413,7 +410,7 @@ TypeRef SemanticAnalyzer::resolveTypeSyntax(const types::TypeSyntax& syntax, std
 // CANON-13: a fixed array type resolves its bounds (literals or Const names)
 // and its element type, so `Array[1..Size] Byte` and `Array[1..10] UInt8`
 // are the same type when Size is 10.
-TypeRef SemanticAnalyzer::resolveArrayType(const types::TypeSyntax& syntax, std::string_view written)
+TypeRef SemanticAnalyzer::resolveArrayType(const ast::TypeExpr& syntax, std::string_view written)
 {
     (void)written;
     const auto boundValue = [&](const std::string& text) -> std::int64_t {
@@ -439,16 +436,16 @@ TypeRef SemanticAnalyzer::resolveArrayType(const types::TypeSyntax& syntax, std:
         }
         return constant->integer;
     };
-    const std::int64_t low = boundValue(syntax.low);
-    const std::int64_t high = boundValue(syntax.high);
+    const std::int64_t low = boundValue(syntax.low.text);
+    const std::int64_t high = boundValue(syntax.high.text);
     if (low > high) {
         throw SemanticError("empty array bounds: " + std::to_string(low) + ".." + std::to_string(high));
     }
-    const types::TypeSyntax& elementSyntax = syntax.argument();
-    if (elementSyntax.form == types::TypeSyntax::Form::Array) {
-        return types().array(low, high, resolveArrayType(elementSyntax, elementSyntax.spelling()));
+    const ast::TypeExpr& elementSyntax = syntax.element();
+    if (elementSyntax.form == ast::TypeExpr::Form::Array) {
+        return types().array(low, high, resolveArrayType(elementSyntax, ast::spell(elementSyntax)));
     }
-    const TypeRef element = resolveTypeSyntax(elementSyntax, elementSyntax.spelling());
+    const TypeRef element = resolveTypeExpr(elementSyntax, ast::spell(elementSyntax));
     rejectFileIn(element, "an array element");
     if (element->isOwn()) {
         throw SemanticError("an array of owners is Array[...] Option<Own<T>>: every element is born None");

@@ -54,8 +54,10 @@ fails above half the reserve or on a growth of more than 5%. A change to a funct
 the parser or the analyzer recurses (the recursive functions themselves,
 and those below them: `main`, the module loader, `parseSource`,
 `Parser::parseModule`, `SemanticAnalyzer::analyze`) must not grow its
-frame: compare with `-fstack-usage` against main, and move new work into
-out-of-line helpers. Under the MSVC ABI a thrown exception object lives in
+frame: compare with `-fstack-usage` against main (`tools/stack_frames.py`
+lists the recursion-path functions and fails when one grows, r3.117), and
+move new work into out-of-line helpers; a large value such as a written
+type (`ast::TypeExpr`) is never a local of a recursive function. Under the MSVC ABI a thrown exception object lives in
 the frame of the function that throws it: never make `SemanticError` (or
 any exception thrown during the recursion) larger; Linux, which allocates
 exception objects on the heap, will not show the cost.
@@ -71,7 +73,9 @@ exception objects on the heap, will not show the cost.
 - **Guarantees:** syntax errors with line and column; the AST says what
   was written. A routine header is structure (`ast::RoutineHeader`, r3.114):
   its parameters (name, `ref`/`ref mut`, receiver `Self`/`Self mut`, written
-  type) and its result type; no later phase reads header tokens.
+  type) and its result type; no later phase reads header tokens. Every
+  written type is a tree (`ast::TypeExpr`, r3.117) with its position; no
+  later phase reads type text (text comes only from `ast::spell`).
 - **Never:** checks types or names, resolves modules, lowers or desugars a
   construct, invents names (E11).
 - **Owner:** `parser/`, `ast/`.
@@ -140,7 +144,7 @@ that removes it (ROADMAP, "Foundation"); a fix updates this table.
 | ~~D1~~ | Closed by F2 (r3.112): AST nodes carry their start (`ast::SourcePosition`; leaves and statements stamped by the parser, kept by `AstClone`); every parse and semantic error prints `path:line:column: kind: message`. The column is that of the statement, declaration or contract clause being checked; a column for each sub-expression comes with the typed IR (F6) | E14 | F2 |
 | D2 | The parser desugars: chained assignment (`pendingStatements_`), `with` bindings (`__with_N`), loop `invariant`/`variant` (`lowerLoopContracts`) | E11 | F5 |
 | ~~D3~~ | Closed by F3 (r3.114): the parser builds each routine header (`ast::RoutineHeader`: `ParameterDeclaration` name, mode, receiver, written type; the result type) and reports its syntax errors; module resolution, contract lowering, generics and `inox interface` read that structure, and the analyzer checks only what types say (`registerFunctionSignatureIn`). Parameter and result types stay text until F4 | E11 | F3 |
-| D4 | Types are text in the AST (`typeName`), read by `types::TypeSyntax` in phase 5; generic instances rewrite type names as text (`TypeNameRewriter`) | E11 (steps 3-4) | F4 |
+| ~~D4~~ | Closed by F4 (r3.117): a written type is a tree in the AST (`ast::TypeExpr`), built by the parser; module resolution renames, contract lowering tests and the analyzer resolves the tree; generic instances substitute type parameters on it (`substituteTypeParameters`, `writtenFormOf`). Text exists only through `ast::spell` (messages, `inox interface`, instance names); the text reader `types::TypeSyntax` is gone. Exception handler types stay names until F7 | E11 (steps 3-4) | F4 |
 | D5 | Codegen reads the raw AST beside 13 side tables of `SemanticResult`; no typed or lowered representation between phases 5 and 6 | E11 (steps 3-5) | F6 |
 | D6 | Exception handlers match the written type name; the hierarchy is not in `types::Type` | E11 | F7 |
 | ~~D7~~ | Closed by F1 (r3.111): every gate of E19 runs in CI (`.github/workflows/ci.yml`, `.github/workflows/gates.yml`) | E19 | F1 |
@@ -167,13 +171,17 @@ instead of searching the whole emitter.
   - `TypeContext.*` — creates and interns every type (equal types are one
     object, compared by pointer), the built-ins and their aliases, struct
     declaration and late completion;
-  - `TypeSyntax.*` — reads the written form the parser keeps (`Array[1..N]
-    T`, `Link<T>`) into a tree, for the analyzer to resolve.
-  The analyzer produces types; codegen only reads them (`typeOf`,
+  The written form of a type is the AST's (`ast/TypeExpr.*`, F4); the
+  analyzer resolves it into these types. The analyzer produces types; codegen only reads them (`typeOf`,
   `declaredType`, `signatureOf` of `SemanticResult`) and never derives one.
+- `src/compiler/ast/TypeExpr.*` — the written form of a type (F4, change
+  structured-types): Named, Array (one node per dimension) or Generic, with
+  its bounds, arguments and position; `spell` gives the canonical text and
+  `checkTypeExpr` the invariants (Debug builds check every tree the parser
+  or a substitution makes).
 - `src/compiler/ast/AstClone.*` — deep copies of expressions and statements,
-  with an expression rewriter and a type-name rewriter (contracts, generic
-  instances).
+  with an expression rewriter, a written-type rewriter and an exception-name
+  rewriter (contracts, generic instances, module resolution).
 - `src/compiler/ast/ModuleInterface.*` — `inox interface`: a module's public
   surface printed as Inox from its parsed file.
 - `src/compiler/semantic/ModuleResolution.*` — runs once on the parsed

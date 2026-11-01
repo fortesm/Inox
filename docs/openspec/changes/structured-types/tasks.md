@@ -4,38 +4,38 @@ Nothing below starts before the design's approval is recorded with its date.
 
 - [x] 0.1 Answers to Q1-Q4 recorded (Marcelo Fortes, 2026-11-01); conditions written into the design
 - [x] 0.2 Guard test `generic-type-parameter-expressions` (`New(T)`, `T(...)` in generic bodies)
-- [ ] 0.3 Final approval of `design.md` recorded (who, date)
-- [ ] 0.4 Change `ir-snapshot-exact` merged
-- [ ] 0.5 IR snapshot recorded on main; `-fstack-usage` of main kept; `tools/stack_frames.py`
+- [x] 0.3 Final approval of `design.md` recorded (Marcelo Fortes, 2026-11-01)
+- [x] 0.4 Change `ir-snapshot-exact` merged
+- [x] 0.5 IR snapshot recorded on main; `-fstack-usage` of main kept; `tools/stack_frames.py`
 
 ## 1. Written type in the AST
 
-- [ ] 1.1 `ast::TypeExpr`, `ArrayBound`, `spell`, `checkTypeExpr` (invariants 1-6)
-- [ ] 1.2 Unit test of the canonical spelling table and deep nestings; corpus test against today's parser
+- [x] 1.1 `ast::TypeExpr`, `ArrayBound`, `spell`, `checkTypeExpr` (invariants 1-3; 4 and 6 by the unit test)
+- [x] 1.2 `TypeExprTests`: the canonical spelling table and deep nestings, the invariant checks, and the round trip of every written type of the corpus; equality with the old spelling proven by the IR snapshot (every diagnostic and interface)
 
 ## 2. Parser
 
-- [ ] 2.1 `parseTypeName` builds `TypeExpr` (no larger frame); text kept beside it, made by `spell`
+- [x] 2.1 `parseTypeInto` builds `TypeExpr` (one recursion level 448 bytes against 1064); the dual-form step was not needed (design, "As implemented")
 
 ## 3. Analyzer
 
-- [ ] 3.1 `resolveWrittenType(const TypeExpr&)`; shape tests on the tree
+- [x] 3.1 `resolveWrittenType(const TypeExpr&)`; shape tests on the tree
 
 ## 4. Generics
 
-- [ ] 4.1 Substitution and unification on the tree; clone rewriter `TypeExpr ↦ TypeExpr`
+- [x] 4.1 Substitution and unification on the tree; clone rewriter `TypeExpr ↦ TypeExpr`
 
 ## 5. Module resolution, contract lowering, interface
 
-- [ ] 5.1 Renaming, private-type check, name collection on the tree
-- [ ] 5.2 Owner and array tests, `old` copies on the tree; interface prints `spell`
+- [x] 5.1 Renaming, private-type check, name collection on the tree
+- [x] 5.2 Owner and array tests, `old` copies on the tree; interface prints `spell`
 
 ## 6. Text path removed
 
-- [ ] 6.1 Text fields, `readTypeSyntax`, `substituteTypeNames`, `spellArrayType`, `isArraySpelling`, `isGenericSpelling`, `TypeNameRewriter`, `types/TypeSyntax.*` deleted
-- [ ] 6.2 `docs/ARCHITECTURE.md` (D4 closed), revision, kCanonRevision, CHANGELOG
+- [x] 6.1 Text fields, `readTypeSyntax`, `substituteTypeNames`, `spellArrayType`, `isArraySpelling`, `isGenericSpelling`, `TypeNameRewriter`, `types/TypeSyntax.*` deleted
+- [x] 6.2 `docs/ARCHITECTURE.md` (D4 closed), revision, kCanonRevision, CHANGELOG
 
 ## 7. Gates
 
-- [ ] 7.1 Suite, IR snapshot without any exception, `tools/stack_frames.py` per step (no frame of the table grows), sanitized suite (1 MiB), fuzz 1 and 7, differential, backend_gaps, openspec, constitution_check, version_check
-- [ ] 7.2 CI, `windows-stack` with no growth, `ir-snapshot` (label `refactor`)
+- [x] 7.1 Suite, IR snapshot without any exception (1053 programs, 0 differences), `tools/stack_frames.py` (47 functions, none grows), fuzz 1 and 7, differential, backend_gaps, openspec, constitution_check, version_check
+- [ ] 7.2 CI: sanitized suite (1 MiB), `windows-stack` with no growth, `ir-snapshot` (label `refactor`)

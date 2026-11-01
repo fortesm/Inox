@@ -39,13 +39,13 @@ std::string headerText(const RoutineHeader& header)
         text += parameter.mode == ParameterDeclaration::Mode::Ref      ? "ref "
                 : parameter.mode == ParameterDeclaration::Mode::RefMut ? "ref mut "
                                                                        : "";
-        text += parameter.name + " " + parameter.typeName;
+        text += parameter.name + " " + spell(*parameter.type);
     }
     if (!text.empty()) {
         text += ")";
     }
-    if (!header.resultTypeName.empty()) {
-        text += " " + header.resultTypeName;
+    if (header.resultType) {
+        text += " " + spell(*header.resultType);
     }
     return text;
 }
@@ -92,7 +92,7 @@ std::string contractLine(const ContractClause& clause)
 
 std::string fieldLine(const StructFieldDeclaration& field)
 {
-    std::string line = field.name + " " + field.typeName;
+    std::string line = field.name + " " + spell(field.type);
     if (field.hasDefault) {
         line += field.fillDefault ? " := Fill(" + field.defaultValue + ")" : " := " + field.defaultValue;
     }
@@ -122,7 +122,7 @@ void writeType(std::ostringstream& out, const TypeDeclaration& type, const std::
     bool builtOnlyHere = false;
     for (const StructFieldDeclaration& field : type.fields) {
         if (field.isPart) {
-            parts.push_back(field.typeName);
+            parts.push_back(spell(field.type));
         } else if (field.isPublic) {
             publicFields.push_back(&field);
         } else if (!field.hasDefault) {
@@ -182,8 +182,8 @@ std::string moduleInterface(const ModuleNode& module)
                 for (const VariableDeclaration& constant : section.variables()) {
                     if (constant.isPublic) {
                         consts << "Const " << constant.name;
-                        if (!constant.typeName.empty()) {
-                            consts << ' ' << constant.typeName;
+                        if (constant.type) {
+                            consts << ' ' << spell(*constant.type);
                         }
                         consts << " Public := " << tidyValue(constant.valueText) << '\n';
                     }

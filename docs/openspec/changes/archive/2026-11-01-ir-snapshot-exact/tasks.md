@@ -11,4 +11,4 @@
 ## 3. Gates
 
 - [x] 3.1 F3's real difference (`mut-parameter-reserved`, pre-F3 snapshot against main) declared with `expect` and accepted exactly; openspec, constitution_check, version_check
-- [ ] 3.2 CI
+- [x] 3.2 CI

@@ -351,7 +351,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
     }
     case ast::AstNodeKind::VarStatement: {
         const auto& var = static_cast<const ast::VarStatement&>(statement);
-        TypeRef type = var.typeName().empty() ? nullptr : resolveWrittenType(var.typeName());
+        TypeRef type = var.type() ? resolveWrittenType(*var.type()) : nullptr;
         if (var.initializer() != nullptr) {
             const TypeRef initializerType = analyzeExpressionFor(*var.initializer(), type);
             if (type == nullptr) {
@@ -390,7 +390,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         // A Set is empty by default (CANON-13).
         if (var.initializer() == nullptr && !type->isStruct() && !type->isSet() && !bornEmpty) {
             if (type->isArray()) {
-                throw SemanticError(arrayWithoutInitializer(var.name(), var.typeName(), type));
+                throw SemanticError(arrayWithoutInitializer(var.name(), *var.type(), type));
             }
             if (type->isOwn()) {
                 throw SemanticError("an owner is born with New(...) or Move(X): " + var.name());

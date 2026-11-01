@@ -18,9 +18,23 @@ namespace {
 // Both switches below name every AstNodeKind and have no default, so a new
 // kind of node is a compiler warning here until the copy knows it.
 
-std::string copyTypeName(const std::string& name, const CloneRewriters& rewrite)
+std::string copyExceptionName(const std::string& name, const CloneRewriters& rewrite)
 {
-    return rewrite.typeName && !name.empty() ? rewrite.typeName(name) : name;
+    return rewrite.exceptionName && !name.empty() ? rewrite.exceptionName(name) : name;
+}
+
+ExpressionPtr copyOptional(const Expression* expression, const CloneRewriters& rewrite);
+
+// A typed local's copy, built here so that cloneStatementNode, which
+// recurses, holds no TypeExpr in its frame (F4, stack budget).
+StatementPtr copyVarStatement(const VarStatement& node, const CloneRewriters& rewrite)
+{
+    std::optional<TypeExpr> type = node.type();
+    if (type && rewrite.type) {
+        rewrite.type(*type);
+    }
+    return std::make_unique<VarStatement>(node.isMutable(), node.name(), copyOptional(node.initializer(), rewrite),
+                                          std::move(type));
 }
 
 ExpressionPtr copyOptional(const Expression* expression, const CloneRewriters& rewrite)
@@ -156,9 +170,7 @@ StatementPtr cloneStatementNode(const Statement& statement, const CloneRewriters
                                                      node.isDiscard());
     }
     case AstNodeKind::VarStatement: {
-        const auto& node = static_cast<const VarStatement&>(statement);
-        return std::make_unique<VarStatement>(node.isMutable(), node.name(), copyOptional(node.initializer(), rewrite),
-                                              copyTypeName(node.typeName(), rewrite));
+        return copyVarStatement(static_cast<const VarStatement&>(statement), rewrite);
     }
     case AstNodeKind::VarBlockStatement:
         return std::make_unique<VarBlockStatement>(
@@ -212,7 +224,7 @@ StatementPtr cloneStatementNode(const Statement& statement, const CloneRewriters
         handlers.reserve(node.handlers().size());
         for (const ExceptionHandler& handler : node.handlers()) {
             handlers.push_back(
-                ExceptionHandler{handler.bindingName, copyTypeName(handler.typeName, rewrite), body(handler.body)});
+                ExceptionHandler{handler.bindingName, copyExceptionName(handler.typeName, rewrite), body(handler.body)});
         }
         return std::make_unique<TryStatement>(body(node.body()), node.hasExcept(), node.hasPlainExcept(),
                                               body(node.exceptBody()), std::move(handlers), body(node.elseBody()),

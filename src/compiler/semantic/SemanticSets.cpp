@@ -46,9 +46,9 @@ bool isSetLiteral(const ast::Expression& expression)
 
 } // namespace detail
 
-TypeRef SemanticAnalyzer::resolveSetType(const types::TypeSyntax& syntax, std::string_view written)
+TypeRef SemanticAnalyzer::resolveSetType(const ast::TypeExpr& syntax, std::string_view written)
 {
-    const TypeRef base = resolveTypeSyntax(syntax.argument(), syntax.argument().spelling());
+    const TypeRef base = resolveTypeExpr(syntax.element(), ast::spell(syntax.element()));
     if (!base->isEnum() && !base->isRange() && !base->isCharRange()) {
         throw SemanticError("a Set is over an Enum or a Range, of Integers or Chars (CANON-13), not " +
                             base->name() + ": " +

@@ -92,9 +92,9 @@ public:
                 const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
                 for (const ast::ParameterDeclaration& parameter : function.parameters()) {
                     text(parameter.name);
-                    text(parameter.typeName);
+                    writtenType(parameter.type);
                 }
-                text(function.resultTypeName());
+                writtenType(function.resultType());
                 for (const ast::ContractClause& clause : function.contracts()) {
                     expression(*clause.condition);
                 }
@@ -103,7 +103,7 @@ public:
                 const auto& section = static_cast<const ast::SectionDeclaration&>(*item);
                 for (const ast::TypeDeclaration& type : section.types()) {
                     for (const ast::StructFieldDeclaration& field : type.fields) {
-                        text(field.typeName);
+                        writtenType(field.type);
                         text(field.defaultValue);
                     }
                     if (type.bounds) {
@@ -114,7 +114,7 @@ public:
                     }
                 }
                 for (const ast::VariableDeclaration& variable : section.variables()) {
-                    text(variable.typeName);
+                    writtenType(variable.type);
                     if (variable.value) {
                         expression(*variable.value);
                     }
@@ -124,6 +124,15 @@ public:
     }
 
 private:
+    // The words of a written type, as the text it spells (F4).
+    void writtenType(const ast::TypeExpr& written) { text(ast::spell(written)); }
+    void writtenType(const std::optional<ast::TypeExpr>& written)
+    {
+        if (written) {
+            writtenType(*written);
+        }
+    }
+
     void text(const std::string& value)
     {
         std::size_t index = 0;
@@ -148,7 +157,8 @@ private:
 
     void statements(const std::vector<ast::StatementPtr>& body)
     {
-        ast::CloneRewriters rewriters{recorder(), [this](const std::string& name) {
+        ast::CloneRewriters rewriters{recorder(), [this](ast::TypeExpr& written) { writtenType(written); },
+                                      [this](const std::string& name) {
                                           text(name);
                                           return name;
                                       }};
@@ -668,9 +678,36 @@ private:
         return result;
     }
 
+    // A written type with each name resolved as rewriteText resolves the
+    // words of its text: a name (or a qualified one) and a bound that names
+    // a Const (F4).
+    void rewriteType(ast::TypeExpr& written)
+    {
+        if (!written.isArray()) {
+            written.name = rewriteText(written.name);
+        } else {
+            for (ast::ArrayBound* bound : {&written.low, &written.high}) {
+                if (bound->isName) {
+                    bound->text = rewriteText(bound->text);
+                }
+            }
+        }
+        for (ast::TypeExpr& argument : written.arguments) {
+            rewriteType(argument);
+        }
+    }
+
+    void rewriteType(std::optional<ast::TypeExpr>& written)
+    {
+        if (written) {
+            rewriteType(*written);
+        }
+    }
+
     std::vector<ast::StatementPtr> rewriteBody(const std::vector<ast::StatementPtr>& body)
     {
         ast::CloneRewriters rewriters{[this](const ast::Expression& node) { return replace(node); },
+                                      [this](ast::TypeExpr& written) { rewriteType(written); },
                                       [this](const std::string& name) { return rewriteText(name); }};
         return ast::cloneStatements(body, rewriters);
     }
@@ -713,9 +750,9 @@ private:
         }
         for (ast::ParameterDeclaration& parameter : function.header().parameters) {
             parameter.name = rewriteText(parameter.name);
-            parameter.typeName = rewriteText(parameter.typeName);
+            rewriteType(parameter.type);
         }
-        function.header().resultTypeName = rewriteText(function.resultTypeName());
+        rewriteType(function.header().resultType);
         for (ast::ContractClause& clause : function.contracts()) {
             clause.condition = rewrite(*clause.condition);
         }
@@ -734,7 +771,7 @@ private:
             type.module = module.name;
             type.name = module.own.at(lower(type.name))->internal;
             for (ast::StructFieldDeclaration& field : type.fields) {
-                field.typeName = rewriteText(field.typeName);
+                rewriteType(field.type);
                 if (!field.defaultValue.empty() && isWordStart(field.defaultValue.front()) &&
                     lower(field.defaultValue) != "true" && lower(field.defaultValue) != "false") {
                     if (const auto internal = resolveBare(field.defaultValue)) {
@@ -755,7 +792,7 @@ private:
         }
         for (ast::VariableDeclaration& variable : section.variables()) {
             variable.name = module.own.at(lower(variable.name))->internal;
-            variable.typeName = rewriteText(variable.typeName);
+            rewriteType(variable.type);
             if (variable.value) {
                 variable.value = rewrite(*variable.value);
             }
@@ -816,9 +853,13 @@ private:
                 if (function.isPublic()) {
                     std::vector<std::string> written;
                     for (const ast::ParameterDeclaration& parameter : function.parameters()) {
-                        written.push_back(parameter.typeName);
+                        if (parameter.type) {
+                            written.push_back(ast::spell(*parameter.type));
+                        }
                     }
-                    written.push_back(function.resultTypeName());
+                    if (function.resultType()) {
+                        written.push_back(ast::spell(*function.resultType()));
+                    }
                     for (const std::string& type : written) {
                         if (const Decl* hidden = privateTypeIn(module, type)) {
                             throw SemanticError(function.name() + " is Public, but its header names " +
@@ -843,7 +884,7 @@ private:
                     if (!type.isPublic || !(field.isPublic || field.isPart)) {
                         continue;
                     }
-                    if (const Decl* hidden = privateTypeIn(module, field.typeName)) {
+                    if (const Decl* hidden = privateTypeIn(module, ast::spell(field.type))) {
                         throw SemanticError(type.name + " is Public, but " +
                                             (field.isPart ? "it reuses " : "its public field " + field.name +
                                                                                " is a ") +

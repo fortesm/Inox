@@ -24,9 +24,10 @@ using namespace detail;
 
 // The diagnostic of an array declared without a value (r3.81), with the
 // value its element type would be filled with.
-std::string SemanticAnalyzer::arrayWithoutInitializer(const std::string& name, const std::string& written,
+std::string SemanticAnalyzer::arrayWithoutInitializer(const std::string& name, const ast::TypeExpr& writtenType,
                                                       TypeRef arrayType)
 {
+    const std::string written = ast::spell(writtenType);
     TypeRef element = arrayType->element();
     while (element != nullptr && element->isArray()) {
         element = element->element();

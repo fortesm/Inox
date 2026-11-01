@@ -66,18 +66,19 @@ void testHeaders()
     checkEqual(std::to_string(move.parameters().size()), "3", "Move has three parameters");
     if (move.parameters().size() == 3) {
         const ParameterDeclaration& self = move.parameters()[0];
-        check(self.isReceiver && self.name == "Self" && self.typeName.empty() &&
+        check(self.isReceiver && self.name == "Self" && !self.type &&
                   self.mode == ParameterDeclaration::Mode::RefMut,
               "Self mut is a receiver passed as ref mut, with no written type");
         const ParameterDeclaration& steps = move.parameters()[1];
-        check(!steps.isReceiver && steps.name == "Steps" && steps.typeName == "Integer" &&
+        check(!steps.isReceiver && steps.name == "Steps" && steps.type && spell(*steps.type) == "Integer" &&
                   steps.mode == ParameterDeclaration::Mode::RefMut,
               "ref mut Steps Integer");
         const ParameterDeclaration& limit = move.parameters()[2];
-        checkEqual(limit.typeName, "Array[1..3] Integer", "an array type is one type name");
+        checkEqual(spell(*limit.type), "Array[1..3] Integer", "an array type, spelled");
+        check(limit.type->isArray() && limit.type->element().name == "Integer", "an array type is a tree");
         check(limit.mode == ParameterDeclaration::Mode::Ref, "ref Limit is passed as ref");
     }
-    checkEqual(move.resultTypeName(), "Integer", "Move returns Integer");
+    checkEqual(spell(*move.resultType()), "Integer", "Move returns Integer");
     check(move.isPublic(), "Public ends the header");
 
     const FunctionDeclaration& pick = routine(*module, "Pick");
@@ -85,12 +86,12 @@ void testHeaders()
     if (pick.parameters().size() == 2) {
         check(!pick.parameters()[0].isReceiver && pick.parameters()[0].mode == ParameterDeclaration::Mode::Value,
               "a value parameter");
-        checkEqual(pick.parameters()[1].typeName, "Std.Text.TName", "a qualified type is one type name");
+        checkEqual(pick.parameters()[1].type->name, "Std.Text.TName", "a qualified type is one Named type");
     }
-    checkEqual(pick.resultTypeName(), "T", "Pick returns its type parameter");
+    checkEqual(spell(*pick.resultType()), "T", "Pick returns its type parameter");
 
     const FunctionDeclaration& main = routine(*module, "Main");
-    check(main.parameters().empty() && main.resultTypeName().empty(), "Main has no parameters and no result");
+    check(main.parameters().empty() && !main.resultType(), "Main has no parameters and no result");
 }
 
 } // namespace
