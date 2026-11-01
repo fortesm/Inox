@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.115
+Canon revision: r3.116
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -577,3 +577,10 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `tools/ir_snapshot_selftest.py`. No compiler change. Approved by Marcelo
   Fortes, 2026-11-01 (question Q1 of the F4 design). Change
   `ir-snapshot-exact`.
+- r3.116 — 2026-11-01 — CANON-9: a receiver written with a type,
+  `TPoint.M(Self TPoint)`, is a parse error that names the rule (the
+  receiver is Self or Self mut, its type the method's prefix), and
+  `Self owned` one that says it is reserved; both were rejected with a
+  generic message. The scenario names its tests; the over-acceptance list
+  of STATUS is empty. Approved by Marcelo Fortes, 2026-11-01. Change
+  `receiver-without-type`.

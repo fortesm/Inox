@@ -475,6 +475,7 @@ TPoint.Move(Self mut, DX Integer, DY Integer) :
     Self.X := Self.X + DX
     Self.Y := Self.Y + DY
 ;</code></pre>
+<p>The receiver has no written type: its type is the prefix of the method's name, so <code>TPoint.Move(Self TPoint)</code> is a compile error, and <code>Self owned</code> is reserved.</p>
 <p>This preserves <code>Object.Method</code> ergonomics without classes or inheritance. <code>Self</code> only reads the receiver, also what the receiver owns through <code>Own</code> fields: a method that changes it declares <code>Self mut</code>, and is called on something writable (a variable, a field or element of one, a <code>ref mut</code> parameter). A field of a value parameter cannot be assigned either, also inside <code>with</code>.</p>
 <p>Fields may have literal defaults, and a field may itself be a struct. A struct declared without <code>:=</code> takes its defaults (or zero); named construction builds a value from named fields in any order, and is an expression usable anywhere a value is expected. Structs are values: assignment, parameters and results copy them. Arrays may hold structs:</p>
 <pre><code>Type

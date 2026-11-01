@@ -1,0 +1,1 @@
+:15:18: parse error: the receiver of a method is Self or Self mut, without a type: its type is TPoint, the prefix of TPoint.Show (CANON-9)

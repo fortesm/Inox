@@ -995,8 +995,8 @@ are static calls, never virtual dispatch.
 - **THEN** both work on any struct place (examples/associated-methods.inox, tests/runtime/struct-nested.inox)
 
 #### Scenario: Receiver with a type
-- **WHEN** a method writes `Self TPoint`
-- **THEN** it is rejected (test to add: today it is rejected with a generic message)
+- **WHEN** a method writes `Self TPoint` or `Self owned`
+- **THEN** it is a parse error that names the rule (tests/diagnostics/receiver-with-type.inox, tests/diagnostics/receiver-owned-reserved.inox)
 
 ### Requirement: CANON-9 Method reuse
 `TName Struct (TPart, ...)` SHALL reuse each part: a field named after its

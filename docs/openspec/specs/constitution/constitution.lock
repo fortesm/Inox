@@ -72,7 +72,7 @@ spec.md#CANON-8 Generic instances	20f9303da735e1ca	decisions-not-dialogue
 spec.md#CANON-8 Type arguments are inferred	e820ebe2b699c413	generics
 spec.md#CANON-9 Structs are nominal value types	dc875c23516647e8	method-reuse
 spec.md#CANON-9 Fields	9c34d16a35318065	array-fill
-spec.md#CANON-9 Associated methods	fad873f99ec30d01	constitution
+spec.md#CANON-9 Associated methods	550cb4f821236290	receiver-without-type
 spec.md#CANON-9 Method reuse	f3b5441df3cbfee0	decisions-not-dialogue
 spec.md#CANON-9 Methods of built-in types	835ac3867f111a4e	english-programs
 spec.md#CANON-9 Named construction	03a7f232bee036de	array-fill
