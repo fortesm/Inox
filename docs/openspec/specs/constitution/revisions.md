@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.115
+Canon revision: r3.117
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -577,3 +577,13 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `tools/ir_snapshot_selftest.py`. No compiler change. Approved by Marcelo
   Fortes, 2026-11-01 (question Q1 of the F4 design). Change
   `ir-snapshot-exact`.
+- r3.117 — 2026-11-01 — E11, foundation step F4: a written type is a tree
+  in the AST (`ast::TypeExpr`: Named, Array per dimension, Generic, with
+  bounds and position), built by the parser; module resolution, contract
+  lowering and the analyzer work on the tree, and generic instances
+  substitute type parameters on it. The text reader of types is removed;
+  text comes only from the canonical spelling. Exception handler types
+  stay names until F7. No output changes (IR snapshot without exceptions),
+  and no frame on a recursion path grows (`tools/stack_frames.py`).
+  Deviation D4 is closed. Design approved by Marcelo Fortes, 2026-11-01.
+  Change `structured-types`.

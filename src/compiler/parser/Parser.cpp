@@ -7,7 +7,6 @@
 
 #include "Parser.h"
 #include "../ast/AstClone.h"
-#include "../types/TypeSyntax.h"
 
 #include "../lexer/Lexer.h"
 
@@ -25,6 +24,15 @@ namespace {
 bool isPointerTypeWord(std::string_view normalized)
 {
     return normalized == "own" || normalized == "link" || normalized == "option";
+}
+
+// Debug builds check the invariants of every written type the parser
+// builds (design.md of structured-types).
+void checkWrittenType([[maybe_unused]] const ast::TypeExpr& type)
+{
+#ifndef NDEBUG
+    ast::checkTypeExpr(type);
+#endif
 }
 
 constexpr const char* kDiscardOnlyMessage =
@@ -1167,102 +1175,123 @@ std::vector<ast::ExpressionPtr> Parser::parseArgumentList()
     return arguments;
 }
 
-// A type name: an identifier, or a fixed array `Array[L..H, ...] Element`
-// (CANON-13). A bound is an integer literal, optionally negative, or a Const
-// name. The result is the front end's array spelling (types/TypeSyntax.h).
-std::string Parser::parseTypeName(const char* message)
+// A written type (F4, change structured-types): a name, possibly qualified;
+// a fixed array `Array[L..H, ...] Element` (CANON-13), one Array node per
+// dimension; or a generic `Name<T, ...>`. A bound is an integer literal,
+// optionally negative, or a Const name. The tree is built into `out`, so
+// the recursion holds no type in its frames (design.md, stack budget).
+void Parser::parseTypeInto(ast::TypeExpr& out, const char* message)
 {
     const lexer::Token& name = consume(TokenKind::Identifier, message);
+    out.position = ast::SourcePosition{name.location.line, name.location.column};
+    out.name = name.lexeme;
     // r3.99 (A2): a type of another module, `Bank.Accounts.TAccount`.
     if (check(TokenKind::Dot) && peek().location.line == name.location.line && current_ + 1 < tokens_.size() &&
         tokens_[current_ + 1].kind == TokenKind::Identifier) {
-        std::string qualified = name.lexeme;
         while (check(TokenKind::Dot) && current_ + 1 < tokens_.size() &&
                tokens_[current_ + 1].kind == TokenKind::Identifier &&
                tokens_[current_ + 1].location.line == name.location.line) {
             advance();
-            qualified += "." + advance().lexeme;
+            out.name += "." + advance().lexeme;
         }
         if (check(TokenKind::Less) && peek().location.line == name.location.line) {
-            advance();
-            std::string text = qualified + "<";
-            do {
-                if (text.back() != '<') {
-                    text += ", ";
-                }
-                text += parseTypeName("expected a type argument");
-            } while (match(TokenKind::Comma));
-            consume(TokenKind::Greater, "expected '>' after the type arguments of " + qualified);
-            return text + ">";
+            parseTypeArgumentsInto(out);
         }
-        return qualified;
+        return;
     }
     // ADR-0017: `Slice<T>`, a read-only view (generic arguments use <...>).
-    if (name.normalized == "slice" && check(TokenKind::Less) &&
-        peek().location.line == name.location.line) {
-        advance();
-        std::string element = parseTypeName("expected the element type of the slice");
-        consume(TokenKind::Greater, "expected '>' after the slice element type");
-        return "Slice<" + element + ">";
-    }
     // Safe pointers (change safe-pointers): `Own<T>`, `Link<T>` and
     // `Option<Own<T>>`, spelled with their canonical capitals.
-    if (isPointerTypeWord(name.normalized) && check(TokenKind::Less) &&
+    const bool isSlice = name.normalized == "slice";
+    if ((isSlice || isPointerTypeWord(name.normalized)) && check(TokenKind::Less) &&
         peek().location.line == name.location.line) {
         advance();
-        std::string target = parseTypeName("expected the type the pointer reaches");
-        consume(TokenKind::Greater, "expected '>' after the type of the pointer");
-        const std::string word = name.normalized == "own" ? "Own" : name.normalized == "link" ? "Link" : "Option";
-        return word + "<" + target + ">";
+        out.form = ast::TypeExpr::Form::Generic;
+        out.name = isSlice                        ? "Slice"
+                   : name.normalized == "own"  ? "Own"
+                   : name.normalized == "link" ? "Link"
+                                               : "Option";
+        out.arguments.emplace_back();
+        parseTypeInto(out.arguments.back(), isSlice ? "expected the element type of the slice"
+                                                    : "expected the type the pointer reaches");
+        if (isSlice) {
+            consume(TokenKind::Greater, "expected '>' after the slice element type");
+        } else {
+            consume(TokenKind::Greater, "expected '>' after the type of the pointer");
+        }
+        return;
     }
     // CANON-8 (r3.77): a generic struct of the program, `TPair<String, Integer>`.
     if (name.normalized != "array" && check(TokenKind::Less) && peek().location.line == name.location.line) {
-        advance();
-        std::string text = name.lexeme + "<";
-        do {
-            if (text.back() != '<') {
-                text += ", ";
-            }
-            text += parseTypeName("expected a type argument");
-        } while (match(TokenKind::Comma));
-        consume(TokenKind::Greater, "expected '>' after the type arguments of " + name.lexeme);
-        return text + ">";
+        parseTypeArgumentsInto(out);
+        return;
     }
     if (!(name.normalized == "array") || !check(TokenKind::LeftBracket) ||
         peek().location.line != name.location.line) {
-        return name.lexeme;
+        return;
+    }
+    parseArrayTypeInto(out);
+}
+
+// `<T, U>` after the name already in `out`.
+void Parser::parseTypeArgumentsInto(ast::TypeExpr& out)
+{
+    advance();
+    out.form = ast::TypeExpr::Form::Generic;
+    do {
+        out.arguments.emplace_back();
+        parseTypeInto(out.arguments.back(), "expected a type argument");
+    } while (match(TokenKind::Comma));
+    if (!check(TokenKind::Greater)) {
+        errorAtCurrent("expected '>' after the type arguments of " + out.name);
     }
     advance();
+}
+
+// `[L..H, ...] Element` after `Array`: one Array node per dimension, the
+// first outermost (`Array[1..2, 1..3] T` is `Array[1..2] Array[1..3] T`).
+void Parser::parseArrayTypeInto(ast::TypeExpr& out)
+{
+    advance();
     const auto bound = [&]() {
-        std::string text;
+        ast::ArrayBound written;
         if (match(TokenKind::Minus)) {
-            text = "-";
+            written.text = "-";
         }
         if (match(TokenKind::IntegerLiteral)) {
-            return text + tokenText(previous());
+            written.text += tokenText(previous());
+            return written;
         }
-        if (text.empty() && match(TokenKind::Identifier)) {
-            return previous().lexeme;
+        if (written.text.empty() && match(TokenKind::Identifier)) {
+            written.text = previous().lexeme;
+            written.isName = true;
+            return written;
         }
         errorAtCurrent("an array bound is an integer literal or a Const name (CANON-13)");
-        return std::string{};
+        return written;
     };
-    std::vector<std::pair<std::string, std::string>> dimensions;
+    const ast::SourcePosition position = out.position;
+    ast::TypeExpr* dimension = &out;
+    bool first = true;
     do {
-        std::string low = bound();
+        if (!first) {
+            dimension->arguments.emplace_back();
+            dimension = &dimension->arguments.back();
+            dimension->position = position;
+        }
+        first = false;
+        dimension->form = ast::TypeExpr::Form::Array;
+        dimension->name.clear();
+        dimension->low = bound();
         consume(TokenKind::DotDot, "expected '..' in array bounds");
-        std::string high = bound();
-        dimensions.emplace_back(std::move(low), std::move(high));
+        dimension->high = bound();
     } while (match(TokenKind::Comma));
     consume(TokenKind::RightBracket, "expected ']' after array bounds");
     if (peek().location.line != previous().location.line) {
         errorAtCurrent("expected the element type after the array bounds");
     }
-    std::string element = parseTypeName("expected the element type after the array bounds");
-    for (auto it = dimensions.rbegin(); it != dimensions.rend(); ++it) {
-        element = types::spellArrayType(it->first, it->second, element);
-    }
-    return element;
+    dimension->arguments.emplace_back();
+    parseTypeInto(dimension->arguments.back(), "expected the element type after the array bounds");
 }
 
 ast::StatementPtr Parser::parseTypedLocalStatement()
@@ -1275,10 +1304,11 @@ ast::StatementPtr Parser::parseTypedLocalStatement()
         names.push_back(nextName.lexeme);
     }
 
-    const std::string typeName = parseTypeName("expected type name");
-    struct {
-        std::string lexeme;
-    } type{typeName};
+    // The type lives on the heap: this frame is on the statement recursion
+    // (F4, design.md stack budget).
+    const auto type = std::make_unique<ast::TypeExpr>();
+    parseTypeInto(*type, "expected type name");
+    checkWrittenType(*type);
 
     std::vector<ast::StatementPtr> declarations;
     if (match(TokenKind::ColonEqual)) {
@@ -1287,16 +1317,16 @@ ast::StatementPtr Parser::parseTypedLocalStatement()
         // the first, so side effects in X happen once.
         ast::ExpressionPtr initializer = parseValue();
         declarations.push_back(std::make_unique<ast::VarStatement>(
-            false, names.front(), std::move(initializer), type.lexeme));
+            false, names.front(), std::move(initializer), *type));
         for (std::size_t i = 1; i < names.size(); ++i) {
             declarations.push_back(std::make_unique<ast::VarStatement>(
                 false, names[i], makeSyntheticIdentifier(names.front()),
-                type.lexeme));
+                *type));
         }
     } else {
         for (const std::string& declarationName : names) {
             declarations.push_back(std::make_unique<ast::VarStatement>(
-                false, declarationName, nullptr, type.lexeme));
+                false, declarationName, nullptr, *type));
         }
     }
 
@@ -1918,7 +1948,7 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
             if (isAtEnd() || atSectionBoundary()) {
                 errorAtCurrent("'State' closes with ';' (CANON-5): end the State variables with ';'");
             }
-            variables.push_back(parseSectionVariable(sectionKind));
+            appendSectionVariable(variables, sectionKind);
         }
         consumeBlockClose();
         return std::make_unique<ast::SectionDeclaration>(sectionKind, std::move(types),
@@ -1929,7 +1959,7 @@ ast::AstNodePtr Parser::parseSectionDeclaration(ast::SectionKind sectionKind)
     if (check(TokenKind::Colon)) {
         errorAtCurrent("a Const is one line, 'Const Name := Value' (CANON-5): ':' only declares a routine");
     }
-    variables.push_back(parseSectionVariable(sectionKind));
+    appendSectionVariable(variables, sectionKind);
     return std::make_unique<ast::SectionDeclaration>(sectionKind, std::move(types),
                                                      std::move(variables));
 }
@@ -1983,14 +2013,8 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
                                "structs, 'TName Struct (TPart)'");
             }
             do {
-                const lexer::Token& part =
-                    consume(TokenKind::Identifier, "expected the name of a reused struct");
-                ast::StructFieldDeclaration field;
-                field.name = part.lexeme;
-                field.typeName = part.lexeme;
-                field.line = part.location.line;
-                field.isPart = true;
-                declaration.fields.push_back(std::move(field));
+                appendReusedPart(declaration.fields,
+                                 consume(TokenKind::Identifier, "expected the name of a reused struct"));
             } while (match(TokenKind::Comma));
             consume(TokenKind::RightParen, "expected ')' after the reused structs");
         }
@@ -2014,7 +2038,7 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
                 publicFields = true;
                 continue;
             }
-            declaration.fields.push_back(parseStructField());
+            appendStructField(declaration.fields);
             declaration.fields.back().isPublic = publicFields;
         }
         consumeBlockClose();
@@ -2086,6 +2110,27 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
 }
 
 // `FName Type [:= Literal]` on one line (CANON-9).
+// The appenders below keep a declaration, which holds written types, out of
+// the frames of the section and type parsers (F4, design.md stack budget).
+void Parser::appendReusedPart(std::vector<ast::StructFieldDeclaration>& fields, const lexer::Token& part)
+{
+    ast::StructFieldDeclaration& field = fields.emplace_back();
+    field.name = part.lexeme;
+    field.type = ast::namedType(part.lexeme, ast::SourcePosition{part.location.line, part.location.column});
+    field.line = part.location.line;
+    field.isPart = true;
+}
+
+void Parser::appendStructField(std::vector<ast::StructFieldDeclaration>& fields)
+{
+    fields.push_back(parseStructField());
+}
+
+void Parser::appendSectionVariable(std::vector<ast::VariableDeclaration>& variables, ast::SectionKind sectionKind)
+{
+    variables.push_back(parseSectionVariable(sectionKind));
+}
+
 ast::StructFieldDeclaration Parser::parseStructField()
 {
     ast::StructFieldDeclaration field;
@@ -2097,7 +2142,8 @@ ast::StructFieldDeclaration Parser::parseStructField()
                          isAtEnd() || peek().location.line != name.location.line ? name.location
                                                                                   : peek().location);
     }
-    field.typeName = parseTypeName("expected the type of the struct field");
+    parseTypeInto(field.type, "expected the type of the struct field");
+    checkWrittenType(field.type);
     if (match(TokenKind::ColonEqual)) {
         field.hasDefault = true;
         // r3.82: an array field defaults to `Fill(Literal)`.
@@ -2195,13 +2241,14 @@ ast::VariableDeclaration Parser::parseSectionVariable(ast::SectionKind sectionKi
         declaration.isPublic = true;
     }
     if (!match(TokenKind::ColonEqual)) {
-        declaration.typeName = parseTypeName("expected a type or ':=' after the name");
+        parseTypeInto(declaration.type.emplace(), "expected a type or ':=' after the name");
+        checkWrittenType(*declaration.type);
         if (isConst && check(TokenKind::ColonEqual)) {
             // OPEN-5 (closed v3.38, Marcelo Fortes): a Const has no written
             // type; its type is the value's. A conversion gives another type.
             throw ParseError("a Const is written 'Const " + declaration.name +
                                  " := Value' (CANON-5): to choose its type, convert the value, "
-                                 "e.g. 'Const " + declaration.name + " := " + declaration.typeName +
+                                 "e.g. 'Const " + declaration.name + " := " + ast::spell(*declaration.type) +
                                  "(Value)'",
                              peek().location);
         }
@@ -2264,7 +2311,8 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
                               "(...) Type Override Public :");
         }
     }
-    ast::RoutineHeader header = parseRoutineHeader(name, functionName);
+    // On the heap: this frame stays below the body's recursion (F4).
+    const std::unique_ptr<ast::RoutineHeader> header = parseRoutineHeader(name, functionName);
 
     // `Override` ends the signature of a method that replaces a reused one
     // (CANON-9): `TName.Method(Self) Type Override :`.
@@ -2303,7 +2351,7 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
 
     auto declaration = std::make_unique<ast::FunctionDeclaration>(
         std::move(functionName),
-        std::move(header),
+        std::move(*header),
         std::move(body),
         isOverride,
         std::move(contracts),
@@ -2315,9 +2363,11 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
 // The parameters and result type of a routine header (F3, r3.114):
 // `(ref mut A T, B U) R`. A method's first parameter may be its receiver,
 // `Self` or `Self mut`, written without a type.
-ast::RoutineHeader Parser::parseRoutineHeader(const lexer::Token& name, const std::string& functionName)
+std::unique_ptr<ast::RoutineHeader> Parser::parseRoutineHeader(const lexer::Token& name,
+                                                               const std::string& functionName)
 {
-    ast::RoutineHeader header;
+    auto made = std::make_unique<ast::RoutineHeader>();
+    ast::RoutineHeader& header = *made;
     const bool isMethod = functionName.find('.') != std::string::npos;
     if (match(TokenKind::LeftParen)) {
         if (check(TokenKind::RightParen)) {
@@ -2358,7 +2408,8 @@ ast::RoutineHeader Parser::parseRoutineHeader(const lexer::Token& name, const st
                 if (!check(TokenKind::Identifier)) {
                     errorAtCurrent("expected type for parameter: " + parameter.name);
                 }
-                parameter.typeName = parseTypeName("expected type name");
+                parseTypeInto(parameter.type.emplace(), "expected type name");
+                checkWrittenType(*parameter.type);
             }
             header.parameters.push_back(std::move(parameter));
             if (!check(TokenKind::Comma) && !check(TokenKind::RightParen)) {
@@ -2368,9 +2419,10 @@ ast::RoutineHeader Parser::parseRoutineHeader(const lexer::Token& name, const st
         consume(TokenKind::RightParen, "expected ')' in function: " + functionName);
     }
     if (check(TokenKind::Identifier)) {
-        header.resultTypeName = parseTypeName("expected type name");
+        parseTypeInto(header.resultType.emplace(), "expected type name");
+        checkWrittenType(*header.resultType);
     }
-    return header;
+    return made;
 }
 
 // `<T, U>`: distinct names, on the line of the name they follow.

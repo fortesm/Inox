@@ -57,16 +57,23 @@ bool isLiteralArgument(const ast::Expression& expression)
                ast::AstNodeKind::LiteralExpression;
 }
 
-// An instance's header: the template's, with its type arguments for its
-// type parameters. Out of line, so the frame of instantiateRoutine, which
-// nested generic calls stack up, stays as it was (engineering E19).
-void substituteHeaderTypes(ast::RoutineHeader& header,
-                           const std::function<std::string(std::string_view)>& replace)
+bool isTypeParameter(const std::string& name, const std::vector<std::string>& parameters)
 {
-    for (ast::ParameterDeclaration& parameter : header.parameters) {
-        parameter.typeName = types::substituteTypeNames(parameter.typeName, replace);
+    for (const std::string& parameter : parameters) {
+        if (equalsIgnoreCase(name, parameter)) {
+            return true;
+        }
     }
-    header.resultTypeName = types::substituteTypeNames(header.resultTypeName, replace);
+    return false;
+}
+
+// Debug builds check the invariants of each written type substitution
+// makes (design.md of structured-types).
+void checkWrittenType([[maybe_unused]] const ast::TypeExpr& written)
+{
+#ifndef NDEBUG
+    ast::checkTypeExpr(written);
+#endif
 }
 
 std::string parameterList(const std::vector<std::string>& parameters)
@@ -179,7 +186,83 @@ TypeRef SemanticAnalyzer::analyzeExpressionFor(const ast::Expression& expression
     }
 }
 
-void SemanticAnalyzer::unifyTypeSyntax(const types::TypeSyntax& pattern, TypeRef actual,
+// The written form of a resolved type, which substitution puts where a type
+// parameter was written (F4): the form reading its name would give, so the
+// instance resolves and spells as before.
+ast::TypeExpr SemanticAnalyzer::writtenFormOf(TypeRef type, ast::SourcePosition position) const
+{
+    ast::TypeExpr written;
+    written.position = position;
+    const auto instance = structInstanceOf_.find(type);
+    if (type->isArray()) {
+        written.form = ast::TypeExpr::Form::Array;
+        written.low.text = std::to_string(type->low());
+        written.high.text = std::to_string(type->high());
+        written.arguments.push_back(writtenFormOf(type->element(), position));
+        return written;
+    }
+    const char* generic = type->isSlice()       ? "Slice"
+                          : type->isSet()       ? "Set"
+                          : type->isOwn()       ? "Own"
+                          : type->isLink()      ? "Link"
+                          : type->isOptionOwn() ? "Option"
+                                                : nullptr;
+    if (generic != nullptr) {
+        written.form = ast::TypeExpr::Form::Generic;
+        written.name = generic;
+        written.arguments.push_back(writtenFormOf(type->element(), position));
+    } else if (instance != structInstanceOf_.end()) {
+        written.form = ast::TypeExpr::Form::Generic;
+        written.name = instance->second.generic->name;
+        for (const TypeRef argument : instance->second.arguments) {
+            written.arguments.push_back(writtenFormOf(argument, position));
+        }
+    } else {
+        written.name = type->name();
+    }
+    return written;
+}
+
+// Replaces each Named node that names a type parameter by the written form
+// of its argument; true when one was replaced. A replaced node keeps the
+// position of the node it replaces (design.md, invariant 4).
+bool SemanticAnalyzer::substituteTypeParameters(ast::TypeExpr& written, const std::vector<std::string>& parameters,
+                                                const std::vector<TypeRef>& arguments) const
+{
+    if (written.isNamed()) {
+        for (std::size_t index = 0; index < parameters.size(); ++index) {
+            if (equalsIgnoreCase(written.name, parameters[index])) {
+                written = writtenFormOf(arguments[index], written.position);
+                checkWrittenType(written);
+                return true;
+            }
+        }
+        return false;
+    }
+    bool replaced = false;
+    for (ast::TypeExpr& argument : written.arguments) {
+        replaced = substituteTypeParameters(argument, parameters, arguments) || replaced;
+    }
+    return replaced;
+}
+
+// An instance's header: the template's, with its type arguments for its
+// type parameters. Out of line, so the frame of instantiateRoutine, which
+// nested generic calls stack up, stays as it was (engineering E19).
+void SemanticAnalyzer::substituteHeaderTypes(ast::RoutineHeader& header, const std::vector<std::string>& parameters,
+                                             const std::vector<TypeRef>& arguments) const
+{
+    for (ast::ParameterDeclaration& parameter : header.parameters) {
+        if (parameter.type) {
+            substituteTypeParameters(*parameter.type, parameters, arguments);
+        }
+    }
+    if (header.resultType) {
+        substituteTypeParameters(*header.resultType, parameters, arguments);
+    }
+}
+
+void SemanticAnalyzer::unifyTypeExpr(const ast::TypeExpr& pattern, TypeRef actual,
                                        const std::vector<std::string>& parameters, std::vector<TypeRef>& bound,
                                        const std::string& owner, const std::string& from,
                                        const std::vector<TypeRef>* fixed)
@@ -188,7 +271,7 @@ void SemanticAnalyzer::unifyTypeSyntax(const types::TypeSyntax& pattern, TypeRef
         return;
     }
     switch (pattern.form) {
-    case types::TypeSyntax::Form::Named:
+    case ast::TypeExpr::Form::Named:
         for (std::size_t index = 0; index < parameters.size(); ++index) {
             if (!equalsIgnoreCase(pattern.name, parameters[index])) {
                 continue;
@@ -209,30 +292,30 @@ void SemanticAnalyzer::unifyTypeSyntax(const types::TypeSyntax& pattern, TypeRef
             return;
         }
         return;
-    case types::TypeSyntax::Form::Array:
+    case ast::TypeExpr::Form::Array:
         if (actual->isArray()) {
-            unifyTypeSyntax(pattern.argument(), actual->element(), parameters, bound, owner, from, fixed);
+            unifyTypeExpr(pattern.element(), actual->element(), parameters, bound, owner, from, fixed);
         }
         return;
-    case types::TypeSyntax::Form::Generic:
+    case ast::TypeExpr::Form::Generic:
         break;
     }
     if (equalsIgnoreCase(pattern.name, "Slice")) {
         if (actual->isSlice()) {
-            unifyTypeSyntax(pattern.argument(), actual->element(), parameters, bound, owner, from, fixed);
+            unifyTypeExpr(pattern.element(), actual->element(), parameters, bound, owner, from, fixed);
         }
         return;
     }
     if (equalsIgnoreCase(pattern.name, "Own") || equalsIgnoreCase(pattern.name, "Link")) {
         const bool matches = equalsIgnoreCase(pattern.name, "Own") ? actual->isOwn() : actual->isLink();
         if (matches) {
-            unifyTypeSyntax(pattern.argument(), actual->pointerTarget(), parameters, bound, owner, from, fixed);
+            unifyTypeExpr(pattern.element(), actual->pointerTarget(), parameters, bound, owner, from, fixed);
         }
         return;
     }
     if (equalsIgnoreCase(pattern.name, "Option")) {
         if (actual->isOptionOwn()) {
-            unifyTypeSyntax(pattern.argument(), types().own(actual->pointerTarget()), parameters, bound, owner, from,
+            unifyTypeExpr(pattern.element(), types().own(actual->pointerTarget()), parameters, bound, owner, from,
                             fixed);
         }
         return;
@@ -243,7 +326,7 @@ void SemanticAnalyzer::unifyTypeSyntax(const types::TypeSyntax& pattern, TypeRef
         return;
     }
     for (std::size_t index = 0; index < pattern.arguments.size(); ++index) {
-        unifyTypeSyntax(*pattern.arguments[index], instance->second.arguments[index], parameters, bound, owner,
+        unifyTypeExpr(pattern.arguments[index], instance->second.arguments[index], parameters, bound, owner,
                         from, fixed);
     }
 }
@@ -253,7 +336,7 @@ TypeRef SemanticAnalyzer::analyzeGenericCall(const ast::FunctionDeclaration& gen
                                              const ast::CallExpression* call)
 {
     const std::vector<std::string>& parameters = generic.typeParameters();
-    const std::string& writtenResult = generic.resultTypeName();
+    const std::optional<ast::TypeExpr>& writtenResult = generic.resultType();
     const std::vector<ast::ParameterDeclaration>& written = generic.parameters();
     const std::size_t count = call != nullptr ? call->arguments().size() : 0;
     if (count != written.size()) {
@@ -283,22 +366,20 @@ TypeRef SemanticAnalyzer::analyzeGenericCall(const ast::FunctionDeclaration& gen
             if (isLiteralArgument(*call->arguments()[index]) != literals) {
                 continue;
             }
-            const auto pattern = types::readTypeSyntax(written[index].typeName);
+            const ast::TypeExpr& pattern = *written[index].type;
             if (literals) {
                 TypeRef context = nullptr;
-                if (pattern && pattern->form == types::TypeSyntax::Form::Named) {
+                if (pattern.isNamed()) {
                     for (std::size_t parameter = 0; parameter < parameters.size(); ++parameter) {
-                        if (equalsIgnoreCase(pattern->name, parameters[parameter])) {
+                        if (equalsIgnoreCase(pattern.name, parameters[parameter])) {
                             context = bound[parameter];
                         }
                     }
                 }
                 argumentTypes[index] = analyzeWithIntegerContext(*call->arguments()[index], context);
             }
-            if (pattern) {
-                unifyTypeSyntax(*pattern, argumentTypes[index], parameters, bound, generic.name(),
-                                "argument " + std::to_string(index + 1), literals ? &fixedByValues : nullptr);
-            }
+            unifyTypeExpr(pattern, argumentTypes[index], parameters, bound, generic.name(),
+                            "argument " + std::to_string(index + 1), literals ? &fixedByValues : nullptr);
         }
     }
     const ast::Expression& site = call != nullptr ? static_cast<const ast::Expression&>(*call) : callee;
@@ -306,10 +387,8 @@ TypeRef SemanticAnalyzer::analyzeGenericCall(const ast::FunctionDeclaration& gen
     for (const TypeRef type : bound) {
         complete = complete && type != nullptr;
     }
-    if (!complete && targetExpression_ == &site && targetType_ != nullptr && !writtenResult.empty()) {
-        if (const auto pattern = types::readTypeSyntax(writtenResult)) {
-            unifyTypeSyntax(*pattern, targetType_, parameters, bound, generic.name(), "the target", nullptr);
-        }
+    if (!complete && targetExpression_ == &site && targetType_ != nullptr && writtenResult) {
+        unifyTypeExpr(*writtenResult, targetType_, parameters, bound, generic.name(), "the target", nullptr);
     }
     for (std::size_t index = 0; index < bound.size(); ++index) {
         if (bound[index] == nullptr) {
@@ -383,10 +462,8 @@ TypeRef SemanticAnalyzer::analyzeGenericConstruction(const ast::TypeDeclaration&
                 if (isLiteralArgument(value) != literals) {
                     continue;
                 }
-                if (const auto pattern = types::readTypeSyntax(fields[index]->typeName)) {
-                    unifyTypeSyntax(*pattern, valueTypes[index], parameters, bound, generic.name,
-                                    "field " + fields[index]->name, literals ? &fixedByValues : nullptr);
-                }
+                unifyTypeExpr(fields[index]->type, valueTypes[index], parameters, bound, generic.name,
+                                "field " + fields[index]->name, literals ? &fixedByValues : nullptr);
             }
         }
     }
@@ -408,7 +485,7 @@ TypeRef SemanticAnalyzer::analyzeGenericConstruction(const ast::TypeDeclaration&
     return analyzeConstruction(call, type, valueTypes.empty() ? nullptr : &valueTypes);
 }
 
-TypeRef SemanticAnalyzer::resolveGenericStructType(const types::TypeSyntax& syntax, std::string_view written)
+TypeRef SemanticAnalyzer::resolveGenericStructType(const ast::TypeExpr& syntax, std::string_view written)
 {
     const ast::TypeDeclaration* generic = genericStruct(syntax.name);
     if (generic == nullptr) {
@@ -426,7 +503,7 @@ TypeRef SemanticAnalyzer::resolveGenericStructType(const types::TypeSyntax& synt
     }
     std::vector<TypeRef> arguments;
     for (const auto& argument : syntax.arguments) {
-        arguments.push_back(resolveTypeSyntax(*argument, argument->spelling()));
+        arguments.push_back(resolveTypeExpr(argument, ast::spell(argument)));
     }
     return instantiateStruct(*generic, arguments);
 }
@@ -447,19 +524,12 @@ TypeRef SemanticAnalyzer::instantiateStruct(const ast::TypeDeclaration& generic,
     const TypeRef type = types().declareStruct(name);
     symbols_.globalScope().declare(name, SymbolKind::Type, type);
     structInstanceOf_.emplace(type, StructInstance{&generic, arguments});
-    const auto replace = [&](std::string_view written) -> std::string {
-        for (std::size_t index = 0; index < arguments.size(); ++index) {
-            if (equalsIgnoreCase(written, generic.typeParameters[index])) {
-                return arguments[index]->name();
-            }
-        }
-        return {};
-    };
     try {
         std::vector<types::StructField> fields;
         for (const ast::StructFieldDeclaration& declaration : generic.fields) {
-            const std::string written = types::substituteTypeNames(declaration.typeName, replace);
-            if (types::isGenericSpelling(written, "Slice")) {
+            ast::TypeExpr written = declaration.type;
+            const bool usesParameter = substituteTypeParameters(written, generic.typeParameters, arguments);
+            if (written.isGeneric("Slice")) {
                 throw SemanticError("a slice cannot be a struct field (ADR-0017): " + declaration.name);
             }
             const TypeRef fieldType = resolveWrittenType(written);
@@ -467,7 +537,6 @@ TypeRef SemanticAnalyzer::instantiateStruct(const ast::TypeDeclaration& generic,
             // r3.82: no instance may bring a default the generic struct does
             // not guarantee, so a field whose type uses a type parameter has
             // none; it is given in the construction.
-            const bool usesParameter = written != declaration.typeName;
             if (declaration.hasDefault && usesParameter) {
                 throw SemanticError("a field whose type uses a type parameter has no default; give " +
                                     declaration.name + " in the construction (r3.82)");
@@ -484,7 +553,8 @@ TypeRef SemanticAnalyzer::instantiateStruct(const ast::TypeDeclaration& generic,
             types::StructField field{declaration.name, fieldType, false, declaration.hasDefault,
                                      declaration.defaultValue};
             field.fillDefault = declaration.fillDefault;
-            field.fromTypeParameter = !replace(declaration.typeName).empty();
+            field.fromTypeParameter = declaration.type.isNamed() && isTypeParameter(declaration.type.name,
+                                                                                    generic.typeParameters);
             field.isPublic = declaration.isPublic;
             fields.push_back(std::move(field));
         }
@@ -495,6 +565,41 @@ TypeRef SemanticAnalyzer::instantiateStruct(const ast::TypeDeclaration& generic,
     }
     result_.addStructInstance(type);
     return type;
+}
+
+// The body of an instance: the template's, with its type arguments for its
+// type parameters in written types, in exception handlers (names until F7)
+// and where an expression names one (`New(T)`, `T(F := X)`). Out of line,
+// so the frame of instantiateRoutine, which nested generic calls stack up,
+// holds none of the rewriters (design.md, stack budget).
+std::vector<ast::StatementPtr> SemanticAnalyzer::cloneInstanceBody(const ast::FunctionDeclaration& generic,
+                                                                    const std::vector<TypeRef>& arguments) const
+{
+    const std::vector<std::string>& parameters = generic.typeParameters();
+    const auto replace = [&](std::string_view written) -> std::string {
+        for (std::size_t index = 0; index < parameters.size(); ++index) {
+            if (equalsIgnoreCase(written, parameters[index])) {
+                return arguments[index]->name();
+            }
+        }
+        return {};
+    };
+    ast::CloneRewriters rewrite;
+    rewrite.type = [&](ast::TypeExpr& written) { substituteTypeParameters(written, parameters, arguments); };
+    rewrite.exceptionName = [&](const std::string& written) {
+        const std::string replacement = replace(written);
+        return replacement.empty() ? written : replacement;
+    };
+    rewrite.expression = [&](const ast::Expression& node) -> ast::ExpressionPtr {
+        if (node.kind() == ast::AstNodeKind::IdentifierExpression) {
+            const std::string replacement = replace(static_cast<const ast::IdentifierExpression&>(node).name());
+            if (!replacement.empty()) {
+                return std::make_unique<ast::IdentifierExpression>(replacement);
+            }
+        }
+        return nullptr;
+    };
+    return ast::cloneStatements(generic.body(), rewrite);
 }
 
 const FunctionSignature& SemanticAnalyzer::instantiateRoutine(const ast::FunctionDeclaration& generic,
@@ -516,30 +621,9 @@ const FunctionSignature& SemanticAnalyzer::instantiateRoutine(const ast::Functio
                                 " is the name of a type; choose another name");
         }
     }
-    const auto replace = [&](std::string_view written) -> std::string {
-        for (std::size_t index = 0; index < parameters.size(); ++index) {
-            if (equalsIgnoreCase(written, parameters[index])) {
-                return arguments[index]->name();
-            }
-        }
-        return {};
-    };
-
-    ast::CloneRewriters rewrite;
-    rewrite.typeName = [&](const std::string& written) { return types::substituteTypeNames(written, replace); };
-    // A type parameter named in an expression (`New(T)`, `T(F := X)`).
-    rewrite.expression = [&](const ast::Expression& node) -> ast::ExpressionPtr {
-        if (node.kind() == ast::AstNodeKind::IdentifierExpression) {
-            const std::string replacement = replace(static_cast<const ast::IdentifierExpression&>(node).name());
-            if (!replacement.empty()) {
-                return std::make_unique<ast::IdentifierExpression>(replacement);
-            }
-        }
-        return nullptr;
-    };
     auto made = std::make_unique<ast::FunctionDeclaration>(name, generic.header(),
-                                                           ast::cloneStatements(generic.body(), rewrite));
-    substituteHeaderTypes(made->header(), replace);
+                                                           cloneInstanceBody(generic, arguments));
+    substituteHeaderTypes(made->header(), parameters, arguments);
     made->copyModuleFrom(generic);
     made->setPosition(generic.position());  // an instance is where its template is
     const ast::FunctionDeclaration& instance = result_.addInstance(std::move(made));

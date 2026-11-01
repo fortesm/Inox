@@ -97,6 +97,17 @@ removes. `compare` fails on any difference not declared exactly, on a
 declared mode that does not change, on a declared program that no longer
 differs, and on an `--allow` that names no added or removed program.
 
+A change to the parser or the analyzer compares its stack frames with
+main's (E19, r3.117): build both trees with `-DCMAKE_CXX_FLAGS=-fstack-usage`
+(clang, Debug) and run
+
+```sh
+python3 tools/stack_frames.py <main>/build/su build/su
+```
+
+It fails when a function on a recursion path of the parser, the analyzer
+or the clone has a larger frame than on main.
+
 In CI the Gates job `ir-snapshot` runs that comparison on a pull request
 labelled `refactor`, with `--allow` for the programs the pull request adds
 and `--expect` for the `ir-snapshot-expect.json` of the OpenSpec change it

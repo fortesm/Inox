@@ -132,7 +132,7 @@ std::string shape(const Statement& statement)
     }
     case AstNodeKind::VarStatement: {
         const auto& node = static_cast<const VarStatement&>(statement);
-        return "(var " + node.name() + " type:" + node.typeName() +
+        return "(var " + node.name() + " type:" + (node.type() ? spell(*node.type()) : std::string{}) +
                (node.initializer() != nullptr ? " " + shape(*node.initializer()) : std::string{}) + ")";
     }
     case AstNodeKind::VarBlockStatement:
@@ -326,8 +326,13 @@ void testRewriters()
     const auto module = parseProgram();
     const auto& original = routine(*module, "Main").body();
     CloneRewriters rewrite;
-    rewrite.typeName = [](const std::string& name) {
-        return name == "Integer" ? std::string("Int64") : name == "IOError" ? std::string("RangeError") : name;
+    rewrite.type = [](TypeExpr& written) {
+        if (written.isNamed() && written.name == "Integer") {
+            written.name = "Int64";
+        }
+    };
+    rewrite.exceptionName = [](const std::string& name) {
+        return name == "IOError" ? std::string("RangeError") : name;
     };
     rewrite.expression = [](const Expression& node) -> ExpressionPtr {
         if (node.kind() == AstNodeKind::IdentifierExpression &&
@@ -338,11 +343,11 @@ void testRewriters()
     };
     const std::string text = shape(cloneStatements(original, rewrite));
     check(text.find("type:Integer") == std::string::npos && text.find("(var A type:Int64") != std::string::npos,
-          "every declared type name passes through the type rewriter");
+          "every declared type passes through the type rewriter");
     check(text.find("id:X") == std::string::npos && text.find("(bin") != std::string::npos &&
               text.find("id:Y") != std::string::npos,
           "every expression, in every nested body, passes through the expression rewriter");
-    check(text.find("on E:RangeError") != std::string::npos, "an exception handler's type is a type name too");
+    check(text.find("on E:RangeError") != std::string::npos, "an exception handler's type passes through its rewriter");
     check(text.find("on :OverflowError") != std::string::npos, "a type name the rewriter keeps stays");
     checkEqual(shape(original).find("id:X") != std::string::npos ? "kept" : "changed", "kept",
                "the original is not changed");
@@ -352,11 +357,15 @@ void testNodesTheParserDoesNotBuild()
 {
     std::vector<StatementPtr> inner;
     inner.push_back(std::make_unique<VarStatement>(true, "Z", std::make_unique<LiteralExpression>(LiteralKind::Integer, "1"),
-                                                   "T"));
+                                                   namedType("T")));
     std::vector<StatementPtr> body;
     body.push_back(std::make_unique<BlockStatement>(std::move(inner)));
     CloneRewriters rewrite;
-    rewrite.typeName = [](const std::string& name) { return name == "T" ? std::string("String") : name; };
+    rewrite.type = [](TypeExpr& written) {
+        if (written.name == "T") {
+            written.name = "String";
+        }
+    };
     checkEqual(shape(cloneStatements(body, rewrite)), "[(block [(var Z type:String lit:1) ]) ]", "a block statement");
 }
 

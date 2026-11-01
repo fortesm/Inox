@@ -28,10 +28,8 @@ reader). Codegen only tests whether a type was written. Updates
 
 Risk: high (rewrites how phases 2-5 represent written types).
 
-Status: **design awaiting final approval**. Q1-Q4 answered by Marcelo
-Fortes, 2026-11-01; the conditions of that review are written into
-`design.md`. No code before the final approval and the merge of
-`ir-snapshot-exact`.
+Status: **implemented** (canon r3.117). Design approved by Marcelo Fortes,
+2026-11-01.
 
 ## What Changes
 

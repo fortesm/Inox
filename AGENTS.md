@@ -119,6 +119,11 @@ time. Each names where it bit.
 - **Never print in the iteration order of an unordered container.** Struct
   types came out in `unordered_map` order, which differs between standard
   libraries, so Linux and Windows produced different IR (2026-10-17).
+- **Written types are trees** (`ast::TypeExpr`, F4, r3.117). Never spell a
+  type and read it back, and never test its shape on text: use `form`,
+  `isGeneric("Own")`, `element()`; text is only `ast::spell`, for messages.
+  A `TypeExpr` is large: never make one a local of a recursive function
+  (build it in a helper, `tools/stack_frames.py`).
 - **The token scanners are gone.** Type/Const/State are typed declarations
   (v3.53); never re-scan tokens of a section — extend the parser instead.
 - **Console I/O and memory stay in libinoxrt.** On Windows the program and

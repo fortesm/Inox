@@ -23,7 +23,6 @@
 #include "SemanticAnalyzer.h"
 
 #include "SemanticSupport.h"
-#include "../types/TypeSyntax.h"
 
 #include <string>
 #include <iterator>
@@ -47,18 +46,18 @@ const std::string kNeverCopied =
 } // namespace
 
 // `Own<T>`, `Link<T>` and `Option<Own<T>>` as written.
-TypeRef SemanticAnalyzer::resolvePointerType(const types::TypeSyntax& syntax, std::string_view written)
+TypeRef SemanticAnalyzer::resolvePointerType(const ast::TypeExpr& syntax, std::string_view written)
 {
-    const types::TypeSyntax& argument = syntax.argument();
+    const ast::TypeExpr& argument = syntax.element();
     if (equalsIgnoreCase(syntax.name, "Option")) {
-        if (argument.form != types::TypeSyntax::Form::Generic || !equalsIgnoreCase(argument.name, "Own")) {
+        if (argument.form != ast::TypeExpr::Form::Generic || !equalsIgnoreCase(argument.name, "Own")) {
             throw SemanticError("Option holds an owner that may be absent: write Option<Own<T>> (other Option "
                                 "types come with generics), not " + std::string(written));
         }
-        return types().optionOwn(resolvePointerType(argument, argument.spelling()));
+        return types().optionOwn(resolvePointerType(argument, ast::spell(argument)));
     }
     const bool own = equalsIgnoreCase(syntax.name, "Own");
-    if (argument.form == types::TypeSyntax::Form::Generic &&
+    if (argument.form == ast::TypeExpr::Form::Generic &&
         (equalsIgnoreCase(argument.name, "Slice") || equalsIgnoreCase(argument.name, "Own") ||
          equalsIgnoreCase(argument.name, "Link") || equalsIgnoreCase(argument.name, "Option"))) {
         if (equalsIgnoreCase(argument.name, "Slice")) {
@@ -66,7 +65,7 @@ TypeRef SemanticAnalyzer::resolvePointerType(const types::TypeSyntax& syntax, st
         }
         throw SemanticError("a pointer to a pointer is not supported: " + std::string(written));
     }
-    const TypeRef target = resolveTypeSyntax(argument, argument.spelling());
+    const TypeRef target = resolveTypeExpr(argument, ast::spell(argument));
     rejectFileIn(target, "reached by a pointer");
     return own ? types().own(target) : types().link(target);
 }

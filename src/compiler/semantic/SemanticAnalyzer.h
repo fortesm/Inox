@@ -10,7 +10,6 @@
 #include "SemanticResult.h"
 #include "StdIntrinsics.h"
 #include "../ast/Ast.h"
-#include "../types/TypeSyntax.h"
 
 #include <cstdint>
 #include <stdexcept>
@@ -91,12 +90,14 @@ private:
     // The type a written type denotes (`Array[1..Size] Byte`, `Own<TNode>`),
     // with the language's rules and messages; "unknown type" when a name is
     // not a type.
-    TypeRef resolveWrittenType(std::string_view written);
+    TypeRef resolveWrittenType(const ast::TypeExpr& written);
+    // A type written as one name (a method's receiver, `TPoint.Move`).
+    TypeRef resolveTypeName(std::string_view name);
     // Like resolveWrittenType, but null for an unknown plain name instead
     // of an error (a field type checked later, CANON-9).
-    TypeRef lookupWrittenType(std::string_view written);
-    TypeRef resolveTypeSyntax(const types::TypeSyntax& syntax, std::string_view written);
-    TypeRef resolveArrayType(const types::TypeSyntax& syntax, std::string_view written);
+    TypeRef lookupWrittenType(const ast::TypeExpr& written);
+    TypeRef resolveTypeExpr(const ast::TypeExpr& syntax, std::string_view written);
+    TypeRef resolveArrayType(const ast::TypeExpr& syntax, std::string_view written);
     TypeRef analyzeIndexExpression(const ast::CallExpression& call);
     TypeRef analyzeSliceExpression(const ast::CallExpression& call);
     static bool isIndexTarget(const ast::Expression& expression);
@@ -143,7 +144,7 @@ private:
     TypeRef analyzeOrdinalBuiltin(const ast::CallExpression& call);
     void checkEnumConversion(const ast::CallExpression& call, TypeRef enumType);
     // Sets (change enum-range-set; SemanticSets.cpp).
-    TypeRef resolveSetType(const types::TypeSyntax& syntax, std::string_view written);
+    TypeRef resolveSetType(const ast::TypeExpr& syntax, std::string_view written);
     void requireSetElement(const ast::Expression& element, TypeRef setType, const std::string& where);
     TypeRef analyzeSetOperand(const ast::Expression& expression, TypeRef context);
     TypeRef analyzeSetLiteral(const ast::CallExpression& call);
@@ -160,7 +161,7 @@ private:
     // A case on a String (change case-strings), SemanticStatements.cpp.
     void analyzeStringCase(const ast::CaseStatement& statement);
     bool staticStringValue(const ast::Expression& expression, std::string& value) const;
-    static std::string arrayWithoutInitializer(const std::string& name, const std::string& written,
+    static std::string arrayWithoutInitializer(const std::string& name, const ast::TypeExpr& written,
                                                TypeRef arrayType);
     TypeRef analyzeMembership(const ast::BinaryExpression& expression);
     // Once every Type of the module is declared: struct fields and Const and
@@ -255,12 +256,19 @@ private:
     // A construction of a generic struct, `TPair(FKey := "a", FValue := 1)`.
     TypeRef analyzeGenericConstruction(const ast::TypeDeclaration& generic, const ast::CallExpression& call);
     // `TPair<String, Integer>` written as a type.
-    TypeRef resolveGenericStructType(const types::TypeSyntax& syntax, std::string_view written);
+    TypeRef resolveGenericStructType(const ast::TypeExpr& syntax, std::string_view written);
     // Binds the type parameters that `pattern` (a written type) names to the
     // parts of `actual`; a parameter already bound to another type is an error.
     // `fixed`, for a literal argument, holds what the other arguments fixed:
     // a literal never contradicts them (`Max(B, 1)` with B Byte is Max<UInt8>).
-    void unifyTypeSyntax(const types::TypeSyntax& pattern, TypeRef actual, const std::vector<std::string>& parameters,
+    ast::TypeExpr writtenFormOf(TypeRef type, ast::SourcePosition position) const;
+    bool substituteTypeParameters(ast::TypeExpr& written, const std::vector<std::string>& parameters,
+                                  const std::vector<TypeRef>& arguments) const;
+    std::vector<ast::StatementPtr> cloneInstanceBody(const ast::FunctionDeclaration& generic,
+                                                     const std::vector<TypeRef>& arguments) const;
+    void substituteHeaderTypes(ast::RoutineHeader& header, const std::vector<std::string>& parameters,
+                               const std::vector<TypeRef>& arguments) const;
+    void unifyTypeExpr(const ast::TypeExpr& pattern, TypeRef actual, const std::vector<std::string>& parameters,
                          std::vector<TypeRef>& bound, const std::string& owner, const std::string& from,
                          const std::vector<TypeRef>* fixed);
     const FunctionSignature& instantiateRoutine(const ast::FunctionDeclaration& generic,
@@ -364,7 +372,7 @@ private:
     // `Move`d); `Option<Own<T>>` may be `None`; `Link<T>` does not own and is
     // checked by a generation on each use. A move-only type is an owner or
     // an aggregate that holds one.
-    TypeRef resolvePointerType(const types::TypeSyntax& syntax, std::string_view written);
+    TypeRef resolvePointerType(const ast::TypeExpr& syntax, std::string_view written);
     static bool isMoveOnlyType(TypeRef type);
     // A struct that holds an `Own<T>` field (directly, in a part or a struct
     // field) has no default value: it is built with its owners given.
@@ -398,13 +406,13 @@ private:
     std::unordered_map<std::string, FunctionSignature> functions_;
     // The written field types of each struct, by struct, in field order: a
     // field's type is resolved once every Type and Const is declared.
-    std::unordered_map<TypeRef, std::vector<std::string>> writtenFieldTypes_;
+    std::unordered_map<TypeRef, std::vector<const ast::TypeExpr*>> writtenFieldTypes_;
     // Const and State variables declared with a type name not declared yet
     // (a struct of a later Type section), by variable name.
     std::vector<std::pair<std::string, std::string>> pendingSectionTypes_;
     // State declarations written `Name Type` without ":=", checked once all
     // types are known: only structs may omit the initializer (CANON-5).
-    std::vector<std::pair<std::string, std::string>> stateDeclarationsWithoutInitializer_;
+    std::vector<std::pair<std::string, const ast::TypeExpr*>> stateDeclarationsWithoutInitializer_;
     TypeRef currentFunctionReturnType_ = nullptr;
     bool currentFunctionSawReturn_ = false;
     std::size_t loopDepth_ = 0;

@@ -1,9 +1,7 @@
 Design of foundation step F4 (change `structured-types`). Risk: high.
-Status: **awaiting the maintainer's final approval**. Q1-Q4 answered
-2026-11-01 (see "Approval"); the three conditions of that review are
-written into this design (invariants of `TypeExpr`, canonical spelling,
-type parameters inside expressions, stack proof). No code of F4 before the
-final approval and the merge of `ir-snapshot-exact`.
+Status: **approved** by Marcelo Fortes, 2026-11-01, after
+`ir-snapshot-exact` was merged; implemented (canon r3.117). See
+"Approval" and "As implemented".
 
 ## Today (D4)
 
@@ -277,6 +275,34 @@ comparison of `-fstack-usage` per step.
 
 ## Approval
 
-Q1-Q4: Marcelo Fortes, 2026-11-01 (above). Final approval of this design:
-pending, after these conditions are reviewed and `ir-snapshot-exact` is
-merged.
+Q1-Q4: Marcelo Fortes, 2026-11-01 (above). Final approval of this design,
+with its conditions: Marcelo Fortes, 2026-11-01, after `ir-snapshot-exact`
+(r3.115) was merged.
+
+## As implemented
+
+Where the code differs from the text above, and why:
+
+- **One change, not six commits with both forms.** The parser, the
+  analyzer, generics, module resolution and contract lowering moved to the
+  tree together; the IR snapshot against main (1053 programs) shows no
+  difference, so the dual-form steps 2-5 were not needed.
+- **The clone keeps a name rewriter for exception handlers**
+  (`ExceptionNameRewriter`), since handler types stay names until F7 (Q3);
+  `TypeNameRewriter` is replaced by `TypeRewriter` (`TypeExpr&`).
+- **`checkTypeExpr` checks invariants 1-3** (the shapes); positions
+  (invariant 4) and the round trip (invariant 6) are checked by the unit
+  test `TypeExprTests` over the canonical table and over every written
+  type of `tests/`, `examples/` and `stdlib/`.
+- **Generic struct instances** are written back as Generic trees from the
+  analyzer's record of instances (`structInstanceOf_`), as reading their
+  names did.
+- **Stack:** `tools/stack_frames.py` compares 47 recursion-path functions
+  with main; none grows. `parseTypeName` (1064 bytes) became
+  `parseTypeInto` (232) and `parseArrayTypeInto` (216): one level of the
+  type recursion is 448 bytes. `instantiateRoutine` went from 1192 to 1032
+  (the body's clone moved to `cloneInstanceBody`), `resolveWrittenType`
+  from 488 to 120. Declarations that hold a type are built in appenders
+  (`appendStructField`, `appendSectionVariable`, `appendReusedPart`) and
+  the routine header on the heap, so the section, type and routine
+  parsers do not grow.
