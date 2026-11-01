@@ -1,6 +1,9 @@
 Design of foundation step F4 (change `structured-types`). Risk: high.
-Status: **awaiting the maintainer's approval**; no code is written before
-it is recorded here with its date.
+Status: **awaiting the maintainer's final approval**. Q1-Q4 answered
+2026-11-01 (see "Approval"); the three conditions of that review are
+written into this design (invariants of `TypeExpr`, canonical spelling,
+type parameters inside expressions, stack proof). No code of F4 before the
+final approval and the merge of `ir-snapshot-exact`.
 
 ## Today (D4)
 
@@ -79,6 +82,61 @@ std::string spell(const TypeExpr& type);
 - **Multi-dimensional arrays** stay nested, as the parser spells them
   today: `Array[1..2, 1..3] T` is an Array whose element is an Array.
 
+### Invariants of `TypeExpr`
+
+Every `TypeExpr` in the AST satisfies these, from the parser on; a phase
+that builds or rewrites one keeps them, and a debug check
+(`ast::checkTypeExpr`, asserting in Debug builds) verifies them where a
+tree is made or changed (parser, substitution, renaming, clone).
+
+1. **Named:** `name` is not empty; it is one identifier or a qualified name
+   (`A.B.TName`, identifiers joined by single dots); `low` and `high` are
+   empty; `arguments` is empty.
+2. **Array:** `name` is empty; `low` and `high` are not empty, each an
+   integer literal (with an optional leading `-`) or one identifier
+   (`isName`); `arguments` has exactly one element, the element type.
+   A multi-dimensional array is an Array whose element is an Array, one
+   level per dimension, in the written order.
+3. **Generic:** `name` is not empty; `arguments` has one element or more;
+   `low` and `high` are empty. Slice, Own, Link and Option have exactly
+   one argument (the parser requires it, as today); the count of a generic
+   struct's or a Set's arguments is the analyzer's check, with today's
+   messages.
+4. **Position:** every node has a known position (`line != 0`), its first
+   token; a node made by substitution takes the position of the node it
+   replaces, so a message about an instance still points at the generic
+   body (F2).
+5. **Ownership:** a tree is a value; no node is shared between two trees,
+   and no phase keeps a pointer into a tree it does not own beyond one
+   call.
+6. **Spelling round trip:** `spell(t)` is the canonical text below, and
+   reading that text gives back a tree equal to `t` except for positions.
+
+### Canonical spelling
+
+`spell` must give, byte for byte, the text the parser makes today; every
+message, `inox interface` line and instance name depends on it. The rules
+(the current `parseTypeName`, `spellArrayType` and `TypeSyntax::spelling`):
+
+| Written | Spelled |
+|---|---|
+| `Integer`, `TPoint` | as written (the name's own capitals) |
+| `Bank.Accounts.TAccount` | as written, dots without spaces |
+| `Array[1..3] Int64` | `Array[1..3] Int64` (no spaces inside the brackets) |
+| `Array[ -1 .. N ] T` | `Array[-1..N] T` |
+| `Array[1..2, 1..3] T` | `Array[1..2] Array[1..3] T` (nested, one per dimension) |
+| `Array[$10..$1F] T`, `Array[1_000..1_009] T` | the literal as `tokenText` gives it (`$10`, `1000`) |
+| `slice<int8>`, `own<T>` | `Slice<int8>`, `Own<T>`: Slice, Own, Link and Option get their canonical capitals; the argument as written |
+| `TPair<String,Own<TNode>>` | `TPair<String, Own<TNode>>` (`, ` between arguments, no other spaces) |
+| `Option<Own<Array[1..2, 1..3] TItem>>` | `Option<Own<Array[1..2] Array[1..3] TItem>>` |
+| `Set<TColor>` | `Set<TColor>` |
+
+Step 1 proves it in two ways: a unit test with each row above plus deep
+nestings (generic inside array inside generic, three dimensions, qualified
+names as arguments), and a corpus test that parses every written type of
+`tests/`, `examples/` and `stdlib/` with the new parser and compares
+`spell` with the text today's parser produces for the same source.
+
 ## Phase by phase
 
 **2 Parser.** `parseTypeName` returns a `TypeExpr` and stamps its position.
@@ -111,6 +169,15 @@ local they declare.
   argument's type walks the tree it already walks after `readTypeSyntax`.
 - The names of instances (`Max<Array[1..3] Int64>`) keep their text: they
   come from `Type::name()`, unchanged.
+- **Type parameters inside expressions are kept.** In a generic body,
+  `New(T)` and `T(X + X)` name a type parameter as an identifier in an
+  expression, not as a written type. Today the instance's clone replaces
+  such an identifier by one naming the argument's type (the clone's
+  expression rewriter in `instantiateRoutine`). F4 leaves that rewriter as
+  it is and changes only the written-type rewriter beside it; both run on
+  every clone of a body. Guard: `tests/runtime/generic-type-parameter-expressions.inox`
+  (`New(T)` with a struct, `T(...)` with Int8 and Float), added before F4 so
+  the snapshot covers it.
 
 **6 Codegen.** Tests `has_value()` where it tests `empty()`. Nothing else.
 
@@ -119,8 +186,10 @@ local they declare.
 
 ## Order of work: steps that each pass every gate
 
-1. `ast::TypeExpr`, `spell`, unit tests: for every type spelled in the test
-   corpus, `spell(parse(text)) == text`.
+0. Before the code: `ir-snapshot-exact` merged; the snapshot and the
+   `-fstack-usage` of main recorded; `tools/stack_frames.py`.
+1. `ast::TypeExpr`, `spell`, `checkTypeExpr`; the unit test of the
+   canonical table and the corpus test (above).
 2. The parser fills `TypeExpr` beside the text (both kept, the text made by
    `spell`): consumers still read text. IR snapshot: no difference.
 3. The analyzer reads the tree (resolution, shape tests).
@@ -138,20 +207,42 @@ sanitized suite with 1 MiB, fuzz, differential, and the Windows jobs.
 
 Windows Debug needs 963 KiB for `limits-boundary-ok` (1 MiB was the old
 default; the reserve is 8 MiB since r3.113, the job fails above 4096 KiB or
-+5%). F4 touches functions on the recursion path of the parser:
-`parseTypedLocalStatement` (488 bytes today) is reached from the statement
-recursion, and `parseTypeName` (1064 bytes) recurses on nested types.
++5%). The rule for F4 is stricter than the job: **no function on a
+recursion path may have a larger frame than on main**, at every step.
 
-- A `TypeExpr` is larger than a `std::string` (about 150 bytes against 32).
-  It must never be a local of a function on the statement or expression
-  recursion: the node is built in an out-of-line helper and moved into the
-  heap node it belongs to.
-- `parseTypeName` is rewritten to keep its frame at or below 1064 bytes
-  (it shrinks if the text concatenations go, which is expected).
-- On the analyzer side, `analyzeStatement` must not hold a `TypeExpr`:
-  `resolveWrittenType` takes a reference to the node's tree.
-- Every step compares `-fstack-usage` with main and lists the frames that
-  changed in the pull request; `windows-stack` must show no growth.
+**The recursion paths** (frames measured on main with clang Debug
+`-fstack-usage`, bytes):
+
+| Path | Functions F4 touches or may touch | Frame on main |
+|---|---|---|
+| Parser, statements | `parseStatement` | 808 |
+| | `parseTypedLocalStatement` (typed locals: builds a type) | 488 |
+| | `parseExpressionStatement`, `parseIfStatement`, `parseForInStatement`, `parseCaseStatement`, `parseTryStatement` | 840, 456, 456, 504, 632 |
+| Parser, expressions | `parsePostfix`, `parsePrimary`, `parseUnary` | 904, 712, 328 |
+| Parser, types | `parseTypeName` (recursive on nested types) | 1064 |
+| Analyzer, statements | `analyzeStatement` (typed locals: resolves a type) | 5448 |
+| Analyzer, expressions | `analyzeBinaryExpression`, `analyzeCallExpression`, `analyzeGenericCall`, `analyzeConstruction`, `analyzeGenericConstruction` | 4216, 2776, 1800, 3064, 1448 |
+| Analyzer, types | `resolveWrittenType`, `resolveTypeSyntax` (recursive), `resolveArrayType`, `resolvePointerType`, `resolveGenericStructType`, `resolveSetType` | 488, 1160, 712, 920, 984, 600 |
+| Generics | `instantiateRoutine` (nested generic calls) | 1192 |
+| Clone | `cloneStatementNode`, `cloneExpressionNode` (recursive) | 1592, 376 |
+
+**How it is kept.**
+- A `TypeExpr` (about 150 bytes) is never a local, a temporary or a
+  by-value parameter of a function in the table: the parser builds it in an
+  out-of-line helper that returns it into the heap node that owns it, and
+  the analyzer takes it by reference.
+- `parseTypeName` returns into a caller-provided node (no `std::string`
+  concatenation temporaries), so its frame is expected to shrink.
+- Messages that spell a type are built in out-of-line helpers (as the F2
+  and D8 fixes did), so a throw site does not add string temporaries to a
+  recursive frame.
+
+**How it is proven.** Step 0 adds `tools/stack_frames.py`: it reads the
+`.su` files of two builds (main and the head) and fails when any function
+of the table, or any new function called from them, has a larger frame on
+the head; it prints the table with both numbers. Every step runs it, and
+every pull request of F4 shows its output; `windows-stack` must report no
+growth for `limits-boundary-ok` (963 KiB and 451 KiB on main).
 
 ## What could go wrong, and the guard
 
@@ -163,26 +254,29 @@ recursion, and `parseTypeName` (1064 bytes) recurses on nested types.
 | A frame on the recursion path grows | `-fstack-usage` per step, `windows-stack` job |
 | A half-migrated state ships | Steps 2-5 keep both forms only inside the branch; one pull request, merged after step 6 |
 
-## Decisions asked of the maintainer
+## Decisions of the maintainer
 
-- **Q1. IR snapshot exactness first.** `--allow` accepts any difference in a
-  listed program, and an exception no longer needed does not fail. Proposal:
-  before F4's code, a small CI change (`ir-snapshot-exact`) where the allow
-  list records the expected difference per program (the before and after
-  lines) and the job fails on any other difference and on an unused
-  exception. F4 itself should need no exception at all. Recommended: yes,
-  first.
-- **Q2. Positions of types.** `TypeExpr` records where a type starts.
-  Proposal: record only, and use it for diagnostics later (F6), so F4
-  changes no output. The alternative points "unknown type" errors at the
-  type instead of the declaration: a diagnostic change, declared as
-  intended. Recommended: record only.
-- **Q3. Exception handler types** stay names until F7 (the exception
-  hierarchy). Recommended: yes.
-- **Q4. Type names inside expressions** (`Integer(D)`, `TPoint(FX := 1)`,
-  `New(T)`) stay identifiers the analyzer resolves; they are names, not
-  written types. Recommended: yes.
+Answered by Marcelo Fortes, 2026-11-01:
+
+- **Q1.** Exact IR-snapshot exceptions first: yes. Change
+  `ir-snapshot-exact` (r3.115), merged before any code of F4. F4 itself
+  declares no exception.
+- **Q2.** Positions of types are recorded only; diagnostics do not change
+  in F4 (positions serve F6).
+- **Q3.** Exception handler types stay names until F7.
+- **Q4.** Type names inside expressions (`Integer(D)`, `TPoint(...)`,
+  `New(T)`) stay identifiers the analyzer resolves.
+
+Conditions of the same review, written into this design: the
+substitution of type parameters in expressions (`New(T)`, `T(...)`) is
+preserved and guarded by a test; `spell` reproduces today's canonical
+spelling, including multi-dimensional arrays and nested generics, and is
+proven against a table and the corpus; the invariants of `TypeExpr` are
+stated and checked; no frame on a recursion path grows, proven by a
+comparison of `-fstack-usage` per step.
 
 ## Approval
 
-(To be recorded: who approved, the date, and the answers to Q1-Q4.)
+Q1-Q4: Marcelo Fortes, 2026-11-01 (above). Final approval of this design:
+pending, after these conditions are reviewed and `ir-snapshot-exact` is
+merged.

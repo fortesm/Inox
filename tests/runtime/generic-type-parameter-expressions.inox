@@ -1,0 +1,31 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-8: a type parameter named in an expression of a generic body is
+== the type argument of each instance: New(T) builds a T, T(X) converts to T.
+== Kept by F4 (change structured-types): written types become a tree, but
+== these are names inside expressions.
+Type
+    TBox Struct
+        FV Integer := 7
+    ;
+
+Fresh<T>(X T) Own<T> :
+    Return New(T)
+;
+
+Twice<T>(X T) T :
+    Return T(X + X)
+;
+
+Main :
+    B := Fresh(TBox(FV := 3))
+    PutLn(Value(B).FV)
+    Free(B)
+    PutLn(Twice(Int8(4)))
+    PutLn(Twice(2.5))
+;
