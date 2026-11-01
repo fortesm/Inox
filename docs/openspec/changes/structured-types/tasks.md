@@ -2,13 +2,16 @@ Nothing below starts before the design's approval is recorded with its date.
 
 ## 0. Before the code
 
-- [ ] 0.1 Approval of `design.md` recorded (who, date, answers to Q1-Q4)
-- [ ] 0.2 If Q1 is yes: change `ir-snapshot-exact` merged first
-- [ ] 0.3 IR snapshot recorded on main; `-fstack-usage` of main kept for comparison
+- [x] 0.1 Answers to Q1-Q4 recorded (Marcelo Fortes, 2026-11-01); conditions written into the design
+- [x] 0.2 Guard test `generic-type-parameter-expressions` (`New(T)`, `T(...)` in generic bodies)
+- [ ] 0.3 Final approval of `design.md` recorded (who, date)
+- [ ] 0.4 Change `ir-snapshot-exact` merged
+- [ ] 0.5 IR snapshot recorded on main; `-fstack-usage` of main kept; `tools/stack_frames.py`
 
 ## 1. Written type in the AST
 
-- [ ] 1.1 `ast::TypeExpr`, `ArrayBound`, `spell`; unit test: `spell` reproduces every type spelling of the corpus
+- [ ] 1.1 `ast::TypeExpr`, `ArrayBound`, `spell`, `checkTypeExpr` (invariants 1-6)
+- [ ] 1.2 Unit test of the canonical spelling table and deep nestings; corpus test against today's parser
 
 ## 2. Parser
 
@@ -34,5 +37,5 @@ Nothing below starts before the design's approval is recorded with its date.
 
 ## 7. Gates
 
-- [ ] 7.1 Suite, IR snapshot without allow list, `-fstack-usage` per step, sanitized suite (1 MiB), fuzz 1 and 7, differential, backend_gaps, openspec, constitution_check, version_check
+- [ ] 7.1 Suite, IR snapshot without any exception, `tools/stack_frames.py` per step (no frame of the table grows), sanitized suite (1 MiB), fuzz 1 and 7, differential, backend_gaps, openspec, constitution_check, version_check
 - [ ] 7.2 CI, `windows-stack` with no growth, `ir-snapshot` (label `refactor`)

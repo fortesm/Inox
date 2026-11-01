@@ -28,7 +28,10 @@ reader). Codegen only tests whether a type was written. Updates
 
 Risk: high (rewrites how phases 2-5 represent written types).
 
-Status: **design awaiting approval**. No code before it.
+Status: **design awaiting final approval**. Q1-Q4 answered by Marcelo
+Fortes, 2026-11-01; the conditions of that review are written into
+`design.md`. No code before the final approval and the merge of
+`ir-snapshot-exact`.
 
 ## What Changes
 
@@ -54,6 +57,7 @@ Exception handler types (names until F7); type names inside expressions
 (casts, constructors, `New(T)`), which are names the analyzer resolves;
 desugaring (F5); the typed IR (F6).
 
-## Open questions
+## Decisions
 
-See `design.md`, "Decisions asked of the maintainer" (Q1-Q4).
+See `design.md`, "Decisions of the maintainer" (Q1-Q4, 2026-11-01) and
+"Approval".
