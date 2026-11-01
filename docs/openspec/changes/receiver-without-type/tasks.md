@@ -10,4 +10,5 @@
 ## 3. Gates
 
 - [x] 3.1 Suite, IR snapshot against main (no difference: no test had this mistake), openspec, constitution_check, version_check
-- [ ] 3.2 CI
+- [x] 3.2 IR snapshot: a program the change adds is not compared (fix to r3.115); self-test 13 checks; CI rehearsal: 1055 programs, 0 unexpected
+- [ ] 3.3 CI

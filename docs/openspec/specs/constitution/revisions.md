@@ -582,5 +582,7 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   receiver is Self or Self mut, its type the method's prefix), and
   `Self owned` one that says it is reserved; both were rejected with a
   generic message. The scenario names its tests; the over-acceptance list
-  of STATUS is empty. Approved by Marcelo Fortes, 2026-11-01. Change
-  `receiver-without-type`.
+  of STATUS is empty. Also (E19): a program the change adds is not
+  compared by the IR snapshot even when the base compiler was recorded on
+  it, as CI does; r3.115 had made such a program fail. Approved by Marcelo
+  Fortes, 2026-11-01. Change `receiver-without-type`.

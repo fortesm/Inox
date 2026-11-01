@@ -27,6 +27,12 @@ Status: **implemented** (canon r3.116).
    scenario names them; STATUS has no over-acceptance item left; the site
    says the receiver has no written type.
 
+3. CI fix to r3.115 (E19): the Gates job records the base compiler on the
+   head's programs, so a program a pull request adds is in both snapshots;
+   r3.115 compared it and failed. `--allow` now marks such a program as new
+   and not compared; it must name a program of the snapshots
+   (`tools/ir_snapshot.py`, `tools/ir_snapshot_selftest.py`, `docs/BUILD.md`).
+
 ## Out of scope
 
 `Self owned` itself (reserved).
