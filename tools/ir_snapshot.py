@@ -11,12 +11,24 @@ the compiler after it; every difference must be listed as intended.
 
 Usage
   tools/ir_snapshot.py record  <inox> <snapshot-dir>
-  tools/ir_snapshot.py compare <inox> <snapshot-dir> [--allow PATH ...]
+  tools/ir_snapshot.py compare <inox> <snapshot-dir> [--allow PATH ...] [--expect FILE ...]
+  tools/ir_snapshot.py expect  <inox> <snapshot-dir> PATH ...  > FILE
 
-`--allow` names a program (repository-relative path) whose outputs may
-differ, or which may appear or disappear; the report still lists it, marked
-"intended". `compare` exits 1 when
-an unlisted program differs or a program appears or disappears.
+`--allow` names a program (repository-relative path) that the change adds
+or removes. It never excuses a difference in a program that exists before
+and after, and an `--allow` that names no added or removed program fails.
+
+An intended difference in an existing program is declared exactly in an
+expectation file (JSON), written by `expect` from the snapshot and the new
+compiler and reviewed with the change (change ir-snapshot-exact, r3.115):
+for each program and each mode that changes, the exit codes and diagnostics
+before and after, and a SHA-256 of the whole output before and after.
+`compare --expect FILE` accepts a difference only when it is exactly the
+one declared; it fails on any other difference of that program, on a mode
+declared but unchanged, and on a program declared that no longer differs
+(an exception no longer needed).
+
+`compare` exits 1 on any difference not declared this way.
 
 The snapshot sets INOX_STDLIB to the repository's stdlib/, so a compiler
 binary copied elsewhere still finds Std.* modules (a copied binary otherwise
@@ -25,6 +37,7 @@ reports "could not resolve module" and pollutes the comparison).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -80,7 +93,44 @@ def command_record(compiler: str, directory: Path) -> int:
     return 0
 
 
-def command_compare(compiler: str, directory: Path, allowed: set[str]) -> int:
+def digest(output: dict[str, object]) -> str:
+    """The SHA-256 of one mode's whole output (exit code, stdout, stderr)."""
+    text = json.dumps(output, sort_keys=True)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def difference(old: dict[str, object], new: dict[str, object]) -> dict[str, object]:
+    """One mode's difference as an expectation file records it."""
+    return {
+        "exit": [old["exit"], new["exit"]],
+        "stderr": [old["stderr"], new["stderr"]],
+        "sha256": [digest(old), digest(new)],
+    }
+
+
+def changed_modes(before: dict[str, object], after: dict[str, object]) -> list[str]:
+    return [mode for mode in MODES if before[mode] != after[mode]]
+
+
+def command_expect(compiler: str, directory: Path, names: list[str]) -> int:
+    before = json.loads((directory / "snapshot.json").read_text(encoding="utf-8"))
+    after = snapshot(compiler)
+    expected: dict[str, dict[str, object]] = {}
+    for name in names:
+        if name not in before or name not in after:
+            print(f"ir snapshot: {name} is not in both snapshots (an added program needs --allow)", file=sys.stderr)
+            return 2
+        modes = changed_modes(before[name], after[name])
+        if not modes:
+            print(f"ir snapshot: {name} does not differ", file=sys.stderr)
+            return 2
+        expected[name] = {mode: difference(before[name][mode], after[name][mode]) for mode in modes}
+    print(json.dumps(expected, indent=1, sort_keys=True, ensure_ascii=False))
+    return 0
+
+
+def command_compare(compiler: str, directory: Path, allowed: set[str],
+                    expected: dict[str, dict[str, object]]) -> int:
     before = json.loads((directory / "snapshot.json").read_text(encoding="utf-8"))
     after = snapshot(compiler)
     unexpected = 0
@@ -93,41 +143,74 @@ def command_compare(compiler: str, directory: Path, allowed: set[str]) -> int:
             if name not in allowed:
                 unexpected += 1
             continue
-        changed = [mode for mode in MODES if before[name][mode] != after[name][mode]]
-        if not changed:
+        changed = changed_modes(before[name], after[name])
+        declared = expected.get(name, {})
+        if not changed and not declared:
             continue
-        mark = "intended" if name in allowed else "UNEXPECTED"
+        if not changed:
+            print(f"UNEXPECTED: {name}: declared in an expectation file, but it no longer differs")
+            unexpected += 1
+            continue
+        actual = {mode: difference(before[name][mode], after[name][mode]) for mode in changed}
+        exact = actual == declared
+        mark = "intended (exact)" if exact else "UNEXPECTED"
         print(f"{mark}: {name} ({', '.join(changed)})")
+        if exact:
+            continue
+        unexpected += 1
+        if declared:
+            for mode in sorted(set(declared) - set(actual)):
+                print(f"    {mode}: declared, but unchanged")
+            for mode in sorted(set(actual) - set(declared)):
+                print(f"    {mode}: changed, but not declared")
+            for mode in sorted(set(actual) & set(declared)):
+                if actual[mode] != declared[mode]:
+                    print(f"    {mode}: differs from the declared difference")
         for mode in changed:
             old, new = before[name][mode], after[name][mode]
             if old["exit"] != new["exit"] or old["stderr"] != new["stderr"]:
                 print(f"    {mode}: exit {old['exit']} -> {new['exit']}")
                 print(f"    before: {str(old['stderr']).strip()[:160]}")
                 print(f"    after:  {str(new['stderr']).strip()[:160]}")
-        if name not in allowed:
-            unexpected += 1
-    for name in sorted(allowed - set(after)):
-        print(f"note: --allow names an unknown program: {name}")
+    for name in sorted(allowed - (set(after) ^ set(before))):
+        print(f"UNEXPECTED: --allow names a program that is neither added nor removed: {name}")
+        unexpected += 1
+    for name in sorted(set(expected) - (set(after) & set(before))):
+        print(f"UNEXPECTED: an expectation names a program not in both snapshots: {name}")
+        unexpected += 1
     print(f"ir snapshot: {len(after)} programs, {unexpected} unexpected differences")
     return 1 if unexpected else 0
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) < 4 or argv[1] not in ("record", "compare"):
+    if len(argv) < 4 or argv[1] not in ("record", "compare", "expect"):
         print(__doc__)
         return 2
     compiler, directory = argv[2], Path(argv[3])
     if argv[1] == "record":
         return command_record(compiler, directory)
-    allowed: set[str] = set()
-    rest = argv[4:]
-    while rest:
-        if rest[0] != "--allow" or len(rest) < 2:
+    if argv[1] == "expect":
+        if len(argv) < 5:
             print(__doc__)
             return 2
-        allowed.add(rest[1])
+        return command_expect(compiler, directory, argv[4:])
+    allowed: set[str] = set()
+    expected: dict[str, dict[str, object]] = {}
+    rest = argv[4:]
+    while rest:
+        if rest[0] not in ("--allow", "--expect") or len(rest) < 2:
+            print(__doc__)
+            return 2
+        if rest[0] == "--allow":
+            allowed.add(rest[1])
+        else:
+            for name, modes in json.loads(Path(rest[1]).read_text(encoding="utf-8")).items():
+                if name in expected:
+                    print(f"ir snapshot: {name} is declared in two expectation files")
+                    return 2
+                expected[name] = modes
         rest = rest[2:]
-    return command_compare(compiler, directory, allowed)
+    return command_compare(compiler, directory, allowed, expected)
 
 
 if __name__ == "__main__":

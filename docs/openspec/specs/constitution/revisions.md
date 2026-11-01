@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.114
+Canon revision: r3.115
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -567,3 +567,13 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   change. The Gates job `ir-snapshot` also accepts the intended
   differences a change lists in its `ir-snapshot-allow.txt`. Approved by Marcelo Fortes, 2026-10-31 (plan F0-F7). Change
   `routine-headers`.
+- r3.115 — 2026-11-01 — E19: an exception of the IR snapshot is exact.
+  `tools/ir_snapshot.py expect` records, per program and mode, the exit
+  codes and diagnostics before and after and a SHA-256 of each whole
+  output, in the change's `ir-snapshot-expect.json`; `compare` fails on any
+  other difference, on a declared difference that no longer happens, and
+  on an `--allow` that names no added or removed program. The Gates job
+  reads the file of the change a pull request adds or edits, and CI runs
+  `tools/ir_snapshot_selftest.py`. No compiler change. Approved by Marcelo
+  Fortes, 2026-11-01 (question Q1 of the F4 design). Change
+  `ir-snapshot-exact`.

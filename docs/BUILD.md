@@ -81,11 +81,26 @@ python3 tools/ir_snapshot.py record build/inox /tmp/snap    # before
 python3 tools/ir_snapshot.py compare build/inox /tmp/snap   # after
 ```
 
+An intended difference in an existing program is declared exactly (r3.115):
+
+```sh
+python3 tools/ir_snapshot.py expect build/inox /tmp/snap tests/x.inox \
+    > docs/openspec/changes/<name>/ir-snapshot-expect.json
+python3 tools/ir_snapshot.py compare build/inox /tmp/snap \
+    --allow tests/added.inox --expect docs/openspec/changes/<name>/ir-snapshot-expect.json
+```
+
+The file records, per program and per mode that changes, the exit codes
+and diagnostics before and after and a SHA-256 of each whole output; it is
+reviewed with the change. `--allow` only names programs the change adds or
+removes. `compare` fails on any difference not declared exactly, on a
+declared mode that does not change, on a declared program that no longer
+differs, and on an `--allow` that names no added or removed program.
+
 In CI the Gates job `ir-snapshot` runs that comparison on a pull request
-labelled `refactor`. It accepts the programs the pull request adds and the
-intended differences its OpenSpec change lists, one path per line, in
-`docs/openspec/changes/<name>/ir-snapshot-allow.txt`; any other difference
-fails the job.
+labelled `refactor`, with `--allow` for the programs the pull request adds
+and `--expect` for the `ir-snapshot-expect.json` of the OpenSpec change it
+adds or edits. `tools/ir_snapshot_selftest.py` checks these rules in CI.
 
 Use `-DINOX_ENABLE_ASAN=ON -DINOX_ENABLE_UBSAN=ON`, not raw
 `CMAKE_CXX_FLAGS`, which break the libinoxrt link. The nesting limits of
