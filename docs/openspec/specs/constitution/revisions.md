@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.117
+Canon revision: r3.118
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -596,3 +596,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   and no frame on a recursion path grows (`tools/stack_frames.py`).
   Deviation D4 is closed. Design approved by Marcelo Fortes, 2026-11-01.
   Change `structured-types`.
+- r3.118 — 2026-11-01 — CANON-23: `inox interface` names the module by
+  its path from the first root that holds the file (each `--path`, each
+  INOX_PATH entry, the standard library, the current directory), its
+  directories joined by dots, as a `Use` names it; outside every root, by
+  the file's name. The name depends on the root chosen, which is stated
+  in the law and the manual. Only the interface's heading changes: `Use`,
+  module resolution, the AST and generated code do not. The conformance
+  gap of STATUS is closed. Approved by Marcelo Fortes, 2026-11-01. Change
+  `interface-module-name`.

@@ -454,6 +454,55 @@ std::unique_ptr<ModuleNode> loadProgram(const fs::path& sourcePath, const fs::pa
         .loadProgram(absolutePath);
 }
 
+// r3.118: the name `inox interface` shows. A module is named by its path
+// from a root, its directories joined by dots (`Bank/Accounts.inox` from the
+// root `examples/bank` is `Bank.Accounts`), as a `Use` names it. The roots,
+// in order: each --path, each INOX_PATH entry, the standard library, the
+// current directory; the first that contains the file, with identifiers
+// for directories, names it, else the file's own name. The name depends on
+// the root chosen, not on the file alone (docs/STATUS.md). Only the
+// interface's heading uses it; loading and resolution do not change.
+std::string interfaceModuleName(const fs::path& sourcePath, const fs::path& executableDir,
+                                const std::vector<std::string>& paths)
+{
+    const fs::path absolutePath = fs::absolute(sourcePath);
+    std::vector<fs::path> roots = moduleSearchDirectories(fs::current_path(), paths);
+    roots.erase(roots.begin());  // the current directory goes last
+    if (const fs::path library = findStandardLibraryDirectory(absolutePath, executableDir); !library.empty()) {
+        roots.push_back(library);
+    }
+    roots.push_back(fs::current_path());
+    const auto isIdentifier = [](const std::string& text) {
+        if (text.empty() || !(std::isalpha(static_cast<unsigned char>(text.front())) || text.front() == '_')) {
+            return false;
+        }
+        for (const char ch : text) {
+            if (!(std::isalnum(static_cast<unsigned char>(ch)) || ch == '_')) {
+                return false;
+            }
+        }
+        return true;
+    };
+    std::error_code error;
+    const fs::path file = fs::weakly_canonical(absolutePath, error);
+    for (const fs::path& root : roots) {
+        const fs::path relative = file.lexically_relative(fs::weakly_canonical(root, error));
+        if (relative.empty() || *relative.begin() == "..") {
+            continue;
+        }
+        std::string name;
+        bool valid = true;
+        for (const fs::path& directory : relative.parent_path()) {
+            valid = valid && isIdentifier(directory.string());
+            name += directory.string() + ".";
+        }
+        if (valid) {
+            return name + relative.stem().string();
+        }
+    }
+    return sourcePath.stem().string();
+}
+
 bool clangExists()
 {
     return inox::compiler::support::commandExists("clang");
@@ -739,7 +788,8 @@ int main(int argc, char** argv)
 
         if (command == Command::Interface) {
             inox::compiler::parser::Parser parser(tokens);
-            const auto interfaceModule = parser.parseModule(fs::path(sourcePath).stem().string());
+            const auto interfaceModule =
+                parser.parseModule(interfaceModuleName(fs::path(sourcePath), executableDir, searchPaths));
             std::cout << inox::compiler::ast::moduleInterface(*interfaceModule);
             return 0;
         }
