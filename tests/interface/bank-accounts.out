@@ -1,4 +1,4 @@
-== interface of Accounts: what the modules that use it see (r3.99)
+== interface of Bank.Accounts: what the modules that use it see (r3.99)
 
 Type
     TAccount Struct Public

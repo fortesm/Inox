@@ -1033,10 +1033,14 @@ Invoke-DriverCase "E2: bank balance not readable outside" "fail" "FBalance is no
 Invoke-DriverCase "E2: bank overdraw stops at the contract" "fail" `
     "precondition violated: Bank.Accounts.TAccount.Withdraw" "" `
     @("run", "--path", "examples/bank", "$sp/bank/Overdraw.inox")
+# r3.118: the heading names the module from the first root that holds the
+# file (each --path, INOX_PATH, the standard library, the current directory).
 Invoke-DriverCase "B4: inox interface of Bank.Accounts" "out" "tests/interface/bank-accounts.out" "" `
-    @("interface", "examples/bank/Bank/Accounts.inox")
+    @("interface", "--path", "examples/bank", "examples/bank/Bank/Accounts.inox")
+Invoke-DriverCase "B4: the interface's name follows the root (current directory)" "out" `
+    "tests/interface/bank-accounts-from-repository.out" "" @("interface", "examples/bank/Bank/Accounts.inox")
 Invoke-DriverCase "B4: inox interface of Bank" "out" "tests/interface/bank.out" "" `
-    @("interface", "examples/bank/Bank.inox")
+    @("interface", "--path", "examples/bank", "examples/bank/Bank.inox")
 Invoke-DriverCase "B4: inox interface of Std.DateUtils" "out" "tests/interface/std-dateutils.out" "" `
     @("interface", "stdlib/Std.DateUtils.inox")
 

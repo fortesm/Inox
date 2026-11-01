@@ -1853,6 +1853,17 @@ directory where used modules are searched (CANON-3; r3.99).
 - **WHEN** `inox interface` reads Bank.Accounts, Bank and Std.DateUtils
 - **THEN** it prints their public surface (tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1: "B4: inox interface of Bank.Accounts", "B4: inox interface of Bank", "B4: inox interface of Std.DateUtils")
 
+### Requirement: CANON-23 The name an interface shows
+`inox interface` SHALL name the module by its path from the first root
+that holds the file (each `--path`, each INOX_PATH entry, the standard
+library, the current directory), its directories joined by dots, as a
+`Use` names it, or by the file's name outside every root (r3.118). The
+name depends on the root, not on the file alone.
+
+#### Scenario: The name follows the root
+- **WHEN** `inox interface` reads `examples/bank/Bank/Accounts.inox` with `--path examples/bank`, and from the repository's root
+- **THEN** it names it `Bank.Accounts`, and `examples.bank.Bank.Accounts` (tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1: "B4: inox interface of Bank.Accounts", "B4: the interface's name follows the root (current directory)")
+
 ### Requirement: CANON-23 Optimization
 `inox run`, `inox build` and `inox file.inox` SHALL build an optimized
 program (clang -O2) by default; `--debug` before the file builds it without

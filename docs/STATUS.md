@@ -150,8 +150,6 @@ each version added.
   returns, not at the end of each iteration. Each is a task of change
   `safe-pointers-followups`.
 - Packages: no tool finds or downloads them yet (FUTURE).
-- `inox interface` names a module by its file's stem: a nested file
-  (`Bank/Accounts.inox`) shows as `Accounts`.
 - Toolchain discovery; clang is still the external
   driver (by design until E22's criteria hold).
 - Quality gates still to come: clang-format, clang-tidy, cppcheck,

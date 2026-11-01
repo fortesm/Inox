@@ -146,7 +146,8 @@ spec.md#CANON-23 LLVM backend and the clang driver	d963b0876a24df66	repo-layout
 spec.md#CANON-23 Lowering rules	3ca6cd63c20ca6c7	optimize-default
 spec.md#CANON-23 Valid IR or a clear stop	b65face9199b56ba	constitution
 spec.md#CANON-23 Driver commands	d297c3904edec6f0	repo-layout
-spec.md#CANON-23 Module interface and search path	362444245c27d1e6	repo-layout
+spec.md#CANON-23 Module interface and search path	362444245c27d1e6	interface-module-name
+spec.md#CANON-23 The name an interface shows	b29d6782c02a49d1	interface-module-name
 spec.md#CANON-23 Optimization	aa5aa6b8c56b702f	repo-layout
 spec.md#CANON-24 Design by contract	e085f54f2e9c9f7d	decisions-not-dialogue
 spec.md#CANON-24 Old and Result	ae9cb1852f6c7ede	design-by-contract
