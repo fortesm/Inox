@@ -54,8 +54,10 @@ def declared(name, after):
 
 def main():
     failures = []
+    count = [0]
 
     def check(what, result, wanted):
+        count[0] += 1
         if (result[0] == 0) != wanted:
             failures.append(what + "\n" + result[1])
 
@@ -65,7 +67,7 @@ def main():
 
     check("no difference passes", run(BEFORE), True)
     check("an undeclared difference fails", run(after), False)
-    check("--allow never excuses a difference in an existing program", run(after, allowed={"b.inox"}), False)
+    check("an existing program is not excused without --allow", run(after, allowed={"a.inox"}), False)
     check("the exact declared difference passes", run(after, expected=exact), True)
 
     other = dict(BEFORE, **{"b.inox": program(output(1, "b:1:7: parse error: x\n"), new_b["--dump-types"])})
@@ -85,11 +87,12 @@ def main():
     added = dict(BEFORE, **{"c.inox": program(output(0), output(0))})
     check("an added program passes with --allow", run(added, allowed={"c.inox"}), True)
     check("an added program fails without --allow", run(added), False)
-    check("an --allow that names no added program fails", run(BEFORE, allowed={"a.inox"}), False)
+    check("an --allow that names no program fails", run(BEFORE, allowed={"z.inox"}), False)
+    check("a new program in both snapshots is not compared", run(after, allowed={"b.inox"}), True)
 
     for failure in failures:
         print("ir_snapshot_selftest: FAIL: " + failure)
-    print("ir_snapshot_selftest: %d checks, %d failed" % (12, len(failures)))
+    print("ir_snapshot_selftest: %d checks, %d failed" % (count[0], len(failures)))
     return 1 if failures else 0
 
 

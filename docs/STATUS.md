@@ -161,8 +161,8 @@ each version added.
 
 These are bugs to fix (G1, G4), not features:
 
-- `TPoint.M(Self TPoint)` is rejected, but with a generic parse message
-  instead of one that names the rule (CANON-9).
+- None known. (`TPoint.M(Self TPoint)` had a generic parse message until
+  r3.116; it now names the rule of CANON-9.)
 
 (Until r3.66, `Self` could write its receiver, a field of a value parameter
 could be assigned, and `with` on a parameter could write it; they are

@@ -109,6 +109,7 @@ private:
     void expectEndOfDeclarationLine(std::size_t line, const char* what);
     ast::AstNodePtr parseFunctionDeclaration();
     ast::RoutineHeader parseRoutineHeader(const lexer::Token& name, const std::string& functionName);
+    [[noreturn]] void rejectReceiverType(const std::string& functionName) const;
     std::string parseQualifiedName(std::string_view message);
 
     std::vector<ast::StatementPtr> parseBlockBody();
