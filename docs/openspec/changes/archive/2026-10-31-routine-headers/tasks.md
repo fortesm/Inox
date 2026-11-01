@@ -18,4 +18,4 @@
 - [x] 4.1 Suite; IR snapshot against main (only `mut-parameter-reserved` differs, as intended); `-fstack-usage` against main (no frame on the recursion path grows: `parseFunctionDeclaration` 1480→1240, `instantiateRoutine` 1288→1192, `registerFunctionSignatureIn` 3096→2056 bytes)
 - [x] 4.2 Fuzz seeds 1 and 7, differential seeds 1 and 7, backend_gaps, openspec, constitution_check, version_check
 - [x] 4.3 Gates job `ir-snapshot` reads `ir-snapshot-allow.txt` of the change (intended differences); `docs/BUILD.md`
-- [ ] 4.4 CI: sanitized suite, Windows suite, `windows-stack`, `ir-snapshot` (label `refactor`)
+- [x] 4.4 CI: sanitized suite, Windows suite, `windows-stack`, `ir-snapshot` (label `refactor`)
