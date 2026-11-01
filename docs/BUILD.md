@@ -93,7 +93,8 @@ python3 tools/ir_snapshot.py compare build/inox /tmp/snap \
 The file records, per program and per mode that changes, the exit codes
 and diagnostics before and after and a SHA-256 of each whole output; it is
 reviewed with the change. `--allow` only names programs the change adds or
-removes. `compare` fails on any difference not declared exactly, on a
+removes; CI records the base compiler on the head's programs, so an added
+program is in both snapshots and is not compared (r3.116). `compare` fails on any difference not declared exactly, on a
 declared mode that does not change, on a declared program that no longer
 differs, and on an `--allow` that names no added or removed program.
 

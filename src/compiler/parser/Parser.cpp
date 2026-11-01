@@ -2401,6 +2401,9 @@ std::unique_ptr<ast::RoutineHeader> Parser::parseRoutineHeader(const lexer::Toke
                 if (matchKeyword("mut")) {
                     parameter.mode = ast::ParameterDeclaration::Mode::RefMut;
                 }
+                if (check(TokenKind::Identifier)) {
+                    rejectReceiverType(functionName);
+                }
             } else {
                 if (checkKeyword("mut")) {
                     errorAtCurrent(kMutableParameterMessage);
@@ -2423,6 +2426,19 @@ std::unique_ptr<ast::RoutineHeader> Parser::parseRoutineHeader(const lexer::Toke
         checkWrittenType(*header.resultType);
     }
     return made;
+}
+
+// CANON-9: the receiver's type is the method's prefix, so `Self TPoint`
+// is not Inox, and `Self owned` is reserved. Out of line: the message is
+// built only when it is raised.
+void Parser::rejectReceiverType(const std::string& functionName) const
+{
+    if (peek().normalized == "owned") {
+        errorAtCurrent("'Self owned' is reserved for a future Inox version (CANON-9): write Self or Self mut");
+    }
+    const std::string receiver = functionName.substr(0, functionName.rfind('.'));
+    errorAtCurrent("the receiver of a method is Self or Self mut, without a type: its type is " + receiver +
+                   ", the prefix of " + functionName + " (CANON-9)");
 }
 
 // `<T, U>`: distinct names, on the line of the name they follow.

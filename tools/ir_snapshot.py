@@ -15,8 +15,11 @@ Usage
   tools/ir_snapshot.py expect  <inox> <snapshot-dir> PATH ...  > FILE
 
 `--allow` names a program (repository-relative path) that the change adds
-or removes. It never excuses a difference in a program that exists before
-and after, and an `--allow` that names no added or removed program fails.
+or removes: one missing from a snapshot, or (when the base compiler was
+recorded on the head's programs, as CI does) one whose base output is not
+compared. It must name a program of the snapshots, and it is not how an
+intended difference is declared: CI derives it from the files the pull
+request adds or removes, never from a list someone writes.
 
 An intended difference in an existing program is declared exactly in an
 expectation file (JSON), written by `expect` from the snapshot and the new
@@ -135,6 +138,12 @@ def command_compare(compiler: str, directory: Path, allowed: set[str],
     after = snapshot(compiler)
     unexpected = 0
     for name in sorted(set(before) | set(after)):
+        if name in allowed and name in before and name in after:
+            # CI records the base compiler on the head's programs, so a
+            # program the change adds is in both snapshots; what the base
+            # compiler said about it means nothing (r3.116).
+            print(f"added (intended, not compared): {name}")
+            continue
         if name not in before or name not in after:
             # A program named by --allow may appear or disappear (a test the
             # change adds or removes); any other is unexpected.
@@ -172,8 +181,8 @@ def command_compare(compiler: str, directory: Path, allowed: set[str],
                 print(f"    {mode}: exit {old['exit']} -> {new['exit']}")
                 print(f"    before: {str(old['stderr']).strip()[:160]}")
                 print(f"    after:  {str(new['stderr']).strip()[:160]}")
-    for name in sorted(allowed - (set(after) ^ set(before))):
-        print(f"UNEXPECTED: --allow names a program that is neither added nor removed: {name}")
+    for name in sorted(allowed - (set(after) | set(before))):
+        print(f"UNEXPECTED: --allow names a program in neither snapshot: {name}")
         unexpected += 1
     for name in sorted(set(expected) - (set(after) & set(before))):
         print(f"UNEXPECTED: an expectation names a program not in both snapshots: {name}")
