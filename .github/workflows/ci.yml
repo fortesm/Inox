@@ -58,6 +58,8 @@ jobs:
         run: python3 tools/constitution_check.py check
       - name: Version and canon revision agree in every document
         run: python3 tools/version_check.py
+      - name: IR snapshot exceptions are exact (tools/ir_snapshot.py rules)
+        run: python3 tools/ir_snapshot_selftest.py
 
   windows:
     name: Windows (clang, MSVC ABI, Debug)

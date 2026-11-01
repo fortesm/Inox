@@ -58,12 +58,18 @@ silently: fix the mismatch explicitly or ask Marcelo for a decision
   lowering (Itanium or MSVC funclets), the runtime ABI, memory ownership, or
   rewrites a compiler phase. Other changes go from approved proposal to code.
 - A refactor that must not change behavior records `tools/ir_snapshot.py`
-  before the change, compares after it, and lists every intended difference
-  with `--allow` in the PR (engineering E19):
+  before the change and compares after it (engineering E19). `--allow`
+  names only programs the change adds or removes; an intended difference
+  in an existing program is declared exactly in the change's
+  `ir-snapshot-expect.json`, written by `expect` and reviewed with the
+  change (r3.115, `docs/BUILD.md`):
 
       python3 tools/ir_snapshot.py record build/inox /tmp/snap   # before
+      python3 tools/ir_snapshot.py expect build/inox /tmp/snap tests/x.inox \
+          > docs/openspec/changes/<name>/ir-snapshot-expect.json
       python3 tools/ir_snapshot.py compare build/inox /tmp/snap \
-          --allow tests/x.inox                                    # after
+          --allow tests/added.inox \
+          --expect docs/openspec/changes/<name>/ir-snapshot-expect.json
 
 ## Where things live (compiler sources)
 
