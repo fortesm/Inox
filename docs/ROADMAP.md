@@ -52,9 +52,11 @@ foundation     between 0.4 and 0.5, no new language feature (Marcelo
                between analysis and codegen, incremental, design first
                (high risk); F7 exception hierarchy in the types. The
                version stays 0.4.0 pre-alpha while the foundation runs
-               (its work is under Unreleased in CHANGELOG); the number of
-               the release that closes it is the maintainer's decision
-               when F7 is done
+               (its work is under Unreleased in CHANGELOG); the release
+               that closes it is 0.4.1 pre-alpha, published once F7 is
+               done with every gate green and its notes gathered (Marcelo
+               Fortes, 2026-11-01); 0.5.0 opens the new features. The
+               canon revision moves on its own
 0.5            ownership and collections, after the foundation, in this
                order (Marcelo Fortes, 2026-11-01): 1 methods of generic
                structs (design in change generic-struct-methods); 2 the
