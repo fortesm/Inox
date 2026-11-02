@@ -1,0 +1,26 @@
+parse ok
+semantic ok
+struct Std.Terminal.TKey { Kind Std.Terminal.TKeyKind, Ch Char, Ctrl Bool, Alt Bool }
+struct Std.Terminal.TScreenSize { Rows Int64, Cols Int64 }
+struct TPair<String, Int64> { FKey String, FValue Int64 }
+
+routine Integer.Twice(Self Int64 receiver) Int64
+  return (binary Int64 mul (read Int64 (self Self)) (lit Int64 2))
+
+routine Integer.Inc(ref mut Self Int64 receiver)
+  assign compound (self ref mut Self) := (binary Int64 add (read Int64 (self ref mut Self)) (lit Int64 1))
+
+routine Answer Int64
+  return (lit Int64 42)
+
+entry Main
+  declare N Int64 := (call Int64 Answer)
+  evaluate (call Void Integer.Inc (read Int64 (local N)))
+  evaluate (builtin Void PutLn (call Int64 Integer.Twice (read Int64 (local N))))
+  declare P TPair<String, Int64> := (construct TPair<String, Int64> FKey=(lit String "k") FValue=(read Int64 (local N)))
+  evaluate (builtin Void PutLn (read String (field (local P) FKey)) (read Int64 (field (local P) FValue)))
+  declare Line String := (lit String "")
+  evaluate (builtin Void GetLn (read String (local Line)))
+  unless (builtin Bool EndOfInput)
+    evaluate (intrinsic Void Flush)
+    evaluate (builtin Void PutLn (read String (local Line)))

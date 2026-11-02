@@ -689,7 +689,11 @@ void SemanticAnalyzer::noteBuiltin(const ast::CallExpression& call, bool file)
     CallMeaning meaning;
     meaning.kind = CallKind::Builtin;
     meaning.op = builtinOpNamed(static_cast<const ast::IdentifierExpression&>(call.callee()).name(), file);
-    if (const auto constant = constants_.find(&call); constant != constants_.end()) {
+    // CANON-13: Low, High and Length of a fixed array, and Low and High of
+    // an enum or Range type, are constants of the type; the other folded
+    // values (Ord, Succ, Pred of a constant) stay operations.
+    const bool ofType = meaning.op == BuiltinOp::Low || meaning.op == BuiltinOp::High || meaning.op == BuiltinOp::Length;
+    if (const auto constant = constants_.find(&call); ofType && constant != constants_.end()) {
         meaning.constant = constant->second;
     }
     result_.setCallMeaning(call, meaning);

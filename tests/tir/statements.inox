@@ -1,0 +1,89 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== F6 (typed-ir): the statements of the typed IR (--dump-tir), with the
+== checks the analysis asked for: contracts (pre, pos, old, Result), a
+== struct invariant, loop invariants and variants, Natural and Range
+== checks; and the instance of a generic routine.
+Type
+    TMeters Range 0..1000
+    TAccount Struct
+        FBalance Integer := 0
+        invariant Self.FBalance >= 0, "never negative"
+    ;
+
+TAccount.Deposit(Self mut, Amount Integer) :
+    pre Amount > 0
+    pos Self.FBalance = old Self.FBalance + Amount
+    Self.FBalance += Amount
+;
+
+Larger<T>(A T, B T) T :
+    Return IIf(A > B, A, B)
+;
+
+Classify(N Integer) Integer :
+    case N
+        0 Return 0
+        1..9 | 20 Return 1
+    else
+        Return 2
+    ;
+;
+
+Main :
+    Account := TAccount(FBalance := 1)
+    Account.Deposit(5)
+    I := 3
+    while I > 0
+        invariant I >= 0
+        variant I
+        I -= 1
+        if I = 1
+            continue
+        elif I = 2
+            PutLn("two")
+        else
+            PutLn("other")
+        ;
+    ;
+    J := 0
+    repeat
+        J += 1
+        until J = 2
+    ;
+    for K in 1..9 step 4
+        unless K = 5
+            PutLn(K)
+        ;
+        if K > 8
+            leave
+        ;
+    ;
+    Tries := 0
+    try
+        Tries += 1
+        if Tries < 2
+            Raise RangeError
+        ;
+    except
+        On RangeError
+            Retry(1)
+        ;
+    ensure
+        PutLn("tries ", Tries)
+    ;
+    Big := I + 7
+    M TMeters := TMeters(Big)
+    D Natural := Big - 1
+    A Integer := 0
+    B Integer := 0
+    A := B := 4
+    _ := Larger(A, Classify(D))
+    PutLn(M, Larger(1, 2))
+    Exit
+;

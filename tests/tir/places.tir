@@ -1,0 +1,50 @@
+parse ok
+semantic ok
+struct TPoint { FX Int64, FY Int64 }
+struct TNode { FValue Int64, FNext Option<Own<TNode>> }
+state Count Int64 := (lit Int64 0)
+
+routine TPoint.Move(ref mut Self TPoint receiver, DX Int64)
+  assign compound (field (self ref mut Self) FX) := (binary Int64 add (read Int64 (field (self ref mut Self) FX)) (read Int64 (param DX)))
+
+routine TPoint.Sum(Self TPoint receiver) Int64
+  return (binary Int64 add (read Int64 (field (self Self) FX)) (read Int64 (field (self Self) FY)))
+
+routine Swap(ref mut A Int64, ref mut B Int64)
+  declare T Int64 := (read Int64 (param ref mut A))
+  assign (param ref mut A) := (read Int64 (param ref mut B))
+  assign (param ref mut B) := (read Int64 (local T))
+
+routine Total(ref V Array[1..3] Int64) Int64
+  declare S Int64 := (lit Int64 0)
+  for I Int64 in (binary Int64 range (lit Int64 1) (lit Int64 3))
+    assign compound (local S) := (binary Int64 add (read Int64 (local S)) (read Int64 (element (param ref V) (read Int64 (iterator I)))))
+  return (read Int64 (local S))
+
+routine Origin TPoint
+  return (construct TPoint FX=(lit Int64 0) FY=(lit Int64 0))
+
+entry Main
+  declare P TPoint := (construct TPoint FX=(lit Int64 1) FY=default)
+  evaluate (call Void TPoint.Move (read TPoint (local P)) (lit Int64 2))
+  evaluate (builtin Void PutLn (call Int64 TPoint.Sum (read TPoint (local P))))
+  declare A Int64 := (lit Int64 1)
+  declare B Int64 := (lit Int64 2)
+  evaluate (call Void Swap (read Int64 (local A)) (read Int64 (local B)))
+  declare V Array[1..3] Int64 := (builtin Array[1..3] Int64 Fill (lit Int64 0))
+  assign (element (local V) (lit Int64 2)) := (read Int64 (local A))
+  evaluate (builtin Void PutLn (call Int64 Total (read Array[1..3] Int64 (local V))))
+  assign (state Count) := (binary Int64 add (read Int64 (state Count)) (lit Int64 1))
+  evaluate (builtin Void PutLn (read Int64 (field (value (call TPoint Origin)) FY)))
+  declare N Own<TNode> := (builtin Own<TNode> New (construct TNode FValue=(lit Int64 5) FNext=default))
+  assign (field (through (local N)) FValue) := (lit Int64 6)
+  declare X Int64 := (lit Int64 10)
+  declare L Link<Int64> := (builtin Link<Int64> Link (read Int64 (local X)))
+  assign (through (local L)) := (lit Int64 11)
+  with __with_0 := (read TPoint (local P))
+    assign (field (with __with_0) FY) := (read Int64 (field (with __with_0) FX))
+  try
+    evaluate (builtin Void PutLn (read Int64 (element (local V) (binary Int64 add (read Int64 (local A)) (lit Int64 3)))))
+  on RangeError E
+    evaluate (builtin Void PutLn (lit String "range"))
+  evaluate (builtin Void PutLn (read Int64 (local X)) (lit String " ") (read Int64 (field (through (local N)) FValue)))

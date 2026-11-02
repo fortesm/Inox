@@ -1,0 +1,75 @@
+parse ok
+semantic ok
+struct TAccount { FBalance Int64 }
+
+routine TAccount.Deposit(ref mut Self TAccount receiver, Amount Int64)
+  evaluate (check Void 1 "precondition violated: TAccount.Deposit: Amount > 0" (binary Bool gt (read Int64 (param Amount)) (lit Int64 0)))
+  declare __old_1 Int64 := (pure Int64 (read Int64 (field (self ref mut Self) FBalance)))
+  evaluate (call Void TAccount.__Deposit_body (read TAccount (self ref mut Self)) (read Int64 (param Amount)))
+  evaluate (check Void 2 "postcondition violated: TAccount.Deposit: Self.FBalance = old Self.FBalance + Amount" (binary Bool eq (read Int64 (field (self ref mut Self) FBalance)) (binary Int64 add (read Int64 (local __old_1)) (read Int64 (param Amount)))))
+
+routine Classify(N Int64) Int64
+  case (read Int64 (param N))
+  when (lit Int64 0)
+    return (lit Int64 0)
+  when (binary Int64 range (lit Int64 1) (lit Int64 9)) (lit Int64 20)
+    return (lit Int64 1)
+  else
+    return (lit Int64 2)
+
+routine TAccount.__Deposit_body(ref mut Self TAccount receiver, Amount Int64)
+  assign compound (field (self ref mut Self) FBalance) := (binary Int64 add (read Int64 (field (self ref mut Self) FBalance)) (read Int64 (param Amount)))
+
+routine TAccount.__invariant(Self TAccount receiver)
+  evaluate (check Void 3 "invariant violated: TAccount: Self.FBalance >= 0: never negative" (binary Bool ge (read Int64 (field (self Self) FBalance)) (lit Int64 0)))
+
+routine Larger<Int64>(A Int64, B Int64) Int64
+  return (iif Int64 (binary Bool gt (read Int64 (param A)) (read Int64 (param B))) (read Int64 (param A)) (read Int64 (param B)))
+
+entry Main
+  declare Account TAccount := (construct TAccount FBalance=(lit Int64 1) [invariant-of-new-value TAccount])
+  evaluate (call Void TAccount.Deposit (read TAccount (local Account)) (lit Int64 5) [invariant-before TAccount (local Account)] [invariant-after TAccount (local Account)])
+  declare I Int64 := (lit Int64 3)
+  declare __variant_previous_1 Int64 := (unary Int64 neg (lit Int64 1))
+  while (binary Bool gt (read Int64 (local I)) (lit Int64 0))
+    evaluate (check Void 4 "loop invariant violated: Main: I >= 0" (binary Bool ge (read Int64 (local I)) (lit Int64 0)))
+    declare __variant_1 Int64 := (pure Int64 (convert Int64 (read Int64 (local I))))
+    evaluate (check Void 5 "loop variant violated: Main: I is negative" (binary Bool ge (read Int64 (local __variant_1)) (lit Int64 0)))
+    evaluate (check Void 5 "loop variant violated: Main: I did not decrease" (binary Bool or (binary Bool lt (read Int64 (local __variant_previous_1)) (lit Int64 0)) (binary Bool lt (read Int64 (local __variant_1)) (read Int64 (local __variant_previous_1)))))
+    assign (local __variant_previous_1) := (read Int64 (local __variant_1))
+    assign compound (local I) := (binary Int64 sub (read Int64 (local I)) (lit Int64 1))
+    if (binary Bool eq (read Int64 (local I)) (lit Int64 1))
+      continue
+    elif (binary Bool eq (read Int64 (local I)) (lit Int64 2))
+      evaluate (builtin Void PutLn (lit String "two"))
+    else
+      evaluate (builtin Void PutLn (lit String "other"))
+  evaluate (check Void 4 "loop invariant violated: Main: I >= 0 (at the end)" (binary Bool ge (read Int64 (local I)) (lit Int64 0)))
+  declare J Int64 := (lit Int64 0)
+  repeat
+    assign compound (local J) := (binary Int64 add (read Int64 (local J)) (lit Int64 1))
+    until (binary Bool eq (read Int64 (local J)) (lit Int64 2))
+  for K Int64 in (binary Int64 range (lit Int64 1) (lit Int64 9)) step (lit Int64 4)
+    unless (binary Bool eq (read Int64 (iterator K)) (lit Int64 5))
+      evaluate (builtin Void PutLn (read Int64 (iterator K)))
+    if (binary Bool gt (read Int64 (iterator K)) (lit Int64 8))
+      leave
+  declare Tries Int64 := (lit Int64 0)
+  try
+    assign compound (local Tries) := (binary Int64 add (read Int64 (local Tries)) (lit Int64 1))
+    if (binary Bool lt (read Int64 (local Tries)) (lit Int64 2))
+      raise RangeError
+  on RangeError
+    retry (lit Int64 1)
+  ensure
+    evaluate (builtin Void PutLn (lit String "tries ") (read Int64 (local Tries)))
+  declare Big Int64 := (binary Int64 add (read Int64 (local I)) (lit Int64 7))
+  declare M TMeters := (convert TMeters (read Int64 (local Big)))
+  declare D Natural := (natural-check Natural (binary Int64 sub (read Int64 (local Big)) (lit Int64 1)))
+  declare A Int64 := (lit Int64 0)
+  declare B Int64 := (lit Int64 0)
+  assign (local B) := (lit Int64 4)
+  assign (local A) := (read Int64 (local B))
+  evaluate discard (call Int64 Larger<Int64> (read Int64 (local A)) (call Int64 Classify (read Natural (local D))))
+  evaluate (builtin Void PutLn (read TMeters (local M)) (call Int64 Larger<Int64> (lit Int64 1) (lit Int64 2)))
+  exit
