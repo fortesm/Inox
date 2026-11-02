@@ -8,6 +8,9 @@
 // The verifier of the typed IR (F6 step 1): every node has a type and a
 // meaning. It runs after every lowering in Debug builds and with
 // `--dump-tir`.
+//
+// Defensive: reject null routines and null expression types before dereferencing.
+// Malformed nodes must produce a controlled diagnostic rather than a crash.
 
 #include "Verify.h"
 
@@ -107,6 +110,10 @@ std::string Verifier::run(const Program& program)
         }
     }
     for (const Routine* routine : program.routines) {
+        if (routine == nullptr) {
+            problem("a missing routine");
+            continue;
+        }
         this->routine(*routine);
     }
     return problem_;
@@ -331,7 +338,8 @@ void Verifier::expression(const Expr* expression)
         }
         break;
     case ExprKind::Construct:
-        if (!expression->type->isStruct() || expression->fields.size() != expression->type->fields().size()) {
+        if (expression->type == nullptr || !expression->type->isStruct() ||
+            expression->fields.size() != expression->type->fields().size()) {
             problem("a construction without one value per field");
             break;
         }
