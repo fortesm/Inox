@@ -810,6 +810,8 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
                 const auto& range = static_cast<const ast::BinaryExpression&>(*choice);
                 interval.low = caseChoiceValue(range.left(), selectorType);
                 interval.high = caseChoiceValue(range.right(), selectorType);
+                // F6 (typed-ir): a range of choices is a range of the selector's type.
+                result_.setExpressionType(range, selectorType);
                 if (interval.low > interval.high) {
                     throw SemanticError("empty range in case choice: " +
                                         caseValueText(interval.low, domain) + ".." +

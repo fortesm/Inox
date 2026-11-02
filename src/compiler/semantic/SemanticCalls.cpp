@@ -349,7 +349,7 @@ TypeRef SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression& cal
     if (field != nullptr) {
         requireFieldVisible(baseType, *field);
         result_.setExpressionType(fieldIdentifier, field->type);
-        noteCall(call, CallKind::Field);
+        noteField(call, baseType, *field);
         return field->type;
     }
 
@@ -531,6 +531,7 @@ TypeRef SemanticAnalyzer::analyzeConstruction(const ast::CallExpression& call, T
                                 " expects " + types::nameOf(field->type));
         }
         result_.setExpressionType(*named, field->type);
+        noteField(*named, type, *field);
     }
     for (const types::StructField& field : type->fields()) {
         bool named = false;
@@ -675,6 +676,14 @@ void SemanticAnalyzer::noteCall(const ast::Expression& call, CallKind kind)
     result_.setCallMeaning(call, meaning);
 }
 
+void SemanticAnalyzer::noteField(const ast::Expression& access, TypeRef structType, const types::StructField& field)
+{
+    CallMeaning meaning;
+    meaning.kind = CallKind::Field;
+    meaning.field = static_cast<std::uint32_t>(&field - structType->fields().data());
+    result_.setCallMeaning(access, meaning);
+}
+
 void SemanticAnalyzer::noteBuiltin(const ast::CallExpression& call, bool file)
 {
     CallMeaning meaning;
@@ -718,6 +727,14 @@ void SemanticAnalyzer::noteDeclared(const void* declaration, const std::string& 
     if (const Symbol* symbol = symbols_.currentScope().resolve(name)) {
         result_.setDeclaredSymbol(declaration, *symbol);
     }
+}
+
+void SemanticAnalyzer::noteOmittedBound(const ast::CallExpression& slice, bool low)
+{
+    CallMeaning meaning = result_.callMeaning(slice) != nullptr ? *result_.callMeaning(slice) : CallMeaning{};
+    meaning.kind = CallKind::Slice;
+    (low ? meaning.lowOmitted : meaning.highOmitted) = true;
+    result_.setCallMeaning(slice, meaning);
 }
 
 void SemanticAnalyzer::noteIterator(const ast::ForInStatement& loop)

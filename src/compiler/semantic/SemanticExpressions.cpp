@@ -456,6 +456,7 @@ TypeRef SemanticAnalyzer::analyzeSliceExpression(const ast::CallExpression& call
         if (bound.kind() == ast::AstNodeKind::IdentifierExpression &&
             (static_cast<const ast::IdentifierExpression&>(bound).name() == "__low" ||
              static_cast<const ast::IdentifierExpression&>(bound).name() == "__high")) {
+            noteOmittedBound(call, which == 1);
             if (staticBounds) {
                 (which == 1 ? low : high) = which == 1 ? staticBounds->first : staticBounds->second;
                 (which == 1 ? lowKnown : highKnown) = true;

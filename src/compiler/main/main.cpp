@@ -19,6 +19,8 @@
 #include "../support/Platform.h"
 #include "../support/Process.h"
 #include "../support/Version.h"
+#include "../tir/Lower.h"
+#include "../tir/Verify.h"
 
 #include <algorithm>
 #include <map>
@@ -655,6 +657,12 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
 
 namespace {
 
+#ifdef NDEBUG
+constexpr bool kBuildTypedIr = false;
+#else
+constexpr bool kBuildTypedIr = true;
+#endif
+
 // The commands of the driver (CANON-23; Marcelo Fortes, 2026-10-13): the
 // subcommands are the user's contract and the `--` switches their aliases;
 // `--parse-only`, `--dump-tokens` and `--dump-types` are developer switches.
@@ -667,6 +675,7 @@ enum class Command {
     ParseOnly,
     DumpTokens,
     DumpTypes,
+    DumpTir,   // F6 (typed-ir): print the typed IR
 };
 
 constexpr const char* kUsage =
@@ -681,7 +690,7 @@ constexpr const char* kUsage =
     "                                     then INOX_PATH, then the standard library)\n"
     "       inox help                     print this help\n"
     "       inox version                  print the version\n"
-    "developer switches: --parse-only, --dump-tokens, --dump-types <file.inox>;\n"
+    "developer switches: --parse-only, --dump-tokens, --dump-types, --dump-tir <file.inox>;\n"
     "--run, --build, --emit-llvm, --help and --version are aliases\n";
 
 bool commandFromWord(const std::string& word, Command& command)
@@ -697,6 +706,7 @@ bool commandFromWord(const std::string& word, Command& command)
         {"interface", Command::Interface},
         {"--emit-llvm", Command::EmitLlvm}, {"--parse-only", Command::ParseOnly},
         {"--dump-tokens", Command::DumpTokens}, {"--dump-types", Command::DumpTypes},
+        {"--dump-tir", Command::DumpTir},
     };
     for (const Entry& entry : entries) {
         if (word == entry.word) {
@@ -779,6 +789,7 @@ int main(int argc, char** argv)
     }
 
     const bool dumpTypes = command == Command::DumpTypes;
+    const bool dumpTir = command == Command::DumpTir;
     const bool dumpTokensMode = command == Command::DumpTokens;
     const bool parseOnly = command == Command::ParseOnly;
     const bool emitLlvm = command == Command::EmitLlvm;
@@ -826,11 +837,46 @@ int main(int argc, char** argv)
         inox::compiler::semantic::SemanticAnalyzer semanticAnalyzer;
         const auto& semanticResult = semanticAnalyzer.analyze(*module);
 
+        // F6 (typed-ir), step 1: the typed IR is built and verified for
+        // every program a Debug compiler compiles, and printed by
+        // --dump-tir; code generation does not read it yet.
+        // A problem of the typed IR is reported after code generation, so a
+        // gap of the backend keeps its own message.
+        std::string typedIrProblem;
+        if (dumpTir || (kBuildTypedIr && (emitLlvm || build || run))) {
+            try {
+                const auto typedIr = inox::compiler::tir::lowerProgram(*module, semanticResult);
+                typedIrProblem = inox::compiler::tir::verifyProgram(*typedIr);
+                if (!typedIrProblem.empty()) {
+                    typedIrProblem = "internal error: typed IR: " + typedIrProblem;
+                } else if (dumpTir) {
+                    std::cout << "semantic ok\n";
+                    inox::compiler::tir::printProgram(*typedIr, std::cout);
+                    return 0;
+                }
+            } catch (const inox::compiler::tir::LoweringError& error) {
+                typedIrProblem = std::string("typed IR error: ") + error.what();
+            }
+            if (dumpTir) {
+                std::cerr << typedIrProblem << '\n';
+                return 1;
+            }
+        }
+
         if (emitLlvm) {
-            std::cout << inox::compiler::codegen::LlvmIrEmitter().emit(*module, semanticResult);
+            const std::string llvmIr = inox::compiler::codegen::LlvmIrEmitter().emit(*module, semanticResult);
+            if (!typedIrProblem.empty()) {
+                std::cerr << typedIrProblem << '\n';
+                return 1;
+            }
+            std::cout << llvmIr;
         } else if (build || run) {
             const BuildArtifacts artifacts =
                 buildProgram(fs::path(sourcePath), *module, semanticResult, executableDir, debug);
+            if (!typedIrProblem.empty()) {
+                std::cerr << typedIrProblem << '\n';
+                return 1;
+            }
             if (run) {
                 std::vector<std::string> programCommand{artifacts.executable.string()};
                 programCommand.insert(programCommand.end(), programArguments.begin(), programArguments.end());
@@ -875,6 +921,7 @@ int main(int argc, char** argv)
     } catch (const inox::compiler::codegen::CodegenError& error) {
         std::cerr << "codegen error: " << error.what() << '\n';
         return 1;
+
     } catch (const std::exception& error) {
         std::cerr << "error: " << error.what() << '\n';
         return 1;

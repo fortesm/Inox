@@ -86,6 +86,10 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticSupport.cpp
     src/compiler/semantic/SemanticTypes.cpp
     src/compiler/semantic/Symbol.cpp
+    src/compiler/tir/Lower.cpp
+    src/compiler/tir/Print.cpp
+    src/compiler/tir/Tir.cpp
+    src/compiler/tir/Verify.cpp
     src/compiler/types/TypeContext.cpp
     src/compiler/support/Environment.cpp
     src/compiler/support/FileSystem.cpp

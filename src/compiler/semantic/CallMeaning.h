@@ -73,6 +73,14 @@ struct CallMeaning {
     const FunctionSignature* routine = nullptr;
     const ModuleIntrinsic* intrinsic = nullptr;
     std::optional<std::int64_t> constant;
+    // Field: the index of the field in its struct (the struct the access
+    // reaches, through a pointer when the base is one). Also recorded on
+    // each `F := V` of a construction.
+    std::uint32_t field = 0;
+    // Slice: the bound that is the base's own, not written (`A[..H]`,
+    // `A[L..]`, `A[..]`).
+    bool lowOmitted = false;
+    bool highOmitted = false;
 };
 
 // The builtin a name denotes, ignoring case; `file` selects the functions

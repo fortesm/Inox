@@ -127,11 +127,13 @@ private:
     // frames: each takes only references.
     void noteCall(const ast::Expression& call, CallKind kind);
     void noteBuiltin(const ast::CallExpression& call, bool file = false);
+    void noteField(const ast::Expression& access, TypeRef structType, const types::StructField& field);
     void noteBuiltinIdentifier(const ast::IdentifierExpression& identifier);
     void noteRoutineCall(const ast::Expression& call, const FunctionSignature& signature, CallKind kind);
     void noteIntrinsicCall(const ast::Expression& call, const ModuleIntrinsic& intrinsic);
     void noteDeclared(const void* declaration, const std::string& name, VariableOrigin origin);
     void noteIterator(const ast::ForInStatement& loop);
+    void noteOmittedBound(const ast::CallExpression& slice, bool low);
     static VariableOrigin parameterOrigin(PassMode mode, bool receiver);
     // A place rooted at a deep read-only symbol, through fields, elements and
     // owners (not through a Link).

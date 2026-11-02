@@ -98,6 +98,7 @@ public:
         stringCalls_.clear();
         callMeanings_.clear();
         declaredSymbols_.clear();
+        entry_ = nullptr;
     }
 
     // F6 (typed-ir): what a call is, as the analysis decided it (CallMeaning.h);
@@ -186,6 +187,20 @@ public:
     {
         declaredTypes_.insert_or_assign(&declaration, type);
     }
+
+    // F6 (typed-ir): the struct type a Struct declaration declared.
+    void setDeclaredType(const ast::TypeDeclaration& declaration, const types::Type* type)
+    {
+        declaredTypes_.insert_or_assign(&declaration, type);
+    }
+    const types::Type* declaredType(const ast::TypeDeclaration& declaration) const
+    {
+        return findDeclaredType(&declaration);
+    }
+
+    // F6 (typed-ir): the program's entry routine, Main.
+    void setEntry(const ast::FunctionDeclaration& function) { entry_ = &function; }
+    const ast::FunctionDeclaration* entry() const { return entry_; }
 
     const types::Type* declaredType(const ast::VarStatement& declaration) const
     {
@@ -334,6 +349,7 @@ private:
     std::unordered_map<const Symbol*, ConstantValue> constantValues_;
     std::unordered_map<const ast::Expression*, CallMeaning> callMeanings_;
     std::unordered_map<const void*, const Symbol*> declaredSymbols_;
+    const ast::FunctionDeclaration* entry_ = nullptr;
 };
 
 } // namespace inox::compiler::semantic
