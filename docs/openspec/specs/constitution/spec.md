@@ -1830,8 +1830,7 @@ The driver commands SHALL be `inox file.inox` and `inox run file.inox`
 (build and run), `inox build`, `inox check` (parse and check), `inox
 emit-llvm`, `inox help` and `inox version` (Marcelo Fortes, 2026-10-13).
 `--run`, `--build`, `--emit-llvm`, `--help` and `--version` stay as aliases
-for a transition; `--parse-only`, `--dump-tokens` and `--dump-types` are
-developer switches. Words after the file of a run are the program's
+for a transition. Words after the file of a run are the program's
 arguments, and a run ends with the program's exit status (r3.92).
 
 #### Scenario: Commands and aliases
@@ -1841,6 +1840,16 @@ arguments, and a run ends with the program's exit status (r3.92).
 #### Scenario: Arguments and status
 - **WHEN** `inox run args.inox "um arg" "dois"` runs a program that prints its arguments and halts with their count
 - **THEN** it prints both and the run ends with status 2 (tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1: "inox run passes arguments and keeps Halt's status", tests/integration/system/args.inox)
+
+### Requirement: CANON-23 Developer switches
+The driver SHALL accept switches for the development of the compiler,
+which are not public commands: `--parse-only`, `--dump-tokens`,
+`--dump-types` and `--dump-tir` are developer switches. They show the
+parser's view, the tokens, the resolved types and the typed IR (r3.121).
+
+#### Scenario: Developer switches
+- **WHEN** the compiler is called with `--dump-tokens`, `--parse-only` and `--dump-tir` on a program
+- **THEN** it prints the tokens, accepts the parse, and prints the typed IR (tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1: tests/lexer/valid/tokens-keywords-literals.inox, tests/parser/valid/canonical-type-and-var.inox, "typed IR: places", tests/tir/places.inox)
 
 ### Requirement: CANON-23 Module interface and search path
 `inox interface file.inox` SHALL print what other modules see of a module:
