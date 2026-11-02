@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include "CallMeaning.h"
 #include "Symbol.h"
 #include "../ast/Ast.h"
 #include "StdStrings.h"
@@ -45,6 +46,8 @@ struct FunctionSignature {
     // r3.99: `... Public :`, and the module the routine was written in.
     bool isPublic = false;
     std::string module;
+    // F6 (typed-ir): the declaration the signature was made from.
+    const ast::FunctionDeclaration* declaration = nullptr;
 };
 
 // Compile-time value of a module `Const`, resolved by semantic analysis.
@@ -93,6 +96,34 @@ public:
         structInstances_.clear();
         constructions_.clear();
         stringCalls_.clear();
+        callMeanings_.clear();
+        declaredSymbols_.clear();
+    }
+
+    // F6 (typed-ir): what a call is, as the analysis decided it (CallMeaning.h);
+    // keyed by the CallExpression, or by the identifier that is a call.
+    void setCallMeaning(const ast::Expression& call, CallMeaning meaning)
+    {
+        callMeanings_.insert_or_assign(&call, meaning);
+    }
+    const CallMeaning* callMeaning(const ast::Expression& call) const
+    {
+        const auto iterator = callMeanings_.find(&call);
+        return iterator != callMeanings_.end() ? &iterator->second : nullptr;
+    }
+
+    // F6 (typed-ir): the symbol a declaration made: a VarStatement, the
+    // ExpressionStatement `X := V` that declares X, a ForInStatement's
+    // iterator, a WithStatement's binding, an ExceptionHandler's binding, a
+    // ParameterDeclaration of an analyzed routine.
+    void setDeclaredSymbol(const void* declaration, const Symbol& symbol)
+    {
+        declaredSymbols_.insert_or_assign(declaration, &symbol);
+    }
+    const Symbol* declaredSymbol(const void* declaration) const
+    {
+        const auto iterator = declaredSymbols_.find(declaration);
+        return iterator != declaredSymbols_.end() ? iterator->second : nullptr;
     }
 
     // Std.Strings / Std.StrUtils (change std-strings): the function a call
@@ -301,6 +332,8 @@ private:
     std::unordered_map<const ast::IdentifierExpression*, const Symbol*> identifierSymbols_;
     std::unordered_map<const ast::CallExpression*, const Symbol*> callSymbols_;
     std::unordered_map<const Symbol*, ConstantValue> constantValues_;
+    std::unordered_map<const ast::Expression*, CallMeaning> callMeanings_;
+    std::unordered_map<const void*, const Symbol*> declaredSymbols_;
 };
 
 } // namespace inox::compiler::semantic

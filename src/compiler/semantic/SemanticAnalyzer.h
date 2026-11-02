@@ -122,6 +122,17 @@ private:
     // `with` on a read-only reference, or on a place owned through one, only
     // reads what the target owns.
     void markWithBinding(const ast::WithStatement& withStatement);
+    // F6 (typed-ir): what the analysis decided, recorded for the typed IR
+    // (CallMeaning.h). Out of line, so the recursive analyzers keep their
+    // frames: each takes only references.
+    void noteCall(const ast::Expression& call, CallKind kind);
+    void noteBuiltin(const ast::CallExpression& call, bool file = false);
+    void noteBuiltinIdentifier(const ast::IdentifierExpression& identifier);
+    void noteRoutineCall(const ast::Expression& call, const FunctionSignature& signature, CallKind kind);
+    void noteIntrinsicCall(const ast::Expression& call, const ModuleIntrinsic& intrinsic);
+    void noteDeclared(const void* declaration, const std::string& name, VariableOrigin origin);
+    void noteIterator(const ast::ForInStatement& loop);
+    static VariableOrigin parameterOrigin(PassMode mode, bool receiver);
     // A place rooted at a deep read-only symbol, through fields, elements and
     // owners (not through a Link).
     bool isDeepReadOnlyPlace(const ast::Expression& expression) const;

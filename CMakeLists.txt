@@ -62,6 +62,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/codegen/TypeLayout.cpp
     src/compiler/lexer/Lexer.cpp
     src/compiler/parser/Parser.cpp
+    src/compiler/semantic/CallMeaning.cpp
     src/compiler/semantic/ConstantEvaluator.cpp
     src/compiler/semantic/SemanticAnalyzer.cpp
     src/compiler/semantic/SemanticBuiltins.cpp

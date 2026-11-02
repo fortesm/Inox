@@ -59,6 +59,7 @@ void SemanticAnalyzer::registerFunctionSignatureIn(const ast::FunctionDeclaratio
     signature.isOverride = function.isOverride();
     signature.isPublic = function.isPublic();
     signature.module = function.module();
+    signature.declaration = &function;
 
     const std::size_t dot = ast::methodDot(function.name());
     const bool isAssociatedMethod = dot != std::string::npos;
