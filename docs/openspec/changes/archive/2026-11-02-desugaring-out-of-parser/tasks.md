@@ -23,4 +23,4 @@ Nothing below starts before the design's approval is recorded with its date.
 ## 4. Gates
 
 - [x] 4.1 Suite, IR snapshot without any exception, `tools/stack_frames.py` (the new walk added; nothing grows), fuzz 1 and 7, differential, backend_gaps, openspec, constitution_check, version_check
-- [ ] 4.2 CI: sanitized suite (1 MiB), Windows, `windows-stack`, `ir-snapshot` (label `refactor`)
+- [x] 4.2 CI: sanitized suite (1 MiB), Windows, `windows-stack`, `ir-snapshot` (label `refactor`)
