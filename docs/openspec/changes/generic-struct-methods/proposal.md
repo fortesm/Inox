@@ -8,10 +8,13 @@ instead (`Push<T>(ref mut S TStack<T>, X T)`). Every collection of 0.5
 struct, so this comes first.
 
 Approval of the direction: Marcelo Fortes, 2026-11-01: the 0.5 items come
-before F5-F7 (deferred, not cancelled), in the order methods of generic
-structs; critical safe-pointers follow-ups; `Option<T>` and
-`Result<T, E>`; `Vector<T>` and Clone. This change is the first. Its
-design waits for his dated approval before any code.
+in the order methods of generic structs; critical safe-pointers
+follow-ups; `Option<T>` and `Result<T, E>`; `Vector<T>` and Clone. This
+change is the first. The same day he decided that the foundation steps
+F5, F6 and F7 come before any 0.5 item: this design is prepared now and
+waits for his dated approval; its code comes after F7 (the phases it
+touches may then differ: the design is reviewed against F5-F7 before
+approval).
 
 Touches: CANON-8 (generics), CANON-9 (methods, `Self`), CANON-24
 (contracts), CANON-3 (modules); the capability spec `language/generics`
@@ -27,7 +30,7 @@ Risk: normal (a language feature on the existing generic machinery; no
 exception lowering, runtime ABI or ownership change). Design first, as
 asked.
 
-Status: **design awaiting approval**. No code before it.
+Status: **design awaiting approval**; code after F7. No code before both.
 
 ## What Changes
 
