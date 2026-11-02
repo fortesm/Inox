@@ -189,6 +189,8 @@ they are rejected now.)
   messages carry no line numbers, so an error in an instance names the
   instance and the routine that used it but not the line of the generic
   body.
-- The parser's `clonePureExpression` and `cloneChainTarget` duplicate
-  `ast::cloneExpression`; `codegen/AstQueries` holds AST walks that are not
+- Phase 2b's `clonePureExpression` and `cloneChainTarget` (moved from the
+  parser by F5) duplicate `ast::cloneExpression`, making copies without
+  positions as the parser did; the analyzer recognizes a `with` binding by
+  its name's prefix `__with` (F6 debt); `codegen/AstQueries` holds AST walks that are not
   specific to codegen; the parser never builds `BlockStatement`.

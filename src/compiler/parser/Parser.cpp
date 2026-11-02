@@ -75,7 +75,8 @@ ast::ExpressionPtr makeSyntheticIdentifier(std::string name)
 // changed would read a different element.
 bool isChainTarget(const ast::Expression& expression)
 {
-    if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
+    if (expression.kind() == ast::AstNodeKind::IdentifierExpression ||
+        expression.kind() == ast::AstNodeKind::WithTargetExpression) {
         return true;
     }
     if (expression.kind() != ast::AstNodeKind::CallExpression) {
@@ -109,6 +110,7 @@ bool isPureExpression(const ast::Expression& expression)
     switch (expression.kind()) {
     case ast::AstNodeKind::LiteralExpression:
     case ast::AstNodeKind::IdentifierExpression:
+    case ast::AstNodeKind::WithTargetExpression:
         return true;
     case ast::AstNodeKind::UnaryExpression:
         return isPureExpression(static_cast<const ast::UnaryExpression&>(expression).operand());
@@ -138,36 +140,6 @@ bool isPureExpression(const ast::Expression& expression)
     }
 }
 
-ast::ExpressionPtr clonePureExpression(const ast::Expression& expression)
-{
-    switch (expression.kind()) {
-    case ast::AstNodeKind::LiteralExpression: {
-        const auto& literal = static_cast<const ast::LiteralExpression&>(expression);
-        return std::make_unique<ast::LiteralExpression>(literal.literalKind(), literal.value());
-    }
-    case ast::AstNodeKind::IdentifierExpression:
-        return makeSyntheticIdentifier(static_cast<const ast::IdentifierExpression&>(expression).name());
-    case ast::AstNodeKind::UnaryExpression: {
-        const auto& unary = static_cast<const ast::UnaryExpression&>(expression);
-        return std::make_unique<ast::UnaryExpression>(unary.op(), clonePureExpression(unary.operand()));
-    }
-    case ast::AstNodeKind::BinaryExpression: {
-        const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
-        return std::make_unique<ast::BinaryExpression>(
-            binary.op(), clonePureExpression(binary.left()), clonePureExpression(binary.right()));
-    }
-    default: {
-        const auto& call = static_cast<const ast::CallExpression&>(expression);
-        std::vector<ast::ExpressionPtr> arguments;
-        for (const auto& argument : call.arguments()) {
-            arguments.push_back(clonePureExpression(*argument));
-        }
-        return std::make_unique<ast::CallExpression>(
-            makeSyntheticIdentifier(static_cast<const ast::IdentifierExpression&>(call.callee()).name()),
-            std::move(arguments));
-    }
-    }
-}
 
 // A compound-assignment target (ADR-0012): a chain target, or an array
 // element `A[I]` whose base and indices have no side effects, so the
@@ -180,19 +152,6 @@ bool isCompoundTarget(const ast::Expression& expression)
     return isIndexCall(expression) && isPureExpression(expression);
 }
 
-ast::ExpressionPtr cloneChainTarget(const ast::Expression& expression)
-{
-    if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
-        return makeSyntheticIdentifier(
-            static_cast<const ast::IdentifierExpression&>(expression).name());
-    }
-    const auto& call = static_cast<const ast::CallExpression&>(expression);
-    std::vector<ast::ExpressionPtr> arguments;
-    arguments.push_back(cloneChainTarget(*call.arguments()[0]));
-    arguments.push_back(cloneChainTarget(*call.arguments()[1]));
-    return std::make_unique<ast::CallExpression>(
-        makeSyntheticIdentifier("__member"), std::move(arguments));
-}
 
 } // namespace
 
@@ -255,6 +214,16 @@ Parser::DepthGuard::DepthGuard(const Parser& owner, std::size_t& counter,
 Parser::DepthGuard::~DepthGuard()
 {
     --counter_;
+}
+
+// The depth of a form phase 2b will build (F5): the same limit and message
+// as an expression the parser builds.
+void Parser::requireLoweredDepth(std::size_t depth) const
+{
+    if (depth > kMaxExpressionDepth) {
+        errorAtCurrent("maximum expression nesting depth exceeded (implementation limit: " +
+                       std::to_string(kMaxExpressionDepth) + " levels); split it into smaller expressions");
+    }
 }
 
 void Parser::checkExpressionDepth(const ast::Expression& expression) const
@@ -427,16 +396,6 @@ void Parser::stampStatement(ast::Statement& statement)
     if (!statement.position().known()) {
         statement.setPosition(position);
     }
-    for (auto& preceding : precedingStatements_) {
-        if (!preceding->position().known()) {
-            preceding->setPosition(position);
-        }
-    }
-    for (auto& pending : pendingStatements_) {
-        if (!pending->position().known()) {
-            pending->setPosition(position);
-        }
-    }
 }
 
 // appendStatement is on the recursion of nested blocks: it keeps no local,
@@ -450,15 +409,7 @@ void Parser::appendStatement(std::vector<ast::StatementPtr>& statements)
 void Parser::finishStatement(std::vector<ast::StatementPtr>& statements, ast::StatementPtr statement)
 {
     stampStatement(*statement);
-    for (auto& preceding : precedingStatements_) {
-        statements.push_back(std::move(preceding));
-    }
-    precedingStatements_.clear();
     statements.push_back(std::move(statement));
-    for (auto& pending : pendingStatements_) {
-        statements.push_back(std::move(pending));
-    }
-    pendingStatements_.clear();
 }
 
 std::vector<ast::StatementPtr> Parser::parseStatements()
@@ -959,7 +910,7 @@ ast::ExpressionPtr Parser::parsePostfix()
         // leading-dot on the next line must not be glued to the previous
         // expression (which would wrongly parse `10` then `.FY` as `10.FY`).
         if (check(TokenKind::Dot) &&
-            !withTargetStack_.empty() &&
+            withDepth_ != 0 &&
             peek().location.line > previous().location.line) {
             break;
         }
@@ -1079,14 +1030,14 @@ ast::ExpressionPtr Parser::parsePrimary()
         return makeExpr<ast::CallExpression>(makeSyntheticIdentifier("__set"), std::move(elements));
     }
 
-    // Leading '.' inside a 'with' body: expand to __member(__with_N, Member)
-    if (check(TokenKind::Dot) && !withTargetStack_.empty()) {
+    // Leading '.' inside a 'with' body: __member(target of the innermost
+    // with, Member); phase 2b names the target (F5).
+    if (check(TokenKind::Dot) && withDepth_ != 0) {
         advance(); // consume '.'
         const lexer::Token& memberName = consume(
             TokenKind::Identifier, "expected member name after '.' in 'with' body");
         std::vector<ast::ExpressionPtr> arguments;
-        arguments.push_back(
-            std::make_unique<ast::IdentifierExpression>(withTargetStack_.back()));
+        arguments.push_back(std::make_unique<ast::WithTargetExpression>(withDepth_ - 1));
         arguments.push_back(
             std::make_unique<ast::IdentifierExpression>(memberName.lexeme));
         return makeExpr<ast::CallExpression>(
@@ -1387,16 +1338,13 @@ ast::StatementPtr Parser::parseWithStatement()
     auto target = parseValue();
     requireHeaderLineBreak();
 
-    const std::string bindingName = "__with_" + std::to_string(withCounter_++);
-    withTargetStack_.push_back(bindingName);
-
+    // The binding is named by phase 2b (F5); here only the nesting counts.
+    ++withDepth_;
     auto body = parseBlockBody();
     consumeBlockClose();
+    --withDepth_;
 
-    withTargetStack_.pop_back();
-
-    return std::make_unique<ast::WithStatement>(
-        std::move(target), std::move(body), bindingName);
+    return std::make_unique<ast::WithStatement>(std::move(target), std::move(body), std::string{});
 }
 
 ast::StatementPtr Parser::parseWhileStatement()
@@ -1406,9 +1354,7 @@ ast::StatementPtr Parser::parseWhileStatement()
     auto contracts = parseLoopContracts(true);
     auto body = parseBlockBody();
     consumeBlockClose();
-    lowerLoopContracts(std::move(contracts), body, true);
-    return std::make_unique<ast::WhileStatement>(
-        std::move(condition), std::move(body));
+    return std::make_unique<ast::WhileStatement>(std::move(condition), std::move(body), std::move(contracts));
 }
 
 ast::StatementPtr Parser::parseRepeatStatement()
@@ -1416,8 +1362,7 @@ ast::StatementPtr Parser::parseRepeatStatement()
     auto contracts = parseLoopContracts(true);
     auto body = parseBlockBody();
     consumeBlockClose();
-    lowerLoopContracts(std::move(contracts), body, true);
-    return std::make_unique<ast::RepeatStatement>(std::move(body));
+    return std::make_unique<ast::RepeatStatement>(std::move(body), std::move(contracts));
 }
 
 ast::StatementPtr Parser::parseUntilStatement()
@@ -1455,12 +1400,12 @@ ast::StatementPtr Parser::parseForInStatement()
     auto contracts = parseLoopContracts(false);
     auto body = parseBlockBody();
     consumeBlockClose();
-    lowerLoopContracts(std::move(contracts), body, false);
     return std::make_unique<ast::ForInStatement>(
         iterator.lexeme,
         std::move(iterable),
         std::move(step),
-        std::move(body));
+        std::move(body),
+        std::move(contracts));
 }
 
 // ADR-0011 (Ada/SPARK-style case, adapted to Inox):
@@ -1757,12 +1702,10 @@ ast::StatementPtr Parser::parseExpressionStatement()
         case TokenKind::CaretEqual: binary = ast::BinaryOperator::Power; break;
         default: break;
         }
-        auto current = clonePureExpression(*parts.front());
-        auto combined = makeExpr<ast::BinaryExpression>(binary, std::move(current), std::move(value));
-        return std::make_unique<ast::ExpressionStatement>(
-            makeExpr<ast::BinaryExpression>(
-                ast::BinaryOperator::Assign, std::move(parts.front()), std::move(combined)),
-            true);
+        // Phase 2b makes it `L := L op R`, two levels above L and R: the
+        // nesting limit applies to that form, as before F5.
+        requireLoweredDepth(2 + std::max(parts.front()->depth(), value->depth()));
+        return std::make_unique<ast::CompoundAssignmentStatement>(std::move(parts.front()), binary, std::move(value));
     }
 
     while (match(TokenKind::ColonEqual)) {
@@ -1790,26 +1733,16 @@ ast::StatementPtr Parser::parseExpressionStatement()
         }
     }
 
-    // Copies of the targets are taken first: target i + 1 is the source of
-    // target i.
+    // Phase 2b stores the value in the last target, then each target in the
+    // one before it; each store is one level above its target and its source
+    // (a copy of the next target, or the value), as before F5.
     const std::size_t last = parts.size() - 1;
-    std::vector<ast::ExpressionPtr> sources(last);
-    sources[last - 1] = std::move(parts[last]);
-    for (std::size_t i = 0; i + 1 < last; ++i) {
-        sources[i] = cloneChainTarget(*parts[i + 1]);
+    for (std::size_t i = 0; i < last; ++i) {
+        requireLoweredDepth(1 + std::max(parts[i]->depth(), parts[i + 1]->depth()));
     }
-
-    std::vector<ast::StatementPtr> chain;
-    for (std::size_t i = last; i-- > 0;) {
-        chain.push_back(std::make_unique<ast::ExpressionStatement>(
-            makeExpr<ast::BinaryExpression>(
-                binaryOperatorFor(operators[i]), std::move(parts[i]), std::move(sources[i]))));
-    }
-    ast::StatementPtr first = std::move(chain.front());
-    for (std::size_t i = 1; i < chain.size(); ++i) {
-        pendingStatements_.push_back(std::move(chain[i]));
-    }
-    return first;
+    ast::ExpressionPtr value = std::move(parts.back());
+    parts.pop_back();
+    return std::make_unique<ast::ChainedAssignmentStatement>(std::move(parts), std::move(value));
 }
 
 ast::AstNodePtr Parser::parseModuleItem()
@@ -2332,7 +2265,6 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
     consume(TokenKind::Colon, "expected ':' after function signature");
     // CANON-24: `pre` and `pos` lines open the body; `pre else` and
     // `pos then` are for an Override (Eiffel's require else / ensure then).
-    currentRoutine_ = functionName;
     std::vector<ast::ContractClause> contracts;
     while (atContractWord("pre") || atContractWord("pos")) {
         const bool isPre = peek().normalized == "pre";
@@ -2546,98 +2478,7 @@ std::vector<ast::ContractClause> Parser::parseLoopContracts(bool allowVariant)
     return contracts;
 }
 
-namespace {
 
-ast::ExpressionPtr contractCheck(int kind, ast::ExpressionPtr condition, const std::string& message)
-{
-    std::vector<ast::ExpressionPtr> arguments;
-    arguments.push_back(std::make_unique<ast::LiteralExpression>(ast::LiteralKind::Integer, std::to_string(kind)));
-    arguments.push_back(std::move(condition));
-    arguments.push_back(std::make_unique<ast::LiteralExpression>(ast::LiteralKind::String, message));
-    return std::make_unique<ast::CallExpression>(makeSyntheticIdentifier("__check"), std::move(arguments));
-}
-
-std::string clauseMessage(const std::string& category, const std::string& routine, const ast::ContractClause& clause,
-                          const std::string& extra = {})
-{
-    std::string message = category + ": " + routine + ": " + clause.text + extra;
-    if (!clause.message.empty()) {
-        message += ": " + clause.message;
-    }
-    return message;
-}
-
-ast::StatementPtr statementOf(ast::ExpressionPtr expression)
-{
-    return std::make_unique<ast::ExpressionStatement>(std::move(expression));
-}
-
-ast::ExpressionPtr assignment(const std::string& name, ast::ExpressionPtr value)
-{
-    return std::make_unique<ast::BinaryExpression>(ast::BinaryOperator::Assign, makeSyntheticIdentifier(name),
-                                                   std::move(value));
-}
-
-} // namespace
-
-// A loop's `invariant` is checked at the start of every iteration and, for
-// while and repeat, once more when the loop ends; its `variant` (an integer)
-// must be >= 0 at the start of every iteration and smaller than at the
-// start of the previous one (Eiffel; CANON-24). The checks are statements
-// put into the body; the variant's previous value lives before the loop.
-void Parser::lowerLoopContracts(std::vector<ast::ContractClause> contracts,
-                                std::vector<ast::StatementPtr>& body,
-                                bool checkAfterLoop)
-{
-    if (contracts.empty()) {
-        return;
-    }
-    const std::string id = std::to_string(++contractCounter_);
-    std::vector<ast::StatementPtr> top;
-    for (ast::ContractClause& clause : contracts) {
-        if (clause.kind == ast::ContractClause::Kind::LoopInvariant) {
-            if (checkAfterLoop) {
-                // The same condition once more, right after the loop.
-                pendingStatements_.push_back(statementOf(contractCheck(
-                    4, ast::cloneExpression(*clause.condition), clauseMessage("loop invariant violated", currentRoutine_, clause, " (at the end)"))));
-            }
-            top.push_back(statementOf(
-                contractCheck(4, std::move(clause.condition), clauseMessage("loop invariant violated", currentRoutine_, clause))));
-            continue;
-        }
-        const std::string current = "__variant_" + id;
-        const std::string previousName = "__variant_previous_" + id;
-        precedingStatements_.push_back(statementOf(assignment(
-            previousName, std::make_unique<ast::UnaryExpression>(
-                              ast::UnaryOperator::Minus,
-                              std::make_unique<ast::LiteralExpression>(ast::LiteralKind::Integer, "1")))));
-        std::vector<ast::ExpressionPtr> conversion;
-        conversion.push_back(std::move(clause.condition));
-        std::vector<ast::ExpressionPtr> pure;
-        pure.push_back(std::make_unique<ast::CallExpression>(makeSyntheticIdentifier("Integer"), std::move(conversion)));
-        top.push_back(statementOf(assignment(
-            current, std::make_unique<ast::CallExpression>(makeSyntheticIdentifier("__pure"), std::move(pure)))));
-        top.push_back(statementOf(contractCheck(
-            5,
-            std::make_unique<ast::BinaryExpression>(ast::BinaryOperator::GreaterEqual, makeSyntheticIdentifier(current),
-                                                    std::make_unique<ast::LiteralExpression>(ast::LiteralKind::Integer, "0")),
-            clauseMessage("loop variant violated", currentRoutine_, clause, " is negative"))));
-        top.push_back(statementOf(contractCheck(
-            5,
-            std::make_unique<ast::BinaryExpression>(
-                ast::BinaryOperator::Or,
-                std::make_unique<ast::BinaryExpression>(ast::BinaryOperator::Less, makeSyntheticIdentifier(previousName),
-                                                        std::make_unique<ast::LiteralExpression>(ast::LiteralKind::Integer, "0")),
-                std::make_unique<ast::BinaryExpression>(ast::BinaryOperator::Less, makeSyntheticIdentifier(current),
-                                                        makeSyntheticIdentifier(previousName))),
-            clauseMessage("loop variant violated", currentRoutine_, clause, " did not decrease"))));
-        top.push_back(statementOf(assignment(previousName, makeSyntheticIdentifier(current))));
-    }
-    for (auto& statement : body) {
-        top.push_back(std::move(statement));
-    }
-    body = std::move(top);
-}
 
 std::string Parser::parseQualifiedName(std::string_view message)
 {

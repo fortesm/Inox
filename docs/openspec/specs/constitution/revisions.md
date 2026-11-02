@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.118
+Canon revision: r3.119
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -605,3 +605,13 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   module resolution, the AST and generated code do not. The conformance
   gap of STATUS is closed. Approved by Marcelo Fortes, 2026-11-01. Change
   `interface-module-name`.
+- r3.119 — 2026-11-02 — E11, foundation step F5: the parser builds
+  chained and compound assignments, `with` targets and loop `invariant`
+  and `variant` lines as written; a new phase 2b, run once on each module
+  right after parsing, turns them into the normalized AST the later phases
+  already understood, with the same synthetic names, order of evaluation,
+  positions and messages. Deviation D2 is closed. The analyzer's
+  recognition of a `with` binding by its name is a recorded F6 debt. No
+  output changes (IR snapshot without exceptions) and no frame on a
+  recursion path grows. Design approved by Marcelo Fortes, 2026-11-01.
+  Change `desugaring-out-of-parser`.

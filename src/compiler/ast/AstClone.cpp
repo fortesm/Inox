@@ -25,6 +25,47 @@ std::string copyExceptionName(const std::string& name, const CloneRewriters& rew
 
 ExpressionPtr copyOptional(const Expression* expression, const CloneRewriters& rewrite);
 
+// A loop's `invariant` and `variant` lines (F5: the written form, before
+// phase 2b) onto its copy; out of line and after the copy, so the
+// recursive cloneStatementNode keeps its frame.
+template <typename Loop>
+void copyContractsOf(const Statement& original, Statement& copy, const CloneRewriters& rewrite)
+{
+    const auto& from = static_cast<const Loop&>(original);
+    if (!from.contracts().empty()) {
+        static_cast<Loop&>(copy).contracts() = cloneContractClauses(from.contracts(), rewrite.expression);
+    }
+}
+
+void copyLoopContracts(const Statement& original, Statement& copy, const CloneRewriters& rewrite);
+
+// What a copy takes from its original besides its children: its position,
+// and a loop's contracts.
+void finishCopy(const Statement& original, Statement& copy, const CloneRewriters& rewrite)
+{
+    if (!copy.position().known()) {
+        copy.setPosition(original.position());
+    }
+    copyLoopContracts(original, copy, rewrite);
+}
+
+void copyLoopContracts(const Statement& original, Statement& copy, const CloneRewriters& rewrite)
+{
+    switch (original.kind()) {
+    case AstNodeKind::WhileStatement:
+        copyContractsOf<WhileStatement>(original, copy, rewrite);
+        return;
+    case AstNodeKind::RepeatStatement:
+        copyContractsOf<RepeatStatement>(original, copy, rewrite);
+        return;
+    case AstNodeKind::ForInStatement:
+        copyContractsOf<ForInStatement>(original, copy, rewrite);
+        return;
+    default:
+        return;
+    }
+}
+
 // A typed local's copy, built here so that cloneStatementNode, which
 // recurses, holds no TypeExpr in its frame (F4, stack budget).
 StatementPtr copyVarStatement(const VarStatement& node, const CloneRewriters& rewrite)
@@ -66,13 +107,16 @@ ExpressionPtr cloneExpression(const Expression& expression, const ExpressionRewr
 StatementPtr cloneStatement(const Statement& statement, const CloneRewriters& rewrite)
 {
     StatementPtr copy = cloneStatementNode(statement, rewrite);
-    if (copy != nullptr && !copy->position().known()) {
-        copy->setPosition(statement.position());
-    }
+    finishCopy(statement, *copy, rewrite);
     return copy;
 }
 
 namespace {
+
+ExpressionPtr copyWithTarget(const WithTargetExpression& node)
+{
+    return std::make_unique<WithTargetExpression>(node.level());
+}
 
 ExpressionPtr cloneExpressionNode(const Expression& expression, const ExpressionRewriter& rewrite)
 {
@@ -136,9 +180,24 @@ ExpressionPtr cloneExpressionNode(const Expression& expression, const Expression
     case AstNodeKind::LeaveStatement:
     case AstNodeKind::ContinueStatement:
     case AstNodeKind::WithStatement:
+    case AstNodeKind::ChainedAssignmentStatement:
+    case AstNodeKind::CompoundAssignmentStatement:
         break;
+    case AstNodeKind::WithTargetExpression:
+        return copyWithTarget(static_cast<const WithTargetExpression&>(expression));
     }
     throw std::logic_error("cloneExpression: not an expression");
+}
+
+} // namespace
+
+namespace {
+
+// Whether the statement rewriter replaced `statement` (it appended what
+// replaces it); out of line, so cloneStatements keeps its frame.
+bool rewritten(const Statement& statement, const CloneRewriters& rewrite, std::vector<StatementPtr>& copies)
+{
+    return rewrite.statement && rewrite.statement(statement, copies);
 }
 
 } // namespace
@@ -149,12 +208,55 @@ std::vector<StatementPtr> cloneStatements(const std::vector<StatementPtr>& state
     std::vector<StatementPtr> copies;
     copies.reserve(statements.size());
     for (const auto& statement : statements) {
-        copies.push_back(cloneStatement(*statement, rewrite));
+        if (!rewritten(*statement, rewrite, copies)) {
+            copies.push_back(cloneStatement(*statement, rewrite));
+        }
+    }
+    return copies;
+}
+
+ContractClause cloneContractClause(const ContractClause& clause, const ExpressionRewriter& rewrite)
+{
+    ContractClause copy;
+    copy.kind = clause.kind;
+    copy.condition = clause.condition ? cloneExpression(*clause.condition, rewrite) : nullptr;
+    copy.text = clause.text;
+    copy.message = clause.message;
+    copy.line = clause.line;
+    return copy;
+}
+
+std::vector<ContractClause> cloneContractClauses(const std::vector<ContractClause>& clauses,
+                                                 const ExpressionRewriter& rewrite)
+{
+    std::vector<ContractClause> copies;
+    copies.reserve(clauses.size());
+    for (const ContractClause& clause : clauses) {
+        copies.push_back(cloneContractClause(clause, rewrite));
     }
     return copies;
 }
 
 namespace {
+
+// Out of line, as copyVarStatement: cloneStatementNode recurses, and each
+// case's temporaries would widen every level of it (F5, stack budget).
+StatementPtr copyWrittenAssignment(const Statement& statement, const CloneRewriters& rewrite)
+{
+    if (statement.kind() == AstNodeKind::CompoundAssignmentStatement) {
+        const auto& node = static_cast<const CompoundAssignmentStatement&>(statement);
+        return std::make_unique<CompoundAssignmentStatement>(cloneExpression(node.target(), rewrite.expression),
+                                                             node.op(),
+                                                             cloneExpression(node.value(), rewrite.expression));
+    }
+    const auto& node = static_cast<const ChainedAssignmentStatement&>(statement);
+    std::vector<ExpressionPtr> targets;
+    for (const auto& target : node.targets()) {
+        targets.push_back(cloneExpression(*target, rewrite.expression));
+    }
+    return std::make_unique<ChainedAssignmentStatement>(std::move(targets),
+                                                        cloneExpression(node.value(), rewrite.expression));
+}
 
 StatementPtr cloneStatementNode(const Statement& statement, const CloneRewriters& rewrite)
 {
@@ -193,8 +295,10 @@ StatementPtr cloneStatementNode(const Statement& statement, const CloneRewriters
         const auto& node = static_cast<const WhileStatement&>(statement);
         return std::make_unique<WhileStatement>(expression(node.condition()), body(node.body()));
     }
-    case AstNodeKind::RepeatStatement:
-        return std::make_unique<RepeatStatement>(body(static_cast<const RepeatStatement&>(statement).body()));
+    case AstNodeKind::RepeatStatement: {
+        const auto& node = static_cast<const RepeatStatement&>(statement);
+        return std::make_unique<RepeatStatement>(body(node.body()));
+    }
     case AstNodeKind::UntilStatement:
         return std::make_unique<UntilStatement>(expression(static_cast<const UntilStatement&>(statement).condition()));
     case AstNodeKind::ForInStatement: {
@@ -248,6 +352,10 @@ StatementPtr cloneStatementNode(const Statement& statement, const CloneRewriters
         const auto& node = static_cast<const WithStatement&>(statement);
         return std::make_unique<WithStatement>(expression(node.target()), body(node.body()), node.bindingName());
     }
+    case AstNodeKind::ChainedAssignmentStatement:
+    case AstNodeKind::CompoundAssignmentStatement:
+        return copyWrittenAssignment(statement, rewrite);
+    case AstNodeKind::WithTargetExpression:
     case AstNodeKind::Module:
     case AstNodeKind::UseDeclaration:
     case AstNodeKind::SectionDeclaration:

@@ -33,11 +33,22 @@ using TypeRewriter = std::function<void(TypeExpr&)>;
 // the name written in the copy.
 using ExceptionNameRewriter = std::function<std::string(const std::string&)>;
 
+// Asked for each statement of a body before it is copied: it may append
+// the statements that replace it and return true; false copies it (phase
+// 2b, change desugaring-out-of-parser).
+using StatementRewriter = std::function<bool(const Statement&, std::vector<StatementPtr>&)>;
+
 struct CloneRewriters {
     ExpressionRewriter expression;
     TypeRewriter type;
     ExceptionNameRewriter exceptionName;
+    StatementRewriter statement;
 };
+
+// A copy of a contract clause (its condition through the rewriter).
+ContractClause cloneContractClause(const ContractClause& clause, const ExpressionRewriter& rewrite = {});
+std::vector<ContractClause> cloneContractClauses(const std::vector<ContractClause>& clauses,
+                                                 const ExpressionRewriter& rewrite = {});
 
 ExpressionPtr cloneExpression(const Expression& expression, const ExpressionRewriter& rewrite = {});
 StatementPtr cloneStatement(const Statement& statement, const CloneRewriters& rewrite = {});

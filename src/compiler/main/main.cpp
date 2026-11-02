@@ -8,6 +8,7 @@
 #include "../ast/ModuleInterface.h"
 #include "../codegen/LlvmIrEmitter.h"
 #include "../lexer/Lexer.h"
+#include "../lowering/Desugar.h"
 #include "../parser/Parser.h"
 #include "../semantic/ContractLowering.h"
 #include "../semantic/ModuleResolution.h"
@@ -152,6 +153,17 @@ void noteFileBeingParsed(const fs::path& sourcePath, const std::string& name)
     moduleFiles()[lowerName(name.empty() ? sourcePath.stem().string() : name)] = sourcePath;
 }
 
+// Phase 2b (F5, change desugaring-out-of-parser): once on each parsed
+// module, before module resolution; Debug builds check that no written form
+// is left for the later phases.
+void desugarParsedModule(ModuleNode& module)
+{
+    inox::compiler::lowering::desugarModule(module);
+#ifndef NDEBUG
+    inox::compiler::lowering::requireDesugared(module);
+#endif
+}
+
 // No local beyond those it always had: parseSource is below the parser's
 // recursion on the stack.
 std::unique_ptr<ModuleNode> parseSource(const fs::path& sourcePath, std::string name)
@@ -241,6 +253,7 @@ private:
     void loadModule(const fs::path& sourcePath, std::string_view expectedName)
     {
         auto module = parseSource(sourcePath, std::string(expectedName));
+        desugarParsedModule(*module);
         if (expectedName.empty() && isStandardLibraryName(module->name()) && !insideStandardLibrary(sourcePath)) {
             throw std::runtime_error("the name " + module->name() +
                                      " is reserved: Std names the standard library (r3.99); rename the file");

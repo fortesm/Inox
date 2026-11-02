@@ -12,6 +12,7 @@
 #include "UnitTest.h"
 
 #include "compiler/ast/AstClone.h"
+#include "compiler/lowering/Desugar.h"
 #include "compiler/parser/Parser.h"
 
 #include <memory>
@@ -274,7 +275,9 @@ void collectNodes(const std::vector<StatementPtr>& statements, std::unordered_se
 std::unique_ptr<ModuleNode> parseProgram()
 {
     parser::Parser parser{std::string_view(kProgram)};
-    return parser.parseModule("CloneTest");
+    auto module = parser.parseModule("CloneTest");
+    lowering::desugarModule(*module);  // the later phases clone the normalized AST (F5)
+    return module;
 }
 
 const FunctionDeclaration& routine(const ModuleNode& module, std::string_view name)

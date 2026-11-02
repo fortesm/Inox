@@ -1,0 +1,43 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-5 (kept by F5): `A := B := C := D := X` evaluates X once and
+== stores right to left; a target may be a field. `with` evaluates its
+== target once; `.F` in a nested `with` is the inner target.
+Type
+    TPoint Struct
+        FX Integer := 0
+        FY Integer := 0
+    ;
+
+State
+    Calls := 0
+;
+
+Next Integer :
+    Calls += 1
+    Return Calls * 10
+;
+
+Main :
+    P TPoint
+    A := 0
+    B := 0
+    C := 0
+    A := P.FX := B := C := Next
+    PutLn(A, " ", P.FX, " ", B, " ", C, " calls ", Calls)
+    Q TPoint
+    with P
+        .FY := 1
+        with Q
+            .FX := 2
+            .FY := .FX + 3
+        ;
+        .FX := .FX + 1
+    ;
+    PutLn(P.FX, " ", P.FY, " ", Q.FX, " ", Q.FY)
+;

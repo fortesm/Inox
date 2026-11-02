@@ -37,8 +37,17 @@ RECURSION_PATHS = [
     r"resolvePointerType|resolveGenericStructType|resolveSetType|instantiateRoutine|instantiateStruct|"
     r"unifyTypeExpr|cloneInstanceBody|substituteTypeParameters|writtenFormOf)",
     r"inox::compiler::ast::\(anonymous namespace\)::clone(Statement|Expression)Node",
+    r"inox::compiler::ast::clone(Statement|Statements|Expression)",
 ]
 NEW_FRAME_TO_REVIEW = 256
+# A recursion a change adds (phase 2b of F5 walks the statements between
+# the parser and the analyzer): its functions are new, so they cannot grow;
+# each must stay within NEW_PATH_BUDGET bytes, and they are listed apart.
+NEW_PATHS = [
+    r"inox::compiler::lowering::\(anonymous namespace\)::(Desugarer::(lower|lowerLoop|rebuildLoop|lowerWith|"
+    r"lowerChain|lowerCompound|appendBody|number|body)|hasWrittenForms|requireNoForms|expressionHasWithTarget)",
+]
+NEW_PATH_BUDGET = 512
 # A function renamed or split by F4 is compared with the one it replaces.
 # parseTypeName became parseTypeInto, which recurses through
 # parseArrayTypeInto and parseTypeArgumentsInto: each, and each level of
@@ -63,6 +72,23 @@ REPLACES = {
 }
 
 
+def without_parameters(name: str) -> str:
+    """The name without its parameter list (and a trailing const): the last
+    balanced parenthesized group, so `(anonymous namespace)` stays."""
+    text = re.sub(r"\s+const$", "", name.strip())
+    if not text.endswith(")"):
+        return text
+    depth = 0
+    for index in range(len(text) - 1, -1, -1):
+        if text[index] == ")":
+            depth += 1
+        elif text[index] == "(":
+            depth -= 1
+            if depth == 0:
+                return text[:index]
+    return text
+
+
 def frames(build: pathlib.Path) -> dict[str, int]:
     """Demangled function name (without parameters) -> largest frame."""
     mangled: list[tuple[str, int]] = []
@@ -82,7 +108,7 @@ def frames(build: pathlib.Path) -> dict[str, int]:
                                capture_output=True, text=True, check=True).stdout.splitlines()
     result: dict[str, int] = {}
     for (_, size), name in zip(mangled, demangled):
-        key = re.sub(r"\(.*$", "", name)
+        key = without_parameters(name)
         result[key] = max(size, result.get(key, 0))
     return result
 
@@ -120,6 +146,14 @@ def main(argv: list[str]) -> int:
         print("\none level of the type recursion: main %d, head %d (parseTypeInto + parseArrayTypeInto)%s" %
               (old, level, "  GROWS" if level > old else ""))
         grown += 1 if level > old else 0
+    new_patterns = [re.compile(pattern + r"$") for pattern in NEW_PATHS]
+    new_path = sorted(name for name in head if any(p.match(name) for p in new_patterns))
+    if new_path:
+        print("\nnew recursion paths (budget %d bytes a frame)" % NEW_PATH_BUDGET)
+        for name in new_path:
+            over = head[name] > NEW_PATH_BUDGET
+            grown += 1 if over else 0
+            print("%-90s %8s %8s%s" % (name[:90], base.get(name, "-"), head[name], "  OVER BUDGET" if over else ""))
     print("\nstack_frames: %d function(s) on the recursion paths, %d grown or new" % (len(on_path), grown))
     return 1 if grown else 0
 

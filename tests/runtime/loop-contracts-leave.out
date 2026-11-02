@@ -1,0 +1,11 @@
+while 0
+variant 10
+while 1
+variant 9
+while 2
+repeat 0
+repeat 1
+repeat 2
+for 1
+for 2
+done

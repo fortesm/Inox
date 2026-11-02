@@ -31,7 +31,8 @@ phase's contract).
 Risk: high (moves work out of a compiler phase and adds one; the design
 waits for approval).
 
-Status: **design awaiting approval**. No code before it.
+Status: **implemented** (canon r3.119). Design approved by Marcelo Fortes,
+2026-11-01.
 
 ## What Changes
 

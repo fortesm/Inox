@@ -119,6 +119,11 @@ time. Each names where it bit.
 - **Never print in the iteration order of an unordered container.** Struct
   types came out in `unordered_map` order, which differs between standard
   libraries, so Linux and Windows produced different IR (2026-10-17).
+- **The parser rewrites nothing** (F5, r3.119). Chained and compound
+  assignments, `with` targets and loop contracts are built as written and
+  turned into the normalized AST by phase 2b (`lowering/Desugar`), right
+  after each module is parsed. A new rewrite of syntax goes there, never
+  into the parser, and keeps its synthetic names numbered as before.
 - **Written types are trees** (`ast::TypeExpr`, F4, r3.117). Never spell a
   type and read it back, and never test its shape on text: use `form`,
   `isGeneric("Own")`, `element()`; text is only `ast::spell`, for messages.
