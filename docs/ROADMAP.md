@@ -44,14 +44,23 @@ foundation     no new language feature (Marcelo Fortes, 2026-10-31,
                (nightly) and a version check; F2 source positions in the
                AST and in every diagnostic; F3 routine headers parsed into
                structure; F4 written types as structure, generics
-               instantiated on it (high risk); F5 desugaring out of the
-               parser; F6 a typed IR between analysis and codegen, design
-               first (high risk); F7 exception hierarchy in the types
-0.5            ownership and collections: Vector<T> with move semantics and
-               Clone, Option<T> and Result<T, E> (TryInteger), Split and
-               Join, Self owned; methods of
-               generic structs; the safe-pointers follow-ups; `lifecycle`
-               (constructors and destructors); arenas as an option
+               instantiated on it (F0-F4 done, r3.110-r3.117).
+               DEFERRED, not cancelled (Marcelo Fortes, 2026-11-01): F5
+               desugaring out of the parser; F6 a typed IR between
+               analysis and codegen, design first (high risk); F7
+               exception hierarchy in the types. They resume after the
+               0.5 items below and before stabilization: 1.0 ships with no
+               known breach of the safety guarantees or of the phase
+               contracts, so F6 comes first if codegen still takes
+               semantic decisions
+0.5            ownership and collections, in this order (Marcelo Fortes,
+               2026-11-01): 1 methods of generic structs; 2 the critical
+               safe-pointers follow-ups (Own, Link, Move, Free), so new
+               collections widen no safety gap; 3 Option<T> and
+               Result<T, E> (TryInteger), designed with the later variant
+               structs in mind; 4 Vector<T> with move semantics and Clone,
+               Split and Join; then Self owned, `lifecycle` (constructors
+               and destructors), arenas as an option
 0.6            expressiveness: routine types (named routines, then
                closures), variant structs, binary files and streams; the
                `| |`, `{ }` and `@` brainstorm settled; generic constraints
