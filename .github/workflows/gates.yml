@@ -175,11 +175,39 @@ jobs:
           python3 tools/ir_snapshot.py compare build/linux-clang-debug/inox snapshot "${allow[@]}" 2>&1 \
             | tee ir-snapshot.txt
           test "${PIPESTATUS[0]}" -eq 0
+      - name: Typed IR snapshot against the base (F6)
+        shell: bash
+        run: |
+          # The typed IR has a snapshot of its own (change typed-ir,
+          # condition 4): an intended change of it is declared in the
+          # change's ir-snapshot-tir-expect.json and never touches the rule
+          # of the LLVM IR above. A base without --dump-tir (before F6 step
+          # 1) has nothing to compare.
+          if ! ../base/build/linux-clang-debug/inox --dump-tir tests/tir/places.inox >/dev/null 2>&1; then
+            echo "the base has no --dump-tir: no typed IR to compare" | tee ir-snapshot-tir.txt
+            exit 0
+          fi
+          python3 tools/ir_snapshot.py record ../base/build/linux-clang-debug/inox snapshot --tir
+          base="${{ github.event.pull_request.base.sha }}"
+          allow=()
+          while IFS= read -r added; do
+            allow+=(--allow "$added")
+          done < <(git diff --name-only --no-renames --diff-filter=AD "$base" HEAD -- '*.inox')
+          while IFS= read -r file; do
+            echo "expectations: $file"
+            allow+=(--expect "$file")
+          done < <(git diff --name-only --no-renames --diff-filter=AM "$base" HEAD -- 'docs/openspec/changes/*/ir-snapshot-tir-expect.json' \
+                   | grep -v '/archive/')
+          python3 tools/ir_snapshot.py compare build/linux-clang-debug/inox snapshot --tir "${allow[@]}" 2>&1 \
+            | tee ir-snapshot-tir.txt
+          test "${PIPESTATUS[0]}" -eq 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ir-snapshot
-          path: ir-snapshot.txt
+          path: |
+            ir-snapshot.txt
+            ir-snapshot-tir.txt
 
   windows-stack:
     name: Windows Debug stack budget

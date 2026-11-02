@@ -17,7 +17,7 @@ each version added.
 
 - Driver: `inox file.inox`, `run`, `build`, `check`, `emit-llvm`, `help`,
   `version` (the `--` switches are aliases; `--parse-only`, `--dump-tokens`,
-  `--dump-types` for development), `interface` (a module's public
+  `--dump-types`, `--dump-tir` for development), `interface` (a module's public
   surface), `--path`; modules named after their files and `Use` with
   recursive loading and cycle rejection; module search in the entry
   directory, `--path`, `INOX_PATH` and the library, `Std` reserved to the
@@ -194,3 +194,7 @@ they are rejected now.)
   positions as the parser did; the analyzer recognizes a `with` binding by
   its name's prefix `__with` (F6 debt); `codegen/AstQueries` holds AST walks that are not
   specific to codegen; the parser never builds `BlockStatement`.
+- The typed IR (F6 step 1, r3.120) is built and verified by a Debug
+  compiler for every program it compiles and printed by `--dump-tir`; a
+  Release compiler builds it only for `--dump-tir`, and code generation
+  does not read it until steps 2-5 of change `typed-ir`.

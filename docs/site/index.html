@@ -149,7 +149,7 @@ inox interface file.inox   print what the modules that use it see
 inox run --path lib file.inox  also look in lib for used modules (repeatable)
 inox help                  print the commands
 inox version               print the version</code></pre>
-<p><code>--run</code>, <code>--build</code>, <code>--emit-llvm</code>, <code>--help</code> and <code>--version</code> are accepted as aliases. For compiler development, <code>--parse-only</code>, <code>--dump-tokens</code> and <code>--dump-types</code> show the parser's view, the tokens and the resolved types.</p>
+<p><code>--run</code>, <code>--build</code>, <code>--emit-llvm</code>, <code>--help</code> and <code>--version</code> are accepted as aliases. For compiler development, <code>--parse-only</code>, <code>--dump-tokens</code>, <code>--dump-types</code> and <code>--dump-tir</code> show the parser's view, the tokens, the resolved types and the typed intermediate representation.</p>
 <p>Programs are optimized by default (clang <code>-O2</code>, canon r3.98): an arithmetic loop runs as fast as the same loop in C, with every overflow, range and contract check still in place, because a check is an explicit trap and never a hint the optimizer may drop. <code>--debug</code> before the file builds without optimization (<code>-O0</code>), which compiles faster and is easier to follow in a debugger; after the file, <code>--debug</code> is one of the program's arguments.</p>
 <p>Checking and IR emission do not require Clang when using a prebuilt compiler. Building and running currently require <code>clang</code> in <code>PATH</code>.</p>
 </section>

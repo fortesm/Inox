@@ -87,8 +87,8 @@ ABIs, temporaries, cleanup): the TIR says what to compute, codegen says how.
    with the AST and takes types, symbols and constants from it; the side
    tables of types and symbols are no longer read by codegen.
 3. **Builtins by kind.** The analysis records the builtin of each call
-   (it already resolves it); codegen dispatches on `Builtin::op`. The 91
-   name comparisons go.
+   (since step 1, `SemanticResult::callMeaning`, condition 1); codegen
+   dispatches on `Builtin::op`. The 91 name comparisons go.
 4. **Places and encodings.** `__member`, `__index`, `__slice`, `__set`,
    `__check`, `__pure` are TIR nodes; `with` bindings are `WithBinding`
    places; the analyzer's `__with` prefix test goes (F5 debt).

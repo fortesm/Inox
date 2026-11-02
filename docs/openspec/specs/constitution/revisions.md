@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.119
+Canon revision: r3.120
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -615,3 +615,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   output changes (IR snapshot without exceptions) and no frame on a
   recursion path grows. Design approved by Marcelo Fortes, 2026-11-01.
   Change `desugaring-out-of-parser`.
+- r3.120 — 2026-11-02 — E11, foundation step F6, step 1 of 5: the typed
+  IR (phase 5b, `tir/`) is built from the analyzed program and verified
+  (every node has a type and a meaning) by every Debug compiler, and
+  printed by the developer switch `--dump-tir`; code generation does not
+  read it yet. The analysis records the decisions the typed IR copies
+  (the meaning of each call, with the builtin enumeration both share; the
+  origin of each variable; the symbol of each declaration; field
+  indices); the lowering resolves no name. The LLVM IR of every program is
+  identical; `--dump-types` shows the type now recorded for a range of
+  case choices. Design approved by Marcelo Fortes, 2026-11-02. Change
+  `typed-ir`.

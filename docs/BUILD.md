@@ -102,6 +102,18 @@ The decisions code generation still takes (F6, change `typed-ir`) are
 counted by `python3 tools/codegen_decisions.py` (`--list` for each
 occurrence, `--zero` to require none, the exit criterion of F6).
 
+The typed IR (F6, r3.120) has its own snapshot, apart from the LLVM IR:
+`--tir` anywhere on the command line records and compares the output of
+`--dump-tir` (`snapshot-tir.json`); an intended change of the typed IR is
+declared in the change's `ir-snapshot-tir-expect.json`. A Debug compiler
+builds and verifies the typed IR of every program it compiles, so the
+suite and the LLVM snapshot also check that every program lowers.
+
+```sh
+python3 tools/ir_snapshot.py record build/inox /tmp/snap --tir
+python3 tools/ir_snapshot.py compare build/inox /tmp/snap --tir
+```
+
 A change to the parser or the analyzer compares its stack frames with
 main's (E19, r3.117): build both trees with `-DCMAKE_CXX_FLAGS=-fstack-usage`
 (clang, Debug) and run
@@ -110,8 +122,10 @@ main's (E19, r3.117): build both trees with `-DCMAKE_CXX_FLAGS=-fstack-usage`
 python3 tools/stack_frames.py <main>/build/su build/su
 ```
 
-It fails when a function on a recursion path of the parser, the analyzer
-or the clone has a larger frame than on main.
+It fails when a function on a recursion path of the parser, the analyzer,
+the clone or code generation has a larger frame than on main, or when a
+frame of a new recursion (phase 2b, the typed IR's lowering, verifier and
+printer) passes its budget of 512 bytes.
 
 In CI the Gates job `ir-snapshot` runs that comparison on a pull request
 labelled `refactor`, with `--allow` for the programs the pull request adds

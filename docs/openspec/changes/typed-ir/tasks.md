@@ -8,9 +8,40 @@ One pull request per step, each merged before the next (Q3).
 
 ## 1. TIR built, not used
 
-- [ ] 1.1 `tir/` nodes (the closed set of `Place` kinds; the builtin enumeration in a header shared with the analysis), arena, printer; `tir/Lower`; verifier (every node typed and resolved)
-- [ ] 1.2 Built for every program in Debug; `--dump-tir` (Q4) with its own tests and snapshot (condition 4); memory of the TIR measured on the largest test
-- [ ] 1.3 `tools/stack_frames.py`: codegen's recursion and the lowering added
+- [x] 1.1 `tir/` nodes (the closed set of `Place` kinds; the builtin enumeration in a header shared with the analysis, `semantic/CallMeaning.h`), arena, printer; `tir/Lower`; verifier (every node typed and resolved)
+- [x] 1.2 Built for every program in Debug; `--dump-tir` (Q4) with its own tests (`tests/tir`) and snapshot (`tools/ir_snapshot.py --tir`, condition 4); memory of the TIR measured on the largest test
+- [x] 1.3 `tools/stack_frames.py`: codegen's recursion and the lowering added
+- [x] 1.4 What the analysis did not record yet, it records first (condition 1): the meaning of each call (`SemanticResult::callMeaning`, with the field of each access and construction argument, omitted slice bounds, the constant of Low, High and Length of a type), the origin of each variable (`VariableOrigin`), the symbol of each declaration (`declaredSymbol`), the declaration of each signature, the struct of each Struct declaration, the entry routine, the type of a case range choice
+
+Measured at step 1 (r3.120; clang Debug, Linux):
+
+- LLVM IR snapshot: identical for every program; `--dump-types` shows the
+  type the analysis now records for a range of case choices (`Binary .. :
+  TSuit` instead of `<unknown>`) in 12 programs, declared exactly in
+  `ir-snapshot-expect.json`.
+- Typed IR: built for all 1065 programs of the snapshot that compile;
+  the one program whose code generation stops (`const-conversion.inox`, a
+  known backend gap) stops in the lowering too, and keeps codegen's
+  message.
+- Memory: the largest typed IR of the suite (`tests/runtime/math-expressions.inox`
+  with the standard modules it uses) takes 213 KB of its arena (256 KB
+  reserved), freed before code generation; peak RSS of `--emit-llvm` on
+  the largest program (`large-struct.inox`) 33,880 KB against 33,740 KB.
+- Stack: no frame on the protected paths grows (89 functions, codegen's
+  68 recursive ones included); every frame of the new recursions (the
+  lowering, the verifier, the printer) is within the budget of 512 bytes,
+  the largest 296 (the printer's `invariants`; the lowering's `call` and
+  `expression` 280); the lowering runs after the analysis returns and before
+  codegen starts, so it does not stack on either.
+
+Left for later steps (found at step 1):
+
+- The invariant routine of a struct (`TName.__invariant`) is found by name
+  in codegen (`emitInvariantOf`); the analysis records it for the
+  `InvariantCheck` places by step 4.
+- CANON-23 lists the developer switches `--parse-only`, `--dump-tokens`
+  and `--dump-types`; `--dump-tir` (Q4) is not in that list yet: a text
+  change of the constitution, asked of the maintainer.
 
 ## 2. Types and symbols from the TIR
 

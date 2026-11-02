@@ -1,0 +1,194 @@
+{
+ "examples/cards.inox": {
+  "--dump-types": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "646990b83477e5ec10ee30f3266eadd01db879023ea96c53fd98eb743d2d7a36",
+    "e59319444cc68071bcc2e02848784765712b6ef33a02122333d666e88991e2d1"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/case-lowering.inox": {
+  "--dump-types": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "ea818c0e171e946e30970a1d2f43eae5c9cf14b1eebc10b82b8d135678a375b0",
+    "4dcfe47a8fd701d4230384afb4e674134afd38ab7da186027394e4a9f6894e35"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/chars.inox": {
+  "--dump-types": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "3d841ef0293532caefa218aed781e5ecd0e46bebe129c22b7696481a65a05f20",
+    "651c1ba1d5160c05360390090f1d7b8c29c65cc4ec4eda95f3ec6b4150b3080c"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/enum-case.inox": {
+  "--dump-types": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "41ad4fee6cc12edb332701c6da71821a8a68d65deb73c8aa4858aa541da48d68",
+    "f1b951a759a1691934d3ed53654e108e51c4507c7540df6fcd30f838b7a32969"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/fixed-width-integers.inox": {
+  "--dump-types": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "ee245b6397b9e0fd5acc6743d63cc75b53b5b83c7d11c80e5d180e309d51d4c4",
+    "1551c57203544348aa58b2a13b7e53ff0f1e51a5fc4252c828af7d9950b0e609"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/predefined-names.inox": {
+  "--dump-types": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "dd2d6a1a53df48c3bf8c48b919e17699652e038ead64c8b9d6d0fdf1560c6279",
+    "5b57f0a0c7cf799a7f8f5823aee7d968c96addf07812d3dd606ac9eae5a40142"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/ranges.inox": {
+  "--dump-types": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "89cc61e0ffa802874c4283a56be3c9404ef0765938d71a649c6a4f488c9bf9e0",
+    "a8edce984404c4bd8df5e6fb49617c8bb08e3d7c853081f88197c97e89c2058f"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/uint64.inox": {
+  "--dump-types": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "e8d5e55b6e8bb37318e1911ecebcc66a7874c33b5817df386b6d5955e96a703d",
+    "635be145916eae6f023a8bd1acc2bd4c4affe6801a4184609d166ea3e889a29e"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/semantic/valid/case-ada-choices.inox": {
+  "--dump-types": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "3e79bbc1ea26f425f7d45fba8fd5f15a445a431896d1fd7de23566373ae75bae",
+    "a7e60c0f452ffbe585d9f5f8d5a872d0d5a9bcb9dc88e2425c16129e3fc86a77"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/semantic/valid/case-char-choices.inox": {
+  "--dump-types": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "ea7b6977c9ff7a68c1c474830d32d3443fcf609a14d1e2e84f182ad069fa2c19",
+    "d60ae1b6a69f9446172d142d0cabb67921fc6da83e3d394670ef9e109a2b67c5"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/semantic/valid/case-exhaustive-without-else.inox": {
+  "--dump-types": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "a0283b366e1ef8c105ebf4eb4c1469e40845e263e77f0d1eb8affe321292278b",
+    "9cef2a5df366dc8c0af73069d12b2e462beaf835c2d8bc0cc76bebc18f337bf7"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/semantic/valid/case-natural-total.inox": {
+  "--dump-types": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "ec81a0ffadbd10f58054702c88604f2502f2fac82fe279e2d7cfb8edc98e6ed0",
+    "42c60d20e381145ceea2cccba057eca8336fd52708139266865716fdd823fd2f"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ }
+}
