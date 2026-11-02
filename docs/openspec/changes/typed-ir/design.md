@@ -1,6 +1,7 @@
 Design of foundation step F6 (change `typed-ir`). Risk: high. Status:
-**awaiting the maintainer's approval**; no code before it is recorded here
-with its date.
+**approved** by Marcelo Fortes, 2026-11-02, with Q1-Q5 and five technical
+conditions (see "Approval"); step 0 (inventory) done, steps 1-5 one pull
+request each.
 
 ## Today (D5)
 
@@ -162,4 +163,57 @@ Two recursions are added or changed:
 
 ## Approval
 
-(To be recorded: who approved, the date, and the answers to Q1-Q5.)
+Approved by Marcelo Fortes, 2026-11-02. The approval covers the
+incremental execution of steps 0-5, each validated on its own; it does not
+cover unrelated changes, any relaxing of the gates, or any change of the
+LLVM IR.
+
+- **Q1.** A separate TIR: it keeps E11 and the layering of AST, types and
+  codegen.
+- **Q2.** A tree-level TIR: no CFG, basic blocks or SSA in F6.
+- **Q3.** Six pull requests in sequence, each passing every gate and merged
+  before the next.
+- **Q4.** `--dump-tir`: deterministic and tested.
+- **Q5.** 0.4.1 requires steps 0-5: D5 closed, no partial migration
+  shipped.
+
+Technical conditions:
+
+1. **5b is not a second analyzer.** `tir::Lower` carries decisions the
+   analysis took: symbol identity, overload choice, conversions, checks and
+   the classification of builtins are resolved before it; it resolves no
+   name and infers nothing. What the analysis does not record yet, it
+   records first (in `SemanticResult`), and the lowering copies it.
+2. **References and effects.** `Place` nodes keep addressability,
+   mutability, pass modes and lifetime; the order of evaluation of
+   operands, the checks and the exception semantics are kept; a
+   `WithBinding` is identified by its semantic origin, never by a naming
+   convention.
+3. **Ownership and lifetime.** The TIR is owned by its program (an arena);
+   the `const types::Type*` it holds stay valid during the whole code
+   generation (the type context outlives it); pointers back to the AST are
+   tolerated during the migration and are gone from codegen's interface at
+   the end.
+4. **Two snapshots.** The LLVM IR snapshot stays strictly identical at all
+   six steps, without any allow list. `--dump-tir` has its own tests and
+   its own snapshot, deterministic (no addresses, no map order), so an
+   intended change of the TIR's structure never touches the LLVM IR rule.
+5. **Stack and memory at every step.** Windows Debug keeps 963 and 451 KiB;
+   the recursive paths of codegen and of the lowering join
+   `tools/stack_frames.py`, and no protected frame grows; the peak of the
+   whole compilation (analysis, TIR, codegen) is the `windows-stack`
+   measure; the extra memory of the TIR is measured on the largest test
+   program.
+
+Adopted from the same review round:
+
+- The inventory is generated and checked by a tool
+  (`tools/codegen_decisions.py`), not kept by hand; its `--zero` mode is
+  part of the exit criterion of step 5.
+- The closed set of `Place` kinds and the builtin enumeration are defined
+  at step 1, the enumeration in one header the analysis and the TIR share.
+- **Exit criterion of step 5:** `tools/codegen_decisions.py --zero` (no
+  name comparison, no lookup by AST node, no AST shape test in
+  `codegen/`), no `__with` test anywhere, and the LLVM IR snapshot
+  identical.
+- The count of side tables is reconciled at step 0: 16 (`inventory.md`).
