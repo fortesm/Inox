@@ -38,29 +38,43 @@ may still move.
                imports, the search path (--path, INOX_PATH), inox
                interface, struct encapsulation per module; read-only
                fields later
-foundation     no new language feature (Marcelo Fortes, 2026-10-31,
-               after external reviews); steps in docs/ARCHITECTURE.md:
+foundation     between 0.4 and 0.5, no new language feature (Marcelo
+               Fortes, 2026-10-31, after external reviews); the F steps
+               are milestones, not versions; steps in
+               docs/ARCHITECTURE.md:
                F0 phase contracts and docs; F1 every E19 gate in CI
                (nightly) and a version check; F2 source positions in the
                AST and in every diagnostic; F3 routine headers parsed into
                structure; F4 written types as structure, generics
-               instantiated on it (high risk); F5 desugaring out of the
-               parser; F6 a typed IR between analysis and codegen, design
-               first (high risk); F7 exception hierarchy in the types
-0.5            ownership and collections: Vector<T> with move semantics and
-               Clone, Option<T> and Result<T, E> (TryInteger), Split and
-               Join, Self owned; methods of
-               generic structs; the safe-pointers follow-ups; `lifecycle`
-               (constructors and destructors); arenas as an option
+               instantiated on it (F0-F4 done, r3.110-r3.118). Next, in
+               this order and before any 0.5 item (Marcelo Fortes,
+               2026-11-01): F5 desugaring out of the parser; F6 a typed IR
+               between analysis and codegen, incremental, design first
+               (high risk); F7 exception hierarchy in the types. The
+               version stays 0.4.0 pre-alpha while the foundation runs
+               (its work is under Unreleased in CHANGELOG); the release
+               that closes it is 0.4.1 pre-alpha, published once F7 is
+               done with every gate green and its notes gathered (Marcelo
+               Fortes, 2026-11-01); 0.5.0 opens the new features. The
+               canon revision moves on its own
+0.5            ownership and collections, after the foundation, in this
+               order (Marcelo Fortes, 2026-11-01): 1 methods of generic
+               structs (design in change generic-struct-methods); 2 the
+               critical safe-pointers follow-ups (Own, Link, Move, Free),
+               so new collections widen no safety gap; 3 Option<T> and
+               Result<T, E> (TryInteger), designed with the later variant
+               structs in mind; 4 Vector<T> with move semantics and Clone,
+               Split and Join; then Self owned, `lifecycle` (constructors
+               and destructors), arenas as an option
 0.6            expressiveness: routine types (named routines, then
                closures), variant structs, binary files and streams; the
                `| |`, `{ }` and `@` brainstorm settled; generic constraints
                if real programs ask for them
 0.7            backend and quality: object files and linker integration
                (E22, no external clang driver), BSD and other Unices,
-               clang-format, clang-tidy, cppcheck, coverage; typed AST for
-               types, exception hierarchy in the types, line numbers in
-               every diagnostic
+               clang-format, clang-tidy, cppcheck, coverage (the typed
+               AST for types, line numbers in every diagnostic and the
+               exception hierarchy moved to the foundation: F4, F2, F7)
 0.8            alpha: the 1.0 scope is complete; documentation, examples
                and the site cover all of it
 0.9            beta: the language is frozen, fixes only
