@@ -98,6 +98,10 @@ program is in both snapshots and is not compared (r3.116). `compare` fails on an
 declared mode that does not change, on a declared program that no longer
 differs, and on an `--allow` that names no added or removed program.
 
+The decisions code generation still takes (F6, change `typed-ir`) are
+counted by `python3 tools/codegen_decisions.py` (`--list` for each
+occurrence, `--zero` to require none, the exit criterion of F6).
+
 A change to the parser or the analyzer compares its stack frames with
 main's (E19, r3.117): build both trees with `-DCMAKE_CXX_FLAGS=-fstack-usage`
 (clang, Debug) and run
