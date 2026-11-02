@@ -19,15 +19,15 @@ every proposal names the phases it touches).
 ## The pipeline
 
 ```text
-source ─▶ 1 lexer ─▶ 2 parser ─▶ 3 module resolution ─▶ 4 contract lowering
+source ─▶ 1 lexer ─▶ 2 parser ─▶ 2b desugaring ─▶ 3 module resolution ─▶ 4 contract lowering
        ─▶ 5 semantic analysis ─▶ SemanticResult ─▶ 6 code generation (LLVM IR text)
        ─▶ 7 driver (clang++: object, link with libinoxrt) ─▶ executable
                                    8 runtime (libinoxrt) runs with the program
 ```
 
-The driver (`main/main.cpp`) runs phases 1-2 for each module file as it is
-loaded (`Use`), then 3-4 once on the whole program (`loadProgram`), then 5,
-6 and 7.
+The driver (`main/main.cpp`) runs phases 1, 2 and 2b for each module file
+as it is loaded (`Use`), then 3-4 once on the whole program
+(`loadProgram`), then 5, 6 and 7.
 
 ## Contracts of the phases
 
@@ -80,6 +80,26 @@ exception objects on the heap, will not show the cost.
   construct, invents names (E11).
 - **Owner:** `parser/`, `ast/`.
 
+### 2b. Desugaring
+- **In:** the AST of one module, as written. **Out:** the same module in
+  the normalized form the later phases understand: a chained assignment
+  becomes one store per target (right to left), a compound assignment
+  `L := L op R` marked compound, a `with` target a named binding
+  (`__with_N`), and loop `invariant`/`variant` lines checks before, at the
+  top of and after the loop (r3.119, change `desugaring-out-of-parser`).
+- **Guarantees:** runs exactly once per module, right after the parser and
+  before module resolution, on every path that analyzes a program
+  (`ModuleLoader::loadModule`); the synthetic names are numbered as the
+  parser numbered them before F5 (`with` in pre-order, loops with
+  contracts in post-order, per module); Debug builds check that no written
+  form is left (`requireDesugared`).
+- **Never:** resolves names, reads types, reports an error, or becomes a
+  general transformation or optimization pass.
+- **Owner:** `lowering/Desugar.*` (knows only `ast/`).
+- **F6 debt:** two analyzer checks recognize a `with` binding by the prefix
+  of its name (`__with`); F6 gives the analysis the binding's origin as a
+  property instead of a string.
+
 ### 3. Module resolution
 - **In:** the ASTs of every module. **Out:** one program in which every
   name means one declaration (internal qualified names).
@@ -129,10 +149,11 @@ exception objects on the heap, will not show the cost.
 - **Owner:** `src/runtime/`.
 
 ### Who may rewrite the AST
-Today: phase 4 (contracts), and in phase 5 only `SemanticReuse.cpp`
-(`S.FName` becomes `S.TPerson.FName`) and `SemanticGenerics.cpp` (copies a
-generic routine for each instance). The parser rewrites too, which is a
-deviation (D2). No other code changes the AST.
+Today: phase 2b (desugaring), phase 4 (contracts), and in phase 5 only
+`SemanticReuse.cpp` (`S.FName` becomes `S.TPerson.FName`) and
+`SemanticGenerics.cpp` (copies a generic routine for each instance). The
+parser builds the AST as written and rewrites nothing (D2 closed, r3.119).
+No other code changes the AST.
 
 ## Deviations from the contracts
 
@@ -142,7 +163,7 @@ that removes it (ROADMAP, "Foundation"); a fix updates this table.
 | # | Deviation | Law | Step |
 |---|---|---|---|
 | ~~D1~~ | Closed by F2 (r3.112): AST nodes carry their start (`ast::SourcePosition`; leaves and statements stamped by the parser, kept by `AstClone`); every parse and semantic error prints `path:line:column: kind: message`. The column is that of the statement, declaration or contract clause being checked; a column for each sub-expression comes with the typed IR (F6) | E14 | F2 |
-| D2 | The parser desugars: chained assignment (`pendingStatements_`), `with` bindings (`__with_N`), loop `invariant`/`variant` (`lowerLoopContracts`) | E11 | F5 |
+| ~~D2~~ | Closed by F5 (r3.119): the parser builds chained and compound assignments, `with` targets and loop contracts as written (`ChainedAssignmentStatement`, `CompoundAssignmentStatement`, `WithTargetExpression`, loop `contracts`); phase 2b (`lowering/Desugar`) produces the normalized AST, identical to the one the parser made before. The analyzer's `__with` prefix checks remain until F6 | E11 | F5 |
 | ~~D3~~ | Closed by F3 (r3.114): the parser builds each routine header (`ast::RoutineHeader`: `ParameterDeclaration` name, mode, receiver, written type; the result type) and reports its syntax errors; module resolution, contract lowering, generics and `inox interface` read that structure, and the analyzer checks only what types say (`registerFunctionSignatureIn`). Parameter and result types stay text until F4 | E11 | F3 |
 | ~~D4~~ | Closed by F4 (r3.117): a written type is a tree in the AST (`ast::TypeExpr`), built by the parser; module resolution renames, contract lowering tests and the analyzer resolves the tree; generic instances substitute type parameters on it (`substituteTypeParameters`, `writtenFormOf`). Text exists only through `ast::spell` (messages, `inox interface`, instance names); the text reader `types::TypeSyntax` is gone. Exception handler types stay names until F7 | E11 (steps 3-4) | F4 |
 | D5 | Codegen reads the raw AST beside 13 side tables of `SemanticResult`; no typed or lowered representation between phases 5 and 6 | E11 (steps 3-5) | F6 |
@@ -174,6 +195,9 @@ instead of searching the whole emitter.
   The written form of a type is the AST's (`ast/TypeExpr.*`, F4); the
   analyzer resolves it into these types. The analyzer produces types; codegen only reads them (`typeOf`,
   `declaredType`, `signatureOf` of `SemanticResult`) and never derives one.
+- `src/compiler/lowering/Desugar.*` — phase 2b (F5): the module's AST as
+  written to the normalized AST (chains, compound assignments, `with`,
+  loop contracts); `requireDesugared` checks that nothing is left.
 - `src/compiler/ast/TypeExpr.*` — the written form of a type (F4, change
   structured-types): Named, Array (one node per dimension) or Generic, with
   its bounds, arguments and position; `spell` gives the canonical text and

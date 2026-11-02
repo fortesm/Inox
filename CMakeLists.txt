@@ -33,6 +33,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/ast/AstClone.cpp
     src/compiler/ast/ModuleInterface.cpp
     src/compiler/ast/TypeExpr.cpp
+    src/compiler/lowering/Desugar.cpp
     src/compiler/codegen/AstQueries.cpp
     src/compiler/codegen/ExceptionAbi.cpp
     src/compiler/codegen/FunctionEmitter.cpp
@@ -180,6 +181,7 @@ add_executable(inox-compiler-tests
     tests/compiler-unit/AstCloneTests.cpp
     tests/compiler-unit/RoutineHeaderTests.cpp
     tests/compiler-unit/TypeExprTests.cpp
+    tests/compiler-unit/DesugarTests.cpp
 )
 target_link_libraries(inox-compiler-tests PRIVATE inox-compiler)
 # The corpus round trip of TypeExprTests reads tests/, examples/, stdlib/.

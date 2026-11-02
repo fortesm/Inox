@@ -584,7 +584,9 @@ std::vector<ast::StatementPtr> SemanticAnalyzer::cloneInstanceBody(const ast::Fu
         }
         return {};
     };
-    ast::CloneRewriters rewrite;
+    // On the heap: the rewriters are larger than a pointer (stack budget).
+    const auto rewriters = std::make_unique<ast::CloneRewriters>();
+    ast::CloneRewriters& rewrite = *rewriters;
     rewrite.type = [&](ast::TypeExpr& written) { substituteTypeParameters(written, parameters, arguments); };
     rewrite.exceptionName = [&](const std::string& written) {
         const std::string replacement = replace(written);

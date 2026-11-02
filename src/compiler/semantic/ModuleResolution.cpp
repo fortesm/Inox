@@ -161,7 +161,8 @@ private:
                                       [this](const std::string& name) {
                                           text(name);
                                           return name;
-                                      }};
+                                      },
+                                      {}};
         (void)ast::cloneStatements(body, rewriters);
     }
 
@@ -708,7 +709,8 @@ private:
     {
         ast::CloneRewriters rewriters{[this](const ast::Expression& node) { return replace(node); },
                                       [this](ast::TypeExpr& written) { rewriteType(written); },
-                                      [this](const std::string& name) { return rewriteText(name); }};
+                                      [this](const std::string& name) { return rewriteText(name); },
+                                      {}};
         return ast::cloneStatements(body, rewriters);
     }
 

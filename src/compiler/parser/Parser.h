@@ -45,9 +45,8 @@ public:
     std::vector<ast::StatementPtr> parseHeaderDelimitedBlock();
 
 private:
-    // One source statement may produce several (a chained assignment is
-    // desugared, ADR-0009), so statement lists are built with appendStatement,
-    // which drains pendingStatements_. Both stay private for that reason.
+    // Statement lists are built with appendStatement, which stamps each
+    // statement's start (change source-positions).
     ast::StatementPtr parseStatement();
     void appendStatement(std::vector<ast::StatementPtr>& statements);
     using TokenKind = lexer::TokenKind;
@@ -170,6 +169,7 @@ private:
         return node;
     }
 
+    void requireLoweredDepth(std::size_t depth) const;
     void checkExpressionDepth(const ast::Expression& expression) const;
     ast::StatementPtr endSimpleStatement(ast::StatementPtr statement);
 
@@ -201,12 +201,10 @@ private:
     std::vector<lexer::Token> tokens_;
     std::size_t current_ = 0;
     std::unordered_set<const ast::Expression*> parenthesized_;
-    // Statements produced by desugaring one source statement into several
-    // (chained assignment). appendStatement() drains them in order.
-    std::vector<ast::StatementPtr> pendingStatements_;
     bool headerExpression_ = false;
-    std::vector<std::string> withTargetStack_;
-    std::size_t withCounter_ = 0;
+    // How many `with` bodies enclose the current position (F5: the parser
+    // only counts; phase 2b names the targets).
+    std::size_t withDepth_ = 0;
 
     // Design by contract (CANON-24). `pre`, `pos`, `invariant`, `variant`,
     // `old` and `Result` are contextual words: a line that starts with one of
@@ -215,16 +213,8 @@ private:
     ast::ContractClause parseContractClause(ast::ContractClause::Kind kind);
     std::string sourceText(std::size_t first, std::size_t last) const;
     std::vector<ast::ContractClause> parseLoopContracts(bool allowVariant);
-    void lowerLoopContracts(std::vector<ast::ContractClause> contracts,
-                            std::vector<ast::StatementPtr>& body,
-                            bool checkAfterLoop);
     bool inPosClause_ = false;
     bool inContractClause_ = false;
-    std::string currentRoutine_;  // for the messages of loop contracts
-    std::size_t contractCounter_ = 0;
-    // Statements a loop contract puts before the loop (the variant's start
-    // value); appendStatement() emits them before the statement just parsed.
-    std::vector<ast::StatementPtr> precedingStatements_;
 
     // Source positions (change source-positions).
     ast::ExpressionPtr leafLiteral(ast::LiteralKind kind);

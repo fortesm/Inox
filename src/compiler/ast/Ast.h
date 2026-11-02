@@ -49,7 +49,13 @@ enum class AstNodeKind {
     ExitStatement,
     LeaveStatement,
     ContinueStatement,
-    WithStatement
+    WithStatement,
+    // The written forms of F5 (change desugaring-out-of-parser): built by the
+    // parser, turned into the forms above by phase 2b (lowering/Desugar);
+    // no later phase sees them.
+    ChainedAssignmentStatement,
+    CompoundAssignmentStatement,
+    WithTargetExpression
 };
 
 enum class LiteralKind {
@@ -605,24 +611,33 @@ private:
 
 class WhileStatement final : public Statement {
 public:
-    WhileStatement(ExpressionPtr condition, std::vector<StatementPtr> body);
+    WhileStatement(ExpressionPtr condition, std::vector<StatementPtr> body,
+                   std::vector<ContractClause> contracts = {});
 
     const Expression& condition() const;
     const std::vector<StatementPtr>& body() const;
+    // `invariant` and `variant` lines as written (CANON-24); phase 2b turns
+    // them into checks and leaves this empty.
+    const std::vector<ContractClause>& contracts() const { return contracts_; }
+    std::vector<ContractClause>& contracts() { return contracts_; }
 
 private:
     ExpressionPtr condition_;
     std::vector<StatementPtr> body_;
+    std::vector<ContractClause> contracts_;
 };
 
 class RepeatStatement final : public Statement {
 public:
-    explicit RepeatStatement(std::vector<StatementPtr> body);
+    explicit RepeatStatement(std::vector<StatementPtr> body, std::vector<ContractClause> contracts = {});
 
     const std::vector<StatementPtr>& body() const;
+    const std::vector<ContractClause>& contracts() const { return contracts_; }
+    std::vector<ContractClause>& contracts() { return contracts_; }
 
 private:
     std::vector<StatementPtr> body_;
+    std::vector<ContractClause> contracts_;
 };
 
 class UntilStatement final : public Statement {
@@ -640,18 +655,22 @@ public:
     ForInStatement(std::string iterator,
                    ExpressionPtr iterable,
                    ExpressionPtr step,
-                   std::vector<StatementPtr> body);
+                   std::vector<StatementPtr> body,
+                   std::vector<ContractClause> contracts = {});
 
     const std::string& iterator() const;
     const Expression& iterable() const;
     const Expression* step() const;
     const std::vector<StatementPtr>& body() const;
+    const std::vector<ContractClause>& contracts() const { return contracts_; }
+    std::vector<ContractClause>& contracts() { return contracts_; }
 
 private:
     std::string iterator_;
     ExpressionPtr iterable_;
     ExpressionPtr step_;
     std::vector<StatementPtr> body_;
+    std::vector<ContractClause> contracts_;
 };
 
 class CaseStatement final : public Statement {
@@ -768,6 +787,49 @@ private:
     ExpressionPtr target_;
     std::vector<StatementPtr> body_;
     std::string bindingName_;
+};
+
+// `A := B := C := X` as written (CANON-5): the targets left to right, the
+// value last. Phase 2b stores X in C, then C in B, then B in A.
+class ChainedAssignmentStatement final : public Statement {
+public:
+    ChainedAssignmentStatement(std::vector<ExpressionPtr> targets, ExpressionPtr value);
+
+    const std::vector<ExpressionPtr>& targets() const { return targets_; }
+    const Expression& value() const { return *value_; }
+
+private:
+    std::vector<ExpressionPtr> targets_;
+    ExpressionPtr value_;
+};
+
+// `L op= R` as written (ADR-0012), op one of Add, Subtract, Multiply,
+// Divide, Power. Phase 2b makes it `L := L op R`, marked compound.
+class CompoundAssignmentStatement final : public Statement {
+public:
+    CompoundAssignmentStatement(ExpressionPtr target, BinaryOperator op, ExpressionPtr value);
+
+    const Expression& target() const { return *target_; }
+    BinaryOperator op() const { return op_; }
+    const Expression& value() const { return *value_; }
+
+private:
+    ExpressionPtr target_;
+    BinaryOperator op_;
+    ExpressionPtr value_;
+};
+
+// The receiver of `.Member` in a `with` body: the target of the `with` at
+// nesting `level` of its routine (0 = the outermost). Phase 2b replaces it
+// by the `with`'s binding.
+class WithTargetExpression final : public Expression {
+public:
+    explicit WithTargetExpression(std::size_t level);
+
+    std::size_t level() const { return level_; }
+
+private:
+    std::size_t level_;
 };
 
 } // namespace inox::compiler::ast

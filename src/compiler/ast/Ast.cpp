@@ -561,10 +561,12 @@ const std::vector<StatementPtr>& UnlessStatement::body() const
     return body_;
 }
 
-WhileStatement::WhileStatement(ExpressionPtr condition, std::vector<StatementPtr> body)
+WhileStatement::WhileStatement(ExpressionPtr condition, std::vector<StatementPtr> body,
+                               std::vector<ContractClause> contracts)
     : Statement(AstNodeKind::WhileStatement),
       condition_(std::move(condition)),
-      body_(std::move(body))
+      body_(std::move(body)),
+      contracts_(std::move(contracts))
 {
 }
 
@@ -578,9 +580,10 @@ const std::vector<StatementPtr>& WhileStatement::body() const
     return body_;
 }
 
-RepeatStatement::RepeatStatement(std::vector<StatementPtr> body)
+RepeatStatement::RepeatStatement(std::vector<StatementPtr> body, std::vector<ContractClause> contracts)
     : Statement(AstNodeKind::RepeatStatement),
-      body_(std::move(body))
+      body_(std::move(body)),
+      contracts_(std::move(contracts))
 {
 }
 
@@ -603,12 +606,14 @@ const Expression& UntilStatement::condition() const
 ForInStatement::ForInStatement(std::string iterator,
                                ExpressionPtr iterable,
                                ExpressionPtr step,
-                               std::vector<StatementPtr> body)
+                               std::vector<StatementPtr> body,
+                               std::vector<ContractClause> contracts)
     : Statement(AstNodeKind::ForInStatement),
       iterator_(std::move(iterator)),
       iterable_(std::move(iterable)),
       step_(std::move(step)),
-      body_(std::move(body))
+      body_(std::move(body)),
+      contracts_(std::move(contracts))
 {
 }
 
@@ -837,6 +842,24 @@ SourcePosition startOf(const Expression& expression)
             return {};
         }
     }
+}
+
+ChainedAssignmentStatement::ChainedAssignmentStatement(std::vector<ExpressionPtr> targets, ExpressionPtr value)
+    : Statement(AstNodeKind::ChainedAssignmentStatement), targets_(std::move(targets)), value_(std::move(value))
+{
+}
+
+CompoundAssignmentStatement::CompoundAssignmentStatement(ExpressionPtr target, BinaryOperator op, ExpressionPtr value)
+    : Statement(AstNodeKind::CompoundAssignmentStatement),
+      target_(std::move(target)),
+      op_(op),
+      value_(std::move(value))
+{
+}
+
+WithTargetExpression::WithTargetExpression(std::size_t level)
+    : Expression(AstNodeKind::WithTargetExpression), level_(level)
+{
 }
 
 } // namespace inox::compiler::ast

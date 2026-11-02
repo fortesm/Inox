@@ -1,6 +1,7 @@
 Design of foundation step F5 (change `desugaring-out-of-parser`). Risk:
 high. Status: **approved** by Marcelo Fortes, 2026-11-01, with Q1-Q4 and
-five conditions (see "Approval").
+five conditions (see "Approval"); implemented (canon r3.119, see "As
+implemented").
 
 ## Today (D2)
 
@@ -208,3 +209,34 @@ Conditions:
 Scope: phase 2b only turns the AST as written into the normalized AST the
 later phases already understand; it is not a general optimization or
 transformation framework.
+
+## As implemented
+
+- **Forms.** `ChainedAssignmentStatement`, `CompoundAssignmentStatement`
+  (Q2) and `WithTargetExpression`; loops carry `contracts`. A
+  `WithTargetExpression` holds the nesting level of its `with` counted from
+  the outermost of its routine (0), not the depth from the innermost: the
+  parser knows the level when it reads `.Member`, and the pass keeps a
+  stack of names.
+- **Limits.** The nesting limit of expressions applies to the forms the
+  pass will build, as before (`requireLoweredDepth`): the parser still
+  rejects a chain or compound assignment whose lowered form would be too
+  deep, with the same message.
+- **Names in messages.** A loop contract's message names the routine as
+  the parser named it (the declaration's name as written).
+- **Driver paths (condition 4).** The pass runs in
+  `ModuleLoader::loadModule`, the only path that analyzes: the entry
+  module and every module a `Use` loads, once each; Debug builds then
+  check that no written form is left. `--parse-only`, `--dump-tokens` and
+  `inox interface` do not analyze and do not run it. ASTs cloned later
+  (contract wrappers, generic instances) are clones of the normalized AST.
+- **Clone.** `AstClone` copies the written forms (the pass uses it, with a
+  statement rewriter); a loop's contracts are attached after the copy, out
+  of line, so `cloneStatementNode` keeps its 1512 bytes.
+- **Stack** (`tools/stack_frames.py`, clang Debug, against main): no
+  recursion-path function grows; `parseExpressionStatement` 840 → 728,
+  `cloneStatement` 120 → 88, `cloneInstanceBody` 264 → 184. The pass's own
+  recursion stays under 512 bytes a frame (`lowerChain` 328, `lowerLoop`
+  312, `rebuildLoop` 216, `lowerWith` 168). The tool now keeps the
+  `(anonymous namespace)` in names, so the clone's functions are measured
+  (they were folded together before).
