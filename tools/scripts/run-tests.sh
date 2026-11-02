@@ -767,6 +767,11 @@ run_driver_case "B4: inox interface of Bank" out "tests/interface/bank.out" "" \
     interface --path examples/bank examples/bank/Bank.inox
 run_driver_case "B4: inox interface of Std.DateUtils" out "tests/interface/std-dateutils.out" "" \
     interface stdlib/Std.DateUtils.inox
+# F6 (typed-ir): `--dump-tir` prints the typed IR of each program of tests/tir.
+for tir_test in "$repo_root"/tests/tir/*.inox; do
+    tir_name="$(basename "$tir_test" .inox)"
+    run_driver_case "typed IR: $tir_name" out "tests/tir/$tir_name.tir" "" --dump-tir "tests/tir/$tir_name.inox"
+done
 run_mode_exit_test --emit-llvm "$repo_root/tests/integration/cycles/Cycle.A.inox" false
 
 # docs/grammar/grammar.ebnf must agree with the constitution, the lexer and the parser.

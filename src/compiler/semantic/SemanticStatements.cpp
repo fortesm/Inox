@@ -59,6 +59,8 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
                 symbols_.currentScope().markDeepReadOnly(parameter.name);
             }
             currentParameters_.insert(symbols_.currentScope().resolve(parameter.name));
+            noteDeclared(&function.parameters()[index], parameter.name,
+                         parameterOrigin(parameter.mode, isMethod && index == 0 && function.parameters()[0].isReceiver));
         }
     }
     analyzeStatements(function.body(), false);
@@ -416,6 +418,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             result_.requireNewValueInvariant(var, type);
         }
         declareOrThrow(var.name(), SymbolKind::Variable, type, true);
+        noteDeclared(&var, var.name(), VariableOrigin::Local);
         result_.setDeclaredType(var, type);
         trackLocal(var.name());
         break;
@@ -531,6 +534,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
                 "loop iterator conflicts with existing symbol: " + forStatement.iterator());
         }
         declareOrThrow(forStatement.iterator(), SymbolKind::LoopIterator, iteratorType, false);
+        noteIterator(forStatement);
         const auto start = movedOwners_;
         ++loopDepth_;
         analyzeStatements(forStatement.body(), false);
@@ -594,6 +598,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             symbols_.pushScope();
             if (!handler.bindingName.empty()) {
                 declareOrThrow(handler.bindingName, SymbolKind::Variable, types().lookup(handler.typeName), false);
+                noteDeclared(&handler, handler.bindingName, VariableOrigin::HandlerBinding);
             }
             ++exceptionHandlerDepth_;
             ++retryHandlerDepth_;
@@ -755,6 +760,7 @@ void SemanticAnalyzer::analyzeVarBlock(const ast::VarBlockStatement& statement)
                                                    : "an owner is never copied: give it away with Move(X)");
                     }
                     declareOrThrow(identifier.name(), SymbolKind::Variable, type, true);
+                    noteDeclared(&binary, identifier.name(), VariableOrigin::Local);
                     trackLocal(identifier.name());
                     const Symbol& symbol = resolveOrThrow(identifier.name());
                     result_.bind(identifier, symbol);
@@ -804,6 +810,8 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
                 const auto& range = static_cast<const ast::BinaryExpression&>(*choice);
                 interval.low = caseChoiceValue(range.left(), selectorType);
                 interval.high = caseChoiceValue(range.right(), selectorType);
+                // F6 (typed-ir): a range of choices is a range of the selector's type.
+                result_.setExpressionType(range, selectorType);
                 if (interval.low > interval.high) {
                     throw SemanticError("empty range in case choice: " +
                                         caseValueText(interval.low, domain) + ".." +

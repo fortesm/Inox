@@ -1,0 +1,44 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== F6 (typed-ir): the callee of every call is a routine of the program or
+== an operation (--dump-tir): a method of a built-in type, a generic
+== struct and its construction, a routine called without parentheses, a
+== module intrinsic and the console input.
+Use Std.Terminal
+
+Type
+    TPair<K, V> Struct
+        FKey K
+        FValue V
+    ;
+
+Integer.Twice(Self) Integer :
+    Return Self * 2
+;
+
+Integer.Inc(Self mut) :
+    Self += 1
+;
+
+Answer Integer :
+    Return 42
+;
+
+Main :
+    N := Answer
+    N.Inc
+    PutLn(N.Twice)
+    P := TPair(FKey := "k", FValue := N)
+    PutLn(P.FKey, P.FValue)
+    Line String := ""
+    GetLn(Line)
+    unless EndOfInput
+        Flush
+        PutLn(Line)
+    ;
+;

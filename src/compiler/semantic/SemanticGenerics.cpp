@@ -403,10 +403,12 @@ TypeRef SemanticAnalyzer::analyzeGenericCall(const ast::FunctionDeclaration& gen
     const Symbol* symbol = symbols_.globalScope().resolve(signature.name);
     result_.bind(callee, *symbol);
     if (call == nullptr) {
+        noteRoutineCall(callee, signature, CallKind::Routine);
         result_.setExpressionType(callee, signature.returnType);
         return signature.returnType;
     }
     result_.bind(*call, *symbol);
+    noteRoutineCall(*call, signature, CallKind::Routine);
     const TypeRef type = analyzeUserFunctionCall(signature, call->arguments(), &argumentTypes);
     for (std::size_t index = 0; index < call->arguments().size(); ++index) {
         if (signature.parameters[index].mode == PassMode::RefMut) {

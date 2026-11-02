@@ -62,6 +62,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/codegen/TypeLayout.cpp
     src/compiler/lexer/Lexer.cpp
     src/compiler/parser/Parser.cpp
+    src/compiler/semantic/CallMeaning.cpp
     src/compiler/semantic/ConstantEvaluator.cpp
     src/compiler/semantic/SemanticAnalyzer.cpp
     src/compiler/semantic/SemanticBuiltins.cpp
@@ -85,6 +86,10 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticSupport.cpp
     src/compiler/semantic/SemanticTypes.cpp
     src/compiler/semantic/Symbol.cpp
+    src/compiler/tir/Lower.cpp
+    src/compiler/tir/Print.cpp
+    src/compiler/tir/Tir.cpp
+    src/compiler/tir/Verify.cpp
     src/compiler/types/TypeContext.cpp
     src/compiler/support/Environment.cpp
     src/compiler/support/FileSystem.cpp
@@ -182,6 +187,7 @@ add_executable(inox-compiler-tests
     tests/compiler-unit/RoutineHeaderTests.cpp
     tests/compiler-unit/TypeExprTests.cpp
     tests/compiler-unit/DesugarTests.cpp
+    tests/compiler-unit/TypedIrTests.cpp
 )
 target_link_libraries(inox-compiler-tests PRIVATE inox-compiler)
 # The corpus round trip of TypeExprTests reads tests/, examples/, stdlib/.

@@ -9,6 +9,7 @@
 
 #include "../types/Type.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -28,6 +29,21 @@ enum class SymbolKind {
     Builtin
 };
 
+// F6 (typed-ir): where a Variable comes from, so a later phase tells a
+// local, a parameter, the receiver, a `with` binding and a handler's
+// binding apart without looking at its name. None for the other kinds.
+enum class VariableOrigin : std::uint8_t {
+    None,
+    Local,
+    Parameter,         // passed by value
+    RefParameter,      // `ref X T`
+    RefMutParameter,   // `ref mut X T`
+    Receiver,          // `Self`
+    MutReceiver,       // `Self mut`
+    WithBinding,       // the binding of a `with` (CANON-11)
+    HandlerBinding     // `On E: X` binds X
+};
+
 struct Symbol {
     std::string name;
     std::string normalizedName;
@@ -39,6 +55,7 @@ struct Symbol {
     // A `ref` parameter, the plain `Self` of a method, or `with` on one of
     // them: read-only through its owners too (change read-only-through-owners).
     bool deepReadOnly = false;
+    VariableOrigin origin = VariableOrigin::None;
 };
 
 class Scope {
@@ -55,6 +72,8 @@ public:
     void inferType(std::string_view name, const types::Type* type);
     // Marks a symbol of this scope read-only through its owners.
     void markDeepReadOnly(std::string_view name);
+    // Records where a Variable of this scope comes from (F6).
+    void setOrigin(std::string_view name, VariableOrigin origin);
     bool containsLocal(std::string_view name) const;
     bool containsInAncestors(std::string_view name) const;
 

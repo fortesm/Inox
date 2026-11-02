@@ -59,6 +59,7 @@ void SemanticAnalyzer::registerFunctionSignatureIn(const ast::FunctionDeclaratio
     signature.isOverride = function.isOverride();
     signature.isPublic = function.isPublic();
     signature.module = function.module();
+    signature.declaration = &function;
 
     const std::size_t dot = ast::methodDot(function.name());
     const bool isAssociatedMethod = dot != std::string::npos;
@@ -341,6 +342,7 @@ void SemanticAnalyzer::declareModuleItem(const ast::AstNode& item)
         declareOrThrow(function.name(), SymbolKind::Function);
         if (equalsIgnoreCase(function.name(), "Main")) {
             hasMain_ = true;
+            result_.setEntry(function);
         }
         break;
     }
@@ -419,6 +421,7 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
             : declaration.type->isArray() ? nullptr
                                           : lookupWrittenType(*declaration.type);
         declareOrThrow(declaration.name, kind, type, isMutable);
+        noteDeclared(&declaration, declaration.name, VariableOrigin::None);
         if (type == nullptr && declaration.type && !declaration.type->isArray()) {
             pendingSectionTypes_.emplace_back(declaration.name, ast::spell(*declaration.type));
         }
@@ -576,6 +579,7 @@ void SemanticAnalyzer::registerStructDeclaration(const ast::TypeDeclaration& dec
     declareOrThrow(declaration.name, SymbolKind::Type);
     typeModules_[normalizeName(declaration.name)] = declaration.module;
     const TypeRef structType = types().declareStruct(declaration.name);
+    result_.setDeclaredType(declaration, structType);
 
     std::vector<types::StructField> fields;
     std::vector<const ast::TypeExpr*> written;

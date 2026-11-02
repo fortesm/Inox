@@ -1,0 +1,43 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== F6 (typed-ir): calls are operations, never names (--dump-tir): builtins,
+== constants the analysis computed, conversions, constructions, sets,
+== slices, Std.Strings and the console.
+Use Std.Strings
+
+Type
+    TSuit (Club, Diamond, Heart, Spade)
+    TPercent Range 0..100
+    TPair Struct
+        FLeft Integer := 1
+        FRight String := "r"
+    ;
+
+
+Const Limit := 3
+Const Greeting := "hi"
+
+Main :
+    V Array[1..Limit] Integer := Fill(7)
+    PutLn(Low(V), High(V), Length(V))
+    S := V[2..]
+    PutLn(Length(S), Low(S))
+    T := V[..]
+    PutLn(High(T))
+    Suit := Succ(Club)
+    PutLn(Ord(Suit), Low(TSuit))
+    Hand Set<TSuit> := [Club, Heart..Spade]
+    PutLn(Diamond in Union(Hand, [Diamond]))
+    P TPercent := 40
+    F := Float(P) / 3.0
+    PutLn(Sqrt(F) > 1.0, Abs(-2))
+    Pair := TPair(FRight := Greeting)
+    PutLn(Pair.FLeft, Length(Pair.FRight), UpperCase("x"))
+    Ch := Char(65)
+    PutLn(String(Ch), EndOfInput)
+;

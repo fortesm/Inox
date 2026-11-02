@@ -14,6 +14,12 @@ Usage
   tools/ir_snapshot.py compare <inox> <snapshot-dir> [--allow PATH ...] [--expect FILE ...]
   tools/ir_snapshot.py expect  <inox> <snapshot-dir> PATH ...  > FILE
 
+`--tir` anywhere selects the snapshot of the typed IR instead (F6, change
+typed-ir): the output of `--dump-tir`, kept in snapshot-tir.json, with its
+own expectation files (ir-snapshot-tir-expect.json). The two snapshots are
+apart, so an intended change of the typed IR never touches the rule of the
+LLVM IR.
+
 `--allow` names a program (repository-relative path) that the change adds
 or removes: one missing from a snapshot, or (when the base compiler was
 recorded on the head's programs, as CI does) one whose base output is not
@@ -50,6 +56,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MODES = ("--emit-llvm", "--dump-types")
+SNAPSHOT_FILE = "snapshot.json"
+TIR_MODES = ("--dump-tir",)
+TIR_SNAPSHOT_FILE = "snapshot-tir.json"
 SOURCES = ("tests", "examples", "stdlib")
 TIMEOUT_SECONDS = 30
 
@@ -90,7 +99,7 @@ def snapshot(compiler: str) -> dict[str, dict[str, dict[str, object]]]:
 def command_record(compiler: str, directory: Path) -> int:
     directory.mkdir(parents=True, exist_ok=True)
     data = snapshot(compiler)
-    (directory / "snapshot.json").write_text(json.dumps(data, indent=1, sort_keys=True),
+    (directory / SNAPSHOT_FILE).write_text(json.dumps(data, indent=1, sort_keys=True),
                                              encoding="utf-8")
     print(f"recorded {len(data)} programs in {directory}")
     return 0
@@ -116,7 +125,7 @@ def changed_modes(before: dict[str, object], after: dict[str, object]) -> list[s
 
 
 def command_expect(compiler: str, directory: Path, names: list[str]) -> int:
-    before = json.loads((directory / "snapshot.json").read_text(encoding="utf-8"))
+    before = json.loads((directory / SNAPSHOT_FILE).read_text(encoding="utf-8"))
     after = snapshot(compiler)
     expected: dict[str, dict[str, object]] = {}
     for name in names:
@@ -134,7 +143,7 @@ def command_expect(compiler: str, directory: Path, names: list[str]) -> int:
 
 def command_compare(compiler: str, directory: Path, allowed: set[str],
                     expected: dict[str, dict[str, object]]) -> int:
-    before = json.loads((directory / "snapshot.json").read_text(encoding="utf-8"))
+    before = json.loads((directory / SNAPSHOT_FILE).read_text(encoding="utf-8"))
     after = snapshot(compiler)
     unexpected = 0
     for name in sorted(set(before) | set(after)):
@@ -192,6 +201,10 @@ def command_compare(compiler: str, directory: Path, allowed: set[str],
 
 
 def main(argv: list[str]) -> int:
+    global MODES, SNAPSHOT_FILE
+    if "--tir" in argv:
+        argv = [argument for argument in argv if argument != "--tir"]
+        MODES, SNAPSHOT_FILE = TIR_MODES, TIR_SNAPSHOT_FILE
     if len(argv) < 4 or argv[1] not in ("record", "compare", "expect"):
         print(__doc__)
         return 2

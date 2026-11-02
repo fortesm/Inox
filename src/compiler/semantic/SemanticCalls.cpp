@@ -55,9 +55,11 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
     if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
         const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
         if (name == "__check") {
+            noteCall(call, CallKind::Check);
             return analyzeContractCheck(call);
         }
         if (name == "__pure") {
+            noteCall(call, CallKind::Pure);
             return analyzePureCall(call);
         }
     }
@@ -91,13 +93,16 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
             return analyzeMemberExpression(call);
         }
         if (callee.name() == "__index") {
+            noteCall(call, CallKind::Index);
             return analyzeIndexExpression(call);
         }
         if (callee.name() == "__slice") {
+            noteCall(call, CallKind::Slice);
             return analyzeSliceExpression(call);
         }
         // Sets (CANON-13): a literal, and the six set functions.
         if (callee.name() == "__set") {
+            noteCall(call, CallKind::SetLiteral);
             return analyzeSetLiteral(call);
         }
         if (isSetFunctionCall(call)) {
@@ -105,6 +110,7 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
             if (symbol != nullptr) {
                 result_.bind(callee, *symbol);
             }
+            noteBuiltin(call);
             return analyzeSetFunction(call);
         }
         if (equalsIgnoreCase(callee.name(), "Without") && call.arguments().size() == 2 &&
@@ -114,14 +120,17 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
         }
         // r3.81: an array is filled where it is declared, `Fill(Value)`.
         if (isFillCall(call)) {
+            noteBuiltin(call);
             return analyzeFill(call);
         }
         // Enums: Ord, Succ, Pred, and Low and High of an enum type.
         if (const TypeRef ordinal = analyzeOrdinalBuiltin(call)) {
+            noteBuiltin(call);
             return ordinal;
         }
         // Safe pointers: New, Free, Move, Value, Link, Alive, Same.
         if (isPointerBuiltinCall(callee.name(), call.arguments().size())) {
+            noteBuiltin(call);
             return analyzePointerBuiltin(callee.name(), call);
         }
         if ((equalsIgnoreCase(callee.name(), "Low") || equalsIgnoreCase(callee.name(), "High") ||
@@ -129,12 +138,14 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
             call.arguments().size() == 1) {
             const TypeRef argumentType = analyzeExpression(*call.arguments()[0]);
             if (argumentType != nullptr && argumentType->isSlice()) {
+                noteBuiltin(call);
                 return types().int64Type();  // ADR-0017: a slice's bounds are known at run time
             }
             // Std.Strings: Length of a String counts its characters.
             if (argumentType != nullptr && argumentType->isString() && equalsIgnoreCase(callee.name(), "Length") &&
                 (stringsVisible_ || !userRoutineNamed(callee.name()))) {
                 const std::vector<TypeRef> argumentTypes{argumentType};
+                noteCall(call, CallKind::StringFunction);
                 return analyzeStringCall(call, &argumentTypes);
             }
             if (argumentType != nullptr && argumentType->isArray()) {
@@ -146,6 +157,7 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
                                          : equalsIgnoreCase(callee.name(), "High")   ? high
                                                                                      : high - low + 1;
                 constants_[&call] = value;
+                noteBuiltin(call);
                 return types().int64Type();
             }
         }
@@ -178,6 +190,7 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
                 // CANON-8 (v3.39): an integer conversion checks the range of
                 // its target. A constant argument outside it, such as
                 // Natural(-1) or Byte(300), is a compile-time error.
+                noteCall(call, CallKind::Conversion);
                 if (type->isEnum()) {
                     checkEnumConversion(call, type);
                     return type;
@@ -225,6 +238,7 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
         // Std.Debug (debug-assert): Assert exists only with `Use Std.Debug`;
         // a routine of the program named Assert is called otherwise.
         if (equalsIgnoreCase(callee.name(), "Assert") && (debugVisible_ || !userRoutineNamed(callee.name()))) {
+            noteBuiltin(call);
             return analyzeAssertCall(call);
         }
 
@@ -233,15 +247,18 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
         // program's own routines; a call to none of them gets a hint.
         if (isFileFunction(callee.name(), call.arguments().size()) &&
             (fileFunctionVisible(callee.name()) || !userRoutineNamed(callee.name()))) {
+            noteBuiltin(call, true);
             return analyzeFileCall(callee.name(), call);
         }
 
         // Std.Math Round and Trunc (change decimals).
         if (isRoundingCall(call)) {
+            noteBuiltin(call);
             return analyzeRounding(call);
         }
         // Std.Terminal (change console-abi-terminal).
         if (const ModuleIntrinsic* terminal = moduleIntrinsic(callee.name())) {
+            noteIntrinsicCall(call, *terminal);
             return analyzeIntrinsicCall(call, *terminal);
         }
 
@@ -249,6 +266,7 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
         // an array, a slice or a String was handled above.
         if (findStringFunction(callee.name()) != nullptr && !equalsIgnoreCase(callee.name(), "Length") &&
             (stringFunctionVisible(callee.name()) || !userRoutineNamed(callee.name()))) {
+            noteCall(call, CallKind::StringFunction);
             return analyzeStringCall(call, nullptr);
         }
 
@@ -264,6 +282,7 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
             const Symbol& symbol = resolveOrThrow(callee.name());
             result_.bind(callee, symbol);
             result_.bind(call, symbol);
+            noteBuiltin(call);
             if (equalsIgnoreCase(callee.name(), "Get") || equalsIgnoreCase(callee.name(), "GetLn")) {
                 return analyzeInputCall(callee.name(), call.arguments());
             }
@@ -282,6 +301,7 @@ TypeRef SemanticAnalyzer::analyzeCallExpression(const ast::CallExpression& call)
             const Symbol& symbol = resolveOrThrow(callee.name());
             result_.bind(callee, symbol);
             result_.bind(call, symbol);
+            noteRoutineCall(call, *signature, CallKind::Routine);
             const TypeRef type = analyzeUserFunctionCall(*signature, call.arguments());
             // CANON-24: a ref mut argument may break its struct's invariant.
             for (std::size_t index = 0; index < call.arguments().size(); ++index) {
@@ -329,6 +349,7 @@ TypeRef SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression& cal
     if (field != nullptr) {
         requireFieldVisible(baseType, *field);
         result_.setExpressionType(fieldIdentifier, field->type);
+        noteField(call, baseType, *field);
         return field->type;
     }
 
@@ -363,6 +384,7 @@ TypeRef SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression& cal
         const Symbol& symbol = resolveOrThrow(signature->name);
         result_.bind(fieldIdentifier, symbol);
         result_.bind(call, symbol);
+        noteRoutineCall(call, *signature, CallKind::MethodNoArguments);
         return signature->returnType;
     }
 
@@ -418,6 +440,7 @@ TypeRef SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpression&
     const Symbol& symbol = resolveOrThrow(signature->name);
     result_.bind(methodIdentifier, symbol);
     result_.bind(call, symbol);
+    noteRoutineCall(call, *signature, CallKind::Method);
 
     for (std::size_t index = 0; index < call.arguments().size(); ++index) {
         const FunctionParameter& parameter = signature->parameters[index + 1];
@@ -508,6 +531,7 @@ TypeRef SemanticAnalyzer::analyzeConstruction(const ast::CallExpression& call, T
                                 " expects " + types::nameOf(field->type));
         }
         result_.setExpressionType(*named, field->type);
+        noteField(*named, type, *field);
     }
     for (const types::StructField& field : type->fields()) {
         bool named = false;
@@ -558,6 +582,7 @@ TypeRef SemanticAnalyzer::analyzeConstruction(const ast::CallExpression& call, T
         result_.requireNewValueInvariant(call, type);
     }
     result_.setConstructedStruct(call, type);
+    noteCall(call, CallKind::Construction);
     return type;
 }
 
@@ -641,6 +666,97 @@ void SemanticAnalyzer::checkReferenceArguments(const std::string& routine,
             }
         }
     }
+}
+
+// F6 (typed-ir): the meaning of each call, for the typed IR.
+void SemanticAnalyzer::noteCall(const ast::Expression& call, CallKind kind)
+{
+    CallMeaning meaning;
+    meaning.kind = kind;
+    result_.setCallMeaning(call, meaning);
+}
+
+void SemanticAnalyzer::noteField(const ast::Expression& access, TypeRef structType, const types::StructField& field)
+{
+    CallMeaning meaning;
+    meaning.kind = CallKind::Field;
+    meaning.field = static_cast<std::uint32_t>(&field - structType->fields().data());
+    result_.setCallMeaning(access, meaning);
+}
+
+void SemanticAnalyzer::noteBuiltin(const ast::CallExpression& call, bool file)
+{
+    CallMeaning meaning;
+    meaning.kind = CallKind::Builtin;
+    meaning.op = builtinOpNamed(static_cast<const ast::IdentifierExpression&>(call.callee()).name(), file);
+    // CANON-13: Low, High and Length of a fixed array, and Low and High of
+    // an enum or Range type, are constants of the type; the other folded
+    // values (Ord, Succ, Pred of a constant) stay operations.
+    const bool ofType = meaning.op == BuiltinOp::Low || meaning.op == BuiltinOp::High || meaning.op == BuiltinOp::Length;
+    if (const auto constant = constants_.find(&call); ofType && constant != constants_.end()) {
+        meaning.constant = constant->second;
+    }
+    result_.setCallMeaning(call, meaning);
+}
+
+void SemanticAnalyzer::noteBuiltinIdentifier(const ast::IdentifierExpression& identifier)
+{
+    CallMeaning meaning;
+    meaning.kind = CallKind::Builtin;
+    meaning.op = builtinOpNamed(identifier.name());
+    result_.setCallMeaning(identifier, meaning);
+}
+
+void SemanticAnalyzer::noteRoutineCall(const ast::Expression& call, const FunctionSignature& signature, CallKind kind)
+{
+    CallMeaning meaning;
+    meaning.kind = kind;
+    meaning.routine = &signature;
+    result_.setCallMeaning(call, meaning);
+}
+
+void SemanticAnalyzer::noteIntrinsicCall(const ast::Expression& call, const ModuleIntrinsic& intrinsic)
+{
+    CallMeaning meaning;
+    meaning.kind = CallKind::Intrinsic;
+    meaning.intrinsic = &intrinsic;
+    result_.setCallMeaning(call, meaning);
+}
+
+void SemanticAnalyzer::noteDeclared(const void* declaration, const std::string& name, VariableOrigin origin)
+{
+    if (origin != VariableOrigin::None) {
+        symbols_.currentScope().setOrigin(name, origin);
+    }
+    if (const Symbol* symbol = symbols_.currentScope().resolve(name)) {
+        result_.setDeclaredSymbol(declaration, *symbol);
+    }
+}
+
+void SemanticAnalyzer::noteOmittedBound(const ast::CallExpression& slice, bool low)
+{
+    CallMeaning meaning = result_.callMeaning(slice) != nullptr ? *result_.callMeaning(slice) : CallMeaning{};
+    meaning.kind = CallKind::Slice;
+    (low ? meaning.lowOmitted : meaning.highOmitted) = true;
+    result_.setCallMeaning(slice, meaning);
+}
+
+void SemanticAnalyzer::noteIterator(const ast::ForInStatement& loop)
+{
+    noteDeclared(&loop, loop.iterator(), VariableOrigin::None);
+}
+
+VariableOrigin SemanticAnalyzer::parameterOrigin(PassMode mode, bool receiver)
+{
+    if (receiver) {
+        return mode == PassMode::RefMut ? VariableOrigin::MutReceiver : VariableOrigin::Receiver;
+    }
+    switch (mode) {
+    case PassMode::Ref: return VariableOrigin::RefParameter;
+    case PassMode::RefMut: return VariableOrigin::RefMutParameter;
+    case PassMode::Value: break;
+    }
+    return VariableOrigin::Parameter;
 }
 
 } // namespace inox::compiler::semantic

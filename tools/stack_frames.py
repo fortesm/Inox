@@ -5,7 +5,8 @@
 
 Compares the `.su` files that `-fstack-usage` writes for two builds of the
 compiler, the base (main) and the head, and fails when a function on a
-recursion path of the parser, the analyzer or the clone has a larger frame
+recursion path of the parser, the analyzer, the clone or code generation has a
+larger frame
 on the head. Other compiler functions whose frame grew, and new functions
 with a large frame, are listed for review. Change structured-types (F4),
 design.md "Stack budget".
@@ -38,6 +39,22 @@ RECURSION_PATHS = [
     r"unifyTypeExpr|cloneInstanceBody|substituteTypeParameters|writtenFormOf)",
     r"inox::compiler::ast::\(anonymous namespace\)::clone(Statement|Expression)Node",
     r"inox::compiler::ast::clone(Statement|Statements|Expression)",
+    # Code generation (F6, typed-ir, step 1): every FunctionEmitter function
+    # that can reach itself; F6 changes codegen step by step, and none of
+    # these may grow.
+    r"inox::compiler::codegen::detail::FunctionEmitter::(constructedStruct|defaultedStruct|dropFunctionFor|"
+    r"emitArguments|emitArrayBaseAddress|emitArrayElementDefaults|emitAssignmentBranch|emitCase|"
+    r"emitConcatenation|emitConditional|emitConstruction|emitDecimalConversion|emitElementAddress|"
+    r"emitExpression|emitExpressionValue|emitFileCall|emitFill|emitForIn|emitHeaderOfPlace|"
+    r"emitHeaderOfPointer|emitIfMerge|emitInt64Argument|emitIntrinsicCall|emitInvariantChecks|"
+    r"emitInvariantOf|emitLinkOf|emitLoopStatements|emitMathBuiltinCall|emitMemberAddress|emitMembership|"
+    r"emitMethodCall|emitNoArgumentMethodCall|emitOrdinalBuiltin|emitOwnerFreesAt|emitPlace|"
+    r"emitPointerBuiltin|emitPointerTarget|emitRealConversion|emitReceiver|emitReferenceArgument|"
+    r"emitReleaseAt|emitRepeat|emitRounding|emitSetCall|emitSetComparison|emitSlice|emitSliceSource|"
+    r"emitStatement|emitStatementKind|emitStringCall|emitStringParts|emitStructFieldDefaults|"
+    r"emitTextToNumber|emitTry|emitUnless|emitWhile|emitWith|forEachLeafAt|forEachStringAt|isMoveOnly|"
+    r"lastPointerOnPath|placeMayChange|resolveMethodCall|resolveNoArgumentMethodAccess|samePlace|"
+    r"structHasDefaults|typeOf|typeOwnsReferences)",
 ]
 NEW_FRAME_TO_REVIEW = 256
 # A recursion a change adds (phase 2b of F5 walks the statements between
@@ -46,6 +63,14 @@ NEW_FRAME_TO_REVIEW = 256
 NEW_PATHS = [
     r"inox::compiler::lowering::\(anonymous namespace\)::(Desugarer::(lower|lowerLoop|rebuildLoop|lowerWith|"
     r"lowerChain|lowerCompound|appendBody|number|body)|hasWrittenForms|requireNoForms|expressionHasWithTarget)",
+    # Phase 5b (F6, typed-ir, step 1): the lowering to the typed IR, its
+    # verifier and its printer.
+    r"inox::compiler::tir::\(anonymous namespace\)::Lowerer::(expression|identifier|call|construction|checked|"
+    r"expressions|place|variable|through|invariants|statement|statements|expressionStatement|declaration|"
+    r"ifStatement|caseStatement|tryStatement|withStatement|forStatement|raiseStatement|slice|check|builtin)",
+    r"inox::compiler::tir::\(anonymous namespace\)::Verifier::(statements|statement|expression|place|invariants)",
+    r"inox::compiler::tir::\(anonymous namespace\)::Printer::(statements|statement|expression|place|invariants|operation|"
+    r"inlineInvariants)",
 ]
 NEW_PATH_BUDGET = 512
 # A function renamed or split by F4 is compared with the one it replaces.

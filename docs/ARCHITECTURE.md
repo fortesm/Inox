@@ -20,14 +20,17 @@ every proposal names the phases it touches).
 
 ```text
 source ─▶ 1 lexer ─▶ 2 parser ─▶ 2b desugaring ─▶ 3 module resolution ─▶ 4 contract lowering
-       ─▶ 5 semantic analysis ─▶ SemanticResult ─▶ 6 code generation (LLVM IR text)
+       ─▶ 5 semantic analysis ─▶ SemanticResult ─▶ (5b typed IR) ─▶ 6 code generation (LLVM IR text)
        ─▶ 7 driver (clang++: object, link with libinoxrt) ─▶ executable
                                    8 runtime (libinoxrt) runs with the program
 ```
 
 The driver (`main/main.cpp`) runs phases 1, 2 and 2b for each module file
 as it is loaded (`Use`), then 3-4 once on the whole program
-(`loadProgram`), then 5, 6 and 7.
+(`loadProgram`), then 5, 6 and 7. Phase 5b (F6, change `typed-ir`) is
+being introduced step by step: since step 1 (r3.120) a Debug compiler
+builds and verifies the typed IR of every program it compiles, and
+`--dump-tir` prints it; code generation does not read it yet.
 
 ## Contracts of the phases
 
@@ -126,6 +129,23 @@ exception objects on the heap, will not show the cost.
 - **Never:** emits LLVM; leaves a decision for codegen to rediscover.
 - **Owner:** `semantic/` (one file per responsibility, map below), `types/`.
 
+### 5b. Typed IR (F6, step 1 of 5)
+- **In:** the analyzed AST and `SemanticResult`. **Out:** a `tir::Program`:
+  the struct types, State variables, Consts and routines to emit, in an
+  arena; every expression with its type and its meaning (a place with its
+  origin, a call of a routine, a builtin operation, a check).
+- **Guarantees:** it copies what the analysis recorded (call meanings, the
+  origin of each variable, the symbol of each declaration, field indices,
+  constants, checks) and resolves no name; what it cannot express is
+  "valid Inox, not yet lowered" (E15), never a crash; `tir::verifyProgram`
+  checks that every node has a type and a meaning.
+- **Never:** infers a type, compares a name, re-checks a rule (a decision
+  it lacks is recorded by the analysis first).
+- **Today:** built and verified in Debug builds and by `--dump-tir`;
+  codegen still reads the AST (D5) until steps 2-5.
+- **Owner:** `tir/`; the call meanings and the builtin enumeration it
+  shares with the analysis are `semantic/CallMeaning.*`.
+
 ### 6. Code generation
 - **In:** the analyzed AST and `SemanticResult`. **Out:** the LLVM IR text
   of the program.
@@ -166,7 +186,7 @@ that removes it (ROADMAP, "Foundation"); a fix updates this table.
 | ~~D2~~ | Closed by F5 (r3.119): the parser builds chained and compound assignments, `with` targets and loop contracts as written (`ChainedAssignmentStatement`, `CompoundAssignmentStatement`, `WithTargetExpression`, loop `contracts`); phase 2b (`lowering/Desugar`) produces the normalized AST, identical to the one the parser made before. The analyzer's `__with` prefix checks remain until F6 | E11 | F5 |
 | ~~D3~~ | Closed by F3 (r3.114): the parser builds each routine header (`ast::RoutineHeader`: `ParameterDeclaration` name, mode, receiver, written type; the result type) and reports its syntax errors; module resolution, contract lowering, generics and `inox interface` read that structure, and the analyzer checks only what types say (`registerFunctionSignatureIn`). Parameter and result types stay text until F4 | E11 | F3 |
 | ~~D4~~ | Closed by F4 (r3.117): a written type is a tree in the AST (`ast::TypeExpr`), built by the parser; module resolution renames, contract lowering tests and the analyzer resolves the tree; generic instances substitute type parameters on it (`substituteTypeParameters`, `writtenFormOf`). Text exists only through `ast::spell` (messages, `inox interface`, instance names); the text reader `types::TypeSyntax` is gone. Exception handler types stay names until F7 | E11 (steps 3-4) | F4 |
-| D5 | Codegen reads the raw AST beside 16 side tables of `SemanticResult` and takes decisions of its own: on r3.119, 106 name comparisons, 117 lookups by AST node, 150 AST shape tests (`tools/codegen_decisions.py`; inventory in change `typed-ir`); no typed or lowered representation between phases 5 and 6 | E11 (steps 3-5) | F6 |
+| D5 | Codegen reads the raw AST beside 16 side tables of `SemanticResult` and takes decisions of its own: on r3.119, 106 name comparisons, 117 lookups by AST node, 150 AST shape tests (`tools/codegen_decisions.py`; inventory in change `typed-ir`). Since r3.120 (F6 step 1) the typed IR exists between phases 5 and 6 (`tir/`), built and verified in Debug; codegen does not read it yet | E11 (steps 3-5) | F6 |
 | D6 | Exception handlers match the written type name; the hierarchy is not in `types::Type` | E11 | F7 |
 | ~~D7~~ | Closed by F1 (r3.111): every gate of E19 runs in CI (`.github/workflows/ci.yml`, `.github/workflows/gates.yml`) | E19 | F1 |
 
@@ -216,6 +236,15 @@ instead of searching the whole emitter.
   nothing public exposes something private. Field and method visibility,
   which need expression types, are the analyzer's (`requireFieldVisible`,
   `requireMethodVisible`, `requireBuildableHere`).
+
+- `src/compiler/semantic/CallMeaning.*` — what each call is (F6): the
+  kinds of call and the builtin enumeration the analysis records
+  (`SemanticResult::callMeaning`) and the typed IR reads.
+- `src/compiler/tir/Tir.*` — phase 5b's nodes (F6, change `typed-ir`):
+  the closed set of places, expressions, statements, routines, the arena.
+- `src/compiler/tir/Lower.*` — the typed IR of an analyzed program
+  (`lowerProgram`); `tir/Verify.cpp` its verifier, `tir/Print.cpp` the
+  text of `--dump-tir`.
 
 - `src/compiler/codegen/LlvmIrEmitter.cpp` — the module: globals,
   declarations, internal helpers, `main` (`LlvmIrEmitter::emit`,

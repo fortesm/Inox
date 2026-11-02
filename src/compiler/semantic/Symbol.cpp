@@ -36,6 +36,13 @@ void Scope::markDeepReadOnly(std::string_view name)
     }
 }
 
+void Scope::setOrigin(std::string_view name, VariableOrigin origin)
+{
+    if (auto iterator = symbols_.find(normalize(name)); iterator != symbols_.end()) {
+        iterator->second.origin = origin;
+    }
+}
+
 void Scope::inferType(std::string_view name, const types::Type* type)
 {
     auto iterator = symbols_.find(normalize(name));
