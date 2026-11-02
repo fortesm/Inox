@@ -164,6 +164,55 @@ void testLoweredProgram()
           "the printer writes the place of the binding");
 }
 
+// Negative tests: null routines and Construct types are reported, not dereferenced.
+void testMalformedTir()
+{
+    // Keep the surrounding routine valid, so a different error cannot hide
+    // the defect under test (the verifier returns its first diagnostic).
+    ast::FunctionDeclaration declaration("Main", {}, {});
+    semantic::FunctionSignature signature;
+    signature.name = "Main";
+    signature.declaration = &declaration;
+
+    tir::Program program;
+    auto entry = program.arena.make<tir::Routine>();
+    entry->name = "Main";
+    entry->origin = &declaration;
+    entry->signature = &signature;
+    entry->isEntry = true;
+    program.entry = entry;
+    auto routines = program.arena.array<tir::Routine*>(2);
+    routines[0] = nullptr;
+    routines[1] = entry;
+    program.routines = routines;
+    std::string diagnostic = tir::verifyProgram(program);
+    check(diagnostic.find("a missing routine") != std::string::npos,
+          "a null routine is diagnosed even when the program has an entry");
+
+    tir::Program program2;
+    auto expr = program2.arena.make<tir::Expr>();
+    expr->kind = tir::ExprKind::Construct;
+    expr->type = nullptr;
+    auto routine = program2.arena.make<tir::Routine>();
+    routine->name = "Main";
+    routine->origin = &declaration;
+    routine->signature = &signature;
+    routine->isEntry = true;
+    auto body = program2.arena.array<const tir::Stmt*>(1);
+    auto stmt = program2.arena.make<tir::Stmt>();
+    stmt->kind = tir::StmtKind::Evaluate;
+    stmt->value = expr;
+    body[0] = stmt;
+    routine->body = body;
+    auto routines2 = program2.arena.array<tir::Routine*>(1);
+    routines2[0] = routine;
+    program2.routines = routines2;
+    program2.entry = routine;
+    diagnostic = tir::verifyProgram(program2);
+    check(diagnostic.find("an expression without a type: Construct") != std::string::npos,
+          "a Construct with null type is diagnosed without a crash");
+}
+
 } // namespace
 
 int runTypedIrTests()
@@ -171,6 +220,7 @@ int runTypedIrTests()
     const int before = failureCount();
     testBuiltinNames();
     testLoweredProgram();
+    testMalformedTir();
     return failureCount() - before;
 }
 
