@@ -145,7 +145,8 @@ spec.md#CANON-21 Test layers	3dd5f11b490b5d34	constitution
 spec.md#CANON-23 LLVM backend and the clang driver	d963b0876a24df66	repo-layout
 spec.md#CANON-23 Lowering rules	3ca6cd63c20ca6c7	optimize-default
 spec.md#CANON-23 Valid IR or a clear stop	b65face9199b56ba	constitution
-spec.md#CANON-23 Driver commands	d297c3904edec6f0	repo-layout
+spec.md#CANON-23 Driver commands	c766144df4f2d01b	dump-tir-switch
+spec.md#CANON-23 Developer switches	1b0ff380f014556b	dump-tir-switch
 spec.md#CANON-23 Module interface and search path	362444245c27d1e6	interface-module-name
 spec.md#CANON-23 The name an interface shows	b29d6782c02a49d1	interface-module-name
 spec.md#CANON-23 Optimization	aa5aa6b8c56b702f	repo-layout

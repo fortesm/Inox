@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.120
+Canon revision: r3.121
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -626,3 +626,9 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   identical; `--dump-types` shows the type now recorded for a range of
   case choices. Design approved by Marcelo Fortes, 2026-11-02. Change
   `typed-ir`.
+- r3.121 — 2026-11-02 — CANON-23: `--dump-tir`, the driver mode of F6
+  that prints the typed IR (design of `typed-ir`, Q4), is listed with
+  `--parse-only`, `--dump-tokens` and `--dump-types` as a developer
+  switch, not a public command. The public commands and the grammar do
+  not change. Approved by Marcelo Fortes, 2026-11-02. Change
+  `dump-tir-switch`.
