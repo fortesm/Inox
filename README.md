@@ -6,11 +6,11 @@ Inox prioritizes explicit safety, deterministic behavior, and clarity over conve
 
 ## Design Philosophy
 
-Inox is deliberately **post-object-oriented**. It has no classes, classical inheritance, Java-style interfaces, mixins, or duck typing. Data lives in nominal value types (`Struct`). Behavior lives in free functions, subroutines, and associated methods declared outside the struct. The familiar call form `Object.Method(args)` is retained for ergonomics without turning data into classical objects.
+Inox is deliberately **post-object-oriented**. It has no classes, classical inheritance, interfaces, mixins, or duck typing. Data lives in nominal value types (`Struct`). Behavior lives in free functions, subroutines, and associated methods declared outside the struct. The familiar call form `Object.Method(args)` is retained for ergonomics without turning data into classical objects.
 
 Core safety defaults include:
 
-- No universal `null` or `nil`
+- No universal `null`
 - No unsafe pointers in the language core
 - No silent integer overflow
 - `/` divides by the operands' type, as in Ada: integer division for integers, real for reals; never mixed. `mod` and `rem` as in Ada
