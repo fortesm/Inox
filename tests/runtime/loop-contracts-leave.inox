@@ -1,0 +1,47 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24 (kept by F5): `leave` ends the loop without the checks of a
+== new iteration; a while or repeat then checks its invariant once more, a
+== for does not.
+Seen(What String, Value Integer) Bool :
+    PutLn(What, " ", Value)
+    Return True
+;
+
+Measure(Value Integer) Integer :
+    PutLn("variant ", Value)
+    Return Value
+;
+
+Main :
+    I := 0
+    while True
+        invariant Seen("while", I)
+        variant Measure(10 - I)
+        I += 1
+        if I = 2
+            leave
+        ;
+    ;
+    J := 0
+    repeat
+        invariant Seen("repeat", J)
+        J += 1
+        if J = 2
+            leave
+        ;
+        until False
+    ;
+    for K in 1..5
+        invariant Seen("for", K)
+        if K = 2
+            leave
+        ;
+    ;
+    PutLn("done")
+;

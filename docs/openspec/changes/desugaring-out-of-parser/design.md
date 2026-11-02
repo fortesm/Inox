@@ -1,6 +1,6 @@
 Design of foundation step F5 (change `desugaring-out-of-parser`). Risk:
-high. Status: **awaiting the maintainer's approval**; no code before it is
-recorded here with its date.
+high. Status: **approved** by Marcelo Fortes, 2026-11-01, with Q1-Q4 and
+five conditions (see "Approval").
 
 ## Today (D2)
 
@@ -176,4 +176,35 @@ recursive function; the work in out-of-line helpers), and
 
 ## Approval
 
-(To be recorded: who approved, the date, and the answers to Q1-Q4.)
+Approved by Marcelo Fortes, 2026-11-01:
+
+- **Q1.** Phase 2b right after each module is parsed, before module
+  resolution.
+- **Q2.** The whole compound family (`+=`, `-=`, `*=`, `/=`, `^=`) leaves
+  the parser too.
+- **Q3.** The analyzer's `__with` prefix checks stay during F5, as a
+  recorded debt of F6: F6 gives the analysis an explicit property of the
+  binding's origin instead of a string.
+- **Q4.** `__member`, `__index`, `__slice`, `__set` stay; they are not part
+  of F5.
+
+Conditions:
+
+1. A compound assignment keeps its target's identity: the targets the
+   parser accepts today and no others, no target evaluated twice, and the
+   `isCompoundAssignment` mark kept.
+2. The `__with` prefix recognition is marked as F6 debt in
+   `docs/ARCHITECTURE.md`.
+3. Flow-control tests come before the refactoring: separate tests for
+   `continue`, `leave`, `until`, exceptions and nested loops with
+   contracts, which fix the order and the number of checks.
+4. Phase 2b runs exactly once per module, on every driver path that
+   analyzes a program, imported modules and cloned ASTs included; no form
+   of phase 2b reaches the analyzer or codegen.
+5. No IR or stack regression: the snapshot identical to the base with no
+   exception, and the stack compared in the same build configuration,
+   with the new walk included.
+
+Scope: phase 2b only turns the AST as written into the normalized AST the
+later phases already understand; it is not a general optimization or
+transformation framework.

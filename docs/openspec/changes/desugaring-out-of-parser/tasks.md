@@ -2,8 +2,8 @@ Nothing below starts before the design's approval is recorded with its date.
 
 ## 0. Before the code
 
-- [ ] 0.1 Approval of `design.md` recorded (who, date, answers to Q1-Q4)
-- [ ] 0.2 Tests for the behaviour to keep where none exists: loop invariant and variant with `continue`, `leave`, `until` and an exception; nested `with` writing through the inner target; a chain of four with a field target and a call as value (evaluated once)
+- [x] 0.1 Approval of `design.md` recorded (Marcelo Fortes, 2026-11-01; Q1-Q4 and five conditions)
+- [x] 0.2 Tests first (condition 3): `loop-contracts-continue`, `loop-contracts-leave`, `loop-contracts-until`, `loop-contracts-exception`, `loop-contracts-nested` (order and number of checks), `chain-and-with` (a chain of four with a field target and a call evaluated once; nested `with`); compound assignment is covered by `compound-assignment`
 - [ ] 0.3 IR snapshot of main recorded; `-fstack-usage` of main kept
 
 ## 1. AST and parser

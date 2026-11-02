@@ -1,0 +1,50 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24 (kept by F5, desugaring-out-of-parser): a loop invariant and
+== variant are checked at the start of every iteration, so also after
+== `continue`; a while or repeat checks its invariant once more when it ends.
+Seen(What String, Value Integer) Bool :
+    PutLn(What, " ", Value)
+    Return True
+;
+
+Measure(Value Integer) Integer :
+    PutLn("variant ", Value)
+    Return Value
+;
+
+Main :
+    I := 0
+    while I < 3
+        invariant Seen("while", I)
+        variant Measure(10 - I)
+        I += 1
+        if I = 2
+            continue
+        ;
+        PutLn("body ", I)
+    ;
+    J := 0
+    repeat
+        invariant Seen("repeat", J)
+        variant Measure(10 - J)
+        J += 1
+        if J = 1
+            continue
+        ;
+        PutLn("body ", J)
+        until J >= 2
+    ;
+    for K in 1..3
+        invariant Seen("for", K)
+        if K = 2
+            continue
+        ;
+        PutLn("body ", K)
+    ;
+;
