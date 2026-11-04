@@ -122,6 +122,7 @@ private:
     // `with` on a read-only reference, or on a place owned through one, only
     // reads what the target owns.
     void markWithBinding(const ast::WithStatement& withStatement);
+    bool isWithBinding(const ast::IdentifierExpression& identifier) const;
     // What the analysis decided, recorded for the typed IR
     // (CallMeaning.h). Out of line, so the recursive analyzers keep their
     // frames: each takes only references.

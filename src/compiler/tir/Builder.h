@@ -47,6 +47,7 @@ private:
     Expr* check(const ast::CallExpression& call);
     Expr* builtin(const ast::CallExpression& call, const CallMeaning& meaning, TypeRef type);
     const Expr* compoundOperation(const ast::BinaryExpression& assignment, const Place* target);
+    void recordCallKind(const ast::Expression& source);
     semantic::StringFunction stringFunction(const ast::CallExpression& call) const;
     const Expr* constantLiteral(std::int64_t value, TypeRef type, ast::SourcePosition position);
     const Expr* checked(const ast::Expression& source, const Expr* value);

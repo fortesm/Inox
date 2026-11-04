@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.126
+Canon revision: r3.127
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -673,3 +673,10 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   generation of the object holding the caller's storage, checked at every
   use (a change of the routines' ABI, not of the language). Approved by
   Marcelo Fortes, 2026-11-04. Change `reference-parameter-validity`.
+- r3.127 — 2026-11-04 — E11, foundation step F6, step 4 of 5: code
+  generation recognizes the encodings (`__member`, `__index`, `__slice`,
+  `__set`, `__check`, `__pure`), conversions, the type of `Low(T)`, module
+  intrinsics and the receiver from the typed IR and the parsed header,
+  never by name; the analyzer recognizes a `with` binding by its symbol's
+  origin. The LLVM IR and the typed IR of every program are identical.
+  Scope approved by Marcelo Fortes, 2026-11-04. Change `typed-ir`.

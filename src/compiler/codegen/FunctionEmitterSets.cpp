@@ -30,11 +30,7 @@ unsigned setBits(TypeRef setType)
 
 bool FunctionEmitter::isSetCall(const ast::CallExpression& call) const
 {
-    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
-        return false;
-    }
-    const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
-    if (callee.name() == "__set") {
+    if (callKindOf(call) == semantic::CallKind::SetLiteral) {
         return true;
     }
     switch (builtinOf(call)) {
@@ -77,13 +73,12 @@ std::string FunctionEmitter::emitSetCall(const ast::CallExpression& call)
 {
     const TypeRef setType = typeOf(call);
     const std::string type = llvmSetType(setType);
-    const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
     const auto operation = [&](const char* instruction, const std::string& left, const std::string& right) {
         const std::string result = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << result << " = " << instruction << ' ' << type << ' ' << left << ", " << right << '\n';
         return result;
     };
-    if (name == "__set") {
+    if (callKindOf(call) == semantic::CallKind::SetLiteral) {
         std::string value = "0";
         for (const auto& element : call.arguments()) {
             value = operation("or", value, emitSetMask(emitExpression(*element), setType));

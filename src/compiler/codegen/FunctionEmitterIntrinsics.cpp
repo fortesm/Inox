@@ -28,26 +28,15 @@ using semantic::ModuleIntrinsic;
 // The Std.Terminal routine an identifier or a call names, or null.
 const ModuleIntrinsic* FunctionEmitter::intrinsicCallOf(const ast::Expression& expression) const
 {
-    const ast::IdentifierExpression* identifier = nullptr;
-    if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
-        identifier = static_cast<const ast::IdentifierExpression*>(&expression);
-    } else if (expression.kind() == ast::AstNodeKind::CallExpression) {
-        const auto& call = static_cast<const ast::CallExpression&>(expression);
-        if (call.callee().kind() == ast::AstNodeKind::IdentifierExpression) {
-            identifier = static_cast<const ast::IdentifierExpression*>(&call.callee());
-        }
+    const ModuleIntrinsic* function = astNodes_.intrinsicOf(expression);
+#ifndef NDEBUG
+    const semantic::CallMeaning* meaning = semantics_.callMeaning(expression);
+    const ModuleIntrinsic* recorded =
+        meaning != nullptr && meaning->kind == semantic::CallKind::Intrinsic ? meaning->intrinsic : nullptr;
+    if (function != recorded) {
+        throw tir::InvariantError("internal error: typed IR: the intrinsic the typed IR gives is not the analysis's");
     }
-    if (identifier == nullptr) {
-        return nullptr;
-    }
-    const ModuleIntrinsic* function = semantic::findModuleIntrinsic(identifier->name());
-    if (function == nullptr) {
-        return nullptr;
-    }
-    const semantic::Symbol* symbol = symbolOf(*identifier);
-    if (symbol == nullptr || symbol->kind != semantic::SymbolKind::Builtin) {
-        return nullptr;
-    }
+#endif
     return function;
 }
 

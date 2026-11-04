@@ -101,9 +101,8 @@ exception objects on the heap, will not show the cost.
 - **Never:** resolves names, reads types, reports an error, or becomes a
   general transformation or optimization pass.
 - **Owner:** `normalization/AstNormalizer.*` (knows only `ast/`).
-- **F6 debt:** two analyzer checks recognize a `with` binding by the prefix
-  of its name (`__with`); F6 gives the analysis the binding's origin as a
-  property instead of a string.
+- The analyzer recognizes a `with` binding by its symbol's origin
+  (`VariableOrigin::WithBinding`, r3.127), not by the prefix of its name.
 
 ### 3. Module resolution
 - **In:** the ASTs of every module. **Out:** one program in which every
@@ -207,7 +206,7 @@ that removes it (ROADMAP, "Foundation"); a fix updates this table.
 | ~~D2~~ | Closed by F5 (r3.119): the parser builds chained and compound assignments, `with` targets and loop contracts as written (`ChainedAssignmentStatement`, `CompoundAssignmentStatement`, `WithTargetExpression`, loop `contracts`); phase 2b (`normalization/AstNormalizer`) produces the normalized AST, identical to the one the parser made before. The analyzer's `__with` prefix checks remain until F6 | E11 | F5 |
 | ~~D3~~ | Closed by F3 (r3.114): the parser builds each routine header (`ast::RoutineHeader`: `ParameterDeclaration` name, mode, receiver, written type; the result type) and reports its syntax errors; module resolution, contract lowering, generics and `inox interface` read that structure, and the analyzer checks only what types say (`registerFunctionSignatureIn`). Parameter and result types stay text until F4 | E11 | F3 |
 | ~~D4~~ | Closed by F4 (r3.117): a written type is a tree in the AST (`ast::TypeExpr`), built by the parser; module resolution renames, contract lowering tests and the analyzer resolves the tree; generic instances substitute type parameters on it (`substituteTypeParameters`, `writtenFormOf`). Text exists only through `ast::spell` (messages, `inox interface`, instance names); the text reader `types::TypeSyntax` is gone. Exception handler types stay names until F7 | E11 (steps 3-4) | F4 |
-| D5 | Codegen reads the raw AST beside 16 side tables of `SemanticResult` and takes decisions of its own: on r3.119, 106 name comparisons, 117 lookups by AST node, 150 AST shape tests (`tools/codegen_decisions.py`; inventory in change `typed-ir`). Since r3.120 (F6 step 1) the typed IR exists between phases 5 and 6 (`tir/`); since r3.122 (step 2) codegen takes types, symbols and constants from it through a transitional index by AST node, and since r3.123 (step 3) the builtin of each call; its other decisions remain | E11 (steps 4-5) | F6 |
+| D5 | Codegen reads the raw AST beside 16 side tables of `SemanticResult` and takes decisions of its own: on r3.119, 106 name comparisons, 117 lookups by AST node, 150 AST shape tests (`tools/codegen_decisions.py`; inventory in change `typed-ir`). Since r3.120 (F6 step 1) the typed IR exists between phases 5 and 6 (`tir/`); since r3.122 (step 2) codegen takes types, symbols and constants from it through a transitional index by AST node, since r3.123 (step 3) the builtin of each call, and since r3.127 (step 4) what each encoding, conversion and intrinsic is; its other decisions remain | E11 (step 5) | F6 |
 | D6 | Exception handlers match the written type name; the hierarchy is not in `types::Type` | E11 | F7 |
 | ~~D7~~ | Closed by F1 (r3.111): every gate of E19 runs in CI (`.github/workflows/ci.yml`, `.github/workflows/gates.yml`) | E19 | F1 |
 

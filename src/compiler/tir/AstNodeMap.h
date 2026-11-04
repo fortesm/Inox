@@ -19,6 +19,7 @@
 #include "Tir.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -49,6 +50,11 @@ public:
         // `F := V` of a construction: field `field` of `construct`.
         const Expr* construct = nullptr;
         std::uint32_t field = 0;
+        // What the analysis decided a call is (semantic/CallMeaning.h), as
+        // the builder found it; the name of a method call (`__member(P, M)`
+        // of `P.M(X)`) is a Method.
+        bool hasCallKind = false;
+        semantic::CallKind callKind = semantic::CallKind::Routine;
     };
 
     // Recording, by the builder.
@@ -63,6 +69,11 @@ public:
     }
     void recordMember(const ast::Expression& node, const Place* field) { entries_[&node].member = field; }
     void recordName(const ast::Expression& node) { entries_[&node].name = true; }
+    void recordCallKind(const ast::Expression& node, semantic::CallKind kind)
+    {
+        entries_[&node].hasCallKind = true;
+        entries_[&node].callKind = kind;
+    }
     // `copy` is `original` written again (the `L` of `L := L op R`, phase
     // 2b): it became the same TIR nodes, node by node.
     void recordWrittenAgain(const ast::Expression& copy, const ast::Expression& original);
@@ -92,6 +103,17 @@ public:
     semantic::BuiltinOp builtinOf(const ast::Expression& node) const;
     // Whether the node is a slice of an array or of a slice (`A[L..H]`).
     bool isSlice(const ast::Expression& node) const;
+    // The kind of call the node is; none for a node that is no call.
+    std::optional<semantic::CallKind> callKindOf(const ast::Expression& node) const;
+    // Whether the node is the name a call is written with (the routine's
+    // identifier, `__member(P, M)` of a method call).
+    bool isCallName(const ast::Expression& node) const;
+    // The binding of a `with`, read or written (a WithBinding place).
+    bool isWithBinding(const ast::Expression& node) const;
+    // The type a TypeValue names (`T` in `Low(T)`); null for another node.
+    TypeRef typeValueOf(const ast::Expression& node) const;
+    // The module intrinsic an Intrinsic calls; null for another node.
+    const semantic::ModuleIntrinsic* intrinsicOf(const ast::Expression& node) const;
 
     // Debug agreement with the analysis's record: the same type, or one of
     // the two differences the TIR makes on purpose. An operation without a

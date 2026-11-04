@@ -22,11 +22,7 @@ namespace inox::compiler::codegen::detail {
 // The enum type an argument names (`Low(TSuit)`), or null.
 TypeRef FunctionEmitter::enumTypeNamed(const ast::Expression& expression) const
 {
-    if (expression.kind() != ast::AstNodeKind::IdentifierExpression) {
-        return nullptr;
-    }
-    const TypeRef type =
-        semantics_.types().lookup(static_cast<const ast::IdentifierExpression&>(expression).name());
+    const TypeRef type = astNodes_.typeValueOf(expression);
     return type != nullptr && (type->isEnum() || type->isRange() || type->isCharRange()) ? type : nullptr;
 }
 
