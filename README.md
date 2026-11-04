@@ -5,46 +5,29 @@ Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 
 # Inox
 
-Inox is a compiled, statically typed programming language under active development. The project includes a compiler written in C++20, an LLVM IR backend, a native runtime library, and a growing standard library.
+Inox is a compiled, statically typed language for general-purpose and systems programming. It combines modular programming, nominal data types, generics, contracts, and explicit resource ownership.
 
-The language emphasizes explicit state changes, type checking, structured program organization, and defined behavior for operations that can fail. Its language rules are maintained in a versioned specification and exercised through compiler, runtime, and regression tests.
+The language makes several common sources of programming errors easier to identify: implicit changes to data, invalid array accesses, arithmetic failures, and references to objects whose lifetimes have ended. Mutation is expressed through parameter and receiver modes; `Own<T>` and `Link<T>` distinguish ownership from non-owning access; checked operations and contracts provide defined failure paths.
 
-**Current status:** Inox 0.4.0, pre-alpha. The compiler and language are not production-ready. Implemented features, known limitations, and planned work are documented in [Implementation Status](docs/STATUS.md) and the [Roadmap](docs/ROADMAP.md).
+Inox uses short declarations, keyword-based control flow, and explicit but lightweight block boundaries. Routine bodies begin with `:` and end with `;`; the same delimiters organize nested statements. The notation keeps the structure of algorithms visible without requiring lengthy declarations or dense punctuation.
 
-## Language overview
+## Language features
 
-The implementation currently supports, among other facilities:
+- **Types and data:** nominal `Struct` types, associated methods, enumerations, ranges, sets, fixed-size arrays, slices, strings, and numeric types, including exact decimal types.
+- **Modularity:** named modules, explicit imports, visibility controls, reusable structures, and generic routines and types.
+- **Mutation and lifetime:** immutable value parameters by default, `ref` and `ref mut` parameters, `Self mut` receivers, unique ownership through `Own<T>`, explicit moves, and generation-checked `Link<T>` references.
+- **Validation and error handling:** checked arithmetic and indexing, explicit type conversions, exceptions, and preconditions, postconditions, and invariants.
+- **Standard library:** modules for text processing, mathematics, console and file operations, dates and times, and system utilities.
 
-- Nominal types, structures, fixed-size arrays, slices, enumerations, ranges, and sets.
-- Functions, subroutines, associated methods, modules, and explicit visibility controls.
-- Generic routines and structures, with compile-time specialization.
-- Checked arithmetic, explicit conversions, and runtime diagnostics for defined failure conditions.
-- Value and reference parameters, including explicitly mutable parameters and receivers.
-- Ownership through `Own<T>`, moves, and generation-checked `Link<T>` references.
-- Preconditions, postconditions, and structural and loop invariants.
-- Exceptions, text I/O, Unicode string operations, and modules in the standard library.
+The complete language rules are defined in the [language specification](docs/openspec/specs/constitution/spec.md). The [`examples/`](examples/) directory contains programs covering language constructs and library use.
 
-This list is an overview, not a language specification. Refer to the [language specification](docs/openspec/specs/constitution/spec.md) for normative rules and to the [implementation status](docs/STATUS.md) for current coverage.
+## Build
 
-### Example
+The compiler is implemented in C++20 and generates LLVM IR. Native executable generation uses Clang. The primary build configurations are Linux x86-64 and Windows x86-64 with the MSVC ABI.
 
-```inox
-Main :
-    PutLn("Hello, Inox")
-;
-```
+Development builds require CMake 3.25 or later, Ninja, Clang, and a C++20 toolchain. Windows also requires the Visual Studio C++ build tools, Windows SDK, and PowerShell 7.
 
-Further examples are available in [`examples/`](examples/), including modules, generic types, contracts, data structures, and file operations.
-
-## Compiler and platforms
-
-The compiler processes source files through lexical analysis, parsing, AST normalization, module resolution, contract lowering, semantic analysis, and construction of a typed intermediate representation. Its current backend emits LLVM IR, which is compiled and linked into native programs by an external Clang toolchain. Some code-generation decisions still use the AST while the typed IR migration is being completed.
-
-The primary development and continuous-integration platforms are **Linux x86-64** and **Windows x86-64** (Clang with the MSVC ABI). Other platform configurations in the repository should not be interpreted as validated release targets.
-
-### Build on Linux
-
-Requirements include CMake 3.25 or later, Ninja, Clang, and a C++20 development toolchain.
+### Linux
 
 ```sh
 cmake --preset linux-clang-debug
@@ -52,9 +35,7 @@ cmake --build --preset linux-clang-debug
 bash tools/scripts/run-tests.sh build/linux-clang-debug/inox
 ```
 
-### Build on Windows
-
-The Windows build uses Clang with the MSVC ABI and requires the corresponding C++ build tools and Windows SDK.
+### Windows
 
 ```powershell
 cmake --preset windows-clang-msvc
@@ -62,84 +43,83 @@ cmake --build --preset windows-clang-msvc-debug
 pwsh -ExecutionPolicy Bypass -File .\tools\scripts\run-tests.ps1 -InoxExe .\build\windows-clang-msvc\Debug\inox.exe
 ```
 
-For environment requirements, Release builds, sanitizers, and additional quality gates, see [Build and Test Instructions](docs/BUILD.md).
+Release configurations, environment details, and additional validation procedures are documented in [Build and Test Instructions](docs/BUILD.md).
 
-### Basic commands
+## Compiler usage
 
-After building on Linux:
+The `inox` command accepts a source file or an explicit operation:
 
 ```sh
-build/linux-clang-debug/inox check examples/hello.inox
-build/linux-clang-debug/inox run examples/hello.inox
-build/linux-clang-debug/inox emit-llvm examples/hello.inox
+inox check file.inox       # Parse and analyze a program
+inox build file.inox       # Build a native executable
+inox run file.inox         # Build and run a program
+inox emit-llvm file.inox   # Output LLVM IR
+inox interface file.inox   # Display a module's public interface
+inox help                  # List commands and options
 ```
 
-`check` and `emit-llvm` do not require an external linker. Producing or running native executables currently requires the Clang toolchain. Consult `inox help` for the available commands and options.
+When working with a local Linux development build, use `build/linux-clang-debug/inox` in place of `inox`. Source checking and LLVM IR emission work without a native linker; building and running executables require the Clang toolchain.
 
 ## Repository structure
 
-The following tree describes the principal directories. Individual implementation files and test fixtures are omitted for readability.
-
 ```text
 .
-├── .claude/                 Agent workflow and project-local assistant configuration
-├── .github/                 Continuous integration and release workflows
-├── cmake/                   Build configuration, platform support, and toolchains
-├── contrib/                 Editor integrations, completion, and contributed tooling
-├── docs/                    Architecture, build, status, roadmap, and language documentation
+├── .claude/                 Project-local agent instructions and workflows
+├── .github/                 CI and release workflows
+├── cmake/                   Build settings and platform toolchains
+├── contrib/                 Editor support, completions, and integrations
+├── docs/                    Language and compiler documentation
 │   ├── grammar/             Grammar reference
-│   ├── history/             Historical design and specification records
-│   ├── openspec/            Normative specifications and tracked changes
+│   ├── history/             Historical specifications and decisions
+│   ├── openspec/            Language requirements and change records
 │   └── site/                Language documentation site
-├── examples/                Inox example programs
-├── include/                 Reserved public headers for future integration interfaces
-├── libs/                    Reserved location for third-party dependencies
-├── licenses/                Licensing, attribution, and legal notices
-├── src/                     Compiler and native runtime implementation
+├── examples/                Inox source examples
+├── include/                 Headers for external integration interfaces
+├── libs/                    Third-party library area
+├── licenses/                License texts and attribution records
+├── src/
 │   ├── compiler/
-│   │   ├── ast/              Abstract syntax tree and related transformations
-│   │   ├── codegen/          LLVM IR generation and backend support
-│   │   ├── exceptions/       Compiler exception-related declarations
+│   │   ├── scanner/          Source cursor, byte navigation, and positions
 │   │   ├── lexer/            Token recognition and lexical definitions
-│   │   ├── main/             Command-line driver and compilation orchestration
-│   │   ├── normalization/    AST normalization and desugaring
 │   │   ├── parser/           Syntax analysis and AST construction
-│   │   ├── scanner/          SourceCursor: byte navigation and source positions
-│   │   ├── semantic/         Name resolution, type checking, and semantic rules
-│   │   ├── support/          Portability and compiler infrastructure
-│   │   ├── tir/              Typed intermediate representation and verification
-│   │   └── types/            Type representation and interning
+│   │   ├── ast/              Syntax tree structures and operations
+│   │   ├── normalization/    AST normalization
+│   │   ├── semantic/         Name resolution and semantic analysis
+│   │   ├── types/            Type representations and type context
+│   │   ├── tir/              Typed intermediate representation
+│   │   ├── codegen/          LLVM IR generation
+│   │   ├── exceptions/       Compiler exception support
+│   │   ├── main/             Command-line driver
+│   │   └── support/          Shared compiler and platform services
 │   └── runtime/             Native runtime library (libinoxrt)
-├── stdlib/                  Standard library modules written in Inox
-├── tests/                   Compiler, diagnostics, integration, and runtime test suites
-│   ├── compiler-unit/       Unit tests for compiler components
-│   ├── diagnostics/         Expected diagnostic and rejection cases
-│   ├── examples/            Expected output for example programs
+├── stdlib/                  Standard library modules
+├── tests/                   Language, compiler, and runtime regression tests
+│   ├── compiler-unit/       Compiler component tests
+│   ├── diagnostics/         Expected diagnostics for invalid programs
 │   ├── lexer/               Lexical analysis tests
-│   ├── parser/              Parsing tests
-│   ├── runtime/             Compiled-program behavior and runtime faults
-│   ├── runtime-unit/        Native runtime unit tests
-│   └── tir/                 Typed IR test cases
-├── tools/                   Development, validation, and analysis utilities
-└── utils/                   Reserved tools intended for Inox users
+│   ├── parser/              Syntax analysis tests
+│   ├── semantic/            Semantic analysis tests
+│   ├── tir/                 Typed IR tests
+│   ├── runtime/             Executable behavior and runtime errors
+│   └── runtime-unit/        Native runtime component tests
+├── tools/                   Build, test, and analysis utilities
+└── utils/                   End-user utility area
 ```
 
-For the responsibilities and boundaries of each compiler phase, see [Compiler Architecture](docs/ARCHITECTURE.md).
+The [compiler architecture](docs/ARCHITECTURE.md) describes the phases, responsibilities, and interfaces between these components.
 
-## Documentation and development
+## Documentation
 
-- [Language specification](docs/openspec/specs/constitution/spec.md) — normative language requirements.
-- [Engineering requirements](docs/openspec/specs/constitution/engineering.md) — compiler design and validation requirements.
-- [Compiler architecture](docs/ARCHITECTURE.md) — pipeline, component ownership, and current architectural work.
-- [Implementation status](docs/STATUS.md) — implemented capabilities and limitations.
-- [Roadmap](docs/ROADMAP.md) and [Changelog](CHANGELOG.md) — planned work and recorded changes.
-- [Build and test instructions](docs/BUILD.md) — supported build configurations and validation commands.
-- [Contribution guidelines](CONTRIBUTING.md) and [Agent instructions](AGENTS.md) — project development procedures.
+- [Language specification](docs/openspec/specs/constitution/spec.md) — language syntax and semantics.
+- [Language manual](docs/site/index.html) — language documentation.
+- [Compiler architecture](docs/ARCHITECTURE.md) — compiler phases and component boundaries.
+- [Build and test instructions](docs/BUILD.md) — toolchains, builds, and validation.
+- [Implementation status](docs/STATUS.md) — feature coverage and known limitations.
+- [Roadmap](docs/ROADMAP.md) and [Changelog](CHANGELOG.md) — releases and planned work.
+- [Contribution guidelines](CONTRIBUTING.md) — how to contribute to the repository.
 
-Language changes are governed by the project specification and its associated change process. The compiler implementation, examples, and descriptive documentation are expected to remain consistent with the approved specification.
+## Project information
 
-## License
-
-Inox is distributed under the [Mozilla Public License 2.0](LICENSE). Related notices are maintained in [`licenses/`](licenses/).
-
-**Maintainer:** Marcelo Fortes.
+**Version:** 0.4.0 (pre-alpha)  
+**Maintainer:** Marcelo Fortes  
+**License:** [Mozilla Public License 2.0](LICENSE)
