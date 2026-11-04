@@ -145,8 +145,17 @@ const Place* Builder::recorded(const ast::Expression& source, const Place* place
 {
     if (astNodes_ != nullptr) {
         astNodes_->recordPlace(source, place);
+        recordCallKind(source);
     }
     return place;
+}
+
+// The kind of call the analysis decided the node is, for the AST node map.
+void Builder::recordCallKind(const ast::Expression& source)
+{
+    if (const CallMeaning* meaning = semantics_.callMeaning(source)) {
+        astNodes_->recordCallKind(source, meaning->kind);
+    }
 }
 
 void Builder::recordCall(const ast::CallExpression& source, Expr* call)
@@ -165,6 +174,7 @@ void Builder::recordCall(const ast::CallExpression& source, Expr* call)
             astNodes_->recordCallee(*member.arguments()[1], call);
         }
         astNodes_->recordName(member.callee());
+        astNodes_->recordCallKind(member, CallKind::Method);
     } else if (call->kind == ExprKind::Call && source.arguments().size() == 2 &&
                semantics_.callMeaning(source)->kind == CallKind::MethodNoArguments) {
         astNodes_->recordCallee(*source.arguments()[1], call);

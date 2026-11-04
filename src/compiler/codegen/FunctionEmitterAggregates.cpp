@@ -361,17 +361,16 @@ FunctionEmitter::FieldAddress FunctionEmitter::emitMemberAddress(const ast::Call
     return FieldAddress{place.pointer, memberField(call)->llvmType};
 }
 
-bool FunctionEmitter::isMemberAccessCall(const ast::Expression& expression)
+// `P.F`, `P.M` (a method without arguments), or the name `P.M` of a call
+// `P.M(X)`.
+bool FunctionEmitter::isMemberAccessCall(const ast::Expression& expression) const
 {
     if (expression.kind() != ast::AstNodeKind::CallExpression) {
         return false;
     }
-    const auto& call = static_cast<const ast::CallExpression&>(expression);
-    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
-        return false;
-    }
-    const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
-    return equalsIgnoreCase(callee.name(), "__member");
+    const auto kind = callKindOf(expression);
+    return kind == semantic::CallKind::Field || kind == semantic::CallKind::MethodNoArguments ||
+           (kind == semantic::CallKind::Method && astNodes_.isCallName(expression));
 }
 
 FunctionEmitter::MethodCallTarget FunctionEmitter::resolveMethodCall(const ast::CallExpression& call)

@@ -143,7 +143,6 @@ FieldLayout fieldLayout(TypeRef structType, std::size_t index)
 FunctionSignature lowerSignature(const ast::FunctionDeclaration& function,
                                  const semantic::FunctionSignature& signature)
 {
-    const bool isMethod = ast::methodDot(function.name()) != std::string::npos;
     std::vector<FunctionParameter> parameters;
     for (std::size_t index = 0; index < signature.parameters.size(); ++index) {
         const semantic::FunctionParameter& parameter = signature.parameters[index];
@@ -151,7 +150,8 @@ FunctionSignature lowerSignature(const ast::FunctionDeclaration& function,
         if (llvmType.empty()) {
             throw CodegenUnsupported("LLVM emission currently supports only scalar and struct parameters");
         }
-        const bool isReceiver = isMethod && index == 0 && equalsIgnoreCase(parameter.name, "Self");
+        // The receiver as the parser read it (`Self`, `Self mut`, F3).
+        const bool isReceiver = index < function.parameters().size() && function.parameters()[index].isReceiver;
         bool byReference = parameter.mode != semantic::PassMode::Value;
         if (isReceiver) {
             // CANON-9: a struct receiver is always passed by address; `Self

@@ -332,7 +332,7 @@ private:
 
     FieldAddress emitMemberAddress(const ast::CallExpression& call);
 
-    static bool isMemberAccessCall(const ast::Expression& expression);
+    bool isMemberAccessCall(const ast::Expression& expression) const;
 
     struct MethodCallTarget {
         const FunctionSignature* signature = nullptr;
@@ -377,7 +377,10 @@ private:
 
     std::string emitConditional(const ast::ConditionalExpression& expression);
 
-    static bool isIndexCall(const ast::Expression& expression);
+    bool isIndexCall(const ast::Expression& expression) const;
+    // The kind of call the analysis decided a node is (tir/AstNodeMap.h).
+    std::optional<semantic::CallKind> callKindOf(const ast::Expression& node) const;
+    TypeRef conversionType(const ast::CallExpression& call) const;
 
     static std::string valueLlvmType(TypeRef type);
 

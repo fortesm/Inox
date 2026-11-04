@@ -97,13 +97,26 @@ void testPointersAndStructs()
     check(!fieldLayout(context.int64Type(), "FValue"), "only a struct has fields");
 }
 
+// A routine header as the parser reads it: the receiver `Self` marked as one.
+ast::RoutineHeader headerOf(std::initializer_list<ast::ParameterDeclaration> parameters)
+{
+    ast::RoutineHeader header;
+    header.parameters = parameters;
+    return header;
+}
+
 void testSignatures()
 {
+    using Mode = ast::ParameterDeclaration::Mode;
     TypeContext context;
     const Type* point = context.declareStruct("TPoint");
     context.setStructFields(point, {types::StructField{"FX", context.int64Type(), false, false, ""}});
 
-    const ast::FunctionDeclaration moveBy("TPoint.Move", {}, {});
+    const ast::FunctionDeclaration moveBy("TPoint.Move",
+                                          headerOf({{"Self", std::nullopt, Mode::RefMut, true},
+                                                    {"Step", std::nullopt, Mode::Value, false},
+                                                    {"Total", std::nullopt, Mode::RefMut, false}}),
+                                          {});
     semantic::FunctionSignature analyzed;
     analyzed.name = "TPoint.Move";
     analyzed.parameters = {{"Self", point, semantic::PassMode::RefMut},
@@ -120,7 +133,8 @@ void testSignatures()
               lowered.parameters[2].valueType == "i64",
           "ref mut is a pointer to an i64");
 
-    const ast::FunctionDeclaration twice("Integer.Twice", {}, {});
+    const ast::FunctionDeclaration twice("Integer.Twice", headerOf({{"Self", std::nullopt, Mode::RefMut, true}}),
+                                         {});
     semantic::FunctionSignature builtin;
     builtin.name = "Integer.Twice";
     builtin.parameters = {{"Self", context.int64Type(), semantic::PassMode::RefMut}};

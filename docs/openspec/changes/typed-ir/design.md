@@ -350,3 +350,20 @@ inventory, and replace the textual classification of builtins by
   codegen resolves itself (`resolutions`): a type by its name, a routine
   in the signature map, a module intrinsic by its name, an encoding by
   its prefix (`__with`), a name compared with a table of names.
+
+## Step 4: encodings and resolutions from the TIR
+
+- Codegen asks what a call is through `AstNodeMap::callKindOf`: the
+  `CallKind` the analysis decided, copied by the builder for every node it
+  records (the name `P.M` of a method call is a Method), checked in Debug
+  against `CallMeaning`. `isIndexCall`, `isMemberAccessCall`,
+  `isContractCheck`, the set literal, the slice and `__pure` answer from it,
+  never from the encoding's name.
+- A `with` binding is a `WithBinding` place in codegen
+  (`AstNodeMap::isWithBinding`) and a symbol of origin `WithBinding` in the
+  analyzer: no `__with` prefix test is left.
+- Conversions are `CallKind::Conversion`, their target the type of the
+  TIR's `Convert` (`conversionType`); `T` in `Low(T)`/`High(T)` is the TIR's
+  `TypeValue` (`typeValueOf`); a module intrinsic is the TIR's `Intrinsic`
+  (`intrinsicOf`). No `types().lookup` and no `findModuleIntrinsic` of a
+  callee is left in codegen.

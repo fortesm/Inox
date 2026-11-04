@@ -145,6 +145,42 @@ semantic::BuiltinOp AstNodeMap::builtinOf(const ast::Expression& node) const
     return semantic::BuiltinOp::None;
 }
 
+std::optional<semantic::CallKind> AstNodeMap::callKindOf(const ast::Expression& node) const
+{
+    const Entry& entry = entryOf(node, "call kind");
+    if (!entry.hasCallKind) {
+        return std::nullopt;
+    }
+    return entry.callKind;
+}
+
+bool AstNodeMap::isCallName(const ast::Expression& node) const
+{
+    return entryOf(node, "call name").call != nullptr;
+}
+
+bool AstNodeMap::isWithBinding(const ast::Expression& node) const
+{
+    const Entry& entry = entryOf(node, "with binding");
+    const Place* place = entry.place;
+    if (place == nullptr && entry.value != nullptr && entry.value->kind == ExprKind::Read) {
+        place = entry.value->place;
+    }
+    return place != nullptr && place->kind == PlaceKind::WithBinding;
+}
+
+TypeRef AstNodeMap::typeValueOf(const ast::Expression& node) const
+{
+    const Entry& entry = entryOf(node, "type value");
+    return entry.value != nullptr && entry.value->kind == ExprKind::TypeValue ? entry.value->type : nullptr;
+}
+
+const semantic::ModuleIntrinsic* AstNodeMap::intrinsicOf(const ast::Expression& node) const
+{
+    const Entry& entry = entryOf(node, "intrinsic");
+    return entry.value != nullptr && entry.value->kind == ExprKind::Intrinsic ? entry.value->intrinsic : nullptr;
+}
+
 bool AstNodeMap::isSlice(const ast::Expression& node) const
 {
     const Entry& entry = entryOf(node, "slice");

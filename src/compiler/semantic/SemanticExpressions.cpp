@@ -609,7 +609,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
                 throw SemanticError(
                     "assignment target is not mutable: " +
                     (root->kind() == ast::AstNodeKind::IdentifierExpression
-                         ? (static_cast<const ast::IdentifierExpression&>(*root).name().rfind("__with", 0) == 0
+                         ? (isWithBinding(static_cast<const ast::IdentifierExpression&>(*root))
                                 ? std::string("the target of 'with' is not a mutable variable")
                                 : static_cast<const ast::IdentifierExpression&>(*root).name()) +
                                (equalsIgnoreCase(static_cast<const ast::IdentifierExpression&>(*root).name(), "Self")
@@ -1239,6 +1239,13 @@ void SemanticAnalyzer::rejectReadOnlyOwnerTarget(const ast::Expression& target, 
     }
 }
 
+// The binding of a `with` (CANON-11), by the origin of its symbol.
+bool SemanticAnalyzer::isWithBinding(const ast::IdentifierExpression& identifier) const
+{
+    const Symbol* symbol = symbols_.currentScope().resolve(identifier.name());
+    return symbol != nullptr && symbol->origin == VariableOrigin::WithBinding;
+}
+
 void SemanticAnalyzer::markWithBinding(const ast::WithStatement& withStatement)
 {
     // The binding's origin and symbol, for the typed IR.
@@ -1255,7 +1262,7 @@ void SemanticAnalyzer::throwReadOnlyOwner(std::string_view prefix, const Symbol&
 
 std::string SemanticAnalyzer::readOnlyOwnerMessage(const Symbol& root) const
 {
-    if (root.name.rfind("__with", 0) == 0) {
+    if (root.origin == VariableOrigin::WithBinding) {
         return "it is owned through the target of 'with', which is read-only; the target must be "
                "reached through ref mut or Self mut to change what it owns (ADR-0016, CANON-9)";
     }

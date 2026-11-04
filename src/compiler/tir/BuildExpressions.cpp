@@ -123,6 +123,7 @@ const Expr* Builder::checked(const ast::Expression& source, const Expr* value)
     if (astNodes_ != nullptr) {
         // The expression as the analysis typed it, before its checks.
         astNodes_->recordValue(source, value);
+        recordCallKind(source);
     }
     if (const TypeRef range = semantics_.rangeCheck(source)) {
         Expr* check = make(ExprKind::RangeCheck, range, source);

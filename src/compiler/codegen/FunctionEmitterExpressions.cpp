@@ -132,16 +132,22 @@ std::string FunctionEmitter::emitUnsignedConversion(const std::string& value, Ty
 // Integer (Int64) or a fixed width narrower than 64 bits; else null.
 TypeRef FunctionEmitter::conversionTarget(const ast::CallExpression& call) const
 {
-    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().size() != 1) {
+    if (call.arguments().size() != 1) {
         return nullptr;
     }
-    const TypeRef target =
-        semantics_.types().lookup(static_cast<const ast::IdentifierExpression&>(call.callee()).name());
+    const TypeRef target = conversionType(call);
     const bool lowered = target != nullptr && (target == semantics_.types().naturalType() ||
                                                target == semantics_.types().int64Type() ||
                                                target->isNarrowInteger() || isUInt64Type(target) ||
                                                target->isEnum() || target->isRange() || target->isChar());
     return lowered ? target : nullptr;
+}
+
+// The target T of a conversion `T(X)`, the type of its TIR `Convert`; null
+// for any other call.
+TypeRef FunctionEmitter::conversionType(const ast::CallExpression& call) const
+{
+    return callKindOf(call) == semantic::CallKind::Conversion ? typeOf(call) : nullptr;
 }
 
 // An arithmetic result whose semantic type is a narrow fixed-width integer
@@ -391,11 +397,12 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (const semantic::StringFunction* function = semantics_.stringCall(call)) {
             return emitStringCall(call, *function);
         }
-        if (callee.name() == "__index") {
+        const std::optional<semantic::CallKind> kind = callKindOf(call);
+        if (kind == semantic::CallKind::Index) {
             const ElementAddress element = emitElementAddress(call);
             return loadElement(element);
         }
-        if (callee.name() == "__slice") {
+        if (kind == semantic::CallKind::Slice) {
             return emitSlice(call);
         }
         if (isOrdinalBuiltin(call)) {
@@ -436,20 +443,18 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (const auto bound = arrayBoundCall(call)) {
             return std::to_string(*bound);
         }
-        if (equalsIgnoreCase(callee.name(), "__member")) {
-            try {
-                const FieldAddress field = emitMemberAddress(call);
-                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-                output_ << "  " << result << " = load " << field.llvmType
-                        << ", ptr " << field.pointer << '\n';
-                return result;
-            } catch (const CodegenError&) {
-                return emitNoArgumentMethodCall(call, true);
-            }
+        if (kind == semantic::CallKind::Field) {
+            const FieldAddress field = emitMemberAddress(call);
+            const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << result << " = load " << field.llvmType << ", ptr " << field.pointer << '\n';
+            return result;
+        }
+        if (kind == semantic::CallKind::MethodNoArguments) {
+            return emitNoArgumentMethodCall(call, true);
         }
 
         // CANON-24: `old X` and a loop variant, evaluated where they stand.
-        if (callee.name() == "__pure" && call.arguments().size() == 1) {
+        if (kind == semantic::CallKind::Pure && call.arguments().size() == 1) {
             return emitExpression(*call.arguments().front());
         }
 
@@ -483,7 +488,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (call.arguments().size() == 1 && calledRoutine(callee) == nullptr) {
             const TypeRef target = typeOf(call);
             const TypeRef source = typeOf(*call.arguments().front());
-            const bool conversion = semantics_.types().lookup(callee.name()) != nullptr;
+            const bool conversion = conversionType(call) != nullptr;
             if (conversion && target != nullptr && source != nullptr &&
                 (target->isDecimal() || (source->isDecimal() && (target->isInteger() || target->isFloat())))) {
                 return emitDecimalConversion(call, target);
@@ -507,8 +512,8 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
 
         // String(C) (change char-values): the one-character String; String(N)
         // and String(F) (r3.90, B1): the number as Put writes it.
-        if (call.arguments().size() == 1 && equalsIgnoreCase(callee.name(), "String") &&
-            calledRoutine(callee) == nullptr) {
+        if (const TypeRef converted = conversionType(call);
+            call.arguments().size() == 1 && converted != nullptr && converted->isString()) {
             const TypeRef source = typeOf(*call.arguments().front());
             const std::string value = emitExpression(*call.arguments().front());
             if (source != nullptr && source->isChar()) {
@@ -1050,8 +1055,7 @@ std::string FunctionEmitter::emitNumberString(const std::string& value, TypeRef 
 // r3.90 (B2): the numeric target of `T(S)` with S a String; else null.
 TypeRef FunctionEmitter::textConversionTarget(const ast::CallExpression& call) const
 {
-    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().size() != 1 ||
-        calledRoutine(static_cast<const ast::IdentifierExpression&>(call.callee())) != nullptr) {
+    if (call.arguments().size() != 1 || conversionType(call) == nullptr) {
         return nullptr;
     }
     const TypeRef source = typeOf(*call.arguments().front());
@@ -1099,12 +1103,10 @@ std::string FunctionEmitter::emitTextToNumber(const ast::CallExpression& call, T
 // a Float, as source or as target; else null.
 TypeRef FunctionEmitter::realConversionTarget(const ast::CallExpression& call) const
 {
-    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().size() != 1 ||
-        calledRoutine(static_cast<const ast::IdentifierExpression&>(call.callee())) != nullptr) {
+    if (call.arguments().size() != 1) {
         return nullptr;
     }
-    const TypeRef target =
-        semantics_.types().lookup(static_cast<const ast::IdentifierExpression&>(call.callee()).name());
+    const TypeRef target = conversionType(call);
     const TypeRef source = typeOf(*call.arguments().front());
     if (target == nullptr || source == nullptr) {
         return nullptr;

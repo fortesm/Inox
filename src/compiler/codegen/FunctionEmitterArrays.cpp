@@ -38,15 +38,10 @@ namespace inox::compiler::codegen::detail {
 
 // ADR-0015: an Integer expression stored into a Natural carries an
 // implicit range check, recorded by semantic analysis.
-bool FunctionEmitter::isIndexCall(const ast::Expression& expression)
+bool FunctionEmitter::isIndexCall(const ast::Expression& expression) const
 {
-    if (expression.kind() != ast::AstNodeKind::CallExpression) {
-        return false;
-    }
-    const auto& call = static_cast<const ast::CallExpression&>(expression);
-    return call.callee().kind() == ast::AstNodeKind::IdentifierExpression &&
-           static_cast<const ast::IdentifierExpression&>(call.callee()).name() == "__index" &&
-           call.arguments().size() == 2;
+    return expression.kind() == ast::AstNodeKind::CallExpression &&
+           callKindOf(expression) == semantic::CallKind::Index;
 }
 
 // The LLVM type of a value in SSA form; i64 for a type without one.

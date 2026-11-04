@@ -88,8 +88,20 @@ Measured at step 3 (r3.123; clang, Linux):
 
 ## 4. Places and encodings
 
-- [ ] 4.1 `__member`, `__index`, `__slice`, `__set`, `__check`, `__pure` as TIR nodes; `WithBinding` places; the analyzer's `__with` prefix test removed
-- [ ] 4.2 Resolutions by name assigned to step 4 (Marcelo Fortes, 2026-11-04): conversions (`String(X)` recognized by its name; the target type resolved from the written name, `conversionTarget` and the other `types().lookup` of a callee) from the TIR's `Convert`; the type named in `Low(T)` and `High(T)` (`enumTypeNamed`) from the TIR; the module intrinsics (`intrinsicCallOf`, `findModuleIntrinsic`) from the TIR's `Intrinsic`. If the step proves too wide it may be split by a new decision, without taking work from step 5
+- [x] 4.1 `__member`, `__index`, `__slice`, `__set`, `__check`, `__pure` as TIR nodes; `WithBinding` places; the analyzer's `__with` prefix test removed
+- [x] 4.2 Resolutions by name assigned to step 4 (Marcelo Fortes, 2026-11-04): conversions (`String(X)` recognized by its name; the target type resolved from the written name, `conversionTarget` and the other `types().lookup` of a callee) from the TIR's `Convert`; the type named in `Low(T)` and `High(T)` (`enumTypeNamed`) from the TIR; the module intrinsics (`intrinsicCallOf`, `findModuleIntrinsic`) from the TIR's `Intrinsic`. If the step proves too wide it may be split by a new decision, without taking work from step 5
+
+Measured at step 4 (r3.127; clang, Linux):
+
+- Inventory: name comparisons 13 -> 3 (`true` twice and `Main`, step 5);
+  name resolutions 13 -> 7 (the routines found in the signature map, the
+  invariant routine, the enum literals of a field default and the two
+  types the module emitter resolves: step 5); AST shape tests 149 -> 138.
+- LLVM IR, Release IR and typed IR identical for all 1085 programs; no
+  protected frame grows; suite 1117/1117 in Debug, Release and ASan+UBSan.
+- `Self` of a routine header is taken from the parsed receiver (F3), not
+  from its name; the unit test of `lowerSignature` now builds its header as
+  the parser does (its expectations unchanged).
 
 ## 5. Codegen walks only the TIR
 

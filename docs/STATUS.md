@@ -192,7 +192,7 @@ they are rejected now.)
 - Phase 2b's `clonePureExpression` and `cloneChainTarget` (moved from the
   parser by F5) duplicate `ast::cloneExpression`, making copies without
   positions as the parser did; the analyzer recognizes a `with` binding by
-  its name's prefix `__with` (F6 debt); `codegen/AstQueries` holds AST walks that are not
+  its symbol's origin (r3.127); `codegen/AstQueries` holds AST walks that are not
   specific to codegen; the parser never builds `BlockStatement`.
 - Assignments (r3.124, CANON-5 and CANON-25): R is evaluated before the
   target, a compound target once, and a place whose object an index frees
@@ -204,4 +204,5 @@ they are rejected now.)
   program that is compiled and printed by `--dump-tir`; since step 2
   (r3.122) code generation takes the types, symbols and constants from it
   through a transitional index, since step 3 (r3.123) the builtin of each
-  call, and its other decisions move at steps 4-5.
+  call, since step 4 (r3.127) the encodings, conversions and intrinsics, and
+  its other decisions move at step 5.

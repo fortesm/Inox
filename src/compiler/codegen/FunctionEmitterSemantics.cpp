@@ -98,6 +98,17 @@ TypeRef FunctionEmitter::declaredTypeOf(const ast::VarStatement& declaration) co
     return type;
 }
 
+std::optional<semantic::CallKind> FunctionEmitter::callKindOf(const ast::Expression& node) const
+{
+    const std::optional<semantic::CallKind> kind = astNodes_.callKindOf(node);
+#ifndef NDEBUG
+    if (const semantic::CallMeaning* meaning = semantics_.callMeaning(node); meaning != nullptr && kind != meaning->kind) {
+        disagree("call kind", node);
+    }
+#endif
+    return kind;
+}
+
 semantic::BuiltinOp FunctionEmitter::builtinOf(const ast::Expression& call) const
 {
     const semantic::BuiltinOp op = astNodes_.builtinOf(call);

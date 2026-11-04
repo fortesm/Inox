@@ -410,7 +410,7 @@ bool FunctionEmitter::placeMayChange(const ast::Expression& place) const
     if (place.kind() == ast::AstNodeKind::IdentifierExpression) {
         const auto& identifier = static_cast<const ast::IdentifierExpression&>(place);
         const std::string name = normalize(identifier.name());
-        if (referenceParameters_.contains(name) || name.rfind("__with", 0) == 0) {
+        if (referenceParameters_.contains(name) || astNodes_.isWithBinding(identifier)) {
             return true;
         }
         const semantic::Symbol* symbol = symbolOf(identifier);

@@ -28,8 +28,7 @@ namespace inox::compiler::codegen::detail {
 
 bool FunctionEmitter::isContractCheck(const ast::CallExpression& call) const
 {
-    return call.callee().kind() == ast::AstNodeKind::IdentifierExpression &&
-           static_cast<const ast::IdentifierExpression&>(call.callee()).name() == "__check";
+    return callKindOf(call) == semantic::CallKind::Check;
 }
 
 void FunctionEmitter::emitContractCheck(const ast::CallExpression& call)
