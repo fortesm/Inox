@@ -9,11 +9,11 @@
 // Phase 5b: places. A variable by the origin the analysis recorded, a field
 // by its recorded index, an element, the object a pointer reaches, a value.
 
-#include "Lowerer.h"
+#include "Builder.h"
 
 namespace inox::compiler::tir::detail {
 
-const Place* Lowerer::variable(const ast::IdentifierExpression& source, const semantic::Symbol& symbol)
+const Place* Builder::variable(const ast::IdentifierExpression& source, const semantic::Symbol& symbol)
 {
     Place* result = arena_.make<Place>();
     result->symbol = &symbol;
@@ -58,7 +58,7 @@ const Place* Lowerer::variable(const ast::IdentifierExpression& source, const se
     return result;
 }
 
-const Place* Lowerer::through(const Place* base)
+const Place* Builder::through(const Place* base)
 {
     if (base->type == nullptr || !base->type->isPointer()) {
         return base;
@@ -71,7 +71,7 @@ const Place* Lowerer::through(const Place* base)
     return result;
 }
 
-const Place* Lowerer::place(const ast::Expression& source)
+const Place* Builder::place(const ast::Expression& source)
 {
     if (source.kind() == ast::AstNodeKind::IdentifierExpression && semantics_.callMeaning(source) == nullptr) {
         const auto& identifier = static_cast<const ast::IdentifierExpression&>(source);
@@ -98,10 +98,10 @@ const Place* Lowerer::place(const ast::Expression& source)
                                ? structType->fields()[meaning->field].type
                                : nullptr;
             result->isMutable = result->base->isMutable;
-            if (index_ != nullptr) {
+            if (astNodes_ != nullptr) {
                 // The field's name, and the `__member` it is written with.
-                index_->recordMember(*call.arguments()[1], result);
-                index_->recordName(call.callee());
+                astNodes_->recordMember(*call.arguments()[1], result);
+                astNodes_->recordName(call.callee());
             }
             return recorded(source, result);
         }
@@ -112,8 +112,8 @@ const Place* Lowerer::place(const ast::Expression& source)
             if (target == pointer) {
                 fail("Value of something that is not a pointer", source);
             }
-            if (index_ != nullptr) {
-                index_->recordName(call.callee());
+            if (astNodes_ != nullptr) {
+                astNodes_->recordName(call.callee());
             }
             return recorded(source, target);
         }
@@ -123,8 +123,8 @@ const Place* Lowerer::place(const ast::Expression& source)
             result->base = through(place(*call.arguments()[0]));
             result->indices = arena_.array<const Expr*>(1);
             result->indices[0] = expression(*call.arguments()[1]);
-            if (index_ != nullptr) {
-                index_->recordName(call.callee());
+            if (astNodes_ != nullptr) {
+                astNodes_->recordName(call.callee());
             }
             result->type = typeOf(source) != nullptr ? typeOf(source)
                            : result->base->type != nullptr ? result->base->type->element()
@@ -140,52 +140,52 @@ const Place* Lowerer::place(const ast::Expression& source)
     return recorded(source, result);
 }
 
-// F6 step 2, TRANSITIONAL: the migration index.
-const Place* Lowerer::recorded(const ast::Expression& source, const Place* place)
+// What each AST node became, for the AST node map.
+const Place* Builder::recorded(const ast::Expression& source, const Place* place)
 {
-    if (index_ != nullptr) {
-        index_->recordPlace(source, place);
+    if (astNodes_ != nullptr) {
+        astNodes_->recordPlace(source, place);
     }
     return place;
 }
 
-void Lowerer::recordCall(const ast::CallExpression& source, Expr* call)
+void Builder::recordCall(const ast::CallExpression& source, Expr* call)
 {
     call->symbol = semantics_.symbolOf(source);
-    if (index_ == nullptr) {
+    if (astNodes_ == nullptr) {
         return;
     }
     // The name a call is written with stands for the call: the routine's
     // identifier, or the `__member` of a method and its method name.
     const ast::Expression& callee = source.callee();
-    index_->recordCallee(callee, call);
+    astNodes_->recordCallee(callee, call);
     if (callee.kind() == ast::AstNodeKind::CallExpression) {
         const auto& member = static_cast<const ast::CallExpression&>(callee);
         if (member.arguments().size() == 2) {
-            index_->recordCallee(*member.arguments()[1], call);
+            astNodes_->recordCallee(*member.arguments()[1], call);
         }
-        index_->recordName(member.callee());
+        astNodes_->recordName(member.callee());
     } else if (call->kind == ExprKind::Call && source.arguments().size() == 2 &&
                semantics_.callMeaning(source)->kind == CallKind::MethodNoArguments) {
-        index_->recordCallee(*source.arguments()[1], call);
+        astNodes_->recordCallee(*source.arguments()[1], call);
     }
 }
 
-void Lowerer::recordDeclaration(const void* declaration, const Stmt* statement)
+void Builder::recordDeclaration(const void* declaration, const Stmt* statement)
 {
-    if (index_ != nullptr) {
-        index_->recordDeclaration(declaration, statement);
+    if (astNodes_ != nullptr) {
+        astNodes_->recordDeclaration(declaration, statement);
     }
 }
 
-void Lowerer::recordAssignment(const ast::BinaryExpression& assignment, const Stmt* statement, bool declares)
+void Builder::recordAssignment(const ast::BinaryExpression& assignment, const Stmt* statement, bool declares)
 {
-    if (index_ == nullptr) {
+    if (astNodes_ == nullptr) {
         return;
     }
-    index_->recordStatement(assignment, statement);
+    astNodes_->recordStatement(assignment, statement);
     if (declares) {
-        index_->recordDeclared(assignment.left(), statement);
+        astNodes_->recordDeclared(assignment.left(), statement);
     }
 }
 

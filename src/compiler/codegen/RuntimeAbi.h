@@ -6,7 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // The functions of libinoxrt that generated code calls (OpenSpec change
-// compiler-modularization, step 3). This table is the one place that names
+// compiler-modularization). This table is the one place that names
 // them and their exact LLVM declarations; src/runtime/*.cpp implements them.
 // A module that declares any of them must be linked with libinoxrt.
 

@@ -8,13 +8,13 @@
 
 #pragma once
 
-// The lowering to the typed IR (phase 5b, F6), shared by its files:
-// LowerExpressions.cpp (expressions and calls), LowerPlaces.cpp (places),
-// LowerStatements.cpp (statements) and Lower.cpp (routines, the program,
-// the helpers). Internal to tir/: only Lower.h is its interface.
+// The construction of the typed IR (phase 5b), shared by its files:
+// BuildExpressions.cpp (expressions and calls), BuildPlaces.cpp (places),
+// BuildStatements.cpp (statements) and BuildProgram.cpp (routines, the
+// program, the helpers). Internal to tir/: Build.h is its interface.
 
-#include "Lower.h"
-#include "MigrationIndex.h"
+#include "Build.h"
+#include "AstNodeMap.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -25,14 +25,14 @@ namespace inox::compiler::tir::detail {
 using semantic::CallKind;
 using semantic::CallMeaning;
 
-class Lowerer {
+class Builder {
 public:
-    Lowerer(Program& program, const semantic::SemanticResult& semantics, MigrationIndex* index)
-        : program_(program), arena_(program.arena), semantics_(semantics), index_(index)
+    Builder(Program& program, const semantic::SemanticResult& semantics, AstNodeMap* astNodes)
+        : program_(program), arena_(program.arena), semantics_(semantics), astNodes_(astNodes)
     {
     }
 
-    void lowerModule(const ast::ModuleNode& module);
+    void buildModule(const ast::ModuleNode& module);
 
 private:
     // Expressions.
@@ -71,8 +71,8 @@ private:
     const Routine* routineOf(const semantic::FunctionSignature* signature, const ast::AstNode& site);
     const Expr* constantLiteral(const semantic::ConstantValue& value, TypeRef type, ast::SourcePosition position);
 
-    // F6 step 2, TRANSITIONAL: what each AST node became, for the migration
-    // index (MigrationIndex.h); nothing when lowering without one.
+    // What each AST node became, for the AST node map (AstNodeMap.h);
+    // nothing when building without one.
     const Place* recorded(const ast::Expression& source, const Place* place);
     void recordCall(const ast::CallExpression& source, Expr* call);
     void recordDeclaration(const void* declaration, const Stmt* statement);
@@ -89,7 +89,7 @@ private:
     Program& program_;
     Arena& arena_;
     const semantic::SemanticResult& semantics_;
-    MigrationIndex* index_ = nullptr;
+    AstNodeMap* astNodes_ = nullptr;
     std::unordered_map<const ast::FunctionDeclaration*, Routine*> routines_;
     std::unordered_map<const semantic::Symbol*, const Stmt*> withs_;
 };

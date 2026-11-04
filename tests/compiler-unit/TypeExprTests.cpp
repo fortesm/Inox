@@ -9,7 +9,7 @@
 // the same shape as its original, shares no node with it, and passes every
 // type name and expression through the rewriters.
 
-// F4 (change structured-types): the written type the parser builds. The
+// The written type the parser builds (change structured-types). The
 // canonical spelling (design.md, table), the invariants of TypeExpr, and a
 // round trip over every written type of tests/, examples/ and stdlib/.
 

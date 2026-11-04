@@ -122,18 +122,18 @@ private:
     // `with` on a read-only reference, or on a place owned through one, only
     // reads what the target owns.
     void markWithBinding(const ast::WithStatement& withStatement);
-    // F6 (typed-ir): what the analysis decided, recorded for the typed IR
+    // What the analysis decided, recorded for the typed IR
     // (CallMeaning.h). Out of line, so the recursive analyzers keep their
     // frames: each takes only references.
-    void noteCall(const ast::Expression& call, CallKind kind);
-    void noteBuiltin(const ast::CallExpression& call, bool file = false);
-    void noteField(const ast::Expression& access, TypeRef structType, const types::StructField& field);
-    void noteBuiltinIdentifier(const ast::IdentifierExpression& identifier);
-    void noteRoutineCall(const ast::Expression& call, const FunctionSignature& signature, CallKind kind);
-    void noteIntrinsicCall(const ast::Expression& call, const ModuleIntrinsic& intrinsic);
-    void noteDeclared(const void* declaration, const std::string& name, VariableOrigin origin);
-    void noteIterator(const ast::ForInStatement& loop);
-    void noteOmittedBound(const ast::CallExpression& slice, bool low);
+    void recordCallMeaning(const ast::Expression& call, CallKind kind);
+    void recordBuiltinCall(const ast::CallExpression& call, bool file = false);
+    void recordFieldAccess(const ast::Expression& access, TypeRef structType, const types::StructField& field);
+    void recordBuiltinIdentifier(const ast::IdentifierExpression& identifier);
+    void recordRoutineCall(const ast::Expression& call, const FunctionSignature& signature, CallKind kind);
+    void recordIntrinsicCall(const ast::Expression& call, const ModuleIntrinsic& intrinsic);
+    void recordDeclaredSymbol(const void* declaration, const std::string& name, VariableOrigin origin);
+    void recordLoopIterator(const ast::ForInStatement& loop);
+    void recordOmittedBound(const ast::CallExpression& slice, bool low);
     static VariableOrigin parameterOrigin(PassMode mode, bool receiver);
     // A place rooted at a deep read-only symbol, through fields, elements and
     // owners (not through a Link).
@@ -472,7 +472,7 @@ private:
     };
     std::vector<TrackedLocal> localsToRead_;
     std::unordered_set<const Symbol*> readSymbols_;
-    // ADR-0012: the copy of the target inside a desugared `X += R`; analyzing
+    // ADR-0012: the copy of the target inside a normalized `X += R`; analyzing
     // it is not a read of X.
     std::unordered_set<const ast::IdentifierExpression*> updateOnlyReads_;
 

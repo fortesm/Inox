@@ -7,7 +7,7 @@
 
 // IR text of the internal helpers every module may define: the runtime-fault
 // function of CANON-19, checked Integer arithmetic and console input
-// (OpenSpec change compiler-modularization, step 1).
+// (OpenSpec change compiler-modularization).
 
 #pragma once
 

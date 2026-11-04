@@ -6,7 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // The LLVM instruction or predicate for an Inox operator (OpenSpec change
-// compiler-modularization, step 1).
+// compiler-modularization).
 
 #pragma once
 

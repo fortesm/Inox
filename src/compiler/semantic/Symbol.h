@@ -29,7 +29,7 @@ enum class SymbolKind {
     Builtin
 };
 
-// F6 (typed-ir): where a Variable comes from, so a later phase tells a
+// Where a Variable comes from, so a later phase tells a
 // local, a parameter, the receiver, a `with` binding and a handler's
 // binding apart without looking at its name. None for the other kinds.
 enum class VariableOrigin : std::uint8_t {
@@ -72,7 +72,7 @@ public:
     void inferType(std::string_view name, const types::Type* type);
     // Marks a symbol of this scope read-only through its owners.
     void markDeepReadOnly(std::string_view name);
-    // Records where a Variable of this scope comes from (F6).
+    // Records where a Variable of this scope comes from.
     void setOrigin(std::string_view name, VariableOrigin origin);
     bool containsLocal(std::string_view name) const;
     bool containsInAncestors(std::string_view name) const;

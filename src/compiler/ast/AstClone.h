@@ -24,12 +24,12 @@ namespace inox::compiler::ast {
 // node is copied, and nullptr keeps the copy.
 using ExpressionRewriter = std::function<ExpressionPtr(const Expression&)>;
 
-// Changes, in the copy, the written type of a typed local (F4). A type
+// Changes, in the copy, the written type of a typed local. A type
 // named inside an expression (`New(T)`, `T(Field := ...)`) is an
 // identifier: the expression rewriter sees it.
 using TypeRewriter = std::function<void(TypeExpr&)>;
 
-// Maps the exception type an `on E: T` handler names (a name until F7) to
+// Maps the exception type an `on E: T` handler names (a name) to
 // the name written in the copy.
 using ExceptionNameRewriter = std::function<std::string(const std::string&)>;
 

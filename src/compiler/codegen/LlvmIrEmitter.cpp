@@ -34,12 +34,12 @@ void emitFunction(std::ostringstream& output,
                   const FunctionSignatures& signatures,
                   ModuleContext& moduleContext,
                   const semantic::SemanticResult& semantics,
-                  const tir::MigrationIndex& index,
+                  const tir::AstNodeMap& astNodes,
                   const StateGlobals& stateGlobals,
                   bool& usesStringCleanup)
 {
     std::ostringstream body;
-    FunctionEmitter emitter(body, function, signature, signatures, moduleContext, semantics, index, stateGlobals);
+    FunctionEmitter emitter(body, function, signature, signatures, moduleContext, semantics, astNodes, stateGlobals);
     emitter.emit();
     usesStringCleanup = usesStringCleanup || emitter.usesStringCleanup();
 
@@ -90,13 +90,13 @@ CodegenUnsupported::CodegenUnsupported(std::string message)
 }
 
 std::string LlvmIrEmitter::emit(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
-                                const tir::MigrationIndex& index) const
+                                const tir::AstNodeMap& astNodes) const
 {
-    return emitModule(module, semantics, index).ir;
+    return emitModule(module, semantics, astNodes).ir;
 }
 
 LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
-                                     const tir::MigrationIndex& index) const
+                                     const tir::AstNodeMap& astNodes) const
 {
     const ast::FunctionDeclaration* mainFunction = nullptr;
     FunctionSignatures signatures;
@@ -129,7 +129,7 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
             continue;
         }
         for (const ast::VariableDeclaration& declaration : section.variables()) {
-            const TypeRef type = index.declaredType(declaration);
+            const TypeRef type = astNodes.declaredType(declaration);
             const std::string llvmType = llvmValueType(type);
             if (llvmType.empty()) {
                 throw CodegenUnsupported("State variables of type " + types::nameOf(type) + " are not lowered yet");
@@ -184,7 +184,7 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
 
     for (const ast::FunctionDeclaration* routine : routines) {
         const auto signature = signatures.find(normalize(routine->name()));
-        emitFunction(functionOutput, *routine, signature->second, signatures, moduleContext, semantics, index, stateGlobals,
+        emitFunction(functionOutput, *routine, signature->second, signatures, moduleContext, semantics, astNodes, stateGlobals,
                      usesStringCleanup);
     }
 
@@ -192,7 +192,7 @@ LlvmModule LlvmIrEmitter::emitModule(const ast::ModuleNode& module, const semant
         throw CodegenError("LLVM emission requires Main");
     }
     const FunctionSignature mainSignature{"main", "i32", {}, nullptr};
-    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, moduleContext, semantics, index, stateGlobals,
+    emitFunction(functionOutput, *mainFunction, mainSignature, signatures, moduleContext, semantics, astNodes, stateGlobals,
                  usesStringCleanup);
 
     for (const StateGlobal& state : stateGlobals) {

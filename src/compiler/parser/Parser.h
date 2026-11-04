@@ -169,7 +169,7 @@ private:
         return node;
     }
 
-    void requireLoweredDepth(std::size_t depth) const;
+    void requireNormalizedDepth(std::size_t depth) const;
     void checkExpressionDepth(const ast::Expression& expression) const;
     ast::StatementPtr endSimpleStatement(ast::StatementPtr statement);
 
@@ -202,8 +202,8 @@ private:
     std::size_t current_ = 0;
     std::unordered_set<const ast::Expression*> parenthesized_;
     bool headerExpression_ = false;
-    // How many `with` bodies enclose the current position (F5: the parser
-    // only counts; phase 2b names the targets).
+    // How many `with` bodies enclose the current position (the parser only
+    // counts; phase 2b names the targets).
     std::size_t withDepth_ = 0;
 
     // Design by contract (CANON-24). `pre`, `pos`, `invariant`, `variant`,

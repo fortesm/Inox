@@ -8,11 +8,11 @@
 
 // Phase 5b: statements, as the AST after phases 2b and 4 has them.
 
-#include "Lowerer.h"
+#include "Builder.h"
 
 namespace inox::compiler::tir::detail {
 
-Span<const Stmt*> Lowerer::statements(const std::vector<ast::StatementPtr>& sources)
+Span<const Stmt*> Builder::statements(const std::vector<ast::StatementPtr>& sources)
 {
     Span<const Stmt*> result = arena_.array<const Stmt*>(sources.size());
     for (std::size_t index = 0; index < sources.size(); ++index) {
@@ -21,7 +21,7 @@ Span<const Stmt*> Lowerer::statements(const std::vector<ast::StatementPtr>& sour
     return result;
 }
 
-const Stmt* Lowerer::statement(const ast::Statement& source)
+const Stmt* Builder::statement(const ast::Statement& source)
 {
     Stmt* result = nullptr;
     switch (source.kind()) {
@@ -95,7 +95,7 @@ const Stmt* Lowerer::statement(const ast::Statement& source)
     return result;
 }
 
-const Stmt* Lowerer::expressionStatement(const ast::ExpressionStatement& source)
+const Stmt* Builder::expressionStatement(const ast::ExpressionStatement& source)
 {
     const ast::Expression& expression = source.expression();
     if (expression.kind() == ast::AstNodeKind::BinaryExpression &&
@@ -126,7 +126,7 @@ const Stmt* Lowerer::expressionStatement(const ast::ExpressionStatement& source)
     return result;
 }
 
-const Stmt* Lowerer::declaration(const ast::VarStatement& source)
+const Stmt* Builder::declaration(const ast::VarStatement& source)
 {
     const semantic::Symbol* symbol = semantics_.declaredSymbol(&source);
     if (symbol == nullptr) {
@@ -143,7 +143,7 @@ const Stmt* Lowerer::declaration(const ast::VarStatement& source)
     return result;
 }
 
-const Stmt* Lowerer::ifStatement(const ast::IfStatement& source)
+const Stmt* Builder::ifStatement(const ast::IfStatement& source)
 {
     Stmt* result = make(StmtKind::If, source);
     result->value = expression(source.condition());
@@ -160,7 +160,7 @@ const Stmt* Lowerer::ifStatement(const ast::IfStatement& source)
     return result;
 }
 
-const Stmt* Lowerer::caseStatement(const ast::CaseStatement& source)
+const Stmt* Builder::caseStatement(const ast::CaseStatement& source)
 {
     Stmt* result = make(StmtKind::Case, source);
     result->value = expression(source.expression());
@@ -176,7 +176,7 @@ const Stmt* Lowerer::caseStatement(const ast::CaseStatement& source)
     return result;
 }
 
-const Stmt* Lowerer::tryStatement(const ast::TryStatement& source)
+const Stmt* Builder::tryStatement(const ast::TryStatement& source)
 {
     Stmt* result = make(StmtKind::Try, source);
     result->body = statements(source.body());
@@ -199,7 +199,7 @@ const Stmt* Lowerer::tryStatement(const ast::TryStatement& source)
     return result;
 }
 
-const Stmt* Lowerer::withStatement(const ast::WithStatement& source)
+const Stmt* Builder::withStatement(const ast::WithStatement& source)
 {
     const semantic::Symbol* binding = semantics_.declaredSymbol(&source);
     if (binding == nullptr) {
@@ -221,7 +221,7 @@ const Stmt* Lowerer::withStatement(const ast::WithStatement& source)
     return result;
 }
 
-const Stmt* Lowerer::forStatement(const ast::ForInStatement& source)
+const Stmt* Builder::forStatement(const ast::ForInStatement& source)
 {
     const semantic::Symbol* iterator = semantics_.declaredSymbol(&source);
     if (iterator == nullptr) {
@@ -239,10 +239,10 @@ const Stmt* Lowerer::forStatement(const ast::ForInStatement& source)
     return result;
 }
 
-const Stmt* Lowerer::raiseStatement(const ast::RaiseStatement& source)
+const Stmt* Builder::raiseStatement(const ast::RaiseStatement& source)
 {
     Stmt* result = make(StmtKind::Raise, source);
-    // F7 gives exceptions their types; until then the name is carried as
+    // Exception types are names in the analysis; the name is carried as
     // written (design of typed-ir, "Relation to the other steps").
     if (source.expression() != nullptr) {
         if (source.expression()->kind() != ast::AstNodeKind::IdentifierExpression) {

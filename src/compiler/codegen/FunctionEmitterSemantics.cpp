@@ -5,10 +5,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// FunctionEmitter: TRANSITIONAL (F6 step 2, removed at step 5). Code
-// generation still walks the AST; the types, symbols and constants of the
-// nodes it meets come from the typed IR through the migration index
-// (tir/MigrationIndex.h), never from the SemanticResult. A node without its
+// FunctionEmitter: the semantic facts of the AST nodes code generation
+// walks (types, symbols, constants, declared types), already resolved,
+// taken from the typed IR through the AST node map (tir/AstNodeMap.h),
+// never from the SemanticResult. Only reading belongs here: no analysis. A node without its
 // TIR node is an internal error in every build; a Debug compiler also
 // checks that each answer agrees with the analysis's record, and a
 // disagreement is an internal error too, never a fallback.
@@ -24,38 +24,38 @@ namespace {
 
 [[noreturn]] void disagree(const char* what, const ast::Expression& node)
 {
-    std::string message = "internal error: typed IR migration: the ";
+    std::string message = "internal error: typed IR: the ";
     message += what;
     message += " the typed IR gives is not the analysis's";
     if (node.position().known()) {
         message += " (line " + std::to_string(node.position().line) + ")";
     }
-    throw tir::MigrationError(message);
+    throw tir::InvariantError(message);
 }
 
 } // namespace
 #endif
 
-// One call, as before step 2: typeOf is on codegen's protected paths
-// (tools/stack_frames.py), and its frame stays the same.
+// One call: typeOf is on codegen's protected paths (tools/stack_frames.py),
+// and its frame stays that of a call.
 TypeRef FunctionEmitter::typeOf(const ast::Expression& expression) const
 {
-    return migratedTypeOf(expression);
+    return typeFromTir(expression);
 }
 
-TypeRef FunctionEmitter::migratedTypeOf(const ast::Expression& expression) const
+TypeRef FunctionEmitter::typeFromTir(const ast::Expression& expression) const
 {
 #ifndef NDEBUG
-    if (!index_.typeAgrees(expression, semantics_.typeOf(expression))) {
+    if (!astNodes_.typeAgrees(expression, semantics_.typeOf(expression))) {
         disagree("type", expression);
     }
 #endif
-    return index_.typeOf(expression);
+    return astNodes_.typeOf(expression);
 }
 
 const semantic::Symbol* FunctionEmitter::symbolOf(const ast::Expression& node) const
 {
-    const semantic::Symbol* symbol = index_.symbolOf(node);
+    const semantic::Symbol* symbol = astNodes_.symbolOf(node);
 #ifndef NDEBUG
     const semantic::Symbol* recorded = nullptr;
     if (node.kind() == ast::AstNodeKind::IdentifierExpression) {
@@ -72,7 +72,7 @@ const semantic::Symbol* FunctionEmitter::symbolOf(const ast::Expression& node) c
 
 const semantic::ConstantValue* FunctionEmitter::resolvedConstant(const ast::IdentifierExpression& identifier) const
 {
-    const semantic::ConstantValue* constant = index_.constantOf(identifier);
+    const semantic::ConstantValue* constant = astNodes_.constantOf(identifier);
 #ifndef NDEBUG
     const semantic::Symbol* symbol = semantics_.symbolOf(identifier);
     const semantic::ConstantValue* recorded =
@@ -87,10 +87,10 @@ const semantic::ConstantValue* FunctionEmitter::resolvedConstant(const ast::Iden
 
 TypeRef FunctionEmitter::declaredTypeOf(const ast::VarStatement& declaration) const
 {
-    const TypeRef type = index_.declaredType(declaration);
+    const TypeRef type = astNodes_.declaredType(declaration);
 #ifndef NDEBUG
     if (type != semantics_.declaredType(declaration)) {
-        throw tir::MigrationError("internal error: typed IR migration: the declared type of " + declaration.name() +
+        throw tir::InvariantError("internal error: typed IR: the declared type of " + declaration.name() +
                                   " is not the analysis's");
     }
 #endif

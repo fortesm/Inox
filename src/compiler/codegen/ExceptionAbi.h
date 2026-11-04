@@ -6,7 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // How exceptions are caught on the target (OpenSpec change
-// compiler-modularization, step 3). Inox code never sees the ABI: a pad
+// compiler-modularization). Inox code never sees the ABI: a pad
 // catches every C++ exception thrown by libinoxrt, captures it as an opaque
 // Inox exception state and continues in ordinary control flow. Linux and the
 // other Unix-like hosts use the Itanium ABI (landingpad); Windows uses the

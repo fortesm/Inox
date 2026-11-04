@@ -9,7 +9,7 @@
 // Phase 5b: expressions and calls. A call becomes what its recorded meaning
 // says (CallMeaning); an identifier a place, a constant or a call.
 
-#include "Lowerer.h"
+#include "Builder.h"
 
 #include <cstdio>
 #include <string>
@@ -51,7 +51,7 @@ BinaryOp binaryOp(ast::BinaryOperator op)
 
 } // namespace
 
-const Expr* Lowerer::expression(const ast::Expression& source)
+const Expr* Builder::expression(const ast::Expression& source)
 {
     Expr* result = nullptr;
     switch (source.kind()) {
@@ -122,11 +122,11 @@ const Expr* Lowerer::expression(const ast::Expression& source)
 }
 
 // The checks the analysis asked for on the way into a place.
-const Expr* Lowerer::checked(const ast::Expression& source, const Expr* value)
+const Expr* Builder::checked(const ast::Expression& source, const Expr* value)
 {
-    if (index_ != nullptr) {
+    if (astNodes_ != nullptr) {
         // The expression as the analysis typed it, before its checks.
-        index_->recordValue(source, value);
+        astNodes_->recordValue(source, value);
     }
     if (const TypeRef range = semantics_.rangeCheck(source)) {
         Expr* check = make(ExprKind::RangeCheck, range, source);
@@ -143,7 +143,7 @@ const Expr* Lowerer::checked(const ast::Expression& source, const Expr* value)
     return value;
 }
 
-const Expr* Lowerer::identifier(const ast::IdentifierExpression& source)
+const Expr* Builder::identifier(const ast::IdentifierExpression& source)
 {
     if (const CallMeaning* meaning = semantics_.callMeaning(source)) {
         // A call without parentheses: `GetLn`, `EndOfInput`, `ClearScreen`, `Report`.
@@ -212,7 +212,7 @@ const Expr* Lowerer::identifier(const ast::IdentifierExpression& source)
     }
 }
 
-const Expr* Lowerer::constantLiteral(const semantic::ConstantValue& value, TypeRef type, ast::SourcePosition position)
+const Expr* Builder::constantLiteral(const semantic::ConstantValue& value, TypeRef type, ast::SourcePosition position)
 {
     Expr* result = arena_.make<Expr>();
     result->kind = ExprKind::Literal;
@@ -251,7 +251,7 @@ const Expr* Lowerer::constantLiteral(const semantic::ConstantValue& value, TypeR
     return result;
 }
 
-Span<const Expr*> Lowerer::expressions(const std::vector<ast::ExpressionPtr>& sources, std::size_t first,
+Span<const Expr*> Builder::expressions(const std::vector<ast::ExpressionPtr>& sources, std::size_t first,
                                        const ast::Expression* receiver)
 {
     const std::size_t extra = receiver != nullptr ? 1 : 0;
@@ -265,7 +265,7 @@ Span<const Expr*> Lowerer::expressions(const std::vector<ast::ExpressionPtr>& so
     return result;
 }
 
-const Routine* Lowerer::routineOf(const semantic::FunctionSignature* signature, const ast::AstNode& site)
+const Routine* Builder::routineOf(const semantic::FunctionSignature* signature, const ast::AstNode& site)
 {
     if (signature == nullptr || signature->declaration == nullptr) {
         fail("a call of a routine without a declaration", site);
@@ -277,7 +277,7 @@ const Routine* Lowerer::routineOf(const semantic::FunctionSignature* signature, 
     return found->second;
 }
 
-const Expr* Lowerer::call(const ast::CallExpression& source, const CallMeaning& meaning)
+const Expr* Builder::call(const ast::CallExpression& source, const CallMeaning& meaning)
 {
     const TypeRef type = typeOf(source) != nullptr ? typeOf(source) : semantics_.types().voidType();
     Expr* result = nullptr;
@@ -332,7 +332,7 @@ const Expr* Lowerer::call(const ast::CallExpression& source, const CallMeaning& 
     case CallKind::Builtin:
         result = builtin(source, meaning, type);
         if (meaning.constant) {
-            // A constant of the type (CANON-13); the operand is lowered too,
+            // A constant of the type (CANON-13); the operand is built too,
             // the type is its.
             result->folded = true;
             result->foldedValue = *meaning.constant;
@@ -354,7 +354,7 @@ const Expr* Lowerer::call(const ast::CallExpression& source, const CallMeaning& 
     return result;
 }
 
-Expr* Lowerer::slice(const ast::CallExpression& source, const CallMeaning& meaning, TypeRef type)
+Expr* Builder::slice(const ast::CallExpression& source, const CallMeaning& meaning, TypeRef type)
 {
     Expr* result = make(ExprKind::Slice, type, source);
     result->hasLow = !meaning.lowOmitted;
@@ -367,20 +367,20 @@ Expr* Lowerer::slice(const ast::CallExpression& source, const CallMeaning& meani
     if (result->hasHigh) {
         result->operands[result->hasLow ? 2 : 1] = expression(*source.arguments()[2]);
     }
-    if (index_ != nullptr) {
+    if (astNodes_ != nullptr) {
         // An omitted bound is written `__low` or `__high`: no value.
         if (!result->hasLow) {
-            index_->recordName(*source.arguments()[1]);
+            astNodes_->recordName(*source.arguments()[1]);
         }
         if (!result->hasHigh) {
-            index_->recordName(*source.arguments()[2]);
+            astNodes_->recordName(*source.arguments()[2]);
         }
     }
     return result;
 }
 
 // `__check(Kind, Condition, "text")`, written by the contract lowering.
-Expr* Lowerer::check(const ast::CallExpression& source)
+Expr* Builder::check(const ast::CallExpression& source)
 {
     Expr* result = make(ExprKind::Check, semantics_.types().voidType(), source);
     const auto& kind = static_cast<const ast::LiteralExpression&>(*source.arguments()[0]);
@@ -395,7 +395,7 @@ Expr* Lowerer::check(const ast::CallExpression& source)
     return result;
 }
 
-Expr* Lowerer::builtin(const ast::CallExpression& source, const CallMeaning& meaning, TypeRef type)
+Expr* Builder::builtin(const ast::CallExpression& source, const CallMeaning& meaning, TypeRef type)
 {
     if (meaning.op == semantic::BuiltinOp::Value) {
         // `Value(P)` is the object P points at: a place (safe-pointers).
@@ -409,7 +409,7 @@ Expr* Lowerer::builtin(const ast::CallExpression& source, const CallMeaning& mea
     return result;
 }
 
-semantic::StringFunction Lowerer::stringFunction(const ast::CallExpression& source) const
+semantic::StringFunction Builder::stringFunction(const ast::CallExpression& source) const
 {
     const semantic::StringFunction* function = semantics_.stringCall(source);
     if (function == nullptr) {
@@ -418,14 +418,14 @@ semantic::StringFunction Lowerer::stringFunction(const ast::CallExpression& sour
     return *function;
 }
 
-const Expr* Lowerer::constantLiteral(std::int64_t integer, TypeRef type, ast::SourcePosition position)
+const Expr* Builder::constantLiteral(std::int64_t integer, TypeRef type, ast::SourcePosition position)
 {
     semantic::ConstantValue value;
     value.integer = integer;
     return constantLiteral(value, type, position);
 }
 
-const Expr* Lowerer::construction(const ast::CallExpression& source)
+const Expr* Builder::construction(const ast::CallExpression& source)
 {
     const TypeRef type = semantics_.constructedStruct(source);
     if (type == nullptr) {
@@ -444,9 +444,9 @@ const Expr* Lowerer::construction(const ast::CallExpression& source)
         }
         const auto& named = static_cast<const ast::BinaryExpression&>(*argument);
         result->fields[meaning->field].value = expression(named.right());
-        if (index_ != nullptr) {
-            index_->recordFieldValue(named, result, meaning->field);
-            index_->recordName(named.left());
+        if (astNodes_ != nullptr) {
+            astNodes_->recordFieldValue(named, result, meaning->field);
+            astNodes_->recordName(named.left());
         }
     }
     result->invariants = invariants(source, nullptr);
@@ -454,7 +454,7 @@ const Expr* Lowerer::construction(const ast::CallExpression& source)
     return result;
 }
 
-const Invariants* Lowerer::invariants(const ast::AstNode& site, const ast::AstNode* other)
+const Invariants* Builder::invariants(const ast::AstNode& site, const ast::AstNode* other)
 {
     const auto* before = semantics_.invariantChecks(site, false);
     const auto* after = semantics_.invariantChecks(site, true);

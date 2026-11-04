@@ -60,7 +60,7 @@ TypeRef SemanticAnalyzer::analyzeOrdinalBuiltin(const ast::CallExpression& call)
             return nullptr;
         }
         result_.setExpressionType(argument, type);
-        // F6 (typed-ir): the type's name is bound to the type's symbol.
+        // The type's name is bound to the type's symbol.
         if (const Symbol* symbol =
                 symbols_.currentScope().resolve(static_cast<const ast::IdentifierExpression&>(argument).name())) {
             result_.bind(static_cast<const ast::IdentifierExpression&>(argument), *symbol);

@@ -50,9 +50,8 @@ enum class AstNodeKind {
     LeaveStatement,
     ContinueStatement,
     WithStatement,
-    // The written forms of F5 (change desugaring-out-of-parser): built by the
-    // parser, turned into the forms above by phase 2b (lowering/Desugar);
-    // no later phase sees them.
+    // The written forms: built by the parser, turned into the forms above by
+    // phase 2b (normalization/AstNormalizer); no later phase sees them.
     ChainedAssignmentStatement,
     CompoundAssignmentStatement,
     WithTargetExpression
@@ -226,7 +225,7 @@ private:
     std::size_t line_ = 0;
 };
 
-// A field of a Struct declaration (CANON-9) and its written type (F4); a
+// A field of a Struct declaration (CANON-9) and its written type; a
 // default is one literal, with a leading `-` for a negative number.
 struct StructFieldDeclaration {
     std::string name;
@@ -347,7 +346,7 @@ private:
 // arguments (`Max<Array[1..3] Int64>`), which never make it a method.
 std::size_t methodDot(std::string_view routineName);
 
-// One parameter of a routine header (F3, r3.114): `X T`, `ref X T`,
+// One parameter of a routine header (r3.114): `X T`, `ref X T`,
 // `ref mut X T`, or the receiver of a method, `Self` or `Self mut`, which
 // has no written type (it is the method's struct).
 struct ParameterDeclaration {
@@ -382,7 +381,7 @@ public:
     // analyzer checks and compiles a copy per use.
     const std::vector<std::string>& typeParameters() const;
     bool isGeneric() const { return !typeParameters_.empty(); }
-    // The header the parser built (F3): parameters in order, then the result.
+    // The header the parser built: parameters in order, then the result.
     const RoutineHeader& header() const { return header_; }
     RoutineHeader& header() { return header_; }
     const std::vector<ParameterDeclaration>& parameters() const { return header_.parameters; }

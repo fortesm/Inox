@@ -269,11 +269,11 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
         if (equalsIgnoreCase(identifier.name(), "Get") || equalsIgnoreCase(identifier.name(), "GetLn")) {
             const Symbol& symbol = resolveOrThrow(identifier.name());
             result_.bind(identifier, symbol);
-            noteBuiltinIdentifier(identifier);
+            recordBuiltinIdentifier(identifier);
             return types().voidType();
         }
         if (const ModuleIntrinsic* terminal = moduleIntrinsic(identifier.name())) {
-            noteIntrinsicCall(identifier, *terminal);
+            recordIntrinsicCall(identifier, *terminal);
             return analyzeIntrinsicIdentifier(identifier, *terminal);
         }
         // r3.89 (C1): EndOfInput, true when nothing is left to read.
@@ -281,7 +281,7 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
             if (const Symbol* symbol = symbols_.currentScope().resolve(identifier.name());
                 symbol != nullptr && symbol->kind == SymbolKind::Builtin) {
                 result_.bind(identifier, *symbol);
-                noteBuiltinIdentifier(identifier);
+                recordBuiltinIdentifier(identifier);
                 return types().boolType();
             }
         }
@@ -293,7 +293,7 @@ TypeRef SemanticAnalyzer::inferExpressionType(const ast::Expression& expression)
                 if (const Symbol* symbol = symbols_.currentScope().resolve(identifier.name())) {
                     result_.bind(identifier, *symbol);
                 }
-                noteRoutineCall(identifier, *signature, CallKind::Routine);
+                recordRoutineCall(identifier, *signature, CallKind::Routine);
                 return signature->returnType;
             }
             throw SemanticError("function " + identifier.name() + " requires arguments; use parentheses only when passing arguments");
@@ -456,7 +456,7 @@ TypeRef SemanticAnalyzer::analyzeSliceExpression(const ast::CallExpression& call
         if (bound.kind() == ast::AstNodeKind::IdentifierExpression &&
             (static_cast<const ast::IdentifierExpression&>(bound).name() == "__low" ||
              static_cast<const ast::IdentifierExpression&>(bound).name() == "__high")) {
-            noteOmittedBound(call, which == 1);
+            recordOmittedBound(call, which == 1);
             if (staticBounds) {
                 (which == 1 ? low : high) = which == 1 ? staticBounds->first : staticBounds->second;
                 (which == 1 ? lowKnown : highKnown) = true;
@@ -556,7 +556,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
                     SymbolKind::Variable,
                     declaredType,
                     true);
-                noteDeclared(&expression, identifier.name(), VariableOrigin::Local);
+                recordDeclaredSymbol(&expression, identifier.name(), VariableOrigin::Local);
                 trackLocal(identifier.name());
                 const Symbol& declared = resolveOrThrow(identifier.name());
                 result_.bind(identifier, declared);
@@ -1241,8 +1241,8 @@ void SemanticAnalyzer::rejectReadOnlyOwnerTarget(const ast::Expression& target, 
 
 void SemanticAnalyzer::markWithBinding(const ast::WithStatement& withStatement)
 {
-    // F6: the binding's origin and symbol, for the typed IR.
-    noteDeclared(&withStatement, withStatement.bindingName(), VariableOrigin::WithBinding);
+    // The binding's origin and symbol, for the typed IR.
+    recordDeclaredSymbol(&withStatement, withStatement.bindingName(), VariableOrigin::WithBinding);
     if (isDeepReadOnlyPlace(withStatement.target())) {
         symbols_.currentScope().markDeepReadOnly(withStatement.bindingName());
     }

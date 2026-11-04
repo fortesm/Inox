@@ -143,7 +143,7 @@ bool isPureExpression(const ast::Expression& expression)
 
 // A compound-assignment target (ADR-0012): a chain target, or an array
 // element `A[I]` whose base and indices have no side effects, so the
-// desugared `A[I] := A[I] op R` reads and writes the same element.
+// normalized `A[I] := A[I] op R` reads and writes the same element.
 bool isCompoundTarget(const ast::Expression& expression)
 {
     if (isChainTarget(expression)) {
@@ -216,9 +216,9 @@ Parser::DepthGuard::~DepthGuard()
     --counter_;
 }
 
-// The depth of a form phase 2b will build (F5): the same limit and message
+// The depth of a form phase 2b will build: the same limit and message
 // as an expression the parser builds.
-void Parser::requireLoweredDepth(std::size_t depth) const
+void Parser::requireNormalizedDepth(std::size_t depth) const
 {
     if (depth > kMaxExpressionDepth) {
         errorAtCurrent("maximum expression nesting depth exceeded (implementation limit: " +
@@ -385,7 +385,7 @@ void Parser::beginStatement()
     statementStarts_.push_back(current_);
 }
 
-// A statement, and the statements its desugaring adds before and after it,
+// A statement, and the statements phase 2b adds before and after it,
 // start where its first token is (change source-positions). The start is
 // kept on a member stack, not in the recursive frames.
 void Parser::stampStatement(ast::Statement& statement)
@@ -1031,7 +1031,7 @@ ast::ExpressionPtr Parser::parsePrimary()
     }
 
     // Leading '.' inside a 'with' body: __member(target of the innermost
-    // with, Member); phase 2b names the target (F5).
+    // with, Member); phase 2b names the target.
     if (check(TokenKind::Dot) && withDepth_ != 0) {
         advance(); // consume '.'
         const lexer::Token& memberName = consume(
@@ -1126,7 +1126,7 @@ std::vector<ast::ExpressionPtr> Parser::parseArgumentList()
     return arguments;
 }
 
-// A written type (F4, change structured-types): a name, possibly qualified;
+// A written type (change structured-types): a name, possibly qualified;
 // a fixed array `Array[L..H, ...] Element` (CANON-13), one Array node per
 // dimension; or a generic `Name<T, ...>`. A bound is an integer literal,
 // optionally negative, or a Const name. The tree is built into `out`, so
@@ -1256,7 +1256,7 @@ ast::StatementPtr Parser::parseTypedLocalStatement()
     }
 
     // The type lives on the heap: this frame is on the statement recursion
-    // (F4, design.md stack budget).
+    // (tools/stack_frames.py).
     const auto type = std::make_unique<ast::TypeExpr>();
     parseTypeInto(*type, "expected type name");
     checkWrittenType(*type);
@@ -1338,7 +1338,7 @@ ast::StatementPtr Parser::parseWithStatement()
     auto target = parseValue();
     requireHeaderLineBreak();
 
-    // The binding is named by phase 2b (F5); here only the nesting counts.
+    // The binding is named by phase 2b; here only the nesting counts.
     ++withDepth_;
     auto body = parseBlockBody();
     consumeBlockClose();
@@ -1669,8 +1669,8 @@ ast::StatementPtr Parser::parseDiscardStatement()
 
 // An expression statement is a call or an assignment. Assignment may be
 // chained (CANON-5, v3.27): `A := B := C := X` evaluates X once and stores it
-// in C, then B, then A. The chain is desugared here into
-// `C := X`, `B := C`, `A := B`; the extra statements go to pendingStatements_.
+// in C, then B, then A. The parser keeps the chain as written; phase 2b
+// normalizes it into `C := X`, `B := C`, `A := B`.
 ast::StatementPtr Parser::parseExpressionStatement()
 {
     DepthGuard guard(*this, expressionNesting_, kMaxExpressionNesting, "expression");
@@ -1680,8 +1680,7 @@ ast::StatementPtr Parser::parseExpressionStatement()
 
     // ADR-0012: `L op= R` is `L := L op R` with L evaluated once. L is a
     // variable or a field path, which has no side effects, so storing the
-    // desugared form is exact. Index targets wait for arrays (their lvalue
-    // must be evaluated once by the lowering, not duplicated here).
+    // normalized form is exact.
     if (atCompoundAssignment()) {
         const lexer::Token& op = advance();
         if (!isCompoundTarget(*parts.front())) {
@@ -1703,8 +1702,8 @@ ast::StatementPtr Parser::parseExpressionStatement()
         default: break;
         }
         // Phase 2b makes it `L := L op R`, two levels above L and R: the
-        // nesting limit applies to that form, as before F5.
-        requireLoweredDepth(2 + std::max(parts.front()->depth(), value->depth()));
+        // nesting limit applies to that form.
+        requireNormalizedDepth(2 + std::max(parts.front()->depth(), value->depth()));
         return std::make_unique<ast::CompoundAssignmentStatement>(std::move(parts.front()), binary, std::move(value));
     }
 
@@ -1735,10 +1734,10 @@ ast::StatementPtr Parser::parseExpressionStatement()
 
     // Phase 2b stores the value in the last target, then each target in the
     // one before it; each store is one level above its target and its source
-    // (a copy of the next target, or the value), as before F5.
+    // (a copy of the next target, or the value).
     const std::size_t last = parts.size() - 1;
     for (std::size_t i = 0; i < last; ++i) {
-        requireLoweredDepth(1 + std::max(parts[i]->depth(), parts[i + 1]->depth()));
+        requireNormalizedDepth(1 + std::max(parts[i]->depth(), parts[i + 1]->depth()));
     }
     ast::ExpressionPtr value = std::move(parts.back());
     parts.pop_back();
@@ -2044,7 +2043,7 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
 
 // `FName Type [:= Literal]` on one line (CANON-9).
 // The appenders below keep a declaration, which holds written types, out of
-// the frames of the section and type parsers (F4, design.md stack budget).
+// the frames of the section and type parsers (tools/stack_frames.py).
 void Parser::appendReusedPart(std::vector<ast::StructFieldDeclaration>& fields, const lexer::Token& part)
 {
     ast::StructFieldDeclaration& field = fields.emplace_back();
@@ -2244,7 +2243,7 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
                               "(...) Type Override Public :");
         }
     }
-    // On the heap: this frame stays below the body's recursion (F4).
+    // On the heap: this frame stays below the body's recursion.
     const std::unique_ptr<ast::RoutineHeader> header = parseRoutineHeader(name, functionName);
 
     // `Override` ends the signature of a method that replaces a reused one
@@ -2292,7 +2291,7 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
     return declaration;
 }
 
-// The parameters and result type of a routine header (F3, r3.114):
+// The parameters and result type of a routine header (r3.114):
 // `(ref mut A T, B U) R`. A method's first parameter may be its receiver,
 // `Self` or `Self mut`, written without a type.
 std::unique_ptr<ast::RoutineHeader> Parser::parseRoutineHeader(const lexer::Token& name,

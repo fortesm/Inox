@@ -5,29 +5,29 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// TRANSITIONAL (F6 step 2; removed at step 5): the answers code generation
-// takes from the typed IR while it still walks the AST. See MigrationIndex.h.
+// The answers code generation takes from the typed IR for the AST nodes it
+// walks. See AstNodeMap.h.
 
-#include "MigrationIndex.h"
+#include "AstNodeMap.h"
 
 namespace inox::compiler::tir {
 
-const MigrationIndex::Entry& MigrationIndex::entryOf(const ast::Expression& node, const char* question) const
+const AstNodeMap::Entry& AstNodeMap::entryOf(const ast::Expression& node, const char* question) const
 {
     const auto found = entries_.find(&node);
     if (found == entries_.end()) {
-        std::string message = "internal error: typed IR migration: no TIR node for the ";
+        std::string message = "internal error: typed IR: no TIR node for the ";
         message += question;
         message += " of an expression";
         if (node.position().known()) {
             message += " at line " + std::to_string(node.position().line);
         }
-        throw MigrationError(message);
+        throw InvariantError(message);
     }
     return found->second;
 }
 
-TypeRef MigrationIndex::typeOf(const ast::Expression& node) const
+TypeRef AstNodeMap::typeOf(const ast::Expression& node) const
 {
     const Entry& entry = entryOf(node, "type");
     if (entry.value != nullptr) {
@@ -53,7 +53,7 @@ TypeRef MigrationIndex::typeOf(const ast::Expression& node) const
     return nullptr;  // the name of a routine, or of an encoding, has no value
 }
 
-const semantic::Symbol* MigrationIndex::symbolOf(const ast::Expression& node) const
+const semantic::Symbol* AstNodeMap::symbolOf(const ast::Expression& node) const
 {
     const Entry& entry = entryOf(node, "symbol");
     if (entry.call != nullptr) {
@@ -74,13 +74,13 @@ const semantic::Symbol* MigrationIndex::symbolOf(const ast::Expression& node) co
     return entry.value->symbol;
 }
 
-const semantic::ConstantValue* MigrationIndex::constantOf(const ast::Expression& node) const
+const semantic::ConstantValue* AstNodeMap::constantOf(const ast::Expression& node) const
 {
     const Entry& entry = entryOf(node, "constant");
     return entry.value != nullptr ? entry.value->constant : nullptr;
 }
 
-bool MigrationIndex::typeAgrees(const ast::Expression& node, TypeRef recorded) const
+bool AstNodeMap::typeAgrees(const ast::Expression& node, TypeRef recorded) const
 {
     const TypeRef type = typeOf(node);
     if (type == recorded) {
@@ -102,20 +102,20 @@ bool MigrationIndex::typeAgrees(const ast::Expression& node, TypeRef recorded) c
            (entry.place->kind == PlaceKind::Field || entry.place->kind == PlaceKind::Element);
 }
 
-TypeRef MigrationIndex::declaredType(const ast::VarStatement& declaration) const
+TypeRef AstNodeMap::declaredType(const ast::VarStatement& declaration) const
 {
     const auto found = declarations_.find(&declaration);
     if (found == declarations_.end()) {
-        throw MigrationError("internal error: typed IR migration: no TIR declaration of " + declaration.name());
+        throw InvariantError("internal error: typed IR: no TIR declaration of " + declaration.name());
     }
     return found->second->type;
 }
 
-TypeRef MigrationIndex::declaredType(const ast::VariableDeclaration& declaration) const
+TypeRef AstNodeMap::declaredType(const ast::VariableDeclaration& declaration) const
 {
     const auto found = states_.find(&declaration);
     if (found == states_.end()) {
-        throw MigrationError("internal error: typed IR migration: no TIR State variable " + declaration.name);
+        throw InvariantError("internal error: typed IR: no TIR State variable " + declaration.name);
     }
     return found->second->type;
 }

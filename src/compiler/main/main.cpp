@@ -8,7 +8,7 @@
 #include "../ast/ModuleInterface.h"
 #include "../codegen/LlvmIrEmitter.h"
 #include "../lexer/Lexer.h"
-#include "../lowering/Desugar.h"
+#include "../normalization/AstNormalizer.h"
 #include "../parser/Parser.h"
 #include "../semantic/ContractLowering.h"
 #include "../semantic/ModuleResolution.h"
@@ -19,7 +19,7 @@
 #include "../support/Platform.h"
 #include "../support/Process.h"
 #include "../support/Version.h"
-#include "../tir/Lower.h"
+#include "../tir/Build.h"
 #include "../tir/Verify.h"
 
 #include <algorithm>
@@ -155,14 +155,14 @@ void noteFileBeingParsed(const fs::path& sourcePath, const std::string& name)
     moduleFiles()[lowerName(name.empty() ? sourcePath.stem().string() : name)] = sourcePath;
 }
 
-// Phase 2b (F5, change desugaring-out-of-parser): once on each parsed
+// Phase 2b, normalization of the AST: once on each parsed
 // module, before module resolution; Debug builds check that no written form
 // is left for the later phases.
-void desugarParsedModule(ModuleNode& module)
+void normalizeParsedModule(ModuleNode& module)
 {
-    inox::compiler::lowering::desugarModule(module);
+    inox::compiler::normalization::normalizeModule(module);
 #ifndef NDEBUG
-    inox::compiler::lowering::requireDesugared(module);
+    inox::compiler::normalization::requireNormalized(module);
 #endif
 }
 
@@ -255,7 +255,7 @@ private:
     void loadModule(const fs::path& sourcePath, std::string_view expectedName)
     {
         auto module = parseSource(sourcePath, std::string(expectedName));
-        desugarParsedModule(*module);
+        normalizeParsedModule(*module);
         if (expectedName.empty() && isStandardLibraryName(module->name()) && !insideStandardLibrary(sourcePath)) {
             throw std::runtime_error("the name " + module->name() +
                                      " is reserved: Std names the standard library (r3.99); rename the file");
@@ -601,7 +601,7 @@ struct BuildArtifacts {
 // nsw/nuw flags and every check traps explicitly, so -O2 keeps them.
 BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module,
                             const inox::compiler::semantic::SemanticResult& semantics,
-                            const inox::compiler::tir::MigrationIndex& migrationIndex,
+                            const inox::compiler::tir::AstNodeMap& astNodeMap,
                             const fs::path& executableDir, bool debug)
 {
     if (!clangExists()) {
@@ -619,7 +619,7 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
         outputDirectory / (stem + ".ll"),
         outputDirectory / (stem + std::string(inox::compiler::support::executableSuffix()))};
     const inox::compiler::codegen::LlvmModule llvmModule =
-        inox::compiler::codegen::LlvmIrEmitter().emitModule(module, semantics, migrationIndex);
+        inox::compiler::codegen::LlvmIrEmitter().emitModule(module, semantics, astNodeMap);
     const std::string& llvmIr = llvmModule.ir;
     writeFile(artifacts.llvmIr, llvmIr);
 
@@ -671,7 +671,7 @@ enum class Command {
     ParseOnly,
     DumpTokens,
     DumpTypes,
-    DumpTir,   // F6 (typed-ir): print the typed IR
+    DumpTir,   // print the typed IR
 };
 
 constexpr const char* kUsage =
@@ -833,15 +833,14 @@ int main(int argc, char** argv)
         inox::compiler::semantic::SemanticAnalyzer semanticAnalyzer;
         const auto& semanticResult = semanticAnalyzer.analyze(*module);
 
-        // F6 (typed-ir): the typed IR of the program, verified, printed by
-        // --dump-tir. Since step 2 code generation takes the types, symbols
-        // and constants of the AST nodes from it, through the migration
-        // index (TRANSITIONAL, until step 5): both live until code
-        // generation ends, in every build.
+        // The typed IR of the program, verified, printed by --dump-tir.
+        // Code generation takes the types, symbols and constants of the AST
+        // nodes it walks from it, through the AST node map: both live until
+        // code generation ends, in every build.
         std::unique_ptr<inox::compiler::tir::Program> typedIr;
-        inox::compiler::tir::MigrationIndex migrationIndex;
+        inox::compiler::tir::AstNodeMap astNodeMap;
         if (dumpTir || emitLlvm || build || run) {
-            typedIr = inox::compiler::tir::lowerProgram(*module, semanticResult, &migrationIndex);
+            typedIr = inox::compiler::tir::buildProgram(*module, semanticResult, &astNodeMap);
             if (const std::string problem = inox::compiler::tir::verifyProgram(*typedIr); !problem.empty()) {
                 throw std::runtime_error("internal error: typed IR: " + problem);
             }
@@ -853,10 +852,10 @@ int main(int argc, char** argv)
         }
 
         if (emitLlvm) {
-            std::cout << inox::compiler::codegen::LlvmIrEmitter().emit(*module, semanticResult, migrationIndex);
+            std::cout << inox::compiler::codegen::LlvmIrEmitter().emit(*module, semanticResult, astNodeMap);
         } else if (build || run) {
             const BuildArtifacts artifacts =
-                buildProgram(fs::path(sourcePath), *module, semanticResult, migrationIndex, executableDir, debug);
+                buildProgram(fs::path(sourcePath), *module, semanticResult, astNodeMap, executableDir, debug);
             if (run) {
                 std::vector<std::string> programCommand{artifacts.executable.string()};
                 programCommand.insert(programCommand.end(), programArguments.begin(), programArguments.end());
@@ -899,7 +898,7 @@ int main(int argc, char** argv)
                      "generation (see docs/BACKEND_GAPS.md)\n";
         return 1;
     } catch (const inox::compiler::tir::UnsupportedConstructError& error) {
-        // F6 (typed-ir): what the typed IR cannot express yet is a gap of
+        // What the typed IR cannot express yet is a gap of
         // the backend too (E15), reported as code generation reports its own.
         std::cerr << "codegen error: not yet implemented in the LLVM backend: " << error.what() << '\n';
         std::cerr << "note: this program is valid Inox; the gap is in code "

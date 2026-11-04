@@ -9,7 +9,7 @@
 
 #include "../semantic/SemanticResult.h"
 #include "../ast/Ast.h"
-#include "../tir/MigrationIndex.h"
+#include "../tir/AstNodeMap.h"
 
 #include <stdexcept>
 #include <string>
@@ -48,13 +48,13 @@ class LlvmIrEmitter {
 public:
     // The backend consumes the semantic result instead of re-deriving what
     // semantic analysis already resolved (CANON E11, decision P-C).
-    // F6 step 2: the types, symbols and constants come from the typed IR
-    // through `index` (TRANSITIONAL, until step 5).
+    // The types, symbols and constants of the AST nodes come from the typed
+    // IR, through `astNodes`.
     LlvmModule emitModule(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
-                          const tir::MigrationIndex& index) const;
+                          const tir::AstNodeMap& astNodes) const;
     // The IR only (--emit-llvm and tools).
     std::string emit(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
-                     const tir::MigrationIndex& index) const;
+                     const tir::AstNodeMap& astNodes) const;
 };
 
 } // namespace inox::compiler::codegen

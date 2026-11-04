@@ -6,7 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // Std.Math functions lowered to LLVM intrinsics or libm (OpenSpec change
-// compiler-modularization, step 1).
+// compiler-modularization).
 
 #pragma once
 
