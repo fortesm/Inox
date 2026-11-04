@@ -2039,6 +2039,10 @@ never reaches the old address, nor another object that reuses its memory.
 - **WHEN** an index or a slice bound replaces the owner a place crosses, directly, two levels above, or through a Link
 - **THEN** the program stops before the access (tests/runtime/assignment-target-invalidated-by-index.inox, tests/runtime/read-place-invalidated-by-index.inox, tests/runtime/assignment-target-nested-owner-invalidated.inox, tests/runtime/read-slice-invalidated-by-bound.inox, tests/runtime/assignment-target-link-invalidated-by-index.inox, tests/runtime/assignment-target-option-link-invalidated.inox)
 
+#### Scenario: Invalidated before the call
+- **WHEN** a later argument replaces the owner a reference argument or a `Self mut` receiver crosses
+- **THEN** the program stops before the call (tests/runtime/reference-argument-invalidated-by-argument.inox, tests/runtime/receiver-invalidated-by-argument.inox)
+
 ### Requirement: CANON-25 Owners in routines and contracts
 A value parameter of an owner type SHALL belong to the routine, which frees
 it unless it gives it away; the caller writes `Move(P)` or a new value. A

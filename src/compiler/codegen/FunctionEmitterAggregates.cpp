@@ -477,6 +477,7 @@ std::string FunctionEmitter::emitNoArgumentMethodCall(const ast::CallExpression&
 std::string FunctionEmitter::emitMethodCall(const ast::CallExpression& call, bool requireValue)
 {
     emitInvariantChecks(call, false);
+    const bool guarded = beginReceiverGuard(call);
     const MethodCallTarget target = resolveMethodCall(call);
     const FunctionSignature& signature = *target.signature;
 
@@ -485,6 +486,9 @@ std::string FunctionEmitter::emitMethodCall(const ast::CallExpression& call, boo
     arguments.push_back(target.receiverPointer);
     for (std::string& value : emitArguments(signature, call.arguments(), 1)) {
         arguments.push_back(std::move(value));
+    }
+    if (guarded) {
+        endPlaceGuard();
     }
 
     const std::string result = emitUserCall(signature, arguments, requireValue);

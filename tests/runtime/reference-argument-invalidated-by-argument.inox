@@ -5,7 +5,7 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== Q1 of assignment-evaluation-order: a reference argument whose owner a later argument replaces. Expected output to be set by the decision on Q1.
+== CANON-25: a later argument replaces the owner a reference argument crosses; the call stops the program, never writing the freed object (reference-argument-validity).
 Type
     TNode Struct
         FV Integer := 1

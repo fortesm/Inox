@@ -428,8 +428,12 @@ std::vector<std::string> FunctionEmitter::emitArguments(const FunctionSignature&
 {
     std::vector<std::string> values;
     values.reserve(arguments.size());
+    std::size_t guards = 0;
     for (std::size_t index = 0; index < arguments.size(); ++index) {
         const FunctionParameter& parameter = signature.parameters[index + parameterOffset];
+        if (parameter.byReference) {
+            guards += beginReferenceGuard(arguments, index);
+        }
         values.push_back(parameter.byReference ? emitReferenceArgument(*arguments[index], parameter)
                                                : emitExpression(*arguments[index]));
         // Safe pointers: a move-only argument is given to the routine,
@@ -437,6 +441,9 @@ std::vector<std::string> FunctionEmitter::emitArguments(const FunctionSignature&
         if (!parameter.byReference && isMoveOnly(parameter.type)) {
             disarmFresh(values.back());
         }
+    }
+    for (; guards != 0; --guards) {
+        endPlaceGuard();
     }
     return values;
 }

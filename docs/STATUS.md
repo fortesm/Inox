@@ -196,9 +196,9 @@ they are rejected now.)
   specific to codegen; the parser never builds `BlockStatement`.
 - Assignments (r3.124, CANON-5 and CANON-25): R is evaluated before the
   target, a compound target once, and a place whose object an index frees
-  while it is evaluated stops the program. Reference arguments whose
-  object a later argument frees are not checked yet (the next change,
-  before F6 step 4).
+  while it is evaluated stops the program; so does a call whose reference
+  argument or receiver a later argument invalidates (r3.125). A callee that
+  frees what its own reference argument reaches is not checked yet.
 - The typed IR (F6, change `typed-ir`) is built and verified for every
   program that is compiled and printed by `--dump-tir`; since step 2
   (r3.122) code generation takes the types, symbols and constants from it

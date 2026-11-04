@@ -161,7 +161,7 @@ spec.md#CANON-25 Owners	30e0c00976aea35e	safe-pointers
 spec.md#CANON-25 Moves are checked	585dd7739690f2d6	safe-pointers
 spec.md#CANON-25 Links	47fb968c24b3ba89	read-only-through-owners
 spec.md#CANON-25 Access through pointers	01016a8cfa50bb65	read-only-through-owners
-spec.md#CANON-25 No access through an invalidated object	d711d06ca36a7575	assignment-evaluation-order
+spec.md#CANON-25 No access through an invalidated object	3831fba4854691b8	reference-argument-validity
 spec.md#CANON-25 Owners in routines and contracts	1edd22537220a8fe	safe-pointers
 spec.md#VERSIONING The version number	80beea51ad367016	repo-layout
 spec.md#VERSIONING Who changes the version	d76c70d3fe676bd0	repo-layout

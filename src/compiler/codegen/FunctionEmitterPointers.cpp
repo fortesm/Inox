@@ -313,6 +313,50 @@ void FunctionEmitter::beginElementGuard(const ast::CallExpression& element)
     beginPlaceGuard(*element.arguments()[0], mayRunRoutine(*element.arguments()[1]));
 }
 
+// A reference argument (ADR-0016) is a place: when a later argument may run
+// a routine, the object holding it is checked before the call. 1 when a
+// guard was opened, for emitArguments to close.
+std::size_t FunctionEmitter::beginReferenceGuard(const std::vector<ast::ExpressionPtr>& arguments,
+                                                 std::size_t index)
+{
+    const ast::Expression& argument = *arguments[index];
+    if (!isIndexCall(argument) && !isMemberAccessCall(argument)) {
+        return 0;
+    }
+    bool laterRuns = false;
+    for (std::size_t later = index + 1; later < arguments.size() && !laterRuns; ++later) {
+        laterRuns = mayRunRoutine(*arguments[later]);
+    }
+    if (!laterRuns) {
+        return 0;
+    }
+    placeGuards_.push_back(PlaceGuard{lastPointerOnPath(argument), std::nullopt});
+    return 1;
+}
+
+// The receiver of `P.M(X)` is reached before its arguments: when one of
+// them may run a routine, the object holding the receiver is checked
+// before the call.
+bool FunctionEmitter::beginReceiverGuard(const ast::CallExpression& call)
+{
+    bool runs = false;
+    for (const auto& argument : call.arguments()) {
+        runs = runs || mayRunRoutine(*argument);
+    }
+    if (!runs || !isMemberAccessCall(call.callee())) {
+        return false;
+    }
+    // A built-in receiver passed as a copy (`Self` of an Integer) is a
+    // value, not a place.
+    const FunctionSignature* signature = boundSignature(call);
+    if (signature == nullptr || signature->parameters.empty() ||
+        !(signature->parameters.front().type->isStruct() || signature->parameters.front().byReference)) {
+        return false;
+    }
+    beginPlaceGuard(*static_cast<const ast::CallExpression&>(call.callee()).arguments()[0], true);
+    return true;
+}
+
 // `B[L..H]`: the bounds follow the base.
 void FunctionEmitter::beginSliceGuard(const ast::CallExpression& slice)
 {

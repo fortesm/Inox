@@ -480,6 +480,8 @@ private:
     void beginPlaceGuard(const ast::Expression& base, bool laterRunsRoutine);
     void beginSliceGuard(const ast::CallExpression& slice);
     void beginElementGuard(const ast::CallExpression& element);
+    std::size_t beginReferenceGuard(const std::vector<ast::ExpressionPtr>& arguments, std::size_t index);
+    bool beginReceiverGuard(const ast::CallExpression& call);
     void endPlaceGuard();
     void emitAssignmentStatement(const ast::ExpressionStatement& statement);
     void capturePlaceGuards(const ast::Expression& pointer, const std::string& object, const LinkParts* link);
