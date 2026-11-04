@@ -209,7 +209,7 @@ void testMalformedTir()
     program2.routines = routines2;
     program2.entry = routine;
     diagnostic = tir::verifyProgram(program2);
-    check(diagnostic.find("an expression without a type: Construct") != std::string::npos,
+    check(diagnostic.find("an expression without a type: construct") != std::string::npos,
           "a Construct with null type is diagnosed without a crash");
 }
 
