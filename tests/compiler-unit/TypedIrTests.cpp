@@ -122,6 +122,46 @@ Main :
 ;
 )";
 
+// F6 step 2 (TRANSITIONAL): the index answers from the TIR node each AST
+// node became, and never for a node it does not know.
+void testMigrationIndex(const ast::ModuleNode& program, const semantic::SemanticResult& semantics,
+                        const tir::MigrationIndex& index)
+{
+    const ast::FunctionDeclaration* main = semantics.entry();
+    check(main != nullptr && main->body().size() == 3, "Main of the index test");
+    if (main == nullptr || main->body().size() != 3) {
+        return;
+    }
+    // `P := TPoint(FX := 1)`: the declared name, the construction, its field.
+    const auto& declaration = static_cast<const ast::ExpressionStatement&>(*main->body()[0]);
+    const auto& assignment = static_cast<const ast::BinaryExpression&>(declaration.expression());
+    const auto& construction = static_cast<const ast::CallExpression&>(assignment.right());
+    const types::Type* point = semantics.constructedStruct(construction);
+    check(index.typeOf(assignment.left()) == point && index.symbolOf(assignment.left()) != nullptr &&
+              index.symbolOf(assignment.left())->name == "P",
+          "the declared name has the declared type and its symbol");
+    check(index.typeOf(construction) == point, "a construction has its struct's type");
+    check(index.typeOf(construction.callee()) == point, "the name of T(...) is the type T");
+    check(index.typeOf(*construction.arguments()[0]) == semantics.types().int64Type(),
+          "F := V of a construction has the field's type");
+    // `PutLn(P.FY)`: a call without a result is Void; its name has no value.
+    const auto& put = static_cast<const ast::CallExpression&>(
+        static_cast<const ast::ExpressionStatement&>(*main->body()[2]).expression());
+    check(index.typeOf(put) != nullptr && index.typeOf(put)->isVoid(), "a call without a result is Void");
+    check(index.typeOf(put.callee()) == nullptr, "the name of a routine has no value");
+    check(index.typeAgrees(put, semantics.typeOf(put)), "Void agrees with the analysis's absent type");
+    // A node the lowering never met is an error, not an answer.
+    const ast::IdentifierExpression stranger("Stranger");
+    bool refused = false;
+    try {
+        (void)index.typeOf(stranger);
+    } catch (const tir::MigrationError&) {
+        refused = true;
+    }
+    check(refused, "a node without its TIR node is an internal error");
+    (void)program;
+}
+
 void testLoweredProgram()
 {
     parser::Parser parser{kProgram};
@@ -133,8 +173,10 @@ void testLoweredProgram()
     semantic::lowerContracts(*program);
     semantic::SemanticAnalyzer analyzer;
     const semantic::SemanticResult& semantics = analyzer.analyze(*program);
-    const auto typedIr = tir::lowerProgram(*program, semantics);
+    tir::MigrationIndex index;
+    const auto typedIr = tir::lowerProgram(*program, semantics, &index);
     checkEqual(tir::verifyProgram(*typedIr), "", "the typed IR verifies");
+    testMigrationIndex(*program, semantics, index);
     check(typedIr->routines.size() == 2 && typedIr->entry == typedIr->routines[1], "Main is the entry, last");
 
     const tir::Routine& move = *typedIr->routines[0];

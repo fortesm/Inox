@@ -44,7 +44,7 @@ const ModuleIntrinsic* FunctionEmitter::intrinsicCallOf(const ast::Expression& e
     if (function == nullptr) {
         return nullptr;
     }
-    const semantic::Symbol* symbol = semantics_.symbolOf(*identifier);
+    const semantic::Symbol* symbol = symbolOf(*identifier);
     if (symbol == nullptr || symbol->kind != semantic::SymbolKind::Builtin) {
         return nullptr;
     }

@@ -505,7 +505,7 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
         output_ << "new.ok" << label << ":\n";
         const semantic::Symbol* typeSymbol =
             argument.kind() == ast::AstNodeKind::IdentifierExpression
-                ? semantics_.symbolOf(static_cast<const ast::IdentifierExpression&>(argument))
+                ? symbolOf(argument)
                 : nullptr;
         if (typeSymbol != nullptr && typeSymbol->kind == semantic::SymbolKind::Type) {
             if (!targetType->isStruct()) {

@@ -27,7 +27,7 @@ namespace detail {
 
 void Lowerer::fail(const char* what, const ast::AstNode& node) const
 {
-    std::string message = "valid Inox, not yet lowered to the typed IR: ";
+    std::string message = "typed IR: ";
     message += what;
     if (node.position().known()) {
         message += " (line " + std::to_string(node.position().line) + ")";
@@ -143,6 +143,9 @@ void Lowerer::lowerModule(const ast::ModuleNode& module)
         if (declaration.value != nullptr) {
             state.initializer = expression(*declaration.value);
         }
+        if (index_ != nullptr) {
+            index_->recordState(declaration, &state);
+        }
     }
 
     program_.constants = arena_.array<Constant>(constants.size());
@@ -152,13 +155,13 @@ void Lowerer::lowerModule(const ast::ModuleNode& module)
         constant.symbol = semantics_.declaredSymbol(&declaration);
         constant.name = arena_.text(declaration.name);
         if (constant.symbol == nullptr) {
-            throw LoweringError("valid Inox, not yet lowered to the typed IR: the Const " + declaration.name +
+            throw LoweringError("typed IR: the Const " + declaration.name +
                                 " without its symbol");
         }
         constant.type = constant.symbol->type;
         const semantic::ConstantValue* value = semantics_.constantValueOf(*constant.symbol);
         if (value == nullptr) {
-            throw LoweringError("valid Inox, not yet lowered to the typed IR: the Const " + declaration.name +
+            throw LoweringError("typed IR: the Const " + declaration.name +
                                 " without its value");
         }
         constant.value = constantLiteral(*value, constant.type, declaration.position);
@@ -174,10 +177,11 @@ void Lowerer::lowerModule(const ast::ModuleNode& module)
 
 } // namespace detail
 
-std::unique_ptr<Program> lowerProgram(const ast::ModuleNode& module, const semantic::SemanticResult& semantics)
+std::unique_ptr<Program> lowerProgram(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
+                                      MigrationIndex* index)
 {
     auto program = std::make_unique<Program>();
-    detail::Lowerer(*program, semantics).lowerModule(module);
+    detail::Lowerer(*program, semantics, index).lowerModule(module);
     return program;
 }
 

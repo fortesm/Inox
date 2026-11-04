@@ -601,6 +601,7 @@ struct BuildArtifacts {
 // nsw/nuw flags and every check traps explicitly, so -O2 keeps them.
 BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module,
                             const inox::compiler::semantic::SemanticResult& semantics,
+                            const inox::compiler::tir::MigrationIndex& migrationIndex,
                             const fs::path& executableDir, bool debug)
 {
     if (!clangExists()) {
@@ -618,7 +619,7 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
         outputDirectory / (stem + ".ll"),
         outputDirectory / (stem + std::string(inox::compiler::support::executableSuffix()))};
     const inox::compiler::codegen::LlvmModule llvmModule =
-        inox::compiler::codegen::LlvmIrEmitter().emitModule(module, semantics);
+        inox::compiler::codegen::LlvmIrEmitter().emitModule(module, semantics, migrationIndex);
     const std::string& llvmIr = llvmModule.ir;
     writeFile(artifacts.llvmIr, llvmIr);
 
@@ -657,15 +658,10 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
 
 namespace {
 
-#ifdef NDEBUG
-constexpr bool kBuildTypedIr = false;
-#else
-constexpr bool kBuildTypedIr = true;
-#endif
-
 // The commands of the driver (CANON-23; Marcelo Fortes, 2026-10-13): the
 // subcommands are the user's contract and the `--` switches their aliases;
-// `--parse-only`, `--dump-tokens` and `--dump-types` are developer switches.
+// `--parse-only`, `--dump-tokens`, `--dump-types` and `--dump-tir` are developer
+// switches (r3.121).
 enum class Command {
     Run,       // inox <file>, inox run <file>, --run
     Build,     // inox build <file>, --build
@@ -837,46 +833,30 @@ int main(int argc, char** argv)
         inox::compiler::semantic::SemanticAnalyzer semanticAnalyzer;
         const auto& semanticResult = semanticAnalyzer.analyze(*module);
 
-        // F6 (typed-ir), step 1: the typed IR is built and verified for
-        // every program a Debug compiler compiles, and printed by
-        // --dump-tir; code generation does not read it yet.
-        // A problem of the typed IR is reported after code generation, so a
-        // gap of the backend keeps its own message.
-        std::string typedIrProblem;
-        if (dumpTir || (kBuildTypedIr && (emitLlvm || build || run))) {
-            try {
-                const auto typedIr = inox::compiler::tir::lowerProgram(*module, semanticResult);
-                typedIrProblem = inox::compiler::tir::verifyProgram(*typedIr);
-                if (!typedIrProblem.empty()) {
-                    typedIrProblem = "internal error: typed IR: " + typedIrProblem;
-                } else if (dumpTir) {
-                    std::cout << "semantic ok\n";
-                    inox::compiler::tir::printProgram(*typedIr, std::cout);
-                    return 0;
-                }
-            } catch (const inox::compiler::tir::LoweringError& error) {
-                typedIrProblem = std::string("typed IR error: ") + error.what();
+        // F6 (typed-ir): the typed IR of the program, verified, printed by
+        // --dump-tir. Since step 2 code generation takes the types, symbols
+        // and constants of the AST nodes from it, through the migration
+        // index (TRANSITIONAL, until step 5): both live until code
+        // generation ends, in every build.
+        std::unique_ptr<inox::compiler::tir::Program> typedIr;
+        inox::compiler::tir::MigrationIndex migrationIndex;
+        if (dumpTir || emitLlvm || build || run) {
+            typedIr = inox::compiler::tir::lowerProgram(*module, semanticResult, &migrationIndex);
+            if (const std::string problem = inox::compiler::tir::verifyProgram(*typedIr); !problem.empty()) {
+                throw std::runtime_error("internal error: typed IR: " + problem);
             }
             if (dumpTir) {
-                std::cerr << typedIrProblem << '\n';
-                return 1;
+                std::cout << "semantic ok\n";
+                inox::compiler::tir::printProgram(*typedIr, std::cout);
+                return 0;
             }
         }
 
         if (emitLlvm) {
-            const std::string llvmIr = inox::compiler::codegen::LlvmIrEmitter().emit(*module, semanticResult);
-            if (!typedIrProblem.empty()) {
-                std::cerr << typedIrProblem << '\n';
-                return 1;
-            }
-            std::cout << llvmIr;
+            std::cout << inox::compiler::codegen::LlvmIrEmitter().emit(*module, semanticResult, migrationIndex);
         } else if (build || run) {
             const BuildArtifacts artifacts =
-                buildProgram(fs::path(sourcePath), *module, semanticResult, executableDir, debug);
-            if (!typedIrProblem.empty()) {
-                std::cerr << typedIrProblem << '\n';
-                return 1;
-            }
+                buildProgram(fs::path(sourcePath), *module, semanticResult, migrationIndex, executableDir, debug);
             if (run) {
                 std::vector<std::string> programCommand{artifacts.executable.string()};
                 programCommand.insert(programCommand.end(), programArguments.begin(), programArguments.end());
@@ -918,9 +898,17 @@ int main(int argc, char** argv)
         std::cerr << "note: this program is valid Inox; the gap is in code "
                      "generation (see docs/BACKEND_GAPS.md)\n";
         return 1;
+    } catch (const inox::compiler::tir::LoweringError& error) {
+        // F6 (typed-ir): what the typed IR cannot express yet is a gap of
+        // the backend too (E15), reported as code generation reports its own.
+        std::cerr << "codegen error: not yet implemented in the LLVM backend: " << error.what() << '\n';
+        std::cerr << "note: this program is valid Inox; the gap is in code "
+                     "generation (see docs/BACKEND_GAPS.md)\n";
+        return 1;
     } catch (const inox::compiler::codegen::CodegenError& error) {
         std::cerr << "codegen error: " << error.what() << '\n';
         return 1;
+
 
     } catch (const std::exception& error) {
         std::cerr << "error: " << error.what() << '\n';

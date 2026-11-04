@@ -217,3 +217,75 @@ Adopted from the same review round:
   `codegen/`), no `__with` test anywhere, and the LLVM IR snapshot
   identical.
 - The count of side tables is reconciled at step 0: 16 (`inventory.md`).
+
+## Step 2: the migration index (approved 2026-11-04)
+
+Approved by Marcelo Fortes, 2026-11-04, as a refinement of the migration
+strategy of step 2; the other decisions above are unchanged.
+
+- **Strategy A, a transitional index.** The lowering records, by node
+  identity, which TIR node each AST node became
+  (`tir/MigrationIndex.h`); code generation's wrappers (`typeOf`,
+  `symbolOf`, `resolvedConstant`, `declaredTypeOf`, the declared type of a
+  State variable) answer from the TIR through it. The signatures of the
+  recursive `emit*` functions do not change. Strategy B (passing AST and
+  TIR nodes together through about 70 recursive functions) is not
+  authorized in this step.
+- **No fallback.** A node without its TIR node is an internal error in
+  every build; a wrapper never asks the `SemanticResult` instead. A Debug
+  compiler compares each answer with the analysis's record; a
+  disagreement is an internal error.
+- **Lifetime.** The TIR and the index are built for every command that
+  generates code, in Debug and Release, and live until code generation
+  ends (`main.cpp`).
+- **Temporary.** The index resolves no name, infers nothing and is not
+  part of the TIR's API; it leaves at step 5.
+- **No artificial nodes.** What the backend asks of an AST node that is no
+  value in the TIR (the name of a routine, of an encoding, the kind and
+  text of a check) gets that answer: no type, the call's symbol; a
+  property the backend needs is a property of a TIR node (a folded
+  builtin keeps its operand; a Const's literal carries its value).
+
+### The correspondence (matrix)
+
+Measured on the 1065 programs of the snapshot (every query code generation
+made, compared with the analysis's record); no other kind of node is asked.
+
+| AST node | TIR representative | Type | Symbol | Constant |
+|---|---|---|---|---|
+| an expression lowered as a value (literal, operator, conditional, call, identifier) | its `Expr`, before the `RangeCheck` and `NaturalCheck` added on the way into a place | the `Expr`'s | a `Read`: its place's; a `Call`, `Builtin`, `Intrinsic`, `TypeValue`: the one the analysis bound | a `Literal` that reads a Const: the Const's value |
+| an identifier that is a call (`GetLn`, `Report`, `ClearScreen`) | the `Call`, `Builtin` or `Intrinsic` | its result, `Void` without one | the routine's | none |
+| `Low`, `High`, `Length` of a type (CANON-13) | a `Builtin` marked folded, with its value and its operand | Int64 or the enum | none | none |
+| a written target, a `with` target, a reference argument | its `Place` (local, parameter, field, element, `Through`, ...) | the place's | the variable's | none |
+| `L := V`; the `L` it declares | the `Assign` or `Declare` | the target's; the declared type | the declared variable's | none |
+| a `VarStatement`; a State declaration | the `Declare`; the `StateVariable` | the declared type | | |
+| the callee of a call of a routine, a builtin, an intrinsic; `__member` and the name of a method | the call | none (a name is no value) | the call's | none |
+| the callee of `T(...)` (conversion, construction) | the `Convert` or `Construct` | T | T's | none |
+| the field name of `P.F`; `F` and `F := V` of a construction | the `Field` place; the field of the `Construct` | the field's; none for `F` | none | none |
+| `__member`, `__index`, `Value` written in a place; `__low`, `__high`; the kind and text of a check | names | none | none | none |
+
+Three differences from the analysis's record are made on purpose, and the
+Debug comparison accepts exactly these (`MigrationIndex::typeAgrees`):
+a call without a result is `Void` where the analysis recorded none; a
+written field or element the analysis did not type has its place's type;
+the kind and text of a contract check, which the analysis typed, are
+properties of the TIR's check. With the TIR's answers, the LLVM IR of
+every program is identical.
+
+### Recorded by the analysis first (condition 1)
+
+`Low(T)` and `High(T)` bind T to its type's symbol (the TIR's
+`TypeValue` carries it); `--dump-types` shows the binding in 6 programs,
+declared in `ir-snapshot-expect.json`.
+
+### One diagnostic, for the maintainer's decision
+
+Code generation now needs the TIR, so what the TIR cannot express yet
+stops before code generation. It is a gap of the backend (E15) and is
+reported as one: `codegen error: not yet implemented in the LLVM
+backend: typed IR: ...` with the same note, so `tools/backend_gaps.py`
+counts it as a GAP. The one program concerned,
+`tests/semantic/valid/const-conversion.inox` (a Const whose value the
+analysis does not compute, already a gap of codegen), now names that
+reason instead of "unsupported expression in function: Main"; the
+difference is declared in `ir-snapshot-expect.json`.

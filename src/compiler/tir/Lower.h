@@ -10,9 +10,11 @@
 // Phase 5b (F6, change typed-ir): the typed IR of an analyzed program. It
 // copies what the analysis decided (types, symbols and their origins, call
 // meanings, field indices, constants, checks) and resolves no name; what
-// it cannot express is "valid Inox, not yet lowered" (LoweringError),
-// never a crash.
+// it cannot express is "valid Inox, not yet lowered" (LoweringError, E15),
+// never a crash: since step 2 the driver reports it as a gap of the
+// backend, as code generation reports its own.
 
+#include "MigrationIndex.h"
 #include "Tir.h"
 
 #include <memory>
@@ -26,6 +28,9 @@ public:
     explicit LoweringError(const std::string& message) : std::runtime_error(message) {}
 };
 
-std::unique_ptr<Program> lowerProgram(const ast::ModuleNode& module, const semantic::SemanticResult& semantics);
+// `index`, when given, records what each AST node became (F6 step 2,
+// TRANSITIONAL: code generation reads it until step 5).
+std::unique_ptr<Program> lowerProgram(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
+                                      MigrationIndex* index = nullptr);
 
 } // namespace inox::compiler::tir

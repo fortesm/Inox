@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.121
+Canon revision: r3.122
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -632,3 +632,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   switch, not a public command. The public commands and the grammar do
   not change. Approved by Marcelo Fortes, 2026-11-02. Change
   `dump-tir-switch`.
+- r3.122 — 2026-11-04 — E11, foundation step F6, step 2 of 5: code
+  generation takes the types, symbols and constants of the AST nodes it
+  walks from the typed IR, through a transitional index by node identity
+  that leaves at step 5, with no fallback to the analysis's tables; a
+  Debug compiler checks that every answer agrees with the analysis. The
+  typed IR is built for every command that generates code, in every
+  build. The LLVM IR of every program is identical; what the typed IR
+  cannot express yet is reported as a gap of the backend (E15). Strategy
+  approved by Marcelo Fortes, 2026-11-04. Change `typed-ir`.

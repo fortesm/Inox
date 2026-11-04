@@ -41,15 +41,6 @@ namespace inox::compiler::codegen::detail {
 
 // P-C stage 1: a module Const is read from the semantic result, already
 // resolved, never re-parsed here.
-const semantic::ConstantValue* FunctionEmitter::resolvedConstant(const ast::IdentifierExpression& identifier) const
-{
-    const semantic::Symbol* symbol = semantics_.symbolOf(identifier);
-    if (symbol == nullptr || symbol->kind != semantic::SymbolKind::Constant) {
-        return nullptr;
-    }
-    return semantics_.constantValueOf(*symbol);
-}
-
 // The LLVM type of an expression's value: the LLVM type of the type the
 // analysis gave it (a Char is its code point, an i64); Free and the file
 // calls without a result are void; None is a null pointer.
@@ -136,11 +127,6 @@ std::string FunctionEmitter::emitUnsignedConversion(const std::string& value, Ty
     }
     const std::int64_t high = target->maxValue();
     return emitRangeCheck(value, IntegerRange{std::max<std::int64_t>(target->minValue(), 0), high}, 8);
-}
-
-TypeRef FunctionEmitter::typeOf(const ast::Expression& expression) const
-{
-    return semantics_.typeOf(expression);
 }
 
 // The integer type of a conversion `T(X)` lowered as a range check: Natural,
@@ -271,7 +257,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         }
         // r3.89 (C1): EndOfInput.
         if (equalsIgnoreCase(identifier.name(), "EndOfInput")) {
-            if (const semantic::Symbol* symbol = semantics_.symbolOf(identifier);
+            if (const semantic::Symbol* symbol = symbolOf(identifier);
                 symbol != nullptr && symbol->kind == semantic::SymbolKind::Builtin) {
                 requireRuntime(RuntimeFunction::ConsoleAtEnd);
                 const std::string result = "%tmp" + std::to_string(nextTemporary_++);
@@ -607,7 +593,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
                 return emitDecimalConversion(call, target);
             }
             if (!conversion && (equalsIgnoreCase(callee.name(), "Round") || equalsIgnoreCase(callee.name(), "Trunc"))) {
-                if (const semantic::Symbol* symbol = semantics_.symbolOf(callee);
+                if (const semantic::Symbol* symbol = symbolOf(callee);
                     symbol != nullptr && symbol->kind == semantic::SymbolKind::Builtin) {
                     return emitRounding(call);
                 }

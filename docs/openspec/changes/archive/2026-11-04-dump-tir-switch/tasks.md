@@ -9,4 +9,4 @@
 ## 3. Gates
 
 - [x] 3.1 Suite (1097 passed), openspec, constitution_check, version_check, grammar_consistency
-- [ ] 3.2 CI
+- [x] 3.2 CI (PR #119, merged)

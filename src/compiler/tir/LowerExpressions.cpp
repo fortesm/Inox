@@ -124,6 +124,10 @@ const Expr* Lowerer::expression(const ast::Expression& source)
 // The checks the analysis asked for on the way into a place.
 const Expr* Lowerer::checked(const ast::Expression& source, const Expr* value)
 {
+    if (index_ != nullptr) {
+        // The expression as the analysis typed it, before its checks.
+        index_->recordValue(source, value);
+    }
     if (const TypeRef range = semantics_.rangeCheck(source)) {
         Expr* check = make(ExprKind::RangeCheck, range, source);
         check->operands = arena_.array<const Expr*>(1);
@@ -162,6 +166,7 @@ const Expr* Lowerer::identifier(const ast::IdentifierExpression& source)
         }
         const TypeRef type = typeOf(source);
         result->type = type != nullptr ? type : semantics_.types().voidType();
+        result->symbol = semantics_.symbolOf(source);
         return result;
     }
     const semantic::Symbol* symbol = semantics_.symbolOf(source);
@@ -181,11 +186,17 @@ const Expr* Lowerer::identifier(const ast::IdentifierExpression& source)
             fail("a constant without a value", source);
         }
         const TypeRef type = typeOf(source);
-        return constantLiteral(*value, type != nullptr ? type : symbol->type, source.position());
+        Expr* literal = const_cast<Expr*>(constantLiteral(*value, type != nullptr ? type : symbol->type,
+                                                          source.position()));
+        literal->symbol = symbol;
+        literal->constant = value;
+        return literal;
     }
     case semantic::SymbolKind::Type: {
         const TypeRef type = typeOf(source);
-        return make(ExprKind::TypeValue, type != nullptr ? type : symbol->type, source);
+        Expr* result = make(ExprKind::TypeValue, type != nullptr ? type : symbol->type, source);
+        result->symbol = symbol;
+        return result;
     }
     case semantic::SymbolKind::Variable:
     case semantic::SymbolKind::LoopIterator:
@@ -319,10 +330,13 @@ const Expr* Lowerer::call(const ast::CallExpression& source, const CallMeaning& 
         result->operands = expressions(source.arguments(), 0, nullptr);
         break;
     case CallKind::Builtin:
-        if (meaning.constant) {
-            return constantLiteral(*meaning.constant, type, source.position());
-        }
         result = builtin(source, meaning, type);
+        if (meaning.constant) {
+            // A constant of the type (CANON-13); the operand is lowered too,
+            // the type is its.
+            result->folded = true;
+            result->foldedValue = *meaning.constant;
+        }
         break;
     case CallKind::StringFunction:
         result = make(ExprKind::String, type, source);
@@ -336,6 +350,7 @@ const Expr* Lowerer::call(const ast::CallExpression& source, const CallMeaning& 
         break;
     }
     result->invariants = invariants(source, nullptr);
+    recordCall(source, result);
     return result;
 }
 
@@ -352,6 +367,15 @@ Expr* Lowerer::slice(const ast::CallExpression& source, const CallMeaning& meani
     if (result->hasHigh) {
         result->operands[result->hasLow ? 2 : 1] = expression(*source.arguments()[2]);
     }
+    if (index_ != nullptr) {
+        // An omitted bound is written `__low` or `__high`: no value.
+        if (!result->hasLow) {
+            index_->recordName(*source.arguments()[1]);
+        }
+        if (!result->hasHigh) {
+            index_->recordName(*source.arguments()[2]);
+        }
+    }
     return result;
 }
 
@@ -364,6 +388,11 @@ Expr* Lowerer::check(const ast::CallExpression& source)
     result->text = arena_.text(static_cast<const ast::LiteralExpression&>(*source.arguments()[2]).value());
     result->operands = arena_.array<const Expr*>(1);
     result->operands[0] = expression(*source.arguments()[1]);
+    if (index_ != nullptr) {
+        // The kind and the text are properties of the check, not values.
+        index_->recordName(*source.arguments()[0]);
+        index_->recordName(*source.arguments()[2]);
+    }
     return result;
 }
 
@@ -416,8 +445,13 @@ const Expr* Lowerer::construction(const ast::CallExpression& source)
         }
         const auto& named = static_cast<const ast::BinaryExpression&>(*argument);
         result->fields[meaning->field].value = expression(named.right());
+        if (index_ != nullptr) {
+            index_->recordFieldValue(named, result, meaning->field);
+            index_->recordName(named.left());
+        }
     }
     result->invariants = invariants(source, nullptr);
+    recordCall(source, result);
     return result;
 }
 

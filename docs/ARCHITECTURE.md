@@ -28,9 +28,11 @@ source ─▶ 1 lexer ─▶ 2 parser ─▶ 2b desugaring ─▶ 3 module resol
 The driver (`main/main.cpp`) runs phases 1, 2 and 2b for each module file
 as it is loaded (`Use`), then 3-4 once on the whole program
 (`loadProgram`), then 5, 6 and 7. Phase 5b (F6, change `typed-ir`) is
-being introduced step by step: since step 1 (r3.120) a Debug compiler
-builds and verifies the typed IR of every program it compiles, and
-`--dump-tir` prints it; code generation does not read it yet.
+being introduced step by step: every command that generates code builds
+and verifies the typed IR (since r3.122, in every build), `--dump-tir`
+prints it, and since step 2 code generation takes the types, symbols and
+constants of the AST nodes it walks from it, through a transitional index
+(`tir/MigrationIndex.h`, removed at step 5).
 
 ## Contracts of the phases
 
@@ -141,8 +143,12 @@ exception objects on the heap, will not show the cost.
   checks that every node has a type and a meaning.
 - **Never:** infers a type, compares a name, re-checks a rule (a decision
   it lacks is recorded by the analysis first).
-- **Today:** built and verified in Debug builds and by `--dump-tir`;
-  codegen still reads the AST (D5) until steps 2-5.
+- **Today:** built and verified for every program that is compiled; since
+  step 2 (r3.122) codegen reads the types, symbols and constants from it
+  by AST node through the migration index (transitional; a node without
+  its TIR node is an internal error), and still walks the AST (D5) until
+  step 5. What the TIR cannot express yet is reported as a gap of the
+  backend (E15).
 - **Owner:** `tir/`; the call meanings and the builtin enumeration it
   shares with the analysis are `semantic/CallMeaning.*`.
 
@@ -186,7 +192,7 @@ that removes it (ROADMAP, "Foundation"); a fix updates this table.
 | ~~D2~~ | Closed by F5 (r3.119): the parser builds chained and compound assignments, `with` targets and loop contracts as written (`ChainedAssignmentStatement`, `CompoundAssignmentStatement`, `WithTargetExpression`, loop `contracts`); phase 2b (`lowering/Desugar`) produces the normalized AST, identical to the one the parser made before. The analyzer's `__with` prefix checks remain until F6 | E11 | F5 |
 | ~~D3~~ | Closed by F3 (r3.114): the parser builds each routine header (`ast::RoutineHeader`: `ParameterDeclaration` name, mode, receiver, written type; the result type) and reports its syntax errors; module resolution, contract lowering, generics and `inox interface` read that structure, and the analyzer checks only what types say (`registerFunctionSignatureIn`). Parameter and result types stay text until F4 | E11 | F3 |
 | ~~D4~~ | Closed by F4 (r3.117): a written type is a tree in the AST (`ast::TypeExpr`), built by the parser; module resolution renames, contract lowering tests and the analyzer resolves the tree; generic instances substitute type parameters on it (`substituteTypeParameters`, `writtenFormOf`). Text exists only through `ast::spell` (messages, `inox interface`, instance names); the text reader `types::TypeSyntax` is gone. Exception handler types stay names until F7 | E11 (steps 3-4) | F4 |
-| D5 | Codegen reads the raw AST beside 16 side tables of `SemanticResult` and takes decisions of its own: on r3.119, 106 name comparisons, 117 lookups by AST node, 150 AST shape tests (`tools/codegen_decisions.py`; inventory in change `typed-ir`). Since r3.120 (F6 step 1) the typed IR exists between phases 5 and 6 (`tir/`), built and verified in Debug; codegen does not read it yet | E11 (steps 3-5) | F6 |
+| D5 | Codegen reads the raw AST beside 16 side tables of `SemanticResult` and takes decisions of its own: on r3.119, 106 name comparisons, 117 lookups by AST node, 150 AST shape tests (`tools/codegen_decisions.py`; inventory in change `typed-ir`). Since r3.120 (F6 step 1) the typed IR exists between phases 5 and 6 (`tir/`); since r3.122 (step 2) codegen takes types, symbols and constants from it through a transitional index by AST node, and its other decisions remain | E11 (steps 3-5) | F6 |
 | D6 | Exception handlers match the written type name; the hierarchy is not in `types::Type` | E11 | F7 |
 | ~~D7~~ | Closed by F1 (r3.111): every gate of E19 runs in CI (`.github/workflows/ci.yml`, `.github/workflows/gates.yml`) | E19 | F1 |
 
@@ -251,6 +257,10 @@ instead of searching the whole emitter.
   of `--dump-tir`.
 - `src/compiler/semantic/SemanticMeanings.cpp` — the analyzer's records
   for the typed IR: call meanings, variable origins, declared symbols.
+- `src/compiler/tir/MigrationIndex.*` — TRANSITIONAL (F6 steps 2-4,
+  removed at step 5): which TIR node each AST node became, for code
+  generation while it still walks the AST; its wrappers are
+  `codegen/FunctionEmitterMigration.cpp`.
 
 - `src/compiler/codegen/LlvmIrEmitter.cpp` — the module: globals,
   declarations, internal helpers, `main` (`LlvmIrEmitter::emit`,

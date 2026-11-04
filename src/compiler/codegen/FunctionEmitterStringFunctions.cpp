@@ -29,24 +29,16 @@ namespace inox::compiler::codegen::detail {
 
 namespace {
 
-bool isConcatenation(const ast::Expression& expression, const semantic::SemanticResult& semantics)
-{
-    if (expression.kind() != ast::AstNodeKind::BinaryExpression ||
-        static_cast<const ast::BinaryExpression&>(expression).op() != ast::BinaryOperator::Add) {
-        return false;
-    }
-    return isStringType(semantics.typeOf(expression));
-}
-
 // The operands of a `+` chain of Strings, left to right (`A + B + C` is
 // `(A + B) + C`; a parenthesized `A + (B + C)` flattens the same way).
-void collectParts(const ast::Expression& expression, const semantic::SemanticResult& semantics,
+template <typename IsConcatenation>
+void collectParts(const ast::Expression& expression, const IsConcatenation& isConcatenation,
                   std::vector<const ast::Expression*>& parts)
 {
-    if (isConcatenation(expression, semantics)) {
+    if (isConcatenation(expression)) {
         const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
-        collectParts(binary.left(), semantics, parts);
-        collectParts(binary.right(), semantics, parts);
+        collectParts(binary.left(), isConcatenation, parts);
+        collectParts(binary.right(), isConcatenation, parts);
         return;
     }
     parts.push_back(&expression);
@@ -56,7 +48,11 @@ void collectParts(const ast::Expression& expression, const semantic::SemanticRes
 
 bool FunctionEmitter::isStringConcatenation(const ast::Expression& expression) const
 {
-    return isConcatenation(expression, semantics_);
+    if (expression.kind() != ast::AstNodeKind::BinaryExpression ||
+        static_cast<const ast::BinaryExpression&>(expression).op() != ast::BinaryOperator::Add) {
+        return false;
+    }
+    return isStringType(typeOf(expression));
 }
 
 // The status slot of a runtime String function.
@@ -109,7 +105,7 @@ std::string FunctionEmitter::emitStringParts(const std::vector<const ast::Expres
 std::string FunctionEmitter::emitConcatenation(const ast::BinaryExpression& expression)
 {
     std::vector<const ast::Expression*> parts;
-    collectParts(expression, semantics_, parts);
+    collectParts(expression, [this](const ast::Expression& part) { return isStringConcatenation(part); }, parts);
     const std::string array = emitStringParts(parts);
     requireRuntime(RuntimeFunction::StringConcat);
     requireStringRuntime();
@@ -134,7 +130,7 @@ bool FunctionEmitter::samePlace(const ast::Expression& first, const ast::Express
     if (first.kind() == ast::AstNodeKind::IdentifierExpression) {
         const auto& a = static_cast<const ast::IdentifierExpression&>(first);
         const auto& b = static_cast<const ast::IdentifierExpression&>(second);
-        return normalize(a.name()) == normalize(b.name()) && semantics_.symbolOf(a) == semantics_.symbolOf(b);
+        return normalize(a.name()) == normalize(b.name()) && symbolOf(a) == symbolOf(b);
     }
     if (first.kind() == ast::AstNodeKind::LiteralExpression) {
         const auto& a = static_cast<const ast::LiteralExpression&>(first);
@@ -178,7 +174,8 @@ bool FunctionEmitter::emitStringAppend(const ast::BinaryExpression& assignment)
         return false;
     }
     std::vector<const ast::Expression*> parts;
-    collectParts(assignment.right(), semantics_, parts);
+    collectParts(assignment.right(), [this](const ast::Expression& part) { return isStringConcatenation(part); },
+                 parts);
     if (!samePlace(assignment.left(), *parts.front())) {
         return false;
     }

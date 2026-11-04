@@ -201,6 +201,17 @@ struct Expr {
     Span<const Expr*> operands;
     Span<FieldValue> fields;
     const Invariants* invariants = nullptr;
+    // The symbol the analysis bound: of the routine a Call, Builtin or
+    // Intrinsic calls, of the type a TypeValue names, of the Const a
+    // Literal reads (F6 step 2). A Read's symbol is its place's.
+    const semantic::Symbol* symbol = nullptr;
+    // A Literal that reads a Const: its value, as the analysis evaluated it.
+    const semantic::ConstantValue* constant = nullptr;
+    // A Builtin whose value the analysis computed from its operand's type
+    // (Low, High, Length of an array, Low and High of an enum, CANON-13):
+    // `folded`, and the value.
+    bool folded = false;
+    std::int64_t foldedValue = 0;
 };
 
 enum class StmtKind : std::uint8_t {
