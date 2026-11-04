@@ -898,7 +898,7 @@ int main(int argc, char** argv)
         std::cerr << "note: this program is valid Inox; the gap is in code "
                      "generation (see docs/BACKEND_GAPS.md)\n";
         return 1;
-    } catch (const inox::compiler::tir::LoweringError& error) {
+    } catch (const inox::compiler::tir::UnsupportedConstructError& error) {
         // F6 (typed-ir): what the typed IR cannot express yet is a gap of
         // the backend too (E15), reported as code generation reports its own.
         std::cerr << "codegen error: not yet implemented in the LLVM backend: " << error.what() << '\n';

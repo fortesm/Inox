@@ -81,7 +81,10 @@ private:
     Stmt* make(StmtKind kind, const ast::AstNode& source);
     TypeRef typeOf(const ast::Expression& expression) const;
 
+    // A broken invariant (InvariantError), and valid Inox the typed IR
+    // cannot express yet (UnsupportedConstructError).
     [[noreturn]] void fail(const char* what, const ast::AstNode& node) const;
+    [[noreturn]] void unsupported(const char* what, const ast::AstNode& node) const;
 
     Program& program_;
     Arena& arena_;

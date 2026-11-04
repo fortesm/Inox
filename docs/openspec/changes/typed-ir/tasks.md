@@ -47,6 +47,7 @@ Left for later steps (found at step 1):
 
 - [x] 2.0 Strategy A approved (Marcelo Fortes, 2026-11-04) and recorded in `design.md`, with the correspondence matrix
 - [x] 2.1 Codegen takes types, symbols and constants from the TIR through the transitional migration index (`tir/MigrationIndex.h`, `codegen/FunctionEmitterMigration.cpp`): no fallback, agreement asserted in Debug; the TIR and the index live through code generation in every build
+- [x] 2.3 Review of the PR: the Debug agreement accepts only the two named differences, and only where the analysis recorded no type (negative unit tests); valid Inox the TIR cannot express is `UnsupportedConstructError` (a gap), a missing decision of the analysis `InvariantError` (internal)
 - [x] 2.2 The TIR keeps what the backend asks: the symbol of each call and type name, the value of a Const's literal, folded builtins with their operand; the analysis binds T in `Low(T)` and `High(T)`
 
 Measured at step 2 (r3.122; clang, Linux):

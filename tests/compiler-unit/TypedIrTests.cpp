@@ -122,8 +122,8 @@ Main :
 ;
 )";
 
-// F6 step 2 (TRANSITIONAL): the index answers from the TIR node each AST
-// node became, and never for a node it does not know.
+// The index answers from the TIR node each AST node became, and never for
+// a node it does not know.
 void testMigrationIndex(const ast::ModuleNode& program, const semantic::SemanticResult& semantics,
                         const tir::MigrationIndex& index)
 {
@@ -255,6 +255,77 @@ void testMalformedTir()
           "a Construct with null type is diagnosed without a crash");
 }
 
+// The Debug agreement accepts only the two differences the TIR makes on
+// purpose; anything else, and a node the analysis typed otherwise, fails.
+void testTypeAgreement()
+{
+    types::TypeContext types;
+    tir::Program program;
+    tir::MigrationIndex index;
+    const auto make = [&](tir::ExprKind kind, const types::Type* type) {
+        tir::Expr* expression = program.arena.make<tir::Expr>();
+        expression->kind = kind;
+        expression->type = type;
+        return expression;
+    };
+    const ast::IdentifierExpression call("Report");
+    index.recordValue(call, make(tir::ExprKind::Call, types.voidType()));
+    check(index.typeAgrees(call, nullptr), "a call without a result is Void");
+    check(!index.typeAgrees(call, types.int64Type()), "a call the analysis typed agrees only with that type");
+
+    const ast::IdentifierExpression literal("Literal");
+    index.recordValue(literal, make(tir::ExprKind::Literal, types.voidType()));
+    check(!index.typeAgrees(literal, nullptr), "Void stands for no type only on an operation");
+
+    const ast::IdentifierExpression value("Value");
+    index.recordValue(value, make(tir::ExprKind::Read, types.int64Type()));
+    check(!index.typeAgrees(value, nullptr), "a value the analysis did not type disagrees");
+    check(!index.typeAgrees(value, types.stringType()), "a value of another type disagrees");
+
+    const ast::IdentifierExpression name("__member");
+    index.recordName(name);
+    check(!index.typeAgrees(name, types.int64Type()), "a name has no type, whatever the analysis recorded");
+    check(index.typeAgrees(name, nullptr), "a name agrees with no type");
+
+    tir::Place* field = program.arena.make<tir::Place>();
+    field->kind = tir::PlaceKind::Field;
+    field->type = types.int64Type();
+    const ast::IdentifierExpression target("Target");
+    index.recordPlace(target, field);
+    check(index.typeAgrees(target, nullptr), "a written field the analysis did not type has its place's type");
+    check(!index.typeAgrees(target, types.stringType()), "a written field of another type disagrees");
+
+    tir::Place* local = program.arena.make<tir::Place>();
+    local->kind = tir::PlaceKind::Local;
+    local->type = types.int64Type();
+    const ast::IdentifierExpression variable("Variable");
+    index.recordPlace(variable, local);
+    check(!index.typeAgrees(variable, nullptr), "a variable place the analysis did not type disagrees");
+}
+
+// Valid Inox the typed IR cannot express yet is a gap, not an internal error.
+void testUnsupportedConstruct()
+{
+    parser::Parser parser{std::string_view("Const Mask := UInt8($FF)\n\nMain :\n    V UInt8 := Mask\n    PutLn(V)\n;\n")};
+    auto module = parser.parseModule("Gap");
+    lowering::desugarModule(*module);
+    std::vector<std::unique_ptr<ast::ModuleNode>> modules;
+    modules.push_back(std::move(module));
+    auto program = semantic::resolveModules(std::move(modules));
+    semantic::lowerContracts(*program);
+    semantic::SemanticAnalyzer analyzer;
+    const semantic::SemanticResult& semantics = analyzer.analyze(*program);
+    bool gap = false;
+    try {
+        (void)tir::lowerProgram(*program, semantics);
+    } catch (const tir::UnsupportedConstructError&) {
+        gap = true;
+    } catch (const tir::InvariantError&) {
+        gap = false;
+    }
+    check(gap, "a Const without its value is a gap of the backend, not an internal error");
+}
+
 } // namespace
 
 int runTypedIrTests()
@@ -263,6 +334,8 @@ int runTypedIrTests()
     testBuiltinNames();
     testLoweredProgram();
     testMalformedTir();
+    testTypeAgreement();
+    testUnsupportedConstruct();
     return failureCount() - before;
 }
 

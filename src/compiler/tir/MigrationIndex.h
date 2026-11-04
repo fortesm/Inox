@@ -90,12 +90,12 @@ public:
     TypeRef declaredType(const ast::VarStatement& declaration) const;
     TypeRef declaredType(const ast::VariableDeclaration& declaration) const;
 
-    // Debug agreement with the analysis's record (design of typed-ir, step
-    // 2): equal, or one of the three differences the TIR makes on purpose.
-    // A call without a result is Void where the analysis recorded none; a
-    // written target the analysis did not type (`P.F := V`) has its place's
-    // type; the kind and text of a contract check, which the analysis
-    // typed, are properties of the TIR's check, not values.
+    // Debug agreement with the analysis's record: the same type, or one of
+    // the two differences the TIR makes on purpose. An operation without a
+    // result (a call, a builtin, a string function, an intrinsic) is Void
+    // where the analysis recorded none; a written field or element the
+    // analysis did not type (`P.F := V`) has its place's type. A node the
+    // analysis typed agrees only with that type.
     bool typeAgrees(const ast::Expression& node, TypeRef recorded) const;
 
     std::size_t size() const { return entries_.size() + declarations_.size() + states_.size(); }

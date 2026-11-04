@@ -308,9 +308,11 @@ void Printer::expression(const Expr* expression)
     case ExprKind::TypeValue:
         break;
     }
-    for (const Expr* operand : expression->operands) {
+    // A check's kind and text are printed decoded, after its name.
+    const std::size_t printed = expression->kind == ExprKind::Check ? 1 : expression->operands.size();
+    for (std::size_t index = 0; index < printed; ++index) {
         output_ << ' ';
-        this->expression(operand);
+        this->expression(expression->operands[index]);
     }
     if (expression->invariants != nullptr) {
         inlineInvariants(*expression->invariants);

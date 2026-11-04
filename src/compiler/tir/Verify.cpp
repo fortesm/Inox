@@ -322,9 +322,15 @@ void Verifier::expression(const Expr* expression)
     case ExprKind::Pure:
     case ExprKind::RangeCheck:
     case ExprKind::NaturalCheck:
-    case ExprKind::Check:
         if (expression->operands.size() != 1) {
             problem("an operation without its one operand");
+        }
+        break;
+    case ExprKind::Check:
+        if (expression->operands.size() != 3 || expression->operands[1] == nullptr ||
+            expression->operands[2] == nullptr || expression->operands[1]->kind != ExprKind::Literal ||
+            expression->operands[2]->kind != ExprKind::Literal) {
+            problem("a check without its condition, kind and text");
         }
         break;
     case ExprKind::Binary:

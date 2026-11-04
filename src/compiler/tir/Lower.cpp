@@ -25,14 +25,28 @@ namespace inox::compiler::tir {
 
 namespace detail {
 
-void Lowerer::fail(const char* what, const ast::AstNode& node) const
+namespace {
+
+std::string located(const char* prefix, const char* what, const ast::AstNode& node)
 {
-    std::string message = "typed IR: ";
+    std::string message = prefix;
     message += what;
     if (node.position().known()) {
         message += " (line " + std::to_string(node.position().line) + ")";
     }
-    throw LoweringError(message);
+    return message;
+}
+
+} // namespace
+
+void Lowerer::fail(const char* what, const ast::AstNode& node) const
+{
+    throw InvariantError(located("internal error: typed IR: ", what, node));
+}
+
+void Lowerer::unsupported(const char* what, const ast::AstNode& node) const
+{
+    throw UnsupportedConstructError(located("typed IR: ", what, node));
 }
 
 TypeRef Lowerer::typeOf(const ast::Expression& expression) const
@@ -122,7 +136,7 @@ void Lowerer::lowerModule(const ast::ModuleNode& module)
         routines.push_back(routineShell(*instance, false));
     }
     if (entry == nullptr) {
-        throw LoweringError("a program without Main");
+        throw InvariantError("internal error: typed IR: a program without Main");
     }
     Routine* entryRoutine = routineShell(*entry, true);
     routines.push_back(entryRoutine);
@@ -155,14 +169,14 @@ void Lowerer::lowerModule(const ast::ModuleNode& module)
         constant.symbol = semantics_.declaredSymbol(&declaration);
         constant.name = arena_.text(declaration.name);
         if (constant.symbol == nullptr) {
-            throw LoweringError("typed IR: the Const " + declaration.name +
-                                " without its symbol");
+            throw InvariantError("internal error: typed IR: the Const " + declaration.name + " without its symbol");
         }
         constant.type = constant.symbol->type;
         const semantic::ConstantValue* value = semantics_.constantValueOf(*constant.symbol);
         if (value == nullptr) {
-            throw LoweringError("typed IR: the Const " + declaration.name +
-                                " without its value");
+            // The analysis computes no value for some Consts yet
+            // (`Const Mask := UInt8($FF)`): a known gap of the backend.
+            throw UnsupportedConstructError("typed IR: the Const " + declaration.name + " without its value");
         }
         constant.value = constantLiteral(*value, constant.type, declaration.position);
     }

@@ -86,14 +86,20 @@ bool MigrationIndex::typeAgrees(const ast::Expression& node, TypeRef recorded) c
     if (type == recorded) {
         return true;
     }
+    if (recorded != nullptr) {
+        return false;  // the analysis typed the node: only its type agrees
+    }
     const Entry& entry = entryOf(node, "type");
-    if (recorded == nullptr && type != nullptr && type->isVoid()) {
-        return true;
+    // An operation without a result: Void, where the analysis recorded none.
+    if (entry.value != nullptr) {
+        const ExprKind kind = entry.value->kind;
+        const bool operation = kind == ExprKind::Call || kind == ExprKind::Builtin || kind == ExprKind::String ||
+                               kind == ExprKind::Intrinsic;
+        return operation && type != nullptr && type->isVoid();
     }
-    if (recorded == nullptr && entry.value == nullptr && entry.place != nullptr) {
-        return true;
-    }
-    return type == nullptr && entry.name;
+    // A written field or element the analysis did not type: its place's type.
+    return entry.place != nullptr &&
+           (entry.place->kind == PlaceKind::Field || entry.place->kind == PlaceKind::Element);
 }
 
 TypeRef MigrationIndex::declaredType(const ast::VarStatement& declaration) const
