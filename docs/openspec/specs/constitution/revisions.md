@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.128
+Canon revision: r3.129
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -686,3 +686,16 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   and a Bool literal's value from the typed IR and the analysis, never by
   name. The LLVM IR and the typed IR of every program are identical.
   Change `typed-ir`.
+- r3.129 — 2026-11-04 — E11, foundation step F6 completed (step 5,
+  approved by Marcelo Fortes as one change, 2026-11-04): code generation
+  lowers the typed IR only. It reads no AST node, no table of the analysis
+  by node, and resolves no name; the AST node map of the migration and the
+  AST walks of code generation are removed. The defaults of struct fields
+  are resolved by the analysis (`types::FieldDefault`), and code
+  generation no longer reads their text. A method called without
+  parentheses whose result holds Strings (`P.Describe`) now counts, like
+  any call, among the values a routine holds: the routine gets its
+  cleanup pad, so that result is released when an exception leaves the
+  statement (declared in the change's `ir-snapshot-expect.json`, two
+  programs). Every other program's LLVM IR, and every typed IR, is
+  identical. Change `typed-ir`.

@@ -122,48 +122,6 @@ Main :
 ;
 )";
 
-// The index answers from the TIR node each AST node became, and never for
-// a node it does not know.
-void testMigrationIndex(const ast::ModuleNode& program, const semantic::SemanticResult& semantics,
-                        const tir::AstNodeMap& index)
-{
-    const ast::FunctionDeclaration* main = semantics.entry();
-    check(main != nullptr && main->body().size() == 3, "Main of the index test");
-    if (main == nullptr || main->body().size() != 3) {
-        return;
-    }
-    // `P := TPoint(FX := 1)`: the declared name, the construction, its field.
-    const auto& declaration = static_cast<const ast::ExpressionStatement&>(*main->body()[0]);
-    const auto& assignment = static_cast<const ast::BinaryExpression&>(declaration.expression());
-    const auto& construction = static_cast<const ast::CallExpression&>(assignment.right());
-    const types::Type* point = semantics.constructedStruct(construction);
-    check(index.typeOf(assignment.left()) == point && index.symbolOf(assignment.left()) != nullptr &&
-              index.symbolOf(assignment.left())->name == "P",
-          "the declared name has the declared type and its symbol");
-    check(index.typeOf(construction) == point, "a construction has its struct's type");
-    check(index.typeOf(construction.callee()) == point, "the name of T(...) is the type T");
-    check(index.typeOf(*construction.arguments()[0]) == semantics.types().int64Type(),
-          "F := V of a construction has the field's type");
-    // `PutLn(P.FY)`: a call without a result is Void; its name has no value.
-    const auto& put = static_cast<const ast::CallExpression&>(
-        static_cast<const ast::ExpressionStatement&>(*main->body()[2]).expression());
-    check(index.typeOf(put) != nullptr && index.typeOf(put)->isVoid(), "a call without a result is Void");
-    check(index.typeOf(put.callee()) == nullptr, "the name of a routine has no value");
-    check(index.typeAgrees(put, semantics.typeOf(put)), "Void agrees with the analysis's absent type");
-    check(index.builtinOf(put) == BuiltinOp::PutLn, "PutLn is the builtin the analysis decided");
-    check(index.builtinOf(construction) == BuiltinOp::None, "a construction is no builtin");
-    // A node the builder never met is an error, not an answer.
-    const ast::IdentifierExpression stranger("Stranger");
-    bool refused = false;
-    try {
-        (void)index.typeOf(stranger);
-    } catch (const tir::InvariantError&) {
-        refused = true;
-    }
-    check(refused, "a node without its TIR node is an internal error");
-    (void)program;
-}
-
 void testBuiltProgram()
 {
     parser::Parser parser{kProgram};
@@ -175,10 +133,8 @@ void testBuiltProgram()
     semantic::lowerContracts(*program);
     semantic::SemanticAnalyzer analyzer;
     const semantic::SemanticResult& semantics = analyzer.analyze(*program);
-    tir::AstNodeMap index;
-    const auto typedIr = tir::buildProgram(*program, semantics, &index);
+    const auto typedIr = tir::buildProgram(*program, semantics);
     checkEqual(tir::verifyProgram(*typedIr), "", "the typed IR verifies");
-    testMigrationIndex(*program, semantics, index);
     check(typedIr->routines.size() == 2 && typedIr->entry == typedIr->routines[1], "Main is the entry, last");
 
     const tir::Routine& move = *typedIr->routines[0];
@@ -257,92 +213,6 @@ void testMalformedTir()
           "a Construct with null type is diagnosed without a crash");
 }
 
-// The Debug agreement accepts only the two differences the TIR makes on
-// purpose; anything else, and a node the analysis typed otherwise, fails.
-void testTypeAgreement()
-{
-    types::TypeContext types;
-    tir::Program program;
-    tir::AstNodeMap index;
-    const auto make = [&](tir::ExprKind kind, const types::Type* type) {
-        tir::Expr* expression = program.arena.make<tir::Expr>();
-        expression->kind = kind;
-        expression->type = type;
-        return expression;
-    };
-    const ast::IdentifierExpression call("Report");
-    index.recordValue(call, make(tir::ExprKind::Call, types.voidType()));
-    check(index.typeAgrees(call, nullptr), "a call without a result is Void");
-    check(!index.typeAgrees(call, types.int64Type()), "a call the analysis typed agrees only with that type");
-
-    const ast::IdentifierExpression literal("Literal");
-    index.recordValue(literal, make(tir::ExprKind::Literal, types.voidType()));
-    check(!index.typeAgrees(literal, nullptr), "Void stands for no type only on an operation");
-
-    const ast::IdentifierExpression value("Value");
-    index.recordValue(value, make(tir::ExprKind::Read, types.int64Type()));
-    check(!index.typeAgrees(value, nullptr), "a value the analysis did not type disagrees");
-    check(!index.typeAgrees(value, types.stringType()), "a value of another type disagrees");
-
-    const ast::IdentifierExpression name("__member");
-    index.recordName(name);
-    check(!index.typeAgrees(name, types.int64Type()), "a name has no type, whatever the analysis recorded");
-    check(index.typeAgrees(name, nullptr), "a name agrees with no type");
-
-    tir::Place* field = program.arena.make<tir::Place>();
-    field->kind = tir::PlaceKind::Field;
-    field->type = types.int64Type();
-    const ast::IdentifierExpression target("Target");
-    index.recordPlace(target, field);
-    check(index.typeAgrees(target, nullptr), "a written field the analysis did not type has its place's type");
-    check(!index.typeAgrees(target, types.stringType()), "a written field of another type disagrees");
-
-    tir::Place* local = program.arena.make<tir::Place>();
-    local->kind = tir::PlaceKind::Local;
-    local->type = types.int64Type();
-    const ast::IdentifierExpression variable("Variable");
-    index.recordPlace(variable, local);
-    check(!index.typeAgrees(variable, nullptr), "a variable place the analysis did not type disagrees");
-}
-
-// The builtin a call is comes from its TIR node: a Builtin's operation, Value
-// for the object a pointer reaches; any other node is no builtin, and a node
-// the builder never met is an error.
-void testBuiltinOf()
-{
-    types::TypeContext types;
-    tir::Program program;
-    tir::AstNodeMap index;
-    tir::Expr* sqrt = program.arena.make<tir::Expr>();
-    sqrt->kind = tir::ExprKind::Builtin;
-    sqrt->op = BuiltinOp::Sqrt;
-    sqrt->type = types.float64Type();
-    const ast::IdentifierExpression builtin("Sqrt");
-    index.recordValue(builtin, sqrt);
-    check(index.builtinOf(builtin) == BuiltinOp::Sqrt, "a Builtin is its operation");
-
-    tir::Place* pointer = program.arena.make<tir::Place>();
-    pointer->kind = tir::PlaceKind::Local;
-    tir::Place* target = program.arena.make<tir::Place>();
-    target->kind = tir::PlaceKind::Through;
-    target->base = pointer;
-    const ast::IdentifierExpression value("Value");
-    index.recordPlace(value, target);
-    check(index.builtinOf(value) == BuiltinOp::Value, "the object a pointer reaches is Value(P)");
-    const ast::IdentifierExpression variable("P");
-    index.recordPlace(variable, pointer);
-    check(index.builtinOf(variable) == BuiltinOp::None, "a variable is no builtin");
-
-    const ast::IdentifierExpression stranger("Stranger");
-    bool refused = false;
-    try {
-        (void)index.builtinOf(stranger);
-    } catch (const tir::InvariantError&) {
-        refused = true;
-    }
-    check(refused, "the builtin of a node without its TIR node is an internal error");
-}
-
 // Valid Inox the typed IR cannot express yet is a gap, not an internal error.
 void testUnsupportedConstruct()
 {
@@ -374,8 +244,6 @@ int runTypedIrTests()
     testBuiltinNames();
     testBuiltProgram();
     testMalformedTir();
-    testTypeAgreement();
-    testBuiltinOf();
     testUnsupportedConstruct();
     return failureCount() - before;
 }

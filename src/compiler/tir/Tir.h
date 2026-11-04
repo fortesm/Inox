@@ -169,6 +169,7 @@ enum class ExprKind : std::uint8_t {
 struct FieldValue {
     std::uint32_t field = 0;
     const Expr* value = nullptr;  // null: the field's default
+    std::uint32_t written = 0;    // its place among the values written (CANON-9: evaluated in that order)
 };
 
 // CANON-24: where a struct invariant must hold, as the analysis recorded it.
@@ -213,6 +214,9 @@ struct Expr {
     // `folded`, and the value.
     bool folded = false;
     std::int64_t foldedValue = 0;
+    // A Builtin Fill: the type each element, or row, of the array is a copy
+    // of the value of (r3.81).
+    TypeRef unit = nullptr;
 };
 
 enum class StmtKind : std::uint8_t {
@@ -265,6 +269,7 @@ struct Stmt {
     ast::SourcePosition position;
     bool compound = false;
     bool discard = false;
+    bool inferred = false;  // Declare: `X := V` without a written type, of the type of V (CANON-5)
     bool hasElse = false;
     TypeRef type = nullptr;
     const semantic::Symbol* symbol = nullptr;
@@ -312,6 +317,13 @@ struct Constant {
 };
 
 // One program: what code generation emits.
+// The routine that checks the invariant clauses a struct declares itself
+// (CANON-24); those of the structs it reuses are theirs.
+struct InvariantRoutine {
+    TypeRef type = nullptr;
+    const Routine* routine = nullptr;
+};
+
 struct Program {
     Arena arena;
     Span<TypeRef> structTypes;       // declaration order, then the generic instances
@@ -319,6 +331,7 @@ struct Program {
     Span<Constant> constants;        // source order
     Span<Routine*> routines;         // the program's, then the generic instances; the entry last
     const Routine* entry = nullptr;
+    Span<InvariantRoutine> invariants;  // in the order of `structTypes`
 };
 
 std::string_view placeKindName(PlaceKind kind);

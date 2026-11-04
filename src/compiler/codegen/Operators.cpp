@@ -13,36 +13,36 @@
 
 namespace inox::compiler::codegen::detail {
 
-std::string fcmpPredicate(ast::BinaryOperator op)
+std::string fcmpPredicate(tir::BinaryOp op)
 {
     switch (op) {
-    case ast::BinaryOperator::Equal:
+    case tir::BinaryOp::Equal:
         return "oeq";
-    case ast::BinaryOperator::NotEqual:
+    case tir::BinaryOp::NotEqual:
         return "one";
-    case ast::BinaryOperator::Less:
+    case tir::BinaryOp::Less:
         return "olt";
-    case ast::BinaryOperator::Greater:
+    case tir::BinaryOp::Greater:
         return "ogt";
-    case ast::BinaryOperator::LessEqual:
+    case tir::BinaryOp::LessEqual:
         return "ole";
-    case ast::BinaryOperator::GreaterEqual:
+    case tir::BinaryOp::GreaterEqual:
         return "oge";
     default:
         return {};
     }
 }
 
-std::string llvmFloatOperation(ast::BinaryOperator op)
+std::string llvmFloatOperation(tir::BinaryOp op)
 {
     switch (op) {
-    case ast::BinaryOperator::Add:
+    case tir::BinaryOp::Add:
         return "fadd";
-    case ast::BinaryOperator::Subtract:
+    case tir::BinaryOp::Subtract:
         return "fsub";
-    case ast::BinaryOperator::Multiply:
+    case tir::BinaryOp::Multiply:
         return "fmul";
-    case ast::BinaryOperator::Divide:
+    case tir::BinaryOp::Divide:
         return "fdiv";
     default:
         throw CodegenUnsupported("unsupported Float operator for LLVM emission");
@@ -52,24 +52,24 @@ std::string llvmFloatOperation(ast::BinaryOperator op)
 // Integer arithmetic is checked (CANON-19, checked arithmetic and limits): overflow, division by zero and an
 // out-of-range shift count trap instead of wrapping or being undefined.
 // These operators lower to always-inlined runtime helpers.
-std::string checkedIntegerHelper(ast::BinaryOperator op)
+std::string checkedIntegerHelper(tir::BinaryOp op)
 {
     switch (op) {
-    case ast::BinaryOperator::Add:
+    case tir::BinaryOp::Add:
         return "__inox_add_i64";
-    case ast::BinaryOperator::Subtract:
+    case tir::BinaryOp::Subtract:
         return "__inox_sub_i64";
-    case ast::BinaryOperator::Multiply:
+    case tir::BinaryOp::Multiply:
         return "__inox_mul_i64";
-    case ast::BinaryOperator::Divide:
+    case tir::BinaryOp::Divide:
         return "__inox_div_i64";
-    case ast::BinaryOperator::Modulo:
+    case tir::BinaryOp::Modulo:
         return "__inox_mod_i64";
-    case ast::BinaryOperator::Remainder:
+    case tir::BinaryOp::Remainder:
         return "__inox_rem_i64";
-    case ast::BinaryOperator::ShiftLeft:
+    case tir::BinaryOp::ShiftLeft:
         return "__inox_shl_i64";
-    case ast::BinaryOperator::ShiftRight:
+    case tir::BinaryOp::ShiftRight:
         return "__inox_shr_i64";
     default:
         return {};
@@ -77,39 +77,39 @@ std::string checkedIntegerHelper(ast::BinaryOperator op)
 }
 
 // Change uint64: the UInt64 helpers of the same operators.
-std::string llvmUnsignedHelper(ast::BinaryOperator op)
+std::string llvmUnsignedHelper(tir::BinaryOp op)
 {
     switch (op) {
-    case ast::BinaryOperator::Add:
+    case tir::BinaryOp::Add:
         return "__inox_addu_i64";
-    case ast::BinaryOperator::Subtract:
+    case tir::BinaryOp::Subtract:
         return "__inox_subu_i64";
-    case ast::BinaryOperator::Multiply:
+    case tir::BinaryOp::Multiply:
         return "__inox_mulu_i64";
-    case ast::BinaryOperator::Divide:
+    case tir::BinaryOp::Divide:
         return "__inox_divu_i64";
-    case ast::BinaryOperator::Modulo:
-    case ast::BinaryOperator::Remainder:
+    case tir::BinaryOp::Modulo:
+    case tir::BinaryOp::Remainder:
         return "__inox_modu_i64";
-    case ast::BinaryOperator::ShiftLeft:
+    case tir::BinaryOp::ShiftLeft:
         return "__inox_shlu_i64";
-    case ast::BinaryOperator::ShiftRight:
+    case tir::BinaryOp::ShiftRight:
         return "__inox_shru_i64";
-    case ast::BinaryOperator::Power:
+    case tir::BinaryOp::Power:
         return "__inox_ipowu_i64";
     default:
         return {};
     }
 }
 
-std::string llvmOperation(ast::BinaryOperator op)
+std::string llvmOperation(tir::BinaryOp op)
 {
     switch (op) {
-    case ast::BinaryOperator::BitAnd:
+    case tir::BinaryOp::BitAnd:
         return "and";
-    case ast::BinaryOperator::BitOr:
+    case tir::BinaryOp::BitOr:
         return "or";
-    case ast::BinaryOperator::BitXor:
+    case tir::BinaryOp::BitXor:
         return "xor";
     default:
         throw CodegenUnsupported(
@@ -117,34 +117,34 @@ std::string llvmOperation(ast::BinaryOperator op)
     }
 }
 
-std::string llvmComparisonPredicate(ast::BinaryOperator op)
+std::string llvmComparisonPredicate(tir::BinaryOp op)
 {
     switch (op) {
-    case ast::BinaryOperator::Equal:
+    case tir::BinaryOp::Equal:
         return "eq";
-    case ast::BinaryOperator::NotEqual:
+    case tir::BinaryOp::NotEqual:
         return "ne";
-    case ast::BinaryOperator::Less:
+    case tir::BinaryOp::Less:
         return "slt";
-    case ast::BinaryOperator::Greater:
+    case tir::BinaryOp::Greater:
         return "sgt";
-    case ast::BinaryOperator::LessEqual:
+    case tir::BinaryOp::LessEqual:
         return "sle";
-    case ast::BinaryOperator::GreaterEqual:
+    case tir::BinaryOp::GreaterEqual:
         return "sge";
     default:
         return {};
     }
 }
 
-std::string llvmBooleanOperation(ast::BinaryOperator op)
+std::string llvmBooleanOperation(tir::BinaryOp op)
 {
     switch (op) {
-    case ast::BinaryOperator::And:
+    case tir::BinaryOp::And:
         return "and";
-    case ast::BinaryOperator::Xor:
+    case tir::BinaryOp::Xor:
         return "xor";
-    case ast::BinaryOperator::Or:
+    case tir::BinaryOp::Or:
         return "or";
     default:
         return {};

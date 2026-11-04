@@ -11,6 +11,7 @@
 #pragma once
 
 #include "ExceptionAbi.h"
+#include "../tir/Tir.h"
 #include "../types/Type.h"
 
 #include <cstddef>
@@ -21,6 +22,8 @@
 namespace inox::compiler::codegen::detail {
 
 struct ModuleContext {
+    // The routine that checks each struct's own invariant clauses (CANON-24).
+    std::unordered_map<const types::Type*, const tir::Routine*> invariantRoutines;
     explicit ModuleContext(const ExceptionAbi& abi) : exceptionAbi(abi) {}
 
     const ExceptionAbi& exceptionAbi;

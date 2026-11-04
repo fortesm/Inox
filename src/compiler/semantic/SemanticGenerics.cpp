@@ -555,6 +555,9 @@ TypeRef SemanticAnalyzer::instantiateStruct(const ast::TypeDeclaration& generic,
             types::StructField field{declaration.name, fieldType, false, declaration.hasDefault,
                                      declaration.defaultValue};
             field.fillDefault = declaration.fillDefault;
+            if (declaration.hasDefault) {
+                field.resolvedDefault = resolveFieldDefault(fieldType, declaration.defaultValue, declaration.fillDefault);
+            }
             field.fromTypeParameter = declaration.type.isNamed() && isTypeParameter(declaration.type.name,
                                                                                     generic.typeParameters);
             field.isPublic = declaration.isPublic;

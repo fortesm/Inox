@@ -26,20 +26,6 @@ using semantic::Intrinsic;
 using semantic::ModuleIntrinsic;
 
 // The Std.Terminal routine an identifier or a call names, or null.
-const ModuleIntrinsic* FunctionEmitter::intrinsicCallOf(const ast::Expression& expression) const
-{
-    const ModuleIntrinsic* function = astNodes_.intrinsicOf(expression);
-#ifndef NDEBUG
-    const semantic::CallMeaning* meaning = semantics_.callMeaning(expression);
-    const ModuleIntrinsic* recorded =
-        meaning != nullptr && meaning->kind == semantic::CallKind::Intrinsic ? meaning->intrinsic : nullptr;
-    if (function != recorded) {
-        throw tir::InvariantError("internal error: typed IR: the intrinsic the typed IR gives is not the analysis's");
-    }
-#endif
-    return function;
-}
-
 // An Int64 stored into a field of another LLVM integer type.
 std::string FunctionEmitter::narrowFromInt64(const std::string& value, const std::string& llvmType)
 {
@@ -79,10 +65,10 @@ std::string FunctionEmitter::emitTerminalStruct(TypeRef type,
 }
 
 // An argument widened to i64 (an enum may be narrower).
-std::string FunctionEmitter::emitInt64Argument(const ast::Expression& argument)
+std::string FunctionEmitter::emitInt64Argument(const tir::Expr& argument)
 {
     const std::string type = expressionLlvmType(argument);
-    const std::string value = emitExpression(argument);
+    const std::string value = emitValue(argument);
     if (type == "i64") {
         return value;
     }
@@ -109,26 +95,23 @@ std::string FunctionEmitter::emitPlainIntrinsic(RuntimeFunction function, const 
     output_ << "  " << result << " = call " << returnType << " @" << symbol << '(' << list << ")\n";
     if (returnType == "ptr") {
         requireStringRuntime();
-        holdOwnedResult(result, semantics_.types().stringType(), "ptr");
+        holdOwnedResult(result, types_.stringType(), "ptr");
     }
     return result;
 }
 
 // Emits a library intrinsic; its value, or "" for one without a result.
-std::string FunctionEmitter::emitIntrinsicCall(const ast::Expression& expression, const ModuleIntrinsic& function)
+std::string FunctionEmitter::emitIntrinsicCall(const tir::Expr& expression)
 {
-    static const std::vector<ast::ExpressionPtr> kNoArguments;
-    const std::vector<ast::ExpressionPtr>& arguments =
-        expression.kind() == ast::AstNodeKind::CallExpression
-            ? static_cast<const ast::CallExpression&>(expression).arguments()
-            : kNoArguments;
+    const ModuleIntrinsic& function = *expression.intrinsic;
+    const auto& arguments = expression.operands;
     const auto temporary = [this] { return "%tmp" + std::to_string(nextTemporary_++); };
     switch (function.function) {
     case Intrinsic::RawMode:
     case Intrinsic::ShowCursor: {
         const bool raw = function.function == Intrinsic::RawMode;
         requireRuntime(raw ? RuntimeFunction::TerminalRawMode : RuntimeFunction::TerminalShowCursor);
-        const std::string flag = emitExpression(*arguments[0]);
+        const std::string flag = emitValue(*arguments[0]);
         output_ << "  call void @" << (raw ? "__inox_term_raw_mode" : "__inox_term_show_cursor") << "(i1 zeroext "
                 << flag << ")\n";
         return {};
@@ -153,7 +136,7 @@ std::string FunctionEmitter::emitIntrinsicCall(const ast::Expression& expression
         output_ << "  " << altBit << " = lshr i64 " << code << ", " << semantic::kKeyAltBit << '\n';
         output_ << "  " << alt << " = and i64 " << altBit << ", 1\n";
         output_ << "  " << character << " = lshr i64 " << code << ", " << semantic::kKeyCharShift << '\n';
-        return emitTerminalStruct(typeOf(expression),
+        return emitTerminalStruct(expression.type,
                                   {{"Kind", kind}, {"Ch", character}, {"Ctrl", ctrl}, {"Alt", alt}});
     }
     case Intrinsic::ScreenSize: {
@@ -164,7 +147,7 @@ std::string FunctionEmitter::emitIntrinsicCall(const ast::Expression& expression
         output_ << "  " << code << " = call i64 @__inox_term_screen_size()\n";
         output_ << "  " << rows << " = lshr i64 " << code << ", 32\n";
         output_ << "  " << columns << " = and i64 " << code << ", 4294967295\n";
-        return emitTerminalStruct(typeOf(expression), {{"Rows", rows}, {"Cols", columns}});
+        return emitTerminalStruct(expression.type, {{"Rows", rows}, {"Cols", columns}});
     }
     case Intrinsic::MoveTo: {
         requireRuntime(RuntimeFunction::TerminalMoveTo);
@@ -213,10 +196,10 @@ std::string FunctionEmitter::emitIntrinsicCall(const ast::Expression& expression
                                   {"i64 " + emitInt64Argument(*arguments[0])});
     case Intrinsic::GetEnv:
         return emitPlainIntrinsic(RuntimeFunction::SystemGetEnv, "ptr", "__inox_sys_get_env",
-                                  {"ptr " + emitExpression(*arguments[0])});
+                                  {"ptr " + emitValue(*arguments[0])});
     case Intrinsic::EnvExists:
         return emitPlainIntrinsic(RuntimeFunction::SystemEnvExists, "zeroext i1", "__inox_sys_env_exists",
-                                  {"ptr " + emitExpression(*arguments[0])});
+                                  {"ptr " + emitValue(*arguments[0])});
     case Intrinsic::Halt:
         return emitPlainIntrinsic(RuntimeFunction::SystemHalt, "void", "__inox_sys_halt",
                                   {"i64 " + emitInt64Argument(*arguments[0])});

@@ -14,7 +14,7 @@
 // E15); a broken invariant of the analysis's output is an InvariantError
 // (tir/Errors.h).
 
-#include "AstNodeMap.h"
+#include "Errors.h"
 #include "Errors.h"
 #include "Tir.h"
 
@@ -22,8 +22,6 @@
 
 namespace inox::compiler::tir {
 
-// `astNodes`, when given, receives which TIR node each AST node became.
-std::unique_ptr<Program> buildProgram(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
-                                      AstNodeMap* astNodes = nullptr);
+std::unique_ptr<Program> buildProgram(const ast::ModuleNode& module, const semantic::SemanticResult& semantics);
 
 } // namespace inox::compiler::tir

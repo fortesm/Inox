@@ -20,23 +20,24 @@
 namespace inox::compiler::codegen::detail {
 
 // The enum type an argument names (`Low(TSuit)`), or null.
-TypeRef FunctionEmitter::enumTypeNamed(const ast::Expression& expression) const
+TypeRef FunctionEmitter::enumTypeNamed(const tir::Expr& expression)
 {
-    const TypeRef type = astNodes_.typeValueOf(expression);
+    const tir::Expr& value = bare(expression);
+    const TypeRef type = value.kind == tir::ExprKind::TypeValue ? value.type : nullptr;
     return type != nullptr && (type->isEnum() || type->isRange() || type->isCharRange()) ? type : nullptr;
 }
 
-bool FunctionEmitter::isOrdinalBuiltin(const ast::CallExpression& call) const
+bool FunctionEmitter::isOrdinalBuiltin(const tir::Expr& call)
 {
-    const semantic::BuiltinOp op = builtinOf(call);
-    if (op == semantic::BuiltinOp::None || call.arguments().size() != 1) {
+    const semantic::BuiltinOp op = call.op;
+    if (op == semantic::BuiltinOp::None || call.operands.size() != 1) {
         return false;
     }
-    const ast::Expression& argument = *call.arguments()[0];
+    const tir::Expr& argument = *call.operands[0];
     if (op == semantic::BuiltinOp::Low || op == semantic::BuiltinOp::High) {
         return enumTypeNamed(argument) != nullptr;
     }
-    const TypeRef type = typeOf(argument);
+    const TypeRef type = bare(argument).type;
     if (op == semantic::BuiltinOp::Ord) {
         return type != nullptr && type->isEnum();
     }
@@ -44,20 +45,20 @@ bool FunctionEmitter::isOrdinalBuiltin(const ast::CallExpression& call) const
            (type->isEnum() || type->isRange());
 }
 
-std::string FunctionEmitter::emitOrdinalBuiltin(const ast::CallExpression& call)
+std::string FunctionEmitter::emitOrdinalBuiltin(const tir::Expr& call)
 {
-    const semantic::BuiltinOp op = builtinOf(call);
-    const ast::Expression& argument = *call.arguments()[0];
+    const semantic::BuiltinOp op = call.op;
+    const tir::Expr& argument = *call.operands[0];
     if (const TypeRef type = enumTypeNamed(argument)) {
         return std::to_string(op == semantic::BuiltinOp::Low ? type->minValue() : type->maxValue());
     }
-    const std::string value = emitExpression(argument);
+    const std::string value = emitValue(argument);
     if (op == semantic::BuiltinOp::Ord) {
         return value;
     }
     // Succ and Pred: past the last or before the first literal is "value
     // out of range" (kind 11).
-    const TypeRef type = typeOf(argument);
+    const TypeRef type = bare(argument).type;
     const std::string stepped = "%tmp" + std::to_string(nextTemporary_++);
     output_ << "  " << stepped << " = " << (op == semantic::BuiltinOp::Succ ? "add" : "sub") << " i64 " << value
             << ", 1\n";

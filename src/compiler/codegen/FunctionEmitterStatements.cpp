@@ -9,7 +9,7 @@
 
 #include "FunctionEmitter.h"
 
-#include "AstQueries.h"
+#include "TirWalk.h"
 #include "ExceptionAbi.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
@@ -36,7 +36,7 @@
 namespace inox::compiler::codegen::detail {
 
 // Every statement releases the String temporaries it created.
-void FunctionEmitter::emitStatement(const ast::Statement& statement)
+void FunctionEmitter::emitStatement(const tir::Stmt& statement)
 {
     ++statementDepth_;
     const bool outerRunsRoutine = statementRunsRoutine_;
@@ -47,164 +47,108 @@ void FunctionEmitter::emitStatement(const ast::Statement& statement)
     --statementDepth_;
 }
 
-void FunctionEmitter::emitStatementKind(const ast::Statement& statement)
+void FunctionEmitter::emitStatementKind(const tir::Stmt& statement)
 {
-    if (statement.kind() == ast::AstNodeKind::VarStatement) {
-        const auto& variable = static_cast<const ast::VarStatement&>(statement);
-        if (variable.initializer() == nullptr) {
-            if (!variable.type()) {
-                throw CodegenUnsupported(
-                    "LLVM emission currently requires local variable initialization");
+    switch (statement.kind) {
+    case tir::StmtKind::Declare:
+        emitDeclaration(statement);
+        return;
+    case tir::StmtKind::Block:
+        // A `var` block: its declarations, one statement.
+        for (const tir::Stmt* declaration : statement.body) {
+            if (declaration->kind != tir::StmtKind::Declare) {
+                throw CodegenUnsupported("unsupported local variable declaration in Integer function");
             }
-            emitTypedLocalVariable(variable.name(), declaredTypeOf(variable));
-            emitNewValueInvariant(variable);
-        } else if (variable.type()) {
-            emitTypedLocalVariable(variable.name(), declaredTypeOf(variable), variable.initializer());
-        } else {
-            emitLocalVariable(variable.name(), *variable.initializer());
+            emitDeclaration(*declaration);
         }
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::VarBlockStatement) {
-        const auto& block = static_cast<const ast::VarBlockStatement&>(statement);
-        for (const auto& declaration : block.declarations()) {
-            emitVarBlockDeclaration(*declaration);
-        }
-        return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::ExpressionStatement) {
-        const auto& expressionStatement = static_cast<const ast::ExpressionStatement&>(statement);
-        const auto& expression = expressionStatement.expression();
-        if (expressionStatement.isDiscard()) {
+    case tir::StmtKind::Evaluate:
+        if (statement.discard) {
             // r3.93: `_ := F(X)` evaluates the call as a value and drops it;
             // an owned result (a String, an Own, ...) was held by the call
             // and is released with the statement's temporaries.
-            (void)emitExpression(expression);
+            (void)emitValue(*statement.value);
             return;
         }
-        if (isAssignmentExpression(expression)) {
-            emitAssignmentStatement(expressionStatement);
-        } else {
-            emitExpressionStatement(expression);
-        }
+        emitExpressionStatement(*statement.value);
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::IfStatement) {
-        emitIfMerge(static_cast<const ast::IfStatement&>(statement));
+    case tir::StmtKind::Assign:
+        emitAssignment(statement);
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::WhileStatement) {
-        emitWhile(static_cast<const ast::WhileStatement&>(statement));
+    case tir::StmtKind::If:
+        emitIfMerge(statement);
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::RepeatStatement) {
-        emitRepeat(static_cast<const ast::RepeatStatement&>(statement));
+    case tir::StmtKind::While:
+        emitWhile(statement);
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::ForInStatement) {
-        emitForIn(static_cast<const ast::ForInStatement&>(statement));
+    case tir::StmtKind::Repeat:
+        emitRepeat(statement);
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::TryStatement) {
-        emitTry(static_cast<const ast::TryStatement&>(statement));
+    case tir::StmtKind::ForIn:
+        emitForIn(statement);
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::RaiseStatement) {
-        emitRaise(static_cast<const ast::RaiseStatement&>(statement));
+    case tir::StmtKind::Try:
+        emitTry(statement);
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::RetryStatement) {
-        emitRetry(static_cast<const ast::RetryStatement&>(statement));
+    case tir::StmtKind::Raise:
+        emitRaise(statement);
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::ReturnStatement) {
-        emitReturn(static_cast<const ast::ReturnStatement&>(statement));
+    case tir::StmtKind::Retry:
+        emitRetry(statement);
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::ExitStatement) {
+    case tir::StmtKind::Return:
+        emitReturn(statement);
+        return;
+    case tir::StmtKind::Exit:
         emitExit();
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::LeaveStatement) {
+    case tir::StmtKind::Leave:
         emitLeaveTransfer();
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::ContinueStatement) {
+    case tir::StmtKind::Continue:
         emitContinueTransfer();
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::WithStatement) {
-        emitWith(static_cast<const ast::WithStatement&>(statement));
+    case tir::StmtKind::With:
+        emitWith(statement);
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::UntilStatement) {
-        emitUntil(static_cast<const ast::UntilStatement&>(statement));
+    case tir::StmtKind::Until:
+        emitUntil(statement);
         return;
-    }
-
-    if (statement.kind() == ast::AstNodeKind::CaseStatement) {
-        emitCase(static_cast<const ast::CaseStatement&>(statement));
+    case tir::StmtKind::Case:
+        emitCase(statement);
         return;
-    }
-    if (statement.kind() == ast::AstNodeKind::UnlessStatement) {
-        emitUnless(static_cast<const ast::UnlessStatement&>(statement));
+    case tir::StmtKind::Unless:
+        emitUnless(statement);
         return;
     }
     throw CodegenUnsupported("LLVM emission does not lower this statement kind yet");
 }
 
-void FunctionEmitter::emitVarBlockDeclaration(const ast::Statement& statement)
+// A local variable: `X T`, `X T := V`, or `X := V` (CANON-5 / A6 / A7: of
+// the type of V). `X := V` where an earlier scope of the routine already
+// made X's storage stores into it.
+void FunctionEmitter::emitDeclaration(const tir::Stmt& declaration)
 {
-    if (statement.kind() == ast::AstNodeKind::VarStatement) {
-        const auto& variable = static_cast<const ast::VarStatement&>(statement);
-        if (variable.initializer() == nullptr) {
-            emitTypedLocalVariable(variable.name(), declaredTypeOf(variable));
-            emitNewValueInvariant(variable);
-        } else if (variable.type()) {
-            emitTypedLocalVariable(variable.name(), declaredTypeOf(variable), variable.initializer());
-        } else {
-            emitLocalVariable(variable.name(), *variable.initializer());
+    const std::string_view name = declaration.symbol->name;
+    if (declaration.inferred) {
+        const auto local = locals_.find(normalize(name));
+        if (local == locals_.end()) {
+            emitLocalVariable(name, *declaration.value);
+            return;
         }
+        emitStorageGuard(local->first);
+        const std::string value = emitValue(*declaration.value);
+        emitOwningStore(local->second.slot, local->second.type, local->second.llvmType, value);
         return;
     }
-
-    if (statement.kind() != ast::AstNodeKind::ExpressionStatement) {
-        throw CodegenUnsupported(
-            "unsupported local variable declaration in Integer function");
+    emitTypedLocalVariable(name, declaration.type, declaration.value);
+    if (declaration.value == nullptr && declaration.invariants != nullptr &&
+        declaration.invariants->newValue != nullptr) {
+        const auto local = locals_.find(normalize(name));
+        if (local != locals_.end()) {
+            emitInvariantOf(declaration.invariants->newValue, local->second.slot);
+        }
     }
-
-    const auto& expression =
-        static_cast<const ast::ExpressionStatement&>(statement).expression();
-    if (expression.kind() != ast::AstNodeKind::BinaryExpression) {
-        throw CodegenUnsupported(
-            "unsupported local variable declaration in Integer function");
-    }
-
-    const auto& assignment = static_cast<const ast::BinaryExpression&>(expression);
-    if (assignment.op() != ast::BinaryOperator::Assign ||
-        assignment.left().kind() != ast::AstNodeKind::IdentifierExpression) {
-        throw CodegenUnsupported(
-            "unsupported local variable declaration in Integer function");
-    }
-
-    const auto& identifier =
-        static_cast<const ast::IdentifierExpression&>(assignment.left());
-    emitLocalVariable(identifier.name(), assignment.right());
 }
 
 // Returns a slot name that is unique inside the current function, so sibling
@@ -220,23 +164,23 @@ std::string FunctionEmitter::newSlot(const std::string& normalizedName)
     return candidate;
 }
 
-void FunctionEmitter::emitLocalVariable(std::string_view name, const ast::Expression& initializer)
+void FunctionEmitter::emitLocalVariable(std::string_view name, const tir::Expr& initializer)
 {
     const std::string normalizedName = normalize(name);
     const std::string llvmType = expressionLlvmType(initializer);
-    const TypeRef type = typeOf(initializer);
+    const TypeRef type = bare(initializer).type;
     const std::string slot = newSlot(normalizedName);
     output_ << "  " << slot << " = alloca " << llvmType << "\n";
     if (typeOwnsReferences(type)) {
         registerOwnedSlot(slot, type, llvmType);
     }
-    const std::string value = emitExpression(initializer);
+    const std::string value = emitValue(initializer);
     emitOwningStore(slot, type, llvmType, value);
     locals_.insert_or_assign(normalizedName, LocalInfo{slot, type, llvmType});
     declareTombstone(normalizedName);
 }
 
-void FunctionEmitter::emitTypedLocalVariable(std::string_view name, TypeRef type, const ast::Expression* initializer)
+void FunctionEmitter::emitTypedLocalVariable(std::string_view name, TypeRef type, const tir::Expr* initializer)
 {
     const std::string llvmType = llvmValueType(type);
     if (llvmType.empty()) {
@@ -257,7 +201,7 @@ void FunctionEmitter::emitTypedLocalVariable(std::string_view name, TypeRef type
         // CANON-9: `Q T := Expr` copies the value; `P T` takes the type's
         // field defaults (rule 4).
         if (initializer != nullptr) {
-            const std::string value = emitExpression(*initializer);
+            const std::string value = emitValue(*initializer);
             emitOwningStore(slot, type, llvmType, value);
         } else {
             if (owned) {
@@ -274,7 +218,7 @@ void FunctionEmitter::emitTypedLocalVariable(std::string_view name, TypeRef type
         // CANON-13: an array is a value; without an initializer every
         // element is its type's zero, or its struct type's defaults.
         if (initializer != nullptr) {
-            emitOwningStore(slot, type, llvmType, emitExpression(*initializer));
+            emitOwningStore(slot, type, llvmType, emitValue(*initializer));
         } else {
             if (owned) {
                 emitReleaseAt(slot, type);
@@ -291,139 +235,112 @@ void FunctionEmitter::emitTypedLocalVariable(std::string_view name, TypeRef type
     // requires a floating-point literal for float and double, so `0` is not
     // valid there; a Link and an Option are born empty (zeroinitializer).
     const std::string zero = type->isPointer() ? "zeroinitializer" : isFloatLlvmType(llvmType) ? "0.0" : "0";
-    const std::string value = initializer != nullptr ? emitExpression(*initializer) : zero;
+    const std::string value = initializer != nullptr ? emitValue(*initializer) : zero;
     emitOwningStore(slot, type, llvmType, value);
     locals_.insert_or_assign(normalizedName, LocalInfo{slot, type, llvmType});
     declareTombstone(normalizedName);
 }
 
-bool FunctionEmitter::isAssignmentExpression(const ast::Expression& expression)
+// A call as a statement: a subroutine, a method (its result dropped), or a
+// built-in operation.
+void FunctionEmitter::emitExpressionStatement(const tir::Expr& expression)
 {
-    if (expression.kind() != ast::AstNodeKind::BinaryExpression) {
-        return false;
-    }
-
-    const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
-    return binary.op() == ast::BinaryOperator::Assign;
-}
-
-// Out of line: the statement dispatcher's frame stays as it is.
-void FunctionEmitter::emitAssignmentStatement(const ast::ExpressionStatement& statement)
-{
-    emitLocalAssignment(statement.expression(), statement.isCompoundAssignment());
-}
-
-void FunctionEmitter::emitAssignmentOrCallStatement(const ast::Expression& expression)
-{
-    if (isAssignmentExpression(expression)) {
-        emitLocalAssignment(expression);
+    switch (expression.kind) {
+    case tir::ExprKind::Intrinsic:
+        emitIntrinsicCall(expression);
         return;
-    }
-    emitExpressionStatement(expression);
-}
-
-void FunctionEmitter::emitExpressionStatement(const ast::Expression& expression)
-{
-    if (const semantic::ModuleIntrinsic* terminal = intrinsicCallOf(expression)) {
-        emitIntrinsicCall(expression, *terminal);
+    case tir::ExprKind::Check:
+        emitContractCheck(expression);
         return;
-    }
-    if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
-        const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
-        const semantic::BuiltinOp op = builtinOf(identifier);
-        if (op == semantic::BuiltinOp::Get) {
-            emitInputDiscardToken();
+    case tir::ExprKind::Call: {
+        if (isMethodCall(expression)) {
+            (void)emitCall(expression, false);
             return;
         }
-        if (op == semantic::BuiltinOp::GetLn) {
-            emitInputDiscardLine();
-            return;
+        const FunctionSignature* routine = routineSignature(expression.routine);
+        if (routine == nullptr) {
+            throw CodegenUnsupported(
+                "LLVM emission currently supports only Put/PutLn and user subroutine calls as statements");
         }
-        emitNoArgumentSubroutineCall(identifier);
+        if (routine->llvmReturnType != "void") {
+            // Whether Inox allows discarding a function result without `_ :=`
+            // is an open question (revisions.md).
+            throw CodegenUnsupported(
+                "LLVM emission currently supports only subroutine calls as expression statements");
+        }
+        (void)emitCall(expression, false);
         return;
     }
-
-    if (expression.kind() != ast::AstNodeKind::CallExpression) {
-        throw CodegenUnsupported(
-            "LLVM emission currently supports only assignments and calls as statements");
+    case tir::ExprKind::Builtin:
+        break;
+    default:
+        throw CodegenUnsupported("LLVM emission currently supports only assignments and calls as statements");
     }
-
-    const auto& call = static_cast<const ast::CallExpression&>(expression);
-    if (isMemberAccessCall(call)) {
-        emitNoArgumentMethodCall(call, false);
+    const semantic::BuiltinOp op = expression.op;
+    if (op == semantic::BuiltinOp::Assert) {
+        emitAssertCall(expression);
         return;
     }
-    if (isMemberAccessCall(call.callee())) {
-        emitMethodCall(call, false);
+    if (isPointerBuiltin(op)) {
+        emitPointerBuiltin(expression);
         return;
     }
-    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
-        throw CodegenUnsupported(
-            "LLVM emission currently supports only direct calls or method calls as statements");
-    }
-
-    const auto& callee =
-        static_cast<const ast::IdentifierExpression&>(call.callee());
-    if (isAssertCall(call)) {
-        emitAssertCall(call);
+    if (isFileCall(op)) {
+        emitFileCall(expression);
         return;
     }
-    if (isContractCheck(call)) {
-        emitContractCheck(call);
-        return;
-    }
-    if (isPointerBuiltin(call)) {
-        emitPointerBuiltin(call);
-        return;
-    }
-    if (isFileCall(call)) {
-        emitFileCall(call);
-        return;
-    }
-    const semantic::BuiltinOp op = builtinOf(call);
     if (op == semantic::BuiltinOp::Put || op == semantic::BuiltinOp::PutLn) {
-        emitOutputCallSequence(call.arguments(), op == semantic::BuiltinOp::PutLn);
+        emitOutputCallSequence(expression.operands, op == semantic::BuiltinOp::PutLn);
         return;
     }
     if (op == semantic::BuiltinOp::Get || op == semantic::BuiltinOp::GetLn) {
-        emitInputCallSequence(call.arguments(), op == semantic::BuiltinOp::GetLn);
+        if (expression.operands.empty()) {
+            // `Get` and `GetLn` without parentheses skip a token or a line.
+            if (op == semantic::BuiltinOp::Get) {
+                emitInputDiscardToken();
+            } else {
+                emitInputDiscardLine();
+            }
+            return;
+        }
+        emitInputCallSequence(expression.operands, op == semantic::BuiltinOp::GetLn);
         return;
     }
-
-    emitSubroutineCall(call, callee);
+    throw CodegenUnsupported("LLVM emission currently supports only Put/PutLn and user subroutine calls as statements");
 }
 
 // ADR-0016: a reference argument passes the address of the caller's
 // place: a variable's slot, a field or an element; a read-only reference
 // to any other value gets a temporary.
-std::string FunctionEmitter::emitReferenceArgument(const ast::Expression& argument, const FunctionParameter& parameter)
+std::string FunctionEmitter::emitReferenceArgument(const tir::Expr& argument, const FunctionParameter& parameter)
 {
-    if (argument.kind() == ast::AstNodeKind::IdentifierExpression) {
-        const auto local = locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(argument).name()));
-        if (local != locals_.end()) {
-            return local->second.slot;
+    const tir::Expr& value = bare(argument);
+    if (value.kind == tir::ExprKind::Read) {
+        const tir::Place& place = *value.place;
+        if (isVariablePlace(place)) {
+            const auto local = locals_.find(normalize(place.symbol->name));
+            if (local != locals_.end()) {
+                return local->second.slot;
+            }
+        } else if (place.kind == tir::PlaceKind::Element) {
+            const ElementAddress element = emitElementAddress(place);
+            if (element.storage != parameter.valueType) {
+                throw CodegenUnsupported("a narrow-integer array element cannot be passed by reference yet");
+            }
+            return element.pointer;
+        } else if (place.kind == tir::PlaceKind::Field) {
+            return emitPlace(place).pointer;
         }
     }
-    if (isIndexCall(argument)) {
-        const ElementAddress element = emitElementAddress(static_cast<const ast::CallExpression&>(argument));
-        if (element.storage != parameter.valueType) {
-            throw CodegenUnsupported(
-                "a narrow-integer array element cannot be passed by reference yet");
-        }
-        return element.pointer;
-    }
-    if (isMemberAccessCall(argument)) {
-        return emitMemberAddress(static_cast<const ast::CallExpression&>(argument)).pointer;
-    }
-    const std::string value = emitExpression(argument);
+    const std::string stored = emitValue(argument);
     const std::string slot = "%reftmp" + std::to_string(nextTemporary_++);
     output_ << "  " << slot << " = alloca " << parameter.valueType << '\n';
-    output_ << "  store " << parameter.valueType << ' ' << value << ", ptr " << slot << '\n';
+    output_ << "  store " << parameter.valueType << ' ' << stored << ", ptr " << slot << '\n';
     return slot;
 }
 
 std::vector<std::string> FunctionEmitter::emitArguments(const FunctionSignature& signature,
-                                                        const std::vector<ast::ExpressionPtr>& arguments,
+                                                        tir::Span<const tir::Expr*> arguments,
                                                         std::size_t parameterOffset,
                                                         std::vector<std::string>* storage)
 {
@@ -434,7 +351,7 @@ std::vector<std::string> FunctionEmitter::emitArguments(const FunctionSignature&
         const FunctionParameter& parameter = signature.parameters[index + parameterOffset];
         values.push_back(parameter.byReference
                              ? emitReferenceParameterArgument(arguments, index, parameter, storage, guards)
-                             : emitExpression(*arguments[index]));
+                             : emitValue(*arguments[index]));
         // Safe pointers: a move-only argument is given to the routine,
         // which owns its parameter.
         if (!parameter.byReference && isMoveOnly(parameter.type)) {
@@ -459,7 +376,7 @@ std::string FunctionEmitter::emitUserCall(const FunctionSignature& signature,
 // asks for (CANON-25, counted in `guards` for emitArguments to close), and
 // the header and generation the parameter receives, in `storage` at the
 // argument's index.
-std::string FunctionEmitter::emitReferenceParameterArgument(const std::vector<ast::ExpressionPtr>& arguments,
+std::string FunctionEmitter::emitReferenceParameterArgument(tir::Span<const tir::Expr*> arguments,
                                                             std::size_t index, const FunctionParameter& parameter,
                                                             std::vector<std::string>* storage, std::size_t& guards)
 {
@@ -521,48 +438,6 @@ std::string FunctionEmitter::emitUserCall(const FunctionSignature& signature,
         holdOwnedResult(result, signature.returnType, signature.llvmReturnType);
     }
     return result;
-}
-
-void FunctionEmitter::emitNoArgumentSubroutineCall(const ast::IdentifierExpression& callee)
-{
-    const FunctionSignature* routine = calledRoutine(callee);
-    if (routine == nullptr) {
-        throw CodegenUnsupported(
-            "LLVM emission could not resolve zero-argument subroutine call: " + callee.name());
-    }
-    if (!routine->parameters.empty()) {
-        throw CodegenError(
-            "subroutine requires arguments; use parentheses only when passing arguments");
-    }
-    if (routine->llvmReturnType != "void") {
-        // The same backend gap as a call with arguments whose result is not
-        // used (`Twice(2)` as a statement); whether Inox allows discarding a
-        // function result is an open question (revisions.md).
-        throw CodegenUnsupported(
-            "LLVM emission currently supports only subroutine calls as expression statements");
-    }
-    emitUserCall(*routine, {}, false);
-}
-
-void FunctionEmitter::emitSubroutineCall(const ast::CallExpression& call, const ast::IdentifierExpression& callee)
-{
-    const FunctionSignature* routine = calledRoutine(callee);
-    if (routine == nullptr) {
-        throw CodegenUnsupported(
-            "LLVM emission currently supports only Put/PutLn and user subroutine calls as statements");
-    }
-    if (routine->llvmReturnType != "void") {
-        throw CodegenUnsupported(
-            "LLVM emission currently supports only subroutine calls as expression statements");
-    }
-    if (call.arguments().size() != routine->parameters.size()) {
-        throw CodegenUnsupported("unsupported subroutine argument count: " + function_.name());
-    }
-
-    std::vector<std::string> storage;
-    const std::vector<std::string> arguments = emitArguments(*routine, call.arguments(), 0, &storage);
-    emitUserCall(*routine, arguments, false, storage);
-    emitInvariantChecks(call, true);
 }
 
 } // namespace inox::compiler::codegen::detail

@@ -9,7 +9,6 @@
 
 #include "FunctionEmitter.h"
 
-#include "AstQueries.h"
 #include "ExceptionAbi.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
@@ -36,18 +35,16 @@
 namespace inox::compiler::codegen::detail {
 
 FunctionEmitter::FunctionEmitter(std::ostringstream& output,
-                                 const ast::FunctionDeclaration& function,
+                                 const tir::Routine& routine,
                                  const FunctionSignature& signature,
                                  const FunctionSignatures& signatures,
                                  ModuleContext& module,
-                                 const semantic::SemanticResult& semantics,
-                                 const tir::AstNodeMap& astNodes,
+                                 const types::TypeContext& types,
                                  const StateGlobals& stateGlobals)
-    : semantics_(semantics),
-      astNodes_(astNodes),
+    : types_(types),
       stateGlobals_(stateGlobals),
       output_(output),
-      function_(function),
+      routine_(routine),
       signature_(signature),
       signatures_(signatures),
       module_(module)
@@ -163,7 +160,7 @@ void FunctionEmitter::emitBody()
         for (const StateGlobal& state : stateGlobals_) {
             const std::string global = stateGlobalSymbol(state.name);
             if (state.initializer != nullptr) {
-                const std::string value = emitExpression(*state.initializer);
+                const std::string value = emitValue(*state.initializer);
                 emitOwningStore(global, state.type, state.llvmType, value);
                 flushStatementTemporaries();
             } else if (state.type->isStruct()) {
@@ -173,8 +170,9 @@ void FunctionEmitter::emitBody()
             }
         }
     }
+    const TirStatements body = routine_.body;
     if (signature_.llvmReturnType == "i32" || signature_.llvmReturnType == "void") {
-        for (const auto& statement : function_.body()) {
+        for (const tir::Stmt* statement : body) {
             emitStatement(*statement);
         }
         emitReleaseOwnedSlots();
@@ -186,32 +184,30 @@ void FunctionEmitter::emitBody()
         return;
     }
 
-    if (function_.body().size() == 1 &&
-        function_.body().front()->kind() == ast::AstNodeKind::IfStatement) {
-        emitIfReturn(
-            static_cast<const ast::IfStatement&>(*function_.body().front()));
+    if (body.size() == 1 && body[0]->kind == tir::StmtKind::If) {
+        emitIfReturn(*body[0]);
         return;
     }
 
-    if (function_.body().empty()) {
+    if (body.empty()) {
         throw CodegenUnsupported(
             "LLVM emission currently requires a final Return expression");
     }
-    if (function_.body().back()->kind() != ast::AstNodeKind::ReturnStatement) {
+    if (body[body.size() - 1]->kind != tir::StmtKind::Return) {
         // Semantic analysis proved that every path returns (for example a
         // total `case` whose arms all return), so the end is unreachable.
-        for (const auto& statement : function_.body()) {
+        for (const tir::Stmt* statement : body) {
             emitStatement(*statement);
         }
         output_ << "  unreachable\n";
         return;
     }
 
-    for (std::size_t index = 0; index + 1 < function_.body().size(); ++index) {
-        emitStatement(*function_.body()[index]);
+    for (std::size_t index = 0; index + 1 < body.size(); ++index) {
+        emitStatement(*body[index]);
     }
 
-    emitReturn(static_cast<const ast::ReturnStatement&>(*function_.body().back()));
+    emitReturn(*body[body.size() - 1]);
 }
 
 } // namespace inox::compiler::codegen::detail

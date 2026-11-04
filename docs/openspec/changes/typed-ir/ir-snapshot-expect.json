@@ -1,109 +1,29 @@
 {
- "examples/cards.inox": {
-  "--dump-types": {
-   "exit": [
-    0,
-    0
-   ],
-   "sha256": [
-    "e59319444cc68071bcc2e02848784765712b6ef33a02122333d666e88991e2d1",
-    "de5251ea9d648cdd8a2f0168f76d93118520f949dedaf2e3cd82de0aa9bc1773"
-   ],
-   "stderr": [
-    "",
-    ""
-   ]
-  }
- },
- "tests/runtime/chars.inox": {
-  "--dump-types": {
-   "exit": [
-    0,
-    0
-   ],
-   "sha256": [
-    "651c1ba1d5160c05360390090f1d7b8c29c65cc4ec4eda95f3ec6b4150b3080c",
-    "c183c781421e45f72635bb48bca22adb4a2ea6f886f306baaa4337e32f1cf2d5"
-   ],
-   "stderr": [
-    "",
-    ""
-   ]
-  }
- },
- "tests/runtime/enums.inox": {
-  "--dump-types": {
-   "exit": [
-    0,
-    0
-   ],
-   "sha256": [
-    "7b6e659e5e41fe7ca0b9ae1941f5a3106b2b7a5daf60d573ff407a10e9c53d7c",
-    "39206df23f1676166c035ed4d9717df869ad72018e9948664ea60037d3615eb1"
-   ],
-   "stderr": [
-    "",
-    ""
-   ]
-  }
- },
- "tests/runtime/range-types.inox": {
-  "--dump-types": {
-   "exit": [
-    0,
-    0
-   ],
-   "sha256": [
-    "2dbd825d517f8cf00af65569b06aec37aeaa352834cc9f11b8f226820b790852",
-    "0270ae02e329635c774654352f45680fdc1a72e29cb50ca828d0b103094f7616"
-   ],
-   "stderr": [
-    "",
-    ""
-   ]
-  }
- },
- "tests/runtime/ranges.inox": {
-  "--dump-types": {
-   "exit": [
-    0,
-    0
-   ],
-   "sha256": [
-    "a8edce984404c4bd8df5e6fb49617c8bb08e3d7c853081f88197c97e89c2058f",
-    "a8b76762f686668ba4f8d6ec83d93e7fd82744f64a53ac6389f17b16f5f65834"
-   ],
-   "stderr": [
-    "",
-    ""
-   ]
-  }
- },
- "tests/semantic/valid/const-conversion.inox": {
+ "tests/runtime/method-reuse.inox": {
   "--emit-llvm": {
    "exit": [
-    1,
-    1
+    0,
+    0
    ],
    "sha256": [
-    "4e29c37e72a7cf73d921f89879497389dbf4976776ae9ec5ca6fa0a7b415fe6f",
-    "cfd38c8d32607fc4cd26c640e5df052e696e2c5a75d7c4c78552e3b76ce94d93"
+    "91ffe9cf1b654502ce2950062ce925e1c25f6581ffaa61024cbe2fd51d0bf5d4",
+    "9382cc213713bee8d7ed89c27f6968f9ab3ab473ed6f0d4fbd9b02a5e0acf90d"
    ],
    "stderr": [
-    "codegen error: not yet implemented in the LLVM backend: unsupported expression in function: Main\nnote: this program is valid Inox; the gap is in code generation (see docs/BACKEND_GAPS.md)\n",
-    "codegen error: not yet implemented in the LLVM backend: typed IR: the Const Mask without its value\nnote: this program is valid Inox; the gap is in code generation (see docs/BACKEND_GAPS.md)\n"
+    "",
+    ""
    ]
   }
  },
- "tests/tir/builtins.inox": {
-  "--dump-types": {
+ "tests/runtime/strings-method-reuse.inox": {
+  "--emit-llvm": {
    "exit": [
     0,
     0
    ],
    "sha256": [
-    "9fb2a3880f500cb4ff34714e8b3eacaaa31b99c290dc9bfdee6cf59abd837db6",
-    "8158fbf4f9050972a877a71116519ac7648acf2c1f13c99c5051b5577e575c03"
+    "1833fbac573a748302d1afd15639be46c4a6d033347edd3d25fa3e62c22536ac",
+    "fa8b20a433a925c1d761b309872da3d1355b3bde2f1f2f0e7804a3ce8b2adce5"
    ],
    "stderr": [
     "",

@@ -9,7 +9,7 @@
 
 #include "FunctionEmitter.h"
 
-#include "AstQueries.h"
+#include "TirWalk.h"
 #include "ExceptionAbi.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
@@ -340,29 +340,25 @@ bool FunctionEmitter::scanOwnsReferences() const
 {
     // Safe pointers: owned parameters and tombstones are released too.
     bool owns = !tombstoneLocals_.empty() || !ownedSlots_.empty();
-    forEachStatement(function_.body(), [&](const ast::Statement& statement) {
+    forEachStatement(routine_.body, [&](const tir::Stmt& statement) {
         if (owns) {
             return;
         }
-        if (statement.kind() == ast::AstNodeKind::VarStatement) {
-            const auto& variable = static_cast<const ast::VarStatement&>(statement);
-            owns = typeOwnsReferences(declaredTypeOf(variable));
+        if (statement.kind == tir::StmtKind::Declare) {
+            owns = typeOwnsReferences(statement.inferred ? bare(*statement.value).type : statement.type);
+        } else if (statement.kind == tir::StmtKind::Assign) {
+            owns = typeOwnsReferences(bare(*statement.value).type);
         }
         // Statement temporaries of `+` on Strings and of protected reads.
         const bool runsRoutine = statementMayRunRoutine(statement);
-        forEachExpressionOf(statement, [&](const ast::Expression& expression) {
+        forEachExpressionOf(statement, [&](const tir::Expr& expression) {
             if (!owns && (isStringConcatenation(expression) || (runsRoutine && isBorrowedRead(expression)))) {
                 owns = true;
             }
-            if (owns || expression.kind() != ast::AstNodeKind::CallExpression) {
-                if (!owns && expression.kind() == ast::AstNodeKind::BinaryExpression &&
-                    static_cast<const ast::BinaryExpression&>(expression).op() == ast::BinaryOperator::Assign) {
-                    owns = typeOwnsReferences(typeOf(static_cast<const ast::BinaryExpression&>(expression).right()));
-                }
+            if (owns || !isCallResult(expression)) {
                 return;
             }
-            owns = typeOwnsReferences(typeOf(expression)) && !isMemberAccessCall(expression) &&
-                   !isIndexCall(expression);
+            owns = typeOwnsReferences(expression.type);
         });
     });
     if (signature_.llvmName == "main") {
@@ -373,31 +369,51 @@ bool FunctionEmitter::scanOwnsReferences() const
     return owns;
 }
 
+// A value an operation makes (a call, a conversion, a construction, the
+// object a pointer reaches), not one read from a variable, a field or an
+// element.
+bool FunctionEmitter::isCallResult(const tir::Expr& expression)
+{
+    switch (expression.kind) {
+    case tir::ExprKind::Read:
+        return expression.place->kind == tir::PlaceKind::Through;
+    case tir::ExprKind::Literal:
+    case tir::ExprKind::Unary:
+    case tir::ExprKind::Binary:
+    case tir::ExprKind::Conditional:
+    case tir::ExprKind::RangeCheck:
+    case tir::ExprKind::NaturalCheck:
+    case tir::ExprKind::TypeValue:
+        return false;
+    default:
+        return true;
+    }
+}
+
 // Whether this node runs a routine of the program: a call of a routine or a
 // method, or a routine called by its bare name (`Next`).
-bool FunctionEmitter::runsRoutine(const ast::Expression& node) const
+bool FunctionEmitter::runsRoutine(const tir::Expr& node)
 {
-    if (node.kind() == ast::AstNodeKind::IdentifierExpression) {
-        const semantic::Symbol* symbol = symbolOf(node);
-        return symbol != nullptr && symbol->kind == semantic::SymbolKind::Function;
-    }
-    if (node.kind() != ast::AstNodeKind::CallExpression) {
-        return false;
-    }
-    const auto& call = static_cast<const ast::CallExpression&>(node);
-    if (isMemberAccessCall(call.callee()) || (isMemberAccessCall(call) && !memberField(call))) {
-        return true;  // a method
-    }
-    const semantic::Symbol* symbol = symbolOf(call);
-    return symbol != nullptr && symbol->kind == semantic::SymbolKind::Function;
+    return node.kind == tir::ExprKind::Call ||
+           (node.symbol != nullptr && node.symbol->kind == semantic::SymbolKind::Function &&
+            node.kind != tir::ExprKind::Literal && node.kind != tir::ExprKind::TypeValue);
 }
 
 // The expressions of the statement itself (not of nested bodies, which are
 // statements of their own).
-bool FunctionEmitter::statementMayRunRoutine(const ast::Statement& statement) const
+bool FunctionEmitter::statementMayRunRoutine(const tir::Stmt& statement) const
 {
     bool runs = false;
-    forEachExpressionOf(statement, [&](const ast::Expression& node) { runs = runs || runsRoutine(node); });
+    forEachExpressionOf(statement, [&](const tir::Expr& node) { runs = runs || runsRoutine(node); });
+    return runs;
+}
+
+// Whether evaluating `expression` may run a routine of the program, which
+// could change the String being appended to before the append reads it.
+bool FunctionEmitter::mayRunRoutine(const tir::Expr& expression) const
+{
+    bool runs = false;
+    forEachSubExpression(expression, [&](const tir::Expr& node) { runs = runs || runsRoutine(node); });
     return runs;
 }
 
@@ -405,44 +421,40 @@ bool FunctionEmitter::statementMayRunRoutine(const ast::Statement& statement) co
 // ref mut parameter (the caller's storage), a with binding, anything reached
 // through a pointer or a slice, and the fields and elements of these. A
 // local variable or a value parameter is only changed by its own routine.
-bool FunctionEmitter::placeMayChange(const ast::Expression& place) const
+bool FunctionEmitter::placeMayChange(const tir::Place& place) const
 {
-    if (place.kind() == ast::AstNodeKind::IdentifierExpression) {
-        const auto& identifier = static_cast<const ast::IdentifierExpression&>(place);
-        const std::string name = normalize(identifier.name());
-        if (referenceParameters_.contains(name) || astNodes_.isWithBinding(identifier)) {
-            return true;
-        }
-        const semantic::Symbol* symbol = symbolOf(identifier);
-        return symbol != nullptr && symbol->kind == semantic::SymbolKind::State;
-    }
-    if (place.kind() != ast::AstNodeKind::CallExpression) {
+    switch (place.kind) {
+    case tir::PlaceKind::Parameter:
+    case tir::PlaceKind::Receiver:
+    case tir::PlaceKind::Local:
+    case tir::PlaceKind::LoopIterator:
+    case tir::PlaceKind::HandlerBinding:
+        return referenceParameters_.contains(normalize(place.symbol->name));
+    case tir::PlaceKind::WithBinding:
+    case tir::PlaceKind::State:
+    case tir::PlaceKind::Through:
+        return true;
+    case tir::PlaceKind::Field:
+    case tir::PlaceKind::Element:
+        return isPointerType(place.base->type) || isSliceType(place.base->type) || placeMayChange(*place.base);
+    case tir::PlaceKind::Value:
         return false;
-    }
-    const auto& call = static_cast<const ast::CallExpression&>(place);
-    if (isPointerBuiltin(call)) {
-        return builtinOf(call) == semantic::BuiltinOp::Value;
-    }
-    if ((isMemberAccessCall(call) && memberField(call)) || isIndexCall(call)) {
-        const ast::Expression& base = *call.arguments()[0];
-        const TypeRef baseType = typeOf(base);
-        return isPointerType(baseType) || isSliceType(baseType) || placeMayChange(base);
     }
     return false;
 }
 
-// A read of storage that holds references (a String, or an aggregate of
-// them) and that a routine of the program can change.
-bool FunctionEmitter::isBorrowedRead(const ast::Expression& expression) const
+bool FunctionEmitter::isBorrowedRead(const tir::Expr& expression) const
 {
-    const TypeRef type = typeOf(expression);
-    return typeOwnsReferences(type) && !isMoveOnly(type) && !isFileType(type) && placeMayChange(expression);
+    return expression.kind == tir::ExprKind::Read && isBorrowedPlace(expression.type, *expression.place);
 }
 
-// Retains the value read and holds it until the end of the statement.
-std::string FunctionEmitter::protectBorrowed(const ast::Expression& expression, const std::string& value)
+bool FunctionEmitter::isBorrowedPlace(TypeRef type, const tir::Place& place) const
 {
-    const TypeRef type = typeOf(expression);
+    return typeOwnsReferences(type) && !isMoveOnly(type) && !isFileType(type) && placeMayChange(place);
+}
+
+std::string FunctionEmitter::protectBorrowed(TypeRef type, const std::string& value)
+{
     const std::string llvmType = valueLlvmType(type);
     requireStringRuntime();
     if (isStringType(type)) {

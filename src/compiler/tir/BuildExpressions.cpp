@@ -120,11 +120,6 @@ const Expr* Builder::expression(const ast::Expression& source)
 // The checks the analysis asked for on the way into a place.
 const Expr* Builder::checked(const ast::Expression& source, const Expr* value)
 {
-    if (astNodes_ != nullptr) {
-        // The expression as the analysis typed it, before its checks.
-        astNodes_->recordValue(source, value);
-        recordCallKind(source);
-    }
     if (const TypeRef range = semantics_.rangeCheck(source)) {
         Expr* check = make(ExprKind::RangeCheck, range, source);
         check->operands = arena_.array<const Expr*>(1);
@@ -187,7 +182,7 @@ const Expr* Builder::identifier(const ast::IdentifierExpression& source)
                                                           source.position()));
         literal->symbol = symbol;
         literal->constant = value;
-        return literal;
+            return literal;
     }
     case semantic::SymbolKind::Type: {
         const TypeRef type = typeOf(source);
@@ -364,15 +359,6 @@ Expr* Builder::slice(const ast::CallExpression& source, const CallMeaning& meani
     if (result->hasHigh) {
         result->operands[result->hasLow ? 2 : 1] = expression(*source.arguments()[2]);
     }
-    if (astNodes_ != nullptr) {
-        // An omitted bound is written `__low` or `__high`: no value.
-        if (!result->hasLow) {
-            astNodes_->recordName(*source.arguments()[1]);
-        }
-        if (!result->hasHigh) {
-            astNodes_->recordName(*source.arguments()[2]);
-        }
-    }
     return result;
 }
 
@@ -403,6 +389,9 @@ Expr* Builder::builtin(const ast::CallExpression& source, const CallMeaning& mea
     Expr* result = make(ExprKind::Builtin, type, source);
     result->op = meaning.op;
     result->operands = expressions(source.arguments(), 0, nullptr);
+    if (meaning.op == semantic::BuiltinOp::Fill) {
+        result->unit = semantics_.fillUnit(source);
+    }
     return result;
 }
 
@@ -433,6 +422,7 @@ const Expr* Builder::construction(const ast::CallExpression& source)
     for (std::size_t index = 0; index < result->fields.size(); ++index) {
         result->fields[index].field = static_cast<std::uint32_t>(index);
     }
+    std::uint32_t written = 0;
     for (const auto& argument : source.arguments()) {
         const CallMeaning* meaning = semantics_.callMeaning(*argument);
         if (meaning == nullptr || meaning->kind != CallKind::Field ||
@@ -441,10 +431,7 @@ const Expr* Builder::construction(const ast::CallExpression& source)
         }
         const auto& named = static_cast<const ast::BinaryExpression&>(*argument);
         result->fields[meaning->field].value = expression(named.right());
-        if (astNodes_ != nullptr) {
-            astNodes_->recordFieldValue(named, result, meaning->field);
-            astNodes_->recordName(named.left());
-        }
+        result->fields[meaning->field].written = written++;
     }
     result->invariants = invariants(source, nullptr);
     recordCall(source, result);

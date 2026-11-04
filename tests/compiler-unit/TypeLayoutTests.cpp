@@ -97,32 +97,38 @@ void testPointersAndStructs()
     check(!fieldLayout(context.int64Type(), "FValue"), "only a struct has fields");
 }
 
-// A routine header as the parser reads it: the receiver `Self` marked as one.
-ast::RoutineHeader headerOf(std::initializer_list<ast::ParameterDeclaration> parameters)
+// A routine of the typed IR: its name, its analyzed signature, and which of
+// its parameters is the receiver `Self`.
+tir::Routine routineOf(tir::Arena& arena, std::string_view name, const semantic::FunctionSignature& signature,
+                       std::size_t receivers)
 {
-    ast::RoutineHeader header;
-    header.parameters = parameters;
-    return header;
+    tir::Routine routine;
+    routine.name = arena.text(name);
+    routine.signature = &signature;
+    routine.result = signature.returnType;
+    routine.parameters = arena.array<tir::Parameter>(signature.parameters.size());
+    for (std::size_t index = 0; index < signature.parameters.size(); ++index) {
+        routine.parameters[index].name = arena.text(signature.parameters[index].name);
+        routine.parameters[index].type = signature.parameters[index].type;
+        routine.parameters[index].mode = signature.parameters[index].mode;
+        routine.parameters[index].isReceiver = index < receivers;
+    }
+    return routine;
 }
 
 void testSignatures()
 {
-    using Mode = ast::ParameterDeclaration::Mode;
+    tir::Arena arena;
     TypeContext context;
     const Type* point = context.declareStruct("TPoint");
     context.setStructFields(point, {types::StructField{"FX", context.int64Type(), false, false, ""}});
 
-    const ast::FunctionDeclaration moveBy("TPoint.Move",
-                                          headerOf({{"Self", std::nullopt, Mode::RefMut, true},
-                                                    {"Step", std::nullopt, Mode::Value, false},
-                                                    {"Total", std::nullopt, Mode::RefMut, false}}),
-                                          {});
     semantic::FunctionSignature analyzed;
     analyzed.name = "TPoint.Move";
     analyzed.parameters = {{"Self", point, semantic::PassMode::RefMut},
                            {"Step", context.int64Type(), semantic::PassMode::Value},
                            {"Total", context.int64Type(), semantic::PassMode::RefMut}};
-    const auto lowered = codegen::detail::lowerSignature(moveBy, analyzed);
+    const auto lowered = codegen::detail::lowerSignature(routineOf(arena, "TPoint.Move", analyzed, 1));
     checkEqual(lowered.llvmName, "inox_tpoint.move", "the LLVM name of a method");
     checkEqual(lowered.llvmReturnType, "void", "a subroutine returns void");
     check(lowered.parameters.size() == 3, "three parameters");
@@ -133,13 +139,11 @@ void testSignatures()
               lowered.parameters[2].valueType == "i64",
           "ref mut is a pointer to an i64");
 
-    const ast::FunctionDeclaration twice("Integer.Twice", headerOf({{"Self", std::nullopt, Mode::RefMut, true}}),
-                                         {});
     semantic::FunctionSignature builtin;
     builtin.name = "Integer.Twice";
     builtin.parameters = {{"Self", context.int64Type(), semantic::PassMode::RefMut}};
     builtin.returnType = context.int64Type();
-    const auto method = codegen::detail::lowerSignature(twice, builtin);
+    const auto method = codegen::detail::lowerSignature(routineOf(arena, "Integer.Twice", builtin, 1));
     check(method.parameters[0].byReference && method.parameters[0].valueType == "i64",
           "Self mut of a built-in type is the caller's variable");
     check(method.llvmReturnType == "i64" && method.returnType == context.int64Type(), "the result type");

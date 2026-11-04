@@ -34,7 +34,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/ast/ModuleInterface.cpp
     src/compiler/ast/TypeExpr.cpp
     src/compiler/normalization/AstNormalizer.cpp
-    src/compiler/codegen/AstQueries.cpp
+    src/compiler/codegen/TirWalk.cpp
     src/compiler/codegen/ExceptionAbi.cpp
     src/compiler/codegen/FunctionEmitter.cpp
     src/compiler/codegen/FunctionEmitterAggregates.cpp
@@ -48,7 +48,6 @@ set(INOX_COMPILER_SOURCES
     src/compiler/codegen/FunctionEmitterContracts.cpp
     src/compiler/codegen/FunctionEmitterPointers.cpp
     src/compiler/codegen/FunctionEmitterIo.cpp
-    src/compiler/codegen/FunctionEmitterSemantics.cpp
     src/compiler/codegen/FunctionEmitterStatements.cpp
     src/compiler/codegen/FunctionEmitterStrings.cpp
     src/compiler/codegen/FunctionEmitterStringFunctions.cpp
@@ -93,7 +92,6 @@ set(INOX_COMPILER_SOURCES
     src/compiler/tir/BuildExpressions.cpp
     src/compiler/tir/BuildPlaces.cpp
     src/compiler/tir/BuildStatements.cpp
-    src/compiler/tir/AstNodeMap.cpp
     src/compiler/tir/Print.cpp
     src/compiler/tir/Tir.cpp
     src/compiler/tir/Verify.cpp

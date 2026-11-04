@@ -26,16 +26,12 @@
 
 namespace inox::compiler::codegen::detail {
 
-bool FunctionEmitter::isContractCheck(const ast::CallExpression& call) const
+// CANON-24: a contract check written by the contract lowering, its
+// condition and the message of its failure.
+void FunctionEmitter::emitContractCheck(const tir::Expr& check)
 {
-    return callKindOf(call) == semantic::CallKind::Check;
-}
-
-void FunctionEmitter::emitContractCheck(const ast::CallExpression& call)
-{
-    const auto& arguments = call.arguments();
-    const std::string condition = emitExpression(*arguments[1]);
-    const auto& text = static_cast<const ast::LiteralExpression&>(*arguments[2]).value();
+    const std::string condition = emitValue(*check.operands[0]);
+    const std::string_view text = check.text;
     requireModuleLine("declare i1 @llvm.expect.i1(i1, i1)");
     requireModuleLine(contractMessageHelper());
     const std::size_t label = nextLabel_++;
@@ -51,13 +47,14 @@ void FunctionEmitter::emitContractCheck(const ast::CallExpression& call)
     output_ << passed << ":\n";
 }
 
-void FunctionEmitter::emitInvariantChecks(const ast::AstNode& site, bool after)
+// CANON-24: the invariants of the structs a call or an assignment may have
+// changed, before or after it.
+void FunctionEmitter::emitInvariantChecks(const tir::Invariants* invariants, bool after)
 {
-    const auto* checks = semantics_.invariantChecks(site, after);
-    if (checks == nullptr) {
+    if (invariants == nullptr) {
         return;
     }
-    for (const semantic::SemanticResult::InvariantCheck& check : *checks) {
+    for (const tir::InvariantCheck& check : after ? invariants->after : invariants->before) {
         emitInvariantOf(check.type, emitPlace(*check.place).pointer);
     }
 }
@@ -66,8 +63,8 @@ void FunctionEmitter::emitInvariantChecks(const ast::AstNode& site, bool after)
 // every struct it reuses (CANON-9; Eiffel: the parents' invariants apply).
 void FunctionEmitter::emitInvariantOf(TypeRef structType, const std::string& pointer)
 {
-    if (const FunctionSignature* own = routineSignature(semantics_.invariantRoutine(structType))) {
-        emitUserCall(*own, {pointer}, false);
+    if (const auto own = module_.invariantRoutines.find(structType); own != module_.invariantRoutines.end()) {
+        emitUserCall(*routineSignature(own->second), {pointer}, false);
     }
     if (!structType->isStruct()) {
         return;
@@ -81,16 +78,6 @@ void FunctionEmitter::emitInvariantOf(TypeRef structType, const std::string& poi
         output_ << "  " << partPointer << " = getelementptr " << llvmStructName(structType) << ", ptr " << pointer
                 << ", i32 0, i32 " << index << '\n';
         emitInvariantOf(field.type, partPointer);
-    }
-}
-
-void FunctionEmitter::emitNewValueInvariant(const ast::VarStatement& declaration)
-{
-    if (const TypeRef structType = semantics_.newValueInvariant(declaration)) {
-        const auto local = locals_.find(normalize(declaration.name()));
-        if (local != locals_.end()) {
-            emitInvariantOf(structType, local->second.slot);
-        }
     }
 }
 

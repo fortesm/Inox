@@ -14,10 +14,10 @@
 #include "ModuleContext.h"
 #include "RuntimeAbi.h"
 #include "TypeLayout.h"
-#include "../ast/Ast.h"
-#include "../semantic/SemanticResult.h"
+#include "TirWalk.h"
 #include "../semantic/StdIntrinsics.h"
-#include "../tir/AstNodeMap.h"
+#include "../tir/Tir.h"
+#include "../types/TypeContext.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -36,12 +36,11 @@ namespace inox::compiler::codegen::detail {
 class FunctionEmitter {
 public:
     FunctionEmitter(std::ostringstream& output,
-                    const ast::FunctionDeclaration& function,
+                    const tir::Routine& routine,
                     const FunctionSignature& signature,
                     const FunctionSignatures& signatures,
                     ModuleContext& module,
-                    const semantic::SemanticResult& semantics,
-                    const tir::AstNodeMap& astNodes,
+                    const types::TypeContext& types,
                     const StateGlobals& stateGlobals);
 
     bool usesStringCleanup() const;
@@ -51,11 +50,7 @@ public:
     void emitBody();
 
 private:
-    const semantic::SemanticResult& semantics_;
-    // The types, symbols and constants of the AST nodes come from the typed
-    // IR through this map (FunctionEmitterSemantics.cpp); it is required
-    // while code generation traverses the AST.
-    const tir::AstNodeMap& astNodes_;
+    const types::TypeContext& types_;
     const StateGlobals& stateGlobals_;
     struct LoopTargets {
         std::string continueTarget;
@@ -96,9 +91,9 @@ private:
         std::string llvmType;
     };
 
-    void emitIfReturn(const ast::IfStatement& statement);
+    void emitIfReturn(const tir::Stmt& statement);
 
-    void emitReturn(const ast::ReturnStatement& statement);
+    void emitReturn(const tir::Stmt& statement);
 
     void emitExit();
 
@@ -110,32 +105,32 @@ private:
 
     void emitContinueTransfer();
 
-    void emitIfMerge(const ast::IfStatement& statement);
+    void emitIfMerge(const tir::Stmt& statement);
 
-    void emitUnless(const ast::UnlessStatement& statement);
+    void emitUnless(const tir::Stmt& statement);
 
-    void emitCase(const ast::CaseStatement& statement);
+    void emitCase(const tir::Stmt& statement);
 
-    void emitAssignmentBranch(const std::vector<ast::StatementPtr>& statements);
+    void emitAssignmentBranch(TirStatements statements);
 
-    void emitWhile(const ast::WhileStatement& statement);
+    void emitWhile(const tir::Stmt& statement);
 
-    void emitRepeat(const ast::RepeatStatement& statement);
+    void emitRepeat(const tir::Stmt& statement);
 
-    void emitForIn(const ast::ForInStatement& statement);
+    void emitForIn(const tir::Stmt& statement);
 
-    bool emitLoopStatements(const std::vector<ast::StatementPtr>& statements);
+    bool emitLoopStatements(TirStatements statements);
 
-    void emitUntil(const ast::UntilStatement& statement);
+    void emitUntil(const tir::Stmt& statement);
 
     const LoopTargets& currentLoopTargets() const;
 
-    void emitWith(const ast::WithStatement& statement);
+    void emitWith(const tir::Stmt& statement);
 
     std::string emitExceptionTypeMatch(std::string_view actualTypeValue,
                                        std::string_view expectedTypeName);
 
-    void emitRetry(const ast::RetryStatement& statement);
+    void emitRetry(const tir::Stmt& statement);
 
     const std::string& currentUnwindTarget() const;
 
@@ -150,32 +145,28 @@ private:
 
     void emitRethrowState(std::string_view stateSlot);
 
-    void emitRaise(const ast::RaiseStatement& statement);
+    void emitRaise(const tir::Stmt& statement);
 
-    void emitTry(const ast::TryStatement& statement);
+    void emitTry(const tir::Stmt& statement);
 
-    void emitStatement(const ast::Statement& statement);
+    void emitStatement(const tir::Stmt& statement);
 
-    void emitStatementKind(const ast::Statement& statement);
+    void emitStatementKind(const tir::Stmt& statement);
 
-    void emitVarBlockDeclaration(const ast::Statement& statement);
+    void emitDeclaration(const tir::Stmt& declaration);
 
     std::string newSlot(const std::string& normalizedName);
 
-    void emitLocalVariable(std::string_view name, const ast::Expression& initializer);
+    void emitLocalVariable(std::string_view name, const tir::Expr& initializer);
 
-    void emitTypedLocalVariable(std::string_view name, TypeRef type, const ast::Expression* initializer = nullptr);
+    void emitTypedLocalVariable(std::string_view name, TypeRef type, const tir::Expr* initializer = nullptr);
 
-    static bool isAssignmentExpression(const ast::Expression& expression);
+    void emitExpressionStatement(const tir::Expr& expression);
 
-    void emitAssignmentOrCallStatement(const ast::Expression& expression);
-
-    void emitExpressionStatement(const ast::Expression& expression);
-
-    std::string emitReferenceArgument(const ast::Expression& argument, const FunctionParameter& parameter);
+    std::string emitReferenceArgument(const tir::Expr& argument, const FunctionParameter& parameter);
 
     std::vector<std::string> emitArguments(const FunctionSignature& signature,
-                                           const std::vector<ast::ExpressionPtr>& arguments,
+                                           tir::Span<const tir::Expr*> arguments,
                                            std::size_t parameterOffset,
                                            std::vector<std::string>* storage = nullptr);
 
@@ -187,46 +178,43 @@ private:
                              bool requireValue,
                              const std::vector<std::string>& storage);
 
-    void emitNoArgumentSubroutineCall(const ast::IdentifierExpression& callee);
+    void emitInputCallSequence(tir::Span<const tir::Expr*> arguments, bool consumeRestOfLine);
 
-    void emitSubroutineCall(const ast::CallExpression& call, const ast::IdentifierExpression& callee);
+    void emitInputReadLine(const tir::Expr& argument);
 
-    void emitInputCallSequence(const std::vector<ast::ExpressionPtr>& arguments, bool consumeRestOfLine);
-
-    void emitInputReadLine(const ast::Expression& argument);
-
-    void emitInputReadInteger(const ast::Expression& argument);
+    void emitInputReadInteger(const tir::Expr& argument);
 
     void emitInputDiscardToken();
 
     void emitInputDiscardLine();
 
-    void emitOutputCallSequence(const std::vector<ast::ExpressionPtr>& arguments, bool newline);
+    void emitOutputCallSequence(tir::Span<const tir::Expr*> arguments, bool newline);
 
-    const LocalInfo& inputTarget(const ast::Expression& argument) const;
-    std::string emitInputReadCharacter(const ast::Expression& argument);
-    void emitInputReadReal(const ast::Expression& argument);
-    void emitInputReadDecimal(const ast::Expression& argument);
+    static std::string inputName(const tir::Expr& argument);
+    const LocalInfo& inputTarget(const tir::Expr& argument) const;
+    std::string emitInputReadCharacter(const tir::Expr& argument);
+    void emitInputReadReal(const tir::Expr& argument);
+    void emitInputReadDecimal(const tir::Expr& argument);
     std::string emitNumberString(const std::string& value, TypeRef source, const std::string& llvmType);
-    TypeRef textConversionTarget(const ast::CallExpression& call) const;
-    std::string emitTextToNumber(const ast::CallExpression& call, TypeRef target);
+    TypeRef textConversionTarget(const tir::Expr& conversion) const;
+    std::string emitTextToNumber(const tir::Expr& conversion, TypeRef target);
     // Currency and Crypto (change decimals).
     std::pair<std::string, std::string> decimalHalves(const std::string& value, TypeRef type);
     std::string newDecimalSlot();
     std::string loadDecimal(const std::string& slot, TypeRef type);
     void emitDecimalStatus(const std::string& status, int firstKind, int secondKind);
-    std::string emitDecimalArithmetic(ast::BinaryOperator op, TypeRef type, const std::string& left,
+    std::string emitDecimalArithmetic(tir::BinaryOp op, TypeRef type, const std::string& left,
                                       const std::string& right);
-    std::string emitDecimalConversion(const ast::CallExpression& call, TypeRef target);
+    std::string emitDecimalConversion(const tir::Expr& conversion, TypeRef target);
     std::string emitDecimalToInteger(const std::string& low, const std::string& high, TypeRef source, TypeRef target,
                                      bool round);
-    std::string emitRounding(const ast::CallExpression& call);
-    void emitOutputValue(const ast::Expression& argument);
-    void emitOutputCall(const ast::Expression& argument, bool newline);
+    std::string emitRounding(const tir::Expr& call);
+    void emitOutputValue(const tir::Expr& argument);
+    void emitOutputCall(const tir::Expr& argument, bool newline);
 
     std::string emitStringLiteral(std::string_view value);
 
-    bool isBoolExpression(const ast::Expression& expression) const;
+    bool isBoolExpression(const tir::Expr& expression) const;
 
     // ---- String ownership (CANON-14, OpenSpec change string-runtime) ----
     // Every String expression yields a borrowed pointer, valid until the end
@@ -238,27 +226,28 @@ private:
 
     void requireModuleLine(const std::string& line);
     // Enums (change enum-range-set; FunctionEmitterEnums.cpp).
-    TypeRef enumTypeNamed(const ast::Expression& expression) const;
-    bool isOrdinalBuiltin(const ast::CallExpression& call) const;
-    std::string emitOrdinalBuiltin(const ast::CallExpression& call);
+    static TypeRef enumTypeNamed(const tir::Expr& expression);
+    static bool isOrdinalBuiltin(const tir::Expr& call);
+    std::string emitOrdinalBuiltin(const tir::Expr& call);
     std::string enumNameTable(TypeRef enumType);
     std::string emitEnumName(const std::string& value, TypeRef enumType);
     // Sets and `in` (change enum-range-set; FunctionEmitterSets.cpp).
-    bool isSetCall(const ast::CallExpression& call) const;
+    static bool isSetCall(const tir::Expr& call);
     std::string emitSetMask(const std::string& value, TypeRef setType);
-    std::string emitSetCall(const ast::CallExpression& call);
+    std::string emitSetCall(const tir::Expr& call);
     // `Fill(Value)` (r3.81): the target array with every element a copy.
-    std::string emitFill(const ast::CallExpression& call);
+    std::string emitFill(const tir::Expr& call);
     // Change char-values: Char(I) checked, and String(C).
     std::string emitCharCheck(const std::string& value, TypeRef target);
     std::string emitCharString(const std::string& value);
     // Change float-conversions: conversions to and from Float.
-    TypeRef realConversionTarget(const ast::CallExpression& call) const;
-    std::string emitRealConversion(const ast::CallExpression& call, TypeRef target);
+    TypeRef realConversionTarget(const tir::Expr& conversion) const;
+    std::string emitRealConversion(const tir::Expr& conversion, TypeRef target);
     void emitTrapUnless(const std::string& condition, int kind);
-    void emitArrayFillDefault(const std::string& pointer, TypeRef arrayType, const std::string& text);
-    std::string emitSetComparison(const ast::BinaryExpression& expression);
-    std::string emitMembership(const ast::BinaryExpression& expression);
+    void emitArrayFillDefault(const std::string& pointer, TypeRef arrayType, const types::FieldDefault& fill);
+    static std::string defaultConstant(const types::FieldDefault& value, TypeRef type, const std::string& llvmType);
+    std::string emitSetComparison(const tir::Expr& expression);
+    std::string emitMembership(const tir::Expr& expression);
     // The UInt64 helpers of RuntimeHelpersIr (change uint64), once per module.
     void requireUnsignedHelpers();
     // `T(X)` between integer types where X or T is a UInt64 (change uint64).
@@ -314,7 +303,8 @@ private:
 
     void emitArrayElementDefaults(const std::string& pointer, TypeRef arrayType);
 
-    std::string emitConstruction(const ast::CallExpression& call, TypeRef structType);
+    std::string emitConstruction(const tir::Expr& construction);
+    static std::vector<const tir::FieldValue*> constructionOrder(const tir::Expr& construction);
 
     // The storage of a place: a variable, a field of a place or an element.
     // Any other value is copied into a temporary so its fields can be read.
@@ -323,69 +313,36 @@ private:
         TypeRef type = nullptr;
     };
 
-    Place emitPlace(const ast::Expression& expression);
+    Place emitPlace(const tir::Place& place, const tir::Expr* value = nullptr);
+    Place emitPlace(const tir::Expr& expression);
+    Place emitPlaceCopy(const tir::Expr& expression);
+    Place storePlaceTemporary(const std::string& value, TypeRef type, const std::string& llvmType);
+    std::string emitPlaceRead(const tir::Place& place);
+    std::string emitPlaceValue(const tir::Place& place);
+    static FieldLayout fieldOf(const tir::Place& field);
 
-    std::optional<FieldLayout> memberField(const ast::CallExpression& member) const;
-
-    // The struct a construction `T(Field := Value, ...)` builds, or null.
-    TypeRef constructedStruct(const ast::CallExpression& call) const;
-
-    FieldAddress emitMemberAddress(const ast::CallExpression& call);
-
-    bool isMemberAccessCall(const ast::Expression& expression) const;
-
-    struct MethodCallTarget {
-        const FunctionSignature* signature = nullptr;
-        std::string receiverPointer;
-    };
-
-    MethodCallTarget resolveMethodCall(const ast::CallExpression& call);
-    const FunctionSignature* routineSignature(const ast::FunctionDeclaration* routine) const;
-    std::string emitReceiverCall(const MethodCallTarget& target, const ast::Expression& receiver, bool requireValue);
-    std::string emitMethodCallWith(const MethodCallTarget& target, const ast::CallExpression& call,
-                                   const ast::Expression& receiver, bool guarded, bool requireValue);
+    const FunctionSignature* routineSignature(const tir::Routine* routine) const;
+    std::string emitReceiver(const FunctionSignature& signature, const tir::Expr& receiver);
+    // A call of a routine of the program (a method: the receiver first).
+    std::string emitCall(const tir::Expr& call, bool requireValue);
+    static bool isMethodCall(const tir::Expr& call);
+    std::string emitMethodCall(const tir::Expr& call, const FunctionSignature& signature, bool requireValue);
+    std::string emitMethodCallWith(const FunctionSignature& signature, const tir::Expr& call,
+                                   const std::string& receiverPointer, bool guarded, bool requireValue);
 
     // Design by contract (CANON-24; FunctionEmitterContracts.cpp).
-    bool isContractCheck(const ast::CallExpression& call) const;
-    void emitContractCheck(const ast::CallExpression& call);
-    void emitInvariantChecks(const ast::AstNode& site, bool after);
+    void emitContractCheck(const tir::Expr& check);
+    void emitInvariantChecks(const tir::Invariants* invariants, bool after);
     void emitInvariantOf(TypeRef structType, const std::string& pointer);
-    void emitNewValueInvariant(const ast::VarStatement& declaration);
-    // The routine the analysis bound a call site to (a method, a function).
-    const FunctionSignature* boundSignature(const ast::CallExpression& site) const;
-    // The routine a callee names: the one the analysis bound it to (a call of
-    // a generic routine names its instance, `Max` is `Max<Int64>`), else the
-    // routine of that name; null when it is not a routine of the program.
-    const FunctionSignature* calledRoutine(const ast::IdentifierExpression& callee) const;
-    std::string emitReceiver(const FunctionSignature& signature, const ast::Expression& receiver);
 
-    MethodCallTarget resolveNoArgumentMethodAccess(const ast::CallExpression& member);
+    void emitAssignment(const tir::Stmt& assignment);
+    void emitCompoundAssignment(const tir::Stmt& assignment);
 
-    std::string emitNoArgumentMethodCall(const ast::CallExpression& member, bool requireValue);
+    bool isNaturalConversion(const tir::Expr& conversion) const;
 
-    std::string emitMethodCall(const ast::CallExpression& call, bool requireValue);
-
-    void emitLocalAssignment(const ast::Expression& expression, bool compound = false);
-    void emitCompoundAssignment(const ast::BinaryExpression& assignment);
-
-    const semantic::ConstantValue* resolvedConstant(const ast::IdentifierExpression& identifier) const;
-
-    std::string expressionLlvmType(const ast::Expression& expression) const;
-
-    bool isNaturalConversion(const ast::CallExpression& call) const;
-
-    TypeRef conversionTarget(const ast::CallExpression& call) const;
-
-    std::string emitConditional(const ast::ConditionalExpression& expression);
-
-    bool isIndexCall(const ast::Expression& expression) const;
-    // The kind of call the analysis decided a node is (tir/AstNodeMap.h).
-    std::optional<semantic::CallKind> callKindOf(const ast::Expression& node) const;
-    TypeRef conversionType(const ast::CallExpression& call) const;
+    TypeRef conversionTarget(const tir::Expr& conversion) const;
 
     static std::string valueLlvmType(TypeRef type);
-
-    std::optional<std::int64_t> arrayBoundCall(const ast::CallExpression& call) const;
 
     struct ElementAddress {
         std::string pointer;
@@ -393,7 +350,9 @@ private:
         TypeRef elementType = nullptr;
     };
 
-    std::string emitArrayBaseAddress(const ast::Expression& base, const ArrayLayout& layout);
+    std::string emitArrayBaseAddress(const tir::Place& base, const ArrayLayout& layout);
+    std::string emitArrayBaseAddress(const tir::Expr& base, const ArrayLayout& layout);
+    std::string storeArrayTemporary(const std::string& value, const ArrayLayout& layout);
 
     struct SliceParts {
         std::string data;
@@ -403,33 +362,43 @@ private:
 
     SliceParts extractSlice(const std::string& value);
 
-    SliceParts emitSliceSource(const ast::Expression& base, std::string& storage, TypeRef& elementType);
+    SliceParts emitSliceSource(const tir::Expr& base, std::string& storage, TypeRef& elementType);
+    SliceParts emitSliceSource(const tir::Place& base, std::string& storage, TypeRef& elementType);
+    SliceParts arraySliceParts(const std::string& pointer, const ArrayLayout& layout);
 
-    std::string emitSlice(const ast::CallExpression& call);
+    std::string emitSlice(const tir::Expr& slice);
 
-    ElementAddress emitElementAddress(const ast::CallExpression& call);
+    ElementAddress emitElementAddress(const tir::Place& element);
 
     std::string loadElement(const ElementAddress& element);
 
     std::string narrowForStorage(const std::string& value, const ElementAddress& element);
 
-    // The type the analysis gave an expression; null when it has none.
-    TypeRef typeOf(const ast::Expression& expression) const;
-    const semantic::Symbol* symbolOf(const ast::Expression& node) const;
-    TypeRef typeFromTir(const ast::Expression& expression) const;
-    TypeRef declaredTypeOf(const ast::VarStatement& declaration) const;
-    // The builtin a call is (semantic/CallMeaning.h); None for any other call.
-    semantic::BuiltinOp builtinOf(const ast::Expression& call) const;
-
-    static bool isRangeCheckedArithmetic(const ast::Expression& expression);
-
     std::string emitRangeCheck(const std::string& value, IntegerRange range, int faultKind);
 
-    std::string emitExpression(const ast::Expression& expression);
+    // ---- The typed IR (F6 step 5) ----
+    // An expression without the RangeCheck and NaturalCheck around it.
+    static const tir::Expr& bare(const tir::Expr& expression);
+    // The value of `expression`, its checks included.
+    std::string emitValue(const tir::Expr& expression);
+    // The value of `expression` (not a check), protected and narrowed.
+    std::string emitValueKind(const tir::Expr& expression);
+    bool isBorrowedRead(const tir::Expr& expression) const;
+    bool placeMayChange(const tir::Place& place) const;
+    bool isBorrowedPlace(TypeRef type, const tir::Place& place) const;
+    std::string protectBorrowed(TypeRef type, const std::string& value);
+    static bool isRangeCheckedArithmetic(const tir::Expr& expression);
+    std::string emitLiteral(const tir::Expr& literal);
+    static bool isVariablePlace(const tir::Place& place);
+    std::string emitVariableRead(const tir::Place& place);
+    std::string emitUnary(const tir::Expr& unary);
+    std::string emitBuiltin(const tir::Expr& call);
+    std::string emitConversion(const tir::Expr& conversion);
+    std::string emitConditional(const tir::Expr& expression);
+    std::string expressionLlvmType(const tir::Expr& expression) const;
+    bool isStringConcatenation(const tir::Expr& expression) const;
 
-    std::string emitExpressionValue(const ast::Expression& expression);
-
-    std::string emitMathBuiltinCall(semantic::BuiltinOp op, const std::vector<ast::ExpressionPtr>& arguments);
+    std::string emitMathBuiltinCall(semantic::BuiltinOp op, tir::Span<const tir::Expr*> arguments);
 
     // ---- Safe pointers (OpenSpec change safe-pointers; FunctionEmitterPointers.cpp) ----
     // An owner (Own<T>, Option<Own<T>>) is its object's address in a block
@@ -439,16 +408,19 @@ private:
     // by a statement temporary until a store, an argument or a Return takes
     // it, which disarms the temporary.
     static bool isMoveOnly(TypeRef type);
-    bool isPointerBuiltin(const ast::CallExpression& call) const;
-    std::string emitPointerBuiltin(const ast::CallExpression& call);
+    static bool isPointerBuiltin(semantic::BuiltinOp op);
+    std::string emitPointerBuiltin(const tir::Expr& call);
     // CANON-11 with CANON-25: a `with` whose target is reached through a
     // pointer keeps the header and generation of the object holding it, and
     // every `.Member` checks them, so a Free inside the body is detected.
-    const ast::Expression* lastPointerOnPath(const ast::Expression& place) const;
+    static const void* lastPointerOnPath(const tir::Place& place);
+    static const void* pointerKey(const tir::Expr& pointer);
     void emitStorageGuard(const std::string& normalizedName);
     // The address of the object a pointer expression reaches, checked: an
     // owner given away traps (17), a dead or empty Link traps (16).
-    std::string emitPointerTarget(const ast::Expression& pointer);
+    std::string emitPointerTarget(const tir::Place& pointer);
+    std::string emitPointerTarget(const tir::Expr& pointer);
+    std::string emitPointerTargetOf(const void* key, TypeRef type, const std::string& value);
     struct LinkParts {
         std::string target;
         std::string header;
@@ -458,9 +430,10 @@ private:
     std::string buildLink(const LinkParts& parts);
     void emitLinkCheck(const LinkParts& parts);
     std::string emitLinkAlive(const LinkParts& parts);
-    std::string emitLinkOf(const ast::Expression& argument);
-    LinkParts emitHeaderOfPlace(const ast::Expression& place);
-    LinkParts emitHeaderOfPointer(const ast::Expression& pointer);
+    std::string emitLinkOf(const tir::Expr& argument);
+    LinkParts emitHeaderOfPlace(const tir::Place& place);
+    LinkParts emitHeaderOfPointer(const tir::Place& pointer);
+    LinkParts emitHeaderOfPointerValue(TypeRef type, const std::string& value);
     std::string emitOwnerNullCheck(const std::string& owner);
     std::string dropFunctionFor(TypeRef targetType);
     void emitOwnerFreesAt(const std::string& pointer, TypeRef type);
@@ -486,54 +459,54 @@ private:
     // header and generation, captured when the pointer is reached, checked
     // before the place is used (FunctionEmitterPointers.cpp).
     struct PlaceGuard {
-        const ast::Expression* pointer = nullptr;
+        const void* pointer = nullptr;  // a Place, or the Expr of a value (pointerKey)
         std::optional<LinkParts> reached;
     };
     std::vector<PlaceGuard> placeGuards_;
     // Each element or slice access opens one guard (empty when it needs
     // none) and closes it: a stack, never a local of the recursive frames.
-    void beginPlaceGuard(const ast::Expression& base, bool laterRunsRoutine);
-    void beginSliceGuard(const ast::CallExpression& slice);
-    void beginElementGuard(const ast::CallExpression& element);
-    std::size_t beginReferenceGuard(const std::vector<ast::ExpressionPtr>& arguments, std::size_t index);
+    void beginPlaceGuard(const tir::Place& base, bool laterRunsRoutine);
+    void beginPlaceGuard(const tir::Expr& base, bool laterRunsRoutine);
+    void beginSliceGuard(const tir::Expr& slice);
+    void beginElementGuard(const tir::Place& element);
+    std::size_t beginReferenceGuard(tir::Span<const tir::Expr*> arguments, std::size_t index);
     // The header and generation a parameter that is the caller's storage
     // receives for `place`: those of the object holding it, or of the
     // immortal header for storage no owner frees.
-    void beginCallerStorage(const ast::Expression& place, bool receiver);
-    std::string endCallerStorage(const ast::Expression& place);
-    const LinkParts* rootStorageGuard(const ast::Expression& place) const;
+    void beginCallerStorage(const tir::Expr& place, bool receiver);
+    std::string endCallerStorage(const tir::Expr& place);
+    const LinkParts* rootStorageGuard(const tir::Expr& place) const;
     std::string immortalStorage();
-    void bindStorageGuard(const std::string& binding, const ast::Expression& target);
-    std::string emitReferenceParameterArgument(const std::vector<ast::ExpressionPtr>& arguments, std::size_t index,
+    void bindStorageGuard(const std::string& binding, const tir::Expr& target);
+    std::string emitReferenceParameterArgument(tir::Span<const tir::Expr*> arguments, std::size_t index,
                                                const FunctionParameter& parameter, std::vector<std::string>* storage,
                                                std::size_t& guards);
-    bool beginReceiverGuard(const ast::CallExpression& call);
+    bool beginReceiverGuard(const tir::Expr& call, const FunctionSignature& signature);
     void endPlaceGuard();
-    void emitAssignmentStatement(const ast::ExpressionStatement& statement);
-    void capturePlaceGuards(const ast::Expression& pointer, const std::string& object, const LinkParts* link);
-    const ast::Expression* withGuardPointer_ = nullptr;
+    void capturePlaceGuards(const void* pointer, const std::string& object, const LinkParts* link);
+    const void* withGuardPointer_ = nullptr;
     std::optional<LinkParts> withGuardCaptured_;
     std::unordered_set<std::string> tombstoneLocals_;
     std::unordered_map<std::string, std::string> tombstoneSlots_;
 
     // ---- Strings: `+` and Std.Strings / Std.StrUtils (change std-strings;
     // FunctionEmitterStringFunctions.cpp) ----
-    bool isStringConcatenation(const ast::Expression& expression) const;
-    std::string emitConcatenation(const ast::BinaryExpression& expression);
+    std::string emitConcatenation(const tir::Expr& expression);
     // The operator of `binary` applied to two values of its operands' types.
-    std::string emitBinaryValues(const ast::BinaryExpression& binary, const std::string& result,
+    std::string emitBinaryValues(const tir::Expr& binary, const std::string& result,
                                  const std::string& left, std::string right);
     // The checks the value of `expression` takes on its way out (range,
     // Natural, a borrowed read held).
-    std::string finishValue(const ast::Expression& expression, std::string value);
+    std::string finishValue(const tir::Expr& expression, std::string value);
     // `S := S + X ...`: false when the assignment is not of that form.
-    bool emitStringAppend(const ast::BinaryExpression& assignment);
-    std::string emitStringCall(const ast::CallExpression& call, semantic::StringFunction function);
-    std::string emitStringParts(const std::vector<const ast::Expression*>& parts);
+    bool emitStringAppend(const tir::Stmt& assignment);
+    std::string emitStringCall(const tir::Expr& call);
+    std::string emitStringParts(const std::vector<const tir::Expr*>& parts);
     std::string newStringStatus();
     void emitStringStatusCheck(const std::string& status);
-    bool samePlace(const ast::Expression& first, const ast::Expression& second) const;
-    bool mayRunRoutine(const ast::Expression& expression) const;
+    static bool samePlace(const tir::Place& first, const tir::Place& second, bool path);
+    static bool sameValue(const tir::Expr& first, const tir::Expr& second);
+    bool mayRunRoutine(const tir::Expr& expression) const;
 
     // ---- Borrowed values a routine could free (FunctionEmitterStrings.cpp) ----
     // A String read from storage is borrowed until the end of its statement.
@@ -541,38 +514,34 @@ private:
     // one a routine can change (State, a ref parameter, a path through a
     // pointer, a with binding), the value read is retained into a statement
     // temporary: the routine cannot free it while the statement still uses it.
-    bool runsRoutine(const ast::Expression& node) const;
-    bool statementMayRunRoutine(const ast::Statement& statement) const;
-    bool placeMayChange(const ast::Expression& place) const;
-    bool isBorrowedRead(const ast::Expression& expression) const;
-    std::string protectBorrowed(const ast::Expression& expression, const std::string& value);
+    static bool runsRoutine(const tir::Expr& node);
+    static bool isCallResult(const tir::Expr& expression);
+    bool statementMayRunRoutine(const tir::Stmt& statement) const;
     bool statementRunsRoutine_ = false;
     std::unordered_set<std::string> referenceParameters_;
 
     // ---- Std.IOUtils (OpenSpec change file-io; FunctionEmitterFiles.cpp) ----
     // A call to a file function (and not to a routine of the program).
-    bool isFileCall(const ast::CallExpression& call) const;
+    static bool isFileCall(semantic::BuiltinOp op);
     // Std.Terminal (FunctionEmitterIntrinsics.cpp, change console-abi-terminal).
-    const semantic::ModuleIntrinsic* intrinsicCallOf(const ast::Expression& expression) const;
-    std::string emitIntrinsicCall(const ast::Expression& expression, const semantic::ModuleIntrinsic& function);
+    std::string emitIntrinsicCall(const tir::Expr& expression);
     std::string emitTerminalStruct(TypeRef type, const std::vector<std::pair<std::string, std::string>>& fields);
     std::string narrowFromInt64(const std::string& value, const std::string& llvmType);
-    std::string emitInt64Argument(const ast::Expression& argument);
+    std::string emitInt64Argument(const tir::Expr& argument);
     std::string emitPlainIntrinsic(RuntimeFunction function, const std::string& returnType, const std::string& symbol,
                                    const std::vector<std::string>& arguments);
     // Std.Debug Assert (FunctionEmitterDebug.cpp): a branch to a trap.
-    bool isAssertCall(const ast::CallExpression& call) const;
-    void emitAssertCall(const ast::CallExpression& call);
+    void emitAssertCall(const tir::Expr& call);
     // The LLVM type of a file function's result ("void" when it has none).
-    std::string fileCallLlvmType(const ast::CallExpression& call) const;
-    std::string emitFileCall(const ast::CallExpression& call);
+    static std::string fileCallLlvmType(semantic::BuiltinOp op);
+    std::string emitFileCall(const tir::Expr& call);
     // Calls a libinoxrt function with `invoke` inside a protected region, so
     // an exception it raises reaches the handlers and cleanup pads.
     std::string emitRuntimeCall(RuntimeFunction function, std::string_view returnType, std::string_view symbol,
                                 const std::string& arguments);
 
     std::ostringstream& output_;
-    const ast::FunctionDeclaration& function_;
+    const tir::Routine& routine_;
     const FunctionSignature& signature_;
     const FunctionSignatures& signatures_;
     ModuleContext& module_;

@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "../ast/Ast.h"
+#include "../tir/Tir.h"
 #include "../semantic/SemanticResult.h"
 #include "../types/Type.h"
 
@@ -50,8 +50,8 @@ struct FunctionSignature {
     TypeRef returnType = nullptr;  // null for a subroutine
 };
 
-// The lowered signature of each routine of the program, by its declaration.
-using FunctionSignatures = std::unordered_map<const ast::FunctionDeclaration*, FunctionSignature>;
+// The lowered signature of each routine of the program.
+using FunctionSignatures = std::unordered_map<const tir::Routine*, FunctionSignature>;
 
 struct IntegerRange {
     std::int64_t low;
@@ -96,7 +96,7 @@ struct StateGlobal {
     std::string name;
     TypeRef type = nullptr;
     std::string llvmType;
-    const ast::Expression* initializer = nullptr;
+    const tir::Expr* initializer = nullptr;  // null: its type's defaults
 };
 using StateGlobals = std::vector<StateGlobal>;
 
@@ -135,8 +135,7 @@ FlatArray flattenArray(TypeRef arrayType);
 std::optional<FieldLayout> fieldLayout(TypeRef structType, std::string_view fieldName);
 FieldLayout fieldLayout(TypeRef structType, std::size_t index);
 // The LLVM signature of a routine, from its semantic signature.
-FunctionSignature lowerSignature(const ast::FunctionDeclaration& function,
-                                 const semantic::FunctionSignature& signature);
+FunctionSignature lowerSignature(const tir::Routine& routine);
 std::string stateGlobalSymbol(std::string_view name);
 
 } // namespace inox::compiler::codegen::detail

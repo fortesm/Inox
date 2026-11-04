@@ -23,9 +23,9 @@
 namespace inox::compiler::codegen::detail {
 
 // A function of Std.Files / Std.IOUtils.
-bool FunctionEmitter::isFileCall(const ast::CallExpression& call) const
+bool FunctionEmitter::isFileCall(semantic::BuiltinOp op)
 {
-    switch (builtinOf(call)) {
+    switch (op) {
     case semantic::BuiltinOp::OpenRead:
     case semantic::BuiltinOp::Create:
     case semantic::BuiltinOp::OpenAppend:
@@ -43,9 +43,9 @@ bool FunctionEmitter::isFileCall(const ast::CallExpression& call) const
     }
 }
 
-std::string FunctionEmitter::fileCallLlvmType(const ast::CallExpression& call) const
+std::string FunctionEmitter::fileCallLlvmType(semantic::BuiltinOp op)
 {
-    switch (builtinOf(call)) {
+    switch (op) {
     case semantic::BuiltinOp::OpenRead:
     case semantic::BuiltinOp::Create:
     case semantic::BuiltinOp::OpenAppend:
@@ -83,11 +83,11 @@ std::string FunctionEmitter::emitRuntimeCall(RuntimeFunction function, std::stri
     return result;
 }
 
-std::string FunctionEmitter::emitFileCall(const ast::CallExpression& call)
+std::string FunctionEmitter::emitFileCall(const tir::Expr& call)
 {
-    const auto& arguments = call.arguments();
-    const auto value = [&](std::size_t index) { return emitExpression(*arguments[index]); };
-    const semantic::BuiltinOp op = builtinOf(call);
+    const auto& arguments = call.operands;
+    const auto value = [&](std::size_t index) { return emitValue(*arguments[index]); };
+    const semantic::BuiltinOp op = call.op;
     switch (op) {
     case semantic::BuiltinOp::OpenRead:
     case semantic::BuiltinOp::Create:
@@ -96,13 +96,13 @@ std::string FunctionEmitter::emitFileCall(const ast::CallExpression& call)
         const std::string path = value(0);
         const std::string file = emitRuntimeCall(RuntimeFunction::FileOpen, "ptr", "__inox_file_open",
                                                  "ptr " + path + ", i32 " + std::to_string(mode));
-        holdOwnedResult(file, semantics_.types().fileType(), "ptr");
+        holdOwnedResult(file, types_.fileType(), "ptr");
         return file;
     }
     case semantic::BuiltinOp::FileReadLn: {
         const std::string file = value(0);
         const std::string line = emitRuntimeCall(RuntimeFunction::FileReadLn, "ptr", "__inox_file_readln", "ptr " + file);
-        holdOwnedResult(line, semantics_.types().stringType(), "ptr");
+        holdOwnedResult(line, types_.stringType(), "ptr");
         return line;
     }
     case semantic::BuiltinOp::Eof:
@@ -116,7 +116,7 @@ std::string FunctionEmitter::emitFileCall(const ast::CallExpression& call)
         // PutLn prints them (CANON-17).
         const std::string file = value(0);
         for (std::size_t index = 1; index < arguments.size(); ++index) {
-            const TypeRef type = typeOf(*arguments[index]);
+            const TypeRef type = bare(*arguments[index]).type;
             const std::string written = value(index);
             if (isStringType(type) || type->isEnum() || type->isChar()) {
                 // An enum is written as its literal's name (CANON-13), a

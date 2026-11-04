@@ -20,16 +20,11 @@
 
 namespace inox::compiler::codegen::detail {
 
-bool FunctionEmitter::isAssertCall(const ast::CallExpression& call) const
+void FunctionEmitter::emitAssertCall(const tir::Expr& call)
 {
-    return builtinOf(call) == semantic::BuiltinOp::Assert;
-}
-
-void FunctionEmitter::emitAssertCall(const ast::CallExpression& call)
-{
-    const auto& arguments = call.arguments();
-    const std::string condition = emitExpression(*arguments[0]);
-    const std::string message = arguments.size() == 2 ? emitExpression(*arguments[1]) : std::string();
+    const auto& arguments = call.operands;
+    const std::string condition = emitValue(*arguments[0]);
+    const std::string message = arguments.size() == 2 ? emitValue(*arguments[1]) : std::string();
     const std::size_t label = nextLabel_++;
     const std::string passed = "assert.ok" + std::to_string(label);
     const std::string failed = "assert.fail" + std::to_string(label);

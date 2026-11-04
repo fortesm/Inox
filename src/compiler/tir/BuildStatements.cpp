@@ -105,10 +105,9 @@ const Stmt* Builder::expressionStatement(const ast::ExpressionStatement& source)
             Stmt* result = make(StmtKind::Declare, source);
             result->symbol = declared;
             result->type = declared->type;
+            result->inferred = true;
             result->value = this->expression(assignment.right());
             result->invariants = invariants(source, &assignment);
-            recordDeclaration(&assignment, result);
-            recordAssignment(assignment, result, true);
             return result;
         }
         Stmt* result = make(StmtKind::Assign, source);
@@ -121,7 +120,6 @@ const Stmt* Builder::expressionStatement(const ast::ExpressionStatement& source)
             result->value = this->expression(assignment.right());
         }
         result->invariants = invariants(source, &assignment);
-        recordAssignment(assignment, result, false);
         return result;
     }
     Stmt* result = make(StmtKind::Evaluate, source);
@@ -137,10 +135,6 @@ const Stmt* Builder::expressionStatement(const ast::ExpressionStatement& source)
 const Expr* Builder::compoundOperation(const ast::BinaryExpression& assignment, const Place* target)
 {
     const auto& combined = static_cast<const ast::BinaryExpression&>(assignment.right());
-    if (astNodes_ != nullptr) {
-        // The written L on the right is L again.
-        astNodes_->recordWrittenAgain(combined.left(), assignment.left());
-    }
     Expr* operation = make(ExprKind::Binary, typeOf(combined), combined);
     operation->binary = binaryOp(combined.op());
     operation->operands = arena_.array<const Expr*>(2);
@@ -160,11 +154,11 @@ const Stmt* Builder::declaration(const ast::VarStatement& source)
     Stmt* result = make(StmtKind::Declare, source);
     result->symbol = symbol;
     result->type = semantics_.declaredType(source);
+    result->inferred = !source.type() && source.initializer() != nullptr;
     if (source.initializer() != nullptr) {
         result->value = expression(*source.initializer());
     }
     result->invariants = invariants(source, nullptr);
-    recordDeclaration(&source, result);
     return result;
 }
 
