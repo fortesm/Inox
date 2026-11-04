@@ -12,6 +12,12 @@ sources, what codegen still does that the TIR is to carry:
   lookups   a question to the analysis by AST node (`typeOf(expression)`,
             `semantics_.symbolOf(...)`, `semantics_.declaredType(...)`, ...)
   shapes    a test of an AST node's kind (`AstNodeKind::CallExpression`)
+  resolutions
+            a name resolved by codegen itself: a type by its name
+            (`types().lookup(name)`), a routine (`signatures_.find(...)`),
+            a module intrinsic (`findModuleIntrinsic(name)`), an encoding
+            by its prefix (`rfind("__with", 0)`), or a name compared with a
+            table of names (`equalsIgnoreCase(name, entry.name)`)
 
 Usage:
   python3 tools/codegen_decisions.py            the summary, one line per category
@@ -40,6 +46,11 @@ LOOKUP = re.compile(r'\b(?:semantics_?\.)?(?P<m>typeOf|symbolOf|declaredType|sig
                     r'stringCall|invariantChecks|newValueInvariant|constantValueOf|rangeCheck|needsNaturalCheck|'
                     r'fillUnit|instances|structInstances|resolvedConstant|intrinsicCallOf)\(')
 SHAPE = re.compile(r'AstNodeKind::(?P<k>[A-Za-z]+)')
+RESOLUTION = re.compile(r'(?P<type>\btypes\(\)\.lookup\()'
+                        r'|(?P<routine>\bsignatures_\.find\()'
+                        r'|(?P<intrinsic>\bfindModuleIntrinsic\()'
+                        r'|(?P<prefix>\b(?:rfind|starts_with)\("__)'
+                        r'|(?P<table>\bequalsIgnoreCase\((?![^;"]*,\s*")(?!std::string_view))')
 
 # Where each decision goes in the TIR (design.md of typed-ir).
 TIR_FOR_NAME = {
@@ -71,10 +82,17 @@ TIR_FOR_LOOKUP = {
     "structInstances": "tir::Program struct types",
     "intrinsicCallOf": "Builtin(op) (module intrinsic)",
 }
+TIR_FOR_RESOLUTION = {
+    "type": "the type of Convert / Construct / TypeValue",
+    "routine": "Call(routine)",
+    "intrinsic": "Intrinsic(intrinsic)",
+    "prefix": "WithBinding place",
+    "table": "Builtin(op) / Literal",
+}
 
 
 def occurrences():
-    found = {"names": [], "lookups": [], "shapes": []}
+    found = {"names": [], "lookups": [], "shapes": [], "resolutions": []}
     for path in sorted(CODEGEN.glob("*.cpp")) + sorted(CODEGEN.glob("*.h")):
         relative = path.relative_to(ROOT).as_posix()
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
@@ -90,6 +108,8 @@ def occurrences():
                 found["lookups"].append((relative, number, match.group("m")))
             for match in SHAPE.finditer(line):
                 found["shapes"].append((relative, number, match.group("k")))
+            for match in RESOLUTION.finditer(line):
+                found["resolutions"].append((relative, number, match.lastgroup))
     return found
 
 
@@ -98,6 +118,8 @@ def tir_for(category, what):
         return TIR_FOR_NAME.get(what, "Builtin(op)")
     if category == "lookups":
         return TIR_FOR_LOOKUP.get(what, "?")
+    if category == "resolutions":
+        return TIR_FOR_RESOLUTION[what]
     return "the TIR node of that kind"
 
 
@@ -105,12 +127,12 @@ def main(argv):
     found = occurrences()
     mode = argv[1] if len(argv) > 1 else ""
     if mode == "--list":
-        for category in ("names", "lookups", "shapes"):
+        for category in ("names", "lookups", "shapes", "resolutions"):
             for relative, number, what in found[category]:
                 print("%s:%d: %s %s -> %s" % (relative, number, category, what, tir_for(category, what)))
     elif mode == "--markdown":
         for category, title in (("names", "Name comparisons"), ("lookups", "Lookups by AST node"),
-                                ("shapes", "AST shape tests")):
+                                ("shapes", "AST shape tests"), ("resolutions", "Name resolutions")):
             counts = {}
             files = {}
             for relative, _, what in found[category]:
@@ -123,8 +145,9 @@ def main(argv):
                 print("| `%s` | %d | %s | %s |" % (what, counts[what], ", ".join(sorted(files[what])),
                                                 tir_for(category, what)))
             print()
-    print("codegen_decisions: %d name comparisons, %d lookups by AST node, %d AST shape tests" %
-          (len(found["names"]), len(found["lookups"]), len(found["shapes"])),
+    print("codegen_decisions: %d name comparisons, %d lookups by AST node, %d AST shape tests, "
+          "%d name resolutions" %
+          (len(found["names"]), len(found["lookups"]), len(found["shapes"]), len(found["resolutions"])),
           file=sys.stderr if mode == "--markdown" else sys.stdout)
     if mode == "--zero":
         return 0 if not any(found.values()) else 1

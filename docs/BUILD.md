@@ -100,7 +100,9 @@ differs, and on an `--allow` that names no added or removed program.
 
 The decisions code generation still takes (F6, change `typed-ir`) are
 counted by `python3 tools/codegen_decisions.py` (`--list` for each
-occurrence, `--zero` to require none, the exit criterion of F6).
+occurrence, `--zero` to require none, the exit criterion of F6): name
+comparisons, lookups by AST node, AST shape tests, and the names codegen
+resolves itself.
 
 The typed IR (F6, r3.120) has its own snapshot, apart from the LLVM IR:
 `--tir` anywhere on the command line records and compares the output of

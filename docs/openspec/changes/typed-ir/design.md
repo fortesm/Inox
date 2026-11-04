@@ -300,3 +300,46 @@ counts it as a GAP. The one program concerned,
 analysis does not compute, already a gap of codegen), now names that
 reason instead of "unsupported expression in function: Main"; the
 difference is declared in `ir-snapshot-expect.json`.
+
+## Step 3: builtins by kind
+
+Scope approved by Marcelo Fortes, 2026-11-04: extend the automated
+inventory, and replace the textual classification of builtins by
+`BuiltinOp`, the analysis remaining the source of every decision.
+
+- **Where codegen reads the builtin.** `AstNodeMap::builtinOf(node)`
+  answers from the TIR node the call became: the `op` of its `Builtin`
+  (folded or not); `Value` for `Value(P)`, which the TIR builds as the
+  object P points at (a `Through` place, the only one an AST node
+  becomes, matrix above); `None` for any other node. A node without its
+  TIR node is an `InvariantError`, as for every other query. The map
+  gains no field and the TIR no node: the answer is the one the TIR
+  already holds.
+- **Agreement.** `FunctionEmitter::builtinOf` checks in a Debug compiler
+  that the answer is the operation of the analysis's `CallMeaning`
+  (`None` when the call is not a `Builtin`); a disagreement is an
+  internal error, never a fallback.
+- **What goes.** Every comparison of a callee name with a builtin's name,
+  and every table of such names: the math functions (`MathBuiltins`, now
+  on `BuiltinOp`), safe pointers, `Low`/`High`/`Length` of arrays and
+  slices, `Ord`/`Succ`/`Pred`, sets, `Abs`, `Round`/`Trunc`, `EndOfInput`,
+  `Put`/`PutLn`/`Get`/`GetLn`, `Assert` and the functions of Std.Files
+  (codegen's own `FileCall` enumeration). With them go the tests that a
+  routine of the program does not bear the builtin's name
+  (`signatures_.find(normalize(name))`, `calledRoutine(...) == nullptr`):
+  the analysis decided it.
+- **What stays, and where it goes.** The encodings (`__member`,
+  `__index`, `__slice`, `__set`, `__check`, `__pure`) and `Self`, step 4;
+  `true` of a literal and `Main`, step 5. Outside this step's scope, as
+  they are not `BuiltinOp`, and listed by the inventory: conversions
+  (`CallKind::Conversion`: `String(X)` recognized by its name, and the
+  target type resolved from the written name, three sites), the type
+  named in `Low(T)` and `High(T)` (`enumTypeNamed`), the module
+  intrinsics found by name (`intrinsicCallOf`), and the two types the
+  module emitter resolves by name (`LlvmIrEmitter.cpp`). The audit
+  proposed the conversions for step 3; their step is the maintainer's to
+  set.
+- **Inventory.** `tools/codegen_decisions.py` also counts the names
+  codegen resolves itself (`resolutions`): a type by its name, a routine
+  in the signature map, a module intrinsic by its name, an encoding by
+  its prefix (`__with`), a name compared with a table of names.

@@ -48,8 +48,7 @@ std::string FunctionEmitter::expressionLlvmType(const ast::Expression& expressio
 {
     if (expression.kind() == ast::AstNodeKind::CallExpression) {
         const auto& call = static_cast<const ast::CallExpression&>(expression);
-        if (isPointerBuiltin(call) &&
-            equalsIgnoreCase(static_cast<const ast::IdentifierExpression&>(call.callee()).name(), "Free")) {
+        if (builtinOf(call) == semantic::BuiltinOp::Free) {
             return "void";
         }
         if (isFileCall(call)) {
@@ -256,14 +255,11 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return emitIntrinsicCall(expression, *terminal);
         }
         // r3.89 (C1): EndOfInput.
-        if (equalsIgnoreCase(identifier.name(), "EndOfInput")) {
-            if (const semantic::Symbol* symbol = symbolOf(identifier);
-                symbol != nullptr && symbol->kind == semantic::SymbolKind::Builtin) {
-                requireRuntime(RuntimeFunction::ConsoleAtEnd);
-                const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-                output_ << "  " << result << " = call zeroext i1 @__inox_con_at_end()\n";
-                return result;
-            }
+        if (builtinOf(identifier) == semantic::BuiltinOp::EndOfInput) {
+            requireRuntime(RuntimeFunction::ConsoleAtEnd);
+            const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << result << " = call zeroext i1 @__inox_con_at_end()\n";
+            return result;
         }
         if (const FunctionSignature* routine = calledRoutine(identifier)) {
             if (!routine->parameters.empty()) {
@@ -513,7 +509,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return emitSetCall(call);
         }
         if (isPointerBuiltin(call)) {
-            if (equalsIgnoreCase(callee.name(), "Free")) {
+            if (builtinOf(call) == semantic::BuiltinOp::Free) {
                 throw CodegenError("void function call cannot be used as an expression");
             }
             return emitPointerBuiltin(call);
@@ -521,14 +517,15 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (const TypeRef structType = constructedStruct(call)) {
             return emitConstruction(call, structType);
         }
-        if (call.arguments().size() == 1 && isSliceType(typeOf(*call.arguments()[0])) &&
-            (equalsIgnoreCase(callee.name(), "Low") || equalsIgnoreCase(callee.name(), "High") ||
-             equalsIgnoreCase(callee.name(), "Length"))) {
+        if (const semantic::BuiltinOp bound = builtinOf(call);
+            (bound == semantic::BuiltinOp::Low || bound == semantic::BuiltinOp::High ||
+             bound == semantic::BuiltinOp::Length) &&
+            call.arguments().size() == 1 && isSliceType(typeOf(*call.arguments()[0]))) {
             const SliceParts slice = extractSlice(emitExpression(*call.arguments()[0]));
-            if (equalsIgnoreCase(callee.name(), "Low")) {
+            if (bound == semantic::BuiltinOp::Low) {
                 return slice.low;
             }
-            if (equalsIgnoreCase(callee.name(), "High")) {
+            if (bound == semantic::BuiltinOp::High) {
                 return slice.high;
             }
             const std::string span = "%tmp" + std::to_string(nextTemporary_++);
@@ -557,7 +554,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return emitExpression(*call.arguments().front());
         }
 
-        if (equalsIgnoreCase(callee.name(), "Abs") && call.arguments().size() == 1 &&
+        if (builtinOf(call) == semantic::BuiltinOp::Abs && call.arguments().size() == 1 &&
             expressionLlvmType(*call.arguments().front()) == "i64") {
             const std::string value = emitExpression(*call.arguments().front());
             if (isUInt64Type(typeOf(*call.arguments().front()))) {
@@ -578,8 +575,8 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return emitFileCall(call);
         }
 
-        if (isMathBuiltin(callee.name())) {
-            return emitMathBuiltinCall(callee.name(), call.arguments());
+        if (const semantic::BuiltinOp op = builtinOf(call); isMathBuiltin(op)) {
+            return emitMathBuiltinCall(op, call.arguments());
         }
 
         // Change decimals (r3.91): Currency(X), Crypto(X), and T(C) of a
@@ -592,11 +589,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
                 (target->isDecimal() || (source->isDecimal() && (target->isInteger() || target->isFloat())))) {
                 return emitDecimalConversion(call, target);
             }
-            if (!conversion && (equalsIgnoreCase(callee.name(), "Round") || equalsIgnoreCase(callee.name(), "Trunc"))) {
-                if (const semantic::Symbol* symbol = symbolOf(callee);
-                    symbol != nullptr && symbol->kind == semantic::SymbolKind::Builtin) {
-                    return emitRounding(call);
-                }
+            if (const semantic::BuiltinOp rounding = builtinOf(call);
+                rounding == semantic::BuiltinOp::Round || rounding == semantic::BuiltinOp::Trunc) {
+                return emitRounding(call);
             }
         }
 
@@ -698,7 +693,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
     throw CodegenUnsupported("unsupported expression in function: " + function_.name());
 }
 
-std::string FunctionEmitter::emitMathBuiltinCall(std::string_view name, const std::vector<ast::ExpressionPtr>& arguments)
+std::string FunctionEmitter::emitMathBuiltinCall(semantic::BuiltinOp op, const std::vector<ast::ExpressionPtr>& arguments)
 {
     std::vector<std::string> values;
     values.reserve(arguments.size());
@@ -712,14 +707,14 @@ std::string FunctionEmitter::emitMathBuiltinCall(std::string_view name, const st
         return result;
     };
 
-    if (equalsIgnoreCase(name, "RadToDeg")) return unaryScale(57.295779513082320876798154814105);
-    if (equalsIgnoreCase(name, "DegToRad")) return unaryScale(0.017453292519943295769236907684886);
-    if (equalsIgnoreCase(name, "RadToGrad")) return unaryScale(63.661977236758134307553505349005);
-    if (equalsIgnoreCase(name, "GradToRad")) return unaryScale(0.015707963267948966192313216916398);
-    if (equalsIgnoreCase(name, "RadToCycle")) return unaryScale(0.15915494309189533576888376337251);
-    if (equalsIgnoreCase(name, "CycleToRad")) return unaryScale(6.283185307179586476925286766559);
+    if (op == semantic::BuiltinOp::RadToDeg) return unaryScale(57.295779513082320876798154814105);
+    if (op == semantic::BuiltinOp::DegToRad) return unaryScale(0.017453292519943295769236907684886);
+    if (op == semantic::BuiltinOp::RadToGrad) return unaryScale(63.661977236758134307553505349005);
+    if (op == semantic::BuiltinOp::GradToRad) return unaryScale(0.015707963267948966192313216916398);
+    if (op == semantic::BuiltinOp::RadToCycle) return unaryScale(0.15915494309189533576888376337251);
+    if (op == semantic::BuiltinOp::CycleToRad) return unaryScale(6.283185307179586476925286766559);
 
-    if (equalsIgnoreCase(name, "LogN")) {
+    if (op == semantic::BuiltinOp::LogN) {
         const std::string logX = "%tmp" + std::to_string(nextTemporary_++);
         const std::string logBase = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << logX << " = call double @llvm.log.f64(double " << values.at(1) << ")\n";
@@ -727,19 +722,19 @@ std::string FunctionEmitter::emitMathBuiltinCall(std::string_view name, const st
         output_ << "  " << result << " = fdiv double " << logX << ", " << logBase << "\n";
         return result;
     }
-    if (equalsIgnoreCase(name, "Hypot3")) {
+    if (op == semantic::BuiltinOp::Hypot3) {
         const std::string xy = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << xy << " = call double @hypot(double " << values.at(0) << ", double " << values.at(1) << ")\n";
         output_ << "  " << result << " = call double @hypot(double " << xy << ", double " << values.at(2) << ")\n";
         return result;
     }
 
-    if (const std::string intrinsic = mathIntrinsicName(name); !intrinsic.empty()) {
+    if (const std::string_view intrinsic = mathIntrinsicName(op); !intrinsic.empty()) {
         output_ << "  " << result << " = call double @" << intrinsic << "(";
-    } else if (const std::string libm = mathLibmName(name); !libm.empty()) {
+    } else if (const std::string_view libm = mathLibmName(op); !libm.empty()) {
         output_ << "  " << result << " = call double @" << libm << "(";
     } else {
-        throw CodegenUnsupported("unsupported math builtin: " + std::string(name));
+        throw CodegenUnsupported("unsupported math builtin: " + std::string(semantic::builtinName(op)));
     }
     for (std::size_t index = 0; index < values.size(); ++index) {
         if (index != 0) output_ << ", ";
@@ -982,7 +977,7 @@ std::string FunctionEmitter::emitDecimalToInteger(const std::string& low, const 
 // Beyond Integer (or NaN) is "integer conversion out of range".
 std::string FunctionEmitter::emitRounding(const ast::CallExpression& call)
 {
-    const bool round = equalsIgnoreCase(static_cast<const ast::IdentifierExpression&>(call.callee()).name(), "Round");
+    const bool round = builtinOf(call) == semantic::BuiltinOp::Round;
     const ast::Expression& argument = *call.arguments().front();
     const TypeRef source = typeOf(argument);
     const std::string value = emitExpression(argument);

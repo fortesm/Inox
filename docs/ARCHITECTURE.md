@@ -29,8 +29,8 @@ The driver (`main/main.cpp`) runs phases 1, 2 and 2b for each module file
 as it is loaded (`Use`), then 3-4 once on the whole program
 (`loadProgram`), then 5, 5b, 6 and 7. Every command that generates code
 builds and verifies the typed IR (phase 5b, change `typed-ir`), and
-`--dump-tir` prints it; code generation takes the types, symbols and
-constants of the AST nodes it walks from it, through the AST node map
+`--dump-tir` prints it; code generation takes the types, symbols,
+constants and builtins of the AST nodes it walks from it, through the AST node map
 (`tir/AstNodeMap.h`), which leaves when code generation consumes only the
 typed IR.
 
@@ -145,7 +145,7 @@ exception objects on the heap, will not show the cost.
   it lacks is recorded by the analysis first).
 - **Today:** built and verified for every program that is compiled; since
   r3.122 codegen reads the types, symbols and constants from it by AST
-  node through the AST node map (a node without its TIR node is an
+  node through the AST node map, and since r3.123 the builtin of each call (a node without its TIR node is an
   internal error), and still walks the AST (D5). What the TIR cannot express yet is reported as a gap of the
   backend (E15, `tir::UnsupportedConstructError`); a missing decision of
   the analysis is an internal error (`tir::InvariantError`).
@@ -192,7 +192,7 @@ that removes it (ROADMAP, "Foundation"); a fix updates this table.
 | ~~D2~~ | Closed by F5 (r3.119): the parser builds chained and compound assignments, `with` targets and loop contracts as written (`ChainedAssignmentStatement`, `CompoundAssignmentStatement`, `WithTargetExpression`, loop `contracts`); phase 2b (`normalization/AstNormalizer`) produces the normalized AST, identical to the one the parser made before. The analyzer's `__with` prefix checks remain until F6 | E11 | F5 |
 | ~~D3~~ | Closed by F3 (r3.114): the parser builds each routine header (`ast::RoutineHeader`: `ParameterDeclaration` name, mode, receiver, written type; the result type) and reports its syntax errors; module resolution, contract lowering, generics and `inox interface` read that structure, and the analyzer checks only what types say (`registerFunctionSignatureIn`). Parameter and result types stay text until F4 | E11 | F3 |
 | ~~D4~~ | Closed by F4 (r3.117): a written type is a tree in the AST (`ast::TypeExpr`), built by the parser; module resolution renames, contract lowering tests and the analyzer resolves the tree; generic instances substitute type parameters on it (`substituteTypeParameters`, `writtenFormOf`). Text exists only through `ast::spell` (messages, `inox interface`, instance names); the text reader `types::TypeSyntax` is gone. Exception handler types stay names until F7 | E11 (steps 3-4) | F4 |
-| D5 | Codegen reads the raw AST beside 16 side tables of `SemanticResult` and takes decisions of its own: on r3.119, 106 name comparisons, 117 lookups by AST node, 150 AST shape tests (`tools/codegen_decisions.py`; inventory in change `typed-ir`). Since r3.120 (F6 step 1) the typed IR exists between phases 5 and 6 (`tir/`); since r3.122 (step 2) codegen takes types, symbols and constants from it through a transitional index by AST node, and its other decisions remain | E11 (steps 3-5) | F6 |
+| D5 | Codegen reads the raw AST beside 16 side tables of `SemanticResult` and takes decisions of its own: on r3.119, 106 name comparisons, 117 lookups by AST node, 150 AST shape tests (`tools/codegen_decisions.py`; inventory in change `typed-ir`). Since r3.120 (F6 step 1) the typed IR exists between phases 5 and 6 (`tir/`); since r3.122 (step 2) codegen takes types, symbols and constants from it through a transitional index by AST node, and since r3.123 (step 3) the builtin of each call; its other decisions remain | E11 (steps 4-5) | F6 |
 | D6 | Exception handlers match the written type name; the hierarchy is not in `types::Type` | E11 | F7 |
 | ~~D7~~ | Closed by F1 (r3.111): every gate of E19 runs in CI (`.github/workflows/ci.yml`, `.github/workflows/gates.yml`) | E19 | F1 |
 
@@ -307,7 +307,7 @@ instead of searching the whole emitter.
   try / exceptions").
 - `codegen/LlvmText.*` — names, literals, string constants in IR text.
 - `codegen/Operators.*` — LLVM instruction or predicate of each operator.
-- `codegen/MathBuiltins.*` — Std.Math functions lowered to intrinsics/libm.
+- `codegen/MathBuiltins.*` — Std.Math functions (`BuiltinOp`) lowered to intrinsics/libm.
 - `codegen/ExceptionAbi.*` — the exception ABI Strategy: `ItaniumExceptionAbi`
   (landingpad) and `MsvcExceptionAbi` (funclets), chosen once per module by
   `hostExceptionAbi()`; personality and capture pad. Never test the host

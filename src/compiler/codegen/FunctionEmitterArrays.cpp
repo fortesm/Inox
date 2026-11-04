@@ -59,13 +59,10 @@ std::string FunctionEmitter::valueLlvmType(TypeRef type)
 // Low(A), High(A) and Length(A) of a fixed array are constants (CANON-13).
 std::optional<std::int64_t> FunctionEmitter::arrayBoundCall(const ast::CallExpression& call) const
 {
-    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().size() != 1) {
-        return std::nullopt;
-    }
-    const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
-    const bool low = equalsIgnoreCase(callee.name(), "Low");
-    const bool high = equalsIgnoreCase(callee.name(), "High");
-    if (!low && !high && !equalsIgnoreCase(callee.name(), "Length")) {
+    const semantic::BuiltinOp op = builtinOf(call);
+    const bool low = op == semantic::BuiltinOp::Low;
+    const bool high = op == semantic::BuiltinOp::High;
+    if ((!low && !high && op != semantic::BuiltinOp::Length) || call.arguments().size() != 1) {
         return std::nullopt;
     }
     const TypeRef type = typeOf(*call.arguments()[0]);

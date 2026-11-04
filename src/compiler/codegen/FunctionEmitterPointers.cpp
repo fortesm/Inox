@@ -36,15 +36,6 @@
 
 namespace inox::compiler::codegen::detail {
 
-namespace {
-
-const std::string& calleeName(const ast::CallExpression& call)
-{
-    return static_cast<const ast::IdentifierExpression&>(call.callee()).name();
-}
-
-} // namespace
-
 // A value that holds an owner is moved, never copied: an owner, or an
 // aggregate holding one. A Link and a slice only look at storage.
 bool FunctionEmitter::isMoveOnly(TypeRef type)
@@ -67,17 +58,18 @@ bool FunctionEmitter::isMoveOnly(TypeRef type)
 
 bool FunctionEmitter::isPointerBuiltin(const ast::CallExpression& call) const
 {
-    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
+    switch (builtinOf(call)) {
+    case semantic::BuiltinOp::New:
+    case semantic::BuiltinOp::Free:
+    case semantic::BuiltinOp::Move:
+    case semantic::BuiltinOp::Value:
+    case semantic::BuiltinOp::Link:
+    case semantic::BuiltinOp::Alive:
+    case semantic::BuiltinOp::Same:
+        return true;
+    default:
         return false;
     }
-    const std::string& name = calleeName(call);
-    const std::size_t count = call.arguments().size();
-    const bool known = ((equalsIgnoreCase(name, "New") || equalsIgnoreCase(name, "Free") ||
-                         equalsIgnoreCase(name, "Move") || equalsIgnoreCase(name, "Value") ||
-                         equalsIgnoreCase(name, "Link") || equalsIgnoreCase(name, "Alive")) &&
-                        count == 1) ||
-                       (equalsIgnoreCase(name, "Same") && count == 2);
-    return known && signatures_.find(normalize(name)) == signatures_.end();
 }
 
 // Walks a value of `type` stored at `pointer` (struct fields and array
@@ -300,7 +292,7 @@ const ast::Expression* FunctionEmitter::lastPointerOnPath(const ast::Expression&
         return nullptr;
     }
     const auto& call = static_cast<const ast::CallExpression&>(place);
-    if (isPointerBuiltin(call) && equalsIgnoreCase(calleeName(call), "Value")) {
+    if (builtinOf(call) == semantic::BuiltinOp::Value) {
         return call.arguments()[0].get();
     }
     if ((isMemberAccessCall(call) && memberField(call)) || isIndexCall(call)) {
@@ -340,7 +332,7 @@ FunctionEmitter::LinkParts FunctionEmitter::emitHeaderOfPlace(const ast::Express
     }
     if (place.kind() == ast::AstNodeKind::CallExpression) {
         const auto& call = static_cast<const ast::CallExpression&>(place);
-        if (isPointerBuiltin(call) && equalsIgnoreCase(calleeName(call), "Value")) {
+        if (builtinOf(call) == semantic::BuiltinOp::Value) {
             return emitHeaderOfPointer(*call.arguments()[0]);
         }
         if (isMemberAccessCall(call) || isIndexCall(call)) {
@@ -440,7 +432,7 @@ void FunctionEmitter::collectTombstoneLocals()
                 return;
             }
             const auto& call = static_cast<const ast::CallExpression&>(expression);
-            if (!isPointerBuiltin(call) || !equalsIgnoreCase(calleeName(call), "Link") ||
+            if (builtinOf(call) != semantic::BuiltinOp::Link ||
                 isPointerType(typeOf(*call.arguments()[0]))) {
                 return;
             }
@@ -483,10 +475,10 @@ void FunctionEmitter::declareTombstone(const std::string& normalizedName)
 
 std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
 {
-    const std::string& name = calleeName(call);
+    const semantic::BuiltinOp op = builtinOf(call);
     const ast::Expression& argument = *call.arguments()[0];
 
-    if (equalsIgnoreCase(name, "New")) {
+    if (op == semantic::BuiltinOp::New) {
         const TypeRef ownType = typeOf(call);
         const TypeRef targetType = ownType->pointerTarget();
         const std::string llvmType = valueLlvmType(targetType);
@@ -520,11 +512,11 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
         return object;
     }
 
-    if (equalsIgnoreCase(name, "Move") || equalsIgnoreCase(name, "Free")) {
+    if (op == semantic::BuiltinOp::Move || op == semantic::BuiltinOp::Free) {
         const TypeRef type = typeOf(argument);
         const std::string llvmType = valueLlvmType(type);
         const Place place = emitPlace(argument);
-        if (equalsIgnoreCase(name, "Free")) {
+        if (op == semantic::BuiltinOp::Free) {
             emitReleaseAt(place.pointer, type);
             output_ << "  store " << llvmType << " zeroinitializer, ptr " << place.pointer << '\n';
             return {};
@@ -536,7 +528,7 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
         return value;
     }
 
-    if (equalsIgnoreCase(name, "Value")) {
+    if (op == semantic::BuiltinOp::Value) {
         const TypeRef type = typeOf(call);
         const std::string target = emitPointerTarget(argument);
         const std::string value = "%tmp" + std::to_string(nextTemporary_++);
@@ -544,7 +536,7 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
         return value;
     }
 
-    if (equalsIgnoreCase(name, "Link")) {
+    if (op == semantic::BuiltinOp::Link) {
         return emitLinkOf(argument);
     }
 
@@ -560,7 +552,7 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
         output_ << "  " << alive << " = icmp ne ptr " << value << ", null\n";
         return std::make_pair(alive, value);
     };
-    if (equalsIgnoreCase(name, "Alive")) {
+    if (op == semantic::BuiltinOp::Alive) {
         return aliveAndTarget(argument).first;
     }
     const auto [firstAlive, firstTarget] = aliveAndTarget(argument);

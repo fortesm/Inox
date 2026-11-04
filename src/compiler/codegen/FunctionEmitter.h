@@ -405,6 +405,8 @@ private:
     const semantic::Symbol* symbolOf(const ast::Expression& node) const;
     TypeRef typeFromTir(const ast::Expression& expression) const;
     TypeRef declaredTypeOf(const ast::VarStatement& declaration) const;
+    // The builtin a call is (semantic/CallMeaning.h); None for any other call.
+    semantic::BuiltinOp builtinOf(const ast::Expression& call) const;
 
     static bool isRangeCheckedArithmetic(const ast::Expression& expression);
 
@@ -414,7 +416,7 @@ private:
 
     std::string emitExpressionValue(const ast::Expression& expression);
 
-    std::string emitMathBuiltinCall(std::string_view name, const std::vector<ast::ExpressionPtr>& arguments);
+    std::string emitMathBuiltinCall(semantic::BuiltinOp op, const std::vector<ast::ExpressionPtr>& arguments);
 
     // ---- Safe pointers (OpenSpec change safe-pointers; FunctionEmitterPointers.cpp) ----
     // An owner (Own<T>, Option<Own<T>>) is its object's address in a block
@@ -510,7 +512,7 @@ private:
     bool isAssertCall(const ast::CallExpression& call) const;
     void emitAssertCall(const ast::CallExpression& call);
     // The LLVM type of a file function's result ("void" when it has none).
-    static std::string fileCallLlvmType(const ast::CallExpression& call);
+    std::string fileCallLlvmType(const ast::CallExpression& call) const;
     std::string emitFileCall(const ast::CallExpression& call);
     // Calls a libinoxrt function with `invoke` inside a protected region, so
     // an exception it raises reaches the handlers and cleanup pads.

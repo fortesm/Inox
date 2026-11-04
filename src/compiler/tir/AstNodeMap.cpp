@@ -102,6 +102,18 @@ bool AstNodeMap::typeAgrees(const ast::Expression& node, TypeRef recorded) const
            (entry.place->kind == PlaceKind::Field || entry.place->kind == PlaceKind::Element);
 }
 
+semantic::BuiltinOp AstNodeMap::builtinOf(const ast::Expression& node) const
+{
+    const Entry& entry = entryOf(node, "builtin");
+    if (entry.value != nullptr && entry.value->kind == ExprKind::Builtin) {
+        return entry.value->op;
+    }
+    if (entry.place != nullptr && entry.place->kind == PlaceKind::Through) {
+        return semantic::BuiltinOp::Value;
+    }
+    return semantic::BuiltinOp::None;
+}
+
 TypeRef AstNodeMap::declaredType(const ast::VarStatement& declaration) const
 {
     const auto found = declarations_.find(&declaration);

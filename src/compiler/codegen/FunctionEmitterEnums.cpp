@@ -19,15 +19,6 @@
 
 namespace inox::compiler::codegen::detail {
 
-namespace {
-
-const std::string& calleeName(const ast::CallExpression& call)
-{
-    return static_cast<const ast::IdentifierExpression&>(call.callee()).name();
-}
-
-} // namespace
-
 // The enum type an argument names (`Low(TSuit)`), or null.
 TypeRef FunctionEmitter::enumTypeNamed(const ast::Expression& expression) const
 {
@@ -41,39 +32,38 @@ TypeRef FunctionEmitter::enumTypeNamed(const ast::Expression& expression) const
 
 bool FunctionEmitter::isOrdinalBuiltin(const ast::CallExpression& call) const
 {
-    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression || call.arguments().size() != 1 ||
-        calledRoutine(static_cast<const ast::IdentifierExpression&>(call.callee())) != nullptr) {
+    const semantic::BuiltinOp op = builtinOf(call);
+    if (op == semantic::BuiltinOp::None || call.arguments().size() != 1) {
         return false;
     }
-    const std::string& name = calleeName(call);
     const ast::Expression& argument = *call.arguments()[0];
-    if (equalsIgnoreCase(name, "Low") || equalsIgnoreCase(name, "High")) {
+    if (op == semantic::BuiltinOp::Low || op == semantic::BuiltinOp::High) {
         return enumTypeNamed(argument) != nullptr;
     }
     const TypeRef type = typeOf(argument);
-    if (equalsIgnoreCase(name, "Ord")) {
+    if (op == semantic::BuiltinOp::Ord) {
         return type != nullptr && type->isEnum();
     }
-    return (equalsIgnoreCase(name, "Succ") || equalsIgnoreCase(name, "Pred")) && type != nullptr &&
+    return (op == semantic::BuiltinOp::Succ || op == semantic::BuiltinOp::Pred) && type != nullptr &&
            (type->isEnum() || type->isRange());
 }
 
 std::string FunctionEmitter::emitOrdinalBuiltin(const ast::CallExpression& call)
 {
-    const std::string& name = calleeName(call);
+    const semantic::BuiltinOp op = builtinOf(call);
     const ast::Expression& argument = *call.arguments()[0];
     if (const TypeRef type = enumTypeNamed(argument)) {
-        return std::to_string(equalsIgnoreCase(name, "Low") ? type->minValue() : type->maxValue());
+        return std::to_string(op == semantic::BuiltinOp::Low ? type->minValue() : type->maxValue());
     }
     const std::string value = emitExpression(argument);
-    if (equalsIgnoreCase(name, "Ord")) {
+    if (op == semantic::BuiltinOp::Ord) {
         return value;
     }
     // Succ and Pred: past the last or before the first literal is "value
     // out of range" (kind 11).
     const TypeRef type = typeOf(argument);
     const std::string stepped = "%tmp" + std::to_string(nextTemporary_++);
-    output_ << "  " << stepped << " = " << (equalsIgnoreCase(name, "Succ") ? "add" : "sub") << " i64 " << value
+    output_ << "  " << stepped << " = " << (op == semantic::BuiltinOp::Succ ? "add" : "sub") << " i64 " << value
             << ", 1\n";
     return emitRangeCheck(stepped, IntegerRange{type->minValue(), type->maxValue()}, 11);
 }

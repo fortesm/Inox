@@ -10,13 +10,17 @@
 
 #pragma once
 
-#include <string>
+#include "../semantic/CallMeaning.h"
+
 #include <string_view>
 
 namespace inox::compiler::codegen::detail {
 
-std::string mathIntrinsicName(std::string_view inoxName);
-std::string mathLibmName(std::string_view inoxName);
-bool isMathBuiltin(std::string_view inoxName);
+// The LLVM intrinsic, or the libm function, that computes a math builtin;
+// empty when it has none.
+std::string_view mathIntrinsicName(semantic::BuiltinOp op);
+std::string_view mathLibmName(semantic::BuiltinOp op);
+// One of the math builtins of the prelude and Std.Math that work on Floats.
+bool isMathBuiltin(semantic::BuiltinOp op);
 
 } // namespace inox::compiler::codegen::detail

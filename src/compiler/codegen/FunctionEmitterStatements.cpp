@@ -324,11 +324,12 @@ void FunctionEmitter::emitExpressionStatement(const ast::Expression& expression)
     }
     if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
         const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
-        if (equalsIgnoreCase(identifier.name(), "Get")) {
+        const semantic::BuiltinOp op = builtinOf(identifier);
+        if (op == semantic::BuiltinOp::Get) {
             emitInputDiscardToken();
             return;
         }
-        if (equalsIgnoreCase(identifier.name(), "GetLn")) {
+        if (op == semantic::BuiltinOp::GetLn) {
             emitInputDiscardLine();
             return;
         }
@@ -373,17 +374,13 @@ void FunctionEmitter::emitExpressionStatement(const ast::Expression& expression)
         emitFileCall(call);
         return;
     }
-    const bool isPut = equalsIgnoreCase(callee.name(), "Put");
-    const bool isPutLn = equalsIgnoreCase(callee.name(), "PutLn");
-    if (isPut || isPutLn) {
-        emitOutputCallSequence(call.arguments(), isPutLn);
+    const semantic::BuiltinOp op = builtinOf(call);
+    if (op == semantic::BuiltinOp::Put || op == semantic::BuiltinOp::PutLn) {
+        emitOutputCallSequence(call.arguments(), op == semantic::BuiltinOp::PutLn);
         return;
     }
-
-    const bool isGet = equalsIgnoreCase(callee.name(), "Get");
-    const bool isGetLn = equalsIgnoreCase(callee.name(), "GetLn");
-    if (isGet || isGetLn) {
-        emitInputCallSequence(call.arguments(), isGetLn);
+    if (op == semantic::BuiltinOp::Get || op == semantic::BuiltinOp::GetLn) {
+        emitInputCallSequence(call.arguments(), op == semantic::BuiltinOp::GetLn);
         return;
     }
 
