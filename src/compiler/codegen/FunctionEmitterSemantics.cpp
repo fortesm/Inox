@@ -6,7 +6,8 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // FunctionEmitter: the semantic facts of the AST nodes code generation
-// walks (types, symbols, constants, declared types), already resolved,
+// walks (types, symbols, constants, declared types, the builtin a call
+// is), already resolved,
 // taken from the typed IR through the AST node map (tir/AstNodeMap.h),
 // never from the SemanticResult. Only reading belongs here: no analysis. A node without its
 // TIR node is an internal error in every build; a Debug compiler also
@@ -95,6 +96,20 @@ TypeRef FunctionEmitter::declaredTypeOf(const ast::VarStatement& declaration) co
     }
 #endif
     return type;
+}
+
+semantic::BuiltinOp FunctionEmitter::builtinOf(const ast::Expression& call) const
+{
+    const semantic::BuiltinOp op = astNodes_.builtinOf(call);
+#ifndef NDEBUG
+    const semantic::CallMeaning* meaning = semantics_.callMeaning(call);
+    const semantic::BuiltinOp recorded =
+        meaning != nullptr && meaning->kind == semantic::CallKind::Builtin ? meaning->op : semantic::BuiltinOp::None;
+    if (op != recorded) {
+        disagree("builtin", call);
+    }
+#endif
+    return op;
 }
 
 } // namespace inox::compiler::codegen::detail

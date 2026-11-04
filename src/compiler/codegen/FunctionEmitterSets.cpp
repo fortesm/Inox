@@ -15,16 +15,11 @@
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
 
-#include <array>
 #include <string>
-#include <string_view>
 
 namespace inox::compiler::codegen::detail {
 
 namespace {
-
-constexpr std::array<std::string_view, 6> kSetFunctions{
-    "Union", "Intersection", "Difference", "SymmetricDifference", "Include", "Exclude"};
 
 unsigned setBits(TypeRef setType)
 {
@@ -42,16 +37,19 @@ bool FunctionEmitter::isSetCall(const ast::CallExpression& call) const
     if (callee.name() == "__set") {
         return true;
     }
-    const TypeRef type = typeOf(call);
-    if (type == nullptr || !type->isSet() || call.arguments().size() != 2 || calledRoutine(callee) != nullptr) {
+    switch (builtinOf(call)) {
+    case semantic::BuiltinOp::Union:
+    case semantic::BuiltinOp::Intersection:
+    case semantic::BuiltinOp::Difference:
+    case semantic::BuiltinOp::SymmetricDifference:
+    case semantic::BuiltinOp::Include:
+    case semantic::BuiltinOp::Exclude: {
+        const TypeRef type = typeOf(call);
+        return type != nullptr && type->isSet() && call.arguments().size() == 2;
+    }
+    default:
         return false;
     }
-    for (const std::string_view function : kSetFunctions) {
-        if (equalsIgnoreCase(function, callee.name())) {
-            return true;
-        }
-    }
-    return false;
 }
 
 // The one-bit mask of the value `value` (an i64 of the base) in `setType`.
@@ -92,22 +90,23 @@ std::string FunctionEmitter::emitSetCall(const ast::CallExpression& call)
         }
         return value;
     }
+    const semantic::BuiltinOp op = builtinOf(call);
     const std::string set = emitExpression(*call.arguments()[0]);
-    if (equalsIgnoreCase(name, "Include") || equalsIgnoreCase(name, "Exclude")) {
+    if (op == semantic::BuiltinOp::Include || op == semantic::BuiltinOp::Exclude) {
         const std::string mask = emitSetMask(emitExpression(*call.arguments()[1]), setType);
-        if (equalsIgnoreCase(name, "Include")) {
+        if (op == semantic::BuiltinOp::Include) {
             return operation("or", set, mask);
         }
         return operation("and", set, operation("xor", mask, "-1"));
     }
     const std::string other = emitExpression(*call.arguments()[1]);
-    if (equalsIgnoreCase(name, "Union")) {
+    if (op == semantic::BuiltinOp::Union) {
         return operation("or", set, other);
     }
-    if (equalsIgnoreCase(name, "Intersection")) {
+    if (op == semantic::BuiltinOp::Intersection) {
         return operation("and", set, other);
     }
-    if (equalsIgnoreCase(name, "Difference")) {
+    if (op == semantic::BuiltinOp::Difference) {
         return operation("and", set, operation("xor", other, "-1"));
     }
     return operation("xor", set, other);  // SymmetricDifference

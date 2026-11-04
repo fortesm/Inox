@@ -22,12 +22,7 @@ namespace inox::compiler::codegen::detail {
 
 bool FunctionEmitter::isAssertCall(const ast::CallExpression& call) const
 {
-    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
-        return false;
-    }
-    const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
-    return equalsIgnoreCase(callee.name(), "Assert") &&
-           signatures_.find(normalize(callee.name())) == signatures_.end();
+    return builtinOf(call) == semantic::BuiltinOp::Assert;
 }
 
 void FunctionEmitter::emitAssertCall(const ast::CallExpression& call)

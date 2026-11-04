@@ -82,6 +82,11 @@ public:
     const semantic::ConstantValue* constantOf(const ast::Expression& node) const;
     TypeRef declaredType(const ast::VarStatement& declaration) const;
     TypeRef declaredType(const ast::VariableDeclaration& declaration) const;
+    // The builtin a call is, as the analysis decided it: the operation of
+    // its Builtin; Value for `Value(P)`, which the TIR builds as the
+    // object P points at (a Through place, the only one an AST node
+    // becomes); None for anything else.
+    semantic::BuiltinOp builtinOf(const ast::Expression& node) const;
 
     // Debug agreement with the analysis's record: the same type, or one of
     // the two differences the TIR makes on purpose. An operation without a

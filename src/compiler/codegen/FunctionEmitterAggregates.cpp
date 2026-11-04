@@ -305,11 +305,7 @@ FunctionEmitter::Place FunctionEmitter::emitPlace(const ast::Expression& express
     }
     // Safe pointers: `Value(P)` is the object P reaches.
     if (expression.kind() == ast::AstNodeKind::CallExpression &&
-        isPointerBuiltin(static_cast<const ast::CallExpression&>(expression)) &&
-        equalsIgnoreCase(static_cast<const ast::IdentifierExpression&>(
-                             static_cast<const ast::CallExpression&>(expression).callee())
-                             .name(),
-                         "Value")) {
+        builtinOf(expression) == semantic::BuiltinOp::Value) {
         const auto& call = static_cast<const ast::CallExpression&>(expression);
         return Place{emitPointerTarget(*call.arguments()[0]), typeOf(expression)};
     }

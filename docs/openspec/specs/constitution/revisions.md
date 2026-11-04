@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.122
+Canon revision: r3.123
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -641,3 +641,13 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   build. The LLVM IR of every program is identical; what the typed IR
   cannot express yet is reported as a gap of the backend (E15). Strategy
   approved by Marcelo Fortes, 2026-11-04. Change `typed-ir`.
+- r3.123 — 2026-11-04 — E11, foundation step F6, step 3 of 5: code
+  generation dispatches on the builtin the analysis recorded for each
+  call (`BuiltinOp`), read from the typed IR, instead of comparing callee
+  names with builtin names; a Debug compiler checks it against the
+  analysis. The math, safe-pointer, array and slice bound, ordinal, set,
+  console, Std.Debug and Std.Files builtins are covered.
+  `tools/codegen_decisions.py` also counts the names code generation
+  resolves itself. The LLVM IR and the typed IR of every program are
+  identical. Scope approved by Marcelo Fortes, 2026-11-04. Change
+  `typed-ir`.

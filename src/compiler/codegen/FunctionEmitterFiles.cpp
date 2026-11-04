@@ -22,76 +22,24 @@
 
 namespace inox::compiler::codegen::detail {
 
-namespace {
-
-enum class FileCall {
-    None,
-    OpenRead,
-    Create,
-    OpenAppend,
-    ReadLn,
-    Eof,
-    Close,
-    Write,
-    WriteLn,
-    Exists,
-    DeleteFile,
-    RenameFile,
-};
-
-FileCall fileCallKind(const ast::CallExpression& call)
-{
-    if (call.callee().kind() != ast::AstNodeKind::IdentifierExpression) {
-        return FileCall::None;
-    }
-    const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
-    struct Entry {
-        std::string_view name;
-        FileCall kind;
-    };
-    static constexpr Entry entries[] = {
-        {"OpenRead", FileCall::OpenRead}, {"Create", FileCall::Create},
-        {"OpenAppend", FileCall::OpenAppend}, {"ReadLn", FileCall::ReadLn},
-        {"Eof", FileCall::Eof}, {"Close", FileCall::Close},
-        {"Write", FileCall::Write}, {"WriteLn", FileCall::WriteLn},
-        {"Exists", FileCall::Exists}, {"DeleteFile", FileCall::DeleteFile},
-        {"RenameFile", FileCall::RenameFile},
-    };
-    for (const Entry& entry : entries) {
-        if (equalsIgnoreCase(name, entry.name)) {
-            // ReadLn without an argument is the console prelude function.
-            if (entry.kind == FileCall::ReadLn && call.arguments().size() != 1) {
-                return FileCall::None;
-            }
-            return entry.kind;
-        }
-    }
-    return FileCall::None;
-}
-
-} // namespace
-
+// A function of Std.Files / Std.IOUtils: the last builtins, from OpenRead
+// (semantic/CallMeaning.h).
 bool FunctionEmitter::isFileCall(const ast::CallExpression& call) const
 {
-    if (fileCallKind(call) == FileCall::None) {
-        return false;
-    }
-    // A routine of the program with the same name is called instead; the
-    // analyzer rejects that name next to `Use Std.Files`.
-    const auto& callee = static_cast<const ast::IdentifierExpression&>(call.callee());
-    return signatures_.find(normalize(callee.name())) == signatures_.end();
+    const semantic::BuiltinOp op = builtinOf(call);
+    return op >= semantic::BuiltinOp::OpenRead && op <= semantic::BuiltinOp::RenameFile;
 }
 
-std::string FunctionEmitter::fileCallLlvmType(const ast::CallExpression& call)
+std::string FunctionEmitter::fileCallLlvmType(const ast::CallExpression& call) const
 {
-    switch (fileCallKind(call)) {
-    case FileCall::OpenRead:
-    case FileCall::Create:
-    case FileCall::OpenAppend:
-    case FileCall::ReadLn:
+    switch (builtinOf(call)) {
+    case semantic::BuiltinOp::OpenRead:
+    case semantic::BuiltinOp::Create:
+    case semantic::BuiltinOp::OpenAppend:
+    case semantic::BuiltinOp::FileReadLn:
         return "ptr";
-    case FileCall::Eof:
-    case FileCall::Exists:
+    case semantic::BuiltinOp::Eof:
+    case semantic::BuiltinOp::Exists:
         return "i1";
     default:
         return "void";
@@ -126,31 +74,31 @@ std::string FunctionEmitter::emitFileCall(const ast::CallExpression& call)
 {
     const auto& arguments = call.arguments();
     const auto value = [&](std::size_t index) { return emitExpression(*arguments[index]); };
-    switch (fileCallKind(call)) {
-    case FileCall::OpenRead:
-    case FileCall::Create:
-    case FileCall::OpenAppend: {
-        const FileCall kind = fileCallKind(call);
-        const int mode = kind == FileCall::OpenRead ? 0 : kind == FileCall::Create ? 1 : 2;
+    const semantic::BuiltinOp op = builtinOf(call);
+    switch (op) {
+    case semantic::BuiltinOp::OpenRead:
+    case semantic::BuiltinOp::Create:
+    case semantic::BuiltinOp::OpenAppend: {
+        const int mode = op == semantic::BuiltinOp::OpenRead ? 0 : op == semantic::BuiltinOp::Create ? 1 : 2;
         const std::string path = value(0);
         const std::string file = emitRuntimeCall(RuntimeFunction::FileOpen, "ptr", "__inox_file_open",
                                                  "ptr " + path + ", i32 " + std::to_string(mode));
         holdOwnedResult(file, semantics_.types().fileType(), "ptr");
         return file;
     }
-    case FileCall::ReadLn: {
+    case semantic::BuiltinOp::FileReadLn: {
         const std::string file = value(0);
         const std::string line = emitRuntimeCall(RuntimeFunction::FileReadLn, "ptr", "__inox_file_readln", "ptr " + file);
         holdOwnedResult(line, semantics_.types().stringType(), "ptr");
         return line;
     }
-    case FileCall::Eof:
+    case semantic::BuiltinOp::Eof:
         return emitRuntimeCall(RuntimeFunction::FileEof, "i1", "__inox_file_eof", "ptr " + value(0));
-    case FileCall::Close:
+    case semantic::BuiltinOp::Close:
         emitRuntimeCall(RuntimeFunction::FileClose, "void", "__inox_file_close", "ptr " + value(0));
         return {};
-    case FileCall::Write:
-    case FileCall::WriteLn: {
+    case semantic::BuiltinOp::Write:
+    case semantic::BuiltinOp::WriteLn: {
         // The file is evaluated once; the values are written in order, as
         // PutLn prints them (CANON-17).
         const std::string file = value(0);
@@ -190,23 +138,23 @@ std::string FunctionEmitter::emitFileCall(const ast::CallExpression& call)
                                 "ptr " + file + ", i64 " + written);
             }
         }
-        if (fileCallKind(call) == FileCall::WriteLn) {
+        if (op == semantic::BuiltinOp::WriteLn) {
             emitRuntimeCall(RuntimeFunction::FileWriteNewline, "void", "__inox_file_write_newline", "ptr " + file);
         }
         return {};
     }
-    case FileCall::Exists:
+    case semantic::BuiltinOp::Exists:
         return emitRuntimeCall(RuntimeFunction::FileExists, "i1", "__inox_file_exists", "ptr " + value(0));
-    case FileCall::DeleteFile:
+    case semantic::BuiltinOp::DeleteFile:
         emitRuntimeCall(RuntimeFunction::FileDelete, "void", "__inox_file_delete", "ptr " + value(0));
         return {};
-    case FileCall::RenameFile: {
+    case semantic::BuiltinOp::RenameFile: {
         const std::string from = value(0);
         const std::string to = value(1);
         emitRuntimeCall(RuntimeFunction::FileRename, "void", "__inox_file_rename", "ptr " + from + ", ptr " + to);
         return {};
     }
-    case FileCall::None:
+    default:
         break;
     }
     throw CodegenError("internal error: not a file call");

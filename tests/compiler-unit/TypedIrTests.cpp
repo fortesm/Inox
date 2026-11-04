@@ -150,6 +150,8 @@ void testMigrationIndex(const ast::ModuleNode& program, const semantic::Semantic
     check(index.typeOf(put) != nullptr && index.typeOf(put)->isVoid(), "a call without a result is Void");
     check(index.typeOf(put.callee()) == nullptr, "the name of a routine has no value");
     check(index.typeAgrees(put, semantics.typeOf(put)), "Void agrees with the analysis's absent type");
+    check(index.builtinOf(put) == BuiltinOp::PutLn, "PutLn is the builtin the analysis decided");
+    check(index.builtinOf(construction) == BuiltinOp::None, "a construction is no builtin");
     // A node the builder never met is an error, not an answer.
     const ast::IdentifierExpression stranger("Stranger");
     bool refused = false;
@@ -303,6 +305,44 @@ void testTypeAgreement()
     check(!index.typeAgrees(variable, nullptr), "a variable place the analysis did not type disagrees");
 }
 
+// The builtin a call is comes from its TIR node: a Builtin's operation, Value
+// for the object a pointer reaches; any other node is no builtin, and a node
+// the builder never met is an error.
+void testBuiltinOf()
+{
+    types::TypeContext types;
+    tir::Program program;
+    tir::AstNodeMap index;
+    tir::Expr* sqrt = program.arena.make<tir::Expr>();
+    sqrt->kind = tir::ExprKind::Builtin;
+    sqrt->op = BuiltinOp::Sqrt;
+    sqrt->type = types.float64Type();
+    const ast::IdentifierExpression builtin("Sqrt");
+    index.recordValue(builtin, sqrt);
+    check(index.builtinOf(builtin) == BuiltinOp::Sqrt, "a Builtin is its operation");
+
+    tir::Place* pointer = program.arena.make<tir::Place>();
+    pointer->kind = tir::PlaceKind::Local;
+    tir::Place* target = program.arena.make<tir::Place>();
+    target->kind = tir::PlaceKind::Through;
+    target->base = pointer;
+    const ast::IdentifierExpression value("Value");
+    index.recordPlace(value, target);
+    check(index.builtinOf(value) == BuiltinOp::Value, "the object a pointer reaches is Value(P)");
+    const ast::IdentifierExpression variable("P");
+    index.recordPlace(variable, pointer);
+    check(index.builtinOf(variable) == BuiltinOp::None, "a variable is no builtin");
+
+    const ast::IdentifierExpression stranger("Stranger");
+    bool refused = false;
+    try {
+        (void)index.builtinOf(stranger);
+    } catch (const tir::InvariantError&) {
+        refused = true;
+    }
+    check(refused, "the builtin of a node without its TIR node is an internal error");
+}
+
 // Valid Inox the typed IR cannot express yet is a gap, not an internal error.
 void testUnsupportedConstruct()
 {
@@ -335,6 +375,7 @@ int runTypedIrTests()
     testBuiltProgram();
     testMalformedTir();
     testTypeAgreement();
+    testBuiltinOf();
     testUnsupportedConstruct();
     return failureCount() - before;
 }

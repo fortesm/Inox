@@ -421,7 +421,7 @@ bool FunctionEmitter::placeMayChange(const ast::Expression& place) const
     }
     const auto& call = static_cast<const ast::CallExpression&>(place);
     if (isPointerBuiltin(call)) {
-        return equalsIgnoreCase(static_cast<const ast::IdentifierExpression&>(call.callee()).name(), "Value");
+        return builtinOf(call) == semantic::BuiltinOp::Value;
     }
     if ((isMemberAccessCall(call) && memberField(call)) || isIndexCall(call)) {
         const ast::Expression& base = *call.arguments()[0];

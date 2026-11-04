@@ -70,7 +70,30 @@ Measured at step 2 (r3.122; clang, Linux):
 
 ## 3. Builtins by kind
 
-- [ ] 3.1 The analysis records each call's builtin; codegen dispatches on `Builtin::op`; no name comparison left in `codegen/`
+- [x] 3.0 Scope approved (Marcelo Fortes, 2026-11-04) and recorded in `design.md`; `tools/codegen_decisions.py` also counts the names codegen resolves itself (`resolutions`: `types().lookup`, `signatures_.find`, `findModuleIntrinsic`, the `__with` prefix, a name against a table of names)
+- [x] 3.1 The analysis records each call's builtin (since step 1); codegen dispatches on `Builtin::op`, read from the TIR through `AstNodeMap::builtinOf` and checked against the analysis in Debug; no comparison of a callee name with a builtin's name, and no table of builtin names, left in `codegen/`
+
+Measured at step 3 (r3.123; clang, Linux):
+
+- Inventory: name comparisons 106 -> 13 (the encodings, `Self`, `true`,
+  `Main` and `String(X)` are left); lookups by AST node 119 -> 117; AST
+  shape tests 152 -> 147; name resolutions 19 -> 13.
+- LLVM IR: identical for all 1065 programs, in Debug and in Release, with
+  no declared difference; TIR snapshot identical.
+- Stack: no protected frame grows; several shrink
+  (`emitExpressionValue` 6408 -> 6024 bytes, `emitPlace` 920 -> 888,
+  `lastPointerOnPath` 184 -> 152).
+
+Left for later steps (found at step 3; their step is the maintainer's
+to set):
+
+- Conversions recognized by name: `String(X)` and the target type
+  resolved from the written name (`types().lookup`, three sites), which
+  the TIR's `Convert` carries; the audit had proposed them for step 3.
+- The type named in `Low(T)` and `High(T)` (`enumTypeNamed`), which the
+  TIR carries as a folded builtin with its `TypeValue` operand.
+- The module intrinsics found by name (`intrinsicCallOf`), which the
+  TIR's `Intrinsic` carries.
 
 ## 4. Places and encodings
 

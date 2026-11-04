@@ -197,5 +197,5 @@ they are rejected now.)
 - The typed IR (F6, change `typed-ir`) is built and verified for every
   program that is compiled and printed by `--dump-tir`; since step 2
   (r3.122) code generation takes the types, symbols and constants from it
-  through a transitional index, and its other decisions move at steps
-  3-5.
+  through a transitional index, since step 3 (r3.123) the builtin of each
+  call, and its other decisions move at steps 4-5.

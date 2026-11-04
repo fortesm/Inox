@@ -7,55 +7,63 @@
 
 #include "MathBuiltins.h"
 
-#include "LlvmText.h"
 
 namespace inox::compiler::codegen::detail {
 
-std::string mathIntrinsicName(std::string_view inoxName)
+using semantic::BuiltinOp;
+
+std::string_view mathIntrinsicName(BuiltinOp op)
 {
-    if (equalsIgnoreCase(inoxName, "Sqrt")) return "llvm.sqrt.f64";
-    if (equalsIgnoreCase(inoxName, "Sin")) return "llvm.sin.f64";
-    if (equalsIgnoreCase(inoxName, "Cos")) return "llvm.cos.f64";
-    if (equalsIgnoreCase(inoxName, "Exp")) return "llvm.exp.f64";
-    if (equalsIgnoreCase(inoxName, "Ln")) return "llvm.log.f64";
-    if (equalsIgnoreCase(inoxName, "Log2")) return "llvm.log2.f64";
-    if (equalsIgnoreCase(inoxName, "Log10")) return "llvm.log10.f64";
-    if (equalsIgnoreCase(inoxName, "Power")) return "llvm.pow.f64";
-    if (equalsIgnoreCase(inoxName, "Floor")) return "llvm.floor.f64";
-    if (equalsIgnoreCase(inoxName, "Ceil")) return "llvm.ceil.f64";
-    if (equalsIgnoreCase(inoxName, "Abs")) return "llvm.fabs.f64";
-    return {};
+    switch (op) {
+    case BuiltinOp::Sqrt: return "llvm.sqrt.f64";
+    case BuiltinOp::Sin: return "llvm.sin.f64";
+    case BuiltinOp::Cos: return "llvm.cos.f64";
+    case BuiltinOp::Exp: return "llvm.exp.f64";
+    case BuiltinOp::Ln: return "llvm.log.f64";
+    case BuiltinOp::Log2: return "llvm.log2.f64";
+    case BuiltinOp::Log10: return "llvm.log10.f64";
+    case BuiltinOp::Power: return "llvm.pow.f64";
+    case BuiltinOp::Floor: return "llvm.floor.f64";
+    case BuiltinOp::Ceil: return "llvm.ceil.f64";
+    case BuiltinOp::Abs: return "llvm.fabs.f64";
+    default: return {};
+    }
 }
 
-std::string mathLibmName(std::string_view inoxName)
+std::string_view mathLibmName(BuiltinOp op)
 {
-    if (equalsIgnoreCase(inoxName, "Cbrt")) return "cbrt";
-    if (equalsIgnoreCase(inoxName, "Tan")) return "tan";
-    if (equalsIgnoreCase(inoxName, "ArcSin")) return "asin";
-    if (equalsIgnoreCase(inoxName, "ArcCos")) return "acos";
-    if (equalsIgnoreCase(inoxName, "ArcTan")) return "atan";
-    if (equalsIgnoreCase(inoxName, "ArcTan2")) return "atan2";
-    if (equalsIgnoreCase(inoxName, "Sinh")) return "sinh";
-    if (equalsIgnoreCase(inoxName, "Cosh")) return "cosh";
-    if (equalsIgnoreCase(inoxName, "Tanh")) return "tanh";
-    if (equalsIgnoreCase(inoxName, "LnXP1")) return "log1p";
-    if (equalsIgnoreCase(inoxName, "FMod")) return "fmod";
-    if (equalsIgnoreCase(inoxName, "Hypot")) return "hypot";
-    return {};
+    switch (op) {
+    case BuiltinOp::Cbrt: return "cbrt";
+    case BuiltinOp::Tan: return "tan";
+    case BuiltinOp::ArcSin: return "asin";
+    case BuiltinOp::ArcCos: return "acos";
+    case BuiltinOp::ArcTan: return "atan";
+    case BuiltinOp::ArcTan2: return "atan2";
+    case BuiltinOp::Sinh: return "sinh";
+    case BuiltinOp::Cosh: return "cosh";
+    case BuiltinOp::Tanh: return "tanh";
+    case BuiltinOp::LnXP1: return "log1p";
+    case BuiltinOp::FMod: return "fmod";
+    case BuiltinOp::Hypot: return "hypot";
+    default: return {};
+    }
 }
 
-bool isMathBuiltin(std::string_view inoxName)
+bool isMathBuiltin(BuiltinOp op)
 {
-    return !mathIntrinsicName(inoxName).empty() ||
-           !mathLibmName(inoxName).empty() ||
-           equalsIgnoreCase(inoxName, "LogN") ||
-           equalsIgnoreCase(inoxName, "Hypot3") ||
-           equalsIgnoreCase(inoxName, "RadToDeg") ||
-           equalsIgnoreCase(inoxName, "DegToRad") ||
-           equalsIgnoreCase(inoxName, "RadToGrad") ||
-           equalsIgnoreCase(inoxName, "GradToRad") ||
-           equalsIgnoreCase(inoxName, "RadToCycle") ||
-           equalsIgnoreCase(inoxName, "CycleToRad");
+    switch (op) {
+    case BuiltinOp::LogN:
+    case BuiltinOp::Hypot3:
+    case BuiltinOp::RadToDeg:
+    case BuiltinOp::DegToRad:
+    case BuiltinOp::RadToGrad:
+    case BuiltinOp::GradToRad:
+    case BuiltinOp::RadToCycle:
+    case BuiltinOp::CycleToRad:
+        return true;
+    default:
+        return !mathIntrinsicName(op).empty() || !mathLibmName(op).empty();
+    }
 }
 
 } // namespace inox::compiler::codegen::detail
