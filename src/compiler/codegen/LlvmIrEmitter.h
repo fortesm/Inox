@@ -50,11 +50,12 @@ public:
     // semantic analysis already resolved (CANON E11, decision P-C).
     // The types, symbols and constants of the AST nodes come from the typed
     // IR, through `astNodes`.
+    // The struct types, routines and entry come from the typed IR.
     LlvmModule emitModule(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
-                          const tir::AstNodeMap& astNodes) const;
+                          const tir::AstNodeMap& astNodes, const tir::Program& program) const;
     // The IR only (--emit-llvm and tools).
     std::string emit(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
-                     const tir::AstNodeMap& astNodes) const;
+                     const tir::AstNodeMap& astNodes, const tir::Program& program) const;
 };
 
 } // namespace inox::compiler::codegen

@@ -50,7 +50,8 @@ struct FunctionSignature {
     TypeRef returnType = nullptr;  // null for a subroutine
 };
 
-using FunctionSignatures = std::unordered_map<std::string, FunctionSignature>;
+// The lowered signature of each routine of the program, by its declaration.
+using FunctionSignatures = std::unordered_map<const ast::FunctionDeclaration*, FunctionSignature>;
 
 struct IntegerRange {
     std::int64_t low;

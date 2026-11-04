@@ -154,6 +154,25 @@ std::optional<semantic::CallKind> AstNodeMap::callKindOf(const ast::Expression& 
     return entry.callKind;
 }
 
+const ast::FunctionDeclaration* AstNodeMap::routineOf(const ast::Expression& node) const
+{
+    const Entry& entry = entryOf(node, "routine");
+    const Expr* call = entry.call != nullptr ? entry.call : entry.value;
+    if (call == nullptr || call->kind != ExprKind::Call || call->routine == nullptr) {
+        return nullptr;
+    }
+    return call->routine->origin;
+}
+
+bool AstNodeMap::booleanOf(const ast::Expression& node) const
+{
+    const Entry& entry = entryOf(node, "Bool literal");
+    if (entry.value == nullptr || entry.value->kind != ExprKind::Literal || entry.value->literal != LiteralKind::Bool) {
+        throw InvariantError("internal error: typed IR: a Bool literal that is not one");
+    }
+    return entry.value->boolean;
+}
+
 bool AstNodeMap::isCallName(const ast::Expression& node) const
 {
     return entryOf(node, "call name").call != nullptr;

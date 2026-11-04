@@ -125,6 +125,11 @@ void SemanticAnalyzer::registerFunctionSignatureIn(const ast::FunctionDeclaratio
         throw SemanticError("duplicate routine: " + function.name());
     }
     result_.setSignature(function, signature);
+    if (isAssociatedMethod && equalsIgnoreCase(function.name().substr(dot + 1), "__invariant")) {
+        if (const TypeRef structType = resolveStruct(receiverType)) {
+            result_.setInvariantRoutine(structType, function);
+        }
+    }
     functions_.emplace(normalizeName(function.name()), std::move(signature));
 }
 

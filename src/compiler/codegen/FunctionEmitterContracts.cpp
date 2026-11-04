@@ -66,9 +66,8 @@ void FunctionEmitter::emitInvariantChecks(const ast::AstNode& site, bool after)
 // every struct it reuses (CANON-9; Eiffel: the parents' invariants apply).
 void FunctionEmitter::emitInvariantOf(TypeRef structType, const std::string& pointer)
 {
-    const auto own = signatures_.find(normalize(structType->name() + ".__invariant"));
-    if (own != signatures_.end()) {
-        emitUserCall(own->second, {pointer}, false);
+    if (const FunctionSignature* own = routineSignature(semantics_.invariantRoutine(structType))) {
+        emitUserCall(*own, {pointer}, false);
     }
     if (!structType->isStruct()) {
         return;
