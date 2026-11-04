@@ -340,7 +340,7 @@ std::string FunctionEmitter::emitReferenceArgument(const tir::Expr& argument, co
 }
 
 std::vector<std::string> FunctionEmitter::emitArguments(const FunctionSignature& signature,
-                                                        tir::Span<const tir::Expr*> arguments,
+                                                        const tir::Span<const tir::Expr*>& arguments,
                                                         std::size_t parameterOffset,
                                                         std::vector<std::string>* storage)
 {
@@ -348,20 +348,28 @@ std::vector<std::string> FunctionEmitter::emitArguments(const FunctionSignature&
     values.reserve(arguments.size());
     std::size_t guards = 0;
     for (std::size_t index = 0; index < arguments.size(); ++index) {
-        const FunctionParameter& parameter = signature.parameters[index + parameterOffset];
-        values.push_back(parameter.byReference
-                             ? emitReferenceParameterArgument(arguments, index, parameter, storage, guards)
-                             : emitValue(*arguments[index]));
-        // Safe pointers: a move-only argument is given to the routine,
-        // which owns its parameter.
-        if (!parameter.byReference && isMoveOnly(parameter.type)) {
-            disarmFresh(values.back());
-        }
+        emitArgument(values, arguments, index, signature.parameters[index + parameterOffset], storage, guards);
     }
     for (; guards != 0; --guards) {
         endPlaceGuard();
     }
     return values;
+}
+
+// One argument: a reference's place, or a value; a move-only value is given
+// to the routine, which owns its parameter (safe pointers).
+void FunctionEmitter::emitArgument(std::vector<std::string>& values, const tir::Span<const tir::Expr*>& arguments,
+                                   std::size_t index, const FunctionParameter& parameter,
+                                   std::vector<std::string>* storage, std::size_t& guards)
+{
+    if (parameter.byReference) {
+        values.push_back(emitReferenceParameterArgument(arguments, index, parameter, storage, guards));
+        return;
+    }
+    values.push_back(emitValue(*arguments[index]));
+    if (isMoveOnly(parameter.type)) {
+        disarmFresh(values.back());
+    }
 }
 
 std::string FunctionEmitter::emitUserCall(const FunctionSignature& signature,

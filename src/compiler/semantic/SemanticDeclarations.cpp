@@ -720,6 +720,22 @@ types::FieldDefault SemanticAnalyzer::resolveFieldDefault(TypeRef type, const st
     return value;
 }
 
+// A field of an instance of a generic struct, its default resolved. Out of
+// line: the recursive instantiation keeps its frame.
+void SemanticAnalyzer::appendStructField(std::vector<types::StructField>& fields,
+                                         const ast::StructFieldDeclaration& declaration, TypeRef type,
+                                         bool fromTypeParameter)
+{
+    types::StructField field{declaration.name, type, false, declaration.hasDefault, declaration.defaultValue};
+    field.fillDefault = declaration.fillDefault;
+    if (declaration.hasDefault) {
+        field.resolvedDefault = resolveFieldDefault(type, declaration.defaultValue, declaration.fillDefault);
+    }
+    field.fromTypeParameter = fromTypeParameter;
+    field.isPublic = declaration.isPublic;
+    fields.push_back(std::move(field));
+}
+
 void SemanticAnalyzer::validateStructDeclaration(const ast::TypeDeclaration& declaration)
 {
     const TypeRef structType = resolveStruct(declaration.name);

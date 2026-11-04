@@ -552,16 +552,9 @@ TypeRef SemanticAnalyzer::instantiateStruct(const ast::TypeDeclaration& generic,
                 }
                 validateStructFieldDefault(declaration.name, fieldType, declaration.defaultValue);
             }
-            types::StructField field{declaration.name, fieldType, false, declaration.hasDefault,
-                                     declaration.defaultValue};
-            field.fillDefault = declaration.fillDefault;
-            if (declaration.hasDefault) {
-                field.resolvedDefault = resolveFieldDefault(fieldType, declaration.defaultValue, declaration.fillDefault);
-            }
-            field.fromTypeParameter = declaration.type.isNamed() && isTypeParameter(declaration.type.name,
-                                                                                    generic.typeParameters);
-            field.isPublic = declaration.isPublic;
-            fields.push_back(std::move(field));
+            appendStructField(fields, declaration, fieldType,
+                              declaration.type.isNamed() &&
+                                  isTypeParameter(declaration.type.name, generic.typeParameters));
         }
         types().setStructFields(type, std::move(fields));
         rejectRecursiveStruct(type);

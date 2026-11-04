@@ -106,12 +106,16 @@ private:
     void emitContinueTransfer();
 
     void emitIfMerge(const tir::Stmt& statement);
+    std::string emitCaseChoice(const tir::Expr& choice, const std::string& selector, const std::string& type,
+                               bool textual, bool unsignedCompare);
+    void emitIfArm(const tir::Expr& condition, const TirStatements& body, std::size_t label, std::size_t armIndex,
+                   bool isLastConditionalArm, bool hasElse);
 
     void emitUnless(const tir::Stmt& statement);
 
     void emitCase(const tir::Stmt& statement);
 
-    void emitAssignmentBranch(TirStatements statements);
+    void emitAssignmentBranch(const TirStatements& statements);
 
     void emitWhile(const tir::Stmt& statement);
 
@@ -119,13 +123,14 @@ private:
 
     void emitForIn(const tir::Stmt& statement);
 
-    bool emitLoopStatements(TirStatements statements);
+    bool emitLoopStatements(const TirStatements& statements);
 
     void emitUntil(const tir::Stmt& statement);
 
     const LoopTargets& currentLoopTargets() const;
 
     void emitWith(const tir::Stmt& statement);
+    void bindWithTarget(const std::string& binding, const tir::Expr& target);
 
     std::string emitExceptionTypeMatch(std::string_view actualTypeValue,
                                        std::string_view expectedTypeName);
@@ -166,7 +171,7 @@ private:
     std::string emitReferenceArgument(const tir::Expr& argument, const FunctionParameter& parameter);
 
     std::vector<std::string> emitArguments(const FunctionSignature& signature,
-                                           tir::Span<const tir::Expr*> arguments,
+                                           const tir::Span<const tir::Expr*>& arguments,
                                            std::size_t parameterOffset,
                                            std::vector<std::string>* storage = nullptr);
 
@@ -478,6 +483,9 @@ private:
     const LinkParts* rootStorageGuard(const tir::Expr& place) const;
     std::string immortalStorage();
     void bindStorageGuard(const std::string& binding, const tir::Expr& target);
+    void emitArgument(std::vector<std::string>& values, const tir::Span<const tir::Expr*>& arguments,
+                      std::size_t index, const FunctionParameter& parameter, std::vector<std::string>* storage,
+                      std::size_t& guards);
     std::string emitReferenceParameterArgument(tir::Span<const tir::Expr*> arguments, std::size_t index,
                                                const FunctionParameter& parameter, std::vector<std::string>* storage,
                                                std::size_t& guards);
