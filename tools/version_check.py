@@ -13,7 +13,7 @@ fails when a document that states them disagrees:
 
   docs/openspec/specs/constitution/revisions.md  "Language version: Inox X.Y.Z <stage>"
                                                   "Canon revision: rN"
-  README.md                                       "version X.Y.Z, <stage>" or "Inox X.Y.Z, <stage>"
+  README.md                                       X.Y.Z and <stage> on one line
   CHANGELOG.md                                    a section "## X.Y.Z ..."
   docs/STATUS.md                                  "Inox X.Y.Z" in its verification line
 
@@ -58,8 +58,8 @@ def main():
     expect("docs/openspec/specs/constitution/revisions.md",
            r"^Canon revision: " + re.escape(canon) + r"$",
            "expected 'Canon revision: %s' (kCanonRevision)" % canon)
-    expect("README.md", r"\b(?:version|Inox) " + escaped + ", " + re.escape(stage) + r"\b",
-           "expected 'version %s, %s' or 'Inox %s, %s'" % (version, stage, version, stage))
+    expect("README.md", r"^(?=.*(?<![\w.])" + escaped + r"(?![\w.]))(?=.*\b" + re.escape(stage) + r"\b).*$",
+           "expected %s and %s on one line" % (version, stage))
     expect("CHANGELOG.md", r"^## " + escaped + r"\b", "expected a section '## %s'" % version)
     expect("docs/STATUS.md", r"\bInox " + escaped + r"\b", "expected 'Inox %s' in its verification line" % version)
 
