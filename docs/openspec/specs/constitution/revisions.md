@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.124
+Canon revision: r3.125
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -662,3 +662,8 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   after F; a compound target is evaluated once. Design approved with
   amendments by Marcelo Fortes, 2026-11-04. Change
   `assignment-evaluation-order`.
+- r3.125 — 2026-11-04 — CANON-25: a reference argument or a receiver whose
+  owner a later argument replaces stops the program before the call,
+  instead of the routine writing the freed object; the rule of r3.124,
+  applied to calls. Approved by Marcelo Fortes, 2026-11-04. Change
+  `reference-argument-validity`.

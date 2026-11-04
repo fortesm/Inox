@@ -1,0 +1,4 @@
+- [x] 1.1 Change approved (Marcelo Fortes, 2026-11-04)
+- [x] 1.2 Reference arguments and receivers checked before the call when a later argument may run a routine
+- [x] 1.3 Tests; CANON-25 scenario; revision r3.125, kCanonRevision, CHANGELOG
+- [x] 1.4 Gates: suite (Debug, Release, ASan+UBSan 1 MiB), owner safety check, IR snapshot, stack frames
