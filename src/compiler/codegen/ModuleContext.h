@@ -6,7 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // What the routines of one module share while they are emitted (OpenSpec
-// change compiler-modularization, step 3).
+// change compiler-modularization).
 
 #pragma once
 

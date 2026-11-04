@@ -121,7 +121,7 @@ time. Each names where it bit.
   libraries, so Linux and Windows produced different IR (2026-10-17).
 - **The parser rewrites nothing** (F5, r3.119). Chained and compound
   assignments, `with` targets and loop contracts are built as written and
-  turned into the normalized AST by phase 2b (`lowering/Desugar`), right
+  turned into the normalized AST by phase 2b (`normalization/AstNormalizer`), right
   after each module is parsed. A new rewrite of syntax goes there, never
   into the parser, and keeps its synthetic names numbered as before.
 - **Written types are trees** (`ast::TypeExpr`, F4, r3.117). Never spell a

@@ -5,9 +5,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// The verifier of the typed IR (F6 step 1): every node has a type and a
-// meaning. It runs after every lowering in Debug builds and with
-// `--dump-tir`.
+// The verifier of the typed IR: every node has a type and a meaning. It
+// runs on every typed IR the driver builds.
 //
 // Defensive: reject null routines and null expression types before dereferencing.
 // Malformed nodes must produce a controlled diagnostic rather than a crash.

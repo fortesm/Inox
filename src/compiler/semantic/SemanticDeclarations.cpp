@@ -65,7 +65,7 @@ void SemanticAnalyzer::registerFunctionSignatureIn(const ast::FunctionDeclaratio
     const bool isAssociatedMethod = dot != std::string::npos;
     const std::string receiverType = isAssociatedMethod ? function.name().substr(0, dot) : std::string{};
 
-    // The parser checked the header's syntax (F3); what remains is what the
+    // The parser checked the header's syntax; what remains is what the
     // types and the other parameters say.
     for (const ast::ParameterDeclaration& written : function.parameters()) {
         const PassMode mode = written.mode == ast::ParameterDeclaration::Mode::Ref      ? PassMode::Ref
@@ -421,7 +421,7 @@ void SemanticAnalyzer::declareSectionSymbols(const ast::SectionDeclaration& sect
             : declaration.type->isArray() ? nullptr
                                           : lookupWrittenType(*declaration.type);
         declareOrThrow(declaration.name, kind, type, isMutable);
-        noteDeclared(&declaration, declaration.name, VariableOrigin::None);
+        recordDeclaredSymbol(&declaration, declaration.name, VariableOrigin::None);
         if (type == nullptr && declaration.type && !declaration.type->isArray()) {
             pendingSectionTypes_.emplace_back(declaration.name, ast::spell(*declaration.type));
         }

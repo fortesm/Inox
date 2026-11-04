@@ -7,36 +7,29 @@
 
 #pragma once
 
-// TRANSITIONAL (F6, change typed-ir, step 2; removed at step 5).
-//
-// While code generation still walks the AST, it takes the types, symbols
-// and constants of the AST nodes it meets from the typed IR through this
-// index: the lowering records, by node identity, which TIR node each AST
-// node became. It is not part of the typed IR's API (tir/Tir.h), resolves
-// no name, infers nothing, and never falls back to the SemanticResult: a
-// node without its TIR node is an internal error (design of typed-ir,
-// "Step 2: the migration index", approved 2026-11-04).
+// Which TIR node each AST node became, by node identity. Code generation
+// takes the types, symbols and constants of the AST nodes it walks from
+// the typed IR through this map; it is required while code generation
+// traverses the AST, and is removed when code generation consumes only the
+// typed IR. It is not part of the typed IR (tir/Tir.h), resolves no name,
+// infers nothing, and never falls back to the SemanticResult: a node
+// without its TIR node is an InvariantError.
 
+#include "Errors.h"
 #include "Tir.h"
 
 #include <cstdint>
-#include <stdexcept>
 #include <string>
 #include <unordered_map>
 
 namespace inox::compiler::tir {
 
-class MigrationError : public std::logic_error {
-public:
-    explicit MigrationError(const std::string& message) : std::logic_error(message) {}
-};
-
-class MigrationIndex {
+class AstNodeMap {
 public:
     // What an AST expression became. `value` is the expression as the
     // analysis typed it, before the checks the analysis asked for on the
     // way into a place (RangeCheck, NaturalCheck); `place` is set when the
-    // node was lowered as a place (a target, a `with`, a reference).
+    // node was built as a place (a target, a `with`, a reference).
     // `call` is set on the callee of a call (the routine's or the method's
     // name, the identifier of `__member` of a method): the TIR call it
     // names, whose symbol it carries.
@@ -58,7 +51,7 @@ public:
         std::uint32_t field = 0;
     };
 
-    // Recording, by the lowering.
+    // Recording, by the builder.
     void recordValue(const ast::Expression& node, const Expr* value) { entries_[&node].value = value; }
     void recordPlace(const ast::Expression& node, const Place* place) { entries_[&node].place = place; }
     void recordCallee(const ast::Expression& node, const Expr* call) { entries_[&node].call = call; }
@@ -81,7 +74,7 @@ public:
         states_[&declaration] = state;
     }
 
-    // Queries, by code generation. Each throws MigrationError when the
+    // Queries, by code generation. Each throws InvariantError when the
     // node has no TIR node to answer from.
     TypeRef typeOf(const ast::Expression& node) const;
     const semantic::Symbol* symbolOf(const ast::Expression& node) const;

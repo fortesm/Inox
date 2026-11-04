@@ -124,7 +124,7 @@ public:
     }
 
 private:
-    // The words of a written type, as the text it spells (F4).
+    // The words of a written type, as the text it spells.
     void writtenType(const ast::TypeExpr& written) { text(ast::spell(written)); }
     void writtenType(const std::optional<ast::TypeExpr>& written)
     {
@@ -681,7 +681,7 @@ private:
 
     // A written type with each name resolved as rewriteText resolves the
     // words of its text: a name (or a qualified one) and a bound that names
-    // a Const (F4).
+    // a Const.
     void rewriteType(ast::TypeExpr& written)
     {
         if (!written.isArray()) {

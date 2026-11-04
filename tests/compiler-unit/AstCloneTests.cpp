@@ -12,7 +12,7 @@
 #include "UnitTest.h"
 
 #include "compiler/ast/AstClone.h"
-#include "compiler/lowering/Desugar.h"
+#include "compiler/normalization/AstNormalizer.h"
 #include "compiler/parser/Parser.h"
 
 #include <memory>
@@ -276,7 +276,7 @@ std::unique_ptr<ModuleNode> parseProgram()
 {
     parser::Parser parser{std::string_view(kProgram)};
     auto module = parser.parseModule("CloneTest");
-    lowering::desugarModule(*module);  // the later phases clone the normalized AST (F5)
+    normalization::normalizeModule(*module);  // the later phases clone the normalized AST
     return module;
 }
 

@@ -6,7 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // Names, literals and string constants as they are written in LLVM IR text
-// (OpenSpec change compiler-modularization, step 1).
+// (OpenSpec change compiler-modularization).
 
 #pragma once
 

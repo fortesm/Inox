@@ -66,6 +66,8 @@ Measured at step 2 (r3.122; clang, Linux):
   bytes; the check and the index are out of line); the lowering's frames
   stay under 512 bytes.
 
+- [x] 2.4 Names that state the permanent responsibility (approved by Marcelo Fortes, 2026-11-04; mechanical): `normalization/AstNormalizer` (phase 2b), `tir::buildProgram` and `tir::detail::Builder` with `Build*.cpp`, `tir/AstNodeMap`, `codegen/FunctionEmitterSemantics.cpp`, `semantic/SemanticRecords.cpp`, `record*` instead of `note*`; comments state contracts, not the step they came from
+
 ## 3. Builtins by kind
 
 - [ ] 3.1 The analysis records each call's builtin; codegen dispatches on `Builtin::op`; no name comparison left in `codegen/`

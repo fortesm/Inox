@@ -187,7 +187,7 @@ TypeRef SemanticAnalyzer::analyzeExpressionFor(const ast::Expression& expression
 }
 
 // The written form of a resolved type, which substitution puts where a type
-// parameter was written (F4): the form reading its name would give, so the
+// parameter was written: the form reading its name would give, so the
 // instance resolves and spells as before.
 ast::TypeExpr SemanticAnalyzer::writtenFormOf(TypeRef type, ast::SourcePosition position) const
 {
@@ -403,12 +403,12 @@ TypeRef SemanticAnalyzer::analyzeGenericCall(const ast::FunctionDeclaration& gen
     const Symbol* symbol = symbols_.globalScope().resolve(signature.name);
     result_.bind(callee, *symbol);
     if (call == nullptr) {
-        noteRoutineCall(callee, signature, CallKind::Routine);
+        recordRoutineCall(callee, signature, CallKind::Routine);
         result_.setExpressionType(callee, signature.returnType);
         return signature.returnType;
     }
     result_.bind(*call, *symbol);
-    noteRoutineCall(*call, signature, CallKind::Routine);
+    recordRoutineCall(*call, signature, CallKind::Routine);
     const TypeRef type = analyzeUserFunctionCall(signature, call->arguments(), &argumentTypes);
     for (std::size_t index = 0; index < call->arguments().size(); ++index) {
         if (signature.parameters[index].mode == PassMode::RefMut) {
@@ -570,7 +570,7 @@ TypeRef SemanticAnalyzer::instantiateStruct(const ast::TypeDeclaration& generic,
 }
 
 // The body of an instance: the template's, with its type arguments for its
-// type parameters in written types, in exception handlers (names until F7)
+// type parameters in written types, in exception handlers (names)
 // and where an expression names one (`New(T)`, `T(F := X)`). Out of line,
 // so the frame of instantiateRoutine, which nested generic calls stack up,
 // holds none of the rewriters (design.md, stack budget).

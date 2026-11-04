@@ -5,20 +5,20 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// F6 (change typed-ir), step 1: the builtin enumeration the analysis and
-// the typed IR share, name by name; and a program lowered to the typed IR,
+// The builtin enumeration the analysis and
+// the typed IR share, name by name; and a program built into the typed IR,
 // whose places carry their origin (a `with` binding is its statement, not
 // a name) and whose calls their routine or operation.
 
 #include "UnitTest.h"
 
-#include "compiler/lowering/Desugar.h"
+#include "compiler/normalization/AstNormalizer.h"
 #include "compiler/parser/Parser.h"
 #include "compiler/semantic/CallMeaning.h"
 #include "compiler/semantic/ContractLowering.h"
 #include "compiler/semantic/ModuleResolution.h"
 #include "compiler/semantic/SemanticAnalyzer.h"
-#include "compiler/tir/Lower.h"
+#include "compiler/tir/Build.h"
 #include "compiler/tir/Verify.h"
 
 #include <memory>
@@ -125,7 +125,7 @@ Main :
 // The index answers from the TIR node each AST node became, and never for
 // a node it does not know.
 void testMigrationIndex(const ast::ModuleNode& program, const semantic::SemanticResult& semantics,
-                        const tir::MigrationIndex& index)
+                        const tir::AstNodeMap& index)
 {
     const ast::FunctionDeclaration* main = semantics.entry();
     check(main != nullptr && main->body().size() == 3, "Main of the index test");
@@ -150,31 +150,31 @@ void testMigrationIndex(const ast::ModuleNode& program, const semantic::Semantic
     check(index.typeOf(put) != nullptr && index.typeOf(put)->isVoid(), "a call without a result is Void");
     check(index.typeOf(put.callee()) == nullptr, "the name of a routine has no value");
     check(index.typeAgrees(put, semantics.typeOf(put)), "Void agrees with the analysis's absent type");
-    // A node the lowering never met is an error, not an answer.
+    // A node the builder never met is an error, not an answer.
     const ast::IdentifierExpression stranger("Stranger");
     bool refused = false;
     try {
         (void)index.typeOf(stranger);
-    } catch (const tir::MigrationError&) {
+    } catch (const tir::InvariantError&) {
         refused = true;
     }
     check(refused, "a node without its TIR node is an internal error");
     (void)program;
 }
 
-void testLoweredProgram()
+void testBuiltProgram()
 {
     parser::Parser parser{kProgram};
     auto module = parser.parseModule("Unit");
-    lowering::desugarModule(*module);
+    normalization::normalizeModule(*module);
     std::vector<std::unique_ptr<ast::ModuleNode>> modules;
     modules.push_back(std::move(module));
     auto program = semantic::resolveModules(std::move(modules));
     semantic::lowerContracts(*program);
     semantic::SemanticAnalyzer analyzer;
     const semantic::SemanticResult& semantics = analyzer.analyze(*program);
-    tir::MigrationIndex index;
-    const auto typedIr = tir::lowerProgram(*program, semantics, &index);
+    tir::AstNodeMap index;
+    const auto typedIr = tir::buildProgram(*program, semantics, &index);
     checkEqual(tir::verifyProgram(*typedIr), "", "the typed IR verifies");
     testMigrationIndex(*program, semantics, index);
     check(typedIr->routines.size() == 2 && typedIr->entry == typedIr->routines[1], "Main is the entry, last");
@@ -261,7 +261,7 @@ void testTypeAgreement()
 {
     types::TypeContext types;
     tir::Program program;
-    tir::MigrationIndex index;
+    tir::AstNodeMap index;
     const auto make = [&](tir::ExprKind kind, const types::Type* type) {
         tir::Expr* expression = program.arena.make<tir::Expr>();
         expression->kind = kind;
@@ -308,7 +308,7 @@ void testUnsupportedConstruct()
 {
     parser::Parser parser{std::string_view("Const Mask := UInt8($FF)\n\nMain :\n    V UInt8 := Mask\n    PutLn(V)\n;\n")};
     auto module = parser.parseModule("Gap");
-    lowering::desugarModule(*module);
+    normalization::normalizeModule(*module);
     std::vector<std::unique_ptr<ast::ModuleNode>> modules;
     modules.push_back(std::move(module));
     auto program = semantic::resolveModules(std::move(modules));
@@ -317,7 +317,7 @@ void testUnsupportedConstruct()
     const semantic::SemanticResult& semantics = analyzer.analyze(*program);
     bool gap = false;
     try {
-        (void)tir::lowerProgram(*program, semantics);
+        (void)tir::buildProgram(*program, semantics);
     } catch (const tir::UnsupportedConstructError&) {
         gap = true;
     } catch (const tir::InvariantError&) {
@@ -332,7 +332,7 @@ int runTypedIrTests()
 {
     const int before = failureCount();
     testBuiltinNames();
-    testLoweredProgram();
+    testBuiltProgram();
     testMalformedTir();
     testTypeAgreement();
     testUnsupportedConstruct();

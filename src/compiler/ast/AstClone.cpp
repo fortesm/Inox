@@ -25,7 +25,7 @@ std::string copyExceptionName(const std::string& name, const CloneRewriters& rew
 
 ExpressionPtr copyOptional(const Expression* expression, const CloneRewriters& rewrite);
 
-// A loop's `invariant` and `variant` lines (F5: the written form, before
+// A loop's `invariant` and `variant` lines (the written form, before
 // phase 2b) onto its copy; out of line and after the copy, so the
 // recursive cloneStatementNode keeps its frame.
 template <typename Loop>
@@ -67,7 +67,7 @@ void copyLoopContracts(const Statement& original, Statement& copy, const CloneRe
 }
 
 // A typed local's copy, built here so that cloneStatementNode, which
-// recurses, holds no TypeExpr in its frame (F4, stack budget).
+// recurses, holds no TypeExpr in its frame (tools/stack_frames.py).
 StatementPtr copyVarStatement(const VarStatement& node, const CloneRewriters& rewrite)
 {
     std::optional<TypeExpr> type = node.type();
@@ -240,7 +240,7 @@ std::vector<ContractClause> cloneContractClauses(const std::vector<ContractClaus
 namespace {
 
 // Out of line, as copyVarStatement: cloneStatementNode recurses, and each
-// case's temporaries would widen every level of it (F5, stack budget).
+// case's temporaries would widen every level of it (tools/stack_frames.py).
 StatementPtr copyWrittenAssignment(const Statement& statement, const CloneRewriters& rewrite)
 {
     if (statement.kind() == AstNodeKind::CompoundAssignmentStatement) {

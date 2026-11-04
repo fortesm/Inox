@@ -39,9 +39,8 @@ RECURSION_PATHS = [
     r"unifyTypeExpr|cloneInstanceBody|substituteTypeParameters|writtenFormOf)",
     r"inox::compiler::ast::\(anonymous namespace\)::clone(Statement|Expression)Node",
     r"inox::compiler::ast::clone(Statement|Statements|Expression)",
-    # Code generation (F6, typed-ir, step 1): every FunctionEmitter function
-    # that can reach itself; F6 changes codegen step by step, and none of
-    # these may grow.
+    # Code generation: every FunctionEmitter function that can reach itself;
+    # none of these may grow.
     r"inox::compiler::codegen::detail::FunctionEmitter::(constructedStruct|defaultedStruct|dropFunctionFor|"
     r"emitArguments|emitArrayBaseAddress|emitArrayElementDefaults|emitAssignmentBranch|emitCase|"
     r"emitConcatenation|emitConditional|emitConstruction|emitDecimalConversion|emitElementAddress|"
@@ -57,15 +56,16 @@ RECURSION_PATHS = [
     r"structHasDefaults|typeOf|typeOwnsReferences)",
 ]
 NEW_FRAME_TO_REVIEW = 256
-# A recursion a change adds (phase 2b of F5 walks the statements between
-# the parser and the analyzer): its functions are new, so they cannot grow;
+# A recursion a change adds (phase 2b walks the statements between the
+# parser and the analyzer): its functions are new, so they cannot grow;
 # each must stay within NEW_PATH_BUDGET bytes, and they are listed apart.
 NEW_PATHS = [
-    r"inox::compiler::lowering::\(anonymous namespace\)::(Desugarer::(lower|lowerLoop|rebuildLoop|lowerWith|"
-    r"lowerChain|lowerCompound|appendBody|number|body)|hasWrittenForms|requireNoForms|expressionHasWithTarget)",
-    # Phase 5b (F6, typed-ir, step 1): the lowering to the typed IR, its
-    # verifier and its printer.
-    r"inox::compiler::tir::detail::Lowerer::(expression|identifier|call|construction|checked|"
+    r"inox::compiler::normalization::\(anonymous namespace\)::(AstNormalizer::(normalize|normalizeLoop|rebuildLoop|"
+    r"normalizeWith|normalizeChain|normalizeCompound|appendBody|number|body)|hasWrittenForms|requireNoForms|"
+    r"expressionHasWithTarget)",
+    # Phase 5b: the construction of the typed IR, its verifier and its
+    # printer.
+    r"inox::compiler::tir::detail::Builder::(expression|identifier|call|construction|checked|"
     r"expressions|place|variable|through|invariants|statement|statements|expressionStatement|declaration|"
     r"ifStatement|caseStatement|tryStatement|withStatement|forStatement|raiseStatement|slice|check|builtin)",
     r"inox::compiler::tir::\(anonymous namespace\)::Verifier::(statements|statement|expression|place|invariants)",

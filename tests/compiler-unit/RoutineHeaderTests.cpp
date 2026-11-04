@@ -9,7 +9,7 @@
 // the same shape as its original, shares no node with it, and passes every
 // type name and expression through the rewriters.
 
-// F3 (change routine-headers, r3.114): the parser builds the parameters and
+// The parser builds the parameters and (change routine-headers, r3.114)
 // result of a routine header; later phases never read its tokens.
 
 #include "UnitTest.h"

@@ -5,7 +5,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include "Desugar.h"
+#include "AstNormalizer.h"
 
 #include "../ast/AstClone.h"
 
@@ -16,7 +16,7 @@
 #include <utility>
 #include <vector>
 
-namespace inox::compiler::lowering {
+namespace inox::compiler::normalization {
 
 namespace {
 
@@ -241,9 +241,9 @@ bool hasWrittenForms(const std::vector<StatementPtr>& statements)
     return false;
 }
 
-class Desugarer {
+class AstNormalizer {
 public:
-    Desugarer()
+    AstNormalizer()
     {
         rewriters_.expression = [this](const Expression& node) -> ExpressionPtr {
             if (node.kind() != AstNodeKind::WithTargetExpression) {
@@ -256,7 +256,7 @@ public:
             return syntheticIdentifier(withStack_[level]);
         };
         rewriters_.statement = [this](const Statement& statement, std::vector<StatementPtr>& out) {
-            return lower(statement, out);
+            return normalize(statement, out);
         };
     }
 
@@ -289,21 +289,21 @@ private:
 
     ExpressionPtr expression(const Expression& node) { return cloneExpression(node, rewriters_.expression); }
 
-    bool lower(const Statement& statement, std::vector<StatementPtr>& out)
+    bool normalize(const Statement& statement, std::vector<StatementPtr>& out)
     {
         switch (statement.kind()) {
         case AstNodeKind::ChainedAssignmentStatement:
-            lowerChain(static_cast<const ChainedAssignmentStatement&>(statement), out);
+            normalizeChain(static_cast<const ChainedAssignmentStatement&>(statement), out);
             return true;
         case AstNodeKind::CompoundAssignmentStatement:
-            lowerCompound(static_cast<const CompoundAssignmentStatement&>(statement), out);
+            normalizeCompound(static_cast<const CompoundAssignmentStatement&>(statement), out);
             return true;
         case AstNodeKind::WithStatement:
-            lowerWith(static_cast<const WithStatement&>(statement), out);
+            normalizeWith(static_cast<const WithStatement&>(statement), out);
             return true;
         default:
             if (const auto* contracts = loopContracts(statement); contracts != nullptr && !contracts->empty()) {
-                lowerLoop(statement, *contracts, out);
+                normalizeLoop(statement, *contracts, out);
                 return true;
             }
             return false;
@@ -312,7 +312,7 @@ private:
 
     // CANON-5: `A := B := C := X` stores X in C, then C in B, then B in A;
     // X is evaluated once.
-    void lowerChain(const ChainedAssignmentStatement& chain, std::vector<StatementPtr>& out)
+    void normalizeChain(const ChainedAssignmentStatement& chain, std::vector<StatementPtr>& out)
     {
         std::vector<ExpressionPtr> parts;
         for (const auto& target : chain.targets()) {
@@ -334,7 +334,7 @@ private:
 
     // ADR-0012: `L op= R` is `L := L op R`, L evaluated once (it is pure),
     // marked compound.
-    void lowerCompound(const CompoundAssignmentStatement& compound, std::vector<StatementPtr>& out)
+    void normalizeCompound(const CompoundAssignmentStatement& compound, std::vector<StatementPtr>& out)
     {
         ExpressionPtr target = expression(compound.target());
         ExpressionPtr value = expression(compound.value());
@@ -347,7 +347,7 @@ private:
                                  compound.position()));
     }
 
-    void lowerWith(const WithStatement& with, std::vector<StatementPtr>& out)
+    void normalizeWith(const WithStatement& with, std::vector<StatementPtr>& out)
     {
         const std::string& name = withNames_.at(&with);
         ExpressionPtr target = expression(with.target());
@@ -372,14 +372,14 @@ private:
     // of the previous one. The variant's previous value lives before the
     // loop. The checks are built out of line, so the frame that recurses
     // into the body stays small (design.md, stack budget).
-    void lowerLoop(const Statement& loop, const std::vector<ContractClause>& written, std::vector<StatementPtr>& out)
+    void normalizeLoop(const Statement& loop, const std::vector<ContractClause>& written, std::vector<StatementPtr>& out)
     {
         const std::unique_ptr<LoopChecks> checks = buildLoopChecks(loop, written);
-        StatementPtr lowered = rebuildLoop(loop, checks->top);
+        StatementPtr normalized = rebuildLoop(loop, checks->top);
         for (StatementPtr& statement : checks->preceding) {
             out.push_back(positioned(std::move(statement), loop.position()));
         }
-        out.push_back(positioned(std::move(lowered), loop.position()));
+        out.push_back(positioned(std::move(normalized), loop.position()));
         for (StatementPtr& statement : checks->pending) {
             out.push_back(positioned(std::move(statement), loop.position()));
         }
@@ -499,19 +499,19 @@ void requireNoForms(const std::vector<StatementPtr>& statements)
 
 } // namespace
 
-void desugarModule(ModuleNode& module)
+void normalizeModule(ModuleNode& module)
 {
-    Desugarer desugarer;
+    AstNormalizer normalizer;
     for (auto& item : module.items()) {
         if (item->kind() == AstNodeKind::FunctionDeclaration) {
             auto& function = static_cast<FunctionDeclaration&>(*item);
-            desugarer.body(function.name(), function.body());
+            normalizer.body(function.name(), function.body());
         }
     }
-    desugarer.body(std::string{}, module.statements());
+    normalizer.body(std::string{}, module.statements());
 }
 
-void requireDesugared(const ModuleNode& module)
+void requireNormalized(const ModuleNode& module)
 {
     for (const auto& item : module.items()) {
         if (item->kind() == AstNodeKind::FunctionDeclaration) {
@@ -521,4 +521,4 @@ void requireDesugared(const ModuleNode& module)
     requireNoForms(module.statements());
 }
 
-} // namespace inox::compiler::lowering
+} // namespace inox::compiler::normalization

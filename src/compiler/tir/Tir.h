@@ -7,19 +7,19 @@
 
 #pragma once
 
-// The typed intermediate representation (F6, change typed-ir; phase 5b in
-// docs/ARCHITECTURE.md). A tree, as the AST after phases 2b and 4, in
+// The typed intermediate representation (phase 5b in docs/ARCHITECTURE.md,
+// change typed-ir). A tree, as the AST after phases 2b and 4, in
 // which every expression has a type and says what it is, never how it was
 // written: a builtin is an operation, a variable a place with its origin, a
-// call a routine of the program. tir/Lower builds it from the analyzed AST
+// call a routine of the program. tir/Build builds it from the analyzed AST
 // and the SemanticResult and decides nothing the analysis did not.
 //
-// Ownership (condition 3 of the design): every node lives in the arena of
+// Ownership: every node lives in the arena of
 // its Program and is trivially destructible; nodes refer to each other by
 // pointer. The types (`const types::Type*`) belong to the type context of
 // the SemanticResult, the symbols and signatures to the analyzer: both
 // outlive the program during code generation. `origin` pointers back to
-// the AST are tolerated during the migration (steps 1-4) and leave at step 5.
+// the AST exist while code generation traverses the AST.
 
 #include "../ast/Ast.h"
 #include "../semantic/CallMeaning.h"
@@ -204,7 +204,7 @@ struct Expr {
     const Invariants* invariants = nullptr;
     // The symbol the analysis bound: of the routine a Call, Builtin or
     // Intrinsic calls, of the type a TypeValue names, of the Const a
-    // Literal reads (F6 step 2). A Read's symbol is its place's.
+    // Literal reads. A Read's symbol is its place's.
     const semantic::Symbol* symbol = nullptr;
     // A Literal that reads a Const: its value, as the analysis evaluated it.
     const semantic::ConstantValue* constant = nullptr;
@@ -243,7 +243,7 @@ struct Branch {
 };
 
 struct Handler {
-    std::string_view typeName;  // as written (F7 gives the hierarchy its types)
+    std::string_view typeName;  // as written: exception types are names
     const semantic::Symbol* binding = nullptr;
     Span<const Stmt*> body;
 };

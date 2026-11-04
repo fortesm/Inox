@@ -6,7 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // SemanticAnalyzer: what the analysis decided, recorded for the typed IR
-// (F6, change typed-ir): the meaning of each call, the origin and the symbol
+// (tir/): the meaning of each call, the origin and the symbol
 // of each declaration. Out of line, so the recursive analyzers keep their
 // frames: each helper takes only references.
 
@@ -16,14 +16,14 @@
 
 namespace inox::compiler::semantic {
 
-void SemanticAnalyzer::noteCall(const ast::Expression& call, CallKind kind)
+void SemanticAnalyzer::recordCallMeaning(const ast::Expression& call, CallKind kind)
 {
     CallMeaning meaning;
     meaning.kind = kind;
     result_.setCallMeaning(call, meaning);
 }
 
-void SemanticAnalyzer::noteField(const ast::Expression& access, TypeRef structType, const types::StructField& field)
+void SemanticAnalyzer::recordFieldAccess(const ast::Expression& access, TypeRef structType, const types::StructField& field)
 {
     CallMeaning meaning;
     meaning.kind = CallKind::Field;
@@ -31,7 +31,7 @@ void SemanticAnalyzer::noteField(const ast::Expression& access, TypeRef structTy
     result_.setCallMeaning(access, meaning);
 }
 
-void SemanticAnalyzer::noteBuiltin(const ast::CallExpression& call, bool file)
+void SemanticAnalyzer::recordBuiltinCall(const ast::CallExpression& call, bool file)
 {
     CallMeaning meaning;
     meaning.kind = CallKind::Builtin;
@@ -46,7 +46,7 @@ void SemanticAnalyzer::noteBuiltin(const ast::CallExpression& call, bool file)
     result_.setCallMeaning(call, meaning);
 }
 
-void SemanticAnalyzer::noteBuiltinIdentifier(const ast::IdentifierExpression& identifier)
+void SemanticAnalyzer::recordBuiltinIdentifier(const ast::IdentifierExpression& identifier)
 {
     CallMeaning meaning;
     meaning.kind = CallKind::Builtin;
@@ -54,7 +54,7 @@ void SemanticAnalyzer::noteBuiltinIdentifier(const ast::IdentifierExpression& id
     result_.setCallMeaning(identifier, meaning);
 }
 
-void SemanticAnalyzer::noteRoutineCall(const ast::Expression& call, const FunctionSignature& signature, CallKind kind)
+void SemanticAnalyzer::recordRoutineCall(const ast::Expression& call, const FunctionSignature& signature, CallKind kind)
 {
     CallMeaning meaning;
     meaning.kind = kind;
@@ -62,7 +62,7 @@ void SemanticAnalyzer::noteRoutineCall(const ast::Expression& call, const Functi
     result_.setCallMeaning(call, meaning);
 }
 
-void SemanticAnalyzer::noteIntrinsicCall(const ast::Expression& call, const ModuleIntrinsic& intrinsic)
+void SemanticAnalyzer::recordIntrinsicCall(const ast::Expression& call, const ModuleIntrinsic& intrinsic)
 {
     CallMeaning meaning;
     meaning.kind = CallKind::Intrinsic;
@@ -70,7 +70,7 @@ void SemanticAnalyzer::noteIntrinsicCall(const ast::Expression& call, const Modu
     result_.setCallMeaning(call, meaning);
 }
 
-void SemanticAnalyzer::noteDeclared(const void* declaration, const std::string& name, VariableOrigin origin)
+void SemanticAnalyzer::recordDeclaredSymbol(const void* declaration, const std::string& name, VariableOrigin origin)
 {
     if (origin != VariableOrigin::None) {
         symbols_.currentScope().setOrigin(name, origin);
@@ -80,7 +80,7 @@ void SemanticAnalyzer::noteDeclared(const void* declaration, const std::string& 
     }
 }
 
-void SemanticAnalyzer::noteOmittedBound(const ast::CallExpression& slice, bool low)
+void SemanticAnalyzer::recordOmittedBound(const ast::CallExpression& slice, bool low)
 {
     CallMeaning meaning = result_.callMeaning(slice) != nullptr ? *result_.callMeaning(slice) : CallMeaning{};
     meaning.kind = CallKind::Slice;
@@ -88,9 +88,9 @@ void SemanticAnalyzer::noteOmittedBound(const ast::CallExpression& slice, bool l
     result_.setCallMeaning(slice, meaning);
 }
 
-void SemanticAnalyzer::noteIterator(const ast::ForInStatement& loop)
+void SemanticAnalyzer::recordLoopIterator(const ast::ForInStatement& loop)
 {
-    noteDeclared(&loop, loop.iterator(), VariableOrigin::None);
+    recordDeclaredSymbol(&loop, loop.iterator(), VariableOrigin::None);
 }
 
 VariableOrigin SemanticAnalyzer::parameterOrigin(PassMode mode, bool receiver)

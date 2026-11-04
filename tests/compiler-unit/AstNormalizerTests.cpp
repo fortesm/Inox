@@ -5,7 +5,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// F5 (change desugaring-out-of-parser): the parser records chained and
+// Phase 2b (normalization of the AST): the parser records chained and
 // compound assignments, `with` targets and loop contracts as written; phase
 // 2b turns them into the normalized AST, numbered as the parser numbered
 // them before F5 (`with` in pre-order, loops in post-order). The IR
@@ -15,7 +15,7 @@
 #include "UnitTest.h"
 
 #include "compiler/ast/Ast.h"
-#include "compiler/lowering/Desugar.h"
+#include "compiler/normalization/AstNormalizer.h"
 #include "compiler/parser/Parser.h"
 
 #include <memory>
@@ -75,7 +75,7 @@ Main :
 std::unique_ptr<ModuleNode> parse()
 {
     parser::Parser parser{kProgram};
-    return parser.parseModule("DesugarTest");
+    return parser.parseModule("NormalizerTest");
 }
 
 const FunctionDeclaration& mainOf(const ModuleNode& module)
@@ -150,7 +150,7 @@ void testWrittenForms()
     checkEqual(text(inner.target()), "__member(<with 0>, FIn)", "an inner with's target is read in the outer one");
     bool caught = false;
     try {
-        lowering::requireDesugared(*module);
+        normalization::requireNormalized(*module);
     } catch (const std::logic_error&) {
         caught = true;
     }
@@ -160,10 +160,10 @@ void testWrittenForms()
 void testLowered()
 {
     const auto module = parse();
-    lowering::desugarModule(*module);
+    normalization::normalizeModule(*module);
     bool clean = true;
     try {
-        lowering::requireDesugared(*module);
+        normalization::requireNormalized(*module);
     } catch (const std::logic_error&) {
         clean = false;
     }
@@ -210,7 +210,7 @@ void testLowered()
 
 } // namespace
 
-int runDesugarTests()
+int runAstNormalizerTests()
 {
     const int before = failureCount();
     testWrittenForms();

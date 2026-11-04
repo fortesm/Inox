@@ -33,7 +33,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/ast/AstClone.cpp
     src/compiler/ast/ModuleInterface.cpp
     src/compiler/ast/TypeExpr.cpp
-    src/compiler/lowering/Desugar.cpp
+    src/compiler/normalization/AstNormalizer.cpp
     src/compiler/codegen/AstQueries.cpp
     src/compiler/codegen/ExceptionAbi.cpp
     src/compiler/codegen/FunctionEmitter.cpp
@@ -48,7 +48,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/codegen/FunctionEmitterContracts.cpp
     src/compiler/codegen/FunctionEmitterPointers.cpp
     src/compiler/codegen/FunctionEmitterIo.cpp
-    src/compiler/codegen/FunctionEmitterMigration.cpp
+    src/compiler/codegen/FunctionEmitterSemantics.cpp
     src/compiler/codegen/FunctionEmitterStatements.cpp
     src/compiler/codegen/FunctionEmitterStrings.cpp
     src/compiler/codegen/FunctionEmitterStringFunctions.cpp
@@ -70,7 +70,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticCalls.cpp
     src/compiler/semantic/SemanticDeclarations.cpp
     src/compiler/semantic/SemanticExpressions.cpp
-    src/compiler/semantic/SemanticMeanings.cpp
+    src/compiler/semantic/SemanticRecords.cpp
     src/compiler/semantic/SemanticFiles.cpp
     src/compiler/semantic/SemanticIntrinsics.cpp
     src/compiler/semantic/SemanticGenerics.cpp
@@ -88,11 +88,11 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticSupport.cpp
     src/compiler/semantic/SemanticTypes.cpp
     src/compiler/semantic/Symbol.cpp
-    src/compiler/tir/Lower.cpp
-    src/compiler/tir/LowerExpressions.cpp
-    src/compiler/tir/LowerPlaces.cpp
-    src/compiler/tir/LowerStatements.cpp
-    src/compiler/tir/MigrationIndex.cpp
+    src/compiler/tir/BuildProgram.cpp
+    src/compiler/tir/BuildExpressions.cpp
+    src/compiler/tir/BuildPlaces.cpp
+    src/compiler/tir/BuildStatements.cpp
+    src/compiler/tir/AstNodeMap.cpp
     src/compiler/tir/Print.cpp
     src/compiler/tir/Tir.cpp
     src/compiler/tir/Verify.cpp
@@ -192,7 +192,7 @@ add_executable(inox-compiler-tests
     tests/compiler-unit/AstCloneTests.cpp
     tests/compiler-unit/RoutineHeaderTests.cpp
     tests/compiler-unit/TypeExprTests.cpp
-    tests/compiler-unit/DesugarTests.cpp
+    tests/compiler-unit/AstNormalizerTests.cpp
     tests/compiler-unit/TypedIrTests.cpp
 )
 target_link_libraries(inox-compiler-tests PRIVATE inox-compiler)

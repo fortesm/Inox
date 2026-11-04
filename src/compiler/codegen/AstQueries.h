@@ -6,7 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // Read-only walks over the AST used by the emitter (OpenSpec change
-// compiler-modularization, step 1).
+// compiler-modularization).
 
 #pragma once
 

@@ -6,7 +6,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // Helpers shared by the SemanticAnalyzer source files (OpenSpec change
-// compiler-modularization, step 4): names and operators, the prelude
+// compiler-modularization): names and operators, the prelude
 // signatures, integer ranges and literals, checked constant arithmetic, case
 // domains.
 

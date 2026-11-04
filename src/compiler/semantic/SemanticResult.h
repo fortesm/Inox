@@ -46,7 +46,7 @@ struct FunctionSignature {
     // r3.99: `... Public :`, and the module the routine was written in.
     bool isPublic = false;
     std::string module;
-    // F6 (typed-ir): the declaration the signature was made from.
+    // The declaration the signature was made from.
     const ast::FunctionDeclaration* declaration = nullptr;
 };
 
@@ -101,7 +101,7 @@ public:
         entry_ = nullptr;
     }
 
-    // F6 (typed-ir): what a call is, as the analysis decided it (CallMeaning.h);
+    // What a call is, as the analysis decided it (CallMeaning.h);
     // keyed by the CallExpression, or by the identifier that is a call.
     void setCallMeaning(const ast::Expression& call, CallMeaning meaning)
     {
@@ -113,7 +113,7 @@ public:
         return iterator != callMeanings_.end() ? &iterator->second : nullptr;
     }
 
-    // F6 (typed-ir): the symbol a declaration made: a VarStatement, the
+    // The symbol a declaration made: a VarStatement, the
     // ExpressionStatement `X := V` that declares X, a ForInStatement's
     // iterator, a WithStatement's binding, an ExceptionHandler's binding, a
     // ParameterDeclaration of an analyzed routine.
@@ -188,7 +188,7 @@ public:
         declaredTypes_.insert_or_assign(&declaration, type);
     }
 
-    // F6 (typed-ir): the struct type a Struct declaration declared.
+    // The struct type a Struct declaration declared.
     void setDeclaredType(const ast::TypeDeclaration& declaration, const types::Type* type)
     {
         declaredTypes_.insert_or_assign(&declaration, type);
@@ -198,7 +198,7 @@ public:
         return findDeclaredType(&declaration);
     }
 
-    // F6 (typed-ir): the program's entry routine, Main.
+    // The program's entry routine, Main.
     void setEntry(const ast::FunctionDeclaration& function) { entry_ = &function; }
     const ast::FunctionDeclaration* entry() const { return entry_; }
 

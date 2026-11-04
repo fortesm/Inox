@@ -18,7 +18,7 @@ int runTypeLayoutTests();
 int runAstCloneTests();
 int runRoutineHeaderTests();
 int runTypeExprTests();
-int runDesugarTests();
+int runAstNormalizerTests();
 int runTypedIrTests();
 } // namespace inox::compiler::unit
 
@@ -30,7 +30,7 @@ int main()
     runAstCloneTests();
     runRoutineHeaderTests();
     runTypeExprTests();
-    runDesugarTests();
+    runAstNormalizerTests();
     runTypedIrTests();
     if (failureCount() != 0) {
         return 1;

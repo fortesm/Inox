@@ -5,7 +5,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// The written form of a type (foundation step F4, change structured-types):
+// The written form of a type (change structured-types):
 // what the program wrote, built by the parser, resolved by the analyzer to a
 // types::Type. `ast` does not know `types`. The invariants are those of
 // design.md, checked by checkTypeExpr.

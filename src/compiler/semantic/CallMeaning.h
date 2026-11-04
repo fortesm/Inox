@@ -7,10 +7,10 @@
 
 #pragma once
 
-// What a call is (F6, change typed-ir, step 1): the analysis records, for
+// What a call is: the analysis records, for
 // every call it accepts (and every identifier that is one, `GetLn`,
 // `EndOfInput`, a routine without arguments), the meaning it decided; the
-// typed IR (tir/Lower) copies it and never looks at a name. The builtin
+// typed IR (tir/Build) copies it and never looks at a name. The builtin
 // enumeration below is the one the analysis and the TIR share.
 
 #include <cstdint>

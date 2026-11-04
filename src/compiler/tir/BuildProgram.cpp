@@ -6,17 +6,18 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 
-// Phase 5b: the analyzed AST and the SemanticResult become a tir::Program.
+// Phase 5b, construction of the typed IR: the analyzed AST and the
+// SemanticResult become a tir::Program.
 // Every decision comes from the analysis: a call's meaning (CallMeaning),
 // a variable's origin (VariableOrigin), the symbol a declaration made, a
-// field's index, a constant's value, the checks it asked for. The lowering
+// field's index, a constant's value, the checks it asked for. The builder
 // tests the shape of the AST it walks, never a name.
 //
-// Stack (condition 5): the recursive functions (expression, place, call,
+// Stack: the recursive functions (expression, place, call,
 // statement, statements) are small and hold no strings or vectors; an error
 // is built out of line (fail). tools/stack_frames.py keeps their budget.
 
-#include "Lowerer.h"
+#include "Builder.h"
 
 #include <algorithm>
 #include <string>
@@ -39,22 +40,22 @@ std::string located(const char* prefix, const char* what, const ast::AstNode& no
 
 } // namespace
 
-void Lowerer::fail(const char* what, const ast::AstNode& node) const
+void Builder::fail(const char* what, const ast::AstNode& node) const
 {
     throw InvariantError(located("internal error: typed IR: ", what, node));
 }
 
-void Lowerer::unsupported(const char* what, const ast::AstNode& node) const
+void Builder::unsupported(const char* what, const ast::AstNode& node) const
 {
     throw UnsupportedConstructError(located("typed IR: ", what, node));
 }
 
-TypeRef Lowerer::typeOf(const ast::Expression& expression) const
+TypeRef Builder::typeOf(const ast::Expression& expression) const
 {
     return semantics_.typeOf(expression);
 }
 
-Expr* Lowerer::make(ExprKind kind, TypeRef type, const ast::AstNode& source)
+Expr* Builder::make(ExprKind kind, TypeRef type, const ast::AstNode& source)
 {
     Expr* expression = arena_.make<Expr>();
     expression->kind = kind;
@@ -63,7 +64,7 @@ Expr* Lowerer::make(ExprKind kind, TypeRef type, const ast::AstNode& source)
     return expression;
 }
 
-Stmt* Lowerer::make(StmtKind kind, const ast::AstNode& source)
+Stmt* Builder::make(StmtKind kind, const ast::AstNode& source)
 {
     Stmt* statement = arena_.make<Stmt>();
     statement->kind = kind;
@@ -71,7 +72,7 @@ Stmt* Lowerer::make(StmtKind kind, const ast::AstNode& source)
     return statement;
 }
 
-Routine* Lowerer::routineShell(const ast::FunctionDeclaration& function, bool entry)
+Routine* Builder::routineShell(const ast::FunctionDeclaration& function, bool entry)
 {
     const semantic::FunctionSignature* signature = semantics_.signatureOf(function);
     if (signature == nullptr) {
@@ -86,24 +87,24 @@ Routine* Lowerer::routineShell(const ast::FunctionDeclaration& function, bool en
     routine->parameters = arena_.array<Parameter>(signature->parameters.size());
     for (std::size_t index = 0; index < signature->parameters.size(); ++index) {
         const semantic::FunctionParameter& parameter = signature->parameters[index];
-        Parameter& lowered = routine->parameters[index];
-        lowered.name = arena_.text(parameter.name);
-        lowered.type = parameter.type;
-        lowered.mode = parameter.mode;
-        lowered.isReceiver = index < function.parameters().size() && function.parameters()[index].isReceiver;
-        lowered.symbol =
+        Parameter& built = routine->parameters[index];
+        built.name = arena_.text(parameter.name);
+        built.type = parameter.type;
+        built.mode = parameter.mode;
+        built.isReceiver = index < function.parameters().size() && function.parameters()[index].isReceiver;
+        built.symbol =
             index < function.parameters().size() ? semantics_.declaredSymbol(&function.parameters()[index]) : nullptr;
     }
     routines_[&function] = routine;
     return routine;
 }
 
-void Lowerer::routineBody(Routine& routine)
+void Builder::routineBody(Routine& routine)
 {
     routine.body = statements(routine.origin->body());
 }
 
-void Lowerer::lowerModule(const ast::ModuleNode& module)
+void Builder::buildModule(const ast::ModuleNode& module)
 {
     const ast::FunctionDeclaration* entry = semantics_.entry();
     std::vector<TypeRef> structTypes;
@@ -157,8 +158,8 @@ void Lowerer::lowerModule(const ast::ModuleNode& module)
         if (declaration.value != nullptr) {
             state.initializer = expression(*declaration.value);
         }
-        if (index_ != nullptr) {
-            index_->recordState(declaration, &state);
+        if (astNodes_ != nullptr) {
+            astNodes_->recordState(declaration, &state);
         }
     }
 
@@ -191,11 +192,11 @@ void Lowerer::lowerModule(const ast::ModuleNode& module)
 
 } // namespace detail
 
-std::unique_ptr<Program> lowerProgram(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
-                                      MigrationIndex* index)
+std::unique_ptr<Program> buildProgram(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
+                                      AstNodeMap* astNodes)
 {
     auto program = std::make_unique<Program>();
-    detail::Lowerer(*program, semantics, index).lowerModule(module);
+    detail::Builder(*program, semantics, astNodes).buildModule(module);
     return program;
 }
 
