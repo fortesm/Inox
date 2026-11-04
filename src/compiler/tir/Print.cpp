@@ -198,8 +198,8 @@ void Printer::statement(const Stmt& statement, int depth)
         }
         break;
     case StmtKind::Raise:
-        if (!statement.text.empty()) {
-            output_ << ' ' << statement.text;
+        if (statement.type != nullptr) {
+            output_ << ' ' << statement.type->name();
         }
         break;
     case StmtKind::Return:
@@ -247,7 +247,7 @@ void Printer::statement(const Stmt& statement, int depth)
         }
         for (const Handler& handler : parts.handlers) {
             indent(depth);
-            output_ << "on " << handler.typeName;
+            output_ << "on " << handler.type->name();
             if (handler.binding != nullptr) {
                 output_ << ' ' << handler.binding->name;
             }

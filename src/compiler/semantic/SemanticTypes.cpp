@@ -12,7 +12,6 @@
 #include "../support/DecimalLiteral.h"
 
 #include "SemanticSupport.h"
-#include "../exceptions/ExceptionTypes.h"
 
 #include <algorithm>
 #include <array>
@@ -103,9 +102,11 @@ bool SemanticAnalyzer::isIntegerType(TypeRef type)
     return type != nullptr && type->isInteger();
 }
 
-bool SemanticAnalyzer::isExceptionType(std::string_view name)
+// The exception type a name declares, or null (F7).
+TypeRef SemanticAnalyzer::exceptionTypeNamed(std::string_view name) const
 {
-    return exceptions::isExceptionType(name);
+    const TypeRef type = types().lookup(name);
+    return type != nullptr && type->isException() ? type : nullptr;
 }
 
 std::string SemanticAnalyzer::normalizeName(std::string_view name)

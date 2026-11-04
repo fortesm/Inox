@@ -206,7 +206,10 @@ const Stmt* Builder::tryStatement(const ast::TryStatement& source)
     parts->handlers = arena_.array<Handler>(source.handlers().size());
     for (std::size_t index = 0; index < source.handlers().size(); ++index) {
         const ast::ExceptionHandler& handler = source.handlers()[index];
-        parts->handlers[index].typeName = arena_.text(handler.typeName);
+        parts->handlers[index].type = semantics_.exceptionType(&handler);
+        if (parts->handlers[index].type == nullptr) {
+            fail("a handler without its exception type", source);
+        }
         parts->handlers[index].binding = semantics_.declaredSymbol(&handler);
         parts->handlers[index].body = statements(handler.body);
     }
@@ -261,13 +264,12 @@ const Stmt* Builder::forStatement(const ast::ForInStatement& source)
 const Stmt* Builder::raiseStatement(const ast::RaiseStatement& source)
 {
     Stmt* result = make(StmtKind::Raise, source);
-    // Exception types are names in the analysis; the name is carried as
-    // written (design of typed-ir, "Relation to the other steps").
+    // The exception type the analysis resolved (F7).
     if (source.expression() != nullptr) {
-        if (source.expression()->kind() != ast::AstNodeKind::IdentifierExpression) {
-            fail("a Raise of this form", source);
+        result->type = semantics_.exceptionType(&source);
+        if (result->type == nullptr || !result->type->isException()) {
+            fail("a Raise without its exception type", source);
         }
-        result->text = arena_.text(static_cast<const ast::IdentifierExpression&>(*source.expression()).name());
     }
     return result;
 }

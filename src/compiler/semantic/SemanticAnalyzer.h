@@ -309,7 +309,7 @@ private:
     TypeRef analyzeRounding(const ast::CallExpression& call);
     static bool isIntegerType(TypeRef type);
     static bool isPreludeCall(std::string_view name);
-    static bool isExceptionType(std::string_view name);
+    TypeRef exceptionTypeNamed(std::string_view name) const;
     static bool isMemberCall(const ast::CallExpression& expression);
     static std::string discardedResultMessage(const ast::Expression& expression);
     void analyzeDiscard(const ast::Expression& expression);

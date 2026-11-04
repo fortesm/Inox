@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 // Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
 //
-// Central nominal exception taxonomy for the bootstrap compiler. The runtime
-// transports opaque type ids; names and subtype relationships belong to the
-// language/compiler layer, not to the C++ exception ABI used underneath.
+// The standard exception types: name, the id the runtime transports, and
+// parent. The analysis declares them as types (types::Type, F7), where
+// the hierarchy lives for the compiler; libinoxrt finds an id by name.
 
 #pragma once
 
@@ -11,7 +11,6 @@
 #include <cctype>
 #include <cstdint>
 #include <string_view>
-#include <vector>
 
 namespace inox::compiler::exceptions {
 
@@ -61,47 +60,6 @@ inline const ExceptionTypeInfo* findExceptionType(std::string_view name)
         }
     }
     return nullptr;
-}
-
-inline const ExceptionTypeInfo* findExceptionType(std::uint64_t typeId)
-{
-    for (const auto& info : kStandardExceptionTypes) {
-        if (info.typeId == typeId) {
-            return &info;
-        }
-    }
-    return nullptr;
-}
-
-inline bool isExceptionType(std::string_view name)
-{
-    return findExceptionType(name) != nullptr;
-}
-
-inline bool isSubtypeOf(std::string_view actual, std::string_view expected)
-{
-    const ExceptionTypeInfo* current = findExceptionType(actual);
-    while (current != nullptr) {
-        if (equalsIgnoreCase(current->name, expected)) {
-            return true;
-        }
-        if (current->parent.empty()) {
-            break;
-        }
-        current = findExceptionType(current->parent);
-    }
-    return false;
-}
-
-inline std::vector<std::uint64_t> matchingTypeIds(std::string_view expected)
-{
-    std::vector<std::uint64_t> ids;
-    for (const auto& info : kStandardExceptionTypes) {
-        if (isSubtypeOf(info.name, expected)) {
-            ids.push_back(info.typeId);
-        }
-    }
-    return ids;
 }
 
 } // namespace inox::compiler::exceptions

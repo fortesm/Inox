@@ -78,8 +78,12 @@ public:
     const Type* link(const Type* target);
     // An Option holds an owner (CANON-25): `owner` is an Own.
     const Type* optionOwn(const Type* owner);
-    // An exception type, nominal; its taxonomy is the exceptions module's.
-    const Type* exception(std::string_view name);
+    // An exception type, nominal, with the id the runtime transports; its
+    // parent is set once every exception type is declared.
+    const Type* declareException(std::string_view name, std::uint64_t id);
+    void setExceptionParent(const Type* exception, const Type* parent);
+    // The exception types, in the order they were declared.
+    const std::vector<const Type*>& exceptionTypes() const { return exceptionOrder_; }
 
 private:
     Type* create(TypeKind kind, std::string name);
@@ -94,7 +98,8 @@ private:
     std::unordered_map<std::string, const Type*> names_;     // declared names, normalized
     std::map<std::tuple<std::int64_t, std::int64_t, const Type*>, const Type*> arrays_;
     std::map<std::pair<TypeKind, const Type*>, const Type*> unaries_;
-    std::unordered_map<std::string, const Type*> exceptions_;  // by normalized name
+    std::unordered_map<std::string, Type*> exceptions_;  // by normalized name
+    std::vector<const Type*> exceptionOrder_;
     std::unordered_map<const Type*, Type*> structs_;            // the only types completed later
     std::unordered_map<const Type*, Type*> ranges_;             // and the bounds of a Range
 

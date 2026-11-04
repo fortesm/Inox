@@ -98,6 +98,7 @@ public:
         stringCalls_.clear();
         callMeanings_.clear();
         declaredSymbols_.clear();
+        exceptionTypes_.clear();
         entry_ = nullptr;
     }
 
@@ -111,6 +112,15 @@ public:
     {
         const auto iterator = callMeanings_.find(&call);
         return iterator != callMeanings_.end() ? &iterator->second : nullptr;
+    }
+
+    // The exception type a `Raise E` raises or an `On E` handler catches
+    // (F7), keyed by the RaiseStatement or the ExceptionHandler.
+    void setExceptionType(const void* site, const types::Type* type) { exceptionTypes_.insert_or_assign(site, type); }
+    const types::Type* exceptionType(const void* site) const
+    {
+        const auto iterator = exceptionTypes_.find(site);
+        return iterator != exceptionTypes_.end() ? iterator->second : nullptr;
     }
 
     // The symbol a declaration made: a VarStatement, the
@@ -363,6 +373,7 @@ private:
     std::unordered_map<const Symbol*, ConstantValue> constantValues_;
     std::unordered_map<const ast::Expression*, CallMeaning> callMeanings_;
     std::unordered_map<const void*, const Symbol*> declaredSymbols_;
+    std::unordered_map<const void*, const types::Type*> exceptionTypes_;
     const ast::FunctionDeclaration* entry_ = nullptr;
 };
 

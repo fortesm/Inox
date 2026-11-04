@@ -12,7 +12,6 @@
 #include "../support/RealLiteral.h"
 
 #include "SemanticSupport.h"
-#include "../exceptions/ExceptionTypes.h"
 
 #include <algorithm>
 #include <array>
