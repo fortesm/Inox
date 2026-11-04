@@ -35,20 +35,21 @@ constexpr std::array<std::string_view, 11> kPredefinedNames = {
 
 } // namespace
 
-Lexer::Lexer(std::string_view source) : source_(source) {}
+Lexer::Lexer(std::string_view source) : cursor_(source) {}
 
 Token Lexer::nextToken()
 {
     skipWhitespaceAndComments();
 
-    SourceLocation start{current_, line_, column_};
-    const std::size_t startOffset = current_;
+    const auto position = cursor_.position();
+    SourceLocation start{position.offset, position.line, position.column};
+    const std::size_t startOffset = position.offset;
 
-    if (isAtEnd()) {
+    if (cursor_.atEnd()) {
         return makeToken(TokenKind::EndOfFile, start, startOffset);
     }
 
-    const char ch = advance();
+    const char ch = cursor_.advance();
 
     if (isIdentifierStart(ch)) {
         return identifierOrKeyword(start, startOffset);
@@ -64,7 +65,7 @@ Token Lexer::nextToken()
     case '\'':
         return charLiteral(start, startOffset);
     case ':':
-        if (match('=')) {
+        if (cursor_.match('=')) {
             return makeToken(TokenKind::ColonEqual, start, startOffset);
         }
         return makeToken(TokenKind::Colon, start, startOffset);
@@ -75,7 +76,7 @@ Token Lexer::nextToken()
     // r3.87: `!=` is inequality too, the same operator as `#`; a lone `!`
     // is not an operator: negation is `not`.
     case '!':
-        if (match('=')) {
+        if (cursor_.match('=')) {
             return makeToken(TokenKind::Hash, start, startOffset);
         }
         return invalidToken(start, startOffset,
@@ -85,30 +86,30 @@ Token Lexer::nextToken()
         // operator; bitwise or is spelled `bitor`.
         return makeToken(TokenKind::Pipe, start, startOffset);
     case '<':
-        if (match('=')) {
+        if (cursor_.match('=')) {
             return makeToken(TokenKind::LessEqual, start, startOffset);
         }
         return makeToken(TokenKind::Less, start, startOffset);
     case '>':
-        if (match('=')) {
+        if (cursor_.match('=')) {
             return makeToken(TokenKind::GreaterEqual, start, startOffset);
         }
         return makeToken(TokenKind::Greater, start, startOffset);
     // ADR-0012: compound assignment `+=` `-=` `*=` `/=` `^=`.
     case '+':
-        return makeToken(match('=') ? TokenKind::PlusEqual : TokenKind::Plus, start, startOffset);
+        return makeToken(cursor_.match('=') ? TokenKind::PlusEqual : TokenKind::Plus, start, startOffset);
     case '-':
-        return makeToken(match('=') ? TokenKind::MinusEqual : TokenKind::Minus, start, startOffset);
+        return makeToken(cursor_.match('=') ? TokenKind::MinusEqual : TokenKind::Minus, start, startOffset);
     case '*':
-        return makeToken(match('=') ? TokenKind::StarEqual : TokenKind::Star, start, startOffset);
+        return makeToken(cursor_.match('=') ? TokenKind::StarEqual : TokenKind::Star, start, startOffset);
     case '/':
-        return makeToken(match('=') ? TokenKind::SlashEqual : TokenKind::Slash, start, startOffset);
+        return makeToken(cursor_.match('=') ? TokenKind::SlashEqual : TokenKind::Slash, start, startOffset);
     case '^':
-        return makeToken(match('=') ? TokenKind::CaretEqual : TokenKind::Caret, start, startOffset);
+        return makeToken(cursor_.match('=') ? TokenKind::CaretEqual : TokenKind::Caret, start, startOffset);
     case '$':
         return dollarHexNumber(start, startOffset);
     case '.':
-        if (match('.')) {
+        if (cursor_.match('.')) {
             return makeToken(TokenKind::DotDot, start, startOffset);
         }
         return makeToken(TokenKind::Dot, start, startOffset);
@@ -148,57 +149,21 @@ std::vector<Token> Lexer::tokenize()
     return tokens;
 }
 
-bool Lexer::isAtEnd() const
-{
-    return current_ >= source_.size();
-}
-
-char Lexer::peek() const
-{
-    return isAtEnd() ? '\0' : source_[current_];
-}
-
-char Lexer::peekNext() const
-{
-    return current_ + 1 >= source_.size() ? '\0' : source_[current_ + 1];
-}
-
-char Lexer::advance()
-{
-    const char ch = source_[current_++];
-    if (ch == '\n') {
-        ++line_;
-        column_ = 1;
-    } else {
-        ++column_;
-    }
-    return ch;
-}
-
-bool Lexer::match(char expected)
-{
-    if (isAtEnd() || source_[current_] != expected) {
-        return false;
-    }
-    advance();
-    return true;
-}
-
 void Lexer::skipWhitespaceAndComments()
 {
     for (;;) {
-        while (!isAtEnd()) {
-            const char ch = peek();
+        while (!cursor_.atEnd()) {
+            const char ch = cursor_.peek();
             if (ch == ' ' || ch == '\r' || ch == '\t' || ch == '\n') {
-                advance();
+                cursor_.advance();
             } else {
                 break;
             }
         }
 
-        if (peek() == '=' && peekNext() == '=') {
-            while (!isAtEnd() && peek() != '\n') {
-                advance();
+        if (cursor_.peek() == '=' && cursor_.peekNext() == '=') {
+            while (!cursor_.atEnd() && cursor_.peek() != '\n') {
+                cursor_.advance();
             }
             continue;
         }
@@ -209,7 +174,7 @@ void Lexer::skipWhitespaceAndComments()
 
 Token Lexer::makeToken(TokenKind kind, SourceLocation start, std::size_t startOffset)
 {
-    const auto text = source_.substr(startOffset, current_ - startOffset);
+    const auto text = cursor_.slice(startOffset, cursor_.offset());
     return Token{kind, std::string(text), normalize(text), start};
 }
 
@@ -222,8 +187,8 @@ Token Lexer::invalidToken(SourceLocation start, std::size_t startOffset, std::st
 
 Token Lexer::identifierOrKeyword(SourceLocation start, std::size_t startOffset)
 {
-    while (isIdentifierPart(peek())) {
-        advance();
+    while (isIdentifierPart(cursor_.peek())) {
+        cursor_.advance();
     }
 
     Token token = makeToken(TokenKind::Identifier, start, startOffset);
@@ -242,14 +207,14 @@ bool Lexer::digitRun(bool hex)
 {
     const auto isRunDigit = [&](char ch) { return hex ? isHexDigit(ch) : isDigit(ch); };
     for (;;) {
-        while (isRunDigit(peek())) {
-            advance();
+        while (isRunDigit(cursor_.peek())) {
+            cursor_.advance();
         }
-        if (peek() != '_') {
+        if (cursor_.peek() != '_') {
             return true;
         }
-        advance();  // '_'
-        if (!isRunDigit(peek())) {
+        cursor_.advance();  // '_'
+        if (!isRunDigit(cursor_.peek())) {
             return false;  // trailing, doubled, or before '.'
         }
     }
@@ -257,12 +222,12 @@ bool Lexer::digitRun(bool hex)
 
 Token Lexer::number(SourceLocation start, std::size_t startOffset)
 {
-    if (source_[startOffset] == '0' && (peek() == 'x' || peek() == 'X')) {
+    if (cursor_.at(startOffset) == '0' && (cursor_.peek() == 'x' || cursor_.peek() == 'X')) {
         // CANON-2 (v3.34, decided by Marcelo Fortes): `0xFF` is accepted next
         // to `$FF` as a convenience for programmers coming from C. Same digits
         // and separator rules; later phases see it as `$FF`.
-        advance();
-        if (!isHexDigit(peek())) {
+        cursor_.advance();
+        if (!isHexDigit(cursor_.peek())) {
             return invalidToken(start, startOffset, "expected hexadecimal digit after '0x'");
         }
         if (!digitRun(true)) {
@@ -278,18 +243,18 @@ Token Lexer::number(SourceLocation start, std::size_t startOffset)
         return invalidToken(start, startOffset, kSeparator);
     }
 
-    if (peek() == '.' && isDigit(peekNext())) {
-        advance();
+    if (cursor_.peek() == '.' && isDigit(cursor_.peekNext())) {
+        cursor_.advance();
         if (!digitRun(false)) {
             return invalidToken(start, startOffset, kSeparator);
         }
         // r3.89 (B5): an exponent after the fraction, `1.5e3`, `2.0E-7`.
-        if (peek() == 'e' || peek() == 'E') {
-            advance();
-            if (peek() == '+' || peek() == '-') {
-                advance();
+        if (cursor_.peek() == 'e' || cursor_.peek() == 'E') {
+            cursor_.advance();
+            if (cursor_.peek() == '+' || cursor_.peek() == '-') {
+                cursor_.advance();
             }
-            if (!isDigit(peek())) {
+            if (!isDigit(cursor_.peek())) {
                 return invalidToken(start, startOffset,
                                     "an exponent needs digits after 'e' (r3.89): write '1.5e3' or '2.0e-7'");
             }
@@ -301,9 +266,9 @@ Token Lexer::number(SourceLocation start, std::size_t startOffset)
     }
 
     // r3.89 (B5): an exponent needs a fraction, `1.0e3`; `1e3` is an error.
-    if ((peek() == 'e' || peek() == 'E') &&
-        (isDigit(peekNext()) || ((peekNext() == '+' || peekNext() == '-')))) {
-        const std::string digits(source_.substr(startOffset, current_ - startOffset));
+    if ((cursor_.peek() == 'e' || cursor_.peek() == 'E') &&
+        (isDigit(cursor_.peekNext()) || ((cursor_.peekNext() == '+' || cursor_.peekNext() == '-')))) {
+        const std::string digits(cursor_.slice(startOffset, cursor_.offset()));
         return invalidToken(start, startOffset,
                             "a real literal with an exponent has a fraction (r3.89): write '" + digits +
                                 ".0e...', not '" + digits + "e...'");
@@ -314,7 +279,7 @@ Token Lexer::number(SourceLocation start, std::size_t startOffset)
 
 Token Lexer::dollarHexNumber(SourceLocation start, std::size_t startOffset)
 {
-    if (!isHexDigit(peek())) {
+    if (!isHexDigit(cursor_.peek())) {
         return invalidToken(start, startOffset, "expected hexadecimal digit after '$'");
     }
 
@@ -330,27 +295,27 @@ Token Lexer::stringLiteral(SourceLocation start, std::size_t startOffset)
 {
     // CANON-2: a String is delimited by double quotes; `""` is the empty
     // String, also when another `""` follows on the line (`F("", "")`).
-    const std::size_t contentStart = current_;
+    const std::size_t contentStart = cursor_.offset();
     bool escaped = false;
 
-    while (!isAtEnd() && peek() != '\n') {
-        if (peek() == '"' && !escaped) {
+    while (!cursor_.atEnd() && cursor_.peek() != '\n') {
+        if (cursor_.peek() == '"' && !escaped) {
             break;
         }
 
-        escaped = peek() == '\\' && !escaped;
-        if (peek() != '\\') {
+        escaped = cursor_.peek() == '\\' && !escaped;
+        if (cursor_.peek() != '\\') {
             escaped = false;
         }
-        advance();
+        cursor_.advance();
     }
 
-    if (isAtEnd() || peek() == '\n') {
+    if (cursor_.atEnd() || cursor_.peek() == '\n') {
         return invalidToken(start, startOffset, "unterminated string literal");
     }
 
-    const auto content = source_.substr(contentStart, current_ - contentStart);
-    advance();
+    const auto content = cursor_.slice(contentStart, cursor_.offset());
+    cursor_.advance();
 
     return Token{
         TokenKind::StringLiteral,
@@ -363,21 +328,21 @@ Token Lexer::stringLiteral(SourceLocation start, std::size_t startOffset)
 Token Lexer::charLiteral(SourceLocation start, std::size_t startOffset)
 {
     // A backslash escapes the next character, so '\'' is one quote (char-values).
-    while (!isAtEnd() && peek() != '\'' && peek() != '\n') {
-        if (peek() == '\\') {
-            advance();
-            if (isAtEnd() || peek() == '\n') {
+    while (!cursor_.atEnd() && cursor_.peek() != '\'' && cursor_.peek() != '\n') {
+        if (cursor_.peek() == '\\') {
+            cursor_.advance();
+            if (cursor_.atEnd() || cursor_.peek() == '\n') {
                 break;
             }
         }
-        advance();
+        cursor_.advance();
     }
 
-    if (isAtEnd() || peek() == '\n') {
+    if (cursor_.atEnd() || cursor_.peek() == '\n') {
         return invalidToken(start, startOffset, "unterminated char literal");
     }
 
-    advance();
+    cursor_.advance();
     return makeToken(TokenKind::CharLiteral, start, startOffset);
 }
 
