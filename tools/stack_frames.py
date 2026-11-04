@@ -65,7 +65,7 @@ NEW_PATHS = [
     r"lowerChain|lowerCompound|appendBody|number|body)|hasWrittenForms|requireNoForms|expressionHasWithTarget)",
     # Phase 5b (F6, typed-ir, step 1): the lowering to the typed IR, its
     # verifier and its printer.
-    r"inox::compiler::tir::\(anonymous namespace\)::Lowerer::(expression|identifier|call|construction|checked|"
+    r"inox::compiler::tir::detail::Lowerer::(expression|identifier|call|construction|checked|"
     r"expressions|place|variable|through|invariants|statement|statements|expressionStatement|declaration|"
     r"ifStatement|caseStatement|tryStatement|withStatement|forStatement|raiseStatement|slice|check|builtin)",
     r"inox::compiler::tir::\(anonymous namespace\)::Verifier::(statements|statement|expression|place|invariants)",

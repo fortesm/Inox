@@ -69,6 +69,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticCalls.cpp
     src/compiler/semantic/SemanticDeclarations.cpp
     src/compiler/semantic/SemanticExpressions.cpp
+    src/compiler/semantic/SemanticMeanings.cpp
     src/compiler/semantic/SemanticFiles.cpp
     src/compiler/semantic/SemanticIntrinsics.cpp
     src/compiler/semantic/SemanticGenerics.cpp
@@ -87,6 +88,9 @@ set(INOX_COMPILER_SOURCES
     src/compiler/semantic/SemanticTypes.cpp
     src/compiler/semantic/Symbol.cpp
     src/compiler/tir/Lower.cpp
+    src/compiler/tir/LowerExpressions.cpp
+    src/compiler/tir/LowerPlaces.cpp
+    src/compiler/tir/LowerStatements.cpp
     src/compiler/tir/Print.cpp
     src/compiler/tir/Tir.cpp
     src/compiler/tir/Verify.cpp

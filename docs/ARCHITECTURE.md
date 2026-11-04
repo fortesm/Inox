@@ -242,9 +242,15 @@ instead of searching the whole emitter.
   (`SemanticResult::callMeaning`) and the typed IR reads.
 - `src/compiler/tir/Tir.*` — phase 5b's nodes (F6, change `typed-ir`):
   the closed set of places, expressions, statements, routines, the arena.
-- `src/compiler/tir/Lower.*` — the typed IR of an analyzed program
-  (`lowerProgram`); `tir/Verify.cpp` its verifier, `tir/Print.cpp` the
-  text of `--dump-tir`.
+- `src/compiler/tir/Lower.h` — the interface of the lowering
+  (`lowerProgram`); `tir/Lowerer.h` the class its files share:
+  `Lower.cpp` (the program, its routines, the helpers),
+  `LowerExpressions.cpp` (expressions and calls, by their recorded
+  meaning), `LowerPlaces.cpp` (places), `LowerStatements.cpp`
+  (statements). `tir/Verify.cpp` is the verifier, `tir/Print.cpp` the text
+  of `--dump-tir`.
+- `src/compiler/semantic/SemanticMeanings.cpp` — the analyzer's records
+  for the typed IR: call meanings, variable origins, declared symbols.
 
 - `src/compiler/codegen/LlvmIrEmitter.cpp` — the module: globals,
   declarations, internal helpers, `main` (`LlvmIrEmitter::emit`,
