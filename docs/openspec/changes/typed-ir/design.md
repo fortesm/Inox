@@ -367,3 +367,16 @@ inventory, and replace the textual classification of builtins by
   `TypeValue` (`typeValueOf`); a module intrinsic is the TIR's `Intrinsic`
   (`intrinsicOf`). No `types().lookup` and no `findModuleIntrinsic` of a
   callee is left in codegen.
+
+## Step 5, first part (5.1): what codegen still found by name
+
+- The module emitter takes the struct types, the routines and the entry
+  from `tir::Program` (`emitModule` receives it), never by a declaration's
+  name or `Main`; the lowered signatures are keyed by declaration.
+- A call's routine is the TIR's: `AstNodeMap::routineOf` gives the
+  declaration of the routine the TIR call calls; the methods of built-in
+  types need no second name. The analysis records the invariant routine of
+  each struct (`SemanticResult::invariantRoutine`).
+- A Bool literal's value is the TIR's (`AstNodeMap::booleanOf`).
+- `tools/codegen_decisions.py` counts a routine found by its name
+  (`signatures_.find(normalize(...))`), not a lookup by declaration.

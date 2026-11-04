@@ -14,7 +14,7 @@ sources, what codegen still does that the TIR is to carry:
   shapes    a test of an AST node's kind (`AstNodeKind::CallExpression`)
   resolutions
             a name resolved by codegen itself: a type by its name
-            (`types().lookup(name)`), a routine (`signatures_.find(...)`),
+            (`types().lookup(name)`), a routine by its name (`signatures_.find(normalize(name))`),
             a module intrinsic (`findModuleIntrinsic(name)`), an encoding
             by its prefix (`rfind("__with", 0)`), or a name compared with a
             table of names (`equalsIgnoreCase(name, entry.name)`)
@@ -47,7 +47,7 @@ LOOKUP = re.compile(r'\b(?:semantics_?\.)?(?P<m>typeOf|symbolOf|declaredType|sig
                     r'fillUnit|instances|structInstances|resolvedConstant|intrinsicCallOf)\(')
 SHAPE = re.compile(r'AstNodeKind::(?P<k>[A-Za-z]+)')
 RESOLUTION = re.compile(r'(?P<type>\btypes\(\)\.lookup\()'
-                        r'|(?P<routine>\bsignatures_\.find\()'
+                        r'|(?P<routine>\bsignatures_\.find\(normalize\()'
                         r'|(?P<intrinsic>\bfindModuleIntrinsic\()'
                         r'|(?P<prefix>\b(?:rfind|starts_with)\("__)'
                         r'|(?P<table>\bequalsIgnoreCase\((?![^;"]*,\s*")(?!std::string_view))')

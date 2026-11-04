@@ -233,7 +233,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             return llvmRealConstant(support::parseRealLiteral(literal.value(), float32), float32);
         }
         if (literal.literalKind() == ast::LiteralKind::Boolean) {
-            return equalsIgnoreCase(literal.value(), "true") ? "1" : "0";
+            return astNodes_.booleanOf(expression) ? "1" : "0";
         }
         if (literal.literalKind() == ast::LiteralKind::String) {
             return emitStringValue(literal.value());

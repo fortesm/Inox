@@ -105,7 +105,7 @@ Measured at step 4 (r3.127; clang, Linux):
 
 ## 5. Codegen walks only the TIR
 
-- [ ] 5.1 The types and routines the module emitter resolves by name (`LlvmIrEmitter.cpp`) and the entry found as `Main`, from `tir::Program` (assigned to step 5, Marcelo Fortes, 2026-11-04)
+- [x] 5.1 The types and routines the module emitter resolves by name (`LlvmIrEmitter.cpp`) and the entry found as `Main`, from `tir::Program` (assigned to step 5, Marcelo Fortes, 2026-11-04); a call's routine by its TIR routine, the invariant routine recorded by the analysis, a Bool literal's value from the TIR. Left: the defaults of struct fields, kept as text in the type (`StructField::defaultValue`: a Bool's `true`, an enum literal), which the TIR's `Construct` carries as values with 5.2
 - [ ] 5.2 No AST read in `codegen/`; side tables serving only codegen removed; exit criterion: `tools/codegen_decisions.py --zero`, no `__with` test, LLVM IR snapshot identical; D5 closed; `docs/ARCHITECTURE.md`
 
 ## 6. Gates (every step)

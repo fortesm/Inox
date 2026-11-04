@@ -340,6 +340,7 @@ private:
     };
 
     MethodCallTarget resolveMethodCall(const ast::CallExpression& call);
+    const FunctionSignature* routineSignature(const ast::FunctionDeclaration* routine) const;
     std::string emitReceiverCall(const MethodCallTarget& target, const ast::Expression& receiver, bool requireValue);
     std::string emitMethodCallWith(const MethodCallTarget& target, const ast::CallExpression& call,
                                    const ast::Expression& receiver, bool guarded, bool requireValue);

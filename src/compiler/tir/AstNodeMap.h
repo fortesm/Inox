@@ -112,6 +112,12 @@ public:
     bool isWithBinding(const ast::Expression& node) const;
     // The type a TypeValue names (`T` in `Low(T)`); null for another node.
     TypeRef typeValueOf(const ast::Expression& node) const;
+    // The routine of the program a call calls (the call, or the name it is
+    // written with), as its declaration; null for any other node.
+    const ast::FunctionDeclaration* routineOf(const ast::Expression& node) const;
+    // The value of a Bool literal (the TIR's `boolean`); an InvariantError
+    // for any other node.
+    bool booleanOf(const ast::Expression& node) const;
     // The module intrinsic an Intrinsic calls; null for another node.
     const semantic::ModuleIntrinsic* intrinsicOf(const ast::Expression& node) const;
 

@@ -172,6 +172,19 @@ public:
         signatures_.insert_or_assign(&function, std::move(signature));
     }
 
+    // CANON-24: the routine that checks a struct's own invariant
+    // (`TName.__invariant`, made by the contract lowering); null when the
+    // struct has none of its own.
+    void setInvariantRoutine(const types::Type* structType, const ast::FunctionDeclaration& routine)
+    {
+        invariantRoutines_.insert_or_assign(structType, &routine);
+    }
+    const ast::FunctionDeclaration* invariantRoutine(const types::Type* structType) const
+    {
+        const auto iterator = invariantRoutines_.find(structType);
+        return iterator != invariantRoutines_.end() ? iterator->second : nullptr;
+    }
+
     const FunctionSignature* signatureOf(const ast::FunctionDeclaration& function) const
     {
         const auto iterator = signatures_.find(&function);
@@ -330,6 +343,7 @@ private:
     }
 
     std::unordered_map<const ast::FunctionDeclaration*, FunctionSignature> signatures_;
+    std::unordered_map<const types::Type*, const ast::FunctionDeclaration*> invariantRoutines_;
     std::vector<std::unique_ptr<ast::FunctionDeclaration>> instances_;
     std::vector<const types::Type*> structInstances_;
     std::unordered_map<const ast::CallExpression*, const types::Type*> constructions_;

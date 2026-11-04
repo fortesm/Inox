@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.127
+Canon revision: r3.128
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -680,3 +680,9 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   never by name; the analyzer recognizes a `with` binding by its symbol's
   origin. The LLVM IR and the typed IR of every program are identical.
   Scope approved by Marcelo Fortes, 2026-11-04. Change `typed-ir`.
+- r3.128 — 2026-11-04 — E11, foundation step F6, step 5, first part:
+  code generation takes the struct types, routines and entry of the
+  program, the routine each call calls, the invariant routine of a struct
+  and a Bool literal's value from the typed IR and the analysis, never by
+  name. The LLVM IR and the typed IR of every program are identical.
+  Change `typed-ir`.

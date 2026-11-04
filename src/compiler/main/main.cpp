@@ -602,6 +602,7 @@ struct BuildArtifacts {
 BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module,
                             const inox::compiler::semantic::SemanticResult& semantics,
                             const inox::compiler::tir::AstNodeMap& astNodeMap,
+                            const inox::compiler::tir::Program& typedIr,
                             const fs::path& executableDir, bool debug)
 {
     if (!clangExists()) {
@@ -619,7 +620,7 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
         outputDirectory / (stem + ".ll"),
         outputDirectory / (stem + std::string(inox::compiler::support::executableSuffix()))};
     const inox::compiler::codegen::LlvmModule llvmModule =
-        inox::compiler::codegen::LlvmIrEmitter().emitModule(module, semantics, astNodeMap);
+        inox::compiler::codegen::LlvmIrEmitter().emitModule(module, semantics, astNodeMap, typedIr);
     const std::string& llvmIr = llvmModule.ir;
     writeFile(artifacts.llvmIr, llvmIr);
 
@@ -852,10 +853,10 @@ int main(int argc, char** argv)
         }
 
         if (emitLlvm) {
-            std::cout << inox::compiler::codegen::LlvmIrEmitter().emit(*module, semanticResult, astNodeMap);
+            std::cout << inox::compiler::codegen::LlvmIrEmitter().emit(*module, semanticResult, astNodeMap, *typedIr);
         } else if (build || run) {
             const BuildArtifacts artifacts =
-                buildProgram(fs::path(sourcePath), *module, semanticResult, astNodeMap, executableDir, debug);
+                buildProgram(fs::path(sourcePath), *module, semanticResult, astNodeMap, *typedIr, executableDir, debug);
             if (run) {
                 std::vector<std::string> programCommand{artifacts.executable.string()};
                 programCommand.insert(programCommand.end(), programArguments.begin(), programArguments.end());

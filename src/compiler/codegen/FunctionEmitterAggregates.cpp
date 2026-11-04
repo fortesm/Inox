@@ -402,20 +402,21 @@ FunctionEmitter::MethodCallTarget FunctionEmitter::resolveMethodCall(const ast::
 // routine of the program.
 const FunctionSignature* FunctionEmitter::boundSignature(const ast::CallExpression& site) const
 {
-    const semantic::Symbol* symbol = symbolOf(site);
-    if (symbol == nullptr) {
-        return nullptr;
-    }
-    const auto signature = signatures_.find(normalize(symbol->name));
-    return signature != signatures_.end() ? &signature->second : nullptr;
+    return routineSignature(astNodes_.routineOf(site));
 }
 
 const FunctionSignature* FunctionEmitter::calledRoutine(const ast::IdentifierExpression& callee) const
 {
-    const semantic::Symbol* symbol = symbolOf(callee);
-    const std::string& name =
-        symbol != nullptr && symbol->kind == semantic::SymbolKind::Function ? symbol->name : callee.name();
-    const auto signature = signatures_.find(normalize(name));
+    return routineSignature(astNodes_.routineOf(callee));
+}
+
+// The lowered signature of a routine of the program (LlvmIrEmitter).
+const FunctionSignature* FunctionEmitter::routineSignature(const ast::FunctionDeclaration* routine) const
+{
+    if (routine == nullptr) {
+        return nullptr;
+    }
+    const auto signature = signatures_.find(routine);
     return signature != signatures_.end() ? &signature->second : nullptr;
 }
 
