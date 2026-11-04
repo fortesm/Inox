@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.123
+Canon revision: r3.124
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -651,3 +651,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   resolves itself. The LLVM IR and the typed IR of every program are
   identical. Scope approved by Marcelo Fortes, 2026-11-04. Change
   `typed-ir`.
+- r3.124 — 2026-11-04 — CANON-5 and CANON-25: an assignment evaluates its
+  right-hand side once, then its target once as a place, then stores;
+  `L op= R` evaluates R, then L once, reads it, applies op and stores into
+  that place. No place is read or written after the object holding its
+  storage was freed or replaced, also while the place is evaluated: the
+  program stops, in every build, before it reaches the old address or an
+  object reusing its memory. Fixes stores and reads that reached freed
+  objects. **Changed behavior:** `V[I] += F()` updates the element chosen
+  after F; a compound target is evaluated once. Design approved with
+  amendments by Marcelo Fortes, 2026-11-04. Change
+  `assignment-evaluation-order`.

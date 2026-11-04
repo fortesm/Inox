@@ -45,6 +45,8 @@ jobs:
         run: python3 tools/eh_state_balance.py build/linux-clang-debug/inox
       - name: String memory (no leak, double free or use after free under ASan)
         run: python3 tools/string_leak_check.py build/linux-clang-debug/inox
+      - name: Owned objects (no access to a freed object, quarantine runtime under ASan)
+        run: python3 tools/owner_safety_check.py build/linux-clang-debug/inox
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

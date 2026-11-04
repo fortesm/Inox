@@ -85,7 +85,7 @@ void FunctionEmitter::emitStatementKind(const ast::Statement& statement)
             return;
         }
         if (isAssignmentExpression(expression)) {
-            emitLocalAssignment(expression);
+            emitAssignmentStatement(expressionStatement);
         } else {
             emitExpressionStatement(expression);
         }
@@ -305,6 +305,12 @@ bool FunctionEmitter::isAssignmentExpression(const ast::Expression& expression)
 
     const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
     return binary.op() == ast::BinaryOperator::Assign;
+}
+
+// Out of line: the statement dispatcher's frame stays as it is.
+void FunctionEmitter::emitAssignmentStatement(const ast::ExpressionStatement& statement)
+{
+    emitLocalAssignment(statement.expression(), statement.isCompoundAssignment());
 }
 
 void FunctionEmitter::emitAssignmentOrCallStatement(const ast::Expression& expression)

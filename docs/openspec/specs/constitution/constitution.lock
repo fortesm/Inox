@@ -42,7 +42,8 @@ spec.md#CANON-5 Initialization is transitive	bcc378d817cfdee1	char-values
 spec.md#CANON-5 Unread locals are errors	49f999bc0b47b9e2	driver-commands
 spec.md#CANON-5 Grouped declarations	8c0f134a15fbaefc	constitution
 spec.md#CANON-5 Assignment is a statement	b3da436634a3b804	constitution
-spec.md#CANON-5 Compound assignment	5cfcc82303a5fc93	integer-slash
+spec.md#CANON-5 Compound assignment	b68d99dca02d7226	assignment-evaluation-order
+spec.md#CANON-5 Order of an assignment	562799642fbceae8	assignment-evaluation-order
 spec.md#CANON-5 Safe inference	d38b28e5f8aba169	constitution
 spec.md#CANON-5 Const	c197440f16489fef	constitution
 spec.md#CANON-5 State	5615bfddcfe0a5e5	array-fill
@@ -160,6 +161,7 @@ spec.md#CANON-25 Owners	30e0c00976aea35e	safe-pointers
 spec.md#CANON-25 Moves are checked	585dd7739690f2d6	safe-pointers
 spec.md#CANON-25 Links	47fb968c24b3ba89	read-only-through-owners
 spec.md#CANON-25 Access through pointers	01016a8cfa50bb65	read-only-through-owners
+spec.md#CANON-25 No access through an invalidated object	d711d06ca36a7575	assignment-evaluation-order
 spec.md#CANON-25 Owners in routines and contracts	1edd22537220a8fe	safe-pointers
 spec.md#VERSIONING The version number	80beea51ad367016	repo-layout
 spec.md#VERSIONING Who changes the version	d76c70d3fe676bd0	repo-layout

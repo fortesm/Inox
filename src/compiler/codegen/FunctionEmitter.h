@@ -356,7 +356,8 @@ private:
 
     std::string emitMethodCall(const ast::CallExpression& call, bool requireValue);
 
-    void emitLocalAssignment(const ast::Expression& expression);
+    void emitLocalAssignment(const ast::Expression& expression, bool compound = false);
+    void emitCompoundAssignment(const ast::BinaryExpression& assignment);
 
     const semantic::ConstantValue* resolvedConstant(const ast::IdentifierExpression& identifier) const;
 
@@ -465,6 +466,23 @@ private:
     std::unordered_map<std::string, FreshTemp> freshTemps_;
     // with bindings reached through a pointer (see emitWithGuard).
     std::unordered_map<std::string, LinkParts> withGuards_;
+    // CANON-25: a place whose object, reached through a pointer, a later
+    // index or slice bound may free (it may run a routine): the object's
+    // header and generation, captured when the pointer is reached, checked
+    // before the place is used (FunctionEmitterPointers.cpp).
+    struct PlaceGuard {
+        const ast::Expression* pointer = nullptr;
+        std::optional<LinkParts> reached;
+    };
+    std::vector<PlaceGuard> placeGuards_;
+    // Each element or slice access opens one guard (empty when it needs
+    // none) and closes it: a stack, never a local of the recursive frames.
+    void beginPlaceGuard(const ast::Expression& base, bool laterRunsRoutine);
+    void beginSliceGuard(const ast::CallExpression& slice);
+    void beginElementGuard(const ast::CallExpression& element);
+    void endPlaceGuard();
+    void emitAssignmentStatement(const ast::ExpressionStatement& statement);
+    void capturePlaceGuards(const ast::Expression& pointer, const std::string& object, const LinkParts* link);
     const ast::Expression* withGuardPointer_ = nullptr;
     std::optional<LinkParts> withGuardCaptured_;
     std::unordered_set<std::string> tombstoneLocals_;
@@ -474,6 +492,12 @@ private:
     // FunctionEmitterStringFunctions.cpp) ----
     bool isStringConcatenation(const ast::Expression& expression) const;
     std::string emitConcatenation(const ast::BinaryExpression& expression);
+    // The operator of `binary` applied to two values of its operands' types.
+    std::string emitBinaryValues(const ast::BinaryExpression& binary, const std::string& result,
+                                 const std::string& left, std::string right);
+    // The checks the value of `expression` takes on its way out (range,
+    // Natural, a borrowed read held).
+    std::string finishValue(const ast::Expression& expression, std::string value);
     // `S := S + X ...`: false when the assignment is not of that form.
     bool emitStringAppend(const ast::BinaryExpression& assignment);
     std::string emitStringCall(const ast::CallExpression& call, semantic::StringFunction function);

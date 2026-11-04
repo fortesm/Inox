@@ -20,12 +20,22 @@
 // Own fields). The frees are queued and run in a loop, never by recursion,
 // so a list of a million nodes does not overflow the stack.
 //
+// A checking build for the tests (INOX_OWN_QUARANTINE, with AddressSanitizer;
+// tools/owner_safety_check.py) never hands a freed block out again and
+// poisons its payload, so that any access to a freed object is a report of
+// the sanitizer instead of a write into an object that reuses the block.
+// The header stays readable, as in every build. The release runtime does not
+// define it.
+//
 // A tombstone is a block of size 0 whose generation stands for a variable
 // of the stack: a Link to a variable carries the variable's tombstone, and
 // the variable's routine frees the tombstone when the variable ends.
 
 #include <cstddef>
 #include <cstdint>
+#if defined(INOX_OWN_QUARANTINE)
+#include <sanitizer/asan_interface.h>
+#endif
 #include <cstdlib>
 #include <unordered_map>
 #include <utility>
@@ -121,11 +131,15 @@ void __inox_own_free(void* payload, DropFunction drop) noexcept
         if (function != nullptr) {
             function(object);
         }
+#if defined(INOX_OWN_QUARANTINE)
+        ASAN_POISON_MEMORY_REGION(object, header->size);
+#else
         try {
             freeLists()[header->size].push_back(header);
         } catch (...) {
             std::abort();
         }
+#endif
     }
     freeing = false;
 }

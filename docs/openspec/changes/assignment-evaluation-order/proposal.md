@@ -45,15 +45,16 @@ revealed it; checking the target's validity before the store is a
 complementary defence, rejecting calls that may change an owner is not
 the solution. The design is approved before any code.
 
-Touches: CANON-5 (assignment, compound assignment; constitution
-relocked); ADR-0012's consequence. Compiler phases: normalization (2b,
+Touches: CANON-5 (assignment, compound assignment) and CANON-25 (no
+access through an invalidated object; constitution relocked); ADR-0012's consequence. Compiler phases: normalization (2b,
 the compound form), the typed IR (5b, the compound `Assign`), code
 generation (6, the order of every assignment form); libinoxrt (a checking
 mode for the tests, design). `docs/ARCHITECTURE.md`, `docs/STATUS.md`.
 
 Risk: high (memory ownership; changes observable behavior).
 
-Status: **design awaiting approval**. No code before it.
+Status: **implemented** (canon r3.124); design approved with amendments
+(Marcelo Fortes, 2026-11-04; `design.md`, "Decisions").
 
 ## What Changes
 
@@ -63,11 +64,17 @@ Status: **design awaiting approval**. No code before it.
    (local, State, field, element, nested struct, `Value(P)`, through
    `Own`, `Option<Own>` reached by `Link`, String append); compound
    assignment reads and writes one place, resolved once, after R.
-3. The reproductions in `repro/` become permanent runtime tests, with a
-   check that detects a write into a freed object, not only the output.
-4. Revision line, kCanonRevision, CHANGELOG (**changed behavior**).
+3. Every place reached through a pointer is checked against its object's
+   generation before an access that follows code able to free it, in
+   every build (the program stops, as a `with` target does).
+4. The reproductions in `repro/` become permanent runtime tests, with a
+   check that detects an access to a freed object, not only the output.
+5. Revision line, kCanonRevision, CHANGELOG (**changed behavior**).
 
 ## Out of scope
+
+Reference arguments and receivers: a change of their own, right after
+this one and before F6 step 4 (decision Q1).
 
 F6 step 4 (places and encodings in the typed IR): this change does not
 move codegen to the typed IR; it changes the order the backend already

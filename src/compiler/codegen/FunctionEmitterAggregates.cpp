@@ -492,7 +492,10 @@ std::string FunctionEmitter::emitMethodCall(const ast::CallExpression& call, boo
     return result;
 }
 
-void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression)
+// CANON-5: `L := R` evaluates R, then L once as a place, then stores R's
+// value there; a call in R that replaces what L reaches never leaves the
+// store a stale place.
+void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression, bool compound)
 {
     if (expression.kind() != ast::AstNodeKind::BinaryExpression) {
         throw CodegenUnsupported(
@@ -507,6 +510,10 @@ void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression)
 
     // CANON-14: `S := S + X` and `S += X` append to S in place.
     if (emitStringAppend(assignment)) {
+        return;
+    }
+    if (compound) {
+        emitCompoundAssignment(assignment);
         return;
     }
 
@@ -529,9 +536,9 @@ void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression)
     }
 
     if (isIndexCall(assignment.left())) {
+        const std::string value = emitExpression(assignment.right());
         const ElementAddress element = emitElementAddress(
             static_cast<const ast::CallExpression&>(assignment.left()));
-        const std::string value = emitExpression(assignment.right());
         const std::string stored = narrowForStorage(value, element);
         emitOwningStore(element.pointer, element.elementType, element.storage, stored);
         emitInvariantChecks(assignment, true);
@@ -541,16 +548,16 @@ void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression)
     // Safe pointers: `Value(P) := X` replaces the object P reaches.
     if (assignment.left().kind() == ast::AstNodeKind::CallExpression &&
         isPointerBuiltin(static_cast<const ast::CallExpression&>(assignment.left()))) {
-        const Place place = emitPlace(assignment.left());
         const std::string value = emitExpression(assignment.right());
+        const Place place = emitPlace(assignment.left());
         emitOwningStore(place.pointer, place.type, valueLlvmType(place.type), value);
         return;
     }
 
     if (isMemberAccessCall(assignment.left())) {
         const auto& member = static_cast<const ast::CallExpression&>(assignment.left());
-        const FieldAddress field = emitMemberAddress(member);
         const std::string value = emitExpression(assignment.right());
+        const FieldAddress field = emitMemberAddress(member);
         emitOwningStore(field.pointer, memberField(member)->field->type, field.llvmType, value);
         emitInvariantChecks(assignment, true);
         return;
@@ -558,6 +565,52 @@ void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression)
 
     throw CodegenUnsupported(
         "LLVM emission currently supports only local variable or field assignments");
+}
+
+// CANON-5: `L op= R`, normalized as `L := L op R` marked compound,
+// evaluates R once, then the place of L once, reads it, applies op and
+// stores into that same place. The written `L` on the right is never
+// evaluated as a place of its own.
+void FunctionEmitter::emitCompoundAssignment(const ast::BinaryExpression& assignment)
+{
+    const auto& combined = static_cast<const ast::BinaryExpression&>(assignment.right());
+    const ast::Expression& target = assignment.left();
+    const std::string value = emitExpression(combined.right());
+    if (isStringType(typeOf(target))) {
+        // CANON-14: appended in place, R already evaluated.
+        const Place place = emitPlace(target);
+        const std::string part = "%strparts" + std::to_string(nextTemporary_++);
+        output_ << "  " << part << " = alloca [1 x ptr]\n";
+        output_ << "  store ptr " << value << ", ptr " << part << '\n';
+        requireRuntime(RuntimeFunction::StringAppend);
+        requireStringRuntime();
+        const std::string status = newStringStatus();
+        output_ << "  call void @__inox_str_append(ptr " << place.pointer << ", i64 1, ptr " << part << ", ptr "
+                << status << ")\n";
+        emitStringStatusCheck(status);
+        emitInvariantChecks(assignment, true);
+        return;
+    }
+    if (isIndexCall(target)) {
+        const ElementAddress element = emitElementAddress(static_cast<const ast::CallExpression&>(target));
+        const std::string current = loadElement(element);
+        const std::string operation = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string result = finishValue(combined, emitBinaryValues(combined, operation, current, value));
+        emitOwningStore(element.pointer, element.elementType, element.storage, narrowForStorage(result, element));
+        emitInvariantChecks(assignment, true);
+        return;
+    }
+    const Place place = emitPlace(target);
+    const TypeRef type = place.type != nullptr ? place.type : typeOf(target);
+    const std::string llvmType = isMemberAccessCall(target)
+                                     ? memberField(static_cast<const ast::CallExpression&>(target))->llvmType
+                                     : valueLlvmType(type);
+    const std::string current = "%tmp" + std::to_string(nextTemporary_++);
+    output_ << "  " << current << " = load " << llvmType << ", ptr " << place.pointer << '\n';
+    const std::string operation = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string result = finishValue(combined, emitBinaryValues(combined, operation, current, value));
+    emitOwningStore(place.pointer, type, llvmType, result);
+    emitInvariantChecks(assignment, true);
 }
 
 } // namespace inox::compiler::codegen::detail

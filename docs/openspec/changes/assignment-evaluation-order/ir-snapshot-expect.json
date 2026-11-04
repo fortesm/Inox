@@ -1,0 +1,1906 @@
+{
+ "examples/associated-methods.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "57b36d3d12fb4f9769f20725b12abd8c771439767cf6d3b2015d94c8318e8121",
+    "815fd8af7a7feb81a780c4b357ba0d4648cbd40bb15bb6c18ce9789d74620c56"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/bank-atm.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "df2639dc9402f24e8f400822693643f6e3f5f46de4d2f499ee89ccc6def07170",
+    "5eeb28c9aec431dba5f037cc59c61e849b38fea82063fe48ec8a84cf29f1f8bc"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/bank/Main.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "71712e1b6f56a062dbae194afe93e9e3a2e48a9287a65fba40443ed066af4eee",
+    "411b05a2fd87c75facd2aa9f6c614777b453e4cfc23081d0743df32b169a33d4"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/bitwise.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "c52c62f7e7e43aa534f586cdc45fcaf8e36b7a89cfb0ecd44711bfd3d7035cdc",
+    "da3e0fc342011e3c87d76e37b00111d4267cabafc2a05e6d2c931403368b25ae"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/cards.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "9f1ce0fd521829855bde18c3ef46c5b8e14c996e04bb0c0b2440db71ef1244ee",
+    "32eb1f36bae6e5a6f25362a2fa8743449e28830a30bb6186f1f546013c55da8b"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/contracts.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "deb6072344103525c591b22a3082a9cfe6d152a8005669d525a64af441a42b1d",
+    "ccebf95326a4c9bc1e76c5f4bb15ced5ae390c916731a1b2a22788c11b17dcef"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/control-flow.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "6ecfac8ad5eb97b7442de9b3d1bbe0e1743b3322cac141173e633b843666777a",
+    "d48d9cc94d3cc2695af5b2b74c03476b93e773db26686f7bbc3d9d2be82c67f7"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/edit.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "dff98333fe3a56670e34c3aed3903d11dc9bb54b8da90471726b48a40f886daa",
+    "c5127c9d3bdb6de7172310c52788c27d2091a075a22bffd4e3a07095b30a3b46"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/exceptions-retry.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "81594cd8b007c8bf10e1fe69cc2590521662428c15abe286760f4542dc97203f",
+    "275366f281990e91180708d9de2d415634136292c2dcf6c9d08385a9de55681d"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/file_io.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "6a2ef9da940a1e10d16d1e4c93d221f1573aa81573d1742837ada9ffd919a082",
+    "cd334e78fa58f59dccbd9de0678f005805efc90706b54b4c003ab2784a5bf655"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/for-range-leave-continue.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "70bea644c71bc37852c6f31a4e05d14ba9115513678e2d3e2bbe66484c8512c0",
+    "8ef70183d1deab1af7443db526f97f7f504c69a6714489300bc5f37053367379"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/for-range-step.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "6dfcf4208ae56da1edc40f22c56067d1b3a91de27fc58962efaf3ab6be1b8fe3",
+    "050ee8520e90f70050787f47b25793a27e8f3970e9bf9bd03cc31549074a718d"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/generics.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "135778af2f217970e2da53f8ffe6942e19f9c09aa7fe502c85c91cf5dd83a9af",
+    "4474ef24cab150e2465c37b113bfff4a979896c5ab24c500830bade6becc4e3e"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/pointers-navigator.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "d48e2dc2a348cd2f478f2743393bf66e4a217d116cec738af3d3079540a90763",
+    "2e122656d70bf8f4f9e3a58c2a26ab30ef120408f678c615120de1501d23c1f2"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/pointers-tree.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "99639ff79cd4d03ffc38ff60d69e14252cce6637e5a9063775a3bc980acfd25a",
+    "461267e0b502be0570b4d9eeeddfd057428fd1c13a20697c615f47556ccb4ba2"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/repeat-flexible-end.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "f6cd6ce3e8af2eaee73bd300b67ea703c6175b1bcd14dee14915671e38176508",
+    "20b3154543865f6e39bb4560e6597741f19a14f1222a50789a54a759350d1a8e"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/repeat-flexible-middle.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "8a333ac1fd4aa6a7eb4fc1e473986e6d25bb4259445b5a67f6b818f37b53d1fd",
+    "dafdbd8791432b449e68bb4da5f091eaddb838436ed256ec2cff22ae0c65b82e"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/repeat-flexible-start.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "7e8de107081818d587964fa66291355b2e6707da214537529ecfb98b14e0fbfa",
+    "d8bb9b849332e538118fa42619f5d56c4c213c322e3dbaf4ec1a9e2d091542d0"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/repeat-leave-continue.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "dde1f8e5bfa9877378bb580d2f3ca431d2825a76aca9a9bb6402847d3c8df184",
+    "16d6cd12f4089c16a5517fac2e4e02b37dfb1f95859ad8860dfc2e6bf37aa869"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/repeat-until.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "4696fd4c1f8930e2b9b8613d9fe9d3d27720fd36e5a1d08448dd4c6c8841f5cb",
+    "fdf7627273a12c044f1895fb2652dfb070ac0234a6b625654067fb56c41498ae"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/reuse-army.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "fbd76cf57ed46bf3b944e62496a1d732e1df901e7e3eb7439bfd809c319c3325",
+    "65eb113789ce9c563cb0afbae20a0c98267920bcb0eb1bd5e23b2aaa9f1daf76"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/reuse-inventory.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "6108ce0b38442c5b9e02bc557f8925a4bd576cc0a7f7828bb58def3262db88d3",
+    "9cd1d76abab29c6edc4136d655be7c6a42f5b28e46351145dc1aa3e58d46eca7"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/reuse-registry.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "fcebf7fae239fd001941a700a807c1adc66f131aee31ac3a9904a5b414a9363f",
+    "44be33b527478d2fd50a9c790ede4c24be74b0f803b678e3cbab82959ff38bbc"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/reuse-shapes.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "e6b6c8d43ef60d131abcdbf5edc1c628ccc8807b918cc562694c924d409db6a6",
+    "93eeb342417591ad815f1bca085dbd220a1c0b954798f34d815692b35bdfbab5"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/showcase.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "72f62f501cf865127fe4967718f510a728271b4c4912139c7a285a95019adb15",
+    "4b37f5a544acbe009ceacf00a08f96943cc3d010d1d26b22e19096c8c166a5a6"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/strings.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "5af9a0ca20b723e076572bcc4a3de4a9d1b7d0c18d1e1885b5a209a51403870f",
+    "42a10b83639675824b6d68ac7b53965d32d85ed77f5b69496c3f4ffe4591f7bc"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/while-leave-continue.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "b66a7a215a6cda5c1324c9fb8567c4bffda58c090c215760616e1a302422ffc1",
+    "b27f1138a739cc78eb6c3259a09a31001c0bb24f9f68f1cab49ad33ed0530fad"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/while-loop.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "bc13d553513b87f6c1fb2c18622b442f4ff6e0fa184adf1019f576f662184d58",
+    "2a9e172ffd12263eeb48c2dc2d3419e42cc9d677fd2f2b1ca8a4fa357d3a5235"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/codegen/llvm-string-append-smoke.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "b1d876f5909a646b65e4359b0b945c31eda3d8f29713f11cd465d81a089020d3",
+    "67119a029da09d56797adeaebfc1475abbc17315e2e0f8747ca7c305cde54bd9"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/eh-lifetime/string-cleanup.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "63e322096ec671dfc8a20484bfa83c7fc451677f75a30e87925baa65a4cf8e9e",
+    "022803c4a2c14e269a1b30ebb6e48f41a08e3a22439eea22db91bf3c3858418c"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/integration/showcase/account-showcase.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "72f62f501cf865127fe4967718f510a728271b4c4912139c7a285a95019adb15",
+    "9bc490beeec43d012190a5052b12c2884943181d40a5bfc6c154ab2037d9718d"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/modules/encapsulated-account/Main.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "598069681cd4bc4d0c2f7b862fd724cc62dbdd0cb8ee36e0f8dcf2118f2a6984",
+    "20d47bb027825a4d76e15ee22125c66723d0bb2793075219c6f2ef52cd3f7343"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/modules/library-names-unbound/Main.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "59b92bd004080d38774ea3af67397d3bd5f603a2d076360851e49d2fdc6877c0",
+    "43d0c7ff33799d61ee8df2343efc5a309286b1bfac77a935c7f02165ac67b78a"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/parser/valid/canonical-type-and-var.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "2fdaad36d8f33acbf729895d2cf815b1cfe11cabb96dde1d3e218654f06008e2",
+    "2ff84dbed5d83faddf3bfbe71fca4c489411a9cf6197744c93d26ebe9e954567"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/parser/valid/type-struct-var.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "094b51bed8f83be8bdca7f9428d6eb04027a59ac8ec0af77b9d153f83746234f",
+    "fe094f58e8fa2a93f6d3a05fcc8476761832a3d835bb1b89e0e07169c23cda46"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/parser/valid/with-scope.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "f0002f39da015bfcc496fe05c42d7a41d9577b184d21b1ca1aa2118da294e354",
+    "39552011dec2bdb453c00b4aa67aeeffd9e3593228027ae91ae48f53d918f3f2"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/array-fill.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "8f7045f1feb423443e47e37b519f8fa1375be55d8232226cfec09eb2973f2c22",
+    "4cc6e7ca7d826ea90a059cd76b93bd2369688a0a42ef0a54f7e35bb55af57926"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/array-index-out-of-bounds.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "1d7c832caf8ceedc63119817be5788d50bce44a2eae8b7fc3515344efd264cec",
+    "b591825488e03069248ecb406b3a96f92f316bf5c8984a80ef8a1b0436c9d47d"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/array-of-struct-out-of-bounds.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "4a308a58affa01134435728e287641ca0f00d6a4777c580facf02de2d0d2c206",
+    "ffbb4a2431f5e06d8d46a10e7629e4a6c5de72ed2840f184a5b05d6afebf10a9"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/array-of-struct.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "eab6c44e0653c45694f852134f37288680f9d4acaf820de0a08382f5171dab47",
+    "058588edaccbbb4bf63cc5f40411526d125c0884b81bbd0cbd845d28e8b59b86"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/arrays.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "2adf7f5d8e0cc0079bcb55af8248e4bc06e35f92f125fb29853a29d957901066",
+    "781c20e7e4b06489ff2e43b382a7cd0e9f51b2e92eb50ae6b05cace94af4ac7b"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/builtin-type-methods.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "64e8d4fb71bcfb9b0450150b37ab1b8cc392f42cb0f73c5050a74c59ed5eca75",
+    "036f165add4b39d06a3a28aa77caa729ce2f1a5e7a2013cf6f79f8c880ccaa11"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/byte-conversion-runtime-range.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "268b5604857aeeb1af5cfb87ecb0729a75b0730776b0c9324688c878aa3d311b",
+    "e36ed36a107320859dbab9d9e09166eaf0695dc209813281da80c9939fd4cf51"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/byte-overflow.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "f81725b45da7a55757718769eaf827431e0028b4be0ef356f55cd7a2cd0cc268",
+    "c8d6509335cbf3a73d39874655f55c8e3b89695ca748c94b932853871e70de35"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/chain-and-with.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "24dabaef5761385167764d4ed2577d8549b422530457a56d52b04ff001f25a5c",
+    "6f25b4b32e3fcc7672a50ba68d47d955e67b96524947b1a0aea87e63de740615"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/chained-assignment.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "afb47bb2b5bd6852294f8094c63f00cd660cc2ca2c0c0c57e11d081895467898",
+    "3b6c67b0625f105821ec0e08ceb459459e4635d79b50b16d69bc455c88836a66"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/char-at-out-of-range.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "db90e52f2aeef70c71ecc2ae5734ed33f71fb5baf3313d81473a55c8ae91bff6",
+    "4e2e76146b15f6b390681d2006d04529f5c1daf779c3a00b44beee42a33d5602"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/char-conversion-range.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "9fd747beb155fb7c565d4619b71d6f480fd57495cecc70dff99d67556acd00a4",
+    "c8e96b62bd94a39a892c8e2ad7f8dab855925ebaeb636b825067b58414209087"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/char-conversion-surrogate.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "17db4cad964e8fb239f6a4f4f238c16204e416cdebab67438974d694a8c095a3",
+    "c1faf1a991024efd9bcc767cbbd78546ad1bf2fddb98df671381764b28c70248"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/chars.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "3b9799bbdfa6c78ca9974713f58977a57f6be70e680a539c22eb5fe151d23f11",
+    "5585373c091e6737f41421ad9b11d0cf7c195c66078a7c2316270bee9871edb3"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/compound-assignment.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "a5be80909316690eeaa12dd4c2a2be70d644fc3c5ff5badfbfdfae3f48f420d9",
+    "8f88d7f380e786c4d1fdc7422751fee209d9672de746a895e0c14526a2034d12"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contract-invariant-construction.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "c3a2fa4bbf601fe35a5eaef898aed50aef31c2ec60606c389e40d4ad364e6532",
+    "d9573350c67b7b3b0ac5cd3e1cf13240f930f6707b3afa032a2d64e30c71a52a"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contract-invariant-field.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "f547a79c7da7f6702ed603b909d52942d2288c189768839bff84b4185d07e62a",
+    "f3d568987c08a3a7792a806b5f98fd3d5a68250f7c0dc6cd31cfead963908499"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contract-invariant-method.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "ad9cde213017377722907ef7f13dff512361f213ca94daa4906746b435739cbd",
+    "b72e1fe805c9371329de022f32f1582381c4d53bb4b1157708a41209b451c781"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contract-invariant-ref-mut.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "f045cf253e1f070f9995caa3399e3b5bfeedb8c82bd375273bb37530fd3e9869",
+    "1204ba59e1f2ec5ef899ac7f8e051bc0d3c40488954222c161761bed9372386b"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contract-loop-invariant.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "fe709fcc84919c8c151ace6a04fa94717af48626df6ec353e2ca16b498bef81a",
+    "3168f4df94076cce088e77121bcaeb06294352b6a7e71b320d2ad94735212ffb"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contract-loop-variant-negative.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "38894fd66c9117aa5f338cd874cb114770aff675d80e62db49632ef2e0bd7ae1",
+    "1266ab7810947b269e0f8911fb3da1ac404fdc18bb4461e9f6c1affddc008f7d"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contract-loop-variant.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "cd618044375f30abe65e5fa6008a1587f9d998d3a6ceb9b17de069f9508c93f8",
+    "f211e99e10fe3ba059e4a711103600043eac95c3afa697a3cfcfccf4205e6430"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contract-override-pre.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "0e06e63e22409c71c61c85623ed3ab28359f772080254908c34880883dbb497e",
+    "c1ca086a326b0a463357f57ed036fdc21749709f554dcf6bfdada1ad2a99bb81"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contract-pos-violated.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "2ec5c9c1083e2eee3a3b1f46211af266dafff9fec3af152d573bcb4888b009e8",
+    "3700177edc83b5d39e8c1f64471ae25881e24e400c7496de0289203f257655d5"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contract-pre-violated.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "2355373e20f2e90249cc8e7c0e80cfef2d6bce57e03676cd8c2f93f504020582",
+    "053df2cd676b8d6f2020dd64dd3fcb1eea58c015d045c7acb2c0d0419b5a33a2"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contract-result-violated.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "ef467949b57c37a819ed507b78b372f28006161180aef710687f0e129427c213",
+    "5d388f4dda96e0a044d55c9f31f82007b72e1a50ebb734ceab04459689c76660"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contracts-strings.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "bc949d54c35714350c49e3593ffb87b5d243dd1764500f8b2fb41a80f20019e7",
+    "aac2db31cdea0f4421be74539c554fee9ca23c5f29e9ea4243a25131f6179ac4"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contracts.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "be7523cb6e7640b13b0dc9d979447c1fcd2cfc0bae911ddb3f834c5a7ac80371",
+    "fdef9fc1602a5912ace02124e55a4611d8b277cd37ab1da61936e8349bde3e08"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/dateutils.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "60e12438041d92c6663dcb552d0b1c82e3d7173ea31a8b0f7239082aa86e06bf",
+    "6bc6b599c837083aa57158c5601f2fdbdae39dd2d7334434404ff2d7e5a8b2ac"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/decimals.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "c73c226faef9add2411e9b8a070875853fe8aeb8881412fe47e5c6b6af5184ce",
+    "b423abb00549865f0ff4bf1b2b1dab900138c8d8103ae92d1edaa1298a8b9633"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/discard.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "4406791e5de1530f60ad4495119998f7ed29ac7efc11642baaf1e1e6992690d7",
+    "f2e18b32b2a2ab89e4a4a5ff1a0956983d736c0a2bf96530bc229ef86e2d6ce5"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/enum-conversion-range.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "c6010e9071c580774462a136be0c18f68097e39a99925d6ae890803f0ceff1c3",
+    "896cfff3508c76e45bdde78ea3317492c3655bc503bd74d56bfd379dcc775a28"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/enums.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "969823794c0d2e067951c6f78f0152391d8fd2b1af5f1083819b6840e9a8e7ce",
+    "184ae5980bd3b2e3293beee1ae9c8e81235c5329b25ef35bbfce3c6a41c9828f"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/files-close-on-exception.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "fa99027ba7357d312cca002cc7c0959b3d9320f43c1e78f3b8616ae6f9f92723",
+    "df8360c1e7db9269eea5e21c1286f082fa781ae0b3029137b8ef8f96987502db"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/files-not-found.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "307356d1e980a4522dfe64f275730acf3b436aa7143ce60d78dc67414579479d",
+    "8e7893befecc2e0fb346dab5bbfe369682c8116b048a6238af23129e702057ad"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/files-text.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "40277254bf48f7d94503268d60499aee3ae5c2c30ac9887af8bfe6f7476ccef7",
+    "2d15ded2cd97d27061ebc7affa183e259a67d9123e02b6f917abb581638258e5"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/fixed-width-integers.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "1a0c82f4247db3c8b80c1a8299749d712a568b2431099fb5bb4b5db54cbd1f0c",
+    "6674965024e5be986f343a6879e73e0fa6e901431aa63adb572392031024ab32"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/float-to-integer-range.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "46aa64fe22ec4eaa50d8c62c42a9d13e0e85f42cf84634456dff72daa1a5c408",
+    "fb544555633802b5a1242fe466ec9856b856afaff682f3f9225fb1a87157cf80"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/generics-contracts.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "bdbd60f96976490b53c27e690b158e1476f715dddfb490162918d65683152e4e",
+    "0fed81ea0fc69fc825632c8e4f45bcef0f3f057361105d9686874677f8043f10"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/generics-routines.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "753e49dddf750caf212e5f0088f2bd76d6a3e702835ffca03319141dac6740f9",
+    "9ce46a599b42ecbddacc1140cb35de5e45e7b7187d51ec81b629f1fa836e0256"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/generics-structs.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "1a54b267bafe8f0570ee7261136c6413dbe5040b54e79f800c838cac4155545b",
+    "ab52b269e4c13eb1b2f242e4db00661acb96110733d4e7087ea83c04f4a78470"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/get-char.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "89ea2fb832fb5f97ba518c6bef17f8ec3329d3480a11e042c2e99615eb832840",
+    "fb4a65069dfc1d9f035e6e0a2c7f423aa0bdd8452db0be6583f409d649681f7f"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/integer-slash.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "f907836280690caea4bccbd3f2abcc140382f1743eaeecc1125230a6308f7d50",
+    "f2a9b8674d6b7fbe17949b7bf77eab1c56cf138b133ac08ba01f92b82b12391f"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/loop-contracts-continue.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "fbd53aa528e9854ef6d2937618139e22a477aee68172e932ff6b9143532fa254",
+    "fda70e0199402f238e38f5c0a6e4299a06347c6db85f34c28b5f0b524fd0bcef"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/loop-contracts-exception.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "73d874239fc9d2506701a6919eb2884fcce5abfe7c00a6ba244e7ced3c758718",
+    "3e64a84191bebf333dc0ca6716b9fbaf207c28b3a6eca4ef6239e6c7c4fb3464"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/loop-contracts-leave.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "a5b578e83adff04936bbe21a83023455bbfbce1397e8f81f6ae8d4d988d2663b",
+    "3cb85c0a5abccfe0108a2da49230b84b0e4b7dfca6e6fe07c727e1178234535b"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/loop-contracts-nested.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "f299df24ce100fe82ddcae5c0f07dc8e91ef2dc639d8c66a2876a7d51a0ae86f",
+    "358fa86f25d76a22e8c9ae492697135a22d890793c5f4c24864012628ea5f8a7"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/loop-contracts-until.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "0e33f6d3304f82d91570240bfdbc4f6bfe1abdfa723b5dcc4ed7b6a84abc7ea1",
+    "23620230877ae84b983e47b8e035ae7d6d8b98542ed3f451191c8b3f2cc41853"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/method-decimal-argument.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "e4e5c5bdc09d7f7c9f9bcc4fd698834d70fce036f842cdb09dfd50dc6b77de63",
+    "bd54fc49628ae1b1c821269c0d1e1c481e7495d26bdaf24bdfc4578fe50225a8"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/natural-implicit-check.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "c98c3105db7d64184c59ded5fee6c31770a3034c27de49c36ad0e95eece3e04d",
+    "e188c7b0e1464ab9c60dba54353fb964b111b5ded1a0819b5ea8ee75a3fd5945"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/not-equal-operator.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "63096221c16b644fb6c7bedab0e48464069874c007146c3a19bbd7d44d84427a",
+    "08977ad36ef8fd39e4d755cdf55913e29ac1fd2156fe6b4bb862dca2b9de8751"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/pointers-more.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "a3e75247dd1f6e96ffcf98f43a7100ca53692b100060d82b33f79feb34481096",
+    "ff7ebbe0c519bf0b6725d786422a9f5221c8f26331137fa2e6d3edc413c4d783"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/pointers-strings.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "1fb041e39df6a3d3ddba3813ee22d80385a19bf8841f2fda4bea508ced8e3abc",
+    "ceb0d8958b4a0af62f24e4315676d52c1c3e4e962692d31d7016c1beaec197a5"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/pointers.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "8d2e1f15a2eb0d5c2ac594649428bce97dd4103cfa11bb9c6c7cc999bb4e7575",
+    "6bb81f0e75b80830b07181b3bd91e965c4aa74c281709cda04240a8bd9c24c76"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/predefined-names.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "51b336279dbff0760878c693f67ea4fd24aa83682b7570f55a1fb84e49c2c030",
+    "019c5fdc6bda3ea66df6520baf5d934f9b57a2830f1d628f8d31b8361410b8ed"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/range-types.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "3ff22371d4691f5cc7177a386f0a61b34ecb97ea7031af79a293be43494ea587",
+    "6bc934fab6302175fa0b74ca14fd186557b46b905b0028159a9b220e0897f57d"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/ranges.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "bd51a7a4b5ed968e6715a8ac69a770de5ef93e64cde382b79f2b8828fc839172",
+    "e01671fc7463b72b309d03f7b26dc40b2e3bd6971ffa482a3a965b71f228810f"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/read-only-through-owners.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "4933ee3960a5294e1e01bc0c47db28942f8397b8180af1c1aba989c154d3ec79",
+    "69c225eacd213954abb7cd094c030210a01e168c02b6ead73d26556dbe0700d9"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/ref-mut-range.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "f4946da5736ca86bfaa7d3deb41c7685737c2bed4e5e23415c587ec1ba623d23",
+    "f800045c525c62e640380f01bdb01a93c2c8402db7b01e41aea191b6c7a853f1"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/ref-parameters.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "d1a38f820927e40e080d982931d519ed324d6fc0e9ff50ec545eab82ef6525fb",
+    "63932c8b2cf2315107bc11880e79062296acab72dac1e851ebb27c994340e681"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/sets.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "566b79b2342e0bb3dd34da820f59bc26f791b36196712f251b3feaf73317dcc9",
+    "ad2a420038986c6e2d7e3e77a176dd8737ef5893eab32cbc8c2697d90f68cbef"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/slice-bounds-runtime.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "c0f78d88b3cfe214e6461f0535f4fb027baa3eb21fb841788d9f25360c9995ed",
+    "c35d7e9f0e30b5497867e1c45cd4543f77aff49a55ff1696051d2e6d0bbff6e8"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/slice-index-out-of-bounds.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "4f61a88d65d09be04982c001ff4a201daf69fb00de057a05f12d05f83cc14907",
+    "379391caedf39720692efeda3713e3fb452fd5d9536abd259055f53a9609444c"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/slices.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "aca769ce8483ebe14439ef254b8ea59bf62323ed7ee822875b731c99dd2dcddb",
+    "0177ff42e5473d990f3c933024a3489393312ab830719782f9b72c9e893fc93e"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/state-aggregates.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "1cee4ee3e894a7d4c683bff2c0b92a4787b66e2640d44cc2553e16630c87d073",
+    "a6f3d4a0bf35decd545a14fbf056943376937b242a6f1338e1a803b0523dba97"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/state-lowering.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "63b6da8f7db05dbca68dd80e2684416768c14766bd9220be053fdf3505597257",
+    "84562c901c2968cf697134e96d053d8f74c6aca61b47978e53d5322b439e2c79"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/state-section-boundaries.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "5a042825d8d7190989cde162d4c2d57124e6873578ecb1f1882bdf6a21b4fa88",
+    "78269c8c4db64475feb46cf351173b6b681cbde91266cf35cc4affc4deff9c2e"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/string-borrowed-read.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "6e9096749157c17824a69115c58b7560e17d9175d6ad03869ed0df55059fc985",
+    "d93288161b298bfea70f3bfc53c182dacfb87467fd47bc72747cfcd07e49fd80"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/strings-aggregates.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "da27883aa47fe4e3c42be0a090d62651fa0089015ee72fae8f4de6ba293698fa",
+    "beb572d971c937ff500f944097c985c12d8bcc9b199b69b0c2aefc8c53ce43bb"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/strings-exception-cleanup.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "65436c28474ac32019c74522ebf6d54bcf7d47c24f34111c9f2857138a1f64e4",
+    "eb7954d623723edb66465ddb25d57da9c4a5a9ef8d53426c319bba1e67bc9417"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/strings-getln.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "020293b682b6725deae106581f66fad9792f2c0c57508e4b20fba410cd4b1bc5",
+    "6b2b39d1339df3e53b025679041ee588e6bde1fd0756968ba090d18f929fdcd3"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/strings-ordering.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "e8e90a440e46424d18b5ac7d6761ef583762455ccedbccd319f8ec40c4b7ef30",
+    "318c759863bc3f75552e1ba7d33ad43c4dd5c901e9c9842fe37bbf5a64de3f34"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/strings.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "1ecceb1fa5e1eabc689debf731053798d438f042688e9e9c424cbe77bb678bb8",
+    "8219707775c1deaf9f958c65316d92ce1fca398474945e839c31acaac2968799"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/struct-array-field.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "13e175b667f357a2bb8a70f57a3660b75cee14c8e8bc428f723c975e4a8e4315",
+    "03ff72554f59166cf88a5505976b5f9363f1f4e06c4be4bd14241904d1d9bbf3"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/struct-initializers.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "73285451c9dce69f173920f418a5b5b448290eb341239271e450ecd65b2b267b",
+    "a6e58340906d37f4513d41fe24501499055789c4b2e0bef78a618affa91fdb6b"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/struct-nested.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "c772abfb8d453c159da7a941608435cb060b0bbb25a9264f2bed011b6bbb6465",
+    "0df69262800741756187070152294950782673ffe639d99e597814b73091f77c"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/uint64.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "9e35987f1ae647a6fbb0fd53556aed86a2dcea15aa86ab107d5d184749882698",
+    "298d75d38895655dad5642876e461119ce8b18e3d83cb58679f300535f652248"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/with-places.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "6f46e54d164d56054bb72d17001827a551f16485d4b0d18365493319841dc02f",
+    "2db2dc8e8b0be677fcdcbe4b8e812cc54802ec8bda0865e226a6fcda615166f1"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/semantic/valid/grouped-local-declarations.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "0b03b30ab8eeed959c68758ab68119197c894ae3597e067018a6c726a7838415",
+    "debade29710ac398a49639ccfc599be955be7a02be245661cb5f2411c273443e"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/semantic/valid/method-and-struct-value.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "9f6b6c38378d010215e900464853ea20647708af861cb7ed7f47d8cc31e5a49b",
+    "0b60be2ab1cae02961a4a8d9505e1614c245d20983e821df85383688ae20886d"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/tir/calls.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "c49e297c505852cd072b8bafdcfebbdac88d722b96a489683a3ce1c9f760a73a",
+    "3e4740deb5accb83157f6268ad63b964815b6255efc123edaa3aea08045fa28a"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/tir/places.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "45d4a6c97d611c51f00403c7ad132ab89b032ea9697ee7fc44ad4a00e2a66cbd",
+    "8d655c5196d37c2e0ed6e57baf02bf8e35d8456369257b067a839209cb4f1991"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/tir/statements.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "a70da33f6072cfe7b26a542f5262c209f2a0e3eb5141efd941d4b3850784b9a1",
+    "0fee3d87a8e58d8579c510a2bca73509b3bd4b44c6132fe9e55f1e6bda0fe69f"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ }
+}

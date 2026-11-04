@@ -183,7 +183,11 @@ std::string FunctionEmitter::emitRangeCheck(const std::string& value, IntegerRan
 
 std::string FunctionEmitter::emitExpression(const ast::Expression& expression)
 {
-    std::string value = emitExpressionValue(expression);
+    return finishValue(expression, emitExpressionValue(expression));
+}
+
+std::string FunctionEmitter::finishValue(const ast::Expression& expression, std::string value)
+{
     if (statementRunsRoutine_ && isBorrowedRead(expression)) {
         value = protectBorrowed(expression, value);
     }
@@ -309,115 +313,10 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
         if (const TypeRef leftSet = typeOf(binary.left()); leftSet != nullptr && leftSet->isSet()) {
             return emitSetComparison(binary);
         }
-        const std::string leftType = expressionLlvmType(binary.left());
-        const std::string rightType = expressionLlvmType(binary.right());
         const std::string result = "%tmp" + std::to_string(nextTemporary_++);
         const std::string left = emitExpression(binary.left());
-        std::string right = emitExpression(binary.right());
-
-        // CANON-8: the shift count of a fixed-width type is 0..width-1.
-        if (binary.op() == ast::BinaryOperator::ShiftLeft ||
-            binary.op() == ast::BinaryOperator::ShiftRight) {
-            if (const auto range = narrowIntegerRange(typeOf(expression))) {
-                int bits = 0;
-                for (std::int64_t span = range->high; span > 0; span >>= 1) {
-                    ++bits;
-                }
-                if (range->low < 0) {
-                    ++bits;
-                }
-                right = emitRangeCheck(right, IntegerRange{0, bits - 1}, 3);
-            }
-        }
-
-        // CANON-14: `=` and `#` compare the UTF-8 bytes of two Strings.
-        if (isStringType(typeOf(binary.left())) &&
-            (binary.op() == ast::BinaryOperator::Equal || binary.op() == ast::BinaryOperator::NotEqual)) {
-            requireRuntime(RuntimeFunction::StringEqual);
-            const std::string equal = binary.op() == ast::BinaryOperator::Equal
-                                          ? result
-                                          : "%tmp" + std::to_string(nextTemporary_++);
-            output_ << "  " << equal << " = call zeroext i1 @__inox_str_equal(ptr " << left << ", ptr " << right
-                    << ")\n";
-            if (binary.op() == ast::BinaryOperator::NotEqual) {
-                output_ << "  " << result << " = xor i1 " << equal << ", true\n";
-            }
-            return result;
-        }
-        // CANON-14 (v3.56): `<` `>` `<=` `>=` order Strings byte by byte.
-        if (isStringType(typeOf(binary.left()))) {
-            if (const std::string predicate = llvmComparisonPredicate(binary.op()); !predicate.empty()) {
-                requireRuntime(RuntimeFunction::StringCompare);
-                const std::string order = "%tmp" + std::to_string(nextTemporary_++);
-                output_ << "  " << order << " = call i32 @__inox_str_compare(ptr " << left << ", ptr " << right
-                        << ")\n";
-                output_ << "  " << result << " = icmp " << predicate << " i32 " << order << ", 0\n";
-                return result;
-            }
-        }
-
-        // Change decimals (r3.91): Currency and Crypto compare as their
-        // scaled integers; + - * / are exact, checked, and * / round half to
-        // even (A1).
-        if (const TypeRef type = typeOf(binary.left()); type != nullptr && type->isDecimal()) {
-            if (const std::string predicate = llvmComparisonPredicate(binary.op()); !predicate.empty()) {
-                output_ << "  " << result << " = icmp " << predicate << ' ' << leftType << ' ' << left << ", "
-                        << right << '\n';
-                return result;
-            }
-            return emitDecimalArithmetic(binary.op(), type, left, right);
-        }
-
-        if (isFloatLlvmType(leftType) || isFloatLlvmType(rightType)) {
-            if (const std::string predicate = fcmpPredicate(binary.op()); !predicate.empty()) {
-                output_ << "  " << result << " = fcmp " << predicate << ' ' << leftType
-                        << ' ' << left << ", " << right << '\n';
-                return result;
-            }
-            if (binary.op() == ast::BinaryOperator::Power) {
-                output_ << "  " << result << " = call double @llvm.pow.f64(double "
-                        << left << ", double " << right << ")\n";
-                return result;
-            }
-            output_ << "  " << result << " = " << llvmFloatOperation(binary.op()) << ' '
-                    << leftType << ' ' << left << ", " << right << '\n';
-            return result;
-        }
-
-        if (const std::string predicate = llvmComparisonPredicate(binary.op());
-            !predicate.empty()) {
-            // Every integer type is carried as i64 (signed compare). Bool
-            // is i1 and ordered false < true (v3.57): compared unsigned,
-            // since a signed i1 reads true as -1.
-            const bool isBool = leftType == "i1";
-            // A UInt64 is ordered by its unsigned value (change uint64).
-            const bool isUnsigned =
-                isBool || isUInt64Type(typeOf(binary.left())) || isUInt64Type(typeOf(binary.right()));
-            std::string boolPredicate = predicate;
-            if (isUnsigned && boolPredicate.front() == 's') {
-                boolPredicate.front() = 'u';
-            }
-            output_ << "  " << result << " = icmp " << (isUnsigned ? boolPredicate : predicate) << ' '
-                    << (isBool ? "i1" : "i64") << ' ' << left << ", " << right << '\n';
-        } else if (isUInt64Type(typeOf(expression)) && !llvmUnsignedHelper(binary.op()).empty()) {
-            requireUnsignedHelpers();
-            output_ << "  " << result << " = call i64 @" << llvmUnsignedHelper(binary.op()) << "(i64 " << left
-                    << ", i64 " << right << ")\n";
-        } else if (const std::string operation = llvmBooleanOperation(binary.op());
-                   !operation.empty()) {
-            output_ << "  " << result << " = " << operation << " i1 "
-                    << left << ", " << right << '\n';
-        } else if (binary.op() == ast::BinaryOperator::Power) {
-            output_ << "  " << result << " = call i64 @__inox_ipow_i64(i64 "
-                    << left << ", i64 " << right << ")\n";
-        } else if (const std::string helper = checkedIntegerHelper(binary.op()); !helper.empty()) {
-            output_ << "  " << result << " = call i64 @" << helper << "(i64 "
-                    << left << ", i64 " << right << ")\n";
-        } else {
-            output_ << "  " << result << " = " << llvmOperation(binary.op()) << " i64 "
-                    << left << ", " << right << '\n';
-        }
-        return result;
+        const std::string right = emitExpression(binary.right());
+        return emitBinaryValues(binary, result, left, right);
     }
     case ast::AstNodeKind::UnaryExpression: {
         const auto& unary = static_cast<const ast::UnaryExpression&>(expression);
@@ -691,6 +590,119 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
     }
 
     throw CodegenUnsupported("unsupported expression in function: " + function_.name());
+}
+
+// `result` names the value; the operands are already evaluated.
+std::string FunctionEmitter::emitBinaryValues(const ast::BinaryExpression& binary, const std::string& result,
+                                              const std::string& left, std::string right)
+{
+    const ast::Expression& expression = binary;
+    const std::string leftType = expressionLlvmType(binary.left());
+    const std::string rightType = expressionLlvmType(binary.right());
+
+    // CANON-8: the shift count of a fixed-width type is 0..width-1.
+    if (binary.op() == ast::BinaryOperator::ShiftLeft ||
+        binary.op() == ast::BinaryOperator::ShiftRight) {
+        if (const auto range = narrowIntegerRange(typeOf(expression))) {
+            int bits = 0;
+            for (std::int64_t span = range->high; span > 0; span >>= 1) {
+                ++bits;
+            }
+            if (range->low < 0) {
+                ++bits;
+            }
+            right = emitRangeCheck(right, IntegerRange{0, bits - 1}, 3);
+        }
+    }
+
+    // CANON-14: `=` and `#` compare the UTF-8 bytes of two Strings.
+    if (isStringType(typeOf(binary.left())) &&
+        (binary.op() == ast::BinaryOperator::Equal || binary.op() == ast::BinaryOperator::NotEqual)) {
+        requireRuntime(RuntimeFunction::StringEqual);
+        const std::string equal = binary.op() == ast::BinaryOperator::Equal
+                                      ? result
+                                      : "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << equal << " = call zeroext i1 @__inox_str_equal(ptr " << left << ", ptr " << right
+                << ")\n";
+        if (binary.op() == ast::BinaryOperator::NotEqual) {
+            output_ << "  " << result << " = xor i1 " << equal << ", true\n";
+        }
+        return result;
+    }
+    // CANON-14 (v3.56): `<` `>` `<=` `>=` order Strings byte by byte.
+    if (isStringType(typeOf(binary.left()))) {
+        if (const std::string predicate = llvmComparisonPredicate(binary.op()); !predicate.empty()) {
+            requireRuntime(RuntimeFunction::StringCompare);
+            const std::string order = "%tmp" + std::to_string(nextTemporary_++);
+            output_ << "  " << order << " = call i32 @__inox_str_compare(ptr " << left << ", ptr " << right
+                    << ")\n";
+            output_ << "  " << result << " = icmp " << predicate << " i32 " << order << ", 0\n";
+            return result;
+        }
+    }
+
+    // Change decimals (r3.91): Currency and Crypto compare as their
+    // scaled integers; + - * / are exact, checked, and * / round half to
+    // even (A1).
+    if (const TypeRef type = typeOf(binary.left()); type != nullptr && type->isDecimal()) {
+        if (const std::string predicate = llvmComparisonPredicate(binary.op()); !predicate.empty()) {
+            output_ << "  " << result << " = icmp " << predicate << ' ' << leftType << ' ' << left << ", "
+                    << right << '\n';
+            return result;
+        }
+        return emitDecimalArithmetic(binary.op(), type, left, right);
+    }
+
+    if (isFloatLlvmType(leftType) || isFloatLlvmType(rightType)) {
+        if (const std::string predicate = fcmpPredicate(binary.op()); !predicate.empty()) {
+            output_ << "  " << result << " = fcmp " << predicate << ' ' << leftType
+                    << ' ' << left << ", " << right << '\n';
+            return result;
+        }
+        if (binary.op() == ast::BinaryOperator::Power) {
+            output_ << "  " << result << " = call double @llvm.pow.f64(double "
+                    << left << ", double " << right << ")\n";
+            return result;
+        }
+        output_ << "  " << result << " = " << llvmFloatOperation(binary.op()) << ' '
+                << leftType << ' ' << left << ", " << right << '\n';
+        return result;
+    }
+
+    if (const std::string predicate = llvmComparisonPredicate(binary.op());
+        !predicate.empty()) {
+        // Every integer type is carried as i64 (signed compare). Bool
+        // is i1 and ordered false < true (v3.57): compared unsigned,
+        // since a signed i1 reads true as -1.
+        const bool isBool = leftType == "i1";
+        // A UInt64 is ordered by its unsigned value (change uint64).
+        const bool isUnsigned =
+            isBool || isUInt64Type(typeOf(binary.left())) || isUInt64Type(typeOf(binary.right()));
+        std::string boolPredicate = predicate;
+        if (isUnsigned && boolPredicate.front() == 's') {
+            boolPredicate.front() = 'u';
+        }
+        output_ << "  " << result << " = icmp " << (isUnsigned ? boolPredicate : predicate) << ' '
+                << (isBool ? "i1" : "i64") << ' ' << left << ", " << right << '\n';
+    } else if (isUInt64Type(typeOf(expression)) && !llvmUnsignedHelper(binary.op()).empty()) {
+        requireUnsignedHelpers();
+        output_ << "  " << result << " = call i64 @" << llvmUnsignedHelper(binary.op()) << "(i64 " << left
+                << ", i64 " << right << ")\n";
+    } else if (const std::string operation = llvmBooleanOperation(binary.op());
+               !operation.empty()) {
+        output_ << "  " << result << " = " << operation << " i1 "
+                << left << ", " << right << '\n';
+    } else if (binary.op() == ast::BinaryOperator::Power) {
+        output_ << "  " << result << " = call i64 @__inox_ipow_i64(i64 "
+                << left << ", i64 " << right << ")\n";
+    } else if (const std::string helper = checkedIntegerHelper(binary.op()); !helper.empty()) {
+        output_ << "  " << result << " = call i64 @" << helper << "(i64 "
+                << left << ", i64 " << right << ")\n";
+    } else {
+        output_ << "  " << result << " = " << llvmOperation(binary.op()) << " i64 "
+                << left << ", " << right << '\n';
+    }
+    return result;
 }
 
 std::string FunctionEmitter::emitMathBuiltinCall(semantic::BuiltinOp op, const std::vector<ast::ExpressionPtr>& arguments)

@@ -1,0 +1,36 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-5: R, read from State, is kept while the target's index replaces it: a String and a struct holding one (assignment-evaluation-order).
+Type
+    TRecord Struct
+        FName String := ""
+    ;
+
+State
+    S String := "first"
+    R TRecord := TRecord(FName := "record")
+    A Array[1..2] String := Fill("")
+    B Array[1..2] TRecord := Fill(TRecord(FName := ""))
+;
+
+ChangeText Integer :
+    S := "other"
+    Return 1
+;
+
+ChangeRecord Integer :
+    R.FName := "changed"
+    Return 1
+;
+
+Main :
+    A[ChangeText] := S
+    PutLn(A[1], " ", S)
+    B[ChangeRecord] := R
+    PutLn(B[1].FName, " ", R.FName)
+;

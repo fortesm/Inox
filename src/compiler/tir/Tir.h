@@ -217,7 +217,9 @@ struct Expr {
 
 enum class StmtKind : std::uint8_t {
     Evaluate,  // `value` for its effect (`discard`: `_ := F(X)`)
-    Assign,    // `value` into `target` (`compound`: written `L op= R`)
+    Assign,    // `value` into `target`; `compound`: `L op= R`, the value the Binary op whose
+               // first operand reads `target` itself (R, then the target once, its read,
+               // op, the store; CANON-5)
     Declare,   // a local `symbol` of `type`, from `value` or its type's defaults
     If,        // `value` then `body`; `branches` are the elifs; `elseBody`
     Unless,    // `body` unless `value`

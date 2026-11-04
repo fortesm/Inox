@@ -27,6 +27,37 @@ const AstNodeMap::Entry& AstNodeMap::entryOf(const ast::Expression& node, const 
     return found->second;
 }
 
+void AstNodeMap::recordWrittenAgain(const ast::Expression& copy, const ast::Expression& original)
+{
+    if (copy.kind() != original.kind()) {
+        throw InvariantError("internal error: typed IR: a copy of a target that is not written as it");
+    }
+    entries_[&copy] = entryOf(original, "copy");
+    switch (copy.kind()) {
+    case ast::AstNodeKind::CallExpression: {
+        const auto& a = static_cast<const ast::CallExpression&>(copy);
+        const auto& b = static_cast<const ast::CallExpression&>(original);
+        recordWrittenAgain(a.callee(), b.callee());
+        for (std::size_t index = 0; index < a.arguments().size() && index < b.arguments().size(); ++index) {
+            recordWrittenAgain(*a.arguments()[index], *b.arguments()[index]);
+        }
+        break;
+    }
+    case ast::AstNodeKind::BinaryExpression:
+        recordWrittenAgain(static_cast<const ast::BinaryExpression&>(copy).left(),
+                           static_cast<const ast::BinaryExpression&>(original).left());
+        recordWrittenAgain(static_cast<const ast::BinaryExpression&>(copy).right(),
+                           static_cast<const ast::BinaryExpression&>(original).right());
+        break;
+    case ast::AstNodeKind::UnaryExpression:
+        recordWrittenAgain(static_cast<const ast::UnaryExpression&>(copy).operand(),
+                           static_cast<const ast::UnaryExpression&>(original).operand());
+        break;
+    default:
+        break;
+    }
+}
+
 TypeRef AstNodeMap::typeOf(const ast::Expression& node) const
 {
     const Entry& entry = entryOf(node, "type");
@@ -112,6 +143,12 @@ semantic::BuiltinOp AstNodeMap::builtinOf(const ast::Expression& node) const
         return semantic::BuiltinOp::Value;
     }
     return semantic::BuiltinOp::None;
+}
+
+bool AstNodeMap::isSlice(const ast::Expression& node) const
+{
+    const Entry& entry = entryOf(node, "slice");
+    return entry.value != nullptr && entry.value->kind == ExprKind::Slice;
 }
 
 TypeRef AstNodeMap::declaredType(const ast::VarStatement& declaration) const

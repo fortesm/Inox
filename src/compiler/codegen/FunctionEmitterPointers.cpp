@@ -267,12 +267,18 @@ std::string FunctionEmitter::emitPointerTarget(const ast::Expression& pointer)
     if (isLinkType(type)) {
         const LinkParts parts = extractLink(value);
         emitLinkCheck(parts);
+        if (!placeGuards_.empty()) {
+            capturePlaceGuards(pointer, parts.target, &parts);
+        }
         if (&pointer == withGuardPointer_) {
             withGuardCaptured_ = parts;
         }
         return parts.target;
     }
     const std::string object = emitOwnerNullCheck(value);
+    if (!placeGuards_.empty()) {
+        capturePlaceGuards(pointer, object, nullptr);
+    }
     if (&pointer == withGuardPointer_) {
         const std::string header = "%tmp" + std::to_string(nextTemporary_++);
         const std::string generation = "%tmp" + std::to_string(nextTemporary_++);
@@ -281,6 +287,72 @@ std::string FunctionEmitter::emitPointerTarget(const ast::Expression& pointer)
         withGuardCaptured_ = LinkParts{object, header, generation};
     }
     return object;
+}
+
+// CANON-25: when an index or a slice bound that may run a routine follows
+// the pointer a place is reached through, that routine may free the
+// pointer's object (or replace an owner above it, which frees it too); the
+// object's generation is captured when the pointer is reached and checked
+// after the index, before the place is used.
+void FunctionEmitter::beginPlaceGuard(const ast::Expression& base, bool laterRunsRoutine)
+{
+    const ast::Expression* pointer = nullptr;
+    if (laterRunsRoutine) {
+        const ast::Expression* path = &base;
+        while (path->kind() == ast::AstNodeKind::CallExpression && astNodes_.isSlice(*path)) {
+            path = static_cast<const ast::CallExpression&>(*path).arguments()[0].get();
+        }
+        pointer = isPointerType(typeOf(*path)) ? path : lastPointerOnPath(*path);
+    }
+    placeGuards_.push_back(PlaceGuard{pointer, std::nullopt});
+}
+
+// `A[I]`: the index follows the base.
+void FunctionEmitter::beginElementGuard(const ast::CallExpression& element)
+{
+    beginPlaceGuard(*element.arguments()[0], mayRunRoutine(*element.arguments()[1]));
+}
+
+// `B[L..H]`: the bounds follow the base.
+void FunctionEmitter::beginSliceGuard(const ast::CallExpression& slice)
+{
+    beginPlaceGuard(*slice.arguments()[0],
+                    mayRunRoutine(*slice.arguments()[1]) || mayRunRoutine(*slice.arguments()[2]));
+}
+
+void FunctionEmitter::capturePlaceGuards(const ast::Expression& pointer, const std::string& object,
+                                         const LinkParts* link)
+{
+    for (PlaceGuard& guard : placeGuards_) {
+        if (guard.pointer != &pointer || guard.reached) {
+            continue;
+        }
+        if (link != nullptr) {
+            guard.reached = *link;
+            continue;
+        }
+        const std::string header = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string generation = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << header << " = getelementptr i8, ptr " << object << ", i64 -16\n";
+        output_ << "  " << generation << " = load i64, ptr " << header << '\n';
+        guard.reached = LinkParts{object, header, generation};
+    }
+}
+
+void FunctionEmitter::endPlaceGuard()
+{
+    if (placeGuards_.empty()) {
+        throw CodegenError("internal error: a place guard closed twice");
+    }
+    const PlaceGuard guard = placeGuards_.back();
+    placeGuards_.pop_back();
+    if (guard.pointer == nullptr) {
+        return;
+    }
+    if (!guard.reached) {
+        throw CodegenError("internal error: a guarded place whose pointer was not reached");
+    }
+    emitLinkCheck(*guard.reached);
 }
 
 // The pointer nearest to a place on its path (`L.FNotas` -> L,
