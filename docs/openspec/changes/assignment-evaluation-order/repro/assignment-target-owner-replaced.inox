@@ -1,0 +1,31 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-5: R is evaluated before the target; Drop replaces the owner the target crosses (assignment-evaluation-order).
+Type
+    TNode Struct
+        FV Integer := 1
+    ;
+    THolder Struct
+        FChild Own<TNode>
+    ;
+
+State
+    H THolder := THolder(FChild := New(TNode))
+    K THolder := THolder(FChild := New(TNode))
+;
+
+Drop Integer :
+    H.FChild := New(TNode)
+    K.FChild := New(TNode)
+    Return 10
+;
+
+Main :
+    H.FChild.FV := Drop
+    PutLn(H.FChild.FV, " ", K.FChild.FV)
+;

@@ -1,0 +1,21 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-5: as compound-assignment-value-before-target, the index changed through ref mut (assignment-evaluation-order).
+Shift(ref mut J Integer) Integer :
+    J := 2
+    Return 10
+;
+
+Main :
+    V Array[1..3] Integer := Fill(0)
+    I := 1
+    V[1] := 100
+    V[2] := 200
+    V[I] += Shift(I)
+    PutLn(V[1], " ", V[2], " ", I)
+;
