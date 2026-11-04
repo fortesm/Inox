@@ -167,9 +167,10 @@ FunctionSignature lowerSignature(const ast::FunctionDeclaration& function,
             valueType = llvmType;
             llvmType = "ptr";
         }
+        const bool callerStorage = byReference || (isReceiver && parameter.type->isStruct());
         parameters.push_back(FunctionParameter{parameter.name, safeLlvmName(normalize(parameter.name)),
                                                parameter.type, std::move(llvmType), byReference,
-                                               std::move(valueType)});
+                                               std::move(valueType), callerStorage});
     }
 
     std::string llvmReturnType = "void";

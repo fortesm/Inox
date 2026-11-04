@@ -49,6 +49,10 @@ void emitFunction(std::ostringstream& output,
             output << ", ";
         }
         output << signature.parameters[index].llvmType << " %" << signature.parameters[index].llvmName;
+        if (signature.parameters[index].callerStorage) {
+            output << ", ptr %" << signature.parameters[index].llvmName << ".storage.header, i64 %"
+                   << signature.parameters[index].llvmName << ".storage.generation";
+        }
     }
     // D4 (r3.92): Main receives the command line and gives it to libinoxrt.
     if (signature.llvmName == "main") {

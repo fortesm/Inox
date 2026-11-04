@@ -176,11 +176,16 @@ private:
 
     std::vector<std::string> emitArguments(const FunctionSignature& signature,
                                            const std::vector<ast::ExpressionPtr>& arguments,
-                                           std::size_t parameterOffset);
+                                           std::size_t parameterOffset,
+                                           std::vector<std::string>* storage = nullptr);
 
     std::string emitUserCall(const FunctionSignature& signature,
                              const std::vector<std::string>& arguments,
                              bool requireValue);
+    std::string emitUserCall(const FunctionSignature& signature,
+                             const std::vector<std::string>& arguments,
+                             bool requireValue,
+                             const std::vector<std::string>& storage);
 
     void emitNoArgumentSubroutineCall(const ast::IdentifierExpression& callee);
 
@@ -335,6 +340,9 @@ private:
     };
 
     MethodCallTarget resolveMethodCall(const ast::CallExpression& call);
+    std::string emitReceiverCall(const MethodCallTarget& target, const ast::Expression& receiver, bool requireValue);
+    std::string emitMethodCallWith(const MethodCallTarget& target, const ast::CallExpression& call,
+                                   const ast::Expression& receiver, bool guarded, bool requireValue);
 
     // Design by contract (CANON-24; FunctionEmitterContracts.cpp).
     bool isContractCheck(const ast::CallExpression& call) const;
@@ -433,7 +441,7 @@ private:
     // pointer keeps the header and generation of the object holding it, and
     // every `.Member` checks them, so a Free inside the body is detected.
     const ast::Expression* lastPointerOnPath(const ast::Expression& place) const;
-    void emitWithGuard(const std::string& normalizedName);
+    void emitStorageGuard(const std::string& normalizedName);
     // The address of the object a pointer expression reaches, checked: an
     // owner given away traps (17), a dead or empty Link traps (16).
     std::string emitPointerTarget(const ast::Expression& pointer);
@@ -464,8 +472,11 @@ private:
         std::string llvmType;
     };
     std::unordered_map<std::string, FreshTemp> freshTemps_;
-    // with bindings reached through a pointer (see emitWithGuard).
-    std::unordered_map<std::string, LinkParts> withGuards_;
+    // CANON-25: the names whose storage lies in an object that may be freed
+    // while they are in use, with that object's header and generation,
+    // checked at every use (emitStorageGuard): a `with` binding reached
+    // through a pointer, a parameter that is the caller's storage.
+    std::unordered_map<std::string, LinkParts> storageGuards_;
     // CANON-25: a place whose object, reached through a pointer, a later
     // index or slice bound may free (it may run a routine): the object's
     // header and generation, captured when the pointer is reached, checked
@@ -481,6 +492,17 @@ private:
     void beginSliceGuard(const ast::CallExpression& slice);
     void beginElementGuard(const ast::CallExpression& element);
     std::size_t beginReferenceGuard(const std::vector<ast::ExpressionPtr>& arguments, std::size_t index);
+    // The header and generation a parameter that is the caller's storage
+    // receives for `place`: those of the object holding it, or of the
+    // immortal header for storage no owner frees.
+    void beginCallerStorage(const ast::Expression& place, bool receiver);
+    std::string endCallerStorage(const ast::Expression& place);
+    const LinkParts* rootStorageGuard(const ast::Expression& place) const;
+    std::string immortalStorage();
+    void bindStorageGuard(const std::string& binding, const ast::Expression& target);
+    std::string emitReferenceParameterArgument(const std::vector<ast::ExpressionPtr>& arguments, std::size_t index,
+                                               const FunctionParameter& parameter, std::vector<std::string>* storage,
+                                               std::size_t& guards);
     bool beginReceiverGuard(const ast::CallExpression& call);
     void endPlaceGuard();
     void emitAssignmentStatement(const ast::ExpressionStatement& statement);

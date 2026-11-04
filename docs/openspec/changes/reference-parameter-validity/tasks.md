@@ -1,0 +1,4 @@
+- [x] 1.1 Alternative (a) approved (Marcelo Fortes, 2026-11-04)
+- [x] 1.2 ABI: header and generation after each parameter that is the caller's storage; checked at every use, passed on
+- [x] 1.3 Tests; CANON-25 scenario; revision r3.126, kCanonRevision, CHANGELOG, ARCHITECTURE
+- [x] 1.4 Gates: suite (Debug, Release, ASan+UBSan 1 MiB), owner safety check, IR snapshot declared, stack frames, memory

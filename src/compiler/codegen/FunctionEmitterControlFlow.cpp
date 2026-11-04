@@ -609,18 +609,15 @@ void FunctionEmitter::emitWith(const ast::WithStatement& statement)
             throw CodegenUnsupported("a 'with' target of this type is not lowered yet");
         }
         locals_.insert_or_assign(binding, LocalInfo{place.pointer, place.type, llvmType});
-        if (withGuardCaptured_) {
-            withGuards_.insert_or_assign(binding, *withGuardCaptured_);
-            withGuardCaptured_.reset();
-        }
     }
+    bindStorageGuard(binding, target);
 
     // Emit body statements; dot-prefixed members were already expanded by
     // the parser to __member(__with_N, Field), which resolves via the alias.
     for (const auto& bodyStatement : statement.body()) {
         emitStatement(*bodyStatement);
     }
-    withGuards_.erase(binding);
+    storageGuards_.erase(binding);
 }
 
 } // namespace inox::compiler::codegen::detail

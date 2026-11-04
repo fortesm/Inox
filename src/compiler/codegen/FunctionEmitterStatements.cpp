@@ -424,18 +424,17 @@ std::string FunctionEmitter::emitReferenceArgument(const ast::Expression& argume
 
 std::vector<std::string> FunctionEmitter::emitArguments(const FunctionSignature& signature,
                                                         const std::vector<ast::ExpressionPtr>& arguments,
-                                                        std::size_t parameterOffset)
+                                                        std::size_t parameterOffset,
+                                                        std::vector<std::string>* storage)
 {
     std::vector<std::string> values;
     values.reserve(arguments.size());
     std::size_t guards = 0;
     for (std::size_t index = 0; index < arguments.size(); ++index) {
         const FunctionParameter& parameter = signature.parameters[index + parameterOffset];
-        if (parameter.byReference) {
-            guards += beginReferenceGuard(arguments, index);
-        }
-        values.push_back(parameter.byReference ? emitReferenceArgument(*arguments[index], parameter)
-                                               : emitExpression(*arguments[index]));
+        values.push_back(parameter.byReference
+                             ? emitReferenceParameterArgument(arguments, index, parameter, storage, guards)
+                             : emitExpression(*arguments[index]));
         // Safe pointers: a move-only argument is given to the routine,
         // which owns its parameter.
         if (!parameter.byReference && isMoveOnly(parameter.type)) {
@@ -451,6 +450,37 @@ std::vector<std::string> FunctionEmitter::emitArguments(const FunctionSignature&
 std::string FunctionEmitter::emitUserCall(const FunctionSignature& signature,
                                           const std::vector<std::string>& arguments,
                                           bool requireValue)
+{
+    static const std::vector<std::string> noStorage;
+    return emitUserCall(signature, arguments, requireValue, noStorage);
+}
+
+// A reference argument (ADR-0016): its place, the guard a later argument
+// asks for (CANON-25, counted in `guards` for emitArguments to close), and
+// the header and generation the parameter receives, in `storage` at the
+// argument's index.
+std::string FunctionEmitter::emitReferenceParameterArgument(const std::vector<ast::ExpressionPtr>& arguments,
+                                                            std::size_t index, const FunctionParameter& parameter,
+                                                            std::vector<std::string>* storage, std::size_t& guards)
+{
+    guards += beginReferenceGuard(arguments, index);
+    beginCallerStorage(*arguments[index], false);
+    std::string value = emitReferenceArgument(*arguments[index], parameter);
+    std::string guard = endCallerStorage(*arguments[index]);
+    if (storage != nullptr) {
+        storage->resize(index + 1);
+        (*storage)[index] = std::move(guard);
+    }
+    return value;
+}
+
+// `storage`, when given, holds for each parameter that is the caller's
+// storage the header and generation of its object (`ptr H, i64 G`); an
+// empty one is storage no owner frees.
+std::string FunctionEmitter::emitUserCall(const FunctionSignature& signature,
+                                          const std::vector<std::string>& arguments,
+                                          bool requireValue,
+                                          const std::vector<std::string>& storage)
 {
     if (arguments.size() != signature.parameters.size()) {
         throw CodegenError("internal error: LLVM user-call argument count mismatch");
@@ -472,6 +502,10 @@ std::string FunctionEmitter::emitUserCall(const FunctionSignature& signature,
     for (std::size_t index = 0; index < arguments.size(); ++index) {
         if (index != 0) output_ << ", ";
         output_ << signature.parameters[index].llvmType << ' ' << arguments[index];
+        if (signature.parameters[index].callerStorage) {
+            output_ << ", " << (index < storage.size() && !storage[index].empty() ? storage[index]
+                                                                                  : immortalStorage());
+        }
     }
     output_ << ')';
 
@@ -525,8 +559,9 @@ void FunctionEmitter::emitSubroutineCall(const ast::CallExpression& call, const 
         throw CodegenUnsupported("unsupported subroutine argument count: " + function_.name());
     }
 
-    const std::vector<std::string> arguments = emitArguments(*routine, call.arguments(), 0);
-    emitUserCall(*routine, arguments, false);
+    std::vector<std::string> storage;
+    const std::vector<std::string> arguments = emitArguments(*routine, call.arguments(), 0, &storage);
+    emitUserCall(*routine, arguments, false, storage);
     emitInvariantChecks(call, true);
 }
 

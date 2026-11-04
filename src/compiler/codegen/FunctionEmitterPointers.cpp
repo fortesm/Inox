@@ -357,6 +357,75 @@ bool FunctionEmitter::beginReceiverGuard(const ast::CallExpression& call)
     return true;
 }
 
+// CANON-25: a parameter that is the caller's storage receives the header
+// and generation of the object holding that storage, captured when the
+// pointer nearest to it is reached (the receiver itself when it is one).
+void FunctionEmitter::beginCallerStorage(const ast::Expression& place, bool receiver)
+{
+    const ast::Expression* pointer = nullptr;
+    if (receiver && isPointerType(typeOf(place))) {
+        pointer = &place;
+    } else if (isIndexCall(place) || isMemberAccessCall(place)) {
+        pointer = lastPointerOnPath(place);
+    }
+    placeGuards_.push_back(PlaceGuard{pointer, std::nullopt});
+}
+
+// `ptr H, i64 G`: the object reached, else the guard of the name the place
+// starts from (a parameter that is itself the caller's storage, a `with`
+// binding), else storage no owner frees.
+std::string FunctionEmitter::endCallerStorage(const ast::Expression& place)
+{
+    if (placeGuards_.empty()) {
+        throw CodegenError("internal error: a caller storage guard closed twice");
+    }
+    const PlaceGuard guard = placeGuards_.back();
+    placeGuards_.pop_back();
+    if (guard.reached) {
+        return "ptr " + guard.reached->header + ", i64 " + guard.reached->generation;
+    }
+    if (const LinkParts* root = rootStorageGuard(place)) {
+        return "ptr " + root->header + ", i64 " + root->generation;
+    }
+    return immortalStorage();
+}
+
+const FunctionEmitter::LinkParts* FunctionEmitter::rootStorageGuard(const ast::Expression& place) const
+{
+    const ast::Expression* path = &place;
+    while ((isIndexCall(*path) || isMemberAccessCall(*path)) &&
+           !isPointerType(typeOf(*static_cast<const ast::CallExpression&>(*path).arguments()[0]))) {
+        path = static_cast<const ast::CallExpression&>(*path).arguments()[0].get();
+    }
+    if (path->kind() != ast::AstNodeKind::IdentifierExpression) {
+        return nullptr;
+    }
+    const auto guard =
+        storageGuards_.find(normalize(static_cast<const ast::IdentifierExpression&>(*path).name()));
+    return guard != storageGuards_.end() ? &guard->second : nullptr;
+}
+
+// A `with` binding keeps the guard of its target: the object captured when
+// the target was reached through a pointer, else the guard of the name the
+// target starts from.
+void FunctionEmitter::bindStorageGuard(const std::string& binding, const ast::Expression& target)
+{
+    if (withGuardCaptured_) {
+        storageGuards_.insert_or_assign(binding, *withGuardCaptured_);
+        withGuardCaptured_.reset();
+    } else if (const LinkParts* root = rootStorageGuard(target)) {
+        storageGuards_.insert_or_assign(binding, *root);
+    }
+}
+
+// The header of storage no owner frees (a local, State, a temporary): its
+// generation never changes.
+std::string FunctionEmitter::immortalStorage()
+{
+    requireModuleLine("@__inox.immortal.header = internal global [2 x i64] [i64 1, i64 0], align 16");
+    return "ptr @__inox.immortal.header, i64 1";
+}
+
 // `B[L..H]`: the bounds follow the base.
 void FunctionEmitter::beginSliceGuard(const ast::CallExpression& slice)
 {
@@ -421,9 +490,9 @@ const ast::Expression* FunctionEmitter::lastPointerOnPath(const ast::Expression&
     return nullptr;
 }
 
-void FunctionEmitter::emitWithGuard(const std::string& normalizedName)
+void FunctionEmitter::emitStorageGuard(const std::string& normalizedName)
 {
-    if (const auto guard = withGuards_.find(normalizedName); guard != withGuards_.end()) {
+    if (const auto guard = storageGuards_.find(normalizedName); guard != storageGuards_.end()) {
         emitLinkCheck(guard->second);
     }
 }

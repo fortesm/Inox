@@ -160,7 +160,11 @@ exception objects on the heap, will not show the cost.
   then its target once, then stores (CANON-5, r3.124); a place reached
   through a pointer whose object a later index or slice bound may free is
   checked against the object's generation before it is used (CANON-25,
-  `FunctionEmitterPointers.cpp`, the place guards).
+  `FunctionEmitterPointers.cpp`, the place guards). A parameter that is
+  the caller's storage (`ref`, `ref mut`, a struct receiver) is followed in
+  the routines' ABI by the header and generation of the object holding it
+  (the immortal header for storage no owner frees), checked at every use
+  (r3.126).
 - **Never:** derives a type, resolves a name, re-checks a rule, tests the
   host OS outside `ExceptionAbi` (E11, E12); uses an address after code
   that may have freed its object without that check.
