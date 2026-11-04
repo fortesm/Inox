@@ -67,6 +67,7 @@ public:
     void setRangeBounds(const Type* rangeType, std::int64_t low, std::int64_t high);
     void setStructFields(const Type* structType, std::vector<StructField> fields);
     void setStructFieldType(const Type* structType, std::size_t index, const Type* fieldType);
+    void setStructFieldDefault(const Type* structType, std::size_t index, FieldDefault value);
 
     // Constructed types, interned.
     const Type* array(std::int64_t low, std::int64_t high, const Type* element);

@@ -192,8 +192,7 @@ they are rejected now.)
 - Phase 2b's `clonePureExpression` and `cloneChainTarget` (moved from the
   parser by F5) duplicate `ast::cloneExpression`, making copies without
   positions as the parser did; the analyzer recognizes a `with` binding by
-  its symbol's origin (r3.127); `codegen/AstQueries` holds AST walks that are not
-  specific to codegen; the parser never builds `BlockStatement`.
+  its symbol's origin (r3.127); the parser never builds `BlockStatement`.
 - Assignments (r3.124, CANON-5 and CANON-25): R is evaluated before the
   target, a compound target once, and a place whose object an index frees
   while it is evaluated stops the program; so does a call whose reference
@@ -201,8 +200,5 @@ they are rejected now.)
   that uses a reference parameter or receiver whose object it freed
   (r3.126).
 - The typed IR (F6, change `typed-ir`) is built and verified for every
-  program that is compiled and printed by `--dump-tir`; since step 2
-  (r3.122) code generation takes the types, symbols and constants from it
-  through a transitional index, since step 3 (r3.123) the builtin of each
-  call, since step 4 (r3.127) the encodings, conversions and intrinsics, and
-  its other decisions move at step 5.
+  program that is compiled and printed by `--dump-tir`; since r3.129 code
+  generation lowers it alone, without the AST (F6 complete).

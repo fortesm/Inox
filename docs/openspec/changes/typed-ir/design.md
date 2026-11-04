@@ -380,3 +380,30 @@ inventory, and replace the textual classification of builtins by
 - A Bool literal's value is the TIR's (`AstNodeMap::booleanOf`).
 - `tools/codegen_decisions.py` counts a routine found by its name
   (`signatures_.find(normalize(...))`), not a lookup by declaration.
+
+## Step 5, second part (5.2): code generation lowers the TIR only (approved 2026-11-04)
+
+Approved by Marcelo Fortes, 2026-11-04, as one change completing F6.
+
+- `FunctionEmitter` is built from a `tir::Routine`, `LlvmIrEmitter` from a
+  `tir::Program` and the type context; signatures are keyed by routine.
+  Every `emit*` function takes TIR nodes: an expression's checks are the
+  `RangeCheck` and `NaturalCheck` around it (`bare` strips them), a place
+  is a `tir::Place` (a field or element through a pointer has a `Through`
+  base), a method call is a `Call` whose routine's first parameter is the
+  receiver.
+- The CANON-25 guards name the pointer they wait for by its `Place` (or
+  by the expression of a value stored nowhere); the walks of the AST are
+  walks of the TIR (`codegen/TirWalk.*`).
+- What codegen read from the AST or from the analysis's tables by node is
+  in the TIR: a declaration of the type of its value (`Stmt::inferred`),
+  the unit of `Fill` (`Expr::unit`), the written order of a construction's
+  values (`FieldValue::written`), the invariant routine of each struct
+  (`Program::invariants`). A field default is resolved by the analysis
+  into `types::FieldDefault` (an integer, a code point, an ordinal, a
+  real, a Bool, a String's characters or a decimal's scaled digits).
+- The AST node map and the transitional links are removed. The one change
+  of LLVM IR is declared in `ir-snapshot-expect.json`: a method called
+  without parentheses (`X.M`, a `Call` like `X.M()` in the TIR) whose
+  result holds Strings now gives its routine the cleanup pad any such call
+  gives, where the AST walk had taken it for a field access.

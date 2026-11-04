@@ -158,9 +158,6 @@ void Builder::buildModule(const ast::ModuleNode& module)
         if (declaration.value != nullptr) {
             state.initializer = expression(*declaration.value);
         }
-        if (astNodes_ != nullptr) {
-            astNodes_->recordState(declaration, &state);
-        }
     }
 
     program_.constants = arena_.array<Constant>(constants.size());
@@ -185,6 +182,18 @@ void Builder::buildModule(const ast::ModuleNode& module)
     program_.routines = arena_.array<Routine*>(routines.size());
     std::copy(routines.begin(), routines.end(), program_.routines.begin());
     program_.entry = entryRoutine;
+    std::vector<InvariantRoutine> invariants;
+    for (const TypeRef type : structTypes) {
+        if (const ast::FunctionDeclaration* checker = semantics_.invariantRoutine(type)) {
+            const auto found = routines_.find(checker);
+            if (found == routines_.end()) {
+                throw InvariantError("internal error: typed IR: the invariant of " + type->name() + " is not compiled");
+            }
+            invariants.push_back(InvariantRoutine{type, found->second});
+        }
+    }
+    program_.invariants = arena_.array<InvariantRoutine>(invariants.size());
+    std::copy(invariants.begin(), invariants.end(), program_.invariants.begin());
     for (Routine* routine : routines) {
         routineBody(*routine);
     }
@@ -192,11 +201,10 @@ void Builder::buildModule(const ast::ModuleNode& module)
 
 } // namespace detail
 
-std::unique_ptr<Program> buildProgram(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
-                                      AstNodeMap* astNodes)
+std::unique_ptr<Program> buildProgram(const ast::ModuleNode& module, const semantic::SemanticResult& semantics)
 {
     auto program = std::make_unique<Program>();
-    detail::Builder(*program, semantics, astNodes).buildModule(module);
+    detail::Builder(*program, semantics).buildModule(module);
     return program;
 }
 

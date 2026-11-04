@@ -178,6 +178,11 @@ void TypeContext::setStructFieldType(const Type* structType, std::size_t index, 
     mutableStruct(structType)->fields_.at(index).type = fieldType;
 }
 
+void TypeContext::setStructFieldDefault(const Type* structType, std::size_t index, FieldDefault value)
+{
+    mutableStruct(structType)->fields_.at(index).resolvedDefault = std::move(value);
+}
+
 const Type* TypeContext::array(std::int64_t low, std::int64_t high, const Type* element)
 {
     const auto key = std::make_tuple(low, high, element);

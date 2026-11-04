@@ -9,7 +9,7 @@
 
 #include "FunctionEmitter.h"
 
-#include "AstQueries.h"
+#include "TirWalk.h"
 #include "ExceptionAbi.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
@@ -35,34 +35,32 @@
 
 namespace inox::compiler::codegen::detail {
 
-void FunctionEmitter::emitIfReturn(const ast::IfStatement& statement)
+void FunctionEmitter::emitIfReturn(const tir::Stmt& statement)
 {
     if (signature_.llvmReturnType != "i64") {
         throw CodegenUnsupported(
             "LLVM emission currently supports if/else only in Integer functions");
     }
-    if (statement.elseBody().empty()) {
+    if (statement.elseBody.empty()) {
         throw CodegenUnsupported(
             "LLVM emission currently requires else for direct-return if chains");
     }
-    if (statement.thenBody().size() != 1 ||
-        statement.thenBody().front()->kind() != ast::AstNodeKind::ReturnStatement ||
-        statement.elseBody().size() != 1 ||
-        statement.elseBody().front()->kind() != ast::AstNodeKind::ReturnStatement) {
+    if (statement.body.size() != 1 || statement.body[0]->kind != tir::StmtKind::Return ||
+        statement.elseBody.size() != 1 || statement.elseBody[0]->kind != tir::StmtKind::Return) {
         throw CodegenUnsupported(
             "LLVM emission currently requires a single Return in each if branch");
     }
-    for (const auto& clause : statement.elseIfClauses()) {
+    for (const tir::Branch& clause : statement.branches) {
         if (clause.body.size() != 1 ||
-            clause.body.front()->kind() != ast::AstNodeKind::ReturnStatement) {
+            clause.body[0]->kind != tir::StmtKind::Return) {
             throw CodegenUnsupported(
                 "LLVM emission currently requires a single Return in each elif branch");
         }
     }
 
     const std::size_t label = nextLabel_++;
-    const bool hasElseIf = !statement.elseIfClauses().empty();
-    const std::string condition = emitExpression(statement.condition());
+    const bool hasElseIf = !statement.branches.empty();
+    const std::string condition = emitValue(*statement.value);
     output_ << "  br i1 " << condition
             << ", label %then" << label
             << ", label %" << (hasElseIf ? "elifcond" : "else") << label;
@@ -72,13 +70,13 @@ void FunctionEmitter::emitIfReturn(const ast::IfStatement& statement)
     output_ << "\n\n";
 
     output_ << "then" << label << ":\n";
-    emitReturn(static_cast<const ast::ReturnStatement&>(*statement.thenBody().front()));
+    emitReturn(*statement.body[0]);
 
-    for (std::size_t index = 0; index < statement.elseIfClauses().size(); ++index) {
-        const auto& clause = statement.elseIfClauses()[index];
-        const bool hasNext = index + 1 < statement.elseIfClauses().size();
+    for (std::size_t index = 0; index < statement.branches.size(); ++index) {
+        const tir::Branch& clause = statement.branches[index];
+        const bool hasNext = index + 1 < statement.branches.size();
         output_ << "\nelifcond" << label << '_' << index << ":\n";
-        const std::string elseIfCondition = emitExpression(*clause.condition);
+        const std::string elseIfCondition = emitValue(*clause.conditions[0]);
         output_ << "  br i1 " << elseIfCondition
                 << ", label %elifthen" << label << '_' << index
                 << ", label %" << (hasNext ? "elifcond" : "else") << label;
@@ -88,16 +86,16 @@ void FunctionEmitter::emitIfReturn(const ast::IfStatement& statement)
         output_ << "\n\n";
 
         output_ << "elifthen" << label << '_' << index << ":\n";
-        emitReturn(static_cast<const ast::ReturnStatement&>(*clause.body.front()));
+        emitReturn(*clause.body[0]);
     }
 
     output_ << "\nelse" << label << ":\n";
-    emitReturn(static_cast<const ast::ReturnStatement&>(*statement.elseBody().front()));
+    emitReturn(*statement.elseBody[0]);
 }
 
-void FunctionEmitter::emitReturn(const ast::ReturnStatement& statement)
+void FunctionEmitter::emitReturn(const tir::Stmt& statement)
 {
-    const std::string value = emitExpression(statement.expression());
+    const std::string value = emitValue(*statement.value);
     emitRetainResult(value);
     emitReleaseHandlersLeftBy(0);
     if (!cleanupContexts_.empty()) {
@@ -194,63 +192,94 @@ void FunctionEmitter::emitContinueTransfer()
     output_ << "\n" << dead << ":\n";
 }
 
-void FunctionEmitter::emitIfMerge(const ast::IfStatement& statement)
+void FunctionEmitter::emitIfMerge(const tir::Stmt& statement)
 {
     // if / elif* / else? lowered as a chain of conditional branches that all
     // join at one merge block. Each body is lowered by the general statement
     // dispatcher, so any statement (loops, try, leave, continue, nested if)
     // composes inside any branch.
     const std::size_t label = nextLabel_++;
-    const std::string endTarget = "endif" + std::to_string(label);
-    const auto& clauses = statement.elseIfClauses();
-    const bool hasElse = !statement.elseBody().empty();
+    const auto& clauses = statement.branches;
+    const bool hasElse = !statement.elseBody.empty();
 
-    auto emitArm = [&](const ast::Expression& condition,
-                       const std::vector<ast::StatementPtr>& body,
-                       std::size_t armIndex,
-                       bool isLastConditionalArm) {
-        const std::string suffix = std::to_string(label) + "_" + std::to_string(armIndex);
-        const std::string thenTarget = armIndex == 0 ? "then" + std::to_string(label) : "elifthen" + suffix;
-        const std::string nextTarget = isLastConditionalArm
-            ? (hasElse ? "else" + std::to_string(label) : endTarget)
-            : "elifcond" + std::to_string(label) + "_" + std::to_string(armIndex + 1);
-        const std::string value = emitExpression(condition);
-        output_ << "  br i1 " << value << ", label %" << thenTarget
-                << ", label %" << nextTarget << "\n\n";
-        output_ << thenTarget << ":\n";
-        emitAssignmentBranch(body);
-        output_ << "  br label %" << endTarget << "\n\n";
-        if (!isLastConditionalArm) {
-            output_ << nextTarget << ":\n";
-        }
-    };
-
-    emitArm(statement.condition(), statement.thenBody(), 0, clauses.empty());
+    emitIfArm(*statement.value, statement.body, label, 0, clauses.empty(), hasElse);
     for (std::size_t index = 0; index < clauses.size(); ++index) {
-        emitArm(*clauses[index].condition, clauses[index].body, index + 1,
-                index + 1 == clauses.size());
+        emitIfArm(*clauses[index].conditions[0], clauses[index].body, label, index + 1, index + 1 == clauses.size(),
+                  hasElse);
     }
 
     if (hasElse) {
         output_ << "else" << label << ":\n";
-        emitAssignmentBranch(statement.elseBody());
-        output_ << "  br label %" << endTarget << "\n\n";
+        emitAssignmentBranch(statement.elseBody);
+        output_ << "  br label %endif" << label << "\n\n";
     }
 
-    output_ << endTarget << ":\n";
+    output_ << "endif" << label << ":\n";
 }
 
 // `unless C` runs its body when C is false.
-void FunctionEmitter::emitUnless(const ast::UnlessStatement& statement)
+// Whether a case selector is one choice: a value, or a range `A..B`.
+std::string FunctionEmitter::emitCaseChoice(const tir::Expr& choice, const std::string& selector,
+                                            const std::string& type, bool textual, bool unsignedCompare)
+{
+    std::string hit;
+    if (const tir::Expr& range = bare(choice);
+        range.kind == tir::ExprKind::Binary && range.binary == tir::BinaryOp::Range) {
+        const std::string low = emitValue(*range.operands[0]);
+        const std::string high = emitValue(*range.operands[1]);
+        const std::string geLow = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string leHigh = "%tmp" + std::to_string(nextTemporary_++);
+        hit = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << geLow << " = icmp " << (unsignedCompare ? "uge " : "sge ")
+                << type << " " << selector << ", " << low << "\n";
+        output_ << "  " << leHigh << " = icmp " << (unsignedCompare ? "ule " : "sle ")
+                << type << " " << selector << ", " << high << "\n";
+        output_ << "  " << hit << " = and i1 " << geLow << ", " << leHigh << "\n";
+    } else if (textual) {
+        const std::string value = emitValue(choice);
+        hit = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << hit << " = call zeroext i1 @__inox_str_equal(ptr " << selector << ", ptr " << value
+                << ")\n";
+    } else {
+        const std::string value = emitValue(choice);
+        hit = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << hit << " = icmp eq " << type << " " << selector
+                << ", " << value << "\n";
+    }
+    return hit;
+}
+
+// One arm of an if: its condition, then its body, then the merge.
+void FunctionEmitter::emitIfArm(const tir::Expr& condition, const TirStatements& body, std::size_t label,
+                                std::size_t armIndex, bool isLastConditionalArm, bool hasElse)
+{
+    const std::string endTarget = "endif" + std::to_string(label);
+    const std::string suffix = std::to_string(label) + "_" + std::to_string(armIndex);
+    const std::string thenTarget = armIndex == 0 ? "then" + std::to_string(label) : "elifthen" + suffix;
+    const std::string nextTarget = isLastConditionalArm
+        ? (hasElse ? "else" + std::to_string(label) : endTarget)
+        : "elifcond" + std::to_string(label) + "_" + std::to_string(armIndex + 1);
+    const std::string value = emitValue(condition);
+    output_ << "  br i1 " << value << ", label %" << thenTarget
+            << ", label %" << nextTarget << "\n\n";
+    output_ << thenTarget << ":\n";
+    emitAssignmentBranch(body);
+    output_ << "  br label %" << endTarget << "\n\n";
+    if (!isLastConditionalArm) {
+        output_ << nextTarget << ":\n";
+    }
+}
+
+void FunctionEmitter::emitUnless(const tir::Stmt& statement)
 {
     const std::size_t label = nextLabel_++;
     const std::string bodyTarget = "unlessbody" + std::to_string(label);
     const std::string endTarget = "unlessend" + std::to_string(label);
-    const std::string value = emitExpression(statement.condition());
+    const std::string value = emitValue(*statement.value);
     output_ << "  br i1 " << value << ", label %" << endTarget
             << ", label %" << bodyTarget << "\n\n";
     output_ << bodyTarget << ":\n";
-    emitAssignmentBranch(statement.body());
+    emitAssignmentBranch(statement.body);
     output_ << "  br label %" << endTarget << "\n\n";
     output_ << endTarget << ":\n";
 }
@@ -260,23 +289,23 @@ void FunctionEmitter::emitUnless(const ast::UnlessStatement& statement)
 // has already proven that choices do not overlap and, without
 // `else`, that they cover the selector type, so the fall-through
 // edge of a total case is unreachable.
-void FunctionEmitter::emitCase(const ast::CaseStatement& statement)
+void FunctionEmitter::emitCase(const tir::Stmt& statement)
 {
     const std::size_t label = nextLabel_++;
     const std::string prefix = "case" + std::to_string(label);
     const std::string endTarget = prefix + "end";
-    const std::string type = expressionLlvmType(statement.expression());
-    const std::string selector = emitExpression(statement.expression());
+    const std::string type = expressionLlvmType(*statement.value);
+    const std::string selector = emitValue(*statement.value);
     // Change case-strings: a String selector is compared with each choice
     // as `=` compares, byte for byte.
-    const bool textual = isStringType(typeOf(statement.expression()));
+    const bool textual = isStringType(bare(*statement.value).type);
     if (textual) {
         requireRuntime(RuntimeFunction::StringEqual);
         requireStringRuntime();
     }
     // Bool and UInt64 (change uint64) are ordered unsigned.
-    const bool unsignedCompare = type == "i1" || isUInt64Type(typeOf(statement.expression()));
-    const auto& arms = statement.arms();
+    const bool unsignedCompare = type == "i1" || isUInt64Type(bare(*statement.value).type);
+    const auto& arms = statement.branches;
     if (arms.empty()) {
         output_ << "  br label %" << prefix << "else\n\n";
     }
@@ -286,37 +315,13 @@ void FunctionEmitter::emitCase(const ast::CaseStatement& statement)
         const std::string nextArm = armIndex + 1 < arms.size()
             ? prefix + "test" + std::to_string(armIndex + 1)
             : prefix + "else";
-        const auto& choices = arms[armIndex].choices;
+        const auto& choices = arms[armIndex].conditions;
         for (std::size_t choiceIndex = 0; choiceIndex < choices.size(); ++choiceIndex) {
-            const ast::Expression& choice = *choices[choiceIndex];
+            const tir::Expr& choice = *choices[choiceIndex];
             const std::string onMiss = choiceIndex + 1 < choices.size()
                 ? prefix + "test" + std::to_string(armIndex) + "_" + std::to_string(choiceIndex + 1)
                 : nextArm;
-            std::string hit;
-            if (choice.kind() == ast::AstNodeKind::BinaryExpression &&
-                static_cast<const ast::BinaryExpression&>(choice).op() == ast::BinaryOperator::Range) {
-                const auto& range = static_cast<const ast::BinaryExpression&>(choice);
-                const std::string low = emitExpression(range.left());
-                const std::string high = emitExpression(range.right());
-                const std::string geLow = "%tmp" + std::to_string(nextTemporary_++);
-                const std::string leHigh = "%tmp" + std::to_string(nextTemporary_++);
-                hit = "%tmp" + std::to_string(nextTemporary_++);
-                output_ << "  " << geLow << " = icmp " << (unsignedCompare ? "uge " : "sge ")
-                        << type << " " << selector << ", " << low << "\n";
-                output_ << "  " << leHigh << " = icmp " << (unsignedCompare ? "ule " : "sle ")
-                        << type << " " << selector << ", " << high << "\n";
-                output_ << "  " << hit << " = and i1 " << geLow << ", " << leHigh << "\n";
-            } else if (textual) {
-                const std::string value = emitExpression(choice);
-                hit = "%tmp" + std::to_string(nextTemporary_++);
-                output_ << "  " << hit << " = call zeroext i1 @__inox_str_equal(ptr " << selector << ", ptr " << value
-                        << ")\n";
-            } else {
-                const std::string value = emitExpression(choice);
-                hit = "%tmp" + std::to_string(nextTemporary_++);
-                output_ << "  " << hit << " = icmp eq " << type << " " << selector
-                        << ", " << value << "\n";
-            }
+            const std::string hit = emitCaseChoice(choice, selector, type, textual, unsignedCompare);
             output_ << "  br i1 " << hit << ", label %" << bodyTarget
                     << ", label %" << onMiss << "\n\n";
             if (choiceIndex + 1 < choices.size()) {
@@ -332,8 +337,8 @@ void FunctionEmitter::emitCase(const ast::CaseStatement& statement)
     }
 
     output_ << prefix << "else:\n";
-    if (statement.hasElse()) {
-        emitAssignmentBranch(statement.elseBody());
+    if (statement.hasElse) {
+        emitAssignmentBranch(statement.elseBody);
         output_ << "  br label %" << endTarget << "\n\n";
     } else {
         output_ << "  unreachable\n\n";
@@ -341,14 +346,14 @@ void FunctionEmitter::emitCase(const ast::CaseStatement& statement)
     output_ << endTarget << ":\n";
 }
 
-void FunctionEmitter::emitAssignmentBranch(const std::vector<ast::StatementPtr>& statements)
+void FunctionEmitter::emitAssignmentBranch(const TirStatements& statements)
 {
-    for (const auto& statement : statements) {
+    for (const tir::Stmt* statement : statements) {
         emitStatement(*statement);
     }
 }
 
-void FunctionEmitter::emitWhile(const ast::WhileStatement& statement)
+void FunctionEmitter::emitWhile(const tir::Stmt& statement)
 {
     const std::size_t label = nextLabel_++;
     const std::string conditionTarget = "whilecond" + std::to_string(label);
@@ -356,14 +361,14 @@ void FunctionEmitter::emitWhile(const ast::WhileStatement& statement)
     output_ << "  br label %whilecond" << label << "\n\n";
 
     output_ << "whilecond" << label << ":\n";
-    const std::string condition = emitExpression(statement.condition());
+    const std::string condition = emitValue(*statement.value);
     output_ << "  br i1 " << condition
             << ", label %whilebody" << label
             << ", label %whileend" << label << "\n\n";
 
     output_ << "whilebody" << label << ":\n";
     loopTargets_.push_back(LoopTargets{conditionTarget, endTarget});
-    const bool terminated = emitLoopStatements(statement.body());
+    const bool terminated = emitLoopStatements(statement.body);
     loopTargets_.pop_back();
     if (!terminated) {
         output_ << "  br label %" << conditionTarget << '\n';
@@ -373,7 +378,7 @@ void FunctionEmitter::emitWhile(const ast::WhileStatement& statement)
     output_ << "whileend" << label << ":\n";
 }
 
-void FunctionEmitter::emitRepeat(const ast::RepeatStatement& statement)
+void FunctionEmitter::emitRepeat(const tir::Stmt& statement)
 {
     const std::size_t label = nextLabel_++;
     const std::string bodyTarget = "repeatbody" + std::to_string(label);
@@ -383,7 +388,7 @@ void FunctionEmitter::emitRepeat(const ast::RepeatStatement& statement)
     output_ << bodyTarget << ":\n";
     loopTargets_.push_back(LoopTargets{bodyTarget, endTarget});
     repeatLoopDepths_.push_back(loopTargets_.size());
-    const bool terminated = emitLoopStatements(statement.body());
+    const bool terminated = emitLoopStatements(statement.body);
     repeatLoopDepths_.pop_back();
     loopTargets_.pop_back();
     if (!terminated) {
@@ -394,20 +399,19 @@ void FunctionEmitter::emitRepeat(const ast::RepeatStatement& statement)
     output_ << endTarget << ":\n";
 }
 
-void FunctionEmitter::emitForIn(const ast::ForInStatement& statement)
+void FunctionEmitter::emitForIn(const tir::Stmt& statement)
 {
-    if (statement.iterable().kind() != ast::AstNodeKind::BinaryExpression) {
+    const tir::Expr& range = bare(*statement.value);
+    if (range.kind != tir::ExprKind::Binary) {
         throw CodegenUnsupported(
             "LLVM emission currently supports only range expressions in for loops");
     }
-
-    const auto& range = static_cast<const ast::BinaryExpression&>(statement.iterable());
-    if (range.op() != ast::BinaryOperator::Range) {
+    if (range.binary != tir::BinaryOp::Range) {
         throw CodegenUnsupported(
             "LLVM emission currently supports only Start..End for ranges");
     }
 
-    const std::string iteratorName = normalize(statement.iterator());
+    const std::string iteratorName = normalize(statement.symbol->name);
     // Semantic analysis already rejected iterators that conflict with a visible
     // symbol; an entry left in `locals_` here belongs to a finished sibling scope.
     std::optional<LocalInfo> shadowedLocal;
@@ -430,7 +434,7 @@ void FunctionEmitter::emitForIn(const ast::ForInStatement& statement)
     // is a positive magnitude; a step <= 0 traps before the loop starts.
     // Change uint64: a range of UInt64 values is compared and stepped
     // unsigned, and its iterator is a UInt64.
-    const TypeRef iteratorType = typeOf(statement.iterable());
+    const TypeRef iteratorType = range.type;
     const bool isUnsigned = isUInt64Type(iteratorType);
     const char* const greater = isUnsigned ? "ugt" : "sgt";
     const char* const lessEqual = isUnsigned ? "ule" : "sle";
@@ -439,14 +443,14 @@ void FunctionEmitter::emitForIn(const ast::ForInStatement& statement)
         requireUnsignedHelpers();
     }
     output_ << "  " << slot << " = alloca i64\n";
-    const std::string startValue = emitExpression(range.left());
-    const std::string endValue = emitExpression(range.right());
+    const std::string startValue = emitValue(*range.operands[0]);
+    const std::string endValue = emitValue(*range.operands[1]);
     std::string increment = "1";
-    if (statement.step() != nullptr) {
-        const std::string rawStep = emitExpression(*statement.step());
+    if (statement.step != nullptr) {
+        const std::string rawStep = emitValue(*statement.step);
         increment = temporary();
         // A UInt64 step is positive unless it is 0.
-        const bool unsignedStep = isUInt64Type(typeOf(*statement.step()));
+        const bool unsignedStep = isUInt64Type(bare(*statement.step).type);
         if (unsignedStep) {
             requireUnsignedHelpers();
         }
@@ -459,7 +463,7 @@ void FunctionEmitter::emitForIn(const ast::ForInStatement& statement)
     // A UInt64 or an enum range has an iterator of its type.
     const bool keepsType = isUnsigned || (iteratorType != nullptr && iteratorType->isEnum());
     locals_.insert_or_assign(iteratorName,
-                             LocalInfo{slot, keepsType ? iteratorType : semantics_.types().int64Type(), "i64"});
+                             LocalInfo{slot, keepsType ? iteratorType : types_.int64Type(), "i64"});
 
     output_ << "  br label %" << conditionTarget << "\n\n";
 
@@ -481,7 +485,7 @@ void FunctionEmitter::emitForIn(const ast::ForInStatement& statement)
 
     output_ << bodyTarget << ":\n";
     loopTargets_.push_back(LoopTargets{stepTarget, endTarget});
-    const bool terminated = emitLoopStatements(statement.body());
+    const bool terminated = emitLoopStatements(statement.body);
     loopTargets_.pop_back();
     if (!terminated) {
         output_ << "  br label %" << stepTarget << '\n';
@@ -526,7 +530,7 @@ void FunctionEmitter::emitForIn(const ast::ForInStatement& statement)
     }
 }
 
-bool FunctionEmitter::emitLoopStatements(const std::vector<ast::StatementPtr>& statements)
+bool FunctionEmitter::emitLoopStatements(const TirStatements& statements)
 {
     // Loop bodies are ordinary blocks: every statement goes through the
     // general dispatcher. leave/continue end the current block and open an
@@ -543,7 +547,7 @@ bool FunctionEmitter::emitLoopStatements(const std::vector<ast::StatementPtr>& s
 // in the repeat. It is a transfer to an explicit target (the repeat), not to
 // the innermost loop: every ensure between the until and that repeat runs,
 // innermost first, and no other.
-void FunctionEmitter::emitUntil(const ast::UntilStatement& statement)
+void FunctionEmitter::emitUntil(const tir::Stmt& statement)
 {
     if (repeatLoopDepths_.empty()) {
         throw CodegenError("until outside repeat");
@@ -552,7 +556,7 @@ void FunctionEmitter::emitUntil(const ast::UntilStatement& statement)
     const std::size_t label = nextLabel_++;
     const std::string exitTarget = "untilexit" + std::to_string(label);
     const std::string nextTarget = "untilnext" + std::to_string(label);
-    const std::string condition = emitExpression(statement.condition());
+    const std::string condition = emitValue(*statement.value);
     output_ << "  br i1 " << condition << ", label %" << exitTarget
             << ", label %" << nextTarget << "\n\n";
     output_ << exitTarget << ":\n";
@@ -581,18 +585,29 @@ const FunctionEmitter::LoopTargets& FunctionEmitter::currentLoopTargets() const
     return loopTargets_.back();
 }
 
-void FunctionEmitter::emitWith(const ast::WithStatement& statement)
+void FunctionEmitter::emitWith(const tir::Stmt& statement)
 {
     // CANON-11: the target is evaluated once, on entry; every `.Member` of
-    // the body acts on that storage, never on a copy. The parser expanded
-    // `.Member` to __member(__with_N, Member), which resolves through the
-    // binding registered here.
-    const std::string binding = normalize(statement.bindingName());
-    const ast::Expression& target = statement.target();
+    // the body acts on that storage, never on a copy: each is a field of
+    // the binding's place, which resolves through the binding registered
+    // here.
+    const std::string binding = normalize(statement.symbol->name);
+    bindWithTarget(binding, *statement.value);
 
-    const auto local = target.kind() == ast::AstNodeKind::IdentifierExpression
-                           ? locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(target).name()))
-                           : locals_.end();
+    // The body; its `.Member` places start from the binding (WithBinding).
+    for (const tir::Stmt* bodyStatement : statement.body) {
+        emitStatement(*bodyStatement);
+    }
+    storageGuards_.erase(binding);
+}
+
+// The storage a `with` binding names: a variable's slot, else the address
+// of its target computed once, with the guard of the object holding it.
+void FunctionEmitter::bindWithTarget(const std::string& binding, const tir::Expr& target)
+{
+    const tir::Expr& read = bare(target);
+    const bool variable = read.kind == tir::ExprKind::Read && isVariablePlace(*read.place);
+    const auto local = variable ? locals_.find(normalize(read.place->symbol->name)) : locals_.end();
     if (local != locals_.end()) {
         // A variable: the binding is an alias of its slot.
         locals_.insert_or_assign(binding, local->second);
@@ -600,7 +615,7 @@ void FunctionEmitter::emitWith(const ast::WithStatement& statement)
         // A field, an element, `Value(P)` or a value: its address, computed
         // once (indices included). Through a pointer, the object holding it
         // is remembered and checked at every use (CANON-25).
-        withGuardPointer_ = lastPointerOnPath(target);
+        withGuardPointer_ = read.kind == tir::ExprKind::Read ? lastPointerOnPath(*read.place) : nullptr;
         withGuardCaptured_.reset();
         const Place place = emitPlace(target);
         withGuardPointer_ = nullptr;
@@ -612,12 +627,6 @@ void FunctionEmitter::emitWith(const ast::WithStatement& statement)
     }
     bindStorageGuard(binding, target);
 
-    // Emit body statements; dot-prefixed members were already expanded by
-    // the parser to __member(__with_N, Field), which resolves via the alias.
-    for (const auto& bodyStatement : statement.body()) {
-        emitStatement(*bodyStatement);
-    }
-    storageGuards_.erase(binding);
 }
 
 } // namespace inox::compiler::codegen::detail

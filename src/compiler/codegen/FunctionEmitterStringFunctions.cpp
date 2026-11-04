@@ -18,7 +18,6 @@
 
 #include "FunctionEmitter.h"
 
-#include "AstQueries.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
 
@@ -31,29 +30,19 @@ namespace {
 
 // The operands of a `+` chain of Strings, left to right (`A + B + C` is
 // `(A + B) + C`; a parenthesized `A + (B + C)` flattens the same way).
-template <typename IsConcatenation>
-void collectParts(const ast::Expression& expression, const IsConcatenation& isConcatenation,
-                  std::vector<const ast::Expression*>& parts)
+// The parts of a chain of `+` on Strings, left to right.
+void collectParts(const tir::Expr& expression, std::vector<const tir::Expr*>& parts)
 {
-    if (isConcatenation(expression)) {
-        const auto& binary = static_cast<const ast::BinaryExpression&>(expression);
-        collectParts(binary.left(), isConcatenation, parts);
-        collectParts(binary.right(), isConcatenation, parts);
+    if (expression.kind == tir::ExprKind::Binary && expression.binary == tir::BinaryOp::Add &&
+        isStringType(expression.type)) {
+        collectParts(*expression.operands[0], parts);
+        collectParts(*expression.operands[1], parts);
         return;
     }
     parts.push_back(&expression);
 }
 
 } // namespace
-
-bool FunctionEmitter::isStringConcatenation(const ast::Expression& expression) const
-{
-    if (expression.kind() != ast::AstNodeKind::BinaryExpression ||
-        static_cast<const ast::BinaryExpression&>(expression).op() != ast::BinaryOperator::Add) {
-        return false;
-    }
-    return isStringType(typeOf(expression));
-}
 
 // The status slot of a runtime String function.
 std::string FunctionEmitter::newStringStatus()
@@ -84,12 +73,12 @@ void FunctionEmitter::emitStringStatusCheck(const std::string& status)
 }
 
 // The parts as an array of String pointers, for concat and append.
-std::string FunctionEmitter::emitStringParts(const std::vector<const ast::Expression*>& parts)
+std::string FunctionEmitter::emitStringParts(const std::vector<const tir::Expr*>& parts)
 {
     std::vector<std::string> values;
     values.reserve(parts.size());
-    for (const ast::Expression* part : parts) {
-        values.push_back(emitExpression(*part));
+    for (const tir::Expr* part : parts) {
+        values.push_back(emitValue(*part));
     }
     const std::string array = "%strparts" + std::to_string(nextTemporary_++);
     output_ << "  " << array << " = alloca [" << values.size() << " x ptr]\n";
@@ -102,10 +91,10 @@ std::string FunctionEmitter::emitStringParts(const std::vector<const ast::Expres
     return array;
 }
 
-std::string FunctionEmitter::emitConcatenation(const ast::BinaryExpression& expression)
+std::string FunctionEmitter::emitConcatenation(const tir::Expr& expression)
 {
-    std::vector<const ast::Expression*> parts;
-    collectParts(expression, [this](const ast::Expression& part) { return isStringConcatenation(part); }, parts);
+    std::vector<const tir::Expr*> parts;
+    collectParts(expression, parts);
     const std::string array = emitStringParts(parts);
     requireRuntime(RuntimeFunction::StringConcat);
     requireStringRuntime();
@@ -114,7 +103,7 @@ std::string FunctionEmitter::emitConcatenation(const ast::BinaryExpression& expr
     output_ << "  " << result << " = call ptr @__inox_str_concat(i64 " << parts.size() << ", ptr " << array
             << ", ptr " << status << ")\n";
     emitStringStatusCheck(status);
-    holdOwnedResult(result, typeOf(expression), "ptr");
+    holdOwnedResult(result, expression.type, "ptr");
     return result;
 }
 
@@ -122,75 +111,70 @@ std::string FunctionEmitter::emitConcatenation(const ast::BinaryExpression& expr
 // or an element of the same place at an index that is the same name or
 // literal. Nothing in them has an effect, so evaluating one is evaluating
 // both.
-bool FunctionEmitter::samePlace(const ast::Expression& first, const ast::Expression& second) const
+bool FunctionEmitter::samePlace(const tir::Place& first, const tir::Place& second, bool path)
 {
-    if (first.kind() != second.kind()) {
+    if (first.kind != second.kind) {
         return false;
     }
-    if (first.kind() == ast::AstNodeKind::IdentifierExpression) {
-        const auto& a = static_cast<const ast::IdentifierExpression&>(first);
-        const auto& b = static_cast<const ast::IdentifierExpression&>(second);
-        return normalize(a.name()) == normalize(b.name()) && symbolOf(a) == symbolOf(b);
-    }
-    if (first.kind() == ast::AstNodeKind::LiteralExpression) {
-        const auto& a = static_cast<const ast::LiteralExpression&>(first);
-        const auto& b = static_cast<const ast::LiteralExpression&>(second);
-        return a.literalKind() == ast::LiteralKind::Integer && b.literalKind() == ast::LiteralKind::Integer &&
-               a.value() == b.value();
-    }
-    if (first.kind() != ast::AstNodeKind::CallExpression) {
+    switch (first.kind) {
+    case tir::PlaceKind::Field:
+        return first.field == second.field && samePlace(*first.base, *second.base, true);
+    case tir::PlaceKind::Element:
+        return samePlace(*first.base, *second.base, true) && sameValue(*first.indices[0], *second.indices[0]);
+    case tir::PlaceKind::Through:
+        // The pointer a field or an element is reached through.
+        return path && samePlace(*first.base, *second.base, true);
+    case tir::PlaceKind::Value:
         return false;
+    default:
+        return normalize(first.symbol->name) == normalize(second.symbol->name) && first.symbol == second.symbol;
     }
-    const auto& a = static_cast<const ast::CallExpression&>(first);
-    const auto& b = static_cast<const ast::CallExpression&>(second);
-    const bool member = isMemberAccessCall(a) && isMemberAccessCall(b) && memberField(a) && memberField(b);
-    const bool element = isIndexCall(a) && isIndexCall(b);
-    if (!member && !element) {
-        return false;
-    }
-    if (member) {
-        return samePlace(*a.arguments()[0], *b.arguments()[0]) &&
-               normalize(static_cast<const ast::IdentifierExpression&>(*a.arguments()[1]).name()) ==
-                   normalize(static_cast<const ast::IdentifierExpression&>(*b.arguments()[1]).name());
-    }
-    return samePlace(*a.arguments()[0], *b.arguments()[0]) && samePlace(*a.arguments()[1], *b.arguments()[1]);
 }
 
-// Whether evaluating `expression` may run a routine of the program, which
-// could change the String being appended to before the append reads it.
-bool FunctionEmitter::mayRunRoutine(const ast::Expression& expression) const
+bool FunctionEmitter::sameValue(const tir::Expr& firstValue, const tir::Expr& secondValue)
 {
-    bool runs = false;
-    forEachSubExpression(expression, [&](const ast::Expression& node) { runs = runs || runsRoutine(node); });
-    return runs;
+    const tir::Expr& first = bare(firstValue);
+    const tir::Expr& second = bare(secondValue);
+    if (first.kind == tir::ExprKind::Read && second.kind == tir::ExprKind::Read) {
+        return isVariablePlace(*first.place) && isVariablePlace(*second.place) &&
+               samePlace(*first.place, *second.place, false);
+    }
+    if (first.kind != tir::ExprKind::Literal || second.kind != tir::ExprKind::Literal) {
+        return false;
+    }
+    if (first.constant != nullptr || second.constant != nullptr) {
+        // A Const is a name.
+        return first.symbol != nullptr && first.symbol == second.symbol;
+    }
+    return first.literal == tir::LiteralKind::Integer && second.literal == tir::LiteralKind::Integer &&
+           first.text == second.text;
 }
 
 // `S := S + X ...` (also `S += X`): appended in place. False when the
 // assignment is not of that form, or another part may run a routine (it
 // could change S first; then the ordinary concatenation keeps the order).
-bool FunctionEmitter::emitStringAppend(const ast::BinaryExpression& assignment)
+bool FunctionEmitter::emitStringAppend(const tir::Stmt& assignment)
 {
-    if (!isStringConcatenation(assignment.right())) {
+    if (!isStringConcatenation(*assignment.value)) {
         return false;
     }
-    std::vector<const ast::Expression*> parts;
-    collectParts(assignment.right(), [this](const ast::Expression& part) { return isStringConcatenation(part); },
-                 parts);
-    if (!samePlace(assignment.left(), *parts.front())) {
+    std::vector<const tir::Expr*> parts;
+    collectParts(*assignment.value, parts);
+    const tir::Expr& first = *parts.front();
+    if (first.kind != tir::ExprKind::Read || !samePlace(*assignment.target, *first.place, false)) {
         return false;
     }
     parts.erase(parts.begin());
-    for (const ast::Expression* part : parts) {
+    for (const tir::Expr* part : parts) {
         if (mayRunRoutine(*part)) {
             return false;
         }
     }
-    if (assignment.left().kind() == ast::AstNodeKind::IdentifierExpression &&
-        locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(assignment.left()).name())) ==
-            locals_.end()) {
+    if (isVariablePlace(*assignment.target) &&
+        locals_.find(normalize(assignment.target->symbol->name)) == locals_.end()) {
         return false;
     }
-    const Place place = emitPlace(assignment.left());
+    const Place place = emitPlace(*assignment.target);
     const std::string array = emitStringParts(parts);
     requireRuntime(RuntimeFunction::StringAppend);
     requireStringRuntime();
@@ -198,16 +182,17 @@ bool FunctionEmitter::emitStringAppend(const ast::BinaryExpression& assignment)
     output_ << "  call void @__inox_str_append(ptr " << place.pointer << ", i64 " << parts.size() << ", ptr "
             << array << ", ptr " << status << ")\n";
     emitStringStatusCheck(status);
-    emitInvariantChecks(assignment, true);
+    emitInvariantChecks(assignment.invariants, true);
     return true;
 }
 
-std::string FunctionEmitter::emitStringCall(const ast::CallExpression& call, semantic::StringFunction function)
+std::string FunctionEmitter::emitStringCall(const tir::Expr& call)
 {
+    const semantic::StringFunction function = call.string;
     std::vector<std::string> values;
-    values.reserve(call.arguments().size());
-    for (const auto& argument : call.arguments()) {
-        values.push_back(emitExpression(*argument));
+    values.reserve(call.operands.size());
+    for (const tir::Expr* argument : call.operands) {
+        values.push_back(emitValue(*argument));
     }
     const std::string result = "%tmp" + std::to_string(nextTemporary_++);
     using semantic::StringFunction;
@@ -219,7 +204,7 @@ std::string FunctionEmitter::emitStringCall(const ast::CallExpression& call, sem
         const std::string status = newStringStatus();
         output_ << "  " << result << " = call ptr @" << symbol << "(" << arguments << ", ptr " << status << ")\n";
         emitStringStatusCheck(status);
-        holdOwnedResult(result, semantics_.types().stringType(), "ptr");
+        holdOwnedResult(result, types_.stringType(), "ptr");
         return result;
     };
     const auto find = [&](int where) {
@@ -292,7 +277,7 @@ std::string FunctionEmitter::emitStringCall(const ast::CallExpression& call, sem
         // r3.90 (B1): fixed decimals, 0..20 ("string index out of range"
         // outside, the status of a String function).
         std::string real = values[0];
-        if (expressionLlvmType(*call.arguments()[0]) == "float") {
+        if (expressionLlvmType(*call.operands[0]) == "float") {
             real = "%tmp" + std::to_string(nextTemporary_++);
             output_ << "  " << real << " = fpext float " << values[0] << " to double\n";
         }

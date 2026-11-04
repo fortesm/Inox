@@ -24,7 +24,7 @@
 
 #include "FunctionEmitter.h"
 
-#include "AstQueries.h"
+#include "TirWalk.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
 
@@ -54,22 +54,6 @@ bool FunctionEmitter::isMoveOnly(TypeRef type)
         }
     }
     return false;
-}
-
-bool FunctionEmitter::isPointerBuiltin(const ast::CallExpression& call) const
-{
-    switch (builtinOf(call)) {
-    case semantic::BuiltinOp::New:
-    case semantic::BuiltinOp::Free:
-    case semantic::BuiltinOp::Move:
-    case semantic::BuiltinOp::Value:
-    case semantic::BuiltinOp::Link:
-    case semantic::BuiltinOp::Alive:
-    case semantic::BuiltinOp::Same:
-        return true;
-    default:
-        return false;
-    }
 }
 
 // Walks a value of `type` stored at `pointer` (struct fields and array
@@ -260,26 +244,49 @@ void FunctionEmitter::emitLinkCheck(const LinkParts& parts)
     output_ << "link.ok" << label << ":\n";
 }
 
-std::string FunctionEmitter::emitPointerTarget(const ast::Expression& pointer)
+// The identity of a pointer on a place's path: its place, or the value
+// itself when it is not stored anywhere.
+const void* FunctionEmitter::pointerKey(const tir::Expr& pointer)
 {
-    const TypeRef type = typeOf(pointer);
-    const std::string value = emitExpression(pointer);
+    const tir::Expr& value = bare(pointer);
+    return value.kind == tir::ExprKind::Read ? static_cast<const void*>(value.place) : &pointer;
+}
+
+std::string FunctionEmitter::emitPointerTarget(const tir::Place& pointer)
+{
+    return emitPointerTargetOf(&pointer, pointer.type, emitPlaceValue(pointer));
+}
+
+std::string FunctionEmitter::emitPointerTarget(const tir::Expr& pointer)
+{
+    const tir::Expr& value = bare(pointer);
+    if (value.kind == tir::ExprKind::Read) {
+        return emitPointerTarget(*value.place);
+    }
+    return emitPointerTargetOf(&pointer, value.type, emitValue(pointer));
+}
+
+// The address of the object a pointer value reaches, checked: an owner given
+// away traps (17), a dead or empty Link traps (16). `key` names the pointer
+// for the guards waiting for it.
+std::string FunctionEmitter::emitPointerTargetOf(const void* key, TypeRef type, const std::string& value)
+{
     if (isLinkType(type)) {
         const LinkParts parts = extractLink(value);
         emitLinkCheck(parts);
         if (!placeGuards_.empty()) {
-            capturePlaceGuards(pointer, parts.target, &parts);
+            capturePlaceGuards(key, parts.target, &parts);
         }
-        if (&pointer == withGuardPointer_) {
+        if (key == withGuardPointer_) {
             withGuardCaptured_ = parts;
         }
         return parts.target;
     }
     const std::string object = emitOwnerNullCheck(value);
     if (!placeGuards_.empty()) {
-        capturePlaceGuards(pointer, object, nullptr);
+        capturePlaceGuards(key, object, nullptr);
     }
-    if (&pointer == withGuardPointer_) {
+    if (key == withGuardPointer_) {
         const std::string header = "%tmp" + std::to_string(nextTemporary_++);
         const std::string generation = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << header << " = getelementptr i8, ptr " << object << ", i64 -16\n";
@@ -294,33 +301,46 @@ std::string FunctionEmitter::emitPointerTarget(const ast::Expression& pointer)
 // pointer's object (or replace an owner above it, which frees it too); the
 // object's generation is captured when the pointer is reached and checked
 // after the index, before the place is used.
-void FunctionEmitter::beginPlaceGuard(const ast::Expression& base, bool laterRunsRoutine)
+void FunctionEmitter::beginPlaceGuard(const tir::Place& base, bool laterRunsRoutine)
 {
-    const ast::Expression* pointer = nullptr;
+    if (base.kind == tir::PlaceKind::Value) {
+        beginPlaceGuard(*base.value, laterRunsRoutine);
+        return;
+    }
+    placeGuards_.push_back(PlaceGuard{laterRunsRoutine ? lastPointerOnPath(base) : nullptr, std::nullopt});
+}
+
+void FunctionEmitter::beginPlaceGuard(const tir::Expr& base, bool laterRunsRoutine)
+{
+    const void* pointer = nullptr;
     if (laterRunsRoutine) {
-        const ast::Expression* path = &base;
-        while (path->kind() == ast::AstNodeKind::CallExpression && astNodes_.isSlice(*path)) {
-            path = static_cast<const ast::CallExpression&>(*path).arguments()[0].get();
+        const tir::Expr* path = &base;
+        while (bare(*path).kind == tir::ExprKind::Slice) {
+            path = bare(*path).operands[0];
         }
-        pointer = isPointerType(typeOf(*path)) ? path : lastPointerOnPath(*path);
+        if (isPointerType(bare(*path).type)) {
+            pointer = pointerKey(*path);
+        } else if (bare(*path).kind == tir::ExprKind::Read) {
+            pointer = lastPointerOnPath(*bare(*path).place);
+        }
     }
     placeGuards_.push_back(PlaceGuard{pointer, std::nullopt});
 }
 
 // `A[I]`: the index follows the base.
-void FunctionEmitter::beginElementGuard(const ast::CallExpression& element)
+void FunctionEmitter::beginElementGuard(const tir::Place& element)
 {
-    beginPlaceGuard(*element.arguments()[0], mayRunRoutine(*element.arguments()[1]));
+    beginPlaceGuard(*element.base, mayRunRoutine(*element.indices[0]));
 }
 
 // A reference argument (ADR-0016) is a place: when a later argument may run
 // a routine, the object holding it is checked before the call. 1 when a
 // guard was opened, for emitArguments to close.
-std::size_t FunctionEmitter::beginReferenceGuard(const std::vector<ast::ExpressionPtr>& arguments,
-                                                 std::size_t index)
+std::size_t FunctionEmitter::beginReferenceGuard(tir::Span<const tir::Expr*> arguments, std::size_t index)
 {
-    const ast::Expression& argument = *arguments[index];
-    if (!isIndexCall(argument) && !isMemberAccessCall(argument)) {
+    const tir::Expr& argument = bare(*arguments[index]);
+    if (argument.kind != tir::ExprKind::Read ||
+        (argument.place->kind != tir::PlaceKind::Element && argument.place->kind != tir::PlaceKind::Field)) {
         return 0;
     }
     bool laterRuns = false;
@@ -330,43 +350,44 @@ std::size_t FunctionEmitter::beginReferenceGuard(const std::vector<ast::Expressi
     if (!laterRuns) {
         return 0;
     }
-    placeGuards_.push_back(PlaceGuard{lastPointerOnPath(argument), std::nullopt});
+    placeGuards_.push_back(PlaceGuard{lastPointerOnPath(*argument.place), std::nullopt});
     return 1;
 }
 
 // The receiver of `P.M(X)` is reached before its arguments: when one of
 // them may run a routine, the object holding the receiver is checked
 // before the call.
-bool FunctionEmitter::beginReceiverGuard(const ast::CallExpression& call)
+bool FunctionEmitter::beginReceiverGuard(const tir::Expr& call, const FunctionSignature& signature)
 {
     bool runs = false;
-    for (const auto& argument : call.arguments()) {
-        runs = runs || mayRunRoutine(*argument);
+    for (std::size_t index = 1; index < call.operands.size(); ++index) {
+        runs = runs || mayRunRoutine(*call.operands[index]);
     }
-    if (!runs || !isMemberAccessCall(call.callee())) {
+    if (!runs) {
         return false;
     }
     // A built-in receiver passed as a copy (`Self` of an Integer) is a
     // value, not a place.
-    const FunctionSignature* signature = boundSignature(call);
-    if (signature == nullptr || signature->parameters.empty() ||
-        !(signature->parameters.front().type->isStruct() || signature->parameters.front().byReference)) {
+    if (signature.parameters.empty() ||
+        !(signature.parameters.front().type->isStruct() || signature.parameters.front().byReference)) {
         return false;
     }
-    beginPlaceGuard(*static_cast<const ast::CallExpression&>(call.callee()).arguments()[0], true);
+    beginPlaceGuard(*call.operands[0], true);
     return true;
 }
 
 // CANON-25: a parameter that is the caller's storage receives the header
 // and generation of the object holding that storage, captured when the
 // pointer nearest to it is reached (the receiver itself when it is one).
-void FunctionEmitter::beginCallerStorage(const ast::Expression& place, bool receiver)
+void FunctionEmitter::beginCallerStorage(const tir::Expr& place, bool receiver)
 {
-    const ast::Expression* pointer = nullptr;
-    if (receiver && isPointerType(typeOf(place))) {
-        pointer = &place;
-    } else if (isIndexCall(place) || isMemberAccessCall(place)) {
-        pointer = lastPointerOnPath(place);
+    const void* pointer = nullptr;
+    const tir::Expr& value = bare(place);
+    if (receiver && isPointerType(value.type)) {
+        pointer = pointerKey(place);
+    } else if (value.kind == tir::ExprKind::Read &&
+               (value.place->kind == tir::PlaceKind::Element || value.place->kind == tir::PlaceKind::Field)) {
+        pointer = lastPointerOnPath(*value.place);
     }
     placeGuards_.push_back(PlaceGuard{pointer, std::nullopt});
 }
@@ -374,7 +395,7 @@ void FunctionEmitter::beginCallerStorage(const ast::Expression& place, bool rece
 // `ptr H, i64 G`: the object reached, else the guard of the name the place
 // starts from (a parameter that is itself the caller's storage, a `with`
 // binding), else storage no owner frees.
-std::string FunctionEmitter::endCallerStorage(const ast::Expression& place)
+std::string FunctionEmitter::endCallerStorage(const tir::Expr& place)
 {
     if (placeGuards_.empty()) {
         throw CodegenError("internal error: a caller storage guard closed twice");
@@ -390,25 +411,28 @@ std::string FunctionEmitter::endCallerStorage(const ast::Expression& place)
     return immortalStorage();
 }
 
-const FunctionEmitter::LinkParts* FunctionEmitter::rootStorageGuard(const ast::Expression& place) const
+const FunctionEmitter::LinkParts* FunctionEmitter::rootStorageGuard(const tir::Expr& place) const
 {
-    const ast::Expression* path = &place;
-    while ((isIndexCall(*path) || isMemberAccessCall(*path)) &&
-           !isPointerType(typeOf(*static_cast<const ast::CallExpression&>(*path).arguments()[0]))) {
-        path = static_cast<const ast::CallExpression&>(*path).arguments()[0].get();
-    }
-    if (path->kind() != ast::AstNodeKind::IdentifierExpression) {
+    const tir::Expr& value = bare(place);
+    if (value.kind != tir::ExprKind::Read) {
         return nullptr;
     }
-    const auto guard =
-        storageGuards_.find(normalize(static_cast<const ast::IdentifierExpression&>(*path).name()));
+    const tir::Place* path = value.place;
+    while ((path->kind == tir::PlaceKind::Element || path->kind == tir::PlaceKind::Field) &&
+           path->base->kind != tir::PlaceKind::Through) {
+        path = path->base;
+    }
+    if (!isVariablePlace(*path)) {
+        return nullptr;
+    }
+    const auto guard = storageGuards_.find(normalize(path->symbol->name));
     return guard != storageGuards_.end() ? &guard->second : nullptr;
 }
 
 // A `with` binding keeps the guard of its target: the object captured when
 // the target was reached through a pointer, else the guard of the name the
 // target starts from.
-void FunctionEmitter::bindStorageGuard(const std::string& binding, const ast::Expression& target)
+void FunctionEmitter::bindStorageGuard(const std::string& binding, const tir::Expr& target)
 {
     if (withGuardCaptured_) {
         storageGuards_.insert_or_assign(binding, *withGuardCaptured_);
@@ -427,17 +451,19 @@ std::string FunctionEmitter::immortalStorage()
 }
 
 // `B[L..H]`: the bounds follow the base.
-void FunctionEmitter::beginSliceGuard(const ast::CallExpression& slice)
+void FunctionEmitter::beginSliceGuard(const tir::Expr& slice)
 {
-    beginPlaceGuard(*slice.arguments()[0],
-                    mayRunRoutine(*slice.arguments()[1]) || mayRunRoutine(*slice.arguments()[2]));
+    bool laterRuns = false;
+    for (std::size_t index = 1; index < slice.operands.size(); ++index) {
+        laterRuns = laterRuns || mayRunRoutine(*slice.operands[index]);
+    }
+    beginPlaceGuard(*slice.operands[0], laterRuns);
 }
 
-void FunctionEmitter::capturePlaceGuards(const ast::Expression& pointer, const std::string& object,
-                                         const LinkParts* link)
+void FunctionEmitter::capturePlaceGuards(const void* pointer, const std::string& object, const LinkParts* link)
 {
     for (PlaceGuard& guard : placeGuards_) {
-        if (guard.pointer != &pointer || guard.reached) {
+        if (guard.pointer != pointer || guard.reached) {
             continue;
         }
         if (link != nullptr) {
@@ -471,23 +497,20 @@ void FunctionEmitter::endPlaceGuard()
 // The pointer nearest to a place on its path (`L.FNotas` -> L,
 // `A[I].FNo.FX` -> A[I].FNo, `Value(P)` -> P), or null when the path
 // crosses none. Index expressions are not on the path.
-const ast::Expression* FunctionEmitter::lastPointerOnPath(const ast::Expression& place) const
+const void* FunctionEmitter::lastPointerOnPath(const tir::Place& place)
 {
-    if (place.kind() != ast::AstNodeKind::CallExpression) {
+    switch (place.kind) {
+    case tir::PlaceKind::Through:
+        return place.base;
+    case tir::PlaceKind::Field:
+    case tir::PlaceKind::Element:
+        if (place.base->kind == tir::PlaceKind::Through) {
+            return place.base->base;
+        }
+        return lastPointerOnPath(*place.base);
+    default:
         return nullptr;
     }
-    const auto& call = static_cast<const ast::CallExpression&>(place);
-    if (builtinOf(call) == semantic::BuiltinOp::Value) {
-        return call.arguments()[0].get();
-    }
-    if ((isMemberAccessCall(call) && memberField(call)) || isIndexCall(call)) {
-        const ast::Expression& base = *call.arguments()[0];
-        if (isPointerType(typeOf(base))) {
-            return &base;
-        }
-        return lastPointerOnPath(base);
-    }
-    return nullptr;
 }
 
 void FunctionEmitter::emitStorageGuard(const std::string& normalizedName)
@@ -498,10 +521,21 @@ void FunctionEmitter::emitStorageGuard(const std::string& normalizedName)
 }
 
 // The header and generation of the storage that holds a place.
-FunctionEmitter::LinkParts FunctionEmitter::emitHeaderOfPlace(const ast::Expression& place)
+FunctionEmitter::LinkParts FunctionEmitter::emitHeaderOfPlace(const tir::Place& place)
 {
-    if (place.kind() == ast::AstNodeKind::IdentifierExpression) {
-        const std::string name = normalize(static_cast<const ast::IdentifierExpression&>(place).name());
+    switch (place.kind) {
+    case tir::PlaceKind::Through:
+        return emitHeaderOfPointer(*place.base);
+    case tir::PlaceKind::Field:
+    case tir::PlaceKind::Element:
+        if (place.base->kind == tir::PlaceKind::Through) {
+            return emitHeaderOfPointer(*place.base->base);
+        }
+        return emitHeaderOfPlace(*place.base);
+    case tir::PlaceKind::Value:
+        break;
+    default: {
+        const std::string name = normalize(place.symbol->name);
         if (const auto tombstone = tombstoneSlots_.find(name); tombstone != tombstoneSlots_.end()) {
             const std::string block = "%tmp" + std::to_string(nextTemporary_++);
             const std::string header = "%tmp" + std::to_string(nextTemporary_++);
@@ -515,26 +549,17 @@ FunctionEmitter::LinkParts FunctionEmitter::emitHeaderOfPlace(const ast::Express
         requireModuleLine("@__inox.immortal.header = internal global [2 x i64] [i64 1, i64 0], align 16");
         return LinkParts{{}, "@__inox.immortal.header", "1"};
     }
-    if (place.kind() == ast::AstNodeKind::CallExpression) {
-        const auto& call = static_cast<const ast::CallExpression&>(place);
-        if (builtinOf(call) == semantic::BuiltinOp::Value) {
-            return emitHeaderOfPointer(*call.arguments()[0]);
-        }
-        if (isMemberAccessCall(call) || isIndexCall(call)) {
-            const ast::Expression& base = *call.arguments()[0];
-            if (isPointerType(typeOf(base))) {
-                return emitHeaderOfPointer(base);
-            }
-            return emitHeaderOfPlace(base);
-        }
     }
     throw CodegenUnsupported("a Link to this place is not lowered yet");
 }
 
-FunctionEmitter::LinkParts FunctionEmitter::emitHeaderOfPointer(const ast::Expression& pointer)
+FunctionEmitter::LinkParts FunctionEmitter::emitHeaderOfPointer(const tir::Place& pointer)
 {
-    const TypeRef type = typeOf(pointer);
-    const std::string value = emitExpression(pointer);
+    return emitHeaderOfPointerValue(pointer.type, emitPlaceValue(pointer));
+}
+
+FunctionEmitter::LinkParts FunctionEmitter::emitHeaderOfPointerValue(TypeRef type, const std::string& value)
+{
     if (isLinkType(type)) {
         return extractLink(value);
     }
@@ -546,18 +571,18 @@ FunctionEmitter::LinkParts FunctionEmitter::emitHeaderOfPointer(const ast::Expre
     return LinkParts{object, header, generation};
 }
 
-std::string FunctionEmitter::emitLinkOf(const ast::Expression& argument)
+std::string FunctionEmitter::emitLinkOf(const tir::Expr& argument)
 {
-    const TypeRef type = typeOf(argument);
+    const TypeRef type = bare(argument).type;
     if (isLinkType(type)) {
-        return emitExpression(argument);
+        return emitValue(argument);
     }
     if (type->isOwn()) {
-        return buildLink(emitHeaderOfPointer(argument));
+        return buildLink(emitHeaderOfPointerValue(type, emitValue(argument)));
     }
     if (type->isOptionOwn()) {
         // None gives an empty Link.
-        const std::string object = emitExpression(argument);
+        const std::string object = emitValue(argument);
         const std::string label = std::to_string(nextLabel_++);
         const std::string isNull = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << isNull << " = icmp eq ptr " << object << ", null\n";
@@ -584,7 +609,11 @@ std::string FunctionEmitter::emitLinkOf(const ast::Expression& argument)
     // A variable, a field or an element: the place and the header of the
     // storage that holds it (the analyzer made the place side-effect free).
     const std::string target = emitPlace(argument).pointer;
-    LinkParts parts = emitHeaderOfPlace(argument);
+    const tir::Expr& place = bare(argument);
+    if (place.kind != tir::ExprKind::Read) {
+        throw CodegenUnsupported("a Link to this place is not lowered yet");
+    }
+    LinkParts parts = emitHeaderOfPlace(*place.place);
     parts.target = target;
     return buildLink(parts);
 }
@@ -611,28 +640,21 @@ void FunctionEmitter::collectTombstoneLocals()
     for (const StateGlobal& state : stateGlobals_) {
         stateNames.insert(normalize(state.name));
     }
-    forEachStatement(function_.body(), [&](const ast::Statement& statement) {
-        forEachExpressionOf(statement, [&](const ast::Expression& expression) {
-            if (expression.kind() != ast::AstNodeKind::CallExpression) {
+    forEachStatement(routine_.body, [&](const tir::Stmt& statement) {
+        forEachExpressionOf(statement, [&](const tir::Expr& expression) {
+            if (expression.kind != tir::ExprKind::Builtin || expression.op != semantic::BuiltinOp::Link) {
                 return;
             }
-            const auto& call = static_cast<const ast::CallExpression&>(expression);
-            if (builtinOf(call) != semantic::BuiltinOp::Link ||
-                isPointerType(typeOf(*call.arguments()[0]))) {
+            const tir::Expr& argument = bare(*expression.operands[0]);
+            if (isPointerType(argument.type) || argument.kind != tir::ExprKind::Read) {
                 return;
             }
-            const ast::Expression* root = call.arguments()[0].get();
-            while (root != nullptr && root->kind() == ast::AstNodeKind::CallExpression) {
-                const auto& inner = static_cast<const ast::CallExpression&>(*root);
-                if (!(isMemberAccessCall(inner) || isIndexCall(inner))) {
-                    root = nullptr;
-                    break;
-                }
-                const ast::Expression& base = *inner.arguments()[0];
-                root = isPointerType(typeOf(base)) ? nullptr : &base;
+            const tir::Place* root = argument.place;
+            while (root != nullptr && (root->kind == tir::PlaceKind::Field || root->kind == tir::PlaceKind::Element)) {
+                root = root->base->kind == tir::PlaceKind::Through ? nullptr : root->base;
             }
-            if (root != nullptr && root->kind() == ast::AstNodeKind::IdentifierExpression) {
-                const std::string name = normalize(static_cast<const ast::IdentifierExpression&>(*root).name());
+            if (root != nullptr && isVariablePlace(*root)) {
+                const std::string name = normalize(root->symbol->name);
                 if (!stateNames.contains(name)) {
                     tombstoneLocals_.insert(name);
                 }
@@ -658,13 +680,13 @@ void FunctionEmitter::declareTombstone(const std::string& normalizedName)
     tombstoneSlots_.insert_or_assign(normalizedName, slot);
 }
 
-std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
+std::string FunctionEmitter::emitPointerBuiltin(const tir::Expr& call)
 {
-    const semantic::BuiltinOp op = builtinOf(call);
-    const ast::Expression& argument = *call.arguments()[0];
+    const semantic::BuiltinOp op = call.op;
+    const tir::Expr& argument = *call.operands[0];
 
     if (op == semantic::BuiltinOp::New) {
-        const TypeRef ownType = typeOf(call);
+        const TypeRef ownType = call.type;
         const TypeRef targetType = ownType->pointerTarget();
         const std::string llvmType = valueLlvmType(targetType);
         requireRuntime(RuntimeFunction::OwnAlloc);
@@ -680,17 +702,13 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
         output_ << "  br i1 " << isNull << ", label %new.oom" << label << ", label %new.ok" << label << "\n\n";
         output_ << "new.oom" << label << ":\n  call void @__inox_arith_fault(i32 12)\n  unreachable\n\n";
         output_ << "new.ok" << label << ":\n";
-        const semantic::Symbol* typeSymbol =
-            argument.kind() == ast::AstNodeKind::IdentifierExpression
-                ? symbolOf(argument)
-                : nullptr;
-        if (typeSymbol != nullptr && typeSymbol->kind == semantic::SymbolKind::Type) {
+        if (bare(argument).kind == tir::ExprKind::TypeValue) {
             if (!targetType->isStruct()) {
                 throw CodegenError("New(T) of a type without defaults");
             }
             emitStructDefaults(object, targetType);
         } else {
-            const std::string value = emitExpression(argument);
+            const std::string value = emitValue(argument);
             emitOwningStore(object, targetType, llvmType, value);
         }
         holdOwnedResult(object, ownType, "ptr");
@@ -698,7 +716,7 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
     }
 
     if (op == semantic::BuiltinOp::Move || op == semantic::BuiltinOp::Free) {
-        const TypeRef type = typeOf(argument);
+        const TypeRef type = bare(argument).type;
         const std::string llvmType = valueLlvmType(type);
         const Place place = emitPlace(argument);
         if (op == semantic::BuiltinOp::Free) {
@@ -713,22 +731,14 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
         return value;
     }
 
-    if (op == semantic::BuiltinOp::Value) {
-        const TypeRef type = typeOf(call);
-        const std::string target = emitPointerTarget(argument);
-        const std::string value = "%tmp" + std::to_string(nextTemporary_++);
-        output_ << "  " << value << " = load " << valueLlvmType(type) << ", ptr " << target << '\n';
-        return value;
-    }
-
     if (op == semantic::BuiltinOp::Link) {
         return emitLinkOf(argument);
     }
 
     // Alive and Same: whether each pointer reaches an object, and which.
-    const auto aliveAndTarget = [&](const ast::Expression& pointer) {
-        const TypeRef type = typeOf(pointer);
-        const std::string value = emitExpression(pointer);
+    const auto aliveAndTarget = [&](const tir::Expr& pointer) {
+        const TypeRef type = bare(pointer).type;
+        const std::string value = emitValue(pointer);
         if (isLinkType(type)) {
             const LinkParts parts = extractLink(value);
             return std::make_pair(emitLinkAlive(parts), parts.target);
@@ -741,7 +751,7 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
         return aliveAndTarget(argument).first;
     }
     const auto [firstAlive, firstTarget] = aliveAndTarget(argument);
-    const auto [secondAlive, secondTarget] = aliveAndTarget(*call.arguments()[1]);
+    const auto [secondAlive, secondTarget] = aliveAndTarget(*call.operands[1]);
     const std::string both = "%tmp" + std::to_string(nextTemporary_++);
     const std::string same = "%tmp" + std::to_string(nextTemporary_++);
     const std::string result = "%tmp" + std::to_string(nextTemporary_++);
@@ -749,6 +759,21 @@ std::string FunctionEmitter::emitPointerBuiltin(const ast::CallExpression& call)
     output_ << "  " << same << " = icmp eq ptr " << firstTarget << ", " << secondTarget << '\n';
     output_ << "  " << result << " = and i1 " << both << ", " << same << '\n';
     return result;
+}
+
+bool FunctionEmitter::isPointerBuiltin(semantic::BuiltinOp op)
+{
+    switch (op) {
+    case semantic::BuiltinOp::New:
+    case semantic::BuiltinOp::Free:
+    case semantic::BuiltinOp::Move:
+    case semantic::BuiltinOp::Link:
+    case semantic::BuiltinOp::Alive:
+    case semantic::BuiltinOp::Same:
+        return true;
+    default:
+        return false;
+    }
 }
 
 } // namespace inox::compiler::codegen::detail

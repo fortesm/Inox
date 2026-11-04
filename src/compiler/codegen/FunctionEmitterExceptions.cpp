@@ -9,7 +9,6 @@
 
 #include "FunctionEmitter.h"
 
-#include "AstQueries.h"
 #include "ExceptionAbi.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
@@ -61,14 +60,14 @@ std::string FunctionEmitter::emitExceptionTypeMatch(std::string_view actualTypeV
     return combined;
 }
 
-void FunctionEmitter::emitRetry(const ast::RetryStatement& statement)
+void FunctionEmitter::emitRetry(const tir::Stmt& statement)
 {
     if (retryContexts_.empty()) {
         throw CodegenError("Retry requires an active On/Else exception handler");
     }
 
     const RetryContext& context = retryContexts_.back();
-    const std::string limit = emitExpression(statement.count());
+    const std::string limit = emitValue(*statement.value);
     const std::string current = "%eh.retry.count" + std::to_string(nextTemporary_++);
     const std::string allowed = "%eh.retry.allowed" + std::to_string(nextTemporary_++);
     const std::string allowedLabel = "eh.retry.allow" + std::to_string(nextLabel_++);
@@ -156,9 +155,9 @@ void FunctionEmitter::emitRethrowState(std::string_view stateSlot)
     }
 }
 
-void FunctionEmitter::emitRaise(const ast::RaiseStatement& statement)
+void FunctionEmitter::emitRaise(const tir::Stmt& statement)
 {
-    if (statement.expression() == nullptr) {
+    if (statement.text.empty()) {
         if (caughtExceptionStates_.empty() || bareRethrowTargets_.empty()) {
             throw CodegenError("bare Raise requires an active exception handler");
         }
@@ -168,11 +167,7 @@ void FunctionEmitter::emitRaise(const ast::RaiseStatement& statement)
         return;
     }
 
-    if (statement.expression()->kind() != ast::AstNodeKind::IdentifierExpression) {
-        throw CodegenUnsupported("Raise currently requires an exception type name");
-    }
-    const auto& identifier = static_cast<const ast::IdentifierExpression&>(*statement.expression());
-    const std::uint64_t typeId = exceptionTypeId(identifier.name());
+    const std::uint64_t typeId = exceptionTypeId(std::string(statement.text));
     if (!unwindTargets_.empty()) {
         const std::string impossible = newDeadLabel("eh.raise.unreachable");
         const std::string dead = newDeadLabel("eh.after.raise");
@@ -187,8 +182,9 @@ void FunctionEmitter::emitRaise(const ast::RaiseStatement& statement)
     }
 }
 
-void FunctionEmitter::emitTry(const ast::TryStatement& statement)
+void FunctionEmitter::emitTry(const tir::Stmt& statement)
 {
+    const tir::TryParts& parts = *statement.tryParts;
     const std::size_t id = nextLabel_++;
     const std::string stateSlot = "%eh.state.slot" + std::to_string(id);
     const std::string retryCounterSlot = "%eh.retry.slot" + std::to_string(id);
@@ -216,8 +212,8 @@ void FunctionEmitter::emitTry(const ast::TryStatement& statement)
     const std::string untilPerform = "eh.until.perform" + std::to_string(id);
     const std::string continueLabel = "eh.continue" + std::to_string(id);
     const std::string rethrowLabel = "eh.rethrow" + std::to_string(id);
-    const std::string handledLabel = statement.hasEnsure() ? ensureLabel : continueLabel;
-    const std::string cleanupForRetry = statement.hasEnsure() ? ensureLabel : retryPerform;
+    const std::string handledLabel = parts.hasEnsure ? ensureLabel : continueLabel;
+    const std::string cleanupForRetry = parts.hasEnsure ? ensureLabel : retryPerform;
 
     const std::size_t loopDepthAtEntry = loopTargets_.size();
     const std::string leaveDestination = loopTargets_.empty() ? std::string{} : loopTargets_.back().leaveTarget;
@@ -273,13 +269,13 @@ void FunctionEmitter::emitTry(const ast::TryStatement& statement)
     output_ << "  store i32 0, ptr " << actionSlot << "\n";
     output_ << "  br label %" << bodyLabel << "\n\n";
 
-    if (statement.hasEnsure()) {
+    if (parts.hasEnsure) {
         cleanupContexts_.push_back(cleanupContext);
     }
 
     output_ << bodyLabel << ":\n";
     unwindTargets_.push_back(landing);
-    for (const auto& bodyStatement : statement.body()) {
+    for (const tir::Stmt* bodyStatement : statement.body) {
         emitStatement(*bodyStatement);
     }
     unwindTargets_.pop_back();
@@ -289,9 +285,9 @@ void FunctionEmitter::emitTry(const ast::TryStatement& statement)
     emitExceptionCapture(landing, stateSlot, dispatch);
 
     output_ << dispatch << ":\n";
-    if (!statement.hasExcept()) {
+    if (!parts.hasExcept) {
         output_ << "  br label %" << rethrowRequest << "\n\n";
-    } else if (statement.hasPlainExcept()) {
+    } else if (parts.plainExcept) {
         const std::string catchAll = "eh.catchall" + std::to_string(id);
         output_ << "  br label %" << catchAll << "\n\n";
         output_ << catchAll << ":\n";
@@ -299,7 +295,7 @@ void FunctionEmitter::emitTry(const ast::TryStatement& statement)
         bareRethrowTargets_.push_back(rethrowRequest);
         unwindTargets_.push_back(handlerUnwind);
         handlerRegions_.push_back(HandlerRegion{stateSlot, loopDepthAtEntry});
-        for (const auto& st : statement.exceptBody()) emitStatement(*st);
+        for (const tir::Stmt* st : parts.exceptBody) emitStatement(*st);
         handlerRegions_.pop_back();
         unwindTargets_.pop_back();
         bareRethrowTargets_.pop_back();
@@ -314,23 +310,23 @@ void FunctionEmitter::emitTry(const ast::TryStatement& statement)
         output_ << "  " << type << " = call i64 @__inox_exception_type(ptr " << state << ")\n";
 
         std::vector<std::string> labels;
-        labels.reserve(statement.handlers().size());
-        for (std::size_t index = 0; index < statement.handlers().size(); ++index) {
+        labels.reserve(parts.handlers.size());
+        for (std::size_t index = 0; index < parts.handlers.size(); ++index) {
             labels.push_back("eh.handler" + std::to_string(id) + "_" + std::to_string(index));
         }
-        const std::string elseLabel = !statement.elseBody().empty()
+        const std::string elseLabel = !parts.elseBody.empty()
             ? "eh.else" + std::to_string(id) : rethrowRequest;
 
         std::string nextCheck = "eh.check" + std::to_string(id) + "_0";
-        if (statement.handlers().empty()) {
+        if (parts.handlers.empty()) {
             output_ << "  br label %" << elseLabel << "\n\n";
         } else {
             output_ << "  br label %" << nextCheck << "\n\n";
-            for (std::size_t index = 0; index < statement.handlers().size(); ++index) {
-                const auto& handler = statement.handlers()[index];
+            for (std::size_t index = 0; index < parts.handlers.size(); ++index) {
+                const auto& handler = parts.handlers[index];
                 output_ << nextCheck << ":\n";
                 const std::string matched = emitExceptionTypeMatch(type, handler.typeName);
-                const bool last = index + 1 == statement.handlers().size();
+                const bool last = index + 1 == parts.handlers.size();
                 const std::string noMatch = last ? elseLabel
                     : "eh.check" + std::to_string(id) + "_" + std::to_string(index + 1);
                 output_ << "  br i1 " << matched << ", label %" << labels[index]
@@ -342,22 +338,22 @@ void FunctionEmitter::emitTry(const ast::TryStatement& statement)
         const RetryContext retryContext{
             retryCounterSlot, actionSlot, cleanupForRetry, rethrowRequest};
 
-        for (std::size_t index = 0; index < statement.handlers().size(); ++index) {
-            const auto& handler = statement.handlers()[index];
+        for (std::size_t index = 0; index < parts.handlers.size(); ++index) {
+            const auto& handler = parts.handlers[index];
             output_ << labels[index] << ":\n";
             caughtExceptionStates_.push_back(stateSlot);
             bareRethrowTargets_.push_back(rethrowRequest);
             retryContexts_.push_back(retryContext);
-            if (!handler.bindingName.empty()) {
-                exceptionBindings_.emplace(normalize(handler.bindingName), stateSlot);
+            if (handler.binding != nullptr) {
+                exceptionBindings_.emplace(normalize(handler.binding->name), stateSlot);
             }
             unwindTargets_.push_back(handlerUnwind);
             handlerRegions_.push_back(HandlerRegion{stateSlot, loopDepthAtEntry});
-            for (const auto& st : handler.body) emitStatement(*st);
+            for (const tir::Stmt* st : handler.body) emitStatement(*st);
             handlerRegions_.pop_back();
             unwindTargets_.pop_back();
-            if (!handler.bindingName.empty()) {
-                exceptionBindings_.erase(normalize(handler.bindingName));
+            if (handler.binding != nullptr) {
+                exceptionBindings_.erase(normalize(handler.binding->name));
             }
             retryContexts_.pop_back();
             bareRethrowTargets_.pop_back();
@@ -367,14 +363,14 @@ void FunctionEmitter::emitTry(const ast::TryStatement& statement)
             output_ << "  br label %" << handledLabel << "\n\n";
         }
 
-        if (!statement.elseBody().empty()) {
+        if (!parts.elseBody.empty()) {
             output_ << elseLabel << ":\n";
             caughtExceptionStates_.push_back(stateSlot);
             bareRethrowTargets_.push_back(rethrowRequest);
             retryContexts_.push_back(retryContext);
             unwindTargets_.push_back(handlerUnwind);
             handlerRegions_.push_back(HandlerRegion{stateSlot, loopDepthAtEntry});
-            for (const auto& st : statement.elseBody()) emitStatement(*st);
+            for (const tir::Stmt* st : parts.elseBody) emitStatement(*st);
             handlerRegions_.pop_back();
             unwindTargets_.pop_back();
             retryContexts_.pop_back();
@@ -386,7 +382,7 @@ void FunctionEmitter::emitTry(const ast::TryStatement& statement)
         }
     }
 
-    if (statement.hasExcept()) {
+    if (parts.hasExcept) {
         emitExceptionCapture(handlerUnwind, stateSlot, handlerUnwindCaptured, true);
         output_ << handlerUnwindCaptured << ":\n";
         output_ << "  br label %" << rethrowRequest << "\n\n";
@@ -394,9 +390,9 @@ void FunctionEmitter::emitTry(const ast::TryStatement& statement)
 
     output_ << rethrowRequest << ":\n";
     output_ << "  store i32 1, ptr " << actionSlot << "\n";
-    output_ << "  br label %" << (statement.hasEnsure() ? ensureLabel : rethrowLabel) << "\n\n";
+    output_ << "  br label %" << (parts.hasEnsure ? ensureLabel : rethrowLabel) << "\n\n";
 
-    if (statement.hasEnsure()) {
+    if (parts.hasEnsure) {
         output_ << returnRequest << ":\n";
         output_ << "  store i32 3, ptr " << actionSlot << "\n";
         output_ << "  br label %" << ensureLabel << "\n\n";
@@ -425,7 +421,7 @@ void FunctionEmitter::emitTry(const ast::TryStatement& statement)
 
         output_ << ensureLabel << ":\n";
         unwindTargets_.push_back(ensureUnwind);
-        for (const auto& st : statement.ensureBody()) emitStatement(*st);
+        for (const tir::Stmt* st : parts.ensureBody) emitStatement(*st);
         unwindTargets_.pop_back();
         output_ << "  br label %" << afterEnsure << "\n\n";
 

@@ -9,7 +9,6 @@
 
 #include "FunctionEmitter.h"
 
-#include "AstQueries.h"
 #include "ExceptionAbi.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
@@ -36,14 +35,6 @@
 
 namespace inox::compiler::codegen::detail {
 
-// ADR-0015: an Integer expression stored into a Natural carries an
-// implicit range check, recorded by semantic analysis.
-bool FunctionEmitter::isIndexCall(const ast::Expression& expression) const
-{
-    return expression.kind() == ast::AstNodeKind::CallExpression &&
-           callKindOf(expression) == semantic::CallKind::Index;
-}
-
 // The LLVM type of a value in SSA form; i64 for a type without one.
 std::string FunctionEmitter::valueLlvmType(TypeRef type)
 {
@@ -51,40 +42,37 @@ std::string FunctionEmitter::valueLlvmType(TypeRef type)
     return llvmType.empty() ? std::string("i64") : llvmType;
 }
 
-// Low(A), High(A) and Length(A) of a fixed array are constants (CANON-13).
-std::optional<std::int64_t> FunctionEmitter::arrayBoundCall(const ast::CallExpression& call) const
-{
-    const semantic::BuiltinOp op = builtinOf(call);
-    const bool low = op == semantic::BuiltinOp::Low;
-    const bool high = op == semantic::BuiltinOp::High;
-    if ((!low && !high && op != semantic::BuiltinOp::Length) || call.arguments().size() != 1) {
-        return std::nullopt;
-    }
-    const TypeRef type = typeOf(*call.arguments()[0]);
-    if (!isArrayType(type)) {
-        return std::nullopt;
-    }
-    return low ? type->low() : high ? type->high() : type->length();
-}
-
 // The address of an array value: a local's slot, an element of an outer
-// array, or a temporary holding any other array value.
-std::string FunctionEmitter::emitArrayBaseAddress(const ast::Expression& base, const ArrayLayout& layout)
+// array, a field, or a temporary holding any other array value.
+std::string FunctionEmitter::emitArrayBaseAddress(const tir::Place& base, const ArrayLayout& layout)
 {
-    if (base.kind() == ast::AstNodeKind::IdentifierExpression) {
-        const auto local = locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(base).name()));
+    if (isVariablePlace(base)) {
+        const auto local = locals_.find(normalize(base.symbol->name));
         if (local != locals_.end()) {
             emitStorageGuard(local->first);
             return local->second.slot;
         }
     }
-    if (isIndexCall(base)) {
-        return emitElementAddress(static_cast<const ast::CallExpression&>(base)).pointer;
+    if (base.kind == tir::PlaceKind::Element) {
+        return emitElementAddress(base).pointer;
     }
-    if (isMemberAccessCall(base) && memberField(static_cast<const ast::CallExpression&>(base))) {
+    if (base.kind == tir::PlaceKind::Field) {
         return emitPlace(base).pointer;
     }
-    const std::string value = emitExpression(base);
+    return storeArrayTemporary(base.kind == tir::PlaceKind::Value ? emitValue(*base.value) : emitPlaceValue(base),
+                               layout);
+}
+
+std::string FunctionEmitter::emitArrayBaseAddress(const tir::Expr& base, const ArrayLayout& layout)
+{
+    if (bare(base).kind == tir::ExprKind::Read) {
+        return emitArrayBaseAddress(*bare(base).place, layout);
+    }
+    return storeArrayTemporary(emitValue(base), layout);
+}
+
+std::string FunctionEmitter::storeArrayTemporary(const std::string& value, const ArrayLayout& layout)
+{
     const std::string slot = "%arraytmp" + std::to_string(nextTemporary_++);
     output_ << "  " << slot << " = alloca " << layout.llvmType << '\n';
     output_ << "  store " << layout.llvmType << ' ' << value << ", ptr " << slot << '\n';
@@ -105,13 +93,18 @@ FunctionEmitter::SliceParts FunctionEmitter::extractSlice(const std::string& val
 
 // The base of a slice expression: its data pointer and bounds, and the
 // LLVM storage of one element.
-FunctionEmitter::SliceParts FunctionEmitter::emitSliceSource(const ast::Expression& base, std::string& storage, TypeRef& elementType)
+FunctionEmitter::SliceParts FunctionEmitter::emitSliceSource(const tir::Expr& base, std::string& storage,
+                                                             TypeRef& elementType)
 {
-    const TypeRef baseType = typeOf(base);
+    const tir::Expr& value = bare(base);
+    if (value.kind == tir::ExprKind::Read) {
+        return emitSliceSource(*value.place, storage, elementType);
+    }
+    const TypeRef baseType = value.type;
     if (isSliceType(baseType)) {
         elementType = baseType->element();
         storage = llvmStorageType(elementType);
-        return extractSlice(emitExpression(base));
+        return extractSlice(emitValue(base));
     }
     const auto layout = arrayLayout(baseType);
     if (!layout) {
@@ -119,32 +112,49 @@ FunctionEmitter::SliceParts FunctionEmitter::emitSliceSource(const ast::Expressi
     }
     elementType = layout->element;
     storage = layout->elementStorage;
-    const std::string pointer = emitArrayBaseAddress(base, *layout);
+    return arraySliceParts(emitArrayBaseAddress(base, *layout), *layout);
+}
+
+FunctionEmitter::SliceParts FunctionEmitter::emitSliceSource(const tir::Place& base, std::string& storage,
+                                                             TypeRef& elementType)
+{
+    if (base.kind == tir::PlaceKind::Value) {
+        return emitSliceSource(*base.value, storage, elementType);
+    }
+    const TypeRef baseType = base.type;
+    if (isSliceType(baseType)) {
+        elementType = baseType->element();
+        storage = llvmStorageType(elementType);
+        return extractSlice(emitPlaceValue(base));
+    }
+    const auto layout = arrayLayout(baseType);
+    if (!layout) {
+        throw CodegenUnsupported("slicing of this value is not lowered yet");
+    }
+    elementType = layout->element;
+    storage = layout->elementStorage;
+    return arraySliceParts(emitArrayBaseAddress(base, *layout), *layout);
+}
+
+FunctionEmitter::SliceParts FunctionEmitter::arraySliceParts(const std::string& pointer, const ArrayLayout& layout)
+{
     const std::string data = "%tmp" + std::to_string(nextTemporary_++);
-    output_ << "  " << data << " = getelementptr inbounds " << layout->llvmType << ", ptr " << pointer
+    output_ << "  " << data << " = getelementptr inbounds " << layout.llvmType << ", ptr " << pointer
             << ", i64 0, i64 0\n";
-    return SliceParts{data, std::to_string(layout->low), std::to_string(layout->high)};
+    return SliceParts{data, std::to_string(layout.low), std::to_string(layout.high)};
 }
 
 // ADR-0017: `B[L..H]` checks Low(B) <= L <= H <= High(B) (a slice is never
 // empty, like an array), then points at element L.
-std::string FunctionEmitter::emitSlice(const ast::CallExpression& call)
+std::string FunctionEmitter::emitSlice(const tir::Expr& slice)
 {
     std::string storage;
     TypeRef elementType = nullptr;
-    beginSliceGuard(call);
-    const SliceParts source = emitSliceSource(*call.arguments()[0], storage, elementType);
-    const auto bound = [&](const ast::Expression& expression, const std::string& fallback) {
-        if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
-            const std::string& name = static_cast<const ast::IdentifierExpression&>(expression).name();
-            if (name == "__low" || name == "__high") {
-                return fallback;
-            }
-        }
-        return emitExpression(expression);
-    };
-    const std::string low = bound(*call.arguments()[1], source.low);
-    const std::string high = bound(*call.arguments()[2], source.high);
+    beginSliceGuard(slice);
+    const SliceParts source = emitSliceSource(*slice.operands[0], storage, elementType);
+    // An omitted bound is the base's own.
+    const std::string low = slice.hasLow ? emitValue(*slice.operands[1]) : source.low;
+    const std::string high = slice.hasHigh ? emitValue(*slice.operands[slice.hasLow ? 2 : 1]) : source.high;
     endPlaceGuard();
     const std::string lowOk = "%tmp" + std::to_string(nextTemporary_++);
     const std::string highOk = "%tmp" + std::to_string(nextTemporary_++);
@@ -176,17 +186,18 @@ std::string FunctionEmitter::emitSlice(const ast::CallExpression& call)
 }
 
 // CANON-13: every index is checked against Low..High (fault kind 9).
-FunctionEmitter::ElementAddress FunctionEmitter::emitElementAddress(const ast::CallExpression& call)
+FunctionEmitter::ElementAddress FunctionEmitter::emitElementAddress(const tir::Place& element)
 {
-    const ast::Expression& base = *call.arguments()[0];
-    if (isSliceType(typeOf(base))) {
+    const tir::Place& base = *element.base;
+    const tir::Expr& indexValue = *element.indices[0];
+    if (isSliceType(base.type)) {
         std::string storage;
         TypeRef elementType = nullptr;
-        beginElementGuard(call);
+        beginElementGuard(element);
         const SliceParts slice = emitSliceSource(base, storage, elementType);
-        std::string index = emitExpression(*call.arguments()[1]);
+        std::string index = emitValue(indexValue);
         endPlaceGuard();
-        if (isUInt64Type(typeOf(*call.arguments()[1]))) {
+        if (isUInt64Type(bare(indexValue).type)) {
             // Above Int64.Max is outside every slice (change uint64).
             index = emitRangeCheck(index, IntegerRange{0, std::numeric_limits<std::int64_t>::max()}, 9);
         }
@@ -201,21 +212,20 @@ FunctionEmitter::ElementAddress FunctionEmitter::emitElementAddress(const ast::C
         return ElementAddress{pointer, storage, elementType};
     }
     // Safe pointers: through a pointer, the array is the object it reaches.
-    const TypeRef baseType = typeOf(base);
-    const bool throughPointer = isPointerType(baseType);
-    const auto layout = arrayLayout(throughPointer ? baseType->pointerTarget() : baseType);
+    const bool throughPointer = base.kind == tir::PlaceKind::Through;
+    const auto layout = arrayLayout(base.type);
     if (!layout) {
         throw CodegenUnsupported("indexing of this value is not lowered yet");
     }
-    beginElementGuard(call);
+    beginElementGuard(element);
     const std::string basePointer =
-        throughPointer ? emitPointerTarget(base) : emitArrayBaseAddress(base, *layout);
-    const std::string index = emitExpression(*call.arguments()[1]);
+        throughPointer ? emitPointerTarget(*base.base) : emitArrayBaseAddress(base, *layout);
+    const std::string index = emitValue(indexValue);
     endPlaceGuard();
     // A UInt64 index above Int64.Max is a negative i64: a low bound of at
     // least 0 rejects it (change uint64).
     const std::int64_t low =
-        isUInt64Type(typeOf(*call.arguments()[1])) ? std::max<std::int64_t>(layout->low, 0) : layout->low;
+        isUInt64Type(bare(indexValue).type) ? std::max<std::int64_t>(layout->low, 0) : layout->low;
     const std::string checked = emitRangeCheck(index, IntegerRange{low, layout->high}, 9);
     std::string offset = checked;
     if (layout->low != 0) {
@@ -258,15 +268,15 @@ std::string FunctionEmitter::narrowForStorage(const std::string& value, const El
 // store that takes it retains what it holds, and the temporary is released
 // at the end of the statement. An array of owners is only filled with None:
 // all of it is null.
-std::string FunctionEmitter::emitFill(const ast::CallExpression& call)
+std::string FunctionEmitter::emitFill(const tir::Expr& call)
 {
-    const TypeRef arrayType = typeOf(call);
-    const TypeRef unit = semantics_.fillUnit(call);
+    const TypeRef arrayType = call.type;
+    const TypeRef unit = call.unit;
     const std::string llvmType = llvmValueType(arrayType);
     if (isMoveOnly(unit)) {
         return "zeroinitializer";
     }
-    std::string value = emitExpression(*call.arguments()[0]);
+    std::string value = emitValue(*call.operands[0]);
     const std::string storage = llvmStorageType(unit);
     if (narrowIntegerRange(unit)) {
         const std::string truncated = "%tmp" + std::to_string(nextTemporary_++);

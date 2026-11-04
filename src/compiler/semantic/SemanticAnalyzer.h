@@ -394,6 +394,10 @@ private:
     static std::string requiredFieldWithoutDefault(TypeRef type);
     static std::string requiredFieldMessage(const std::string& name, TypeRef type, const std::string& field);
     void validateFillDefault(const std::string& fieldName, TypeRef fieldType, const std::string& literal) const;
+    static types::FieldDefault resolveFieldDefault(TypeRef type, const std::string& literal, bool fill);
+    static void appendStructField(std::vector<types::StructField>& fields,
+                                  const ast::StructFieldDeclaration& declaration, TypeRef type,
+                                  bool fromTypeParameter);
     bool isFreshOwnerValue(const ast::Expression& value) const;
     // Assignability of pointer values: nullopt when no pointer is involved.
     std::optional<bool> canAssignPointer(TypeRef targetType, TypeRef valueType,

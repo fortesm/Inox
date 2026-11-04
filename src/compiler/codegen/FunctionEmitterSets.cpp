@@ -28,20 +28,23 @@ unsigned setBits(TypeRef setType)
 
 } // namespace
 
-bool FunctionEmitter::isSetCall(const ast::CallExpression& call) const
+bool FunctionEmitter::isSetCall(const tir::Expr& call)
 {
-    if (callKindOf(call) == semantic::CallKind::SetLiteral) {
+    if (call.kind == tir::ExprKind::SetLiteral) {
         return true;
     }
-    switch (builtinOf(call)) {
+    if (call.kind != tir::ExprKind::Builtin) {
+        return false;
+    }
+    switch (call.op) {
     case semantic::BuiltinOp::Union:
     case semantic::BuiltinOp::Intersection:
     case semantic::BuiltinOp::Difference:
     case semantic::BuiltinOp::SymmetricDifference:
     case semantic::BuiltinOp::Include:
     case semantic::BuiltinOp::Exclude: {
-        const TypeRef type = typeOf(call);
-        return type != nullptr && type->isSet() && call.arguments().size() == 2;
+        const TypeRef type = call.type;
+        return type != nullptr && type->isSet() && call.operands.size() == 2;
     }
     default:
         return false;
@@ -69,32 +72,32 @@ std::string FunctionEmitter::emitSetMask(const std::string& value, TypeRef setTy
     return mask;
 }
 
-std::string FunctionEmitter::emitSetCall(const ast::CallExpression& call)
+std::string FunctionEmitter::emitSetCall(const tir::Expr& call)
 {
-    const TypeRef setType = typeOf(call);
+    const TypeRef setType = call.type;
     const std::string type = llvmSetType(setType);
     const auto operation = [&](const char* instruction, const std::string& left, const std::string& right) {
         const std::string result = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << result << " = " << instruction << ' ' << type << ' ' << left << ", " << right << '\n';
         return result;
     };
-    if (callKindOf(call) == semantic::CallKind::SetLiteral) {
+    if (call.kind == tir::ExprKind::SetLiteral) {
         std::string value = "0";
-        for (const auto& element : call.arguments()) {
-            value = operation("or", value, emitSetMask(emitExpression(*element), setType));
+        for (const tir::Expr* element : call.operands) {
+            value = operation("or", value, emitSetMask(emitValue(*element), setType));
         }
         return value;
     }
-    const semantic::BuiltinOp op = builtinOf(call);
-    const std::string set = emitExpression(*call.arguments()[0]);
+    const semantic::BuiltinOp op = call.op;
+    const std::string set = emitValue(*call.operands[0]);
     if (op == semantic::BuiltinOp::Include || op == semantic::BuiltinOp::Exclude) {
-        const std::string mask = emitSetMask(emitExpression(*call.arguments()[1]), setType);
+        const std::string mask = emitSetMask(emitValue(*call.operands[1]), setType);
         if (op == semantic::BuiltinOp::Include) {
             return operation("or", set, mask);
         }
         return operation("and", set, operation("xor", mask, "-1"));
     }
-    const std::string other = emitExpression(*call.arguments()[1]);
+    const std::string other = emitValue(*call.operands[1]);
     if (op == semantic::BuiltinOp::Union) {
         return operation("or", set, other);
     }
@@ -108,20 +111,20 @@ std::string FunctionEmitter::emitSetCall(const ast::CallExpression& call)
 }
 
 // `=`, `#`, `<=` (subset) and `>=` (superset) on two sets.
-std::string FunctionEmitter::emitSetComparison(const ast::BinaryExpression& expression)
+std::string FunctionEmitter::emitSetComparison(const tir::Expr& expression)
 {
-    const TypeRef setType = typeOf(expression.left());
+    const TypeRef setType = bare(*expression.operands[0]).type;
     const std::string type = llvmSetType(setType);
-    const std::string left = emitExpression(expression.left());
-    const std::string right = emitExpression(expression.right());
+    const std::string left = emitValue(*expression.operands[0]);
+    const std::string right = emitValue(*expression.operands[1]);
     const std::string result = "%tmp" + std::to_string(nextTemporary_++);
-    if (expression.op() == ast::BinaryOperator::Equal || expression.op() == ast::BinaryOperator::NotEqual) {
-        output_ << "  " << result << " = icmp " << (expression.op() == ast::BinaryOperator::Equal ? "eq" : "ne")
+    if (expression.binary == tir::BinaryOp::Equal || expression.binary == tir::BinaryOp::NotEqual) {
+        output_ << "  " << result << " = icmp " << (expression.binary == tir::BinaryOp::Equal ? "eq" : "ne")
                 << ' ' << type << ' ' << left << ", " << right << '\n';
         return result;
     }
     // A <= B: nothing of A is outside B; A >= B: B <= A.
-    const bool subset = expression.op() == ast::BinaryOperator::LessEqual;
+    const bool subset = expression.binary == tir::BinaryOp::LessEqual;
     const std::string inverted = "%tmp" + std::to_string(nextTemporary_++);
     const std::string outside = "%tmp" + std::to_string(nextTemporary_++);
     output_ << "  " << inverted << " = xor " << type << ' ' << (subset ? right : left) << ", -1\n";
@@ -131,15 +134,13 @@ std::string FunctionEmitter::emitSetComparison(const ast::BinaryExpression& expr
 }
 
 // `X in S` and `X in A..B`.
-std::string FunctionEmitter::emitMembership(const ast::BinaryExpression& expression)
+std::string FunctionEmitter::emitMembership(const tir::Expr& expression)
 {
-    const ast::Expression& right = expression.right();
-    const std::string value = emitExpression(expression.left());
-    if (right.kind() == ast::AstNodeKind::BinaryExpression &&
-        static_cast<const ast::BinaryExpression&>(right).op() == ast::BinaryOperator::Range) {
-        const auto& range = static_cast<const ast::BinaryExpression&>(right);
-        const std::string low = emitExpression(range.left());
-        const std::string high = emitExpression(range.right());
+    const tir::Expr& right = *expression.operands[1];
+    const std::string value = emitValue(*expression.operands[0]);
+    if (const tir::Expr& range = bare(right); range.kind == tir::ExprKind::Binary && range.binary == tir::BinaryOp::Range) {
+        const std::string low = emitValue(*range.operands[0]);
+        const std::string high = emitValue(*range.operands[1]);
         const std::string above = "%tmp" + std::to_string(nextTemporary_++);
         const std::string below = "%tmp" + std::to_string(nextTemporary_++);
         const std::string result = "%tmp" + std::to_string(nextTemporary_++);
@@ -148,10 +149,10 @@ std::string FunctionEmitter::emitMembership(const ast::BinaryExpression& express
         output_ << "  " << result << " = and i1 " << above << ", " << below << '\n';
         return result;
     }
-    const TypeRef setType = typeOf(right);
+    const TypeRef setType = bare(right).type;
     const std::string type = llvmSetType(setType);
     const unsigned bits = setBits(setType);
-    const std::string set = emitExpression(right);
+    const std::string set = emitValue(right);
     // A value outside the base is in no set of it.
     const std::string offset = "%tmp" + std::to_string(nextTemporary_++);
     const std::string inside = "%tmp" + std::to_string(nextTemporary_++);

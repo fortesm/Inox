@@ -29,10 +29,8 @@ The driver (`main/main.cpp`) runs phases 1, 2 and 2b for each module file
 as it is loaded (`Use`), then 3-4 once on the whole program
 (`loadProgram`), then 5, 5b, 6 and 7. Every command that generates code
 builds and verifies the typed IR (phase 5b, change `typed-ir`), and
-`--dump-tir` prints it; code generation takes the types, symbols,
-constants and builtins of the AST nodes it walks from it, through the AST node map
-(`tir/AstNodeMap.h`), which leaves when code generation consumes only the
-typed IR.
+`--dump-tir` prints it; code generation lowers the typed IR only and never
+reads the AST (r3.129).
 
 ## Contracts of the phases
 
@@ -142,18 +140,16 @@ exception objects on the heap, will not show the cost.
   checks that every node has a type and a meaning.
 - **Never:** infers a type, compares a name, re-checks a rule (a decision
   it lacks is recorded by the analysis first).
-- **Today:** built and verified for every program that is compiled; since
-  r3.122 codegen reads the types, symbols and constants from it by AST
-  node through the AST node map, and since r3.123 the builtin of each call (a node without its TIR node is an
-  internal error), and still walks the AST (D5). What the TIR cannot express yet is reported as a gap of the
+- **Today:** built and verified for every program that is compiled; code
+  generation lowers it alone (r3.129). What the TIR cannot express yet is reported as a gap of the
   backend (E15, `tir::UnsupportedConstructError`); a missing decision of
   the analysis is an internal error (`tir::InvariantError`).
 - **Owner:** `tir/`; the call meanings and the builtin enumeration it
   shares with the analysis are `semantic/CallMeaning.*`.
 
 ### 6. Code generation
-- **In:** the analyzed AST and `SemanticResult`. **Out:** the LLVM IR text
-  of the program.
+- **In:** the typed IR (`tir::Program`) and the program's type context.
+  **Out:** the LLVM IR text of the program.
 - **Guarantees:** valid IR or a clear stop (E15): "valid Inox, not yet
   lowered" is a reported gap, never a crash. An assignment evaluates R,
   then its target once, then stores (CANON-5, r3.124); a place reached
@@ -164,9 +160,11 @@ exception objects on the heap, will not show the cost.
   the routines' ABI by the header and generation of the object holding it
   (the immortal header for storage no owner frees), checked at every use
   (r3.126).
-- **Never:** derives a type, resolves a name, re-checks a rule, tests the
-  host OS outside `ExceptionAbi` (E11, E12); uses an address after code
-  that may have freed its object without that check.
+- **Never:** reads the AST, derives a type, resolves a name, interprets
+  the text of a literal of a declaration (a field default is resolved by
+  the analysis, `types::FieldDefault`), re-checks a rule, tests the host OS
+  outside `ExceptionAbi` (E11, E12); uses an address after code that may
+  have freed its object without that check.
 - **Owner:** `codegen/`.
 
 ### 7. Driver
@@ -206,7 +204,7 @@ that removes it (ROADMAP, "Foundation"); a fix updates this table.
 | ~~D2~~ | Closed by F5 (r3.119): the parser builds chained and compound assignments, `with` targets and loop contracts as written (`ChainedAssignmentStatement`, `CompoundAssignmentStatement`, `WithTargetExpression`, loop `contracts`); phase 2b (`normalization/AstNormalizer`) produces the normalized AST, identical to the one the parser made before. The analyzer's `__with` prefix checks remain until F6 | E11 | F5 |
 | ~~D3~~ | Closed by F3 (r3.114): the parser builds each routine header (`ast::RoutineHeader`: `ParameterDeclaration` name, mode, receiver, written type; the result type) and reports its syntax errors; module resolution, contract lowering, generics and `inox interface` read that structure, and the analyzer checks only what types say (`registerFunctionSignatureIn`). Parameter and result types stay text until F4 | E11 | F3 |
 | ~~D4~~ | Closed by F4 (r3.117): a written type is a tree in the AST (`ast::TypeExpr`), built by the parser; module resolution renames, contract lowering tests and the analyzer resolves the tree; generic instances substitute type parameters on it (`substituteTypeParameters`, `writtenFormOf`). Text exists only through `ast::spell` (messages, `inox interface`, instance names); the text reader `types::TypeSyntax` is gone. Exception handler types stay names until F7 | E11 (steps 3-4) | F4 |
-| D5 | Codegen reads the raw AST beside 16 side tables of `SemanticResult` and takes decisions of its own: on r3.119, 106 name comparisons, 117 lookups by AST node, 150 AST shape tests (`tools/codegen_decisions.py`; inventory in change `typed-ir`). Since r3.120 (F6 step 1) the typed IR exists between phases 5 and 6 (`tir/`); since r3.122 (step 2) codegen takes types, symbols and constants from it through a transitional index by AST node, since r3.123 (step 3) the builtin of each call, and since r3.127 (step 4) what each encoding, conversion and intrinsic is; its other decisions remain | E11 (step 5) | F6 |
+| ~~D5~~ | Closed by F6 (r3.129): code generation lowers the typed IR only (`tir::Program`); it reads no AST node and no side table of `SemanticResult` by node, and resolves no name (`tools/codegen_decisions.py --zero`: 0 name comparisons, 0 lookups by AST node, 0 AST shape tests, 0 name resolutions, from 106, 117 and 150 on r3.119); field defaults are resolved by the analysis | E11 | F6 |
 | D6 | Exception handlers match the written type name; the hierarchy is not in `types::Type` | E11 | F7 |
 | ~~D7~~ | Closed by F1 (r3.111): every gate of E19 runs in CI (`.github/workflows/ci.yml`, `.github/workflows/gates.yml`) | E19 | F1 |
 
@@ -233,8 +231,8 @@ instead of searching the whole emitter.
     object, compared by pointer), the built-ins and their aliases, struct
     declaration and late completion;
   The written form of a type is the AST's (`ast/TypeExpr.*`, F4); the
-  analyzer resolves it into these types. The analyzer produces types; codegen only reads them (`typeOf`,
-  `declaredType`, `signatureOf` of `SemanticResult`) and never derives one.
+  analyzer resolves it into these types. The analyzer produces types; codegen only reads them, from the typed IR,
+  and never derives one.
 - `src/compiler/normalization/AstNormalizer.*` — phase 2b: the module's
   AST as written to the normalized AST (chains, compound assignments,
   `with`, loop contracts); `requireNormalized` checks that nothing is left.
@@ -272,10 +270,6 @@ instead of searching the whole emitter.
   the verifier, `tir/Print.cpp` the text of `--dump-tir`.
 - `src/compiler/semantic/SemanticRecords.cpp` — the analyzer's records
   for the typed IR: call meanings, variable origins, declared symbols.
-- `src/compiler/tir/AstNodeMap.*` — which TIR node each AST node became,
-  for code generation while it walks the AST (removed when it consumes
-  only the typed IR); codegen reads it in
-  `codegen/FunctionEmitterSemantics.cpp`, which only reads resolved facts.
 
 - `src/compiler/codegen/LlvmIrEmitter.cpp` — the module: globals,
   declarations, internal helpers, `main` (`LlvmIrEmitter::emit`,
@@ -317,8 +311,8 @@ instead of searching the whole emitter.
 - `codegen/TypeLayout.*` — the LLVM type of each kind of `types::Type` (the
   one place an LLVM type is spelled from an Inox type), array storage, struct
   fields, routine signatures lowered from the analysis, State globals.
-- `codegen/AstQueries.*` — read-only AST walks (`forEachStatement`, "uses
-  try / exceptions").
+- `codegen/TirWalk.*` — read-only walks of the typed IR (`forEachStatement`,
+  the expressions of a statement, "uses try / exceptions").
 - `codegen/LlvmText.*` — names, literals, string constants in IR text.
 - `codegen/Operators.*` — LLVM instruction or predicate of each operator.
 - `codegen/MathBuiltins.*` — Std.Math functions (`BuiltinOp`) lowered to intrinsics/libm.

@@ -79,7 +79,7 @@ const Place* Builder::place(const ast::Expression& source)
         if (symbol != nullptr && (symbol->kind == semantic::SymbolKind::Variable ||
                                   symbol->kind == semantic::SymbolKind::LoopIterator ||
                                   symbol->kind == semantic::SymbolKind::State)) {
-            return recorded(source, variable(identifier, *symbol));
+            return variable(identifier, *symbol);
         }
     }
     if (source.kind() == ast::AstNodeKind::CallExpression) {
@@ -98,12 +98,7 @@ const Place* Builder::place(const ast::Expression& source)
                                ? structType->fields()[meaning->field].type
                                : nullptr;
             result->isMutable = result->base->isMutable;
-            if (astNodes_ != nullptr) {
-                // The field's name, and the `__member` it is written with.
-                astNodes_->recordMember(*call.arguments()[1], result);
-                astNodes_->recordName(call.callee());
-            }
-            return recorded(source, result);
+            return result;
         }
         if (meaning != nullptr && meaning->kind == CallKind::Builtin && meaning->op == semantic::BuiltinOp::Value &&
             call.arguments().size() == 1) {
@@ -112,10 +107,7 @@ const Place* Builder::place(const ast::Expression& source)
             if (target == pointer) {
                 fail("Value of something that is not a pointer", source);
             }
-            if (astNodes_ != nullptr) {
-                astNodes_->recordName(call.callee());
-            }
-            return recorded(source, target);
+            return target;
         }
         if (meaning != nullptr && meaning->kind == CallKind::Index) {
             Place* result = arena_.make<Place>();
@@ -123,80 +115,24 @@ const Place* Builder::place(const ast::Expression& source)
             result->base = through(place(*call.arguments()[0]));
             result->indices = arena_.array<const Expr*>(1);
             result->indices[0] = expression(*call.arguments()[1]);
-            if (astNodes_ != nullptr) {
-                astNodes_->recordName(call.callee());
-            }
             result->type = typeOf(source) != nullptr ? typeOf(source)
                            : result->base->type != nullptr ? result->base->type->element()
                                                            : nullptr;
             result->isMutable = result->base->isMutable;
-            return recorded(source, result);
+            return result;
         }
     }
     Place* result = arena_.make<Place>();
     result->kind = PlaceKind::Value;
     result->value = expression(source);
     result->type = result->value->type;
-    return recorded(source, result);
+    return result;
 }
 
-// What each AST node became, for the AST node map.
-const Place* Builder::recorded(const ast::Expression& source, const Place* place)
-{
-    if (astNodes_ != nullptr) {
-        astNodes_->recordPlace(source, place);
-        recordCallKind(source);
-    }
-    return place;
-}
-
-// The kind of call the analysis decided the node is, for the AST node map.
-void Builder::recordCallKind(const ast::Expression& source)
-{
-    if (const CallMeaning* meaning = semantics_.callMeaning(source)) {
-        astNodes_->recordCallKind(source, meaning->kind);
-    }
-}
-
+// The symbol of the routine a call names.
 void Builder::recordCall(const ast::CallExpression& source, Expr* call)
 {
     call->symbol = semantics_.symbolOf(source);
-    if (astNodes_ == nullptr) {
-        return;
-    }
-    // The name a call is written with stands for the call: the routine's
-    // identifier, or the `__member` of a method and its method name.
-    const ast::Expression& callee = source.callee();
-    astNodes_->recordCallee(callee, call);
-    if (callee.kind() == ast::AstNodeKind::CallExpression) {
-        const auto& member = static_cast<const ast::CallExpression&>(callee);
-        if (member.arguments().size() == 2) {
-            astNodes_->recordCallee(*member.arguments()[1], call);
-        }
-        astNodes_->recordName(member.callee());
-        astNodes_->recordCallKind(member, CallKind::Method);
-    } else if (call->kind == ExprKind::Call && source.arguments().size() == 2 &&
-               semantics_.callMeaning(source)->kind == CallKind::MethodNoArguments) {
-        astNodes_->recordCallee(*source.arguments()[1], call);
-    }
-}
-
-void Builder::recordDeclaration(const void* declaration, const Stmt* statement)
-{
-    if (astNodes_ != nullptr) {
-        astNodes_->recordDeclaration(declaration, statement);
-    }
-}
-
-void Builder::recordAssignment(const ast::BinaryExpression& assignment, const Stmt* statement, bool declares)
-{
-    if (astNodes_ == nullptr) {
-        return;
-    }
-    astNodes_->recordStatement(assignment, statement);
-    if (declares) {
-        astNodes_->recordDeclared(assignment.left(), statement);
-    }
 }
 
 } // namespace inox::compiler::tir::detail

@@ -13,6 +13,9 @@
 #include "SemanticSupport.h"
 #include "../exceptions/ExceptionTypes.h"
 #include "../lexer/Lexer.h"
+#include "../support/CharLiteral.h"
+#include "../support/DecimalLiteral.h"
+#include "../support/RealLiteral.h"
 
 #include <algorithm>
 #include <array>
@@ -643,9 +646,106 @@ void SemanticAnalyzer::completeStructFields(const ast::TypeDeclaration& declarat
     }
 }
 
+// r3.82 (CANON-9): what a field default stores, from its validated literal:
+// the value of the field's type (`fill`: of each element of an array field).
+types::FieldDefault SemanticAnalyzer::resolveFieldDefault(TypeRef type, const std::string& literal, bool fill)
+{
+    types::FieldDefault value;
+    if (fill) {
+        while (type->isArray()) {
+            type = type->element();
+        }
+        if (type->isOptionOwn() || type->isSet()) {
+            return value;  // None and the empty set are the zero
+        }
+    }
+    if (type->isString()) {
+        if (fill || literal.size() >= 2) {
+            value.kind = types::FieldDefault::Kind::Text;
+            value.text = literal.size() >= 2 ? literal.substr(1, literal.size() - 2) : std::string();
+        }
+        return value;
+    }
+    if (type->isChar()) {
+        value.kind = types::FieldDefault::Kind::Integer;
+        value.integer = support::decodeCharLiteral(literal).code;
+        return value;
+    }
+    if (type->isDecimal() && !fill) {
+        // Change decimals (r3.91): the exact scaled value of the literal.
+        const bool negative = !literal.empty() && literal.front() == '-';
+        std::string scaled =
+            support::parseDecimalLiteral(negative ? literal.substr(1) : literal, type->decimalPlaces()).scaled;
+        if (negative && scaled != "0") {
+            scaled = "-" + scaled;
+        }
+        value.kind = types::FieldDefault::Kind::Text;
+        value.text = std::move(scaled);
+        return value;
+    }
+    if (type->isEnum()) {
+        // The ordinal of the literal (CANON-13).
+        std::size_t ordinal = 0;
+        while (ordinal < type->literals().size() && !equalsIgnoreCase(type->literals()[ordinal], literal)) {
+            ++ordinal;
+        }
+        value.kind = types::FieldDefault::Kind::Integer;
+        value.integer = static_cast<std::int64_t>(ordinal);
+        return value;
+    }
+    if (type->isBool()) {
+        value.kind = types::FieldDefault::Kind::Bool;
+        value.boolean = equalsIgnoreCase(literal, "true");
+        return value;
+    }
+    if (type->isFloat()) {
+        value.kind = types::FieldDefault::Kind::Real;
+        value.real = support::parseRealLiteral(literal, type->bits() == 32);
+        return value;
+    }
+    // An integer, decimal or `$` hexadecimal, its sign written.
+    const bool negative = !literal.empty() && literal.front() == '-';
+    std::string magnitude(negative ? literal.substr(1) : literal);
+    int base = 10;
+    if (!magnitude.empty() && magnitude.front() == '$') {
+        magnitude.erase(0, 1);
+        base = 16;
+    } else if (magnitude.size() > 2 && magnitude[0] == '0' && (magnitude[1] == 'x' || magnitude[1] == 'X')) {
+        magnitude.erase(0, 2);
+        base = 16;
+    }
+    const std::uint64_t bits = std::stoull(magnitude, nullptr, base);
+    value.kind = types::FieldDefault::Kind::Integer;
+    value.integer = static_cast<std::int64_t>(negative ? std::uint64_t{0} - bits : bits);
+    return value;
+}
+
+// A field of an instance of a generic struct, its default resolved. Out of
+// line: the recursive instantiation keeps its frame.
+void SemanticAnalyzer::appendStructField(std::vector<types::StructField>& fields,
+                                         const ast::StructFieldDeclaration& declaration, TypeRef type,
+                                         bool fromTypeParameter)
+{
+    types::StructField field;
+    field.name = declaration.name;
+    field.type = type;
+    field.hasDefault = declaration.hasDefault;
+    field.defaultValue = declaration.defaultValue;
+    field.fillDefault = declaration.fillDefault;
+    if (declaration.hasDefault) {
+        field.resolvedDefault = resolveFieldDefault(type, declaration.defaultValue, declaration.fillDefault);
+    }
+    field.fromTypeParameter = fromTypeParameter;
+    field.isPublic = declaration.isPublic;
+    fields.push_back(std::move(field));
+}
+
 void SemanticAnalyzer::validateStructDeclaration(const ast::TypeDeclaration& declaration)
 {
+    const TypeRef structType = resolveStruct(declaration.name);
+    std::size_t index = 0;
     for (const ast::StructFieldDeclaration& field : declaration.fields) {
+        const std::size_t fieldIndex = index++;
         if (field.type.isGeneric("Slice")) {
             throw SemanticError("a slice cannot be a struct field (ADR-0017): " + field.name);
         }
@@ -666,6 +766,11 @@ void SemanticAnalyzer::validateStructDeclaration(const ast::TypeDeclaration& dec
                 throw SemanticError("only a scalar struct field has a default (CANON-9): " + field.name);
             }
             validateStructFieldDefault(field.name, type, field.defaultValue);
+        }
+        if (field.hasDefault) {
+            types().setStructFieldDefault(structType, fieldIndex,
+                                          resolveFieldDefault(type, structType->fields()[fieldIndex].defaultValue,
+                                                              field.fillDefault));
         }
     }
     rejectRecursiveStruct(resolveStruct(declaration.name));

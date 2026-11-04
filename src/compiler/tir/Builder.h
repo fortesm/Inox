@@ -14,7 +14,6 @@
 // program, the helpers). Internal to tir/: Build.h is its interface.
 
 #include "Build.h"
-#include "AstNodeMap.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -30,8 +29,8 @@ BinaryOp binaryOp(ast::BinaryOperator op);
 
 class Builder {
 public:
-    Builder(Program& program, const semantic::SemanticResult& semantics, AstNodeMap* astNodes)
-        : program_(program), arena_(program.arena), semantics_(semantics), astNodes_(astNodes)
+    Builder(Program& program, const semantic::SemanticResult& semantics)
+        : program_(program), arena_(program.arena), semantics_(semantics)
     {
     }
 
@@ -47,7 +46,6 @@ private:
     Expr* check(const ast::CallExpression& call);
     Expr* builtin(const ast::CallExpression& call, const CallMeaning& meaning, TypeRef type);
     const Expr* compoundOperation(const ast::BinaryExpression& assignment, const Place* target);
-    void recordCallKind(const ast::Expression& source);
     semantic::StringFunction stringFunction(const ast::CallExpression& call) const;
     const Expr* constantLiteral(std::int64_t value, TypeRef type, ast::SourcePosition position);
     const Expr* checked(const ast::Expression& source, const Expr* value);
@@ -76,12 +74,8 @@ private:
     const Routine* routineOf(const semantic::FunctionSignature* signature, const ast::AstNode& site);
     const Expr* constantLiteral(const semantic::ConstantValue& value, TypeRef type, ast::SourcePosition position);
 
-    // What each AST node became, for the AST node map (AstNodeMap.h);
-    // nothing when building without one.
-    const Place* recorded(const ast::Expression& source, const Place* place);
+    // The symbol of the routine a call names.
     void recordCall(const ast::CallExpression& source, Expr* call);
-    void recordDeclaration(const void* declaration, const Stmt* statement);
-    void recordAssignment(const ast::BinaryExpression& assignment, const Stmt* statement, bool declares);
     Expr* make(ExprKind kind, TypeRef type, const ast::AstNode& source);
     Stmt* make(StmtKind kind, const ast::AstNode& source);
     TypeRef typeOf(const ast::Expression& expression) const;
@@ -94,7 +88,6 @@ private:
     Program& program_;
     Arena& arena_;
     const semantic::SemanticResult& semantics_;
-    AstNodeMap* astNodes_ = nullptr;
     std::unordered_map<const ast::FunctionDeclaration*, Routine*> routines_;
     std::unordered_map<const semantic::Symbol*, const Stmt*> withs_;
 };

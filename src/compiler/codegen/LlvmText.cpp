@@ -16,22 +16,6 @@
 
 namespace inox::compiler::codegen::detail {
 
-bool equalsIgnoreCase(std::string_view left, std::string_view right)
-{
-    if (left.size() != right.size()) {
-        return false;
-    }
-
-    for (std::size_t index = 0; index < left.size(); ++index) {
-        if (std::tolower(static_cast<unsigned char>(left[index])) !=
-            std::tolower(static_cast<unsigned char>(right[index]))) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 std::string normalize(std::string_view name)
 {
     std::string normalized;
@@ -79,32 +63,6 @@ std::string llvmRealConstant(double value, bool float32)
     std::ostringstream hex;
     hex << "0x" << std::uppercase << std::hex << std::setw(16) << std::setfill('0') << bits;
     return hex.str();
-}
-
-std::string llvmDefaultLiteral(std::string_view value, std::string_view llvmType)
-{
-    if (llvmType == "i1") {
-        return equalsIgnoreCase(value, "true") ? "1" : "0";
-    }
-    if (llvmType == "double" || llvmType == "float") {
-        return llvmRealConstant(support::parseRealLiteral(value, llvmType == "float"), llvmType == "float");
-    }
-    const bool negative = !value.empty() && value.front() == '-';
-    std::string magnitude(negative ? value.substr(1) : value);
-    int base = 10;
-    if (!magnitude.empty() && magnitude.front() == '$') {
-        magnitude.erase(0, 1);
-        base = 16;
-    } else if (magnitude.size() > 2 && magnitude[0] == '0' && (magnitude[1] == 'x' || magnitude[1] == 'X')) {
-        magnitude.erase(0, 2);
-        base = 16;
-    }
-    const std::uint64_t bits = std::stoull(magnitude, nullptr, base);
-    if (!negative) {
-        return std::to_string(bits);
-    }
-    return bits == (std::uint64_t{1} << 63) ? "-9223372036854775808"
-                                             : "-" + std::to_string(bits);
 }
 
 namespace {

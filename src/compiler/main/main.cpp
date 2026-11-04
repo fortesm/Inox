@@ -599,9 +599,7 @@ struct BuildArtifacts {
 // r3.98 (CANON-23): a program is optimized (-O2) unless built with --debug
 // (-O0). Optimization never changes what a program does: the IR has no
 // nsw/nuw flags and every check traps explicitly, so -O2 keeps them.
-BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module,
-                            const inox::compiler::semantic::SemanticResult& semantics,
-                            const inox::compiler::tir::AstNodeMap& astNodeMap,
+BuildArtifacts buildProgram(const fs::path& sourcePath, const inox::compiler::semantic::SemanticResult& semantics,
                             const inox::compiler::tir::Program& typedIr,
                             const fs::path& executableDir, bool debug)
 {
@@ -620,7 +618,7 @@ BuildArtifacts buildProgram(const fs::path& sourcePath, const ModuleNode& module
         outputDirectory / (stem + ".ll"),
         outputDirectory / (stem + std::string(inox::compiler::support::executableSuffix()))};
     const inox::compiler::codegen::LlvmModule llvmModule =
-        inox::compiler::codegen::LlvmIrEmitter().emitModule(module, semantics, astNodeMap, typedIr);
+        inox::compiler::codegen::LlvmIrEmitter().emitModule(typedIr, semantics.types());
     const std::string& llvmIr = llvmModule.ir;
     writeFile(artifacts.llvmIr, llvmIr);
 
@@ -834,14 +832,11 @@ int main(int argc, char** argv)
         inox::compiler::semantic::SemanticAnalyzer semanticAnalyzer;
         const auto& semanticResult = semanticAnalyzer.analyze(*module);
 
-        // The typed IR of the program, verified, printed by --dump-tir.
-        // Code generation takes the types, symbols and constants of the AST
-        // nodes it walks from it, through the AST node map: both live until
-        // code generation ends, in every build.
+        // The typed IR of the program, verified, printed by --dump-tir; code
+        // generation lowers it alone.
         std::unique_ptr<inox::compiler::tir::Program> typedIr;
-        inox::compiler::tir::AstNodeMap astNodeMap;
         if (dumpTir || emitLlvm || build || run) {
-            typedIr = inox::compiler::tir::buildProgram(*module, semanticResult, &astNodeMap);
+            typedIr = inox::compiler::tir::buildProgram(*module, semanticResult);
             if (const std::string problem = inox::compiler::tir::verifyProgram(*typedIr); !problem.empty()) {
                 throw std::runtime_error("internal error: typed IR: " + problem);
             }
@@ -853,10 +848,10 @@ int main(int argc, char** argv)
         }
 
         if (emitLlvm) {
-            std::cout << inox::compiler::codegen::LlvmIrEmitter().emit(*module, semanticResult, astNodeMap, *typedIr);
+            std::cout << inox::compiler::codegen::LlvmIrEmitter().emit(*typedIr, semanticResult.types());
         } else if (build || run) {
             const BuildArtifacts artifacts =
-                buildProgram(fs::path(sourcePath), *module, semanticResult, astNodeMap, *typedIr, executableDir, debug);
+                buildProgram(fs::path(sourcePath), semanticResult, *typedIr, executableDir, debug);
             if (run) {
                 std::vector<std::string> programCommand{artifacts.executable.string()};
                 programCommand.insert(programCommand.end(), programArguments.begin(), programArguments.end());

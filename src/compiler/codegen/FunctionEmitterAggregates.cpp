@@ -11,7 +11,6 @@
 #include "../support/DecimalLiteral.h"
 #include "../support/CharLiteral.h"
 
-#include "AstQueries.h"
 #include "ExceptionAbi.h"
 #include "LlvmIrEmitter.h"
 #include "LlvmText.h"
@@ -87,7 +86,7 @@ void FunctionEmitter::emitStructFieldDefaults(const std::string& pointer, TypeRe
         output_ << "  " << fieldPointer << " = getelementptr " << llvmStructName(structType) << ", ptr "
                 << pointer << ", i32 0, i32 " << index << '\n';
         if (field.hasDefault && field.fillDefault) {
-            emitArrayFillDefault(fieldPointer, field.type, field.defaultValue);
+            emitArrayFillDefault(fieldPointer, field.type, field.resolvedDefault);
             continue;
         }
         if (field.type->isStruct()) {
@@ -101,48 +100,42 @@ void FunctionEmitter::emitStructFieldDefaults(const std::string& pointer, TypeRe
             continue;
         }
         if (isStringType(field.type)) {
-            // A default is an immortal literal (kept quoted by the parser),
-            // so storing it needs no retain.
-            const std::string& text = field.defaultValue;
-            const std::string value = field.hasDefault && text.size() >= 2
-                                          ? emitStringValue(std::string_view(text).substr(1, text.size() - 2))
+            // A default is an immortal literal, so storing it needs no
+            // retain.
+            const types::FieldDefault& text = field.resolvedDefault;
+            const std::string value = field.hasDefault && text.kind == types::FieldDefault::Kind::Text
+                                          ? emitStringValue(text.text)
                                           : emptyStringValue();
             output_ << "  store ptr " << value << ", ptr " << fieldPointer << '\n';
             continue;
         }
-        if (field.type->isChar()) {
-            // The code point of the default literal (char-values).
-            output_ << "  store i64 " << support::decodeCharLiteral(field.defaultValue).code << ", ptr "
-                    << fieldPointer << '\n';
-            continue;
-        }
         if (field.type->isDecimal()) {
             // Change decimals (r3.91): the exact scaled value of the literal.
-            std::string scaled = "0";
-            if (field.hasDefault) {
-                const std::string& text = field.defaultValue;
-                const bool negative = !text.empty() && text.front() == '-';
-                scaled = support::parseDecimalLiteral(negative ? text.substr(1) : text, field.type->decimalPlaces())
-                             .scaled;
-                if (negative && scaled != "0") {
-                    scaled = "-" + scaled;
-                }
-            }
+            const std::string scaled = field.hasDefault ? field.resolvedDefault.text : std::string("0");
             output_ << "  store " << layout.llvmType << ' ' << scaled << ", ptr " << fieldPointer << '\n';
             continue;
         }
-        if (field.type->isEnum()) {
-            // The ordinal of the default literal (CANON-13).
-            std::size_t ordinal = 0;
-            while (ordinal < field.type->literals().size() &&
-                   !equalsIgnoreCase(field.type->literals()[ordinal], field.defaultValue)) {
-                ++ordinal;
-            }
-            output_ << "  store i64 " << ordinal << ", ptr " << fieldPointer << '\n';
-            continue;
-        }
-        output_ << "  store " << layout.llvmType << ' ' << llvmDefaultLiteral(field.defaultValue, layout.llvmType)
+        output_ << "  store " << layout.llvmType << ' ' << defaultConstant(field.resolvedDefault, field.type, layout.llvmType)
                 << ", ptr " << fieldPointer << '\n';
+    }
+}
+
+// The LLVM constant of a resolved default: a code point, an ordinal, a
+// number in the field's width, a Bool.
+std::string FunctionEmitter::defaultConstant(const types::FieldDefault& value, TypeRef type,
+                                             const std::string& llvmType)
+{
+    switch (value.kind) {
+    case types::FieldDefault::Kind::Bool:
+        return value.boolean ? "1" : "0";
+    case types::FieldDefault::Kind::Real:
+        return llvmRealConstant(value.real, llvmType == "float");
+    case types::FieldDefault::Kind::Integer:
+        // A UInt64 above Int64.Max is written unsigned (change uint64).
+        return isUInt64Type(type) ? std::to_string(static_cast<std::uint64_t>(value.integer))
+                                  : std::to_string(value.integer);
+    default:
+        throw CodegenError("internal error: a field default without its value");
     }
 }
 
@@ -192,7 +185,8 @@ void FunctionEmitter::emitArrayElementDefaults(const std::string& pointer, TypeR
 // r3.82: an array field with the default `Fill(Literal)` gets the literal in
 // every element (an immortal String literal needs no retain; None and the
 // empty set are the zero the field already holds).
-void FunctionEmitter::emitArrayFillDefault(const std::string& pointer, TypeRef arrayType, const std::string& text)
+void FunctionEmitter::emitArrayFillDefault(const std::string& pointer, TypeRef arrayType,
+                                           const types::FieldDefault& fill)
 {
     const FlatArray flat = flattenArray(arrayType);
     const TypeRef element = flat.element;
@@ -200,20 +194,8 @@ void FunctionEmitter::emitArrayFillDefault(const std::string& pointer, TypeRef a
         return;
     }
     const std::string storage = llvmStorageType(element);
-    std::string value;
-    if (isStringType(element)) {
-        value = emitStringValue(std::string_view(text).substr(1, text.size() - 2));
-    } else if (element->isChar()) {
-        value = std::to_string(support::decodeCharLiteral(text).code);
-    } else if (element->isEnum()) {
-        std::size_t ordinal = 0;
-        while (ordinal < element->literals().size() && !equalsIgnoreCase(element->literals()[ordinal], text)) {
-            ++ordinal;
-        }
-        value = std::to_string(ordinal);
-    } else {
-        value = llvmDefaultLiteral(text, storage);
-    }
+    const std::string value = isStringType(element) ? emitStringValue(fill.text)
+                                                    : defaultConstant(fill, element, storage);
     const std::string label = std::to_string(nextLabel_++);
     const std::string counter = "%filldefault.i" + label;
     output_ << "  " << counter << " = alloca i64\n";
@@ -238,42 +220,30 @@ void FunctionEmitter::emitArrayFillDefault(const std::string& pointer, TypeRef a
     output_ << "filldefault.end" << label << ":\n";
 }
 
-// The struct a construction `T(Field := Value, ...)` builds, as the analysis
-// recorded it (`TPair(...)` builds an instance, `TPair<String, Int64>`), or
-// null when the call is not a construction.
-TypeRef FunctionEmitter::constructedStruct(const ast::CallExpression& call) const
-{
-    return semantics_.constructedStruct(call);
-}
-
 // CANON-9 named construction `T(Field := Value, ...)`: the type defaults,
 // then each named value in source order.
-std::string FunctionEmitter::emitConstruction(const ast::CallExpression& call, TypeRef structType)
+std::string FunctionEmitter::emitConstruction(const tir::Expr& construction)
 {
+    const TypeRef structType = construction.type;
     const std::string structName = llvmStructName(structType);
     const std::string slot = "%construct" + std::to_string(nextTemporary_++);
     output_ << "  " << slot << " = alloca " << structName << '\n';
     emitStructDefaults(slot, structType);
-    for (const auto& argument : call.arguments()) {
-        const auto& named = static_cast<const ast::BinaryExpression&>(*argument);
-        const auto& fieldName = static_cast<const ast::IdentifierExpression&>(named.left());
-        const auto field = fieldLayout(structType, fieldName.name());
-        if (!field) {
-            throw CodegenError("unknown field in construction: " + fieldName.name());
-        }
-        const std::string value = emitExpression(named.right());
+    for (const tir::FieldValue* named : constructionOrder(construction)) {
+        const FieldLayout field = fieldLayout(structType, named->field);
+        const std::string value = emitValue(*named->value);
         const std::string fieldPointer = "%tmp" + std::to_string(nextTemporary_++);
         output_ << "  " << fieldPointer << " = getelementptr " << structName << ", ptr " << slot << ", i32 0, i32 "
-                << field->index << '\n';
-        output_ << "  store " << field->llvmType << ' ' << value << ", ptr " << fieldPointer << '\n';
+                << field.index << '\n';
+        output_ << "  store " << field.llvmType << ' ' << value << ", ptr " << fieldPointer << '\n';
         // Safe pointers: an owner given to a field moves into the value.
-        if (isMoveOnly(field->field->type)) {
+        if (isMoveOnly(field.field->type)) {
             disarmFresh(value);
         }
     }
     // CANON-24: the new value satisfies its invariant.
-    if (const TypeRef invariantType = semantics_.newValueInvariant(call)) {
-        emitInvariantOf(invariantType, slot);
+    if (construction.invariants != nullptr && construction.invariants->newValue != nullptr) {
+        emitInvariantOf(construction.invariants->newValue, slot);
     }
     // Safe pointers: a value that holds owners is fresh: it owns its
     // Strings (+1) and its owners, held until a store takes it.
@@ -289,129 +259,145 @@ std::string FunctionEmitter::emitConstruction(const ast::CallExpression& call, T
     return result;
 }
 
-FunctionEmitter::Place FunctionEmitter::emitPlace(const ast::Expression& expression)
+// The written field values of a construction, in the order they are written
+// (CANON-9: evaluated in source order).
+std::vector<const tir::FieldValue*> FunctionEmitter::constructionOrder(const tir::Expr& construction)
 {
-    if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
-        const std::string name = normalize(static_cast<const ast::IdentifierExpression&>(expression).name());
+    std::vector<const tir::FieldValue*> written;
+    for (const tir::FieldValue& field : construction.fields) {
+        if (field.value != nullptr) {
+            written.push_back(&field);
+        }
+    }
+    std::sort(written.begin(), written.end(), [](const tir::FieldValue* first, const tir::FieldValue* second) {
+        return first->written < second->written;
+    });
+    return written;
+}
+
+// The storage of a place: a variable, a field of a place, an element, the
+// object a pointer reaches. Any other value (`value`, when the place is
+// read as one) is copied into a temporary so its fields can be read.
+FunctionEmitter::Place FunctionEmitter::emitPlace(const tir::Place& place, const tir::Expr* value)
+{
+    switch (place.kind) {
+    case tir::PlaceKind::Element: {
+        const ElementAddress element = emitElementAddress(place);
+        return Place{element.pointer, element.elementType};
+    }
+    // Safe pointers: `Value(P)` is the object P reaches.
+    case tir::PlaceKind::Through:
+        return Place{emitPointerTarget(*place.base), place.type};
+    case tir::PlaceKind::Field: {
+        // Through a pointer, the field is in the object it reaches.
+        const tir::Place& base = *place.base;
+        const Place reached = base.kind == tir::PlaceKind::Through ? Place{emitPointerTarget(*base.base), nullptr}
+                                                                    : emitPlace(base);
+        const FieldLayout field = fieldOf(place);
+        const std::string pointer = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << pointer << " = getelementptr " << llvmStructName(field.owner) << ", ptr "
+                << reached.pointer << ", i32 0, i32 " << field.index << '\n';
+        return Place{pointer, field.field->type};
+    }
+    case tir::PlaceKind::Value:
+        return emitPlaceCopy(*place.value);
+    default: {
+        const std::string name = normalize(place.symbol->name);
         const auto local = locals_.find(name);
         if (local != locals_.end()) {
             emitStorageGuard(name);
             return Place{local->second.slot, local->second.type};
         }
+        break;
     }
-    if (isIndexCall(expression)) {
-        const ElementAddress element = emitElementAddress(static_cast<const ast::CallExpression&>(expression));
-        return Place{element.pointer, element.elementType};
     }
-    // Safe pointers: `Value(P)` is the object P reaches.
-    if (expression.kind() == ast::AstNodeKind::CallExpression &&
-        builtinOf(expression) == semantic::BuiltinOp::Value) {
-        const auto& call = static_cast<const ast::CallExpression&>(expression);
-        return Place{emitPointerTarget(*call.arguments()[0]), typeOf(expression)};
+    if (value != nullptr) {
+        return emitPlaceCopy(*value);
     }
-    if (isMemberAccessCall(expression)) {
-        const auto& member = static_cast<const ast::CallExpression&>(expression);
-        if (const auto field = memberField(member)) {
-            // Through a pointer, the field is in the object it reaches.
-            const ast::Expression& baseExpression = *member.arguments()[0];
-            const Place base = isPointerType(typeOf(baseExpression))
-                                   ? Place{emitPointerTarget(baseExpression), nullptr}
-                                   : emitPlace(baseExpression);
-            const std::string pointer = "%tmp" + std::to_string(nextTemporary_++);
-            output_ << "  " << pointer << " = getelementptr " << llvmStructName(field->owner) << ", ptr "
-                    << base.pointer << ", i32 0, i32 " << field->index << '\n';
-            return Place{pointer, field->field->type};
-        }
-    }
-    const TypeRef type = typeOf(expression);
+    const TypeRef type = place.type;
     const std::string llvmType = llvmValueType(type);
     if (llvmType.empty()) {
         throw CodegenUnsupported("this value has no storage in the LLVM backend");
     }
-    const std::string value = emitExpression(expression);
+    return storePlaceTemporary(emitPlaceValue(place), type, llvmType);
+}
+
+FunctionEmitter::Place FunctionEmitter::emitPlace(const tir::Expr& expression)
+{
+    const tir::Expr& value = bare(expression);
+    if (value.kind == tir::ExprKind::Read) {
+        return emitPlace(*value.place, &expression);
+    }
+    return emitPlaceCopy(expression);
+}
+
+FunctionEmitter::Place FunctionEmitter::emitPlaceCopy(const tir::Expr& expression)
+{
+    const TypeRef type = bare(expression).type;
+    const std::string llvmType = llvmValueType(type);
+    if (llvmType.empty()) {
+        throw CodegenUnsupported("this value has no storage in the LLVM backend");
+    }
+    return storePlaceTemporary(emitValue(expression), type, llvmType);
+}
+
+FunctionEmitter::Place FunctionEmitter::storePlaceTemporary(const std::string& value, TypeRef type,
+                                                           const std::string& llvmType)
+{
     const std::string slot = "%placetmp" + std::to_string(nextTemporary_++);
     output_ << "  " << slot << " = alloca " << llvmType << '\n';
     output_ << "  store " << llvmType << ' ' << value << ", ptr " << slot << '\n';
     return Place{slot, type};
 }
 
-// The struct and field a `__member(Base, Name)` names, when Base is a
-// struct value (or a pointer to one) and Name one of its fields (otherwise
-// it is a method).
-std::optional<FieldLayout> FunctionEmitter::memberField(const ast::CallExpression& member) const
+// The value a place holds, read: a variable, an element, a field, the
+// object a pointer reaches.
+std::string FunctionEmitter::emitPlaceRead(const tir::Place& place)
 {
-    if (member.arguments().size() != 2 ||
-        member.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
-        return std::nullopt;
+    switch (place.kind) {
+    case tir::PlaceKind::Element:
+        return loadElement(emitElementAddress(place));
+    case tir::PlaceKind::Field: {
+        const std::string pointer = emitPlace(place).pointer;
+        const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << result << " = load " << fieldOf(place).llvmType << ", ptr " << pointer << '\n';
+        return result;
     }
-    TypeRef baseType = typeOf(*member.arguments()[0]);
-    if (isPointerType(baseType)) {
-        baseType = baseType->pointerTarget();
+    case tir::PlaceKind::Through: {
+        const std::string target = emitPointerTarget(*place.base);
+        const std::string value = "%tmp" + std::to_string(nextTemporary_++);
+        output_ << "  " << value << " = load " << valueLlvmType(place.type) << ", ptr " << target << '\n';
+        return value;
     }
-    return fieldLayout(baseType, static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]).name());
+    case tir::PlaceKind::Value:
+        return emitValue(*place.value);
+    default:
+        return emitVariableRead(place);
+    }
 }
 
-FunctionEmitter::FieldAddress FunctionEmitter::emitMemberAddress(const ast::CallExpression& call)
+// The value of a place that is not written as an expression of its own (the
+// base of a field or an element): read, and held when borrowed.
+std::string FunctionEmitter::emitPlaceValue(const tir::Place& place)
 {
-    if (!memberField(call)) {
-        // Not a field: the caller treats it as a zero-argument method.
-        throw CodegenError("not a struct field");
+    if (place.kind == tir::PlaceKind::Value) {
+        return emitValue(*place.value);
     }
-    const Place place = emitPlace(call);
-    return FieldAddress{place.pointer, memberField(call)->llvmType};
+    std::string value = emitPlaceRead(place);
+    if (statementRunsRoutine_ && isBorrowedPlace(place.type, place)) {
+        value = protectBorrowed(place.type, value);
+    }
+    return value;
 }
 
-// `P.F`, `P.M` (a method without arguments), or the name `P.M` of a call
-// `P.M(X)`.
-bool FunctionEmitter::isMemberAccessCall(const ast::Expression& expression) const
+// The struct and field a field place names.
+FieldLayout FunctionEmitter::fieldOf(const tir::Place& field)
 {
-    if (expression.kind() != ast::AstNodeKind::CallExpression) {
-        return false;
-    }
-    const auto kind = callKindOf(expression);
-    return kind == semantic::CallKind::Field || kind == semantic::CallKind::MethodNoArguments ||
-           (kind == semantic::CallKind::Method && astNodes_.isCallName(expression));
-}
-
-FunctionEmitter::MethodCallTarget FunctionEmitter::resolveMethodCall(const ast::CallExpression& call)
-{
-    if (!isMemberAccessCall(call.callee())) {
-        throw CodegenError("LLVM emission expected a method call");
-    }
-
-    const auto& member = static_cast<const ast::CallExpression&>(call.callee());
-    if (member.arguments().size() != 2 ||
-        member.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
-        throw CodegenUnsupported("LLVM emission currently supports only local method calls");
-    }
-
-    const auto& method =
-        static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
-    const FunctionSignature* signature = boundSignature(call);
-    if (signature == nullptr) {
-        throw CodegenUnsupported("unknown method for LLVM emission: " + method.name());
-    }
-    if (call.arguments().size() + 1 != signature->parameters.size()) {
-        throw CodegenUnsupported("unsupported method argument count: " + method.name());
-    }
-    return MethodCallTarget{signature, emitReceiver(*signature, *member.arguments()[0])};
-}
-
-// The routine the analysis bound a call site to: a method of the receiver's
-// type (a struct method, or a method of a built-in type, CANON-9) or a
-// routine of the program.
-const FunctionSignature* FunctionEmitter::boundSignature(const ast::CallExpression& site) const
-{
-    return routineSignature(astNodes_.routineOf(site));
-}
-
-const FunctionSignature* FunctionEmitter::calledRoutine(const ast::IdentifierExpression& callee) const
-{
-    return routineSignature(astNodes_.routineOf(callee));
+    return fieldLayout(field.base->type, field.field);
 }
 
 // The lowered signature of a routine of the program (LlvmIrEmitter).
-const FunctionSignature* FunctionEmitter::routineSignature(const ast::FunctionDeclaration* routine) const
+const FunctionSignature* FunctionEmitter::routineSignature(const tir::Routine* routine) const
 {
     if (routine == nullptr) {
         return nullptr;
@@ -422,11 +408,11 @@ const FunctionSignature* FunctionEmitter::routineSignature(const ast::FunctionDe
 
 // A struct receiver is passed by address; a built-in one as its parameter
 // says: the caller's variable for `Self mut`, a copy for `Self` (CANON-9).
-std::string FunctionEmitter::emitReceiver(const FunctionSignature& signature, const ast::Expression& receiver)
+std::string FunctionEmitter::emitReceiver(const FunctionSignature& signature, const tir::Expr& receiver)
 {
     const FunctionParameter& self = signature.parameters.front();
     // Safe pointers: the receiver is the object the pointer reaches.
-    if (isPointerType(typeOf(receiver))) {
+    if (isPointerType(bare(receiver).type)) {
         const std::string target = emitPointerTarget(receiver);
         if (self.type->isStruct() || self.byReference) {
             return target;
@@ -438,74 +424,67 @@ std::string FunctionEmitter::emitReceiver(const FunctionSignature& signature, co
     if (self.type->isStruct()) {
         return emitPlace(receiver).pointer;
     }
-    return self.byReference ? emitReferenceArgument(receiver, self) : emitExpression(receiver);
+    return self.byReference ? emitReferenceArgument(receiver, self) : emitValue(receiver);
 }
 
-FunctionEmitter::MethodCallTarget FunctionEmitter::resolveNoArgumentMethodAccess(const ast::CallExpression& member)
+// A call of a routine of the program: its arguments, the storage of each
+// parameter that is the caller's (CANON-25), and the call; a method's
+// receiver first, its invariants checked before and after (CANON-24).
+std::string FunctionEmitter::emitCall(const tir::Expr& call, bool requireValue)
 {
-    if (!isMemberAccessCall(member)) {
-        throw CodegenError("LLVM emission expected member access");
+    const FunctionSignature* routine = routineSignature(call.routine);
+    if (routine == nullptr) {
+        throw CodegenUnsupported("unknown routine for LLVM emission: " + std::string(call.routine->name));
     }
-    if (member.arguments().size() != 2 ||
-        member.arguments()[1]->kind() != ast::AstNodeKind::IdentifierExpression) {
-        throw CodegenUnsupported("LLVM emission currently supports only local zero-argument method calls");
+    if (requireValue && routine->llvmReturnType == "void") {
+        throw CodegenError("void function call cannot be used as an expression");
     }
-
-    const auto& method =
-        static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
-    const FunctionSignature* signature = boundSignature(member);
-    if (signature == nullptr) {
-        throw CodegenUnsupported("unknown field or zero-argument method for LLVM emission: " + method.name());
+    if (call.operands.size() != routine->parameters.size()) {
+        throw CodegenUnsupported("unsupported call argument count in function: " + std::string(routine_.name));
     }
-    if (signature->parameters.size() != 1) {
-        throw CodegenUnsupported("LLVM zero-argument method emission requires only an explicit receiver parameter");
+    if (isMethodCall(call)) {
+        return emitMethodCall(call, *routine, requireValue);
     }
-    return MethodCallTarget{signature, emitReceiver(*signature, *member.arguments()[0])};
-}
-
-std::string FunctionEmitter::emitNoArgumentMethodCall(const ast::CallExpression& member, bool requireValue)
-{
-    emitInvariantChecks(member, false);
-    beginCallerStorage(*member.arguments()[0], true);
-    const MethodCallTarget target = resolveNoArgumentMethodAccess(member);
-    const std::string result = emitReceiverCall(target, *member.arguments()[0], requireValue);
-    emitInvariantChecks(member, true);
+    std::vector<std::string> storage;
+    const std::vector<std::string> arguments = emitArguments(*routine, call.operands, 0, &storage);
+    const std::string result = emitUserCall(*routine, arguments, requireValue, storage);
+    emitInvariantChecks(call.invariants, true);
     return result;
 }
 
-std::string FunctionEmitter::emitMethodCall(const ast::CallExpression& call, bool requireValue)
+bool FunctionEmitter::isMethodCall(const tir::Expr& call)
 {
-    emitInvariantChecks(call, false);
-    const bool guarded = beginReceiverGuard(call);
-    const ast::Expression& receiver = *static_cast<const ast::CallExpression&>(call.callee()).arguments()[0];
+    return call.kind == tir::ExprKind::Call && !call.routine->parameters.empty() &&
+           call.routine->parameters[0].isReceiver;
+}
+
+std::string FunctionEmitter::emitMethodCall(const tir::Expr& call, const FunctionSignature& signature,
+                                            bool requireValue)
+{
+    emitInvariantChecks(call.invariants, false);
+    const bool guarded = beginReceiverGuard(call, signature);
+    const tir::Expr& receiver = *call.operands[0];
     beginCallerStorage(receiver, true);
-    const MethodCallTarget target = resolveMethodCall(call);
-    const std::string result = emitMethodCallWith(target, call, receiver, guarded, requireValue);
-    emitInvariantChecks(call, true);
+    const std::string receiverPointer = emitReceiver(signature, receiver);
+    const std::string result = emitMethodCallWith(signature, call, receiverPointer, guarded, requireValue);
+    emitInvariantChecks(call.invariants, true);
     return result;
-}
-
-// The call of a method without arguments, its receiver's storage given
-// (CANON-25). Out of line: the recursive callers keep their frames.
-std::string FunctionEmitter::emitReceiverCall(const MethodCallTarget& target, const ast::Expression& receiver,
-                                              bool requireValue)
-{
-    const std::vector<std::string> storage{endCallerStorage(receiver)};
-    return emitUserCall(*target.signature, {target.receiverPointer}, requireValue, storage);
 }
 
 // The arguments of a method call after its receiver, the storage of each
-// parameter that is the caller's (CANON-25), and the call.
-std::string FunctionEmitter::emitMethodCallWith(const MethodCallTarget& target, const ast::CallExpression& call,
-                                                const ast::Expression& receiver, bool guarded, bool requireValue)
+// parameter that is the caller's (CANON-25), and the call. Out of line: the
+// recursive callers keep their frames.
+std::string FunctionEmitter::emitMethodCallWith(const FunctionSignature& signature, const tir::Expr& call,
+                                                const std::string& receiverPointer, bool guarded,
+                                                bool requireValue)
 {
-    const FunctionSignature& signature = *target.signature;
-    std::vector<std::string> storage{endCallerStorage(receiver)};
+    std::vector<std::string> storage{endCallerStorage(*call.operands[0])};
     std::vector<std::string> arguments;
-    arguments.reserve(call.arguments().size() + 1);
-    arguments.push_back(target.receiverPointer);
+    arguments.reserve(call.operands.size());
+    arguments.push_back(receiverPointer);
     std::vector<std::string> argumentStorage;
-    for (std::string& value : emitArguments(signature, call.arguments(), 1, &argumentStorage)) {
+    const tir::Span<const tir::Expr*> rest{call.operands.items + 1, call.operands.size() - 1};
+    for (std::string& value : emitArguments(signature, rest, 1, &argumentStorage)) {
         arguments.push_back(std::move(value));
     }
     storage.insert(storage.end(), argumentStorage.begin(), argumentStorage.end());
@@ -518,91 +497,67 @@ std::string FunctionEmitter::emitMethodCallWith(const MethodCallTarget& target, 
 // CANON-5: `L := R` evaluates R, then L once as a place, then stores R's
 // value there; a call in R that replaces what L reaches never leaves the
 // store a stale place.
-void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression, bool compound)
+void FunctionEmitter::emitAssignment(const tir::Stmt& assignment)
 {
-    if (expression.kind() != ast::AstNodeKind::BinaryExpression) {
-        throw CodegenUnsupported(
-            "LLVM emission currently supports only simple local assignments");
-    }
-
-    const auto& assignment = static_cast<const ast::BinaryExpression&>(expression);
-    if (assignment.op() != ast::BinaryOperator::Assign) {
-        throw CodegenUnsupported(
-            "LLVM emission currently supports only simple local assignments");
-    }
-
     // CANON-14: `S := S + X` and `S += X` append to S in place.
     if (emitStringAppend(assignment)) {
         return;
     }
-    if (compound) {
+    if (assignment.compound) {
         emitCompoundAssignment(assignment);
         return;
     }
-
-    if (assignment.left().kind() == ast::AstNodeKind::IdentifierExpression) {
-        const auto& identifier =
-            static_cast<const ast::IdentifierExpression&>(assignment.left());
-        const auto local = locals_.find(normalize(identifier.name()));
-        if (local != locals_.end()) {
-            emitStorageGuard(local->first);
-        }
-        if (local == locals_.end()) {
-            // CANON-5 / A6 / A7: first appearance of `Name := Expr` is an
-            // inline declaration with an inferred type. The semantic layer
-            // already validated this; here we allocate a fresh local and
-            // store the initializer, mirroring emitLocalVariable.
-            emitLocalVariable(identifier.name(), assignment.right());
-            return;
-        }
-
-        const std::string value = emitExpression(assignment.right());
-        emitOwningStore(local->second.slot, local->second.type, local->second.llvmType, value);
-        return;
-    }
-
-    if (isIndexCall(assignment.left())) {
-        const std::string value = emitExpression(assignment.right());
-        const ElementAddress element = emitElementAddress(
-            static_cast<const ast::CallExpression&>(assignment.left()));
+    const tir::Place& target = *assignment.target;
+    switch (target.kind) {
+    case tir::PlaceKind::Element: {
+        const std::string value = emitValue(*assignment.value);
+        const ElementAddress element = emitElementAddress(target);
         const std::string stored = narrowForStorage(value, element);
         emitOwningStore(element.pointer, element.elementType, element.storage, stored);
-        emitInvariantChecks(assignment, true);
+        emitInvariantChecks(assignment.invariants, true);
         return;
     }
-
     // Safe pointers: `Value(P) := X` replaces the object P reaches.
-    if (assignment.left().kind() == ast::AstNodeKind::CallExpression &&
-        isPointerBuiltin(static_cast<const ast::CallExpression&>(assignment.left()))) {
-        const std::string value = emitExpression(assignment.right());
-        const Place place = emitPlace(assignment.left());
+    case tir::PlaceKind::Through: {
+        const std::string value = emitValue(*assignment.value);
+        const Place place = emitPlace(target);
         emitOwningStore(place.pointer, place.type, valueLlvmType(place.type), value);
         return;
     }
-
-    if (isMemberAccessCall(assignment.left())) {
-        const auto& member = static_cast<const ast::CallExpression&>(assignment.left());
-        const std::string value = emitExpression(assignment.right());
-        const FieldAddress field = emitMemberAddress(member);
-        emitOwningStore(field.pointer, memberField(member)->field->type, field.llvmType, value);
-        emitInvariantChecks(assignment, true);
+    case tir::PlaceKind::Field: {
+        const std::string value = emitValue(*assignment.value);
+        const std::string pointer = emitPlace(target).pointer;
+        const FieldLayout field = fieldOf(target);
+        emitOwningStore(pointer, field.field->type, field.llvmType, value);
+        emitInvariantChecks(assignment.invariants, true);
         return;
     }
-
-    throw CodegenUnsupported(
-        "LLVM emission currently supports only local variable or field assignments");
+    case tir::PlaceKind::Value:
+        break;
+    default: {
+        const auto local = locals_.find(normalize(target.symbol->name));
+        if (local == locals_.end()) {
+            throw CodegenUnsupported("LLVM emission found an assignment to a variable without storage");
+        }
+        emitStorageGuard(local->first);
+        const std::string value = emitValue(*assignment.value);
+        emitOwningStore(local->second.slot, local->second.type, local->second.llvmType, value);
+        return;
+    }
+    }
+    throw CodegenUnsupported("LLVM emission currently supports only local variable or field assignments");
 }
 
 // CANON-5: `L op= R`, normalized as `L := L op R` marked compound,
 // evaluates R once, then the place of L once, reads it, applies op and
 // stores into that same place. The written `L` on the right is never
 // evaluated as a place of its own.
-void FunctionEmitter::emitCompoundAssignment(const ast::BinaryExpression& assignment)
+void FunctionEmitter::emitCompoundAssignment(const tir::Stmt& assignment)
 {
-    const auto& combined = static_cast<const ast::BinaryExpression&>(assignment.right());
-    const ast::Expression& target = assignment.left();
-    const std::string value = emitExpression(combined.right());
-    if (isStringType(typeOf(target))) {
+    const tir::Expr& operation = bare(*assignment.value);
+    const tir::Place& target = *assignment.target;
+    const std::string value = emitValue(*operation.operands[1]);
+    if (isStringType(target.type)) {
         // CANON-14: appended in place, R already evaluated.
         const Place place = emitPlace(target);
         const std::string part = "%strparts" + std::to_string(nextTemporary_++);
@@ -614,29 +569,27 @@ void FunctionEmitter::emitCompoundAssignment(const ast::BinaryExpression& assign
         output_ << "  call void @__inox_str_append(ptr " << place.pointer << ", i64 1, ptr " << part << ", ptr "
                 << status << ")\n";
         emitStringStatusCheck(status);
-        emitInvariantChecks(assignment, true);
+        emitInvariantChecks(assignment.invariants, true);
         return;
     }
-    if (isIndexCall(target)) {
-        const ElementAddress element = emitElementAddress(static_cast<const ast::CallExpression&>(target));
+    if (target.kind == tir::PlaceKind::Element) {
+        const ElementAddress element = emitElementAddress(target);
         const std::string current = loadElement(element);
-        const std::string operation = "%tmp" + std::to_string(nextTemporary_++);
-        const std::string result = finishValue(combined, emitBinaryValues(combined, operation, current, value));
-        emitOwningStore(element.pointer, element.elementType, element.storage, narrowForStorage(result, element));
-        emitInvariantChecks(assignment, true);
+        const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+        const std::string combined = finishValue(*assignment.value, emitBinaryValues(operation, result, current, value));
+        emitOwningStore(element.pointer, element.elementType, element.storage, narrowForStorage(combined, element));
+        emitInvariantChecks(assignment.invariants, true);
         return;
     }
     const Place place = emitPlace(target);
-    const TypeRef type = place.type != nullptr ? place.type : typeOf(target);
-    const std::string llvmType = isMemberAccessCall(target)
-                                     ? memberField(static_cast<const ast::CallExpression&>(target))->llvmType
-                                     : valueLlvmType(type);
+    const TypeRef type = place.type != nullptr ? place.type : target.type;
+    const std::string llvmType = target.kind == tir::PlaceKind::Field ? fieldOf(target).llvmType : valueLlvmType(type);
     const std::string current = "%tmp" + std::to_string(nextTemporary_++);
     output_ << "  " << current << " = load " << llvmType << ", ptr " << place.pointer << '\n';
-    const std::string operation = "%tmp" + std::to_string(nextTemporary_++);
-    const std::string result = finishValue(combined, emitBinaryValues(combined, operation, current, value));
-    emitOwningStore(place.pointer, type, llvmType, result);
-    emitInvariantChecks(assignment, true);
+    const std::string result = "%tmp" + std::to_string(nextTemporary_++);
+    const std::string combined = finishValue(*assignment.value, emitBinaryValues(operation, result, current, value));
+    emitOwningStore(place.pointer, type, llvmType, combined);
+    emitInvariantChecks(assignment.invariants, true);
 }
 
 } // namespace inox::compiler::codegen::detail

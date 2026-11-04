@@ -7,9 +7,8 @@
 
 #pragma once
 
-#include "../semantic/SemanticResult.h"
-#include "../ast/Ast.h"
-#include "../tir/AstNodeMap.h"
+#include "../tir/Tir.h"
+#include "../types/TypeContext.h"
 
 #include <stdexcept>
 #include <string>
@@ -46,16 +45,12 @@ struct LlvmModule {
 
 class LlvmIrEmitter {
 public:
-    // The backend consumes the semantic result instead of re-deriving what
-    // semantic analysis already resolved (CANON E11, decision P-C).
-    // The types, symbols and constants of the AST nodes come from the typed
-    // IR, through `astNodes`.
-    // The struct types, routines and entry come from the typed IR.
-    LlvmModule emitModule(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
-                          const tir::AstNodeMap& astNodes, const tir::Program& program) const;
+    // The backend lowers the typed IR only: what the analysis decided is in
+    // it (CANON E11, decision P-C), and it never reads the AST. `types` is
+    // the context the program's types belong to.
+    LlvmModule emitModule(const tir::Program& program, const types::TypeContext& types) const;
     // The IR only (--emit-llvm and tools).
-    std::string emit(const ast::ModuleNode& module, const semantic::SemanticResult& semantics,
-                     const tir::AstNodeMap& astNodes, const tir::Program& program) const;
+    std::string emit(const tir::Program& program, const types::TypeContext& types) const;
 };
 
 } // namespace inox::compiler::codegen

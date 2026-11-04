@@ -10,19 +10,19 @@
 
 #pragma once
 
-#include "../ast/Ast.h"
+#include "../tir/Tir.h"
 
 #include <string>
 
 namespace inox::compiler::codegen::detail {
 
-std::string fcmpPredicate(ast::BinaryOperator op);
-std::string llvmFloatOperation(ast::BinaryOperator op);
+std::string fcmpPredicate(tir::BinaryOp op);
+std::string llvmFloatOperation(tir::BinaryOp op);
 // The internal helper (`__inox_add_i64`, ...) of a checked Integer operator.
-std::string checkedIntegerHelper(ast::BinaryOperator op);
-std::string llvmUnsignedHelper(ast::BinaryOperator op);
-std::string llvmOperation(ast::BinaryOperator op);
-std::string llvmComparisonPredicate(ast::BinaryOperator op);
-std::string llvmBooleanOperation(ast::BinaryOperator op);
+std::string checkedIntegerHelper(tir::BinaryOp op);
+std::string llvmUnsignedHelper(tir::BinaryOp op);
+std::string llvmOperation(tir::BinaryOp op);
+std::string llvmComparisonPredicate(tir::BinaryOp op);
+std::string llvmBooleanOperation(tir::BinaryOp op);
 
 } // namespace inox::compiler::codegen::detail

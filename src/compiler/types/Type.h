@@ -48,6 +48,23 @@ enum class TypeKind : std::uint8_t {
 class Type;
 
 // A field of a struct type, in declaration order (the LLVM field index).
+// What a field default stores, as the analysis resolved its literal (r3.82,
+// CANON-9): the backend lowers this, never the text as written.
+struct FieldDefault {
+    enum class Kind : std::uint8_t {
+        None,     // nothing to store: None, the empty set, a String without text
+        Integer,  // `integer`: a number, a code point (Char), an ordinal (enum)
+        Real,     // `real`, already rounded to the field's width
+        Bool,     // `boolean`
+        Text      // `text`: a String's characters, or a decimal's scaled digits
+    };
+    Kind kind = Kind::None;
+    std::int64_t integer = 0;
+    double real = 0;
+    bool boolean = false;
+    std::string text;
+};
+
 struct StructField {
     std::string name;
     const Type* type = nullptr;
@@ -57,6 +74,8 @@ struct StructField {
     // r3.82: `FData Array[1..4] Byte := Fill(0)`; defaultValue is the
     // literal every element gets.
     bool fillDefault = false;
+    // The default resolved (of each element, for `Fill`), when hasDefault.
+    FieldDefault resolvedDefault;
     // r3.82: the field's type is a type parameter of a generic struct
     // (`FValue T`); it never has an implicit value, whatever T becomes.
     bool fromTypeParameter = false;

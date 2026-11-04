@@ -140,9 +140,9 @@ FieldLayout fieldLayout(TypeRef structType, std::size_t index)
     return FieldLayout{structType, &field, index, llvmValueType(field.type)};
 }
 
-FunctionSignature lowerSignature(const ast::FunctionDeclaration& function,
-                                 const semantic::FunctionSignature& signature)
+FunctionSignature lowerSignature(const tir::Routine& routine)
 {
+    const semantic::FunctionSignature& signature = *routine.signature;
     std::vector<FunctionParameter> parameters;
     for (std::size_t index = 0; index < signature.parameters.size(); ++index) {
         const semantic::FunctionParameter& parameter = signature.parameters[index];
@@ -151,7 +151,7 @@ FunctionSignature lowerSignature(const ast::FunctionDeclaration& function,
             throw CodegenUnsupported("LLVM emission currently supports only scalar and struct parameters");
         }
         // The receiver as the parser read it (`Self`, `Self mut`, F3).
-        const bool isReceiver = index < function.parameters().size() && function.parameters()[index].isReceiver;
+        const bool isReceiver = index < routine.parameters.size() && routine.parameters[index].isReceiver;
         bool byReference = parameter.mode != semantic::PassMode::Value;
         if (isReceiver) {
             // CANON-9: a struct receiver is always passed by address; `Self
@@ -181,7 +181,7 @@ FunctionSignature lowerSignature(const ast::FunctionDeclaration& function,
                 "LLVM emission currently supports scalar, struct return types, or subroutines without return type");
         }
     }
-    return FunctionSignature{llvmGlobalName("inox_" + normalize(function.name())), std::move(llvmReturnType),
+    return FunctionSignature{llvmGlobalName("inox_" + normalize(routine.name)), std::move(llvmReturnType),
                              std::move(parameters), signature.returnType};
 }
 
