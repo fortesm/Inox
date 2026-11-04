@@ -1,0 +1,35 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Q1 of assignment-evaluation-order: a reference argument whose owner a later argument replaces. Expected output to be set by the decision on Q1.
+Type
+    TNode Struct
+        FV Integer := 1
+    ;
+    THolder Struct
+        FChild Own<TNode>
+    ;
+
+State
+    H THolder := THolder(FChild := New(TNode))
+    K THolder := THolder(FChild := New(TNode))
+;
+
+Drop Integer :
+    H.FChild := New(TNode)
+    K.FChild := New(TNode)
+    Return 10
+;
+
+Store(ref mut X Integer, V Integer) :
+    X := V
+;
+
+Main :
+    Store(H.FChild.FV, Drop)
+    PutLn(H.FChild.FV, " ", K.FChild.FV)
+;
