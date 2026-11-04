@@ -61,6 +61,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/codegen/RuntimeAbi.cpp
     src/compiler/codegen/RuntimeHelpersIr.cpp
     src/compiler/codegen/TypeLayout.cpp
+    src/compiler/scanner/SourceCursor.cpp
     src/compiler/lexer/Lexer.cpp
     src/compiler/parser/Parser.cpp
     src/compiler/semantic/CallMeaning.cpp
@@ -192,6 +193,7 @@ add_executable(inox-compiler-tests
     tests/compiler-unit/AstCloneTests.cpp
     tests/compiler-unit/RoutineHeaderTests.cpp
     tests/compiler-unit/TypeExprTests.cpp
+    tests/compiler-unit/SourceCursorTests.cpp
     tests/compiler-unit/AstNormalizerTests.cpp
     tests/compiler-unit/TypedIrTests.cpp
 )

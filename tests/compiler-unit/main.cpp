@@ -18,6 +18,7 @@ int runTypeLayoutTests();
 int runAstCloneTests();
 int runRoutineHeaderTests();
 int runTypeExprTests();
+int runSourceCursorTests();
 int runAstNormalizerTests();
 int runTypedIrTests();
 } // namespace inox::compiler::unit
@@ -30,6 +31,7 @@ int main()
     runAstCloneTests();
     runRoutineHeaderTests();
     runTypeExprTests();
+    runSourceCursorTests();
     runAstNormalizerTests();
     runTypedIrTests();
     if (failureCount() != 0) {

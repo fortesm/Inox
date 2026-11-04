@@ -8,6 +8,7 @@
 #pragma once
 
 #include "Token.h"
+#include "compiler/scanner/SourceCursor.h"
 
 #include <string>
 #include <string_view>
@@ -26,12 +27,6 @@ public:
     static bool isPredefinedName(std::string_view normalized);
 
 private:
-    bool isAtEnd() const;
-    char peek() const;
-    char peekNext() const;
-    char advance();
-    bool match(char expected);
-
     void skipWhitespaceAndComments();
     Token makeToken(TokenKind kind, SourceLocation start, std::size_t startOffset);
     Token invalidToken(SourceLocation start, std::size_t startOffset, std::string message);
@@ -50,10 +45,7 @@ private:
     static std::string normalize(std::string_view text);
     static bool isKeyword(std::string_view normalized);
 
-    std::string_view source_;
-    std::size_t current_ = 0;
-    std::size_t line_ = 1;
-    std::size_t column_ = 1;
+    scanner::SourceCursor cursor_;
 };
 
 } // namespace inox::compiler::lexer
