@@ -1,0 +1,162 @@
+{
+ "examples/cards.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "ead9be1b2c582f89e17e5ee845082b668af1b09320c403700abc680832ea01e2",
+    "9bb5958683f28836aafda9d0558373f4d34962d03db43a457bcfc8713550734e"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/arrays.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "f42f9d49b9573ddb6cbf0b32846d45912d3e4eb1071a1d695f2ad67c4e875558",
+    "aa70cc42a8d049e83a1b17c59db8ab87084ab5dbf972edb4192fa9fbfa2104f5"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/chars.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "a2ec55e10f8afc8ecf963145486c6730b53736d71bc6107ca9bd6b309531cf7c",
+    "59d20aa7c5470bdace91e9f52bc96586d7ba11a5c2ea15e363b5951245dd45e8"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/enums.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "32320a588e72200e233841c8f89d22d118d1fa70d6afe0e619f0e2e361a33970",
+    "6448d638232b4fca889efe9fd018b179ec698cc7cbe40b83747afbcf97cd1f0f"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/range-types.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "05d1d888e7e8a198169e90f153f58d2a894dc548c92439d0216dc7475b397446",
+    "97aa0f687b0743990a1d525b5002a2acdcbc3af74a027937507581a690385571"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/ranges.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "bf66d79b0da527ccbbbb215a5387e1bfca39652e7997d4d816fcd4922f66f98f",
+    "ba0799808a5453418f6533ce4ec7cc36a3045bddb975e40112e58231bd72201e"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/ref-parameters.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "9091da14ecc88f8e8a22a52c7af6931fafbc6ac744a0896ed1c041fdc105de0b",
+    "59176e2f1775b0c0423d93656dd1edd1778b4667bd51c442167920f7eeef7a1c"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/struct-array-field.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "3dd355ad58784bfbfe61220f0bc9df5f3675dc5614fac084d5b326082bd5a437",
+    "73e2a01ef4106a371576f5a0ede1501fb9aadbf6a133ab5d54b8eaa2c138e371"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/semantic/valid/const-conversion.inox": {
+  "--dump-tir": {
+   "exit": [
+    1,
+    1
+   ],
+   "sha256": [
+    "9e4bba3b038ea15ecdb974d7254e78a1d70ac30277a28cbd775aa76a5446d2a9",
+    "ae69f715ae8a4e0f0514c034f5c61bc7b4347b51ef1219357676bcd81df08d41"
+   ],
+   "stderr": [
+    "typed IR error: valid Inox, not yet lowered to the typed IR: the Const Mask without its value\n",
+    "codegen error: not yet implemented in the LLVM backend: typed IR: the Const Mask without its value\nnote: this program is valid Inox; the gap is in code generation (see docs/BACKEND_GAPS.md)\n"
+   ]
+  }
+ },
+ "tests/tir/builtins.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "8786ba03747034201422c3efb783cf307bd4345bf7c8ef28e4c59527409c2fe0",
+    "b0de567f40988d70697539abdbeae6fd046c8d8ab47c0432558e71427a9a739e"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ }
+}

@@ -79,7 +79,7 @@ const Place* Lowerer::place(const ast::Expression& source)
         if (symbol != nullptr && (symbol->kind == semantic::SymbolKind::Variable ||
                                   symbol->kind == semantic::SymbolKind::LoopIterator ||
                                   symbol->kind == semantic::SymbolKind::State)) {
-            return variable(identifier, *symbol);
+            return recorded(source, variable(identifier, *symbol));
         }
     }
     if (source.kind() == ast::AstNodeKind::CallExpression) {
@@ -98,7 +98,12 @@ const Place* Lowerer::place(const ast::Expression& source)
                                ? structType->fields()[meaning->field].type
                                : nullptr;
             result->isMutable = result->base->isMutable;
-            return result;
+            if (index_ != nullptr) {
+                // The field's name, and the `__member` it is written with.
+                index_->recordMember(*call.arguments()[1], result);
+                index_->recordName(call.callee());
+            }
+            return recorded(source, result);
         }
         if (meaning != nullptr && meaning->kind == CallKind::Builtin && meaning->op == semantic::BuiltinOp::Value &&
             call.arguments().size() == 1) {
@@ -107,7 +112,10 @@ const Place* Lowerer::place(const ast::Expression& source)
             if (target == pointer) {
                 fail("Value of something that is not a pointer", source);
             }
-            return target;
+            if (index_ != nullptr) {
+                index_->recordName(call.callee());
+            }
+            return recorded(source, target);
         }
         if (meaning != nullptr && meaning->kind == CallKind::Index) {
             Place* result = arena_.make<Place>();
@@ -115,18 +123,70 @@ const Place* Lowerer::place(const ast::Expression& source)
             result->base = through(place(*call.arguments()[0]));
             result->indices = arena_.array<const Expr*>(1);
             result->indices[0] = expression(*call.arguments()[1]);
+            if (index_ != nullptr) {
+                index_->recordName(call.callee());
+            }
             result->type = typeOf(source) != nullptr ? typeOf(source)
                            : result->base->type != nullptr ? result->base->type->element()
                                                            : nullptr;
             result->isMutable = result->base->isMutable;
-            return result;
+            return recorded(source, result);
         }
     }
     Place* result = arena_.make<Place>();
     result->kind = PlaceKind::Value;
     result->value = expression(source);
     result->type = result->value->type;
-    return result;
+    return recorded(source, result);
+}
+
+// F6 step 2, TRANSITIONAL: the migration index.
+const Place* Lowerer::recorded(const ast::Expression& source, const Place* place)
+{
+    if (index_ != nullptr) {
+        index_->recordPlace(source, place);
+    }
+    return place;
+}
+
+void Lowerer::recordCall(const ast::CallExpression& source, Expr* call)
+{
+    call->symbol = semantics_.symbolOf(source);
+    if (index_ == nullptr) {
+        return;
+    }
+    // The name a call is written with stands for the call: the routine's
+    // identifier, or the `__member` of a method and its method name.
+    const ast::Expression& callee = source.callee();
+    index_->recordCallee(callee, call);
+    if (callee.kind() == ast::AstNodeKind::CallExpression) {
+        const auto& member = static_cast<const ast::CallExpression&>(callee);
+        if (member.arguments().size() == 2) {
+            index_->recordCallee(*member.arguments()[1], call);
+        }
+        index_->recordName(member.callee());
+    } else if (call->kind == ExprKind::Call && source.arguments().size() == 2 &&
+               semantics_.callMeaning(source)->kind == CallKind::MethodNoArguments) {
+        index_->recordCallee(*source.arguments()[1], call);
+    }
+}
+
+void Lowerer::recordDeclaration(const void* declaration, const Stmt* statement)
+{
+    if (index_ != nullptr) {
+        index_->recordDeclaration(declaration, statement);
+    }
+}
+
+void Lowerer::recordAssignment(const ast::BinaryExpression& assignment, const Stmt* statement, bool declares)
+{
+    if (index_ == nullptr) {
+        return;
+    }
+    index_->recordStatement(assignment, statement);
+    if (declares) {
+        index_->recordDeclared(assignment.left(), statement);
+    }
 }
 
 } // namespace inox::compiler::tir::detail

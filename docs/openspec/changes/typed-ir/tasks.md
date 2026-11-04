@@ -45,7 +45,25 @@ Left for later steps (found at step 1):
 
 ## 2. Types and symbols from the TIR
 
-- [ ] 2.1 Codegen takes types, symbols and constants from the TIR (lockstep with the AST, agreement asserted in Debug)
+- [x] 2.0 Strategy A approved (Marcelo Fortes, 2026-11-04) and recorded in `design.md`, with the correspondence matrix
+- [x] 2.1 Codegen takes types, symbols and constants from the TIR through the transitional migration index (`tir/MigrationIndex.h`, `codegen/FunctionEmitterMigration.cpp`): no fallback, agreement asserted in Debug; the TIR and the index live through code generation in every build
+- [x] 2.2 The TIR keeps what the backend asks: the symbol of each call and type name, the value of a Const's literal, folded builtins with their operand; the analysis binds T in `Low(T)` and `High(T)`
+
+Measured at step 2 (r3.122; clang, Linux):
+
+- LLVM IR: identical for all 1065 programs, in Debug and in Release;
+  intended differences, declared exactly in `ir-snapshot-expect.json`:
+  `--dump-types` of 6 programs (the binding of T in `Low(T)`) and the
+  message of the one gap program, `const-conversion.inox`.
+- TIR snapshot: 10 programs change (folded builtins keep their operand;
+  the gap's message), declared in `ir-snapshot-tir-expect.json`.
+- Memory, Release `--emit-llvm`, peak RSS main against step 2:
+  `math-expressions.inox` 11,316 / 11,356 KB, `dateutils.inox` 11,288 /
+  11,360 KB, `large-struct.inox` 33,424 / 33,424 KB,
+  `limits-boundary-ok.inox` 11,352 / 11,324 KB.
+- Stack: no protected frame grows (`FunctionEmitter::typeOf` keeps 24
+  bytes; the check and the index are out of line); the lowering's frames
+  stay under 512 bytes.
 
 ## 3. Builtins by kind
 

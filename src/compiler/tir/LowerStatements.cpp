@@ -107,6 +107,8 @@ const Stmt* Lowerer::expressionStatement(const ast::ExpressionStatement& source)
             result->type = declared->type;
             result->value = this->expression(assignment.right());
             result->invariants = invariants(source, &assignment);
+            recordDeclaration(&assignment, result);
+            recordAssignment(assignment, result, true);
             return result;
         }
         Stmt* result = make(StmtKind::Assign, source);
@@ -114,6 +116,7 @@ const Stmt* Lowerer::expressionStatement(const ast::ExpressionStatement& source)
         result->value = this->expression(assignment.right());
         result->compound = source.isCompoundAssignment();
         result->invariants = invariants(source, &assignment);
+        recordAssignment(assignment, result, false);
         return result;
     }
     Stmt* result = make(StmtKind::Evaluate, source);
@@ -136,6 +139,7 @@ const Stmt* Lowerer::declaration(const ast::VarStatement& source)
         result->value = expression(*source.initializer());
     }
     result->invariants = invariants(source, nullptr);
+    recordDeclaration(&source, result);
     return result;
 }
 

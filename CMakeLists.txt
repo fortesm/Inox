@@ -48,6 +48,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/codegen/FunctionEmitterContracts.cpp
     src/compiler/codegen/FunctionEmitterPointers.cpp
     src/compiler/codegen/FunctionEmitterIo.cpp
+    src/compiler/codegen/FunctionEmitterMigration.cpp
     src/compiler/codegen/FunctionEmitterStatements.cpp
     src/compiler/codegen/FunctionEmitterStrings.cpp
     src/compiler/codegen/FunctionEmitterStringFunctions.cpp
@@ -91,6 +92,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/tir/LowerExpressions.cpp
     src/compiler/tir/LowerPlaces.cpp
     src/compiler/tir/LowerStatements.cpp
+    src/compiler/tir/MigrationIndex.cpp
     src/compiler/tir/Print.cpp
     src/compiler/tir/Tir.cpp
     src/compiler/tir/Verify.cpp

@@ -194,7 +194,8 @@ they are rejected now.)
   positions as the parser did; the analyzer recognizes a `with` binding by
   its name's prefix `__with` (F6 debt); `codegen/AstQueries` holds AST walks that are not
   specific to codegen; the parser never builds `BlockStatement`.
-- The typed IR (F6 step 1, r3.120) is built and verified by a Debug
-  compiler for every program it compiles and printed by `--dump-tir`; a
-  Release compiler builds it only for `--dump-tir`, and code generation
-  does not read it until steps 2-5 of change `typed-ir`.
+- The typed IR (F6, change `typed-ir`) is built and verified for every
+  program that is compiled and printed by `--dump-tir`; since step 2
+  (r3.122) code generation takes the types, symbols and constants from it
+  through a transitional index, and its other decisions move at steps
+  3-5.

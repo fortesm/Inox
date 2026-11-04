@@ -335,7 +335,12 @@ void Printer::operation(const Expr& expression)
 {
     switch (expression.kind) {
     case ExprKind::Call: output_ << ' ' << expression.routine->name; break;
-    case ExprKind::Builtin: output_ << ' ' << semantic::builtinName(expression.op); break;
+    case ExprKind::Builtin:
+        output_ << ' ' << semantic::builtinName(expression.op);
+        if (expression.folded) {
+            output_ << " = " << expression.foldedValue;
+        }
+        break;
     case ExprKind::String: output_ << ' ' << stringFunctionName(expression.string); break;
     case ExprKind::Intrinsic: output_ << ' ' << expression.intrinsic->name; break;
     case ExprKind::Unary: output_ << ' ' << unaryOpText(expression.unary); break;

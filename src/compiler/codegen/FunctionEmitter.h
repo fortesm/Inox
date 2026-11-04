@@ -17,6 +17,7 @@
 #include "../ast/Ast.h"
 #include "../semantic/SemanticResult.h"
 #include "../semantic/StdIntrinsics.h"
+#include "../tir/MigrationIndex.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -40,6 +41,7 @@ public:
                     const FunctionSignatures& signatures,
                     ModuleContext& module,
                     const semantic::SemanticResult& semantics,
+                    const tir::MigrationIndex& index,
                     const StateGlobals& stateGlobals);
 
     bool usesStringCleanup() const;
@@ -50,6 +52,10 @@ public:
 
 private:
     const semantic::SemanticResult& semantics_;
+    // F6 step 2, TRANSITIONAL (removed at step 5): the types, symbols and
+    // constants of the AST nodes come from the typed IR through this index
+    // (FunctionEmitterMigration.cpp).
+    const tir::MigrationIndex& index_;
     const StateGlobals& stateGlobals_;
     struct LoopTargets {
         std::string continueTarget;
@@ -396,6 +402,9 @@ private:
 
     // The type the analysis gave an expression; null when it has none.
     TypeRef typeOf(const ast::Expression& expression) const;
+    const semantic::Symbol* symbolOf(const ast::Expression& node) const;
+    TypeRef migratedTypeOf(const ast::Expression& expression) const;
+    TypeRef declaredTypeOf(const ast::VarStatement& declaration) const;
 
     static bool isRangeCheckedArithmetic(const ast::Expression& expression);
 

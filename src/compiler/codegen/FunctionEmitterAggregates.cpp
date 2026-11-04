@@ -407,7 +407,7 @@ FunctionEmitter::MethodCallTarget FunctionEmitter::resolveMethodCall(const ast::
 // routine of the program.
 const FunctionSignature* FunctionEmitter::boundSignature(const ast::CallExpression& site) const
 {
-    const semantic::Symbol* symbol = semantics_.symbolOf(site);
+    const semantic::Symbol* symbol = symbolOf(site);
     if (symbol == nullptr) {
         return nullptr;
     }
@@ -417,7 +417,7 @@ const FunctionSignature* FunctionEmitter::boundSignature(const ast::CallExpressi
 
 const FunctionSignature* FunctionEmitter::calledRoutine(const ast::IdentifierExpression& callee) const
 {
-    const semantic::Symbol* symbol = semantics_.symbolOf(callee);
+    const semantic::Symbol* symbol = symbolOf(callee);
     const std::string& name =
         symbol != nullptr && symbol->kind == semantic::SymbolKind::Function ? symbol->name : callee.name();
     const auto signature = signatures_.find(normalize(name));

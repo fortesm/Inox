@@ -346,7 +346,7 @@ bool FunctionEmitter::scanOwnsReferences() const
         }
         if (statement.kind() == ast::AstNodeKind::VarStatement) {
             const auto& variable = static_cast<const ast::VarStatement&>(statement);
-            owns = typeOwnsReferences(semantics_.declaredType(variable));
+            owns = typeOwnsReferences(declaredTypeOf(variable));
         }
         // Statement temporaries of `+` on Strings and of protected reads.
         const bool runsRoutine = statementMayRunRoutine(statement);
@@ -378,7 +378,7 @@ bool FunctionEmitter::scanOwnsReferences() const
 bool FunctionEmitter::runsRoutine(const ast::Expression& node) const
 {
     if (node.kind() == ast::AstNodeKind::IdentifierExpression) {
-        const semantic::Symbol* symbol = semantics_.symbolOf(static_cast<const ast::IdentifierExpression&>(node));
+        const semantic::Symbol* symbol = symbolOf(node);
         return symbol != nullptr && symbol->kind == semantic::SymbolKind::Function;
     }
     if (node.kind() != ast::AstNodeKind::CallExpression) {
@@ -388,7 +388,7 @@ bool FunctionEmitter::runsRoutine(const ast::Expression& node) const
     if (isMemberAccessCall(call.callee()) || (isMemberAccessCall(call) && !memberField(call))) {
         return true;  // a method
     }
-    const semantic::Symbol* symbol = semantics_.symbolOf(call);
+    const semantic::Symbol* symbol = symbolOf(call);
     return symbol != nullptr && symbol->kind == semantic::SymbolKind::Function;
 }
 
@@ -413,7 +413,7 @@ bool FunctionEmitter::placeMayChange(const ast::Expression& place) const
         if (referenceParameters_.contains(name) || name.rfind("__with", 0) == 0) {
             return true;
         }
-        const semantic::Symbol* symbol = semantics_.symbolOf(identifier);
+        const semantic::Symbol* symbol = symbolOf(identifier);
         return symbol != nullptr && symbol->kind == semantic::SymbolKind::State;
     }
     if (place.kind() != ast::AstNodeKind::CallExpression) {
