@@ -159,10 +159,14 @@ jobs:
         run: |
           python3 tools/ir_snapshot.py record ../base/build/linux-clang-debug/inox snapshot
           base="${{ github.event.pull_request.base.sha }}"
+          # Added or removed programs of the snapshot's sources only
+          # (tools/ir_snapshot.py SOURCES); a program elsewhere is in
+          # neither snapshot.
           allow=()
           while IFS= read -r added; do
             allow+=(--allow "$added")
-          done < <(git diff --name-only --no-renames --diff-filter=AD "$base" HEAD -- '*.inox')
+          done < <(git diff --name-only --no-renames --diff-filter=AD "$base" HEAD -- \
+                   'tests/*.inox' 'examples/*.inox' 'stdlib/*.inox')
           # E19 (r3.115): a difference the change intends in an existing
           # program is declared exactly in `ir-snapshot-expect.json` of the
           # OpenSpec change this pull request adds or edits, written by
@@ -192,7 +196,8 @@ jobs:
           allow=()
           while IFS= read -r added; do
             allow+=(--allow "$added")
-          done < <(git diff --name-only --no-renames --diff-filter=AD "$base" HEAD -- '*.inox')
+          done < <(git diff --name-only --no-renames --diff-filter=AD "$base" HEAD -- \
+                   'tests/*.inox' 'examples/*.inox' 'stdlib/*.inox')
           while IFS= read -r file; do
             echo "expectations: $file"
             allow+=(--expect "$file")
