@@ -726,7 +726,11 @@ void SemanticAnalyzer::appendStructField(std::vector<types::StructField>& fields
                                          const ast::StructFieldDeclaration& declaration, TypeRef type,
                                          bool fromTypeParameter)
 {
-    types::StructField field{declaration.name, type, false, declaration.hasDefault, declaration.defaultValue};
+    types::StructField field;
+    field.name = declaration.name;
+    field.type = type;
+    field.hasDefault = declaration.hasDefault;
+    field.defaultValue = declaration.defaultValue;
     field.fillDefault = declaration.fillDefault;
     if (declaration.hasDefault) {
         field.resolvedDefault = resolveFieldDefault(type, declaration.defaultValue, declaration.fillDefault);
