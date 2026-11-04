@@ -1,0 +1,36 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-25: a with on a ref mut parameter keeps the check of the caller's object (reference-parameter-validity).
+Type
+    TBox Struct
+        FN Integer := 0
+    ;
+    TNode Struct
+        FD TBox
+    ;
+    THolder Struct
+        FChild Own<TNode>
+    ;
+
+State
+    H THolder := THolder(FChild := New(TNode))
+    K THolder := THolder(FChild := New(TNode))
+;
+
+Replace(ref mut X TBox) :
+    with X
+        H.FChild := New(TNode)
+        K.FChild := New(TNode)
+        .FN := 10
+    ;
+;
+
+Main :
+    Replace(H.FChild.FD)
+    PutLn(H.FChild.FD.FN, " ", K.FChild.FD.FN)
+;

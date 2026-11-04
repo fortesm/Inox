@@ -1,0 +1,31 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-25: the routine frees the object its ref mut parameter reaches, then writes the parameter; the write stops the program, never reaching the freed object (reference-parameter-validity).
+Type
+    TNode Struct
+        FV Integer := 1
+    ;
+    THolder Struct
+        FChild Own<TNode>
+    ;
+
+State
+    H THolder := THolder(FChild := New(TNode))
+    K THolder := THolder(FChild := New(TNode))
+;
+
+Replace(ref mut X Integer) :
+    H.FChild := New(TNode)
+    K.FChild := New(TNode)
+    X := 10
+;
+
+Main :
+    Replace(H.FChild.FV)
+    PutLn(H.FChild.FV, " ", K.FChild.FV)
+;

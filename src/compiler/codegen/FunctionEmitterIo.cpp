@@ -101,6 +101,7 @@ const FunctionEmitter::LocalInfo& FunctionEmitter::inputTarget(const ast::Expres
 std::string FunctionEmitter::emitInputReadCharacter(const ast::Expression& argument)
 {
     const LocalInfo& target = inputTarget(argument);
+    emitStorageGuard(normalize(static_cast<const ast::IdentifierExpression&>(argument).name()));
     requireRuntime(RuntimeFunction::ConsoleGetCharacter);
     const std::string code = "%tmp" + std::to_string(nextTemporary_++);
     const std::string present = "%tmp" + std::to_string(nextTemporary_++);
@@ -124,6 +125,7 @@ std::string FunctionEmitter::emitInputReadCharacter(const ast::Expression& argum
 void FunctionEmitter::emitInputReadDecimal(const ast::Expression& argument)
 {
     const LocalInfo& target = inputTarget(argument);
+    emitStorageGuard(normalize(static_cast<const ast::IdentifierExpression&>(argument).name()));
     requireRuntime(RuntimeFunction::ConsoleGetDecimal);
     const std::string slot = newDecimalSlot();
     const std::string status = "%tmp" + std::to_string(nextTemporary_++);
@@ -140,6 +142,7 @@ void FunctionEmitter::emitInputReadDecimal(const ast::Expression& argument)
 void FunctionEmitter::emitInputReadReal(const ast::Expression& argument)
 {
     const LocalInfo& target = inputTarget(argument);
+    emitStorageGuard(normalize(static_cast<const ast::IdentifierExpression&>(argument).name()));
     const bool float32 = target.llvmType == "float";
     requireRuntime(float32 ? RuntimeFunction::ConsoleGetFloat32 : RuntimeFunction::ConsoleGetFloat);
     const std::string status = "%tmp" + std::to_string(nextTemporary_++);
@@ -160,6 +163,9 @@ void FunctionEmitter::emitInputReadLine(const ast::Expression& argument)
 {
     const auto& identifier = static_cast<const ast::IdentifierExpression&>(argument);
     const auto local = locals_.find(normalize(identifier.name()));
+    if (local != locals_.end()) {
+        emitStorageGuard(local->first);
+    }
     if (local == locals_.end()) {
         throw CodegenUnsupported("GetLn LLVM emission currently supports only local or State variables");
     }
@@ -192,6 +198,9 @@ void FunctionEmitter::emitInputReadInteger(const ast::Expression& argument)
 
     const auto& identifier = static_cast<const ast::IdentifierExpression&>(argument);
     const auto local = locals_.find(normalize(identifier.name()));
+    if (local != locals_.end()) {
+        emitStorageGuard(local->first);
+    }
     if (local == locals_.end()) {
         throw CodegenUnsupported("Get/GetLn LLVM emission currently supports only local variables");
     }

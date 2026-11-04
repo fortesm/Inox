@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.125
+Canon revision: r3.126
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -667,3 +667,9 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   instead of the routine writing the freed object; the rule of r3.124,
   applied to calls. Approved by Marcelo Fortes, 2026-11-04. Change
   `reference-argument-validity`.
+- r3.126 — 2026-11-04 — CANON-25: a routine that frees the object its
+  reference parameter or receiver reaches, then uses it, stops the program
+  instead of writing the freed object: such a parameter carries the
+  generation of the object holding the caller's storage, checked at every
+  use (a change of the routines' ABI, not of the language). Approved by
+  Marcelo Fortes, 2026-11-04. Change `reference-parameter-validity`.

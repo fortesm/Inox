@@ -37,6 +37,10 @@ struct FunctionParameter {
     // storage; valueType is the LLVM type of the value it points to.
     bool byReference = false;
     std::string valueType;
+    // The address of the caller's storage (a reference, a struct receiver):
+    // followed in the ABI by the header and the generation of the object
+    // holding that storage, checked by the routine at every use (CANON-25).
+    bool callerStorage = false;
 };
 
 struct FunctionSignature {

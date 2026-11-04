@@ -79,6 +79,7 @@ std::string FunctionEmitter::emitArrayBaseAddress(const ast::Expression& base, c
     if (base.kind() == ast::AstNodeKind::IdentifierExpression) {
         const auto local = locals_.find(normalize(static_cast<const ast::IdentifierExpression&>(base).name()));
         if (local != locals_.end()) {
+            emitStorageGuard(local->first);
             return local->second.slot;
         }
     }

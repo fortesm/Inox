@@ -295,7 +295,7 @@ FunctionEmitter::Place FunctionEmitter::emitPlace(const ast::Expression& express
         const std::string name = normalize(static_cast<const ast::IdentifierExpression&>(expression).name());
         const auto local = locals_.find(name);
         if (local != locals_.end()) {
-            emitWithGuard(name);
+            emitStorageGuard(name);
             return Place{local->second.slot, local->second.type};
         }
     }
@@ -466,10 +466,9 @@ FunctionEmitter::MethodCallTarget FunctionEmitter::resolveNoArgumentMethodAccess
 std::string FunctionEmitter::emitNoArgumentMethodCall(const ast::CallExpression& member, bool requireValue)
 {
     emitInvariantChecks(member, false);
+    beginCallerStorage(*member.arguments()[0], true);
     const MethodCallTarget target = resolveNoArgumentMethodAccess(member);
-    const FunctionSignature& signature = *target.signature;
-
-    const std::string result = emitUserCall(signature, {target.receiverPointer}, requireValue);
+    const std::string result = emitReceiverCall(target, *member.arguments()[0], requireValue);
     emitInvariantChecks(member, true);
     return result;
 }
@@ -478,22 +477,42 @@ std::string FunctionEmitter::emitMethodCall(const ast::CallExpression& call, boo
 {
     emitInvariantChecks(call, false);
     const bool guarded = beginReceiverGuard(call);
+    const ast::Expression& receiver = *static_cast<const ast::CallExpression&>(call.callee()).arguments()[0];
+    beginCallerStorage(receiver, true);
     const MethodCallTarget target = resolveMethodCall(call);
-    const FunctionSignature& signature = *target.signature;
+    const std::string result = emitMethodCallWith(target, call, receiver, guarded, requireValue);
+    emitInvariantChecks(call, true);
+    return result;
+}
 
+// The call of a method without arguments, its receiver's storage given
+// (CANON-25). Out of line: the recursive callers keep their frames.
+std::string FunctionEmitter::emitReceiverCall(const MethodCallTarget& target, const ast::Expression& receiver,
+                                              bool requireValue)
+{
+    const std::vector<std::string> storage{endCallerStorage(receiver)};
+    return emitUserCall(*target.signature, {target.receiverPointer}, requireValue, storage);
+}
+
+// The arguments of a method call after its receiver, the storage of each
+// parameter that is the caller's (CANON-25), and the call.
+std::string FunctionEmitter::emitMethodCallWith(const MethodCallTarget& target, const ast::CallExpression& call,
+                                                const ast::Expression& receiver, bool guarded, bool requireValue)
+{
+    const FunctionSignature& signature = *target.signature;
+    std::vector<std::string> storage{endCallerStorage(receiver)};
     std::vector<std::string> arguments;
     arguments.reserve(call.arguments().size() + 1);
     arguments.push_back(target.receiverPointer);
-    for (std::string& value : emitArguments(signature, call.arguments(), 1)) {
+    std::vector<std::string> argumentStorage;
+    for (std::string& value : emitArguments(signature, call.arguments(), 1, &argumentStorage)) {
         arguments.push_back(std::move(value));
     }
+    storage.insert(storage.end(), argumentStorage.begin(), argumentStorage.end());
     if (guarded) {
         endPlaceGuard();
     }
-
-    const std::string result = emitUserCall(signature, arguments, requireValue);
-    emitInvariantChecks(call, true);
-    return result;
+    return emitUserCall(signature, arguments, requireValue, storage);
 }
 
 // CANON-5: `L := R` evaluates R, then L once as a place, then stores R's
@@ -525,6 +544,9 @@ void FunctionEmitter::emitLocalAssignment(const ast::Expression& expression, boo
         const auto& identifier =
             static_cast<const ast::IdentifierExpression&>(assignment.left());
         const auto local = locals_.find(normalize(identifier.name()));
+        if (local != locals_.end()) {
+            emitStorageGuard(local->first);
+        }
         if (local == locals_.end()) {
             // CANON-5 / A6 / A7: first appearance of `Name := Expr` is an
             // inline declaration with an inferred type. The semantic layer

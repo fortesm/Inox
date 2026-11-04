@@ -58,6 +58,12 @@ FunctionEmitter::FunctionEmitter(std::ostringstream& output,
                         LocalInfo{stateGlobalSymbol(state.name), state.type, state.llvmType});
     }
     for (const FunctionParameter& parameter : signature.parameters) {
+        if (parameter.callerStorage) {
+            // CANON-25: the caller's storage is checked at every use.
+            storageGuards_.emplace(normalize(parameter.inoxName),
+                                   LinkParts{"%" + parameter.llvmName, "%" + parameter.llvmName + ".storage.header",
+                                             "%" + parameter.llvmName + ".storage.generation"});
+        }
         if (parameter.byReference) {
             referenceParameters_.insert(normalize(parameter.inoxName));
             // The pointer itself is the slot: reads and writes of the

@@ -246,7 +246,7 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             if (local->second.llvmType.empty()) {
                 throw CodegenError("LLVM emission found local value with unknown LLVM type");
             }
-            emitWithGuard(normalizedName);
+            emitStorageGuard(normalizedName);
             output_ << "  " << result << " = load " << local->second.llvmType
                     << ", ptr " << local->second.slot << '\n';
             return result;
@@ -580,8 +580,9 @@ std::string FunctionEmitter::emitExpressionValue(const ast::Expression& expressi
             throw CodegenUnsupported("unsupported call argument count in function: " + function_.name());
         }
 
-        const std::vector<std::string> arguments = emitArguments(*routine, call.arguments(), 0);
-        const std::string result = emitUserCall(*routine, arguments, true);
+        std::vector<std::string> storage;
+        const std::vector<std::string> arguments = emitArguments(*routine, call.arguments(), 0, &storage);
+        const std::string result = emitUserCall(*routine, arguments, true, storage);
         emitInvariantChecks(call, true);
         return result;
     }

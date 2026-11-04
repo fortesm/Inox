@@ -2043,6 +2043,10 @@ never reaches the old address, nor another object that reuses its memory.
 - **WHEN** a later argument replaces the owner a reference argument or a `Self mut` receiver crosses
 - **THEN** the program stops before the call (tests/runtime/reference-argument-invalidated-by-argument.inox, tests/runtime/receiver-invalidated-by-argument.inox)
 
+#### Scenario: Invalidated by the routine itself
+- **WHEN** a routine frees the object its reference parameter or `Self mut` receiver reaches, then uses it, directly, through a `with`, or by passing it on
+- **THEN** the use stops the program (tests/runtime/reference-parameter-invalidated-by-callee.inox, tests/runtime/receiver-invalidated-by-method.inox, tests/runtime/reference-parameter-passed-on-invalidated.inox, tests/runtime/reference-parameter-with-invalidated.inox)
+
 ### Requirement: CANON-25 Owners in routines and contracts
 A value parameter of an owner type SHALL belong to the routine, which frees
 it unless it gives it away; the caller writes `Move(P)` or a new value. A
