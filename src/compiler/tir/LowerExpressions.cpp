@@ -183,7 +183,7 @@ const Expr* Lowerer::identifier(const ast::IdentifierExpression& source)
     case semantic::SymbolKind::Constant: {
         const semantic::ConstantValue* value = semantics_.constantValueOf(*symbol);
         if (value == nullptr) {
-            fail("a constant without a value", source);
+            unsupported("a constant without a value", source);
         }
         const TypeRef type = typeOf(source);
         Expr* literal = const_cast<Expr*>(constantLiteral(*value, type != nullptr ? type : symbol->type,
@@ -386,13 +386,12 @@ Expr* Lowerer::check(const ast::CallExpression& source)
     const auto& kind = static_cast<const ast::LiteralExpression&>(*source.arguments()[0]);
     result->checkKind = static_cast<std::int32_t>(std::stol(kind.value()));
     result->text = arena_.text(static_cast<const ast::LiteralExpression&>(*source.arguments()[2]).value());
-    result->operands = arena_.array<const Expr*>(1);
+    // The condition, then the literals of the kind and the text, which
+    // `checkKind` and `text` carry decoded.
+    result->operands = arena_.array<const Expr*>(3);
     result->operands[0] = expression(*source.arguments()[1]);
-    if (index_ != nullptr) {
-        // The kind and the text are properties of the check, not values.
-        index_->recordName(*source.arguments()[0]);
-        index_->recordName(*source.arguments()[2]);
-    }
+    result->operands[1] = expression(kind);
+    result->operands[2] = expression(*source.arguments()[2]);
     return result;
 }
 

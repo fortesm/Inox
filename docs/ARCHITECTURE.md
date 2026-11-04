@@ -148,7 +148,8 @@ exception objects on the heap, will not show the cost.
   by AST node through the migration index (transitional; a node without
   its TIR node is an internal error), and still walks the AST (D5) until
   step 5. What the TIR cannot express yet is reported as a gap of the
-  backend (E15).
+  backend (E15, `tir::UnsupportedConstructError`); a missing decision of
+  the analysis is an internal error (`tir::InvariantError`).
 - **Owner:** `tir/`; the call meanings and the builtin enumeration it
   shares with the analysis are `semantic/CallMeaning.*`.
 

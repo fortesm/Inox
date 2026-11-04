@@ -158,7 +158,8 @@ enum class ExprKind : std::uint8_t {
     Conditional,  // operands: condition, then, else (ADR-0013)
     SetLiteral,   // operands: the elements (a Range is a Binary Range)
     Slice,        // operands: base, then the low and high bound when written (`hasLow`, `hasHigh`)
-    Check,        // a contract check: operands[0] the condition, `checkKind`, `text` (CANON-24)
+    Check,        // a contract check (CANON-24): operands the condition and the literals of
+                  // `checkKind` and `text`
     Pure,         // operands[0], evaluated where it stands (`old X`, a loop variant)
     RangeCheck,   // operands[0] checked against the Range `type` on the way in (CANON-13)
     NaturalCheck, // operands[0] checked to be a Natural on the way in (ADR-0015)
