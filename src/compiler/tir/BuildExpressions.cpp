@@ -16,8 +16,6 @@
 
 namespace inox::compiler::tir::detail {
 
-namespace {
-
 BinaryOp binaryOp(ast::BinaryOperator op)
 {
     switch (op) {
@@ -48,8 +46,6 @@ BinaryOp binaryOp(ast::BinaryOperator op)
     }
     return BinaryOp::Add;
 }
-
-} // namespace
 
 const Expr* Builder::expression(const ast::Expression& source)
 {

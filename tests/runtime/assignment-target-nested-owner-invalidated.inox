@@ -1,0 +1,34 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-25: the index replaces an owner two levels above the place; the objects below are freed too, and the store stops the program (assignment-evaluation-order).
+Type
+    TInner Struct
+        FV Array[1..3] Integer := Fill(1)
+    ;
+    TMiddle Struct
+        FInner Own<TInner>
+    ;
+    TOuter Struct
+        FMiddle Own<TMiddle>
+    ;
+
+State
+    O TOuter := TOuter(FMiddle := New(TMiddle(FInner := New(TInner))))
+    K TOuter := TOuter(FMiddle := New(TMiddle(FInner := New(TInner))))
+;
+
+ChangeOuter Integer :
+    O.FMiddle := New(TMiddle(FInner := New(TInner)))
+    K.FMiddle := New(TMiddle(FInner := New(TInner)))
+    Return 2
+;
+
+Main :
+    O.FMiddle.FInner.FV[ChangeOuter] := 10
+    PutLn(K.FMiddle.FInner.FV[2])
+;

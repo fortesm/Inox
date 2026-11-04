@@ -156,9 +156,14 @@ exception objects on the heap, will not show the cost.
 - **In:** the analyzed AST and `SemanticResult`. **Out:** the LLVM IR text
   of the program.
 - **Guarantees:** valid IR or a clear stop (E15): "valid Inox, not yet
-  lowered" is a reported gap, never a crash.
+  lowered" is a reported gap, never a crash. An assignment evaluates R,
+  then its target once, then stores (CANON-5, r3.124); a place reached
+  through a pointer whose object a later index or slice bound may free is
+  checked against the object's generation before it is used (CANON-25,
+  `FunctionEmitterPointers.cpp`, the place guards).
 - **Never:** derives a type, resolves a name, re-checks a rule, tests the
-  host OS outside `ExceptionAbi` (E11, E12).
+  host OS outside `ExceptionAbi` (E11, E12); uses an address after code
+  that may have freed its object without that check.
 - **Owner:** `codegen/`.
 
 ### 7. Driver
@@ -169,7 +174,13 @@ exception objects on the heap, will not show the cost.
 
 ### 8. Runtime (libinoxrt)
 - **Guarantees:** the faults of CANON-19, String and File ownership, the
-  owned blocks and Link generations of CANON-25.
+  owned blocks and Link generations of CANON-25. A block is never returned
+  to the system while the program runs, its generation grows at every free
+  and is kept when the block is handed out again: a header is always
+  readable, and a stale generation is never matched, also after reuse (the
+  generated checks of Links, `with` targets and guarded places rely on it).
+  `INOX_OWN_QUARANTINE` builds a checking runtime for the tests that never
+  reuses a block (`tools/owner_safety_check.py`).
 - **Limits today:** single-threaded: its state is global and its reference
   counts are not atomic (concurrency comes through its own change).
 - **Owner:** `src/runtime/`.

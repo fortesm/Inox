@@ -633,14 +633,27 @@ call or an index, and follows the first-appearance rule (ADR-0009).
 - **THEN** it is rejected (tests/diagnostics/assignment-in-expression.inox, tests/diagnostics/assignment-in-condition.inox, tests/diagnostics/assignment-in-initializer.inox)
 
 ### Requirement: CANON-5 Compound assignment
-`L += R`, `-=`, `*=`, `/=` and `^=` SHALL mean `L := L op R` with L evaluated
-once (ADR-0012). The target exists already (a variable, field, or element
-with side-effect-free indices); the form is not chainable and is not a read
-of L. `/=` divides as `/` does, an Integer too (r3.95); `^=` is power.
+`L += R`, `-=`, `*=`, `/=` and `^=` SHALL update L with `L op R`, in the
+order of an assignment (ADR-0012, r3.124). The target exists already (a
+variable, field, or element with side-effect-free indices); the form is not
+chainable and is not a read of L. `/=` divides as `/` does, an Integer too
+(r3.95); `^=` is power.
 
 #### Scenario: Compound forms
 - **WHEN** a program uses the five forms
 - **THEN** each updates its target (tests/runtime/compound-assignment.inox, `N /= 5` in tests/runtime/integer-slash.inox); a chain is an error (tests/diagnostics/compound-chained.inox)
+
+### Requirement: CANON-5 Order of an assignment
+`L := R` SHALL evaluate R once, then L once as a place, then store R's
+value there; R's value lives until the store. `L op= R` SHALL evaluate R
+once, then L once, read L, apply op and store into that same place. A call
+in R that replaces or frees what L reaches therefore never leaves the store
+a stale place: L is reached after it. A failure of L comes after R's
+effects, which stay.
+
+#### Scenario: R before the target
+- **WHEN** R replaces the owner L crosses, changes the index of L, raises, or changes the storage it was read from
+- **THEN** the store reaches L as R left it, once, and R's value is the one it read (tests/runtime/assignment-target-owner-replaced.inox, tests/runtime/compound-assignment-target-owner-replaced.inox, tests/runtime/compound-assignment-value-before-target.inox, tests/runtime/compound-assignment-reference-index.inox, tests/runtime/compound-assignment-target-evaluated-once.inox, tests/runtime/assignment-value-raises.inox, tests/runtime/assignment-value-borrowed-before-target.inox, tests/runtime/assignment-target-trap-after-value.inox)
 
 ### Requirement: CANON-5 Safe inference
 Inference SHALL pick the most general safe type of a family, never a narrow
@@ -2014,6 +2027,17 @@ is reached through `Link(X)`, empty when it is `None`.
 #### Scenario: Not compared, Option reached through a Link
 - **WHEN** two pointers are compared with `=`, or an Option field is read directly
 - **THEN** it is rejected (tests/diagnostics/pointer-compared.inox, tests/diagnostics/pointer-option-direct.inox)
+
+### Requirement: CANON-25 No access through an invalidated object
+No place SHALL be read or written after the object that holds its storage
+was freed or replaced, in every build, including when that happens while
+the place itself is evaluated (a call in an index). Such an access stops the
+program (`use of a freed object or an empty Link`) before it happens; it
+never reaches the old address, nor another object that reuses its memory.
+
+#### Scenario: Invalidated while the place is evaluated
+- **WHEN** an index or a slice bound replaces the owner a place crosses, directly, two levels above, or through a Link
+- **THEN** the program stops before the access (tests/runtime/assignment-target-invalidated-by-index.inox, tests/runtime/read-place-invalidated-by-index.inox, tests/runtime/assignment-target-nested-owner-invalidated.inox, tests/runtime/read-slice-invalidated-by-bound.inox, tests/runtime/assignment-target-link-invalidated-by-index.inox, tests/runtime/assignment-target-option-link-invalidated.inox)
 
 ### Requirement: CANON-25 Owners in routines and contracts
 A value parameter of an owner type SHALL belong to the routine, which frees

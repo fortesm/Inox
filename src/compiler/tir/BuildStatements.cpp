@@ -113,8 +113,13 @@ const Stmt* Builder::expressionStatement(const ast::ExpressionStatement& source)
         }
         Stmt* result = make(StmtKind::Assign, source);
         result->target = place(assignment.left());
-        result->value = this->expression(assignment.right());
-        result->compound = source.isCompoundAssignment();
+        if (source.isCompoundAssignment()) {
+            // `L := L op R` of phase 2b (CANON-5).
+            result->compound = true;
+            result->value = compoundOperation(assignment, result->target);
+        } else {
+            result->value = this->expression(assignment.right());
+        }
         result->invariants = invariants(source, &assignment);
         recordAssignment(assignment, result, false);
         return result;
@@ -124,6 +129,26 @@ const Stmt* Builder::expressionStatement(const ast::ExpressionStatement& source)
     result->discard = source.isDiscard();
     result->invariants = invariants(source, nullptr);
     return result;
+}
+
+// `L op R` of `L op= R`: L is read through the statement's own target,
+// never as a second place; the checks the analysis asked for apply to the
+// result on its way into L.
+const Expr* Builder::compoundOperation(const ast::BinaryExpression& assignment, const Place* target)
+{
+    const auto& combined = static_cast<const ast::BinaryExpression&>(assignment.right());
+    if (astNodes_ != nullptr) {
+        // The written L on the right is L again.
+        astNodes_->recordWrittenAgain(combined.left(), assignment.left());
+    }
+    Expr* operation = make(ExprKind::Binary, typeOf(combined), combined);
+    operation->binary = binaryOp(combined.op());
+    operation->operands = arena_.array<const Expr*>(2);
+    Expr* read = make(ExprKind::Read, target->type, combined.left());
+    read->place = target;
+    operation->operands[0] = read;
+    operation->operands[1] = expression(combined.right());
+    return checked(combined, operation);
 }
 
 const Stmt* Builder::declaration(const ast::VarStatement& source)

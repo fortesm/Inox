@@ -136,6 +136,7 @@ std::string FunctionEmitter::emitSlice(const ast::CallExpression& call)
 {
     std::string storage;
     TypeRef elementType = nullptr;
+    beginSliceGuard(call);
     const SliceParts source = emitSliceSource(*call.arguments()[0], storage, elementType);
     const auto bound = [&](const ast::Expression& expression, const std::string& fallback) {
         if (expression.kind() == ast::AstNodeKind::IdentifierExpression) {
@@ -148,6 +149,7 @@ std::string FunctionEmitter::emitSlice(const ast::CallExpression& call)
     };
     const std::string low = bound(*call.arguments()[1], source.low);
     const std::string high = bound(*call.arguments()[2], source.high);
+    endPlaceGuard();
     const std::string lowOk = "%tmp" + std::to_string(nextTemporary_++);
     const std::string highOk = "%tmp" + std::to_string(nextTemporary_++);
     const std::string orderOk = "%tmp" + std::to_string(nextTemporary_++);
@@ -184,8 +186,10 @@ FunctionEmitter::ElementAddress FunctionEmitter::emitElementAddress(const ast::C
     if (isSliceType(typeOf(base))) {
         std::string storage;
         TypeRef elementType = nullptr;
+        beginElementGuard(call);
         const SliceParts slice = emitSliceSource(base, storage, elementType);
         std::string index = emitExpression(*call.arguments()[1]);
+        endPlaceGuard();
         if (isUInt64Type(typeOf(*call.arguments()[1]))) {
             // Above Int64.Max is outside every slice (change uint64).
             index = emitRangeCheck(index, IntegerRange{0, std::numeric_limits<std::int64_t>::max()}, 9);
@@ -207,9 +211,11 @@ FunctionEmitter::ElementAddress FunctionEmitter::emitElementAddress(const ast::C
     if (!layout) {
         throw CodegenUnsupported("indexing of this value is not lowered yet");
     }
+    beginElementGuard(call);
     const std::string basePointer =
         throughPointer ? emitPointerTarget(base) : emitArrayBaseAddress(base, *layout);
     const std::string index = emitExpression(*call.arguments()[1]);
+    endPlaceGuard();
     // A UInt64 index above Int64.Max is a negative i64: a low bound of at
     // least 0 rejects it (change uint64).
     const std::int64_t low =

@@ -1,0 +1,120 @@
+examples/associated-methods.inox: reordering
+examples/bank-atm.inox: redundant-removed, reordering
+examples/bank/Main.inox: redundant-removed
+examples/bitwise.inox: reordering
+examples/cards.inox: reordering
+examples/contracts.inox: redundant-removed, reordering
+examples/control-flow.inox: reordering
+examples/edit.inox: reordering
+examples/exceptions-retry.inox: reordering
+examples/file_io.inox: reordering
+examples/for-range-leave-continue.inox: reordering
+examples/for-range-step.inox: reordering
+examples/generics.inox: redundant-removed, reordering
+examples/pointers-navigator.inox: redundant-removed, redundant-removed:call
+examples/pointers-tree.inox: reordering
+examples/repeat-flexible-end.inox: reordering
+examples/repeat-flexible-middle.inox: reordering
+examples/repeat-flexible-start.inox: reordering
+examples/repeat-leave-continue.inox: reordering
+examples/repeat-until.inox: reordering
+examples/reuse-army.inox: redundant-removed
+examples/reuse-inventory.inox: redundant-removed, reordering
+examples/reuse-registry.inox: redundant-removed
+examples/reuse-shapes.inox: redundant-removed
+examples/showcase.inox: reordering
+examples/strings.inox: reordering
+examples/while-leave-continue.inox: reordering
+examples/while-loop.inox: reordering
+tests/codegen/llvm-string-append-smoke.inox: reordering
+tests/eh-lifetime/string-cleanup.inox: reordering
+tests/integration/showcase/account-showcase.inox: reordering
+tests/modules/encapsulated-account/Main.inox: redundant-removed
+tests/modules/library-names-unbound/Main.inox: compound-operation, reordering
+tests/parser/valid/canonical-type-and-var.inox: reordering
+tests/parser/valid/type-struct-var.inox: reordering
+tests/parser/valid/with-scope.inox: reordering
+tests/runtime/array-fill.inox: reordering
+tests/runtime/array-index-out-of-bounds.inox: reordering
+tests/runtime/array-of-struct-out-of-bounds.inox: reordering
+tests/runtime/array-of-struct.inox: reordering
+tests/runtime/arrays.inox: redundant-removed, reordering
+tests/runtime/builtin-type-methods.inox: reordering
+tests/runtime/byte-conversion-runtime-range.inox: reordering
+tests/runtime/byte-overflow.inox: reordering
+tests/runtime/chain-and-with.inox: reordering
+tests/runtime/chained-assignment.inox: reordering
+tests/runtime/char-at-out-of-range.inox: reordering
+tests/runtime/char-conversion-range.inox: reordering
+tests/runtime/char-conversion-surrogate.inox: reordering
+tests/runtime/chars.inox: reordering
+tests/runtime/compound-assignment.inox: redundant-removed
+tests/runtime/contract-invariant-construction.inox: redundant-removed
+tests/runtime/contract-invariant-field.inox: redundant-removed
+tests/runtime/contract-invariant-method.inox: redundant-removed
+tests/runtime/contract-invariant-ref-mut.inox: redundant-removed
+tests/runtime/contract-loop-invariant.inox: redundant-removed
+tests/runtime/contract-loop-variant-negative.inox: redundant-removed
+tests/runtime/contract-loop-variant.inox: redundant-removed
+tests/runtime/contract-override-pre.inox: redundant-removed
+tests/runtime/contract-pos-violated.inox: redundant-removed
+tests/runtime/contract-pre-violated.inox: redundant-removed
+tests/runtime/contract-result-violated.inox: redundant-removed
+tests/runtime/contracts-strings.inox: reordering
+tests/runtime/contracts.inox: redundant-removed, reordering
+tests/runtime/dateutils.inox: compound-operation, reordering
+tests/runtime/decimals.inox: reordering
+tests/runtime/discard.inox: redundant-removed
+tests/runtime/enum-conversion-range.inox: reordering
+tests/runtime/enums.inox: reordering
+tests/runtime/files-close-on-exception.inox: reordering
+tests/runtime/files-not-found.inox: reordering
+tests/runtime/files-text.inox: reordering
+tests/runtime/fixed-width-integers.inox: reordering
+tests/runtime/float-to-integer-range.inox: reordering
+tests/runtime/generics-contracts.inox: reordering
+tests/runtime/generics-routines.inox: reordering
+tests/runtime/generics-structs.inox: redundant-removed, reordering
+tests/runtime/get-char.inox: reordering
+tests/runtime/integer-slash.inox: reordering
+tests/runtime/loop-contracts-continue.inox: reordering
+tests/runtime/loop-contracts-exception.inox: reordering
+tests/runtime/loop-contracts-leave.inox: reordering
+tests/runtime/loop-contracts-nested.inox: reordering
+tests/runtime/loop-contracts-until.inox: reordering
+tests/runtime/method-decimal-argument.inox: redundant-removed
+tests/runtime/natural-implicit-check.inox: reordering
+tests/runtime/not-equal-operator.inox: reordering
+tests/runtime/pointers-more.inox: reordering
+tests/runtime/pointers-strings.inox: reordering
+tests/runtime/pointers.inox: redundant-removed, reordering
+tests/runtime/predefined-names.inox: redundant-removed
+tests/runtime/range-types.inox: reordering
+tests/runtime/ranges.inox: reordering
+tests/runtime/read-only-through-owners.inox: redundant-removed, reordering
+tests/runtime/ref-mut-range.inox: reordering
+tests/runtime/ref-parameters.inox: redundant-removed, reordering
+tests/runtime/sets.inox: reordering
+tests/runtime/slice-bounds-runtime.inox: reordering
+tests/runtime/slice-index-out-of-bounds.inox: reordering
+tests/runtime/slices.inox: reordering
+tests/runtime/state-aggregates.inox: redundant-removed
+tests/runtime/state-lowering.inox: reordering
+tests/runtime/state-section-boundaries.inox: redundant-removed, reordering
+tests/runtime/string-borrowed-read.inox: reordering
+tests/runtime/strings-aggregates.inox: reordering
+tests/runtime/strings-exception-cleanup.inox: reordering
+tests/runtime/strings-getln.inox: reordering
+tests/runtime/strings-ordering.inox: reordering
+tests/runtime/strings.inox: reordering
+tests/runtime/struct-array-field.inox: reordering
+tests/runtime/struct-initializers.inox: reordering
+tests/runtime/struct-nested.inox: reordering
+tests/runtime/uint64.inox: redundant-removed
+tests/runtime/with-places.inox: redundant-removed, reordering
+tests/semantic/valid/grouped-local-declarations.inox: reordering
+tests/semantic/valid/method-and-struct-value.inox: reordering
+tests/tir/calls.inox: reordering
+tests/tir/places.inox: redundant-removed, reordering
+tests/tir/statements.inox: redundant-removed
+ir_difference_kinds: compound-operation 2, redundant-removed 37, redundant-removed:call 1, reordering 95

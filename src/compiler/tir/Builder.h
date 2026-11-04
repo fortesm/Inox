@@ -25,6 +25,9 @@ namespace inox::compiler::tir::detail {
 using semantic::CallKind;
 using semantic::CallMeaning;
 
+// The TIR's operator for an AST binary operator (not Assign).
+BinaryOp binaryOp(ast::BinaryOperator op);
+
 class Builder {
 public:
     Builder(Program& program, const semantic::SemanticResult& semantics, AstNodeMap* astNodes)
@@ -43,6 +46,7 @@ private:
     Expr* slice(const ast::CallExpression& call, const CallMeaning& meaning, TypeRef type);
     Expr* check(const ast::CallExpression& call);
     Expr* builtin(const ast::CallExpression& call, const CallMeaning& meaning, TypeRef type);
+    const Expr* compoundOperation(const ast::BinaryExpression& assignment, const Place* target);
     semantic::StringFunction stringFunction(const ast::CallExpression& call) const;
     const Expr* constantLiteral(std::int64_t value, TypeRef type, ast::SourcePosition position);
     const Expr* checked(const ast::Expression& source, const Expr* value);

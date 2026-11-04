@@ -34,6 +34,7 @@ private:
     void problem(const char* what);
     void untyped(const Expr& expression);
     void notAPlace(const Place* target);
+    static bool readsTarget(const Stmt& statement);
 
     const Routine* routine_ = nullptr;
     std::unordered_set<const semantic::Symbol*> declared_;
@@ -73,6 +74,20 @@ void Verifier::notAPlace(const Place* target)
         what += exprKindName(target->value->kind);
     }
     problem(what.c_str());
+}
+
+// CANON-5: the operation of `L op= R` reads L through the statement's own
+// target, past the checks on its way in.
+bool Verifier::readsTarget(const Stmt& statement)
+{
+    const Expr* value = statement.value;
+    while (value != nullptr && (value->kind == ExprKind::RangeCheck || value->kind == ExprKind::NaturalCheck) &&
+           value->operands.size() == 1) {
+        value = value->operands[0];
+    }
+    return value != nullptr && value->kind == ExprKind::Binary && value->operands.size() == 2 &&
+           value->operands[0] != nullptr && value->operands[0]->kind == ExprKind::Read &&
+           value->operands[0]->place == statement.target;
 }
 
 void Verifier::declare(const semantic::Symbol* symbol, const char* what)
@@ -161,6 +176,9 @@ void Verifier::statement(const Stmt& statement)
         }
         expression(statement.value);
         place(statement.target);
+        if (statement.compound && !readsTarget(statement)) {
+            problem("a compound assignment that does not read its own target");
+        }
         break;
     case StmtKind::Declare:
         if (statement.type == nullptr) {

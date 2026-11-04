@@ -194,6 +194,11 @@ they are rejected now.)
   positions as the parser did; the analyzer recognizes a `with` binding by
   its name's prefix `__with` (F6 debt); `codegen/AstQueries` holds AST walks that are not
   specific to codegen; the parser never builds `BlockStatement`.
+- Assignments (r3.124, CANON-5 and CANON-25): R is evaluated before the
+  target, a compound target once, and a place whose object an index frees
+  while it is evaluated stops the program. Reference arguments whose
+  object a later argument frees are not checked yet (the next change,
+  before F6 step 4).
 - The typed IR (F6, change `typed-ir`) is built and verified for every
   program that is compiled and printed by `--dump-tir`; since step 2
   (r3.122) code generation takes the types, symbols and constants from it

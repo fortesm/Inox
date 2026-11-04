@@ -53,8 +53,8 @@ mode for the tests, design). `docs/ARCHITECTURE.md`, `docs/STATUS.md`.
 
 Risk: high (memory ownership; changes observable behavior).
 
-Status: **design approved with amendments** (Marcelo Fortes, 2026-11-04;
-`design.md`, "Decisions"); implementation next.
+Status: **implemented** (canon r3.124); design approved with amendments
+(Marcelo Fortes, 2026-11-04; `design.md`, "Decisions").
 
 ## What Changes
 

@@ -1,0 +1,30 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-5: a compound target is evaluated once: the method on its path runs once (assignment-evaluation-order).
+Type
+    TPoint Struct
+        FX Integer := 0
+    ;
+    TBox Struct
+        FPoint Own<TPoint>
+    ;
+
+State
+    Calls Integer := 0
+;
+
+TBox.Current(Self mut) Link<TPoint> :
+    Calls += 1
+    Return Link(Self.FPoint)
+;
+
+Main :
+    Box := TBox(FPoint := New(TPoint))
+    Box.Current.FX += 5
+    PutLn(Calls, " ", Value(Box.Current).FX)
+;

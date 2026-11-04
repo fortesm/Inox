@@ -96,9 +96,11 @@ released as on any other exit.
    `Link`, `Value(P)`) keeps, from the moment its object is reached, the
    object's header and the generation read then (`LinkParts`, as `with`
    does). Before each access through it that follows the evaluation of
-   code that may run a routine (not side-effect free, the analysis's
-   `isSideEffectFree`), the generation is read again and compared; a
-   different one stops the program (fault 16). Freeing an owner frees
+   code that may run a routine (an index or slice bound for which
+   codegen's existing `mayRunRoutine` holds), the generation is read again
+   and compared; a different one stops the program (fault 16). Each element
+   or slice access opens one guard and closes it, on a stack of the
+   emitter (`placeGuards_`), so the recursive frames hold no new local. Freeing an owner frees
    what it owns, each with its generation raised, so the nearest pointer
    on the path covers the owners above it. The check stands before every
    access, a load as well as a store (a read of a place, the read of a
@@ -123,10 +125,16 @@ released as on any other exit.
    clone is never evaluated as a place of its own; the duplicate index
    evaluation and range check go). The operator is applied to two values:
    the arithmetic now emitted from two AST operands is reached through
-   one function that takes the operator, the type and the two values. In
-   the typed IR, the compound `Assign` gets `op` and R as its value (the
-   target is its place); the printer shows it, and the TIR snapshot
-   difference is declared. AST node types do not change.
+   one function that takes the binary node (its operator and its operands'
+   types) and the two values (`emitBinaryValues`), with the checks of the
+   result on its way out (`finishValue`). In the typed IR, the compound
+   `Assign`'s value is the operation, whose first operand reads the
+   statement's own target place (the same `Place`, not a second one built
+   from the copy), wrapped in the checks the analysis asked for (a
+   Natural, a Range): the analysis types `L op R` and checks its result,
+   so R alone would lose both. The verifier requires that read; the AST
+   node map gives the copy of L the TIR nodes of L, node by node. The
+   printed form does not change. AST node types do not change.
 6. **Detection of stale accesses (tests only).** A checking build of
    libinoxrt (`INOX_OWN_QUARANTINE`) never reuses a freed block and
    poisons its payload (`ASAN_POISON_MEMORY_REGION`); the programs of
@@ -134,7 +142,11 @@ released as on any other exit.
    (`tools/owner_safety_check.py`, beside `string_leak_check.py`), so an
    access to a freed object is an ASan report, not a changed output. The
    release runtime is unchanged. Every reproduction is checked both ways:
-   its output or trap, and no report.
+   its output or trap, and no report. The sanitizer instruments only the
+   functions marked `sanitize_address`, which the compiler does not emit,
+   so the tool marks every defined function of the IR before compiling it;
+   with main's compiler the reproductions then give `use-after-poison`
+   reports, and with this change none.
 
 Outside this change (approved, Q1): reference arguments and receivers
 (`emitArguments`, `emitReferenceArgument`) get a change of their own,
@@ -169,7 +181,35 @@ temporaries and labels, into:
 A program may fall in several of the first four; it is listed with each.
 The classification shows where the code changed, not that it is right:
 the behavioral tests and the owner safety check do that. The typed IR
-snapshot changes only for compound assignments.
+snapshot does not change: the printed form of a compound assignment is the
+same.
+
+## Measured (2026-11-04, clang Debug, Linux)
+
+- 1065 programs of the IR snapshot: 119 differ in their LLVM IR; every
+  difference is declared in `ir-snapshot-expect.json` and classified in
+  `ir-difference-kinds.txt` (`tools/ir_difference_kinds.py`): reordering
+  95, redundant evaluation removed 37, compound operation 2 (a String's
+  concatenation replaced by its append), unexpected 0. No existing program
+  needs a validity check: none has an index that may run a routine on a
+  path through a pointer. In `examples/pointers-navigator.inox` the
+  removed evaluation is a call: `Nav.Current.FAge += 1` called the method
+  `Current` twice, and now calls it once.
+- The typed IR snapshot is identical; the LLVM IR of Release is the same
+  as Debug's, with the same declared differences.
+- Suite 1111/1111, in Debug and under ASan+UBSan with a 1 MiB stack; fuzz
+  seeds 1 and 7; differential; backend_gaps OK=54; string leak, eh balance.
+- Stack: no frame on the recursion paths grows (the guards are a stack of
+  the emitter, opened and closed out of line).
+- Memory, Release `--emit-llvm`, peak RSS main against this change:
+  `math-expressions.inox` 11,400 / 11,336 KB, `dateutils.inox` 11,396 /
+  11,360 KB.
+- `tools/owner_safety_check.py`: 26 programs, no report; with main's
+  compiler 9 fail, 8 of them with an AddressSanitizer report.
+- Found on the way: `tools/string_leak_check.py` compiles the generated IR
+  with `-fsanitize=address` but does not mark its functions, so the
+  generated code is not instrumented there either (its leak detection is
+  not affected). Not changed here.
 
 ## Decisions (Marcelo Fortes, 2026-11-04)
 

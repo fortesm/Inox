@@ -63,6 +63,9 @@ public:
     }
     void recordMember(const ast::Expression& node, const Place* field) { entries_[&node].member = field; }
     void recordName(const ast::Expression& node) { entries_[&node].name = true; }
+    // `copy` is `original` written again (the `L` of `L := L op R`, phase
+    // 2b): it became the same TIR nodes, node by node.
+    void recordWrittenAgain(const ast::Expression& copy, const ast::Expression& original);
     void recordFieldValue(const ast::Expression& node, const Expr* construct, std::uint32_t field)
     {
         entries_[&node].construct = construct;
@@ -87,6 +90,8 @@ public:
     // object P points at (a Through place, the only one an AST node
     // becomes); None for anything else.
     semantic::BuiltinOp builtinOf(const ast::Expression& node) const;
+    // Whether the node is a slice of an array or of a slice (`A[L..H]`).
+    bool isSlice(const ast::Expression& node) const;
 
     // Debug agreement with the analysis's record: the same type, or one of
     // the two differences the TIR makes on purpose. An operation without a

@@ -1,0 +1,31 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-5: R raises before the target is reached; the element keeps its value and R's effects stay, with no rollback (assignment-evaluation-order).
+State
+    I Integer := 1
+    Steps Integer := 0
+    V Array[1..3] String := Fill("")
+;
+
+Fail String :
+    Steps += 1
+    Raise RangeError
+    Return "never"
+;
+
+Main :
+    V[1] := "kept"
+    try
+        V[I] := Fail
+    except
+        On RangeError
+            PutLn("caught ", Steps)
+        ;
+    ;
+    PutLn(V[1])
+;
