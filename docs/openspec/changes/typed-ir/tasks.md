@@ -84,24 +84,17 @@ Measured at step 3 (r3.123; clang, Linux):
   (`emitExpressionValue` 6408 -> 6024 bytes, `emitPlace` 920 -> 888,
   `lastPointerOnPath` 184 -> 152).
 
-Left for later steps (found at step 3; their step is the maintainer's
-to set):
-
-- Conversions recognized by name: `String(X)` and the target type
-  resolved from the written name (`types().lookup`, three sites), which
-  the TIR's `Convert` carries; the audit had proposed them for step 3.
-- The type named in `Low(T)` and `High(T)` (`enumTypeNamed`), which the
-  TIR carries as a folded builtin with its `TypeValue` operand.
-- The module intrinsics found by name (`intrinsicCallOf`), which the
-  TIR's `Intrinsic` carries.
+- [x] 3.2 Review of the PR (Marcelo Fortes, 2026-11-04): step 3 accepted; the file functions are recognized by an explicit list of operations, not by their position in `BuiltinOp`; the resolutions left are assigned to steps 4 and 5 (below)
 
 ## 4. Places and encodings
 
 - [ ] 4.1 `__member`, `__index`, `__slice`, `__set`, `__check`, `__pure` as TIR nodes; `WithBinding` places; the analyzer's `__with` prefix test removed
+- [ ] 4.2 Resolutions by name assigned to step 4 (Marcelo Fortes, 2026-11-04): conversions (`String(X)` recognized by its name; the target type resolved from the written name, `conversionTarget` and the other `types().lookup` of a callee) from the TIR's `Convert`; the type named in `Low(T)` and `High(T)` (`enumTypeNamed`) from the TIR; the module intrinsics (`intrinsicCallOf`, `findModuleIntrinsic`) from the TIR's `Intrinsic`. If the step proves too wide it may be split by a new decision, without taking work from step 5
 
 ## 5. Codegen walks only the TIR
 
-- [ ] 5.1 No AST read in `codegen/`; side tables serving only codegen removed; exit criterion: `tools/codegen_decisions.py --zero`, no `__with` test, LLVM IR snapshot identical; D5 closed; `docs/ARCHITECTURE.md`
+- [ ] 5.1 The types and routines the module emitter resolves by name (`LlvmIrEmitter.cpp`) and the entry found as `Main`, from `tir::Program` (assigned to step 5, Marcelo Fortes, 2026-11-04)
+- [ ] 5.2 No AST read in `codegen/`; side tables serving only codegen removed; exit criterion: `tools/codegen_decisions.py --zero`, no `__with` test, LLVM IR snapshot identical; D5 closed; `docs/ARCHITECTURE.md`
 
 ## 6. Gates (every step)
 
