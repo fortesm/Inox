@@ -22,12 +22,25 @@
 
 namespace inox::compiler::codegen::detail {
 
-// A function of Std.Files / Std.IOUtils: the last builtins, from OpenRead
-// (semantic/CallMeaning.h).
+// A function of Std.Files / Std.IOUtils.
 bool FunctionEmitter::isFileCall(const ast::CallExpression& call) const
 {
-    const semantic::BuiltinOp op = builtinOf(call);
-    return op >= semantic::BuiltinOp::OpenRead && op <= semantic::BuiltinOp::RenameFile;
+    switch (builtinOf(call)) {
+    case semantic::BuiltinOp::OpenRead:
+    case semantic::BuiltinOp::Create:
+    case semantic::BuiltinOp::OpenAppend:
+    case semantic::BuiltinOp::FileReadLn:
+    case semantic::BuiltinOp::Eof:
+    case semantic::BuiltinOp::Close:
+    case semantic::BuiltinOp::Write:
+    case semantic::BuiltinOp::WriteLn:
+    case semantic::BuiltinOp::Exists:
+    case semantic::BuiltinOp::DeleteFile:
+    case semantic::BuiltinOp::RenameFile:
+        return true;
+    default:
+        return false;
+    }
 }
 
 std::string FunctionEmitter::fileCallLlvmType(const ast::CallExpression& call) const

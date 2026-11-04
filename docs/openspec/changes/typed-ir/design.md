@@ -336,9 +336,16 @@ inventory, and replace the textual classification of builtins by
   target type resolved from the written name, three sites), the type
   named in `Low(T)` and `High(T)` (`enumTypeNamed`), the module
   intrinsics found by name (`intrinsicCallOf`), and the two types the
-  module emitter resolves by name (`LlvmIrEmitter.cpp`). The audit
-  proposed the conversions for step 3; their step is the maintainer's to
-  set.
+  module emitter resolves by name (`LlvmIrEmitter.cpp`).
+- **Review (Marcelo Fortes, 2026-11-04).** Step 3 accepted. A file
+  function is recognized by the list of its operations, never by a range
+  of `BuiltinOp`, whose order carries no meaning. The resolutions left
+  are assigned: conversions, the type named in `Low(T)`/`High(T)` and
+  the module intrinsics to step 4, beside the encodings (codegen takes
+  them from `Convert`, the folded builtin's operand and `Intrinsic`, with
+  no `types().lookup` and no `findModuleIntrinsic`); the names the module
+  emitter resolves and `Main` to step 5. Step 4 may be split by a new
+  decision if it proves too wide, never by moving work to step 5.
 - **Inventory.** `tools/codegen_decisions.py` also counts the names
   codegen resolves itself (`resolutions`): a type by its name, a routine
   in the signature map, a module intrinsic by its name, an encoding by
