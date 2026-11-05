@@ -20,10 +20,10 @@ namespace inox::compiler::support {
 
 inline constexpr unsigned kVersionMajor = 0;    // 0..99
 inline constexpr unsigned kVersionMinor = 4;    // 0..999
-inline constexpr unsigned kVersionRelease = 0;  // 0..999
+inline constexpr unsigned kVersionRelease = 1;  // 0..999
 // kBuildNumber (0..9999) comes from InoxBuildNumber.h.
 inline constexpr std::string_view kVersionStage = "pre-alpha";
-inline constexpr std::string_view kCanonRevision = "r3.130";
+inline constexpr std::string_view kCanonRevision = "r3.131";
 
 // "0.4.0.206"
 inline std::string versionText()

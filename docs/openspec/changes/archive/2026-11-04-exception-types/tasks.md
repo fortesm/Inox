@@ -9,4 +9,4 @@
 ## 2. Gates
 
 - [x] 2.1 Suite (Debug, Release, ASan+UBSan), LLVM IR and typed IR snapshots identical, `tools/stack_frames.py`, fuzz 1 and 7, differential, backend_gaps, owner_safety_check, openspec, constitution_check, version_check
-- [ ] 2.2 CI (label `refactor`), ticked when green
+- [x] 2.2 CI (label `refactor`)

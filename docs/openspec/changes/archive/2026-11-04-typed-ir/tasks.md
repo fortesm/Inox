@@ -111,5 +111,5 @@ Measured at step 4 (r3.127; clang, Linux):
 
 ## 6. Gates (every step)
 
-- [ ] 6.1 Suite, IR snapshot without any exception, `tools/stack_frames.py`, fuzz 1 and 7, differential, backend_gaps (0 BUG), openspec, constitution_check, version_check
-- [ ] 6.2 CI: sanitized suite (1 MiB), Windows, `windows-stack` (963/451 KiB), `ir-snapshot` (label `refactor`)
+- [x] 6.1 (PR #138; the one exception of the IR snapshot, two programs, approved by Marcelo Fortes, 2026-11-04) Suite, IR snapshot without any exception, `tools/stack_frames.py`, fuzz 1 and 7, differential, backend_gaps (0 BUG), openspec, constitution_check, version_check
+- [x] 6.2 CI (PR #138, green): sanitized suite (1 MiB), Windows, `windows-stack` (963/451 KiB), `ir-snapshot` (label `refactor`)

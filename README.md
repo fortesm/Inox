@@ -120,6 +120,6 @@ The [compiler architecture](docs/ARCHITECTURE.md) describes the phases, responsi
 
 ## Project information
 
-**Version:** 0.4.0 (pre-alpha)  
+**Version:** 0.4.1 (pre-alpha)  
 **Maintainer:** Marcelo Fortes  
 **License:** [Mozilla Public License 2.0](LICENSE)
