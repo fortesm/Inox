@@ -75,7 +75,7 @@ struct StructField {
     // literal every element gets.
     bool fillDefault = false;
     // The default resolved (of each element, for `Fill`), when hasDefault.
-    FieldDefault resolvedDefault;
+    FieldDefault resolvedDefault{};
     // r3.82: the field's type is a type parameter of a generic struct
     // (`FValue T`); it never has an implicit value, whatever T becomes.
     bool fromTypeParameter = false;
@@ -133,6 +133,21 @@ public:
     bool isString() const noexcept { return kind_ == TypeKind::String; }
     bool isFile() const noexcept { return kind_ == TypeKind::File; }
     bool isException() const noexcept { return kind_ == TypeKind::Exception; }
+    // An exception type: the type it specializes (null for Exception) and
+    // the id the runtime transports.
+    const Type* exceptionParent() const noexcept { return exceptionParent_; }
+    std::uint64_t exceptionId() const noexcept { return exceptionId_; }
+    // An exception type that is `ancestor` or one of its descendants: what
+    // `On ancestor` catches.
+    bool isExceptionOf(const Type* ancestor) const noexcept
+    {
+        for (const Type* current = this; current != nullptr; current = current->exceptionParent_) {
+            if (current == ancestor) {
+                return true;
+            }
+        }
+        return false;
+    }
     bool isStruct() const noexcept { return kind_ == TypeKind::Struct; }
     bool isArray() const noexcept { return kind_ == TypeKind::Array; }
     bool isSlice() const noexcept { return kind_ == TypeKind::Slice; }
@@ -177,6 +192,8 @@ private:
     const Type* element_ = nullptr;
     std::vector<StructField> fields_;
     std::vector<std::string> literals_;
+    const Type* exceptionParent_ = nullptr;
+    std::uint64_t exceptionId_ = 0;
 };
 
 // The name of a type, or the empty text for a type not known (null): the

@@ -8,7 +8,6 @@
 #include "ExceptionAbi.h"
 
 #include "LlvmIrEmitter.h"
-#include "../exceptions/ExceptionTypes.h"
 #include "../support/Platform.h"
 
 namespace inox::compiler::codegen::detail {
@@ -68,15 +67,6 @@ const ExceptionAbi& hostExceptionAbi()
         return msvc;
     }
     return itanium;
-}
-
-std::uint64_t exceptionTypeId(std::string_view name)
-{
-    const auto* info = exceptions::findExceptionType(name);
-    if (info == nullptr) {
-        throw CodegenUnsupported("unknown exception type for LLVM emission: " + std::string(name));
-    }
-    return info->typeId;
 }
 
 } // namespace inox::compiler::codegen::detail

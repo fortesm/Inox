@@ -11,7 +11,6 @@
 #include "../support/StringLiteral.h"
 
 #include "SemanticSupport.h"
-#include "../exceptions/ExceptionTypes.h"
 
 #include <algorithm>
 #include <array>
@@ -571,33 +570,35 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         }
 
         bool catchesAll = false;
-        std::unordered_map<std::string, bool> seenHandlers;
-        std::vector<std::string> precedingHandlerTypes;
+        std::vector<TypeRef> precedingHandlerTypes;
         for (const auto& handler : tryStatement.handlers()) {
-            if (!isExceptionType(handler.typeName)) {
+            const TypeRef handlerType = exceptionTypeNamed(handler.typeName);
+            if (handlerType == nullptr) {
                 throw SemanticError("unknown exception type in On handler: " + handler.typeName);
             }
-            const std::string normalizedType = normalizeName(handler.typeName);
-            if (seenHandlers.contains(normalizedType)) {
-                throw SemanticError("duplicate exception handler: " + handler.typeName);
+            for (const TypeRef precedingType : precedingHandlerTypes) {
+                if (precedingType == handlerType) {
+                    throw SemanticError("duplicate exception handler: " + handler.typeName);
+                }
             }
             if (catchesAll) {
                 throw SemanticError("unreachable exception handler after On Exception: " + handler.typeName);
             }
-            for (const std::string& precedingType : precedingHandlerTypes) {
-                if (exceptions::isSubtypeOf(handler.typeName, precedingType)) {
+            for (std::size_t index = 0; index < precedingHandlerTypes.size(); ++index) {
+                if (handlerType->isExceptionOf(precedingHandlerTypes[index])) {
                     throw SemanticError(
                         "unreachable exception handler: " + handler.typeName +
-                        " is already matched by earlier On " + precedingType);
+                        " is already matched by earlier On " + tryStatement.handlers()[index].typeName);
                 }
             }
-            seenHandlers.emplace(normalizedType, true);
-            precedingHandlerTypes.push_back(handler.typeName);
-            catchesAll = exceptions::isSubtypeOf("Exception", handler.typeName);
+            precedingHandlerTypes.push_back(handlerType);
+            result_.setExceptionType(&handler, handlerType);
+            // `On Exception` catches every exception.
+            catchesAll = handlerType->exceptionParent() == nullptr;
 
             symbols_.pushScope();
             if (!handler.bindingName.empty()) {
-                declareOrThrow(handler.bindingName, SymbolKind::Variable, types().lookup(handler.typeName), false);
+                declareOrThrow(handler.bindingName, SymbolKind::Variable, handlerType, false);
                 recordDeclaredSymbol(&handler, handler.bindingName, VariableOrigin::HandlerBinding);
             }
             ++exceptionHandlerDepth_;
@@ -646,9 +647,11 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             throw SemanticError("Raise currently requires an exception type name");
         }
         const auto& identifier = static_cast<const ast::IdentifierExpression&>(expression);
-        if (!isExceptionType(identifier.name())) {
+        const TypeRef raised = exceptionTypeNamed(identifier.name());
+        if (raised == nullptr) {
             throw SemanticError("Raise requires an exception type: " + identifier.name());
         }
+        result_.setExceptionType(&raiseStatement, raised);
         break;
     }
     case ast::AstNodeKind::RetryStatement: {

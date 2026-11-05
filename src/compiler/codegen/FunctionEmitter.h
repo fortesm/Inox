@@ -132,8 +132,7 @@ private:
     void emitWith(const tir::Stmt& statement);
     void bindWithTarget(const std::string& binding, const tir::Expr& target);
 
-    std::string emitExceptionTypeMatch(std::string_view actualTypeValue,
-                                       std::string_view expectedTypeName);
+    std::string emitExceptionTypeMatch(std::string_view actualTypeValue, TypeRef expected);
 
     void emitRetry(const tir::Stmt& statement);
 

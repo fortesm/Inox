@@ -241,7 +241,7 @@ void Verifier::statement(const Stmt& statement)
         }
         statements(statement.tryParts->exceptBody);
         for (const Handler& handler : statement.tryParts->handlers) {
-            if (handler.typeName.empty()) {
+            if (handler.type == nullptr || !handler.type->isException()) {
                 problem("a handler without its exception");
             }
             if (handler.binding != nullptr) {

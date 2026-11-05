@@ -178,9 +178,6 @@ they are rejected now.)
 - Std.Strings: a statement that calls a routine and names a State or `ref`
   String may get an empty cleanup pad when the String is passed by address
   rather than read (the scan that decides is conservative).
-- Exception handlers are matched by the written type name
-  (`exceptions/ExceptionTypes`); the exception hierarchy (identifiers,
-  parents) is not part of `types::Type` yet.
 - Std.Terminal on Windows is checked by the CI suite only through files and
   pipes; raw mode and key reading in a real Windows console were not run
   by an agent (no Windows console here).

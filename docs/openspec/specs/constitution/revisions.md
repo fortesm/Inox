@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.129
+Canon revision: r3.130
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -699,3 +699,11 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   statement (declared in the change's `ir-snapshot-expect.json`, two
   programs). Every other program's LLVM IR, and every typed IR, is
   identical. Change `typed-ir`.
+- r3.130 — 2026-11-04 — E11, foundation step F7 (approved by Marcelo
+  Fortes, 2026-11-04): the exception hierarchy is in the types. An
+  exception type holds its parent and the id the runtime transports; the
+  analysis resolves the type of each `Raise` and `On` handler and checks
+  handlers by type; the typed IR carries it and code generation takes the
+  ids from the types, reading no exception name. The language, the
+  diagnostics, the LLVM IR and the typed IR of every program are
+  identical. Change `exception-types`.

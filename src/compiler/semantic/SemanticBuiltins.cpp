@@ -64,7 +64,13 @@ void SemanticAnalyzer::declareBuiltinTypes()
     // stdlib documents the public surface while the compiler owns bootstrap
     // type identity until user-defined Exception declarations are specified.
     for (const auto& info : exceptions::kStandardExceptionTypes) {
-        declareTypeName(info.name, types().exception(info.name));
+        declareTypeName(info.name, types().declareException(info.name, info.typeId));
+    }
+    // F7: the hierarchy is the types'.
+    for (const auto& info : exceptions::kStandardExceptionTypes) {
+        if (!info.parent.empty()) {
+            types().setExceptionParent(types().lookup(info.name), types().lookup(info.parent));
+        }
     }
 }
 

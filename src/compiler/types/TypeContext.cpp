@@ -226,15 +226,22 @@ const Type* TypeContext::optionOwn(const Type* owner)
     return unary(TypeKind::Option, owner, "Option<" + owner->name() + ">");
 }
 
-const Type* TypeContext::exception(std::string_view name)
+const Type* TypeContext::declareException(std::string_view name, std::uint64_t id)
 {
     const std::string key = normalize(name);
     if (const auto found = exceptions_.find(key); found != exceptions_.end()) {
         return found->second;
     }
-    const Type* type = create(TypeKind::Exception, std::string(name));
+    Type* type = create(TypeKind::Exception, std::string(name));
+    type->exceptionId_ = id;
     exceptions_.emplace(key, type);
+    exceptionOrder_.push_back(type);
     return type;
+}
+
+void TypeContext::setExceptionParent(const Type* exception, const Type* parent)
+{
+    exceptions_.at(normalize(exception->name()))->exceptionParent_ = parent;
 }
 
 Type* TypeContext::create(TypeKind kind, std::string name)

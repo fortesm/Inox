@@ -233,7 +233,7 @@ enum class StmtKind : std::uint8_t {
     ForIn,     // `symbol` over `value` (`step` when written): `body`
     Case,      // `value` against `branches`; `elseBody` when `hasElse`
     Try,       // `body`, then `tryParts`
-    Raise,     // the exception `text`; empty text re-raises the one being handled
+    Raise,     // an exception of `type` (F7); null re-raises the one being handled
     Retry,     // run the protected body again, `value` times at most
     Return,    // `value` (null for a subroutine)
     Exit,
@@ -249,7 +249,7 @@ struct Branch {
 };
 
 struct Handler {
-    std::string_view typeName;  // as written: exception types are names
+    TypeRef type = nullptr;  // the exception type it catches, and its descendants (F7)
     const semantic::Symbol* binding = nullptr;
     Span<const Stmt*> body;
 };
@@ -276,7 +276,6 @@ struct Stmt {
     const Place* target = nullptr;
     const Expr* value = nullptr;
     const Expr* step = nullptr;
-    std::string_view text;
     Span<const Stmt*> body;
     Span<Branch> branches;
     Span<const Stmt*> elseBody;

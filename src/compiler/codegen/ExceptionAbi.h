@@ -60,6 +60,5 @@ public:
 const ExceptionAbi& hostExceptionAbi();
 
 // The runtime type id of a standard exception type (CANON-15).
-std::uint64_t exceptionTypeId(std::string_view name);
 
 } // namespace inox::compiler::codegen::detail

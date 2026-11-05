@@ -16,7 +16,6 @@
 #include "MathBuiltins.h"
 #include "Operators.h"
 #include "RuntimeHelpersIr.h"
-#include "../exceptions/ExceptionTypes.h"
 #include "../support/Platform.h"
 
 #include <algorithm>

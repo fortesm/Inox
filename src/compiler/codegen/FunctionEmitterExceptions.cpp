@@ -14,7 +14,6 @@
 #include "LlvmText.h"
 #include "MathBuiltins.h"
 #include "Operators.h"
-#include "../exceptions/ExceptionTypes.h"
 #include "../support/Platform.h"
 
 #include <algorithm>
@@ -34,18 +33,17 @@
 
 namespace inox::compiler::codegen::detail {
 
-std::string FunctionEmitter::emitExceptionTypeMatch(std::string_view actualTypeValue,
-                                                    std::string_view expectedTypeName)
+// Whether the raised type `actualTypeValue` is `expected` or one of its
+// descendants: one comparison per such type, in the order they were
+// declared (F7: the hierarchy is the types').
+std::string FunctionEmitter::emitExceptionTypeMatch(std::string_view actualTypeValue, TypeRef expected)
 {
-    const auto ids = exceptions::matchingTypeIds(expectedTypeName);
-    if (ids.empty()) {
-        throw CodegenUnsupported(
-            "unknown exception type for handler matching: " +
-            std::string(expectedTypeName));
-    }
-
     std::string combined;
-    for (const std::uint64_t id : ids) {
+    for (const TypeRef type : types_.exceptionTypes()) {
+        if (!type->isExceptionOf(expected)) {
+            continue;
+        }
+        const std::uint64_t id = type->exceptionId();
         const std::string cmp = "%eh.match" + std::to_string(nextTemporary_++);
         output_ << "  " << cmp << " = icmp eq i64 " << actualTypeValue
                 << ", " << id << "\n";
@@ -157,7 +155,7 @@ void FunctionEmitter::emitRethrowState(std::string_view stateSlot)
 
 void FunctionEmitter::emitRaise(const tir::Stmt& statement)
 {
-    if (statement.text.empty()) {
+    if (statement.type == nullptr) {
         if (caughtExceptionStates_.empty() || bareRethrowTargets_.empty()) {
             throw CodegenError("bare Raise requires an active exception handler");
         }
@@ -167,7 +165,7 @@ void FunctionEmitter::emitRaise(const tir::Stmt& statement)
         return;
     }
 
-    const std::uint64_t typeId = exceptionTypeId(std::string(statement.text));
+    const std::uint64_t typeId = statement.type->exceptionId();
     if (!unwindTargets_.empty()) {
         const std::string impossible = newDeadLabel("eh.raise.unreachable");
         const std::string dead = newDeadLabel("eh.after.raise");
@@ -325,7 +323,7 @@ void FunctionEmitter::emitTry(const tir::Stmt& statement)
             for (std::size_t index = 0; index < parts.handlers.size(); ++index) {
                 const auto& handler = parts.handlers[index];
                 output_ << nextCheck << ":\n";
-                const std::string matched = emitExceptionTypeMatch(type, handler.typeName);
+                const std::string matched = emitExceptionTypeMatch(type, handler.type);
                 const bool last = index + 1 == parts.handlers.size();
                 const std::string noMatch = last ? elseLabel
                     : "eh.check" + std::to_string(id) + "_" + std::to_string(index + 1);

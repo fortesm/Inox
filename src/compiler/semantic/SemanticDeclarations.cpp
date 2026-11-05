@@ -11,7 +11,6 @@
 #include "StdIntrinsics.h"
 
 #include "SemanticSupport.h"
-#include "../exceptions/ExceptionTypes.h"
 #include "../lexer/Lexer.h"
 #include "../support/CharLiteral.h"
 #include "../support/DecimalLiteral.h"
