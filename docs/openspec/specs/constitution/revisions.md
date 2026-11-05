@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.1 pre-alpha
-Canon revision: r3.133
+Canon revision: r3.134
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -728,3 +728,10 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   outside); each instance gets its invariant routine when it is made.
   Reused parts of a generic struct stay out. Part of the 0.5 work; the
   published version stays 0.4.1. Change `generic-struct-invariants`.
+- r3.134 — 2026-11-05 — CANON-25 rule 3 (design approved by Marcelo Fortes,
+  2026-11-05, G7): the move analysis follows `leave`, `continue` and
+  `until`, every path of an exception to its handlers (conservatively),
+  `ensure` on every departure and `Retry` after `ensure`; `Return`, `Raise`
+  and `Exit` end a path. The law and the generated code do not change; the
+  run-time check stays. Part of the 0.5 work; the published version stays
+  0.4.1. Change `owner-moves-across-jumps`.

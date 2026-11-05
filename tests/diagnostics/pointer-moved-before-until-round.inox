@@ -1,0 +1,24 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers: a false `until` goes on with the round, and the next round
+== starts with the owner given away.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Main :
+    P := New(TNode(FValue := 1))
+    I Integer := 0
+    repeat
+        I := I + 1
+        PutLn(P.FValue)
+        Free(P)
+        until I = 3
+    ;
+;

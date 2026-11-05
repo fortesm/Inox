@@ -13,6 +13,7 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 ## Unreleased
 
 ### Added
+- Moves across jumps (canon r3.134, CANON-25 rule 3, change `owner-moves-across-jumps`): the move analysis follows `leave`, `continue`, `until`, the paths of an exception to its handlers, `ensure` on every departure and `Retry`; an owner given away on such a path and used where it arrives is a compile error, not a run-time trap. A branch that ends in `Return`, `Raise` or `Exit` no longer counts as a path to the statements after it. The run-time check stays.
 - Invariants of generic structs (canon r3.133, CANON-24, change `generic-struct-invariants`): a generic struct may have `invariant` lines, checked in every instance.
 - Methods of generic structs (canon r3.132, CANON-8, change `generic-struct-methods`): `TStack<T>.Push(Self mut, X T)` is a method of every instance of `TStack`, made on its first call (`Numbers.Push(3)`); contracts are checked in each instance and visibility follows r3.99. `inox interface` prints `TPair<K, V>.Key(...)`.
 

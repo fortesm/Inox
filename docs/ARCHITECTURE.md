@@ -371,7 +371,9 @@ instead of searching the whole emitter.
     parser lowers loop `invariant`/`variant` itself;
   - `SemanticPointers.cpp` — safe pointers (CANON-25): pointer type
     rules, the pointer built-ins, and the definite-move analysis
-    (`movedOwners_`, merged over every path);
+    (`movedOwners_`, merged over every reachable path; loop and try frames
+    in `ownerFrames_` carry the sets of `leave`, `continue`, `until`,
+    handlers, `ensure` and `Retry`, r3.134);
   - `SemanticDebug.cpp` — Std.Debug: Assert;
   - `SemanticEnums.cpp` — the ordinal built-ins of enums and Ranges (Ord,
     Succ, Pred, Low and High of a type) and `TEnum(I)` (CANON-13);

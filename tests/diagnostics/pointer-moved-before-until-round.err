@@ -1,0 +1,1 @@
+:22:9: semantic error: P is given away (Move or Free) inside the loop: assign it again before the next round

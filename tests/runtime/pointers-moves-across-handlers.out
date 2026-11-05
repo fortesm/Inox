@@ -1,0 +1,6 @@
+handler 3
+after try 3
+moved 3
+after raise 4
+caught
+end 6

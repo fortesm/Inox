@@ -385,7 +385,7 @@ TypeRef SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const ast
 
 void SemanticAnalyzer::noteOwnerGivenAway(const ast::Expression& owner)
 {
-    if (owner.kind() != ast::AstNodeKind::IdentifierExpression) {
+    if (owner.kind() != ast::AstNodeKind::IdentifierExpression || !ownerPathReachable_) {
         return;
     }
     const Symbol* symbol = result_.symbolOf(static_cast<const ast::IdentifierExpression&>(owner));
@@ -395,6 +395,16 @@ void SemanticAnalyzer::noteOwnerGivenAway(const ast::Expression& owner)
     for (const Scope* scope = &symbols_.currentScope(); scope != nullptr; scope = scope->parent()) {
         if (scope->containsLocal(symbol->name) && scope->resolve(symbol->name) == symbol) {
             movedOwners_[symbol] = scope;
+            // An exception may leave from any point of a try: its handlers
+            // and its `ensure` see every owner given away in it.
+            for (OwnerFrame& frame : ownerFrames_) {
+                if (frame.kind == OwnerFrameKind::Try) {
+                    frame.givenAway[symbol] = scope;
+                    if (frame.inEnsure) {
+                        frame.givenAwayInEnsure[symbol] = scope;
+                    }
+                }
+            }
             return;
         }
     }
@@ -413,10 +423,195 @@ void SemanticAnalyzer::requireOwnerUsable(const Symbol& symbol) const
     }
 }
 
+// The owners of a scope die with it, on every path recorded for a target
+// outside it.
 void SemanticAnalyzer::forgetMovedOwnersOf(const Scope* scope)
 {
-    for (auto it = movedOwners_.begin(); it != movedOwners_.end();) {
-        it = it->second == scope ? movedOwners_.erase(it) : std::next(it);
+    const auto forget = [scope](MovedOwners& owners) {
+        std::erase_if(owners, [scope](const auto& entry) { return entry.second == scope; });
+    };
+    forget(movedOwners_);
+    for (OwnerFrame& frame : ownerFrames_) {
+        forget(frame.exits);
+        forget(frame.nextRound);
+        forget(frame.givenAway);
+        forget(frame.givenAwayInEnsure);
+        for (OwnerDeparture& departure : frame.departures) {
+            forget(departure.moved);
+        }
+        for (OwnerDeparture& retry : frame.retries) {
+            forget(retry.moved);
+        }
+    }
+}
+
+SemanticAnalyzer::OwnerState SemanticAnalyzer::ownerState() const
+{
+    return {movedOwners_, ownerPathReachable_};
+}
+
+void SemanticAnalyzer::setOwnerState(OwnerState state)
+{
+    movedOwners_ = std::move(state.moved);
+    ownerPathReachable_ = state.reachable;
+}
+
+// Paths that meet: a path that reaches the meeting point brings its set.
+void SemanticAnalyzer::joinCurrentOwnerState(OwnerState& into) const
+{
+    if (ownerPathReachable_) {
+        into.moved.insert(movedOwners_.begin(), movedOwners_.end());
+        into.reachable = true;
+    }
+}
+
+// After `leave`, `continue`, `Return`, `Raise`, `Exit` or `Retry` no path
+// reaches the next statement; the set was recorded for its target first.
+void SemanticAnalyzer::endOwnerPath()
+{
+    movedOwners_.clear();
+    ownerPathReachable_ = false;
+}
+
+// The current set goes to the frame `target`; a try with `ensure` between
+// holds it until `ensure` has run (CANON-15).
+void SemanticAnalyzer::sendOwnersTo(std::size_t target, OwnerDepartureKind kind, std::size_t from,
+                                    const ast::SourcePosition& position)
+{
+    for (std::size_t index = from; index > target + 1; --index) {
+        OwnerFrame& frame = ownerFrames_[index - 1];
+        if (frame.kind == OwnerFrameKind::Try && frame.hasEnsure && !frame.inEnsure) {
+            frame.departures.push_back({target, kind, movedOwners_, position});
+            return;
+        }
+    }
+    OwnerFrame& frame = ownerFrames_[target];
+    switch (kind) {
+    case OwnerDepartureKind::LoopExit:
+        frame.exits.insert(movedOwners_.begin(), movedOwners_.end());
+        break;
+    case OwnerDepartureKind::NextRound:
+        frame.nextRound.insert(movedOwners_.begin(), movedOwners_.end());
+        break;
+    case OwnerDepartureKind::Retry:
+        frame.retries.push_back({target, kind, movedOwners_, position});
+        break;
+    }
+}
+
+// `leave` and `continue` act on the innermost loop, `until` on the
+// innermost repeat.
+void SemanticAnalyzer::sendOwnersOutOfLoop(OwnerDepartureKind kind, bool repeatOnly,
+                                           const ast::SourcePosition& position)
+{
+    if (!ownerPathReachable_) {
+        return;
+    }
+    for (std::size_t index = ownerFrames_.size(); index > 0; --index) {
+        const OwnerFrameKind frameKind = ownerFrames_[index - 1].kind;
+        if (frameKind == OwnerFrameKind::Repeat || (!repeatOnly && frameKind == OwnerFrameKind::Loop)) {
+            sendOwnersTo(index - 1, kind, ownerFrames_.size(), position);
+            return;
+        }
+    }
+}
+
+void SemanticAnalyzer::enterLoopOwners(OwnerFrameKind kind)
+{
+    OwnerFrame frame;
+    frame.kind = kind;
+    frame.loopStart = ownerState();
+    ownerFrames_.push_back(std::move(frame));
+}
+
+std::size_t SemanticAnalyzer::enterTryOwners(bool hasEnsure)
+{
+    OwnerFrame frame;
+    frame.kind = OwnerFrameKind::Try;
+    frame.hasEnsure = hasEnsure;
+    frame.startOfTry = movedOwners_;
+    ownerFrames_.push_back(std::move(frame));
+    return ownerFrames_.size() - 1;
+}
+
+// A handler may start after any operation of the body: it sees the owners
+// given away before the try and anywhere in its body.
+void SemanticAnalyzer::endTryBodyOwners(std::size_t tryIndex)
+{
+    OwnerFrame& frame = ownerFrames_[tryIndex];
+    joinCurrentOwnerState(frame.afterTry);
+    frame.handlerStart = frame.startOfTry;
+    frame.handlerStart.insert(frame.givenAway.begin(), frame.givenAway.end());
+}
+
+void SemanticAnalyzer::enterHandlerOwners(std::size_t tryIndex, bool retryHandler)
+{
+    OwnerFrame& frame = ownerFrames_[tryIndex];
+    frame.inRetryHandler = retryHandler;
+    setOwnerState({frame.handlerStart, true});
+}
+
+void SemanticAnalyzer::endHandlerOwners(std::size_t tryIndex)
+{
+    OwnerFrame& frame = ownerFrames_[tryIndex];
+    frame.inRetryHandler = false;
+    joinCurrentOwnerState(frame.afterTry);
+}
+
+// `ensure` is analyzed once, from every set that may reach it.
+void SemanticAnalyzer::enterEnsureOwners(std::size_t tryIndex)
+{
+    OwnerFrame& frame = ownerFrames_[tryIndex];
+    frame.inEnsure = true;
+    MovedOwners entry = frame.startOfTry;
+    entry.insert(frame.givenAway.begin(), frame.givenAway.end());
+    setOwnerState({std::move(entry), true});
+}
+
+// Every path leaving the try runs `ensure` first: with X the set at the end
+// of `ensure` and M the owners it gives away, a path with set S leaves with
+// X ∩ (S ∪ M). A Retry then checks it against the try's start.
+void SemanticAnalyzer::leaveTryOwners(std::size_t tryIndex)
+{
+    OwnerFrame frame = std::move(ownerFrames_[tryIndex]);
+    ownerFrames_.pop_back();
+    if (!frame.hasEnsure) {
+        setOwnerState(std::move(frame.afterTry));
+    } else {
+        const OwnerState ensureEnd = ownerState();
+        const auto afterEnsure = [&](const MovedOwners& before) {
+            MovedOwners after;
+            for (const auto& entry : ensureEnd.moved) {
+                if (before.contains(entry.first) || frame.givenAwayInEnsure.contains(entry.first)) {
+                    after.insert(entry);
+                }
+            }
+            return after;
+        };
+        for (OwnerDeparture& departure : frame.departures) {
+            departure.moved = afterEnsure(departure.moved);
+        }
+        for (OwnerDeparture& retry : frame.retries) {
+            retry.moved = afterEnsure(retry.moved);
+        }
+        setOwnerState({afterEnsure(frame.afterTry.moved), frame.afterTry.reachable && ensureEnd.reachable});
+        if (ensureEnd.reachable) {
+            const OwnerState current = ownerState();
+            for (const OwnerDeparture& departure : frame.departures) {
+                movedOwners_ = departure.moved;
+                sendOwnersTo(departure.target, departure.kind, tryIndex, departure.position);
+            }
+            setOwnerState(current);
+        }
+    }
+    for (const OwnerDeparture& retry : frame.retries) {
+        for (const auto& entry : retry.moved) {
+            if (!frame.startOfTry.contains(entry.first)) {
+                notePosition(retry.position);
+                throw SemanticError(entry.first->name + " is given away (Move or Free) before Retry: assign it "
+                                    "again before Retry");
+            }
+        }
     }
 }
 

@@ -270,10 +270,12 @@ Where the implementation differs from the text above, or leaves part of it
 for later:
 
 - **Owner access has a backstop check.** An owner reached on a path the
-  move analysis does not follow (`leave` or `continue` out of a loop after
-  a `Move` or `Free`) is caught at run time: one null test, marked
-  expected, traps "use of an owner after Move or Free" (CANON-19). Every
-  other path is a compile error, as rule 3 says.
+  move analysis does not follow is caught at run time: one null test,
+  marked expected, traps "use of an owner after Move or Free" (CANON-19).
+  Since r3.134 (change `owner-moves-across-jumps`) the analysis follows
+  `leave`, `continue`, `until`, handlers, `ensure` and `Retry`; the path
+  left is a routine that frees an owner received as `ref mut`
+  (`safe-pointers-followups` 2.4).
 - **No Link to a parameter yet** (rule 6 lists parameters): `Link(P)` of a
   parameter is a compile error, "not supported yet"; a local copy can be
   linked. Links to locals, fields, elements, State and owned objects work.
