@@ -214,24 +214,24 @@ void SemanticAnalyzer::requireGenericMethodHeader(const std::string& owner, cons
 // on its first call (CANON-8): `TPair<String, Int64>.Swap`. Null when the
 // receiver is no instance or its struct has no such method. Out of line:
 // the method lookups stay small (stack budget).
-const FunctionSignature* SemanticAnalyzer::genericMethodFor(TypeRef receiver, std::string_view method)
+const FunctionSignature* SemanticAnalyzer::genericMethodFor(TypeRef receiver, const std::string& method)
 {
     const auto instance = structInstanceOf_.find(receiver);
     if (instance == structInstanceOf_.end()) {
         return nullptr;
     }
-    const auto found = genericMethods_.find(normalizeName(instance->second.generic->name + "." + std::string(method)));
+    const auto found = genericMethods_.find(normalizeName(instance->second.generic->name + "." + method));
     if (found == genericMethods_.end()) {
         return nullptr;
     }
-    return &instantiateRoutine(*found->second, instance->second.arguments,
-                               types::nameOf(receiver) + "." + std::string(method));
+    const std::string name = types::nameOf(receiver) + "." + method;
+    return &instantiateRoutine(*found->second, instance->second.arguments, &name);
 }
 
 // A method of `receiver`'s type: declared, or of a generic struct's
 // instance.
 const FunctionSignature* SemanticAnalyzer::methodSignature(TypeRef receiver, const std::string& qualifiedName,
-                                                           std::string_view method)
+                                                           const std::string& method)
 {
     if (const FunctionSignature* signature = resolveFunctionSignature(qualifiedName)) {
         return signature;
@@ -686,10 +686,10 @@ std::vector<ast::StatementPtr> SemanticAnalyzer::cloneInstanceBody(const ast::Fu
 
 const FunctionSignature& SemanticAnalyzer::instantiateRoutine(const ast::FunctionDeclaration& generic,
                                                               const std::vector<TypeRef>& arguments,
-                                                              const std::string& instance)
+                                                              const std::string* instance)
 {
     requireBoundedNesting(generic.name(), arguments);
-    const std::string name = instance.empty() ? instanceName(generic.name(), arguments) : instance;
+    const std::string name = instance == nullptr ? instanceName(generic.name(), arguments) : *instance;
     if (const FunctionSignature* existing = resolveFunctionSignature(name)) {
         return *existing;
     }

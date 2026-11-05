@@ -286,16 +286,16 @@ private:
                          std::vector<TypeRef>& bound, const std::string& owner, const std::string& from,
                          const std::vector<TypeRef>* fixed);
     // `instance` names the instance (a method's: `TPair<String, Int64>.Swap`);
-    // empty: the routine's name with its type arguments.
+    // null: the routine's name with its type arguments.
     const FunctionSignature& instantiateRoutine(const ast::FunctionDeclaration& generic,
                                                 const std::vector<TypeRef>& arguments,
-                                                const std::string& instance = {});
+                                                const std::string* instance = nullptr);
     void checkGenericMethods();
     void registerInstanceSignature(const ast::FunctionDeclaration& instance, const std::string& name);
     [[noreturn]] void requireGenericMethodHeader(const std::string& owner, const std::string& method) const;
-    const FunctionSignature* genericMethodFor(TypeRef receiver, std::string_view method);
+    const FunctionSignature* genericMethodFor(TypeRef receiver, const std::string& method);
     const FunctionSignature* methodSignature(TypeRef receiver, const std::string& qualifiedName,
-                                             std::string_view method);
+                                             const std::string& method);
     TypeRef instantiateStruct(const ast::TypeDeclaration& generic, const std::vector<TypeRef>& arguments);
     void analyzePendingInstances();
     static std::string instanceName(std::string_view name, const std::vector<TypeRef>& arguments);
