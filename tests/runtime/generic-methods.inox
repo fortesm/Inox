@@ -1,0 +1,71 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== CANON-8 (generic-struct-methods): methods of generic structs, one
+== instance per instance of the struct, made on the first call.
+Type
+    TPair<K, V> Struct
+        FKey K
+        FValue V
+    ;
+    TStack<T> Struct
+        FItems Array[1..8] T
+        FCount Integer := 0
+    ;
+
+TPair<K, V>.Key(Self) K :
+    Return Self.FKey
+;
+
+TPair<K, V>.SetValue(Self mut, X V) :
+    Self.FValue := X
+;
+
+TPair<K, V>.Swapped(Self) TPair<V, K> :
+    Return TPair(FKey := Self.FValue, FValue := Self.FKey)
+;
+
+== A method calling another method and a generic routine.
+TPair<K, V>.Describe(Self) String :
+    Return Show(Self.Key) + "=" + Show(Self.FValue)
+;
+
+Show<T>(X T) String :
+    Return String(X)
+;
+
+TStack<T>.Push(Self mut, X T) :
+    Self.FCount := Self.FCount + 1
+    Self.FItems[Self.FCount] := X
+;
+
+TStack<T>.Top(Self) T :
+    Return Self.FItems[Self.FCount]
+;
+
+Bump(ref mut P TPair<Integer, Integer>) :
+    P.SetValue(P.FValue + 10)
+;
+
+Main :
+    P := TPair(FKey := 1, FValue := 2)
+    PutLn(P.Key)
+    P.SetValue(5)
+    PutLn(P.Describe)
+    Bump(P)
+    PutLn(P.FValue)
+    Q := P.Swapped
+    PutLn(Q.Describe)
+    R := TPair(FKey := 7, FValue := 'x')
+    PutLn(R.Swapped.Key)
+    O := New(TPair(FKey := 3, FValue := 4))
+    O.SetValue(9)
+    PutLn(O.Describe)
+    S TStack<Integer> := TStack(FItems := Fill(0))
+    S.Push(4)
+    S.Push(6)
+    PutLn(S.Top)
+;

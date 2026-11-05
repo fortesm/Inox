@@ -1,0 +1,14 @@
+== interface of Pairs: what the modules that use it see (r3.99)
+
+Type
+    TPair<K, V> Struct Public
+        == built only by Pairs: it has a private field without a default
+    Public
+        FValue V
+    ;
+
+MakePair<K, V>(Key K, Value V) TPair<K, V> Public
+
+TPair<K, V>.Key(Self) K Public
+
+TPair<K, V>.SetKey(Self mut, Key K) Public

@@ -66,6 +66,9 @@ void SemanticAnalyzer::registerFunctionSignatureIn(const ast::FunctionDeclaratio
     const std::size_t dot = ast::methodDot(function.name());
     const bool isAssociatedMethod = dot != std::string::npos;
     const std::string receiverType = isAssociatedMethod ? function.name().substr(0, dot) : std::string{};
+    if (isAssociatedMethod && genericStruct(receiverType) != nullptr) {
+        requireGenericMethodHeader(receiverType, function.name().substr(dot + 1));
+    }
 
     // The parser checked the header's syntax; what remains is what the
     // types and the other parameters say.

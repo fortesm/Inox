@@ -1,0 +1,25 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== CANON-8 (generic-struct-methods): methods of generic structs, one
+
+== generic-struct-methods (Q2): a method has no type parameters of its own yet.
+Type
+    TPair<K, V> Struct
+        FKey K
+        FValue V
+    ;
+    TPoint Struct
+        FX Integer := 0
+    ;
+
+TPair<K, V>.Map<U>(Self) :
+    PutLn("x")
+;
+
+Main :
+    PutLn(1)
+;

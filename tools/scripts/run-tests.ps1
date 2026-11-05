@@ -1043,6 +1043,9 @@ Invoke-DriverCase "B4: inox interface of Bank" "out" "tests/interface/bank.out" 
     @("interface", "--path", "examples/bank", "examples/bank/Bank.inox")
 Invoke-DriverCase "B4: inox interface of Std.DateUtils" "out" "tests/interface/std-dateutils.out" "" `
     @("interface", "stdlib/Std.DateUtils.inox")
+Invoke-DriverCase "generic-struct-methods: inox interface of a generic struct's methods" "out" `
+    "tests/interface/generic-methods.out" "" `
+    @("interface", "--path", "tests/modules/generic-methods", "tests/modules/generic-methods/Pairs.inox")
 # F6 (typed-ir): `--dump-tir` prints the typed IR of each program of tests/tir.
 foreach ($tirTest in (Get-ChildItem -LiteralPath (Join-Path $repoRoot "tests/tir") -Filter "*.inox" | Sort-Object Name)) {
     Invoke-DriverCase "typed IR: $($tirTest.BaseName)" "out" "tests/tir/$($tirTest.BaseName).tir" "" `

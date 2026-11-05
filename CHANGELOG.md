@@ -10,6 +10,14 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 `r3.61` are canon revisions, entries of the decision log
 (`docs/openspec/specs/constitution/revisions.md`), not versions.
 
+## Unreleased
+
+### Added
+- Methods of generic structs (canon r3.132, CANON-8, change `generic-struct-methods`): `TStack<T>.Push(Self mut, X T)` is a method of every instance of `TStack`, made on its first call (`Numbers.Push(3)`); contracts are checked in each instance and visibility follows r3.99. `inox interface` prints `TPair<K, V>.Key(...)`.
+
+### Fixed
+- A diagnostic after a call that made a generic instance of another module's routine named that module's file instead of the caller's.
+
 ## 0.4.1 pre-alpha
 
 Closes the foundation (F0-F7, canon r3.110-r3.131): the compiler's phases have

@@ -1,0 +1,62 @@
+{
+ "examples/generics.inox": {
+  "--dump-types": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "d9f6ce5a7dfbeb7bbd23ff409845f2ba655dead693cf4e3a2ba9b2e2fd1b4634",
+    "83ad3ca7fcac4834928ddf27ea37736d7cdfac64b04947980ff9ff3159733682"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  },
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "3aa7072734c508359d91c9a3b757f813deb1a31651b0b8c76d1569bd306f8ac5",
+    "46e6b160b4a1f21541b94c28da3b8d25510dfa9abd881dd85c3614e5d958eb25"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/diagnostics/generics-method.inox": {
+  "--dump-types": {
+   "exit": [
+    1,
+    1
+   ],
+   "sha256": [
+    "858cd099c5c03763897f0bbce232c9fa29727bf349fadd389fcb26b84449f843",
+    "d2c4a5f228e156f31bc928ed4e3683c6954e577fc0cbd937f5bf77394cd89526"
+   ],
+   "stderr": [
+    "generics-method.inox:15:1: parse error: methods of generic structs are not in Inox yet: write a generic routine, Name<K, V>(X TPair<K, V>)\n",
+    "generics-method.inox:19:1: semantic error: TPair is generic: write its type parameters, TPair<K, V>.Swap(...) (CANON-8)\n"
+   ]
+  },
+  "--emit-llvm": {
+   "exit": [
+    1,
+    1
+   ],
+   "sha256": [
+    "858cd099c5c03763897f0bbce232c9fa29727bf349fadd389fcb26b84449f843",
+    "c84ad265aef467f34d1952edcfe4d6451cc67179fde18c84dece1e7d41099f4e"
+   ],
+   "stderr": [
+    "generics-method.inox:15:1: parse error: methods of generic structs are not in Inox yet: write a generic routine, Name<K, V>(X TPair<K, V>)\n",
+    "generics-method.inox:19:1: semantic error: TPair is generic: write its type parameters, TPair<K, V>.Swap(...) (CANON-8)\n"
+   ]
+  }
+ }
+}

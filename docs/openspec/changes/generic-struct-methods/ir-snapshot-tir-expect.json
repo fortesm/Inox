@@ -1,0 +1,34 @@
+{
+ "examples/generics.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "f9c562522a4951fa8a02a5b537983d3f6425be985c66c7af63255d9f05e05790",
+    "8d24cb5eef76bf7021e907c681fbf87a17a8404ec4822e2e46b4cbbf20efa8da"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/diagnostics/generics-method.inox": {
+  "--dump-tir": {
+   "exit": [
+    1,
+    1
+   ],
+   "sha256": [
+    "858cd099c5c03763897f0bbce232c9fa29727bf349fadd389fcb26b84449f843",
+    "d2c4a5f228e156f31bc928ed4e3683c6954e577fc0cbd937f5bf77394cd89526"
+   ],
+   "stderr": [
+    "generics-method.inox:15:1: parse error: methods of generic structs are not in Inox yet: write a generic routine, Name<K, V>(X TPair<K, V>)\n",
+    "generics-method.inox:19:1: semantic error: TPair is generic: write its type parameters, TPair<K, V>.Swap(...) (CANON-8)\n"
+   ]
+  }
+ }
+}

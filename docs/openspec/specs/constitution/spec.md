@@ -2118,14 +2118,14 @@ idea is not decided. It needs an approved design before implementation.
 No decision SHALL introduce traits, protocols, interfaces or behaviors as
 nominal entities: behavior is reused by method reuse (CANON-9) and
 contracts (CANON-24) are checks, never types. Generics came first, in their
-simplest form (CANON-8); written constraints come only if real programs ask
-for them, and methods of generic structs follow. After 1.0: contract
+simplest form (CANON-8), then methods of generic structs (r3.132); written
+constraints come only if real programs ask for them. After 1.0: contract
 monitoring levels per module (Eiffel style) and static proof (SPARK
 style). Each needs an approved design.
 
-#### Scenario: Methods of generic structs not yet in the language
-- **WHEN** a program declares a method of a generic struct
-- **THEN** it is rejected with the generic routine that does the job (tests/diagnostics/generics-method.inox)
+#### Scenario: Type parameters of a method's own not yet in the language
+- **WHEN** a method of a generic struct declares type parameters of its own
+- **THEN** it is rejected (tests/diagnostics/generics-method-own-parameters.inox)
 
 ### Requirement: FUTURE Ownership, absence and failure
 Ownership beyond CANON-25 (one owner, checked Links) SHALL come through

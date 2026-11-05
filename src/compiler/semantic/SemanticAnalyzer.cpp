@@ -157,6 +157,7 @@ const SemanticResult& SemanticAnalyzer::analyze(const ast::ModuleNode& module)
         declareModuleItem(*item);
     }
     resolveDeclaredTypeNames();
+    checkGenericMethods();
 
     registerFunctionSignatures(module);
 

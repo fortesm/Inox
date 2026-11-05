@@ -94,12 +94,33 @@ void testHeaders()
     check(main.parameters().empty() && !main.resultType(), "Main has no parameters and no result");
 }
 
+// The dot of a method name: the last one outside angle brackets and after
+// any `::` (generic-struct-methods).
+void testMethodDot()
+{
+    const auto dotOf = [](std::string_view name) {
+        const std::size_t dot = ast::methodDot(name);
+        return dot == std::string_view::npos ? std::string("none") : std::string(name.substr(0, dot));
+    };
+    checkEqual(dotOf("Main"), "none", "a routine");
+    checkEqual(dotOf("TPoint.Move"), "TPoint", "a method");
+    checkEqual(dotOf("Bank.Accounts.TAccount.Deposit"), "Bank.Accounts.TAccount", "a method of a module's type");
+    checkEqual(dotOf("Std.Math::Max"), "none", "a routine of another module");
+    checkEqual(dotOf("Bank::TAccount.Deposit"), "Bank::TAccount", "a method named through its module");
+    checkEqual(dotOf("Max<Array[1..3] Int64>"), "none", "an instance of a generic routine");
+    checkEqual(dotOf("Max<Bank.TKey>"), "none", "a type argument of a module");
+    checkEqual(dotOf("TPair<Bank.TKey, Int64>.Swap"), "TPair<Bank.TKey, Int64>", "an instance's method");
+    checkEqual(dotOf("TStack<TPair<String, Integer>>.Push"), "TStack<TPair<String, Integer>>",
+               "a method of a nested instance");
+}
+
 } // namespace
 
 int runRoutineHeaderTests()
 {
     const int before = failureCount();
     testHeaders();
+    testMethodDot();
     return failureCount() - before;
 }
 

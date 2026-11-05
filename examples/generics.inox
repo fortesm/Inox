@@ -7,9 +7,10 @@
 
 == Generics (CANON-8): one stack, written once, for Integers and Strings.
 == `TStack<T>` is a template; `TStack<Integer>` and `TStack<String>` are two
-== structs the compiler makes from it, each with its own copy of Push, Pop
-== and Peek. The types are never written in a call: they come from the
-== arguments (`Push(Numbers, 3)`) or from the target (`Top Integer := ...`).
+== structs the compiler makes from it, each with its own copy of the
+== methods Push, Pop and Peek, made on the first call (`Numbers.Push(3)`).
+== The types are never written in a call: they come from the receiver, from
+== the arguments (`Max(3, 8)`) or from the target (`Top Integer := ...`).
 == There are no constraints: Max works for any type with `>`, and using it
 == on a struct is an error that names the instance (Max<TPoint>). A field
 == of type T, or of an array of T, has no default: each stack is built with
@@ -26,27 +27,27 @@ Type
         FValue V
     ;
 
-Push<T>(ref mut S TStack<T>, X T) :
-    if S.FCount = Capacity
+TStack<T>.Push(Self mut, X T) :
+    if Self.FCount = Capacity
         PutLn("stack full")
         Exit
     ;
-    S.FCount += 1
-    S.FItems[S.FCount] := X
+    Self.FCount += 1
+    Self.FItems[Self.FCount] := X
 ;
 
-Pop<T>(ref mut S TStack<T>) T :
-    Top := S.FItems[S.FCount]
-    S.FCount -= 1
+TStack<T>.Pop(Self mut) T :
+    Top := Self.FItems[Self.FCount]
+    Self.FCount -= 1
     Return Top
 ;
 
-Peek<T>(S TStack<T>) T :
-    Return S.FItems[S.FCount]
+TStack<T>.Peek(Self) T :
+    Return Self.FItems[Self.FCount]
 ;
 
-IsEmpty<T>(S TStack<T>) Bool :
-    Return S.FCount = 0
+TStack<T>.IsEmpty(Self) Bool :
+    Return Self.FCount = 0
 ;
 
 Max<T>(A T, B T) T :
@@ -56,31 +57,31 @@ Max<T>(A T, B T) T :
 Main :
     Numbers TStack<Integer> := TStack(FItems := Fill(0))
     for I in 1..5
-        Push(Numbers, I * I)
+        Numbers.Push(I * I)
     ;
-    PutLn("top: ", Peek(Numbers))
+    PutLn("top: ", Numbers.Peek)
     Total := 0
-    while not IsEmpty(Numbers)
-        Total += Pop(Numbers)
+    while not Numbers.IsEmpty
+        Total += Numbers.Pop
     ;
     PutLn("sum of squares: ", Total)
 
     Words TStack<String> := TStack(FItems := Fill(""))
-    Push(Words, "first")
-    Push(Words, "second")
-    Push(Words, "third")
-    while not IsEmpty(Words)
-        Put(Pop(Words), " ")
+    Words.Push("first")
+    Words.Push("second")
+    Words.Push("third")
+    while not Words.IsEmpty
+        Put(Words.Pop, " ")
     ;
     PutLn("")
 
     Best := TPair(FKey := "none", FValue := 0)
     Scores TStack<TPair<String, Integer>> := TStack(FItems := Fill(Best))
-    Push(Scores, TPair(FKey := "ana", FValue := 7))
-    Push(Scores, TPair(FKey := "bia", FValue := 9))
-    Push(Scores, TPair(FKey := "caio", FValue := 4))
-    while not IsEmpty(Scores)
-        Score := Pop(Scores)
+    Scores.Push(TPair(FKey := "ana", FValue := 7))
+    Scores.Push(TPair(FKey := "bia", FValue := 9))
+    Scores.Push(TPair(FKey := "caio", FValue := 4))
+    while not Scores.IsEmpty
+        Score := Scores.Pop
         if Score.FValue > Best.FValue
             Best := Score
         ;

@@ -2212,22 +2212,15 @@ ast::AstNodePtr Parser::parseFunctionDeclaration()
     if (check(TokenKind::Less) && peek().location.line == name.location.line) {
         typeParameters = parseTypeParameters(name);
     }
+    // `TPair<K, V>.Swap`: a method of every instance of a generic struct;
+    // its type parameters are the struct's (CANON-8).
     if (match(TokenKind::Dot)) {
-        if (!typeParameters.empty()) {
-            std::string list;
-            for (const std::string& parameter : typeParameters) {
-                list += (list.empty() ? "" : ", ") + parameter;
-            }
-            errorAt(name, "methods of generic structs are not in Inox yet: write a generic routine, Name<" + list +
-                              ">(X " + functionName + "<" + list + ">)");
-        }
         const lexer::Token& methodName = consume(
             TokenKind::Identifier, "expected method name after '.'");
         functionName += ".";
         functionName += methodName.lexeme;
         if (check(TokenKind::Less) && peek().location.line == name.location.line) {
-            errorAtCurrent("a method cannot have type parameters yet (CANON-8): write a generic routine, "
-                           "Name<T>(...)");
+            errorAtCurrent("a method cannot have type parameters of its own yet (CANON-8)");
         }
     }
 

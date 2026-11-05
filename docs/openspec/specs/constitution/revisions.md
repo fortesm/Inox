@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.1 pre-alpha
-Canon revision: r3.131
+Canon revision: r3.132
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -711,3 +711,13 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   Fortes, 2026-11-04): the release that closes the foundation F0-F7, with
   every gate green. No rule of the language changes; 0.5.0 opens the new
   features.
+- r3.132 — 2026-11-05 — CANON-8, 0.5 item 1 (design approved by Marcelo
+  Fortes, 2026-11-05): methods of generic structs. `TPair<K, V>.Swap(Self
+  mut)` writes the struct's own type parameters and is a method of every
+  instance, made on its first call with the receiver's type arguments;
+  contracts are checked in each instance, visibility follows r3.99, and an
+  error in an instance names it at the line of the generic body. Type
+  parameters of a method's own and invariants and reused parts of a
+  generic struct stay out of this change. A diagnostic after a generic
+  instance is made now names the file of the call, not the template's.
+  Change `generic-struct-methods`.

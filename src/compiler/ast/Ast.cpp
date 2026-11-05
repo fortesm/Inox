@@ -206,16 +206,25 @@ FunctionDeclaration::FunctionDeclaration(std::string name,
 
 std::size_t methodDot(std::string_view routineName)
 {
-    // r3.99: a type of another module is named `Bank.Accounts.TAccount`, so
-    // the method's dot is the last one before any type arguments.
-    // A routine of another module is `Std.Math::Max`: its module's dots are
-    // not a method's.
-    const std::size_t angle = routineName.find('<');
-    const std::string_view head = routineName.substr(0, angle);
-    const std::size_t routine = head.rfind("::");
-    const std::size_t dot = head.rfind('.');
-    if (dot == std::string_view::npos || (routine != std::string_view::npos && dot < routine)) {
-        return std::string_view::npos;
+    // The last dot outside angle brackets and after any `::`. r3.99: a
+    // type of another module is named `Bank.Accounts.TAccount`; a routine
+    // of another module is `Std.Math::Max`, whose module's dots are not a
+    // method's; a type argument may name a module's type
+    // (`Max<Bank.TKey>`); a method of an instance of a generic struct has
+    // its dot after the type arguments (`TPair<Bank.TKey, Int64>.Swap`).
+    const std::size_t routine = routineName.rfind("::");
+    const std::size_t start = routine == std::string_view::npos ? 0 : routine + 2;
+    std::size_t dot = std::string_view::npos;
+    int depth = 0;
+    for (std::size_t index = start; index < routineName.size(); ++index) {
+        const char c = routineName[index];
+        if (c == '<') {
+            ++depth;
+        } else if (c == '>') {
+            --depth;
+        } else if (c == '.' && depth == 0) {
+            dot = index;
+        }
     }
     return dot;
 }

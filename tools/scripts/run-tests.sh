@@ -767,6 +767,9 @@ run_driver_case "B4: inox interface of Bank" out "tests/interface/bank.out" "" \
     interface --path examples/bank examples/bank/Bank.inox
 run_driver_case "B4: inox interface of Std.DateUtils" out "tests/interface/std-dateutils.out" "" \
     interface stdlib/Std.DateUtils.inox
+run_driver_case "generic-struct-methods: inox interface of a generic struct's methods" out \
+    "tests/interface/generic-methods.out" "" interface --path tests/modules/generic-methods \
+    tests/modules/generic-methods/Pairs.inox
 # F6 (typed-ir): `--dump-tir` prints the typed IR of each program of tests/tir.
 for tir_test in "$repo_root"/tests/tir/*.inox; do
     tir_name="$(basename "$tir_test" .inox)"

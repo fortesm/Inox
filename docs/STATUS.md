@@ -181,11 +181,9 @@ they are rejected now.)
 - Std.Terminal on Windows is checked by the CI suite only through files and
   pipes; raw mode and key reading in a real Windows console were not run
   by an agent (no Windows console here).
-- Generics (change `generics`): methods of generic structs, and invariants
-  and reused parts in a generic struct, are rejected for now; semantic
-  messages carry no line numbers, so an error in an instance names the
-  instance and the routine that used it but not the line of the generic
-  body.
+- Generics: type parameters of a method's own, and invariants and reused
+  parts in a generic struct, are rejected for now (methods of generic
+  structs are in, r3.132).
 - Phase 2b's `clonePureExpression` and `cloneChainTarget` (moved from the
   parser by F5) duplicate `ast::cloneExpression`, making copies without
   positions as the parser did; the analyzer recognizes a `with` binding by
