@@ -1,0 +1,50 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25 rule 3): a branch that ends in Return, Raise or
+== Exit is no path to the statements after it.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Show(ref mut P Own<TNode>, Stop Bool) :
+    if Stop
+        Free(P)
+        P := New(TNode(FValue := 0))
+        Exit
+    ;
+    PutLn("show ", P.FValue)
+;
+
+Value(P Own<TNode>, Early Bool) Integer :
+    if Early
+        Free(P)
+        Return 0
+    ;
+    Return P.FValue
+;
+
+Main :
+    P := New(TNode(FValue := 5))
+    Show(P, False)
+    Show(P, True)
+    try
+        Q := New(TNode(FValue := 6))
+        if P.FValue = 0
+            Free(Q)
+            Raise RangeError
+        ;
+        PutLn("not reached ", Q.FValue)
+    except
+        On RangeError
+            PutLn("raised")
+        ;
+    ;
+    PutLn("value ", Value(New(TNode(FValue := 9)), False))
+    PutLn("early ", Value(New(TNode(FValue := 9)), True))
+;

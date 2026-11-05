@@ -143,9 +143,9 @@ each version added.
   struct invariants are not checked after a write through a pointer;
   a Link to a local always places the local in a generation block (the
   escape analysis that keeps it on the stack at no cost is not done); an
-  owner used after Move or Free on a path the analysis does not follow
-  (`leave`/`continue` out of a loop) is caught at run time (trap "use of
-  an owner after Move or Free"), not at compile time; an owner declared
+  owner freed by a routine that received it as `ref mut` and used by the
+  caller after the call is caught at run time (trap "use of an owner
+  after Move or Free"), not at compile time; an owner declared
   inside a loop is freed when its declaration runs again or the routine
   returns, not at the end of each iteration. Each is a task of change
   `safe-pointers-followups`.

@@ -1,0 +1,1 @@
+:24:17: semantic error: P is given away (Move or Free) before Retry: assign it again before Retry

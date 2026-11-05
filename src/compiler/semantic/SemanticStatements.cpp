@@ -41,6 +41,11 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
     const FunctionSignature* signature = resolveFunctionSignature(function.name());
     currentFunctionReturnType_ = signature != nullptr ? signature->returnType : nullptr;
     currentFunctionSawReturn_ = false;
+    // A routine analyzed while another one is (an instance of a generic)
+    // starts its own owner paths.
+    OwnerState previousOwners = ownerState();
+    setOwnerState({});
+    std::vector<OwnerFrame> previousOwnerFrames = std::exchange(ownerFrames_, {});
     symbols_.pushScope();
     const auto previousParameters = std::exchange(currentParameters_, {});
     if (signature != nullptr) {
@@ -73,6 +78,8 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
                             " may reach its end without returning a value; every path must end "
                             "in Return or Raise (CANON-12)");
     }
+    setOwnerState(std::move(previousOwners));
+    ownerFrames_ = std::move(previousOwnerFrames);
     currentFunctionReturnType_ = previousReturnType;
     currentFunctionSawReturn_ = previousSawReturn;
     currentRoutine_ = previousRoutine;
@@ -279,6 +286,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         if (currentFunctionReturnType_ != nullptr) {
             throw SemanticError("Exit is not valid in a function that returns a value; use Return (CANON-12)");
         }
+        endOwnerPath();
         break;
     case ast::AstNodeKind::BlockStatement: {
         const auto& block = static_cast<const ast::BlockStatement&>(statement);
@@ -430,48 +438,50 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         // after the if (the analysis follows every path).
         const auto& ifStatement = static_cast<const ast::IfStatement&>(statement);
         requireBoolCondition(ifStatement.condition());
-        const auto start = movedOwners_;
+        const OwnerState start = ownerState();
         analyzeStatements(ifStatement.thenBody(), true);
-        auto merged = movedOwners_;
+        OwnerState merged{{}, false};
+        joinCurrentOwnerState(merged);
         for (const auto& clause : ifStatement.elseIfClauses()) {
-            movedOwners_ = start;
+            setOwnerState(start);
             requireBoolCondition(*clause.condition);
             analyzeStatements(clause.body, true);
-            merged.insert(movedOwners_.begin(), movedOwners_.end());
+            joinCurrentOwnerState(merged);
         }
-        movedOwners_ = start;
+        setOwnerState(start);
         analyzeStatements(ifStatement.elseBody(), true);
-        merged.insert(movedOwners_.begin(), movedOwners_.end());
-        movedOwners_ = std::move(merged);
+        joinCurrentOwnerState(merged);
+        setOwnerState(std::move(merged));
         break;
     }
     case ast::AstNodeKind::UnlessStatement: {
         const auto& unlessStatement = static_cast<const ast::UnlessStatement&>(statement);
         requireBoolCondition(unlessStatement.condition());
-        const auto start = movedOwners_;
+        OwnerState merged = ownerState();
         analyzeStatements(unlessStatement.body(), true);
-        movedOwners_.insert(start.begin(), start.end());
+        joinCurrentOwnerState(merged);
+        setOwnerState(std::move(merged));
         break;
     }
     case ast::AstNodeKind::WhileStatement: {
         const auto& whileStatement = static_cast<const ast::WhileStatement&>(statement);
         requireBoolCondition(whileStatement.condition());
-        const auto start = movedOwners_;
+        enterLoopOwners(OwnerFrameKind::Loop);
         ++loopDepth_;
         analyzeStatements(whileStatement.body(), true);
         --loopDepth_;
-        requireOwnersBackAfterLoop(start);
+        requireOwnersBackAfterLoop();
         break;
     }
     case ast::AstNodeKind::RepeatStatement: {
         const auto& repeatStatement = static_cast<const ast::RepeatStatement&>(statement);
-        const auto start = movedOwners_;
+        enterLoopOwners(OwnerFrameKind::Repeat);
         ++loopDepth_;
         ++repeatDepth_;
         analyzeStatements(repeatStatement.body(), true);
         --repeatDepth_;
         --loopDepth_;
-        requireOwnersBackAfterLoop(start);
+        requireOwnersBackAfterLoop();
         break;
     }
     case ast::AstNodeKind::UntilStatement: {
@@ -480,6 +490,8 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             throw SemanticError("until outside repeat");
         }
         requireBoolCondition(untilStatement.condition());
+        // True: out of the innermost repeat; false: on with the round.
+        sendOwnersOutOfLoop(OwnerDepartureKind::LoopExit, true, statement.position());
         break;
     }
     case ast::AstNodeKind::ForInStatement: {
@@ -534,12 +546,12 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         }
         declareOrThrow(forStatement.iterator(), SymbolKind::LoopIterator, iteratorType, false);
         recordLoopIterator(forStatement);
-        const auto start = movedOwners_;
+        enterLoopOwners(OwnerFrameKind::Loop);
         ++loopDepth_;
         analyzeStatements(forStatement.body(), false);
         --loopDepth_;
         leaveScope();
-        requireOwnersBackAfterLoop(start);
+        requireOwnersBackAfterLoop();
         break;
     }
     case ast::AstNodeKind::CaseStatement:
@@ -548,24 +560,19 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
     case ast::AstNodeKind::TryStatement: {
         const auto& tryStatement = static_cast<const ast::TryStatement&>(statement);
 
-        // Safe pointers: a handler may start after any part of the body, so
-        // it sees the owners given away before the try and in the body.
-        const auto startOfTry = movedOwners_;
+        // Safe pointers: the owner sets of every path through the try
+        // (handlers, `ensure`, jumps and Retry) are kept in its frame.
+        const std::size_t tryIndex = enterTryOwners(tryStatement.hasEnsure());
         analyzeStatements(tryStatement.body(), true);
-        auto handlerStart = startOfTry;
-        handlerStart.insert(movedOwners_.begin(), movedOwners_.end());
-        auto afterTry = movedOwners_;
-        const auto joinHandler = [&] {
-            afterTry.insert(movedOwners_.begin(), movedOwners_.end());
-        };
+        endTryBodyOwners(tryIndex);
 
         if (tryStatement.hasPlainExcept()) {
             // Bare Raise is meaningful here, but Retry is intentionally not:
             // Retry belongs to an explicit On/Else handler for this try.
             ++exceptionHandlerDepth_;
-            movedOwners_ = handlerStart;
+            enterHandlerOwners(tryIndex, false);
             analyzeStatements(tryStatement.exceptBody(), true);
-            joinHandler();
+            endHandlerOwners(tryIndex);
             --exceptionHandlerDepth_;
         }
 
@@ -603,9 +610,9 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             }
             ++exceptionHandlerDepth_;
             ++retryHandlerDepth_;
-            movedOwners_ = handlerStart;
+            enterHandlerOwners(tryIndex, true);
             analyzeStatements(handler.body, false);
-            joinHandler();
+            endHandlerOwners(tryIndex);
             --retryHandlerDepth_;
             --exceptionHandlerDepth_;
             leaveScope();
@@ -617,20 +624,20 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             }
             ++exceptionHandlerDepth_;
             ++retryHandlerDepth_;
-            movedOwners_ = handlerStart;
+            enterHandlerOwners(tryIndex, true);
             analyzeStatements(tryStatement.elseBody(), true);
-            joinHandler();
+            endHandlerOwners(tryIndex);
             --retryHandlerDepth_;
             --exceptionHandlerDepth_;
         }
 
-        movedOwners_ = afterTry;
         if (tryStatement.hasEnsure()) {
-            movedOwners_.insert(handlerStart.begin(), handlerStart.end());
+            enterEnsureOwners(tryIndex);
             ++ensureDepth_;
             analyzeStatements(tryStatement.ensureBody(), true);
             --ensureDepth_;
         }
+        leaveTryOwners(tryIndex);
         break;
     }
     case ast::AstNodeKind::RaiseStatement: {
@@ -639,6 +646,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             if (exceptionHandlerDepth_ == 0) {
                 throw SemanticError("bare Raise is only allowed inside an exception handler");
             }
+            endOwnerPath();
             break;
         }
 
@@ -652,6 +660,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             throw SemanticError("Raise requires an exception type: " + identifier.name());
         }
         result_.setExceptionType(&raiseStatement, raised);
+        endOwnerPath();
         break;
     }
     case ast::AstNodeKind::RetryStatement: {
@@ -673,6 +682,16 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
                 }
             }
         }
+        // `ensure` runs, then the try body again (CANON-15).
+        if (ownerPathReachable_) {
+            for (std::size_t index = ownerFrames_.size(); index > 0; --index) {
+                if (ownerFrames_[index - 1].inRetryHandler) {
+                    sendOwnersTo(index - 1, OwnerDepartureKind::Retry, ownerFrames_.size(), statement.position());
+                    break;
+                }
+            }
+        }
+        endOwnerPath();
         break;
     }
     case ast::AstNodeKind::ReturnStatement: {
@@ -688,17 +707,22 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
                 "cannot return " + types::nameOf(type) + " from function returning " +
                 currentFunctionReturnType_->name());
         }
+        endOwnerPath();
         break;
     }
     case ast::AstNodeKind::LeaveStatement:
         if (loopDepth_ == 0) {
             throw SemanticError("leave outside loop");
         }
+        sendOwnersOutOfLoop(OwnerDepartureKind::LoopExit, false, statement.position());
+        endOwnerPath();
         break;
     case ast::AstNodeKind::ContinueStatement:
         if (loopDepth_ == 0) {
             throw SemanticError("continue outside loop");
         }
+        sendOwnersOutOfLoop(OwnerDepartureKind::NextRound, false, statement.position());
+        endOwnerPath();
         break;
     case ast::AstNodeKind::WithStatement: {
         const auto& withStatement = static_cast<const ast::WithStatement&>(statement);
@@ -781,8 +805,8 @@ void SemanticAnalyzer::analyzeVarBlock(const ast::VarBlockStatement& statement)
 void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
 {
     // Safe pointers: an owner given away in any arm is given away after it.
-    const auto caseStart = movedOwners_;
-    auto caseMerged = movedOwners_;
+    const OwnerState caseStart = ownerState();
+    OwnerState caseMerged{{}, false};
     const TypeRef selectorType = analyzeExpression(statement.expression());
     // Change case-strings: a String selector, with String literals or Consts
     // as choices and `else` always.
@@ -839,17 +863,17 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
             }
             covered.push_back(interval);
         }
-        movedOwners_ = caseStart;
+        setOwnerState(caseStart);
         analyzeStatements(arm.body, true);
-        caseMerged.insert(movedOwners_.begin(), movedOwners_.end());
+        joinCurrentOwnerState(caseMerged);
     }
 
-    movedOwners_ = caseStart;
+    setOwnerState(caseStart);
     if (statement.hasElse()) {
         analyzeStatements(statement.elseBody(), true);
     }
-    caseMerged.insert(movedOwners_.begin(), movedOwners_.end());
-    movedOwners_ = std::move(caseMerged);
+    joinCurrentOwnerState(caseMerged);
+    setOwnerState(std::move(caseMerged));
     if (statement.hasElse()) {
         return;
     }
@@ -894,8 +918,8 @@ void SemanticAnalyzer::analyzeCaseStatement(const ast::CaseStatement& statement)
 // every String.
 void SemanticAnalyzer::analyzeStringCase(const ast::CaseStatement& statement)
 {
-    const auto caseStart = movedOwners_;
-    auto caseMerged = movedOwners_;
+    const OwnerState caseStart = ownerState();
+    OwnerState caseMerged{{}, false};
     std::vector<std::string> seen;
     for (const ast::CaseArm& arm : statement.arms()) {
         for (const auto& choice : arm.choices) {
@@ -919,17 +943,17 @@ void SemanticAnalyzer::analyzeStringCase(const ast::CaseStatement& statement)
             }
             seen.push_back(std::move(bytes));
         }
-        movedOwners_ = caseStart;
+        setOwnerState(caseStart);
         analyzeStatements(arm.body, true);
-        caseMerged.insert(movedOwners_.begin(), movedOwners_.end());
+        joinCurrentOwnerState(caseMerged);
     }
-    movedOwners_ = caseStart;
+    setOwnerState(caseStart);
     if (!statement.hasElse()) {
         throw SemanticError("a case on a String needs an 'else' arm: no choices cover every String (ADR-0011)");
     }
     analyzeStatements(statement.elseBody(), true);
-    caseMerged.insert(movedOwners_.begin(), movedOwners_.end());
-    movedOwners_ = std::move(caseMerged);
+    joinCurrentOwnerState(caseMerged);
+    setOwnerState(std::move(caseMerged));
 }
 
 // The bytes of a String literal or a String Const (change case-strings).
@@ -956,19 +980,24 @@ bool SemanticAnalyzer::staticStringValue(const ast::Expression& expression, std:
 
 namespace inox::compiler::semantic {
 
-// Safe pointers: a loop's next round starts where its body ends, so an
-// owner declared before the loop and given away in the body must be given
-// a new value before the body ends. After the loop, the owners given away
-// before it still are.
-void SemanticAnalyzer::requireOwnersBackAfterLoop(const std::unordered_map<const Symbol*, const Scope*>& start)
+// Safe pointers: a loop's next round starts where its body ends and at each
+// `continue`, so an owner declared before the loop and given away in the
+// body must be given a new value before either. After the loop come the
+// owners given away before it and those given away before a `leave` or a
+// true `until`.
+void SemanticAnalyzer::requireOwnersBackAfterLoop()
 {
-    for (const auto& [symbol, scope] : movedOwners_) {
-        if (!start.contains(symbol)) {
+    OwnerFrame frame = std::move(ownerFrames_.back());
+    ownerFrames_.pop_back();
+    frame.nextRound.insert(movedOwners_.begin(), movedOwners_.end());
+    for (const auto& [symbol, scope] : frame.nextRound) {
+        if (!frame.loopStart.moved.contains(symbol)) {
             throw SemanticError(symbol->name + " is given away (Move or Free) inside the loop: assign it again "
                                 "before the next round");
         }
     }
-    movedOwners_.insert(start.begin(), start.end());
+    frame.loopStart.moved.insert(frame.exits.begin(), frame.exits.end());
+    setOwnerState(std::move(frame.loopStart));
 }
 
 } // namespace inox::compiler::semantic

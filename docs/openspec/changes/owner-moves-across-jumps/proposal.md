@@ -9,8 +9,8 @@ of `ensure` on every departure, and the back edge of `Retry`. An owner
 given away on such a path is caught only at run time (trap 17, "use of an
 owner after Move or Free", `tests/runtime/pointers-moved-owner.inox`).
 
-Status: **revised design awaiting the maintainer's approval** (G7: memory
-ownership). Risk: high (memory ownership); the law, the syntax and the
+Approval: Marcelo Fortes, 2026-11-05 (G7: memory ownership; design at
+commit dede102). Risk: high (memory ownership); the law, the syntax and the
 generated code do not change.
 
 ## What Changes

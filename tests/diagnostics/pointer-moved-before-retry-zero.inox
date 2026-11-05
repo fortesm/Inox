@@ -1,0 +1,32 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers: the analysis does not read the count of Retry, so Retry(0),
+== which rethrows at once, is checked like any Retry: a handler that frees
+== an owner must assign it again first.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Main :
+    P := New(TNode(FValue := 1))
+    try
+        try
+            Raise RangeError
+        except
+            On RangeError
+                Free(P)
+                Retry(0)
+            ;
+        ;
+    except
+        On RangeError
+            PutLn(P.FValue)
+        ;
+    ;
+;

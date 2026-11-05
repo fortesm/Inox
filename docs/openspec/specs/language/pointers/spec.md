@@ -50,9 +50,13 @@ Move or Free`.
 - **WHEN** an owner is used after Move, freed twice, freed on a branch, moved in a loop, or a field owner is freed
 - **THEN** it is rejected (tests/diagnostics/pointer-use-after-move.inox, tests/diagnostics/pointer-double-free.inox, tests/diagnostics/pointer-moved-on-a-branch.inox, tests/diagnostics/pointer-moved-in-loop.inox, tests/diagnostics/pointer-free-of-field.inox)
 
+#### Scenario: Jumps, handlers, ensure and Retry
+- **WHEN** an owner is given away on a path through `leave`, `continue`, `until`, a handler, an `ensure` or `Retry`
+- **THEN** a use it reaches is rejected (tests/diagnostics/pointer-moved-before-leave.inox, tests/diagnostics/pointer-moved-before-continue.inox, tests/diagnostics/pointer-moved-before-leave-nested.inox, tests/diagnostics/pointer-moved-before-leave-branch.inox, tests/diagnostics/pointer-moved-owner.inox, tests/diagnostics/pointer-moved-before-until.inox, tests/diagnostics/pointer-moved-before-until-in-while.inox, tests/diagnostics/pointer-moved-before-until-round.inox, tests/diagnostics/pointer-freed-before-exception.inox, tests/diagnostics/pointer-moved-before-raise.inox, tests/diagnostics/pointer-freed-in-inner-handler.inox, tests/diagnostics/pointer-freed-in-ensure-before-leave.inox, tests/diagnostics/pointer-freed-in-ensure-before-continue.inox, tests/diagnostics/pointer-freed-in-ensure-before-until.inox, tests/diagnostics/pointer-freed-in-ensure-one-branch.inox, tests/diagnostics/pointer-freed-in-nested-ensures.inox, tests/diagnostics/pointer-moved-before-retry.inox, tests/diagnostics/pointer-freed-in-ensure-before-retry.inox, tests/diagnostics/pointer-moved-before-retry-zero.inox), and a path that assigns it again is accepted (tests/runtime/pointers-moves-across-jumps.inox, tests/runtime/pointers-moves-across-until.inox, tests/runtime/pointers-moves-across-handlers.inox, tests/runtime/pointers-moves-across-ensure.inox, tests/runtime/pointers-moves-across-nested-ensures.inox, tests/runtime/pointers-moves-before-retry.inox, tests/runtime/pointers-moved-then-exit.inox)
+
 #### Scenario: Run-time backstop
-- **WHEN** an owner given away before a `leave` is used after the loop
-- **THEN** the program traps (tests/runtime/pointers-moved-owner.inox)
+- **WHEN** a routine frees an owner received as `ref mut` and the caller uses it
+- **THEN** the program traps (tests/runtime/pointers-owner-freed-by-callee.inox)
 
 ### Requirement: Links
 `Link(X)` SHALL give a `Link<T>` to the object of an owner, to a variable of

@@ -1,0 +1,48 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25 rule 3): a true `until` takes its owners out of
+== the repeat; assigned again before it, they are usable after it.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Main :
+    P := New(TNode(FValue := 1))
+    I Integer := 0
+    repeat
+        I := I + 1
+        Free(P)
+        P := New(TNode(FValue := I))
+        until I = 3
+    ;
+    PutLn("after until ", P.FValue)
+
+    == until inside a while inside the repeat
+    I := 0
+    repeat
+        while True
+            I := I + 1
+            Q := Move(P)
+            P := Move(Q)
+            until I > 1
+            leave
+        ;
+    ;
+    PutLn("until in while ", P.FValue, " ", I)
+
+    == an owner declared in the body, given away before until
+    I := 0
+    repeat
+        I := I + 1
+        R := New(TNode(FValue := I * 10))
+        Free(R)
+        until I = 2
+    ;
+    PutLn("body owner ", I)
+;

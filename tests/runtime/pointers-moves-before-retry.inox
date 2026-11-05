@@ -1,0 +1,68 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25 rule 3): Retry runs `ensure` and the try body
+== again; an owner assigned again before it is usable in the body.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Main :
+    P := New(TNode(FValue := 1))
+    N Integer := 0
+    == the handler assigns again before Retry
+    try
+        N := N + 1
+        PutLn("body ", N, " ", P.FValue)
+        if N < 3
+            Raise RangeError
+        ;
+    except
+        On RangeError
+            Free(P)
+            P := New(TNode(FValue := N * 10))
+            Retry(3)
+        ;
+    ;
+
+    == ensure assigns again before Retry
+    N := 0
+    try
+        N := N + 1
+        PutLn("again ", N, " ", P.FValue)
+        Free(P)
+        if N < 2
+            Raise RangeError
+        ;
+    except
+        On RangeError
+            Retry(2)
+        ;
+    ensure
+        P := New(TNode(FValue := N + 100))
+    ;
+    PutLn("after ensure ", P.FValue)
+
+    == Retry(0) rethrows at once; the outer handler assigns again
+    try
+        try
+            Raise RangeError
+        except
+            On RangeError
+                Free(P)
+                P := New(TNode(FValue := 7))
+                Retry(0)
+            ;
+        ;
+    except
+        On RangeError
+            P := New(TNode(FValue := 8))
+            PutLn("rethrown ", P.FValue)
+        ;
+    ;
+;

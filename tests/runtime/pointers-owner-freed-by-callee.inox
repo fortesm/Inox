@@ -1,0 +1,26 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers: the run-time check of an owner given away (trap 17) stays
+== in the generated code. A routine that frees an owner received as
+== `ref mut` reaches it today (item 2.4 of safe-pointers-followups): the
+== caller's use stops with the trap, never a null access.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Release(ref mut P Own<TNode>) :
+    Free(P)
+;
+
+Main :
+    P := New(TNode(FValue := 5))
+    PutLn("before ", P.FValue)
+    Release(P)
+    PutLn(P.FValue)
+;

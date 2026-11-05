@@ -206,5 +206,7 @@ moved tests change), openspec, constitution_check, version_check.
 ## Approval
 
 Q1-Q3: answered yes by the maintainer, Marcelo Fortes, on 2026-11-05 (Q3
-with the run-time protection preserved and independently tested). The
-revised design waits for his approval (G7) before implementation.
+with the run-time protection preserved and independently tested). 
+
+Design approval: Marcelo Fortes, 2026-11-05 (G7), revised design at commit
+dede102, with the edge-case tests of the independent technical review.

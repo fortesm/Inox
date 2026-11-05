@@ -1,0 +1,63 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25 rule 3): the owners given away before `leave` and
+== `continue` reach the loop's exit and its next round; assigned again
+== before the jump, or declared in the body, they are usable.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Main :
+    P := New(TNode(FValue := 1))
+    == assigned again before leave and before continue
+    for I in 1..4
+        Q := Move(P)
+        P := New(TNode(FValue := Q.FValue + I))
+        if I = 2
+            Free(Q)
+            continue
+        ;
+        if I = 3
+            Free(Q)
+            leave
+        ;
+        Free(Q)
+    ;
+    PutLn("after jumps ", P.FValue)
+
+    == an owner declared in the body, given away before leave
+    for I in 1..3
+        R := New(TNode(FValue := I))
+        S := Move(R)
+        PutLn("body owner ", S.FValue)
+        leave
+    ;
+
+    == the inner leave carries nothing out of the outer loop
+    for I in 1..2
+        for J in 1..3
+            if J = 2
+                leave
+            ;
+            PutLn("inner ", I, " ", J)
+        ;
+        PutLn("outer ", P.FValue)
+    ;
+
+    == the branch that leaves gives P away; the fall-through uses it
+    for I in 1..3
+        if I = 2
+            Free(P)
+            P := New(TNode(FValue := 20))
+            leave
+        ;
+        PutLn("fall-through ", P.FValue)
+    ;
+    PutLn("end ", P.FValue)
+;

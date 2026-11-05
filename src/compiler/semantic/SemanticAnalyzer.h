@@ -416,14 +416,65 @@ private:
     TypeRef analyzePointerBuiltin(std::string_view name, const ast::CallExpression& call);
     // The type reached through a pointer for `.Field`, `[I]` and methods.
     static TypeRef typeThroughPointer(TypeRef type);
+    // Owner variables given away by Move or Free, with the scope that
+    // declared them.
+    using MovedOwners = std::unordered_map<const Symbol*, const Scope*>;
+    // The owners given away on the paths that reach a point, and whether
+    // any path reaches it (CANON-25 rule 3).
+    struct OwnerState {
+        MovedOwners moved;
+        bool reachable = true;
+    };
+    enum class OwnerFrameKind : std::uint8_t { Loop, Repeat, Try };
+    enum class OwnerDepartureKind : std::uint8_t { LoopExit, NextRound, Retry };
+    // A path leaving a try that has an `ensure`: it reaches its target once
+    // `ensure` has run.
+    struct OwnerDeparture {
+        std::size_t target = 0;
+        OwnerDepartureKind kind = OwnerDepartureKind::LoopExit;
+        MovedOwners moved;
+        ast::SourcePosition position;
+    };
+    // A loop or a try being analyzed: the owner sets of the paths that
+    // leave it or come back to it.
+    struct OwnerFrame {
+        OwnerFrameKind kind = OwnerFrameKind::Loop;
+        MovedOwners exits;      // loop: at `leave` and a true `until`
+        MovedOwners nextRound;  // loop: at `continue`
+        MovedOwners givenAway;  // try: anywhere in it, on any path
+        MovedOwners givenAwayInEnsure;
+        std::vector<OwnerDeparture> departures;  // try with `ensure`
+        std::vector<OwnerDeparture> retries;     // try: at its `Retry`s
+        OwnerState loopStart;   // loop: the set before it
+        MovedOwners startOfTry;
+        MovedOwners handlerStart;
+        OwnerState afterTry{{}, false};
+        bool hasEnsure = false;
+        bool inRetryHandler = false;
+        bool inEnsure = false;
+    };
     void noteOwnerGivenAway(const ast::Expression& owner);
     void noteOwnerAssigned(const Symbol& symbol);
     void requireOwnerUsable(const Symbol& symbol) const;
     void forgetMovedOwnersOf(const Scope* scope);
-    void requireOwnersBackAfterLoop(const std::unordered_map<const Symbol*, const Scope*>& start);
-    // Owner variables given away by Move or Free on the paths analyzed so
-    // far, with the scope that declared them.
-    std::unordered_map<const Symbol*, const Scope*> movedOwners_;
+    OwnerState ownerState() const;
+    void setOwnerState(OwnerState state);
+    void joinCurrentOwnerState(OwnerState& into) const;
+    void endOwnerPath();
+    void sendOwnersTo(std::size_t target, OwnerDepartureKind kind, std::size_t from,
+                      const ast::SourcePosition& position);
+    void sendOwnersOutOfLoop(OwnerDepartureKind kind, bool repeatOnly, const ast::SourcePosition& position);
+    void enterLoopOwners(OwnerFrameKind kind);
+    void requireOwnersBackAfterLoop();
+    std::size_t enterTryOwners(bool hasEnsure);
+    void endTryBodyOwners(std::size_t tryIndex);
+    void enterHandlerOwners(std::size_t tryIndex, bool retryHandler);
+    void endHandlerOwners(std::size_t tryIndex);
+    void enterEnsureOwners(std::size_t tryIndex);
+    void leaveTryOwners(std::size_t tryIndex);
+    MovedOwners movedOwners_;
+    bool ownerPathReachable_ = true;
+    std::vector<OwnerFrame> ownerFrames_;
     std::unordered_set<const Symbol*> currentParameters_;
     // The root of a place reached through a pointer: writable, owned by no
     // variable of the routine.

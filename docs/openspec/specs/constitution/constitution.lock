@@ -158,7 +158,7 @@ spec.md#CANON-24 Contracts of an Override	b8caf27d3082c3f8	design-by-contract
 spec.md#CANON-24 Loop contracts	07f43b682ba43010	design-by-contract
 spec.md#CANON-24 A broken contract is a trap	63aeaccab75ee7d1	design-by-contract
 spec.md#CANON-25 Owners	30e0c00976aea35e	safe-pointers
-spec.md#CANON-25 Moves are checked	585dd7739690f2d6	safe-pointers
+spec.md#CANON-25 Moves are checked	8b8cd5deaea80ce5	owner-moves-across-jumps
 spec.md#CANON-25 Links	47fb968c24b3ba89	read-only-through-owners
 spec.md#CANON-25 Access through pointers	01016a8cfa50bb65	read-only-through-owners
 spec.md#CANON-25 No access through an invalidated object	be3c3a98bc4bd48d	reference-parameter-validity

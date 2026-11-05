@@ -1,0 +1,7 @@
+leave 10
+round 1 10
+round 2 21
+round 3 22
+until 30
+ensure 1
+end 30

@@ -1,0 +1,60 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25 rule 3): a handler starts from every owner given
+== away in the try body; assigned again in the handler, it is usable.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Check(I Integer) :
+    if I > 0
+        Raise RangeError
+    ;
+;
+
+Main :
+    P := New(TNode(FValue := 1))
+    == freed and assigned in the body; the handler assigns before using
+    try
+        Free(P)
+        Check(1)
+        P := New(TNode(FValue := 2))
+    except
+        On RangeError
+            P := New(TNode(FValue := 3))
+            PutLn("handler ", P.FValue)
+        ;
+    ;
+    PutLn("after try ", P.FValue)
+
+    == a Raise after a move: the handler gives the owner back
+    try
+        Q := Move(P)
+        PutLn("moved ", Q.FValue)
+        Raise RangeError
+    except
+        On RangeError
+            P := New(TNode(FValue := 4))
+        ;
+    ;
+    PutLn("after raise ", P.FValue)
+
+    == a handler that does not use the owner
+    try
+        Free(P)
+        Check(1)
+        P := New(TNode(FValue := 5))
+    except
+        On RangeError
+            PutLn("caught")
+            P := New(TNode(FValue := 6))
+        ;
+    ;
+    PutLn("end ", P.FValue)
+;

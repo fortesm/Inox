@@ -1,0 +1,28 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers: `ensure` runs before a true `until` leaves the try: what
+== it frees is freed after the repeat.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Main :
+    P := New(TNode(FValue := 1))
+    I Integer := 0
+    repeat
+        I := I + 1
+        try
+            until I = 2
+        ensure
+            Free(P)
+        ;
+        P := New(TNode)
+    ;
+    PutLn(P.FValue)
+;

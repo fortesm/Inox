@@ -1,0 +1,61 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25 rule 3): `ensure` runs on every path that leaves
+== its try; when it assigns an owner again, every such path has it back.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Main :
+    P := New(TNode(FValue := 1))
+    == leave: ensure assigns again
+    for I in 1..3
+        try
+            Free(P)
+            leave
+        ensure
+            P := New(TNode(FValue := 10))
+        ;
+    ;
+    PutLn("leave ", P.FValue)
+
+    == continue: ensure assigns again before the next round
+    for I in 1..3
+        PutLn("round ", I, " ", P.FValue)
+        try
+            Free(P)
+            continue
+        ensure
+            P := New(TNode(FValue := 20 + I))
+        ;
+    ;
+
+    == until: ensure assigns again
+    I Integer := 0
+    repeat
+        I := I + 1
+        try
+            Free(P)
+            until I = 2
+        ensure
+            P := New(TNode(FValue := 30))
+        ;
+    ;
+    PutLn("until ", P.FValue)
+
+    == an ensure that does not touch the owner
+    for J in 1..2
+        try
+            leave
+        ensure
+            PutLn("ensure ", J)
+        ;
+    ;
+    PutLn("end ", P.FValue)
+;
