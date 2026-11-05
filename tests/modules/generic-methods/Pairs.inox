@@ -1,0 +1,31 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== generic-struct-methods: the struct and its Public methods, used from
+== another module; each instance is this module's routine.
+Type
+    TPair<K, V> Struct Public
+        FKey K
+    Public
+        FValue V
+    ;
+
+MakePair<K, V>(Key K, Value V) TPair<K, V> Public :
+    Return TPair(FKey := Key, FValue := Value)
+;
+
+TPair<K, V>.Key(Self) K Public :
+    Return Self.FKey
+;
+
+TPair<K, V>.SetKey(Self mut, Key K) Public :
+    Self.FKey := Key
+;
+
+TPair<K, V>.Hidden(Self) K :
+    Return Self.FKey
+;

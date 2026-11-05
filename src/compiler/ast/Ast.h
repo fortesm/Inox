@@ -341,9 +341,10 @@ private:
     std::vector<std::string> tokens_;
 };
 
-// The position of the dot of a method name, `TName.Method`; npos for a
-// routine. The name of a generic instance has dots only inside its type
-// arguments (`Max<Array[1..3] Int64>`), which never make it a method.
+// The position of the dot of a method name, `TName.Method`, the last dot
+// outside angle brackets (`TPair<Bank.TKey, Int64>.Swap`); npos for a
+// routine, whose instance has dots only inside its type arguments
+// (`Max<Array[1..3] Int64>`).
 std::size_t methodDot(std::string_view routineName);
 
 // One parameter of a routine header (r3.114): `X T`, `ref X T`,

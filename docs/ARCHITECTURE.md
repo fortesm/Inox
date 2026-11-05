@@ -384,6 +384,8 @@ instead of searching the whole emitter.
     functions is `StdStrings.h`, shared with codegen;
   - `SemanticGenerics.cpp` — generics (CANON-8): templates, inference of
     type arguments from the arguments or the target, instances of generic
+    struct methods (`genericMethodFor`: by the receiver's instance, named
+    `TPair<String, Int64>.Swap`), instances of generic
     routines (copied with `ast::cloneStatements`, checked after the
     program's routines) and of generic structs; `SemanticResult` keeps the
     instances, and codegen compiles them like routines of the program;

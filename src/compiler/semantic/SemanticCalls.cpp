@@ -353,7 +353,7 @@ TypeRef SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression& cal
     }
 
     const std::string qualifiedName = types::nameOf(baseType) + "." + fieldIdentifier.name();
-    const FunctionSignature* signature = resolveFunctionSignature(qualifiedName);
+    const FunctionSignature* signature = methodSignature(baseType, qualifiedName, fieldIdentifier.name());
     if (signature == nullptr) {
         // CANON-9: a field or method of a reused part, reached through it.
         if (const auto reused = findReusedMember(baseType, fieldIdentifier.name())) {
@@ -403,7 +403,7 @@ TypeRef SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpression&
     const auto& methodIdentifier =
         static_cast<const ast::IdentifierExpression&>(*member.arguments()[1]);
     const std::string qualifiedName = types::nameOf(receiverType) + "." + methodIdentifier.name();
-    const FunctionSignature* signature = resolveFunctionSignature(qualifiedName);
+    const FunctionSignature* signature = methodSignature(receiverType, qualifiedName, methodIdentifier.name());
     if (signature == nullptr && resolveStructField(receiverType, methodIdentifier.name()) == nullptr) {
         // CANON-9: a method of a reused part runs on that part.
         if (const auto reused = findReusedMember(receiverType, methodIdentifier.name());

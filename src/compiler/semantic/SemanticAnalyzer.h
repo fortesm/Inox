@@ -285,8 +285,17 @@ private:
     void unifyTypeExpr(const ast::TypeExpr& pattern, TypeRef actual, const std::vector<std::string>& parameters,
                          std::vector<TypeRef>& bound, const std::string& owner, const std::string& from,
                          const std::vector<TypeRef>* fixed);
+    // `instance` names the instance (a method's: `TPair<String, Int64>.Swap`);
+    // null: the routine's name with its type arguments.
     const FunctionSignature& instantiateRoutine(const ast::FunctionDeclaration& generic,
-                                                const std::vector<TypeRef>& arguments);
+                                                const std::vector<TypeRef>& arguments,
+                                                const std::string* instance = nullptr);
+    void checkGenericMethods();
+    void registerInstanceSignature(const ast::FunctionDeclaration& instance, const std::string& name);
+    [[noreturn]] void requireGenericMethodHeader(const std::string& owner, const std::string& method) const;
+    const FunctionSignature* genericMethodFor(TypeRef receiver, const std::string& method);
+    const FunctionSignature* methodSignature(TypeRef receiver, const std::string& qualifiedName,
+                                             const std::string& method);
     TypeRef instantiateStruct(const ast::TypeDeclaration& generic, const std::vector<TypeRef>& arguments);
     void analyzePendingInstances();
     static std::string instanceName(std::string_view name, const std::vector<TypeRef>& arguments);
@@ -484,6 +493,10 @@ private:
     // Generics: the templates by normalized name, the struct instances and
     // what each was made from, and the routine instances still to check.
     std::unordered_map<std::string, const ast::FunctionDeclaration*> genericRoutines_;
+    // The methods of generic structs, by normalized `TPair.Swap`, and in
+    // source order for their checks.
+    std::unordered_map<std::string, const ast::FunctionDeclaration*> genericMethods_;
+    std::vector<const ast::FunctionDeclaration*> genericMethodOrder_;
     std::unordered_map<std::string, const ast::TypeDeclaration*> genericStructs_;
     struct StructInstance {
         const ast::TypeDeclaration* generic = nullptr;

@@ -196,9 +196,17 @@ std::string moduleInterface(const ModuleNode& module)
             if (!function.isPublic()) {
                 break;
             }
-            routines << '\n'
-                     << function.name() << typeParameterList(function.typeParameters())
-                     << headerText(function.header()) << (function.isOverride() ? " Override" : "")
+            // A method of a generic struct: `TPair<K, V>.Key(...)`.
+            const std::size_t dot = methodDot(function.name());
+            const std::string_view written = function.name();
+            routines << '\n';
+            if (dot == std::string::npos) {
+                routines << written << typeParameterList(function.typeParameters());
+            } else {
+                routines << written.substr(0, dot) << typeParameterList(function.typeParameters())
+                         << written.substr(dot);
+            }
+            routines << headerText(function.header()) << (function.isOverride() ? " Override" : "")
                      << " Public\n";
             for (const ContractClause& clause : function.contracts()) {
                 routines << "    " << contractLine(clause) << '\n';

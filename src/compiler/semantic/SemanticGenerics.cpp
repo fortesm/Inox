@@ -140,7 +140,14 @@ void SemanticAnalyzer::registerGenericTemplates(const ast::ModuleNode& module)
         if (item->kind() == ast::AstNodeKind::FunctionDeclaration) {
             const auto& function = static_cast<const ast::FunctionDeclaration&>(*item);
             if (function.isGeneric()) {
-                genericRoutines_.emplace(normalizeName(function.name()), &function);
+                // A method of a generic struct is a template of its own
+                // (CANON-8): instantiated with the receiver's instance.
+                if (ast::methodDot(function.name()) != std::string::npos) {
+                    genericMethods_.emplace(normalizeName(function.name()), &function);
+                    genericMethodOrder_.push_back(&function);
+                } else {
+                    genericRoutines_.emplace(normalizeName(function.name()), &function);
+                }
             }
             continue;
         }
@@ -155,6 +162,81 @@ void SemanticAnalyzer::registerGenericTemplates(const ast::ModuleNode& module)
             }
         }
     }
+}
+
+// Rule 7 of generic-struct-methods: a method of a generic struct writes the
+// struct's own type parameters, all of them, in order (Q1).
+void SemanticAnalyzer::checkGenericMethods()
+{
+    for (const ast::FunctionDeclaration* function : genericMethodOrder_) {
+        const std::size_t dot = ast::methodDot(function->name());
+        const std::string owner = function->name().substr(0, dot);
+        const std::string method = function->name().substr(dot + 1);
+        notePosition(*function);
+        const ast::TypeDeclaration* generic = genericStruct(owner);
+        if (generic == nullptr) {
+            if (types().lookup(owner) != nullptr) {
+                throw SemanticError(owner + " is not generic: write " + owner + "." + method + "(...)");
+            }
+            throw SemanticError("unknown generic struct " + owner + " of the method " + method);
+        }
+        std::string expected;
+        for (const std::string& parameter : generic->typeParameters) {
+            expected += (expected.empty() ? "" : ", ") + parameter;
+        }
+        const std::vector<std::string>& written = function->typeParameters();
+        if (written.size() != generic->typeParameters.size()) {
+            throw SemanticError(owner + " takes " + std::to_string(generic->typeParameters.size()) +
+                                " type parameters (" + expected + "): write " + owner + "<" + expected + ">." +
+                                method + "(...)");
+        }
+        for (std::size_t index = 0; index < written.size(); ++index) {
+            if (!equalsIgnoreCase(written[index], generic->typeParameters[index])) {
+                throw SemanticError("the type parameters of " + owner + " are " + expected + ": write " + owner +
+                                    "<" + expected + ">." + method + "(...)");
+            }
+        }
+    }
+}
+
+// `TPair.Key(Self)` for a generic TPair: its type parameters are written.
+void SemanticAnalyzer::requireGenericMethodHeader(const std::string& owner, const std::string& method) const
+{
+    std::string expected;
+    for (const std::string& parameter : genericStruct(owner)->typeParameters) {
+        expected += (expected.empty() ? "" : ", ") + parameter;
+    }
+    throw SemanticError(owner + " is generic: write its type parameters, " + owner + "<" + expected + ">." + method +
+                        "(...) (CANON-8)");
+}
+
+// The method `method` of the instance `receiver` of a generic struct, made
+// on its first call (CANON-8): `TPair<String, Int64>.Swap`. Null when the
+// receiver is no instance or its struct has no such method. Out of line:
+// the method lookups stay small (stack budget).
+const FunctionSignature* SemanticAnalyzer::genericMethodFor(TypeRef receiver, const std::string& method)
+{
+    const auto instance = structInstanceOf_.find(receiver);
+    if (instance == structInstanceOf_.end()) {
+        return nullptr;
+    }
+    const auto found = genericMethods_.find(normalizeName(instance->second.generic->name + "." + method));
+    if (found == genericMethods_.end()) {
+        return nullptr;
+    }
+    const std::string name = types::nameOf(receiver) + "." + method;
+    return &instantiateRoutine(*found->second, instance->second.arguments, &name);
+}
+
+// A method of `receiver`'s type: declared, or of a generic struct's
+// instance.
+const FunctionSignature* SemanticAnalyzer::methodSignature(TypeRef receiver, const std::string& qualifiedName,
+                                                           const std::string& method)
+{
+    if (const FunctionSignature* signature = resolveFunctionSignature(qualifiedName)) {
+        return signature;
+    }
+    return genericMethodFor(receiver, method);
 }
 
 const ast::FunctionDeclaration* SemanticAnalyzer::genericRoutine(std::string_view name) const
@@ -603,10 +685,11 @@ std::vector<ast::StatementPtr> SemanticAnalyzer::cloneInstanceBody(const ast::Fu
 }
 
 const FunctionSignature& SemanticAnalyzer::instantiateRoutine(const ast::FunctionDeclaration& generic,
-                                                              const std::vector<TypeRef>& arguments)
+                                                              const std::vector<TypeRef>& arguments,
+                                                              const std::string* instance)
 {
     requireBoundedNesting(generic.name(), arguments);
-    const std::string name = instanceName(generic.name(), arguments);
+    const std::string name = instance == nullptr ? instanceName(generic.name(), arguments) : *instance;
     if (const FunctionSignature* existing = resolveFunctionSignature(name)) {
         return *existing;
     }
@@ -626,15 +709,25 @@ const FunctionSignature& SemanticAnalyzer::instantiateRoutine(const ast::Functio
     substituteHeaderTypes(made->header(), parameters, arguments);
     made->copyModuleFrom(generic);
     made->setPosition(generic.position());  // an instance is where its template is
-    const ast::FunctionDeclaration& instance = result_.addInstance(std::move(made));
+    const ast::FunctionDeclaration& declared = result_.addInstance(std::move(made));
     symbols_.globalScope().declare(name, SymbolKind::Function);
+    registerInstanceSignature(declared, name);
+    pendingInstances_.push_back(PendingInstance{&declared, currentRoutine_});
+    return *resolveFunctionSignature(name);
+}
+
+// The signature of an instance, registered where its template is; the call
+// that made it stays the place of the diagnostics that follow. Out of line:
+// the frame of instantiateRoutine holds no place (stack budget).
+void SemanticAnalyzer::registerInstanceSignature(const ast::FunctionDeclaration& instance, const std::string& name)
+{
+    const DiagnosticPlace call = diagnosticPlace();
     try {
         registerFunctionSignature(instance);
     } catch (const SemanticError& error) {
         throw SemanticError("in " + name + ", used in " + currentRoutine_ + ": " + error.what());
     }
-    pendingInstances_.push_back(PendingInstance{&instance, currentRoutine_});
-    return *resolveFunctionSignature(name);
+    diagnosticPlace() = call;
 }
 
 // After the program's routines: each instance is checked as a routine of

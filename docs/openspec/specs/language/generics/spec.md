@@ -101,18 +101,46 @@ instance and the routine that used it ("in Max<TPoint>, used in Main").
 - **WHEN** a generic routine calls itself with a bigger type each time
 - **THEN** it is rejected when the type arguments nest more than 32 levels deep (tests/diagnostics/generics-endless.inox)
 
-### Requirement: Methods of generic structs are not yet in the language
-A method of a generic struct, and invariants or reused parts in a generic
-struct, SHALL be rejected until their own change; a generic routine does the
-same job (`Push<T>(ref mut S TStack<T>, X T)`).
+### Requirement: Methods of generic structs
+A method of a generic struct SHALL write the struct's own type parameters,
+all of them and in order (`TPair<K, V>.Swap(Self mut)`), and SHALL be a
+method of every instance, made on its first call with the receiver's type
+arguments. `Self` SHALL be the instance (CANON-9), `pre` and `pos` SHALL be
+checked in each instance (CANON-24), and visibility SHALL follow r3.99.
 
-#### Scenario: A method of a generic struct
-- **WHEN** a program declares `TPair<K, V>.Swap(Self mut)`
-- **THEN** it is rejected with the generic routine to write (tests/diagnostics/generics-method.inox)
+#### Scenario: Methods of a generic struct
+- **WHEN** a program calls methods of instances of generic structs (`P.Key`, `P.SetValue(5)`, `P.Swapped`, through `ref mut` and an owner)
+- **THEN** each instance runs its own copy (tests/runtime/generic-methods.inox)
+
+#### Scenario: Contracts in a method of a generic struct
+- **WHEN** a method of a generic struct has `pre` and `pos`
+- **THEN** they are checked in each instance, and a broken one traps (tests/runtime/generic-methods-contracts.inox)
+
+#### Scenario: Methods of a generic struct of another module
+- **WHEN** a module uses the Public methods of another module's generic struct
+- **THEN** they run, and a method without Public is rejected (tests/modules/generic-methods, tests/modules/generic-methods-private)
+
+#### Scenario: A header without the struct's type parameters
+- **WHEN** a method of a generic struct omits its type parameters, writes a different count or other names, or a method of an ordinary struct writes some
+- **THEN** it is rejected with the header to write (tests/diagnostics/generics-method.inox, tests/diagnostics/generics-method-count.inox, tests/diagnostics/generics-method-names.inox, tests/diagnostics/generics-method-not-generic.inox)
+
+### Requirement: Limits of the methods of generic structs
+A method SHALL NOT have type parameters of its own, and invariants and
+reused parts in a generic struct SHALL be rejected, until their own
+changes. An error in an instance SHALL name it and the routine that used
+it, at the line of the generic body.
+
+#### Scenario: Type parameters of a method's own
+- **WHEN** a method declares type parameters of its own (`TPair<K, V>.Map<U>`)
+- **THEN** it is rejected (tests/diagnostics/generics-method-own-parameters.inox)
+
+#### Scenario: An error in an instance of a method
+- **WHEN** an instance of a method uses an operation its type lacks
+- **THEN** the error names the instance and the routine that used it, at the line of the generic body (tests/diagnostics/generics-method-instance.inox)
 
 #### Scenario: A stack written once
 - **WHEN** a generic stack holds Integers, Strings and pairs
-- **THEN** each works through the same generic routines (examples/generics.inox)
+- **THEN** each works through the same methods of the generic struct (examples/generics.inox)
 
 ### Requirement: A field of a type parameter has no implicit value
 A field of a generic struct whose type uses a type parameter (`FValue T`,

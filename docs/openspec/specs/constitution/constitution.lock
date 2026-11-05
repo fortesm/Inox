@@ -168,7 +168,7 @@ spec.md#VERSIONING Who changes the version	d76c70d3fe676bd0	repo-layout
 spec.md#VERSIONING Releases follow the version	bea2fabf564b7136	decisions-not-dialogue
 spec.md#VERSIONING Canon revision	c50837d85f0fcfba	repo-layout
 spec.md#FUTURE Concurrency	7e4363bb408956d2	constitution
-spec.md#FUTURE Generics and static proof	110e927eff28ea2f	generics
+spec.md#FUTURE Generics and static proof	726aaf5941d4bdd1	generic-struct-methods
 spec.md#FUTURE Ownership, absence and failure	259867a5bbb3b43d	remove-var-diagnostic
 spec.md#FUTURE Modules, variants and numbers	dab6cf1beef1e33c	english-programs
 spec.md#FUTURE Encapsulation, routine types and lifecycle	70a2105b7e9dc933	decisions-not-dialogue

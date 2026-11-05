@@ -1,0 +1,36 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== CANON-24 in a method of a generic struct: pre and pos (with old and
+== Result) are checked in each instance; a broken pre traps.
+Type
+    TBox<T> Struct
+        FValue T
+        FChanges Integer := 0
+    ;
+
+TBox<T>.Put(Self mut, X T) :
+    pre X != Self.FValue
+    pos Self.FChanges = old Self.FChanges + 1
+    Self.FValue := X
+    Self.FChanges := Self.FChanges + 1
+;
+
+TBox<T>.Changes(Self) Integer :
+    pos Result >= 0
+    Return Self.FChanges
+;
+
+Main :
+    B := TBox(FValue := "a")
+    B.Put("b")
+    PutLn(B.Changes)
+    N := TBox(FValue := 1)
+    N.Put(2)
+    PutLn(N.Changes)
+    N.Put(2)
+    PutLn("not reached")
+;

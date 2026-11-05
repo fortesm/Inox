@@ -1,0 +1,23 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== CANON-8 (generic-struct-methods): methods of generic structs, one
+
+== generic-struct-methods, rule 8: an error in an instance names it and the
+== call that made it, at the line of the generic body.
+Type
+    TBox<T> Struct
+        FValue T
+    ;
+
+TBox<T>.Twice(Self) T :
+    Return Self.FValue * 2
+;
+
+Main :
+    B := TBox(FValue := "a")
+    PutLn(B.Twice)
+;

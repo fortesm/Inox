@@ -1,1 +1,1 @@
-methods of generic structs are not in Inox yet
+TPair is generic: write its type parameters, TPair<K, V>.Swap(...) (CANON-8)

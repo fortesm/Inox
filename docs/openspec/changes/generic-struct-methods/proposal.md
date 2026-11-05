@@ -30,7 +30,7 @@ Risk: normal (a language feature on the existing generic machinery; no
 exception lowering, runtime ABI or ownership change). Design first, as
 asked.
 
-Status: **design awaiting approval**; code after F7. No code before both.
+Status: design approved by Marcelo Fortes, 2026-11-05 (Q1-Q5 as recommended); F7 done.
 
 ## What Changes
 

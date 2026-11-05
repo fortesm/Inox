@@ -1,6 +1,5 @@
 Design of the change `generic-struct-methods` (0.5, item 1). Risk: normal.
-Status: **awaiting the maintainer's approval**; no code before it is
-recorded here with its date.
+Status: approved by Marcelo Fortes, 2026-11-05 (see Approval).
 
 ## Today
 
@@ -212,4 +211,8 @@ must be identical.
 
 ## Approval
 
-(To be recorded: who approved, the date, and the answers to Q1-Q5.)
+Approved by Marcelo Fortes, 2026-11-05, with the recommendations: Q1 (a),
+the struct's own names; Q2 out of this change; Q3 a separate small change
+right after this one; Q4 out of this change; Q5 `examples/generics.inox`
+rewritten with methods. The exclusions of Q2 and Q4 are of this change's
+scope, not decisions against those features.
