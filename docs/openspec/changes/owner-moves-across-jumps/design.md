@@ -132,7 +132,9 @@ Trap 17 stays reachable by accepted programs: a routine with a `ref mut`
 owner parameter may `Free` it, and the caller's use after the call is not
 rejected (verified on main: run-time error 17, exit 70). This is a call
 edge, not a jump: it is not part of item 2.1 and is not changed here. It is
-what the independent runtime test of trap 17 uses.
+what the independent runtime test of trap 17 uses, and it is recorded as
+item 2.4 of `safe-pointers-followups`, a priority before `Option<T>`,
+`Result<T,E>` and `Vector<T>`.
 
 ## Acceptance tests
 
@@ -162,6 +164,13 @@ Negative (`tests/diagnostics/`, each with its line and column):
 - `pointer-moved-before-retry`: a handler frees, then `Retry`.
 - `pointer-freed-in-ensure-before-retry`: `ensure` frees, a handler
   `Retry`s.
+- `pointer-freed-in-ensure-one-branch`: `ensure` assigns the owner again
+  in one arm of an `if` only; the use after the try is still rejected.
+- `pointer-freed-in-nested-ensures`: two nested trys, each with an
+  `ensure`; the inner `ensure` assigns again, the outer one frees; the use
+  on the `leave` path is rejected (the effects compose inner first).
+- `pointer-moved-before-retry-zero`: a handler frees, then `Retry(0)`
+  (immediate rethrow); the outer handler uses the owner.
 - `pointer-moved-owner` (the runtime test moved, Q3).
 
 Positive (`tests/runtime/`, accepted, output checked, leak-free):
@@ -177,7 +186,11 @@ Positive (`tests/runtime/`, accepted, output checked, leak-free):
 - `pointers-moves-across-ensure`: `ensure` assigns again on the `leave`,
   `continue` and `until` paths; `ensure` that does not touch the owner.
 - `pointers-moves-before-retry`: a handler that assigns again before
-  `Retry`; an `ensure` that assigns again before `Retry`.
+  `Retry`; an `ensure` that assigns again before `Retry`; `Retry(0)` whose
+  rethrow reaches an outer handler that assigns again.
+- `pointers-moves-across-nested-ensures`: two nested trys whose `ensure`s
+  free (inner) and assign again (outer) on a `leave` path: accepted, the
+  owner usable after the loop.
 - `pointers-moved-then-exit` (Q1): Free then `Return`, `Raise` or `Exit` in
   a branch, use after it.
 - `pointers-owner-freed-by-callee` (`.trap`, Q3): the independent check of
