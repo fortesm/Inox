@@ -644,7 +644,19 @@ TypeRef SemanticAnalyzer::instantiateStruct(const ast::TypeDeclaration& generic,
         throw SemanticError("in " + name + ": " + error.what());
     }
     result_.addStructInstance(type);
+    if (!generic.invariants.empty()) {
+        instantiateInvariant(type);
+    }
     return type;
+}
+
+// The invariant of an instance of a generic struct (CANON-24): made with
+// the instance, so every check of the instance finds it. Out of line: the
+// recursive instantiation keeps its frame.
+void SemanticAnalyzer::instantiateInvariant(TypeRef instance)
+{
+    static const std::string invariant = "__invariant";
+    genericMethodFor(instance, invariant);
 }
 
 // The body of an instance: the template's, with its type arguments for its

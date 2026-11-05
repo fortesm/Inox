@@ -1980,10 +1980,6 @@ ast::TypeDeclaration Parser::parseTypeDeclaration()
                     throw ParseError("a generic struct cannot reuse parts yet: " + declaration.name, name.location);
                 }
             }
-            if (!declaration.invariants.empty()) {
-                throw ParseError("a generic struct cannot have invariant lines yet: " + declaration.name,
-                                 name.location);
-            }
         }
         return declaration;
     }

@@ -26,5 +26,5 @@ Nothing below starts before the design's approval is recorded with its date.
 
 ## 4. Gates
 
-- [ ] 4.1 Suite, IR snapshot (only the declared differences, `ir-snapshot-expect.json`), `tools/stack_frames.py` (no growth), fuzz 1 and 7, differential, backend_gaps, openspec, constitution_check, version_check
-- [ ] 4.2 CI: sanitized suite (1 MiB), Windows, `windows-stack`, `ir-snapshot` (label `refactor` not used: this is a feature; the snapshot is run locally and its result reported)
+- [x] 4.1 Suite, IR snapshot (only the declared differences, `ir-snapshot-expect.json`), `tools/stack_frames.py` (no growth), fuzz 1 and 7, differential, backend_gaps, openspec, constitution_check, version_check
+- [x] 4.2 (PR #141, green) CI: sanitized suite (1 MiB), Windows, `windows-stack`, `ir-snapshot` (label `refactor` not used: this is a feature; the snapshot is run locally and its result reported)

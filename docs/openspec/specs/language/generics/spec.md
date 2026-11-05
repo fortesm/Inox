@@ -124,10 +124,27 @@ checked in each instance (CANON-24), and visibility SHALL follow r3.99.
 - **WHEN** a method of a generic struct omits its type parameters, writes a different count or other names, or a method of an ordinary struct writes some
 - **THEN** it is rejected with the header to write (tests/diagnostics/generics-method.inox, tests/diagnostics/generics-method-count.inox, tests/diagnostics/generics-method-names.inox, tests/diagnostics/generics-method-not-generic.inox)
 
+### Requirement: Invariants of generic structs
+The `invariant` lines of a generic struct SHALL hold in every instance:
+checked after a construction, around a method and after a field written
+from outside (CANON-24). An invariant an instance cannot check SHALL be
+reported as an error of that instance.
+
+#### Scenario: An invariant in every instance
+- **WHEN** instances of a generic struct with an invariant are changed by a method, through `ref mut` and by a field write
+- **THEN** each change is checked, and a broken invariant traps (tests/runtime/generic-struct-invariants.inox)
+
+#### Scenario: A new value of an instance
+- **WHEN** a construction of an instance breaks the invariant
+- **THEN** it traps (tests/runtime/generic-struct-invariant-construction.inox)
+
+#### Scenario: An invariant an instance cannot check
+- **WHEN** an instance's type lacks an operation of the invariant
+- **THEN** the error names the instance and the routine that made it (tests/diagnostics/generics-invariant-instance.inox)
+
 ### Requirement: Limits of the methods of generic structs
-A method SHALL NOT have type parameters of its own, and invariants and
-reused parts in a generic struct SHALL be rejected, until their own
-changes. An error in an instance SHALL name it and the routine that used
+A method SHALL NOT have type parameters of its own, and reused parts in a
+generic struct SHALL be rejected, until their own changes. An error in an instance SHALL name it and the routine that used
 it, at the line of the generic body.
 
 #### Scenario: Type parameters of a method's own

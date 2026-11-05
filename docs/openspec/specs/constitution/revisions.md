@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.1 pre-alpha
-Canon revision: r3.132
+Canon revision: r3.133
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -721,3 +721,10 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   generic struct stay out of this change. A diagnostic after a generic
   instance is made now names the file of the call, not the template's.
   Change `generic-struct-methods`.
+- r3.133 — 2026-11-05 — CANON-24 with CANON-8 (Q3 of
+  `generic-struct-methods`, approved by Marcelo Fortes, 2026-11-05): a
+  generic struct may have `invariant` lines, which hold in every instance
+  (after a construction, around a method, after a field written from
+  outside); each instance gets its invariant routine when it is made.
+  Reused parts of a generic struct stay out. Part of the 0.5 work; the
+  published version stays 0.4.1. Change `generic-struct-invariants`.

@@ -1,0 +1,37 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== CANON-8 (generic-struct-methods): methods of generic structs, one
+
+== CANON-24 with CANON-8 (generic-struct-invariants): the invariant of a
+== generic struct holds in every instance: after a construction, after a
+== method and after a field written from outside.
+Type
+    TRange<T> Struct
+        FLow T
+        FHigh T
+        invariant Self.FLow <= Self.FHigh, "the low bound is not above the high one"
+    ;
+
+TRange<T>.SetHigh(Self mut, X T) :
+    Self.FHigh := X
+;
+
+Widen(ref mut R TRange<Integer>) :
+    R.SetHigh(R.FHigh + 10)
+;
+
+Main :
+    R := TRange(FLow := 1, FHigh := 5)
+    R.SetHigh(9)
+    Widen(R)
+    PutLn(R.FHigh)
+    S := TRange(FLow := "a", FHigh := "c")
+    S.FHigh := "b"
+    PutLn(S.FHigh)
+    R.FHigh := 0
+    PutLn("not reached")
+;

@@ -1,0 +1,20 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+== CANON-8 (generic-struct-methods): methods of generic structs, one
+
+== generic-struct-invariants, rule 8: an invariant an instance cannot
+== check names the instance and the routine that made it.
+Type
+    TBox<T> Struct
+        FValue T
+        invariant Self.FValue > 0
+    ;
+
+Main :
+    B := TBox(FValue := True)
+    PutLn(B.FValue)
+;
