@@ -628,7 +628,10 @@ private:
                 info.name + ".__invariant",
                 ast::RoutineHeader{{ast::ParameterDeclaration{"Self", std::nullopt, ast::ParameterDeclaration::Mode::Value, true}},
                                    std::nullopt},
-                std::move(statements), false);
+                std::move(statements), false, std::vector<ContractClause>{},
+                // A generic struct's invariant is a method of every instance
+                // (generic-struct-invariants).
+                info.declaration->typeParameters);
             if (info.declaration != nullptr) {
                 invariant->setModule(info.declaration->module);
             }

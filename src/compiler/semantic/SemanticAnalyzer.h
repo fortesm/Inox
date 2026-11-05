@@ -291,6 +291,7 @@ private:
                                                 const std::vector<TypeRef>& arguments,
                                                 const std::string* instance = nullptr);
     void checkGenericMethods();
+    void instantiateInvariant(TypeRef instance);
     void registerInstanceSignature(const ast::FunctionDeclaration& instance, const std::string& name);
     [[noreturn]] void requireGenericMethodHeader(const std::string& owner, const std::string& method) const;
     const FunctionSignature* genericMethodFor(TypeRef receiver, const std::string& method);

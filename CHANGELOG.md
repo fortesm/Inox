@@ -13,6 +13,7 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 ## Unreleased
 
 ### Added
+- Invariants of generic structs (canon r3.133, CANON-24, change `generic-struct-invariants`): a generic struct may have `invariant` lines, checked in every instance.
 - Methods of generic structs (canon r3.132, CANON-8, change `generic-struct-methods`): `TStack<T>.Push(Self mut, X T)` is a method of every instance of `TStack`, made on its first call (`Numbers.Push(3)`); contracts are checked in each instance and visibility follows r3.99. `inox interface` prints `TPair<K, V>.Key(...)`.
 
 ### Fixed
