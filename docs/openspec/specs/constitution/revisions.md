@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 # Inox revisions
 
-Language version: Inox 0.4.0 pre-alpha
-Canon revision: r3.130
+Language version: Inox 0.4.1 pre-alpha
+Canon revision: r3.131
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -707,3 +707,7 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   ids from the types, reading no exception name. The language, the
   diagnostics, the LLVM IR and the typed IR of every program are
   identical. Change `exception-types`.
+- r3.131 — 2026-11-04 — Inox becomes 0.4.1 pre-alpha (approved by Marcelo
+  Fortes, 2026-11-04): the release that closes the foundation F0-F7, with
+  every gate green. No rule of the language changes; 0.5.0 opens the new
+  features.

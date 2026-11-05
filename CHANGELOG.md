@@ -10,7 +10,14 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 `r3.61` are canon revisions, entries of the decision log
 (`docs/openspec/specs/constitution/revisions.md`), not versions.
 
-## Unreleased
+## 0.4.1 pre-alpha
+
+Closes the foundation (F0-F7, canon r3.110-r3.131): the compiler's phases have
+contracts; every diagnostic has its source position; routine headers, written
+types and the normalized AST are structure, not text; the analysis lowers the
+program to a typed IR that code generation lowers alone; the exception
+hierarchy is in the types. Ownership safety gained checks of freed objects
+(CANON-25). No language feature is added.
 
 ### Changed
 - The exception hierarchy is in the types (canon r3.130, E11, foundation step F7, change `exception-types`): the analysis resolves the type of each `Raise` and `On` handler and checks handlers by type, and code generation takes the exception ids from the types, reading no name. No program changes: the LLVM IR of every program is identical.
