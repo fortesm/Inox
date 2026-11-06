@@ -97,14 +97,21 @@
    gains: "A routine gives back an owner it received as `ref mut` before
    it returns." (Q1). The rest of CANON-25 and CANON-10 is unchanged.
 
-## Questions for the maintainer
+## Questions (answered 2026-11-06)
 
-- **Q1.** Adopt alternative A (the callee gives the owner back) and its
-  sentence in CANON-25? Recommendation: yes.
-- **Q2.** Treat an owner variable passed as `ref mut` inside a try as
-  given away for its handlers and `ensure`? Recommendation: yes.
-- **Q3.** Leave the field-argument exception path to trap 17 and use it as
-  the independent runtime test? Recommendation: yes.
+- **Q1.** Alternative A and its sentence in CANON-25: approved. A routine
+  gives back every owner it received as `ref mut` before each reachable
+  normal exit, after the `ensure`s that exit crosses (G2/G7/G8).
+- **Q2.** Inside a try, an owner variable passed as `ref mut` counts as
+  possibly given away on the exception edge, for the handlers and the
+  `ensure` of the enclosing trys; r3.134 is otherwise unchanged: approved.
+- **Q3.** Accepted provisionally: trap 17 stays for an `Own<T>` field
+  emptied by an exception inside a routine called with it as `ref mut`;
+  the static gap is recorded as a later task (item 2.5 of
+  `safe-pointers-followups`) with an independent runtime test. No record
+  states that every ownership path is proven safe at compile time.
+
+These answers authorize only the scope of this change.
 
 ## Acceptance tests
 
@@ -126,6 +133,17 @@ Negative (`tests/diagnostics/`):
 - `pointer-refmut-used-in-ensure`: the same in `ensure`.
 - `pointer-refmut-field-freed-by-callee`: the callee frees a field
   argument and returns (an emptied field, now rejected in the callee).
+- `pointer-refmut-nested-return`: `Return` from inside a loop inside two
+  nested trys whose inner `ensure` frees the owner and outer `ensure` does
+  not assign it again.
+- `pointer-refmut-nested-exit`: `Exit` from inside a `case` arm inside a
+  loop, after a `Free` on that path.
+- `pointer-refmut-transitive-exception`: the caller's try calls an
+  intermediate routine that passes the owner on as `ref mut` to a callee
+  that may raise; the caller's handler uses the owner (Q2 at the caller).
+- `pointer-refmut-transitive-exception-inner`: the intermediate routine's
+  own handler uses the owner after the inner call raised (Q2 at the
+  intermediate level).
 
 Positive (`tests/runtime/`, output checked, leak-free):
 - `pointers-refmut-give-back`: the callee frees and assigns again; moves
@@ -135,17 +153,28 @@ Positive (`tests/runtime/`, output checked, leak-free):
 - `pointers-refmut-across-calls`: an intermediate routine passes its owner
   to another; a callee in another module; `Swap<T>` with owners; a field
   argument; a handler that assigns the owner again before using it.
+- `pointers-refmut-nested-exits`: `Return` and `Exit` from nested loops and
+  trys whose `ensure`s free and assign again, inner first; an exception
+  that crosses an intermediate routine and is caught by a handler that
+  assigns the owner again.
 - `pointers-owner-field-lost-by-exception` (`.trap`, Q3): the callee frees
   a field argument and raises, the caller catches and uses the field: trap
   17, never a null access (the independent runtime test of trap 17).
 
+Preservation of the generated code: before the first code change the LLVM
+IR (Debug and Release) and TIR snapshots are recorded with the compiler of
+main over the programs of this branch; after it, the comparison must show
+no difference for any program that compiles on both, and only the added or
+moved tests may differ (by being new, or rejected now). The comparison is
+local evidence: the CI snapshot job runs only for PRs labelled `refactor`.
+
 Gates (E19): Debug and Release suites, ASan+UBSan (1 MiB), string leak and
 owner safety checks, stack_frames, fuzz 1 and 7, differential,
-backend_gaps, grammar, LLVM IR and TIR snapshots against main (recorded
-locally before the change; only added and moved tests may differ),
-openspec, constitution_check, version_check, then CI on Linux and Windows.
+backend_gaps, grammar, the snapshot comparison above, openspec,
+constitution_check, version_check, then CI on Linux and Windows.
 
 ## Approval
 
-Pending: the maintainer's dated approval of this design (G7) and answers to
-Q1-Q3. No functional code before it.
+Design approval: Marcelo Fortes, 2026-11-06 (G7), with Q1 and Q2 approved
+and Q3 accepted provisionally on condition of item 2.5; it covers this
+change only.

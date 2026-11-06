@@ -1,6 +1,6 @@
 ## 0. Approval
 
-- [ ] 0.1 Q1-Q3 answered and the design approved (maintainer, date; G7)
+- [x] 0.1 Q1-Q3 answered and the design approved (maintainer, 2026-11-06; G7)
 
 ## 1. Baseline
 

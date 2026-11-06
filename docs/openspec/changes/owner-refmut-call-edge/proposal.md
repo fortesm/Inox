@@ -9,22 +9,23 @@ pointers-owner-freed-by-callee.inox`, item 2.4 of
 `ref mut` (`Release(B.FNode)`), which CANON-25 forbids for a field that is
 not `Option<Own<T>>` (verified on main fa1a37c).
 
-Status: **design awaiting the maintainer's approval** (G7: memory
-ownership; the r3.134 approval does not cover it). Risk: high.
+Approval: Marcelo Fortes, 2026-11-06 (G7: memory ownership; Q1, Q2
+approved, Q3 accepted provisionally). Risk: high.
 
 ## What Changes
 
-- Q1 (recommended): a routine gives back every owner it received as
+- Q1 (approved): a routine gives back every owner it received as
   `ref mut` before it returns. At each normal exit (the end of the body,
   `Return`, `Exit`, after the `ensure`s they cross) a `ref mut` parameter
   given away on a path that reaches the exit is a compile error, in the
   callee. The caller then keeps its owner valid after the call, with no
   summary of the callee.
-- Q2 (recommended): on the exception edge of a call, an owner variable
+- Q2 (approved): on the exception edge of a call, an owner variable
   passed as `ref mut` counts as given away for the handlers and the
   `ensure` of the enclosing trys (the r3.134 try frames), since the callee
   may raise between giving it away and assigning it again.
-- Q3 (recommended): the run-time check stays; an owner field passed as
+- Q3 (accepted provisionally; item 2.5 of `safe-pointers-followups`): the
+  run-time check stays; an owner field passed as
   `ref mut` to a callee that frees it and raises remains a path the
   analysis does not follow, and is the independent runtime test of trap 17.
 - Programs it rejects: a callee that does not give a `ref mut` owner back
