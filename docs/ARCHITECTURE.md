@@ -373,7 +373,9 @@ instead of searching the whole emitter.
     rules, the pointer built-ins, and the definite-move analysis
     (`movedOwners_`, merged over every reachable path; loop and try frames
     in `ownerFrames_` carry the sets of `leave`, `continue`, `until`,
-    handlers, `ensure` and `Retry`, r3.134);
+    handlers, `ensure` and `Retry`, r3.134; `refMutParameters_` are
+    checked at every normal exit, and a `ref mut` owner argument joins
+    the try frames as possibly given away, r3.135);
   - `SemanticDebug.cpp` — Std.Debug: Assert;
   - `SemanticEnums.cpp` — the ordinal built-ins of enums and Ranges (Ord,
     Succ, Pred, Low and High of a type) and `TEnum(I)` (CANON-13);

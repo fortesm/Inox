@@ -1,0 +1,32 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25): an exception may leave the callee before it gives
+== the ref mut owner back, so the handler sees it as given away.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Renew(ref mut P Own<TNode>) :
+    Free(P)
+    if True
+        Raise RangeError
+    ;
+    P := New(TNode)
+;
+
+Main :
+    P := New(TNode(FValue := 1))
+    try
+        Renew(P)
+    except
+        On RangeError
+            PutLn(P.FValue)
+        ;
+    ;
+;

@@ -1,0 +1,74 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25): Return and Exit from nested loops and trys whose
+== ensures free and assign again, inner first; an exception that crosses
+== an intermediate routine, caught by a handler that assigns again.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+First(ref mut P Own<TNode>) Integer :
+    for I in 1..3
+        try
+            try
+                if I = 2
+                    Return I * 100 + P.FValue
+                ;
+            ensure
+                Free(P)
+            ;
+            P := New(TNode(FValue := I))
+        ensure
+            P := New(TNode(FValue := 40))
+        ;
+    ;
+    Return 0
+;
+
+Walk(ref mut P Own<TNode>) :
+    for I in 1..3
+        case I
+            1
+                PutLn("one")
+            2
+                Free(P)
+                P := New(TNode(FValue := 2))
+                Exit
+            else
+                PutLn("other")
+        ;
+    ;
+;
+
+Renew(ref mut P Own<TNode>) :
+    Free(P)
+    if True
+        Raise RangeError
+    ;
+    P := New(TNode)
+;
+
+Pass(ref mut P Own<TNode>) :
+    Renew(P)
+;
+
+Main :
+    P := New(TNode(FValue := 1))
+    PutLn("first ", First(P), " ", P.FValue)
+    Walk(P)
+    PutLn("walk ", P.FValue)
+    try
+        Pass(P)
+    except
+        On RangeError
+            P := New(TNode(FValue := 3))
+        ;
+    ;
+    PutLn("transitive ", P.FValue)
+;

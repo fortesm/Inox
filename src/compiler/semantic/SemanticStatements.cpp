@@ -46,6 +46,7 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
     OwnerState previousOwners = ownerState();
     setOwnerState({});
     std::vector<OwnerFrame> previousOwnerFrames = std::exchange(ownerFrames_, {});
+    std::vector<const Symbol*> previousRefMutParameters = std::exchange(refMutParameters_, {});
     symbols_.pushScope();
     const auto previousParameters = std::exchange(currentParameters_, {});
     if (signature != nullptr) {
@@ -63,11 +64,17 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
                 symbols_.currentScope().markDeepReadOnly(parameter.name);
             }
             currentParameters_.insert(symbols_.currentScope().resolve(parameter.name));
+            if (parameter.mode == PassMode::RefMut) {
+                refMutParameters_.push_back(symbols_.currentScope().resolve(parameter.name));
+            }
             recordDeclaredSymbol(&function.parameters()[index], parameter.name,
                          parameterOrigin(parameter.mode, isMethod && index == 0 && function.parameters()[0].isReceiver));
         }
     }
     analyzeStatements(function.body(), false);
+    if (ownerPathReachable_) {
+        requireRefMutOwnersBack(nullptr);
+    }
     currentParameters_ = previousParameters;
     leaveScope();
     if (currentFunctionReturnType_ != nullptr && !currentFunctionSawReturn_) {
@@ -80,6 +87,7 @@ void SemanticAnalyzer::analyzeFunction(const ast::FunctionDeclaration& function)
     }
     setOwnerState(std::move(previousOwners));
     ownerFrames_ = std::move(previousOwnerFrames);
+    refMutParameters_ = std::move(previousRefMutParameters);
     currentFunctionReturnType_ = previousReturnType;
     currentFunctionSawReturn_ = previousSawReturn;
     currentRoutine_ = previousRoutine;
@@ -286,6 +294,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         if (currentFunctionReturnType_ != nullptr) {
             throw SemanticError("Exit is not valid in a function that returns a value; use Return (CANON-12)");
         }
+        sendOwnersOutOfRoutine(statement.position());
         endOwnerPath();
         break;
     case ast::AstNodeKind::BlockStatement: {
@@ -707,6 +716,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
                 "cannot return " + types::nameOf(type) + " from function returning " +
                 currentFunctionReturnType_->name());
         }
+        sendOwnersOutOfRoutine(statement.position());
         endOwnerPath();
         break;
     }

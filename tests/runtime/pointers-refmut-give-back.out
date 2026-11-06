@@ -1,0 +1,6 @@
+renew 2
+rotate 20
+either 100
+guarded 7 70
+countdown 1
+caller 9

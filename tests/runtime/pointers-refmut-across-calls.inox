@@ -1,0 +1,68 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25): an owner passed on as ref mut through an
+== intermediate routine, to a generic instance and as a field; a handler
+== that assigns it again before using it.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+    TBox Struct
+        FNode Own<TNode>
+    ;
+
+Renew(ref mut P Own<TNode>) :
+    Before := P.FValue
+    Free(P)
+    P := New(TNode(FValue := Before + 1))
+;
+
+Pass(ref mut P Own<TNode>) :
+    Renew(P)
+    Renew(P)
+;
+
+Swap<T>(ref mut A T, ref mut B T) :
+    X := Move(A)
+    A := Move(B)
+    B := Move(X)
+;
+
+Risky(ref mut P Own<TNode>) :
+    Free(P)
+    if Fails
+        Raise RangeError
+    ;
+    P := New(TNode)
+;
+
+Fails Bool :
+    Return True
+;
+
+Main :
+    P := New(TNode(FValue := 1))
+    Pass(P)
+    PutLn("pass ", P.FValue)
+    Q := New(TNode(FValue := 50))
+    Swap(P, Q)
+    PutLn("swap ", P.FValue, " ", Q.FValue)
+    B := TBox(FNode := New(TNode(FValue := 5)))
+    Renew(B.FNode)
+    PutLn("field ", B.FNode.FValue)
+    try
+        Risky(P)
+    except
+        On RangeError
+            P := New(TNode(FValue := 11))
+            PutLn("handler ", P.FValue)
+        ;
+    ;
+    PutLn("after ", P.FValue)
+;

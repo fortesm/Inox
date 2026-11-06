@@ -1,0 +1,1 @@
+:16:5: semantic error: in Consume<Own<TNode>>, used in Main: X is received as ref mut and given away (Move or Free) on a path that returns: assign it again before the routine returns

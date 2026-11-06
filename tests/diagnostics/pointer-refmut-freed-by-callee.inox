@@ -5,10 +5,8 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== Safe pointers: the run-time check of an owner given away (trap 17) stays
-== in the generated code. A routine that frees an owner received as
-== `ref mut` reaches it today (item 2.4 of safe-pointers-followups): the
-== caller's use stops with the trap, never a null access.
+== Safe pointers (CANON-25): a routine gives back an owner it received as
+== ref mut before it returns; this one frees it and returns.
 Type
     TNode Struct
         FValue Integer := 0
@@ -20,7 +18,6 @@ Release(ref mut P Own<TNode>) :
 
 Main :
     P := New(TNode(FValue := 5))
-    PutLn("before ", P.FValue)
     Release(P)
     PutLn(P.FValue)
 ;

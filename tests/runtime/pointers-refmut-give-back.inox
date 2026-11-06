@@ -1,0 +1,71 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25): a routine that frees or moves an owner received
+== as ref mut and assigns it again before every return is accepted; the
+== caller's owner is valid after the call.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Renew(ref mut P Own<TNode>) :
+    Before := P.FValue
+    Free(P)
+    P := New(TNode(FValue := Before + 1))
+;
+
+Rotate(ref mut P Own<TNode>) :
+    Q := Move(P)
+    P := New(TNode(FValue := Q.FValue * 10))
+    Free(Q)
+;
+
+Either(ref mut P Own<TNode>, Big Bool) :
+    Free(P)
+    if Big
+        P := New(TNode(FValue := 100))
+    else
+        P := New(TNode(FValue := 1))
+    ;
+;
+
+Guarded(ref mut P Own<TNode>) Integer :
+    try
+        Free(P)
+        Return 7
+    ensure
+        P := New(TNode(FValue := 70))
+    ;
+;
+
+Countdown(ref mut P Own<TNode>, N Integer) :
+    if N = 0
+        Exit
+    ;
+    Free(P)
+    P := New(TNode(FValue := N))
+    Countdown(P, N - 1)
+;
+
+Main :
+    P := New(TNode(FValue := 1))
+    Renew(P)
+    PutLn("renew ", P.FValue)
+    Rotate(P)
+    PutLn("rotate ", P.FValue)
+    Either(P, True)
+    PutLn("either ", P.FValue)
+    PutLn("guarded ", Guarded(P), " ", P.FValue)
+    Countdown(P, 3)
+    PutLn("countdown ", P.FValue)
+    == the caller assigns its own owner after the call
+    Renew(P)
+    Free(P)
+    P := New(TNode(FValue := 9))
+    PutLn("caller ", P.FValue)
+;

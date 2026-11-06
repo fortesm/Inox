@@ -1,0 +1,39 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers: an owner field passed as ref mut to a routine that frees it
+== and raises is a path the analysis does not follow (item 2.5 of
+== safe-pointers-followups): the caller's use of the field stops with trap
+== 17, never a null access. This is the run-time test of that check.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+    TBox Struct
+        FNode Own<TNode>
+    ;
+
+Renew(ref mut P Own<TNode>) :
+    Free(P)
+    if True
+        Raise RangeError
+    ;
+    P := New(TNode)
+;
+
+Main :
+    B := TBox(FNode := New(TNode(FValue := 3)))
+    try
+        Renew(B.FNode)
+    except
+        On RangeError
+            PutLn("caught")
+        ;
+    ;
+    PutLn(B.FNode.FValue)
+;

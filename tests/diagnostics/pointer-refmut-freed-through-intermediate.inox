@@ -1,0 +1,27 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25): an intermediate routine passes its ref mut owner
+== on, which is given back, and then frees it itself.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Touch(ref mut P Own<TNode>) :
+    P.FValue := P.FValue + 1
+;
+
+Pass(ref mut P Own<TNode>) :
+    Touch(P)
+    Free(P)
+;
+
+Main :
+    P := New(TNode(FValue := 2))
+    Pass(P)
+;
