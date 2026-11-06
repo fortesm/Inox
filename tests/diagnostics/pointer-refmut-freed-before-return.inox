@@ -1,0 +1,28 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25): a Return from a loop, after the ref mut owner
+== was freed, leaves it given away.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Find(ref mut P Own<TNode>, N Integer) Integer :
+    for I in 1..N
+        if I = P.FValue
+            Free(P)
+            Return I
+        ;
+    ;
+    Return 0
+;
+
+Main :
+    P := New(TNode(FValue := 2))
+    PutLn(Find(P, 3))
+;

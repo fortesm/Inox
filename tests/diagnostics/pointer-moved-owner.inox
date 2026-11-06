@@ -7,7 +7,7 @@
 
 == Safe pointers: an owner given away before a `leave` is given away after
 == the loop; using it there is a compile error (the run time keeps its
-== check, see pointers-owner-freed-by-callee).
+== check, see pointers-owner-field-lost-by-exception).
 Type
     TNode Struct
         FValue Integer := 0

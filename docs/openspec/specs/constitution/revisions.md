@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.1 pre-alpha
-Canon revision: r3.134
+Canon revision: r3.135
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -735,3 +735,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   and `Exit` end a path. The law and the generated code do not change; the
   run-time check stays. Part of the 0.5 work; the published version stays
   0.4.1. Change `owner-moves-across-jumps`.
+- r3.135 — 2026-11-06 — CANON-25 "Moves are checked" (approved by Marcelo
+  Fortes, 2026-11-06, G2/G7/G8): a routine gives back an owner it received
+  as `ref mut` before it returns. The analysis checks it at every normal
+  exit after the `ensure`s crossed; inside a try, an owner variable passed
+  as `ref mut` counts as given away for its handlers and `ensure`. An
+  owner field emptied by an exception in such a call stays a run-time trap
+  (accepted provisionally; `safe-pointers-followups` 2.5). The generated
+  code does not change. Part of the 0.5 work; the published version stays
+  0.4.1. Change `owner-refmut-call-edge`.

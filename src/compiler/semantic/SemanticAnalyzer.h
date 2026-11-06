@@ -426,7 +426,7 @@ private:
         bool reachable = true;
     };
     enum class OwnerFrameKind : std::uint8_t { Loop, Repeat, Try };
-    enum class OwnerDepartureKind : std::uint8_t { LoopExit, NextRound, Retry };
+    enum class OwnerDepartureKind : std::uint8_t { LoopExit, NextRound, Retry, RoutineExit };
     // A path leaving a try that has an `ensure`: it reaches its target once
     // `ensure` has run.
     struct OwnerDeparture {
@@ -464,6 +464,9 @@ private:
     void sendOwnersTo(std::size_t target, OwnerDepartureKind kind, std::size_t from,
                       const ast::SourcePosition& position);
     void sendOwnersOutOfLoop(OwnerDepartureKind kind, bool repeatOnly, const ast::SourcePosition& position);
+    void sendOwnersOutOfRoutine(const ast::SourcePosition& position);
+    void requireRefMutOwnersBack(const ast::SourcePosition* position);
+    void noteOwnerLentToCall(const ast::Expression& argument);
     void enterLoopOwners(OwnerFrameKind kind);
     void requireOwnersBackAfterLoop();
     std::size_t enterTryOwners(bool hasEnsure);
@@ -475,6 +478,9 @@ private:
     MovedOwners movedOwners_;
     bool ownerPathReachable_ = true;
     std::vector<OwnerFrame> ownerFrames_;
+    // The `ref mut` parameters of the routine being analyzed: it gives
+    // them back before it returns (CANON-25).
+    std::vector<const Symbol*> refMutParameters_;
     std::unordered_set<const Symbol*> currentParameters_;
     // The root of a place reached through a pointer: writable, owned by no
     // variable of the routine.

@@ -1,0 +1,1 @@
+:20:5: semantic error: P is received as ref mut and given away (Move or Free) on a path that returns: assign it again before the routine returns

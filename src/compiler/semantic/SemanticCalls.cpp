@@ -650,6 +650,7 @@ void SemanticAnalyzer::checkReferenceArguments(const std::string& routine,
                                 " is passed as ref mut and must be a mutable variable, a field or an "
                                 "element of one (ADR-0016)");
         }
+        noteOwnerLentToCall(*arguments[index]);
         for (std::size_t other = 0; other < arguments.size(); ++other) {
             if (other == index) {
                 continue;

@@ -1,0 +1,26 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25): `ensure` runs before Return leaves; what it frees
+== is not given back.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Value(ref mut P Own<TNode>) Integer :
+    try
+        Return P.FValue
+    ensure
+        Free(P)
+    ;
+;
+
+Main :
+    P := New(TNode(FValue := 2))
+    PutLn(Value(P))
+;

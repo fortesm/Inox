@@ -478,12 +478,18 @@ void SemanticAnalyzer::endOwnerPath()
 void SemanticAnalyzer::sendOwnersTo(std::size_t target, OwnerDepartureKind kind, std::size_t from,
                                     const ast::SourcePosition& position)
 {
-    for (std::size_t index = from; index > target + 1; --index) {
+    // A routine exit crosses every try with `ensure` around it.
+    const std::size_t stop = kind == OwnerDepartureKind::RoutineExit ? 0 : target + 1;
+    for (std::size_t index = from; index > stop; --index) {
         OwnerFrame& frame = ownerFrames_[index - 1];
         if (frame.kind == OwnerFrameKind::Try && frame.hasEnsure && !frame.inEnsure) {
             frame.departures.push_back({target, kind, movedOwners_, position});
             return;
         }
+    }
+    if (kind == OwnerDepartureKind::RoutineExit) {
+        requireRefMutOwnersBack(&position);
+        return;
     }
     OwnerFrame& frame = ownerFrames_[target];
     switch (kind) {
@@ -496,6 +502,57 @@ void SemanticAnalyzer::sendOwnersTo(std::size_t target, OwnerDepartureKind kind,
     case OwnerDepartureKind::Retry:
         frame.retries.push_back({target, kind, movedOwners_, position});
         break;
+    case OwnerDepartureKind::RoutineExit:
+        break;
+    }
+}
+
+// `Return` and `Exit`: the routine's normal exits, after every `ensure`
+// they cross.
+void SemanticAnalyzer::sendOwnersOutOfRoutine(const ast::SourcePosition& position)
+{
+    if (ownerPathReachable_ && !refMutParameters_.empty()) {
+        sendOwnersTo(0, OwnerDepartureKind::RoutineExit, ownerFrames_.size(), position);
+    }
+}
+
+// CANON-25: a routine gives back every owner it received as `ref mut`
+// before it returns, so the caller's owner is valid after the call.
+void SemanticAnalyzer::requireRefMutOwnersBack(const ast::SourcePosition* position)
+{
+    for (const Symbol* parameter : refMutParameters_) {
+        if (movedOwners_.contains(parameter)) {
+            if (position != nullptr) {
+                notePosition(*position);
+            }
+            throw SemanticError(parameter->name + " is received as ref mut and given away (Move or Free) on a "
+                                "path that returns: assign it again before the routine returns");
+        }
+    }
+}
+
+// CANON-25: an exception may leave the callee between giving a `ref mut`
+// owner away and assigning it again, so the handlers and the `ensure` of
+// the enclosing trys see it as given away; after a normal return it is
+// valid.
+void SemanticAnalyzer::noteOwnerLentToCall(const ast::Expression& argument)
+{
+    if (argument.kind() != ast::AstNodeKind::IdentifierExpression || !ownerPathReachable_) {
+        return;
+    }
+    const Symbol* symbol = result_.symbolOf(static_cast<const ast::IdentifierExpression&>(argument));
+    if (symbol == nullptr || !isMoveOnlyType(symbol->type)) {
+        return;
+    }
+    for (const Scope* scope = &symbols_.currentScope(); scope != nullptr; scope = scope->parent()) {
+        if (scope->containsLocal(symbol->name) && scope->resolve(symbol->name) == symbol) {
+            for (OwnerFrame& frame : ownerFrames_) {
+                if (frame.kind == OwnerFrameKind::Try) {
+                    frame.givenAway[symbol] = scope;
+                }
+            }
+            return;
+        }
     }
 }
 
