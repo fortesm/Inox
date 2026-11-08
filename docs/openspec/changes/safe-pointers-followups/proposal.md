@@ -40,7 +40,16 @@ ownership).
    from outside.
 7. **Discarding an owner result**. A function called as a statement is a
    backend gap (STATUS); an owner it returns must be freed at once when
-   that gap is closed.
+   that gap is closed. Reconciled on 2026-11-08: a function called as a
+   statement is a compile error since r3.88, and the explicit discard
+   `_ := F(X)` (r3.93, change `discard-results`) frees an owner result at
+   once (`_ := NewNode(7)` in `tests/runtime/discard.inox`, in the string
+   leak check). The same test shows an exception propagating through a
+   discard (`_ := ReadIt("forty-two")`, `ConversionError`), but not a call
+   returning `Own<T>` that raises: such a call produces no result to
+   discard, and what it must release on that path are the temporaries and
+   locals it already built, during unwinding; no test checks that case
+   for an owner-returning call yet.
 8. **Built-in spellings to fold into generics**. `Own<T>`, `Link<T>` and
    `Option<Own<T>>` are special type names (`support/PointerType`), and
    `Option` exists only around `Own`. Target: with change `generics`,
