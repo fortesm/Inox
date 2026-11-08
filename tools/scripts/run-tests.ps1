@@ -280,6 +280,80 @@ function Invoke-LinkedExecutionTest {
     }
 }
 
+# The run-time check of an owner given away (trap 17), executed: the
+# routines of an Inox program linked with a C++ host whose main calls one of
+# them across the ABI (tests/native/owner-check.inox). The program's own main
+# is renamed so the host's runs.
+function Invoke-NativeOwnerCheckTest {
+    param(
+        [System.IO.FileInfo]$TestFile,
+        [System.IO.FileInfo]$HostFile,
+        [string]$ExpectedMessage
+    )
+
+    $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
+    $clang = Get-Command clang++ -ErrorAction SilentlyContinue
+    if ($null -eq $clang) {
+        Write-Host "[SKIP] $relativePath native host (clang++ not found)"
+        return
+    }
+    $runtimeLib = $env:INOX_RUNTIME_LIB
+    if ([string]::IsNullOrEmpty($runtimeLib)) {
+        $inoxDir = Split-Path -Parent $InoxExe
+        $runtimeLib = Join-Path $inoxDir "inoxrt.lib"
+        if (-not (Test-Path -LiteralPath $runtimeLib)) {
+            $runtimeLib = Join-Path $inoxDir "libinoxrt.a"
+        }
+    }
+
+    $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("inox-test-" + [System.Guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $tempDir | Out-Null
+    try {
+        $emitted = & $InoxExe "--emit-llvm" $TestFile.FullName
+        $emitExit = $LASTEXITCODE
+        if ($emitExit -ne 0) {
+            $script:failed++
+            Write-Host "[FAIL] $relativePath native host"
+            Write-Host "       LLVM emission failed with exit code $emitExit"
+            return
+        }
+        $llPath = Join-Path $tempDir "program.ll"
+        $renamed = @($emitted | ForEach-Object { $_ -replace '^define i32 @main\(', 'define i32 @inox_program_main(' })
+        Set-Content -LiteralPath $llPath -Value $renamed -Encoding ascii
+        $exePath = Join-Path $tempDir "program.exe"
+
+        $clangArgs = @($llPath, $HostFile.FullName, $runtimeLib, "-o", $exePath)
+        if (-not $IsWindows) {
+            $clangArgs += "-lm"
+        }
+        & $clang.Source @clangArgs *> $null
+        $clangExit = $LASTEXITCODE
+        if ($clangExit -ne 0) {
+            $script:failed++
+            Write-Host "[FAIL] $relativePath native host"
+            Write-Host "       clang++ link failed with exit code $clangExit"
+            return
+        }
+
+        $stderrPath = Join-Path $tempDir "stderr.txt"
+        & $exePath 2> $stderrPath > $null
+        $runExit = $LASTEXITCODE
+        $stderrText = (Get-Content -LiteralPath $stderrPath -Raw) -replace "`r`n", "`n"
+        if ($runExit -eq 70 -and $null -ne $stderrText -and $stderrText.Contains($ExpectedMessage)) {
+            $script:passed++
+            Write-Host "[PASS] $relativePath native host"
+        } else {
+            $script:failed++
+            Write-Host "[FAIL] $relativePath native host"
+            Write-Host "       expected exit code 70 and: $ExpectedMessage"
+            Write-Host "       actual exit code: $runExit"
+            Write-Host "       actual stderr: $stderrText"
+        }
+    } finally {
+        Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Invoke-BuildDriverTest {
     param(
         [System.IO.FileInfo]$TestFile
@@ -770,6 +844,15 @@ Invoke-LlvmEmissionTest `
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-exceptions-retry-smoke.inox")) `
     -RequiredFragments @("%eh.retry.slot", "%eh.action.slot", "icmp slt i64", "store i32 2", "switch i32", "eh.retry.perform")
+
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-owner-check-smoke.inox")) `
+    -RequiredFragments @("define i64 @inox_peek(ptr %p)", "icmp eq ptr", "call i1 @llvm.expect.i1(i1", "call void @__inox_arith_fault(i32 17)")
+
+Invoke-NativeOwnerCheckTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\native\owner-check.inox")) `
+    -HostFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\native\owner-check-host.cpp")) `
+    -ExpectedMessage "Inox runtime error: use of an owner after Move or Free"
 
 Invoke-LinkedExecutionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\integration\output-basic.inox")) `
