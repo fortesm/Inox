@@ -20,4 +20,10 @@
 ## 4. Gates
 
 - [x] 4.1 E19 gates of design.md (local, unidentified cloud container): Debug and Release suites 1176/1176, unit tests, ASan+UBSan 1 MiB 1176/1176, string_leak_check 72/72, owner_safety_check 43/43, stack_frames 0 grown, fuzz 1 and 7, oracle, backend_gaps, grammar, openspec, constitution_check, version_check; LLVM IR (Debug, Release) and TIR against main fa1a37c: only the 16 newly rejected test programs differ (local evidence; the CI snapshot job runs only with the `refactor` label)
-- [ ] 4.2 CI
+- [x] 4.2 CI on PR #146 (head 36ad0b4), all completed: success for Linux
+  (clang, Debug), Windows (clang, MSVC ABI, Debug), Windows Debug stack
+  budget, Suite under ASan+UBSan 1 MiB stack, mutation fuzz seeds 1 and 7,
+  arithmetic oracle, Version and tag, Linux package, Windows package,
+  CodeQL (actions, c-cpp, python), SonarCloud Code Analysis; skipped by
+  their conditions: IR snapshot against the base (refactor), Tag and
+  publish. Merged into main as 7401b1a by the maintainer.
