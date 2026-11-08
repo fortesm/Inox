@@ -1,0 +1,24 @@
+parse ok
+semantic ok
+struct TBox { FValue Int64 }
+struct THolder { FBox TBox }
+
+routine TBox.Set(ref mut Self TBox receiver, X Int64)
+  assign (field (self ref mut Self) FValue) := (read Int64 (param X))
+
+routine TBox.__invariant(Self TBox receiver)
+  evaluate (check Void 3 "invariant violated: TBox: Self.FValue > 0: the value is positive" (binary Bool gt (read Int64 (field (self Self) FValue)) (lit Int64 0)))
+
+entry Main
+  declare P Own<TBox> := (builtin Own<TBox> New (construct TBox FValue=(lit Int64 2) [invariant-of-new-value TBox]))
+  assign (field (through (local P)) FValue) := (lit Int64 3)
+    invariant-after TBox (through (local P))
+  declare L Link<TBox> := (builtin Link<TBox> Link (read Own<TBox> (local P)))
+  assign (field (through (local L)) FValue) := (lit Int64 4)
+    invariant-after TBox (through (local L))
+  declare H Own<THolder> := (builtin Own<THolder> New (construct THolder FBox=(construct TBox FValue=(lit Int64 2) [invariant-of-new-value TBox])))
+  assign (field (field (through (local H)) FBox) FValue) := (lit Int64 5)
+    invariant-after TBox (field (through (local H)) FBox)
+  assign (local P) := (builtin Own<TBox> New (construct TBox FValue=(lit Int64 6) [invariant-of-new-value TBox]))
+  evaluate (call Void TBox.Set (read Own<TBox> (local P)) (lit Int64 7) [invariant-before TBox (through (local P))] [invariant-after TBox (through (local P))])
+  evaluate (builtin Void PutLn (read Int64 (field (through (local P)) FValue)) (read Int64 (field (through (local L)) FValue)) (read Int64 (field (field (through (local H)) FBox) FValue)))

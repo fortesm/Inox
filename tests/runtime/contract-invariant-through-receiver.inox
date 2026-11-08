@@ -1,0 +1,39 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24 (safe-pointers-followups 3.1): a method called through an Own
+== may break the invariant inside, through Self, but it must hold again
+== when the method returns.
+Type
+    TBox Struct
+        FValue Integer := 1
+        invariant Self.FValue > 0, "the value is positive"
+    ;
+    THolder Struct
+        FBox TBox
+    ;
+    TOuter Struct (TBox)
+        FName String := ""
+    ;
+    TPair<T> Struct
+        FLow T
+        FHigh T
+        invariant Self.FLow <= Self.FHigh, "the low bound is not above the high one"
+    ;
+
+TBox.Swing(Self mut, X Integer) :
+    Self.FValue := -100
+    Self.FValue := X
+;
+
+Main :
+    P := New(TBox(FValue := 2))
+    P.Swing(8)
+    PutLn(P.FValue)
+    P.Swing(-8)
+    PutLn("not reached ", P.FValue)
+;

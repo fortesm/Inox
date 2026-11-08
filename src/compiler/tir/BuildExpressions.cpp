@@ -460,7 +460,7 @@ const Invariants* Builder::invariants(const ast::AstNode& site, const ast::AstNo
                 continue;
             }
             for (const semantic::SemanticResult::InvariantCheck& check : *list) {
-                checks[index].place = place(*check.place);
+                checks[index].place = check.through ? through(place(*check.place)) : place(*check.place);
                 checks[index].type = check.type;
                 ++index;
             }

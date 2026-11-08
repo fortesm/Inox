@@ -1,0 +1,1 @@
+:31:5: semantic error: the invariant of TBox is checked on this place, so it must be computed without side effects (CANON-24): store the index in a variable first

@@ -1,0 +1,33 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24 (safe-pointers-followups 3.1): a field of a struct held by a
+== struct an Own points at keeps the inner struct's invariant.
+Type
+    TBox Struct
+        FValue Integer := 1
+        invariant Self.FValue > 0, "the value is positive"
+    ;
+    THolder Struct
+        FBox TBox
+    ;
+    TOuter Struct (TBox)
+        FName String := ""
+    ;
+    TPair<T> Struct
+        FLow T
+        FHigh T
+        invariant Self.FLow <= Self.FHigh, "the low bound is not above the high one"
+    ;
+
+Main :
+    H := New(THolder(FBox := TBox(FValue := 2)))
+    H.FBox.FValue := 4
+    PutLn(H.FBox.FValue)
+    H.FBox.FValue := 0
+    PutLn("not reached ", H.FBox.FValue)
+;

@@ -53,6 +53,10 @@ another module checks it too.
 - **WHEN** a method, a field write, a ref mut argument or a construction leaves the invariant false
 - **THEN** the program traps (tests/runtime/contract-invariant-method.inox, tests/runtime/contract-invariant-field.inox, tests/runtime/contract-invariant-ref-mut.inox, tests/runtime/contract-invariant-construction.inox)
 
+#### Scenario: Through a pointer
+- **WHEN** a field, an element or a whole struct is written through an `Own`, an `Option<Own>` or a `Link` (`P.F := X`, `Value(L).F := X`, `Value(P) := X`, nested fields, reused parts, generic instances, a `ref mut` owner), or a method is called through one, from outside the struct's own methods
+- **THEN** the invariant of the struct the pointer points at is checked once, on the place computed once more (an index with side effects is rejected), and a violation traps (tests/runtime/contract-invariant-through-own.inox, tests/runtime/contract-invariant-through-link.inox, tests/runtime/contract-invariant-through-own-nested.inox, tests/runtime/contract-invariant-through-value.inox, tests/runtime/contract-invariant-through-own-reused.inox, tests/runtime/contract-invariant-through-ref-mut-owner.inox, tests/runtime/contract-invariant-through-receiver.inox, tests/runtime/contract-invariant-through-generic.inox, tests/runtime/contract-invariants-through-pointers.inox, tests/diagnostics/contract-invariant-through-own-index.inox, tests/tir/invariants-through-pointers.inox, tests/modules/invariant-through-own)
+
 #### Scenario: Across modules
 - **WHEN** another module writes a public field so that an invariant over it no longer holds
 - **THEN** the program traps naming the struct (tests/modules/invariant-after-public-write)

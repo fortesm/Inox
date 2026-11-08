@@ -14,7 +14,7 @@
 
 ## 3. Contracts
 
-- [ ] 3.1 Check struct invariants after a write through `Own` or `Link`
+- [x] 3.1 Check struct invariants after a write through `Own` or `Link` (change `invariants-through-pointers`, 0.4.1.3.138): the struct a pointer points at is checked on field and element writes, `Value(P)` writes and method calls through it
 
 ## 4. With generics
 

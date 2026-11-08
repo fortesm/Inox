@@ -621,7 +621,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             // its invariant (and the invariants of the structs around it).
             recordInvariantPlaces(expression,
                                   *static_cast<const ast::CallExpression&>(expression.left()).arguments()[0], false,
-                                  true);
+                                  true, true);
         } else if (isIndexTarget(expression.left())) {
             // CANON-13: `A[I] := X` writes an element. The root must be a
             // mutable variable; writing it is not reading it (OPEN-4).
@@ -646,7 +646,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             }
             recordInvariantPlaces(expression,
                                   *static_cast<const ast::CallExpression&>(expression.left()).arguments()[0], false,
-                                  true);
+                                  true, true);
             // ADR-0017: a slice is a read-only view.
             for (const ast::Expression* base = &expression.left();
                  base->kind() == ast::AstNodeKind::CallExpression;
@@ -1109,6 +1109,12 @@ bool SemanticAnalyzer::isSideEffectFree(const ast::Expression& expression) const
         }
         const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
         if (name == "__member") {
+            return isSideEffectFree(*call.arguments()[0]);
+        }
+        // `Value(P)`: the object a pointer points at, read without changing it.
+        if (const CallMeaning* meaning = result_.callMeaning(call);
+            meaning != nullptr && meaning->kind == CallKind::Builtin && meaning->op == BuiltinOp::Value &&
+            call.arguments().size() == 1) {
             return isSideEffectFree(*call.arguments()[0]);
         }
         if (name != "__index") {

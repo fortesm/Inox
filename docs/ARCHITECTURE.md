@@ -386,6 +386,10 @@ instead of searching the whole emitter.
     checked at every normal exit, and a `ref mut` owner argument joins
     the try frames as possibly given away, r3.135; and at every point an
     exception may leave, routed through the try frames, r3.136);
+  - `SemanticContracts.cpp` — `recordInvariantPlaces`: a pointer on the
+    path of a checked place stands for the struct it points at
+    (`InvariantCheck::through`, built as a `through` place in the TIR;
+    0.4.1.3.138);
   - `CallMeaning.cpp` — also `callMayRaise`, the calls an exception may
     leave, exhaustive over `CallKind` and `BuiltinOp` (pinned against the
     runtime functions without `nounwind` by `RaisingCallsTests`);

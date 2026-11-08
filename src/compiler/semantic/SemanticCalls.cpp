@@ -379,7 +379,7 @@ TypeRef SemanticAnalyzer::analyzeMemberExpression(const ast::CallExpression& cal
             rejectInContract("calling " + signature->name + ", which changes its receiver (Self mut),");
         }
         recordInvariantPlaces(call, *call.arguments()[0], true,
-                              signature->parameters.front().mode == PassMode::RefMut);
+                              signature->parameters.front().mode == PassMode::RefMut, true);
         const Symbol& symbol = resolveOrThrow(signature->name);
         result_.bind(fieldIdentifier, symbol);
         result_.bind(call, symbol);
@@ -457,7 +457,7 @@ TypeRef SemanticAnalyzer::analyzeMethodCallExpression(const ast::CallExpression&
     // CANON-24: the receiver's invariant before and (Self mut) after the
     // call; a ref mut argument's after it.
     recordInvariantPlaces(call, *member.arguments()[0], true,
-                          signature->parameters.front().mode == PassMode::RefMut);
+                          signature->parameters.front().mode == PassMode::RefMut, true);
     for (std::size_t index = 0; index < call.arguments().size(); ++index) {
         if (signature->parameters[index + 1].mode == PassMode::RefMut) {
             rejectInContract("calling " + signature->name + ", which changes a ref mut argument,");

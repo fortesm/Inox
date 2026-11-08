@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.1 pre-alpha
-Canon revision: 0.4.1.3.137
+Canon revision: 0.4.1.3.138
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -767,3 +767,10 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   the next decision is 0.4.1.3.138, and a new compiler version changes the
   prefix. Earlier labels stay as written. No other rule changes. Change
   `canon-revision-numbering`.
+- 0.4.1.3.138 — 2026-11-08 — CANON-24, conformance (item 3.1 of
+  `safe-pointers-followups`, authorized by Marcelo Fortes, 2026-11-08; the
+  rule is unchanged): a pointer on the path of a checked place stands for
+  the struct it points at, so writes and method calls through `Own`,
+  `Option<Own>` and `Link` check that struct's invariant; the TIR carries
+  the check on a `through` place. Part of the 0.5 work; the published
+  version stays 0.4.1. Change `invariants-through-pointers`.

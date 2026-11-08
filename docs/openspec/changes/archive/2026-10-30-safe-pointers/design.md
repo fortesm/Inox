@@ -287,8 +287,8 @@ for later:
   returns, not at the end of each iteration; nothing leaks.
 - **Contracts**: a `pre` may read an owner parameter; a `pos` reads it
   through `old P.Field` (`old P` of an owner is an error: an owner is never
-  copied). Struct invariants are not checked after a write through a
-  pointer.
+  copied). Struct invariants are checked after a write through a pointer
+  since 0.4.1.3.138 (change `invariants-through-pointers`).
 - `New(TNode)` creates an object with its defaults, besides `New(V)`.
 - A function result that is an owner cannot be discarded yet (the backend
   gap of functions called as statements).

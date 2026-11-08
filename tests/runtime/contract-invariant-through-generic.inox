@@ -1,0 +1,23 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24 with CANON-8 (safe-pointers-followups 3.1): an instance of a
+== generic struct written through an Own keeps its invariant.
+Type
+    TPair<T> Struct
+        FLow T
+        FHigh T
+        invariant Self.FLow <= Self.FHigh, "the low bound is not above the high one"
+    ;
+
+Main :
+    P := New(TPair(FLow := 1, FHigh := 5))
+    P.FHigh := 9
+    PutLn(P.FLow, " ", P.FHigh)
+    P.FHigh := 0
+    PutLn("not reached ", P.FHigh)
+;

@@ -209,7 +209,8 @@ private:
     TypeRef analyzePureCall(const ast::CallExpression& call);
     void rejectInContract(const std::string& what) const;
     bool hasInvariant(TypeRef type) const;
-    void recordInvariantPlaces(const ast::AstNode& site, const ast::Expression& place, bool before, bool after);
+    void recordInvariantPlaces(const ast::AstNode& site, const ast::Expression& place, bool before, bool after,
+                               bool changedThrough = false);
     bool invariantChecksOn() const;
     bool inContract_ = false;
     std::string currentRoutine_;
