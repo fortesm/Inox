@@ -62,6 +62,10 @@ Move or Free`.
 - **WHEN** a routine gives away an owner it received as `ref mut` where an exception may leave it
 - **THEN** it is rejected (tests/diagnostics/pointer-owner-field-lost-by-exception.inox, tests/diagnostics/pointer-refmut-freed-before-raise.inox, tests/diagnostics/pointer-refmut-freed-before-call.inox, tests/diagnostics/pointer-refmut-freed-before-method.inox, tests/diagnostics/pointer-refmut-freed-before-conversion.inox, tests/diagnostics/pointer-refmut-freed-before-file-write.inox, tests/diagnostics/pointer-refmut-raise-in-new-value.inox, tests/diagnostics/pointer-refmut-freed-before-invariant.inox, tests/diagnostics/pointer-refmut-freed-before-retry.inox, tests/diagnostics/pointer-refmut-freed-before-rethrow.inox, tests/diagnostics/pointer-refmut-typed-handler-not-proven.inox, tests/diagnostics/pointer-refmut-raise-in-handler.inox, tests/diagnostics/pointer-refmut-ensure-one-branch.inox, tests/diagnostics/pointer-refmut-nested-ensures-order.inox, tests/diagnostics/pointer-refmut-raise-in-ensure.inox, tests/diagnostics/pointer-refmut-generic-raise.inox, tests/diagnostics/pointer-refmut-recursive-raise.inox, tests/modules/refmut-raise-gives-away/Main.inox), and a routine that gives it back first is accepted (tests/runtime/pointers-refmut-exception-exits.inox, tests/modules/refmut-raise-gives-back/Main.inox)
 
+#### Scenario: Locals of a loop body
+- **WHEN** a loop body declares an owner, a value holding owners or a local some Link points to
+- **THEN** it ends with each round and on every path out of the body, the last declared first, after the `ensure`s inside the body and before those outside it; an owner given away is not freed again, and a Link to the local is dead after the round (tests/runtime/pointers-loop-body-lifetime.inox, tests/runtime/pointers-loop-link-after-round.inox)
+
 #### Scenario: Run-time backstop
 - **WHEN** a routine reads an owner that is empty (null, as Move and Free leave it), called from a native host
 - **THEN** the program stops with "use of an owner after Move or Free", exit code 70, and the check is in the generated code (tests/native/owner-check.inox, tests/codegen/llvm-owner-check-smoke.inox)

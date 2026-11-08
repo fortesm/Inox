@@ -145,10 +145,10 @@ each version added.
   escape analysis that keeps it on the stack at no cost is not done); the
   run-time check of an owner given away (trap "use of an owner after Move
   or Free") stays in the generated code although no accepted program is
-  known to reach it (r3.136); an owner declared
-  inside a loop is freed when its declaration runs again or the routine
-  returns, not at the end of each iteration. Each is a task of change
-  `safe-pointers-followups`.
+  known to reach it (r3.136); a String declared in a loop body is
+  released when its declaration runs again or the routine returns (owners
+  and linked locals end with each round since r3.137). Each is a task of
+  change `safe-pointers-followups`.
 - Packages: no tool finds or downloads them yet (FUTURE).
 - Toolchain discovery; clang is still the external
   driver (by design until E22's criteria hold).

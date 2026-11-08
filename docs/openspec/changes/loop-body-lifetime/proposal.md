@@ -20,9 +20,8 @@ both Links still reach variables whose scope has ended. CANON-25 gives a
 Link no meaning past its target's life; the lifecycle work of 0.5
 (destructors) will also need each scope's end to be a defined point.
 
-Status: **proposal awaiting the maintainer's decision** (lifetime and the
-observable order of cleanup; G7). Risk: high (memory ownership). No code
-before approval.
+Approval: Marcelo Fortes, 2026-11-08 (G7; Q1-Q5 decided). Risk: high
+(memory ownership). Depends on PR #149 (r3.136), its base.
 
 ## What Changes (recommended)
 

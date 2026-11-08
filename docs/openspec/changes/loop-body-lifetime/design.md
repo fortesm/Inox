@@ -60,37 +60,44 @@ of the routine, and its Links stay alive after its scope (proposal.md).
    `emitReleaseOwnedSlots` already emits per routine exit; checked by
    `stack_frames.py` and the Windows stack budget.
 
-## Questions for the maintainer
+## Decisions (approved 2026-11-08)
 
-- **Q1.** Scope: loop bodies only (nested blocks of the body included,
-  inner loop bodies excluded)? Recommendation: yes.
-- **Q2.** The exits of decision 2? Recommendation: yes.
-- **Q3.** Order: reverse declaration, inner first, after `ensure`?
-  Recommendation: yes.
-- **Q4.** Strings keep their current release? Recommendation: yes.
-- **Q5.** Option A (no TIR change) or B (a TIR field)? Recommendation: A.
+- **Q1.** Owners and linked locals declared in loop bodies and their inner
+  blocks (values holding owners included).
+- **Q2.** Cleanup at the effective exits of the scope: a round's end,
+  `continue`, `leave`, `until`, `Return`, `Exit`, exceptions that leave it.
+- **Q3 (with adjustment).** The order follows the real lexical nesting: the
+  `ensure`s actually crossed run in order, interleaved with the cleanups of
+  the scopes left, not all `ensure`s before all cleanups.
+- **Q4.** Strings and values holding only Strings keep their release;
+  values holding owners are cleaned fully.
+- **Q5.** Lifetime limits explicit in the TIR, minimal: each loop records
+  the locals its body declares (`Stmt::scopeEnds`), a scope fact the TIR
+  builder copies from the body's declarations; code generation decides only
+  how each local's storage is released.
+
+Implementation note: code generation emits a body whose `scopeEnds` hold a
+releasable local as a protected region (the lowering of a try with
+`ensure`), whose `ensure` ends those locals; the existing cleanup contexts
+then give every transfer and the unwinding path the lexical order of Q3,
+with no second dispatch mechanism.
 
 ## Acceptance tests
 
-Runtime (`tests/runtime/`, leak-checked under ASan; trap tests with
-`.trap`):
-- `pointers-loop-owner-per-round`: an owner declared in `for`, `while`
-  and `repeat` bodies, a Link to it checked with `Alive` after each round
-  (false) and inside the round (true).
-- `pointers-loop-linked-local-per-round`: the same for a linked local.
-- `pointers-loop-exits-release`: `continue`, `leave`, true `until`,
-  `until` inside a `while` inside a `repeat`, `Return`, `Exit`; nested
-  loops; owners in a struct and in an array declared in the body.
-- `pointers-loop-release-order`: the order observed through Links to
-  several locals (each Link dead exactly when its local ends) and through
-  an `ensure` that reads the locals before the body ends.
-- `pointers-loop-moved-owner`: an owner moved out of the body (into an
-  outer variable, returned, passed by value) is not freed at the round's
-  end; double free excluded under ASan.
-- `pointers-loop-exception-release`: `Raise` and an exception from a
-  call inside the body, caught outside the loop and inside it.
+Runtime (`tests/runtime/`, under the string leak check with ASan):
+- `pointers-loop-body-lifetime`: `for`, `while` and `repeat` bodies (a Link
+  alive in the round, dead after it); a linked local; `continue` and
+  `leave`, with an owner moved out of the body (not freed again); `until`
+  inside a `while` inside a `repeat` (both bodies end); nested loops (the
+  inner body ends each inner round, the outer local lives); owners in a
+  struct and in an array declared in the body; an `ensure` inside the body
+  that still sees the locals; an exception that leaves the body (the inner
+  `ensure` sees the locals, the handler and the `ensure` outside the loop
+  see them ended); exceptions caught inside the body; `Return` and `Exit`
+  from inside a loop.
 - `pointers-loop-link-after-round` (`.trap`): reading a Link to a loop
-  local after its round traps (the main program above).
+  local after its round traps.
+- `tests/tir/statements.tir`: the `ends` line of a loop.
 
 Gates (E19), with the snapshots of main 7401b1a: every program whose IR
 changes is a loop that declares an owner or linked local in its body, and
@@ -98,4 +105,4 @@ each is listed in the PR; all others identical.
 
 ## Approval
 
-Pending: the maintainer's decisions on Q1-Q5 and dated approval (G7).
+Design approval: Marcelo Fortes, 2026-11-08 (G7), Q1-Q5 as recorded above.

@@ -1,0 +1,23 @@
+for in round true
+for in round true
+for after round false
+while after false
+repeat after until false
+linked local in round 1
+linked local in round 2
+linked local after false
+moved out 2 true
+until across false false
+inner after false outer alive true
+inner after false outer alive true
+struct and array after false false
+ensure inside sees true
+after leave false
+inner ensure sees true
+handler outside sees false
+outer ensure sees false
+caught in round 1
+caught in round 2
+return 3
+show 1
+show 2

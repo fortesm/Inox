@@ -32,6 +32,7 @@ entry Main
   declare I Int64 := (lit Int64 3)
   declare __variant_previous_1 Int64 := (unary Int64 neg (lit Int64 1))
   while (binary Bool gt (read Int64 (local I)) (lit Int64 0))
+    ends __variant_1
     evaluate (check Void 4 "loop invariant violated: Main: I >= 0" (binary Bool ge (read Int64 (local I)) (lit Int64 0)))
     declare __variant_1 Int64 := (pure Int64 (convert Int64 (read Int64 (local I))))
     evaluate (check Void 5 "loop variant violated: Main: I is negative" (binary Bool ge (read Int64 (local __variant_1)) (lit Int64 0)))

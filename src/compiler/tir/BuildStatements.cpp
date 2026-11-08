@@ -12,6 +12,69 @@
 
 namespace inox::compiler::tir::detail {
 
+namespace {
+
+// The locals a loop body declares, in its nested blocks too; an inner loop's
+// body is a scope of its own.
+void collectBodyLocals(Span<const Stmt*> body, std::vector<const semantic::Symbol*>& locals)
+{
+    for (const Stmt* statement : body) {
+        switch (statement->kind) {
+        case StmtKind::Declare:
+            locals.push_back(statement->symbol);
+            break;
+        case StmtKind::Block:
+        case StmtKind::Unless:
+        case StmtKind::With:
+            collectBodyLocals(statement->body, locals);
+            break;
+        case StmtKind::If:
+        case StmtKind::Case:
+            collectBodyLocals(statement->body, locals);
+            for (const Branch& branch : statement->branches) {
+                collectBodyLocals(branch.body, locals);
+            }
+            collectBodyLocals(statement->elseBody, locals);
+            break;
+        case StmtKind::Try:
+            collectBodyLocals(statement->body, locals);
+            collectBodyLocals(statement->tryParts->exceptBody, locals);
+            for (const Handler& handler : statement->tryParts->handlers) {
+                collectBodyLocals(handler.body, locals);
+            }
+            collectBodyLocals(statement->tryParts->elseBody, locals);
+            collectBodyLocals(statement->tryParts->ensureBody, locals);
+            break;
+        case StmtKind::Evaluate:
+        case StmtKind::Assign:
+        case StmtKind::While:
+        case StmtKind::Repeat:
+        case StmtKind::Until:
+        case StmtKind::ForIn:
+        case StmtKind::Raise:
+        case StmtKind::Retry:
+        case StmtKind::Return:
+        case StmtKind::Exit:
+        case StmtKind::Leave:
+        case StmtKind::Continue:
+            break;
+        }
+    }
+}
+
+} // namespace
+
+Span<const semantic::Symbol*> Builder::bodyLocals(Span<const Stmt*> body)
+{
+    std::vector<const semantic::Symbol*> locals;
+    collectBodyLocals(body, locals);
+    Span<const semantic::Symbol*> result = arena_.array<const semantic::Symbol*>(locals.size());
+    for (std::size_t index = 0; index < locals.size(); ++index) {
+        result[index] = locals[index];
+    }
+    return result;
+}
+
 Span<const Stmt*> Builder::statements(const std::vector<ast::StatementPtr>& sources)
 {
     Span<const Stmt*> result = arena_.array<const Stmt*>(sources.size());
@@ -51,11 +114,13 @@ const Stmt* Builder::statement(const ast::Statement& source)
         result = make(StmtKind::While, source);
         result->value = expression(loop.condition());
         result->body = statements(loop.body());
+        result->scopeEnds = bodyLocals(result->body);
         break;
     }
     case ast::AstNodeKind::RepeatStatement:
         result = make(StmtKind::Repeat, source);
         result->body = statements(static_cast<const ast::RepeatStatement&>(source).body());
+        result->scopeEnds = bodyLocals(result->body);
         break;
     case ast::AstNodeKind::UntilStatement:
         result = make(StmtKind::Until, source);
@@ -257,6 +322,7 @@ const Stmt* Builder::forStatement(const ast::ForInStatement& source)
         result->step = expression(*source.step());
     }
     result->body = statements(source.body());
+    result->scopeEnds = bodyLocals(result->body);
     result->invariants = invariants(source, nullptr);
     return result;
 }

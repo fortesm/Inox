@@ -367,7 +367,7 @@ void FunctionEmitter::emitWhile(const tir::Stmt& statement)
 
     output_ << "whilebody" << label << ":\n";
     loopTargets_.push_back(LoopTargets{conditionTarget, endTarget});
-    const bool terminated = emitLoopStatements(statement.body);
+    const bool terminated = emitLoopBody(statement);
     loopTargets_.pop_back();
     if (!terminated) {
         output_ << "  br label %" << conditionTarget << '\n';
@@ -387,7 +387,7 @@ void FunctionEmitter::emitRepeat(const tir::Stmt& statement)
     output_ << bodyTarget << ":\n";
     loopTargets_.push_back(LoopTargets{bodyTarget, endTarget});
     repeatLoopDepths_.push_back(loopTargets_.size());
-    const bool terminated = emitLoopStatements(statement.body);
+    const bool terminated = emitLoopBody(statement);
     repeatLoopDepths_.pop_back();
     loopTargets_.pop_back();
     if (!terminated) {
@@ -484,7 +484,7 @@ void FunctionEmitter::emitForIn(const tir::Stmt& statement)
 
     output_ << bodyTarget << ":\n";
     loopTargets_.push_back(LoopTargets{stepTarget, endTarget});
-    const bool terminated = emitLoopStatements(statement.body);
+    const bool terminated = emitLoopBody(statement);
     loopTargets_.pop_back();
     if (!terminated) {
         output_ << "  br label %" << stepTarget << '\n';
@@ -526,6 +526,66 @@ void FunctionEmitter::emitForIn(const tir::Stmt& statement)
         locals_.insert_or_assign(iteratorName, *shadowedLocal);
     } else {
         locals_.erase(iteratorName);
+    }
+}
+
+// Change loop-body-lifetime: the owners and linked locals a loop body
+// declares (`scopeEnds` of the TIR) end with each round and on every path out
+// of the body. A body that has any is emitted as a protected region whose
+// `ensure` releases them: the region's cleanup context makes `continue`,
+// `leave`, `until`, `Return`, `Exit` and an exception run it, interleaved in
+// lexical order with the `ensure`s they cross; a round that ends normally
+// runs it too. Strings keep their release at the next declaration or the
+// routine's end.
+bool FunctionEmitter::emitLoopBody(const tir::Stmt& loop)
+{
+    std::vector<const semantic::Symbol*> locals;
+    for (const semantic::Symbol* local : loop.scopeEnds) {
+        if (isMoveOnly(local->type) || tombstoneLocals_.contains(normalize(local->name))) {
+            locals.push_back(local);
+        }
+    }
+    if (locals.empty()) {
+        return emitLoopStatements(loop.body);
+    }
+    tir::TryParts parts;
+    parts.hasEnsure = true;
+    tir::Stmt region;
+    region.kind = tir::StmtKind::Try;
+    region.position = loop.position;
+    region.body = loop.body;
+    region.tryParts = &parts;
+    scopeReleases_.emplace(&region, std::move(locals));
+    emitTry(region);
+    scopeReleases_.erase(&region);
+    return false;
+}
+
+// The end of a loop body's locals, the last declared first: an owner still
+// held is freed (one given away left its slot empty), a tombstone is freed
+// so every Link to its local dies; each slot is left empty.
+void FunctionEmitter::emitScopeRelease(const tir::Stmt& region)
+{
+    const auto scope = scopeReleases_.find(&region);
+    if (scope == scopeReleases_.end()) {
+        return;
+    }
+    const std::vector<const semantic::Symbol*>& locals = scope->second;
+    for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
+        const auto slots = declaredSlots_.find(*it);
+        if (slots == declaredSlots_.end()) {
+            continue;
+        }
+        if (!slots->second.tombstone.empty()) {
+            emitTombstoneFree(slots->second.tombstone);
+            output_ << "  store ptr null, ptr " << slots->second.tombstone << '\n';
+        }
+        if (!slots->second.value.empty()) {
+            emitReleaseAt(slots->second.value, slots->second.type);
+            output_ << "  store " << slots->second.llvmType << ' '
+                    << (slots->second.llvmType == "ptr" ? "null" : "zeroinitializer") << ", ptr "
+                    << slots->second.value << '\n';
+        }
     }
 }
 

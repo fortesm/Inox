@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.1 pre-alpha
-Canon revision: r3.136
+Canon revision: r3.137
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -753,3 +753,11 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   r3.135 caller rule stays. The generated code does not change; trap 17
   stays. Part of the 0.5 work; the published version stays 0.4.1. Change
   `owner-refmut-exception-exit`.
+- r3.137 — 2026-11-08 — CANON-25, lifetime of loop-body locals (approved by
+  Marcelo Fortes, 2026-11-08, G7): owners, values holding owners and
+  linked locals declared in a loop body end with each round and on every
+  path out of it, the last declared first, interleaved in lexical order
+  with the `ensure`s crossed; Strings keep their release. The TIR records
+  each loop body's locals; code generation emits such a body as a
+  protected region. Part of the 0.5 work; the published version stays
+  0.4.1. Change `loop-body-lifetime`.

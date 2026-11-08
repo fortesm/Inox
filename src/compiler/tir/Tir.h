@@ -281,6 +281,11 @@ struct Stmt {
     Span<const Stmt*> elseBody;
     const TryParts* tryParts = nullptr;
     const Invariants* invariants = nullptr;
+    // While, Repeat, ForIn: the locals the body declares, in its nested
+    // blocks too but not in the bodies of inner loops, in declaration order.
+    // Their life ends with each round and on every path out of the body
+    // (change loop-body-lifetime).
+    Span<const semantic::Symbol*> scopeEnds;
 };
 
 struct Parameter {

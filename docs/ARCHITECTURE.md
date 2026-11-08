@@ -135,7 +135,9 @@ exception objects on the heap, will not show the cost.
   origin, a call of a routine, a builtin operation, a check).
 - **Guarantees:** it copies what the analysis recorded (call meanings, the
   origin of each variable, the symbol of each declaration, field indices,
-  constants, checks) and resolves no name; what it cannot express is
+  constants, checks) and resolves no name; a loop records the locals its
+  body declares (`scopeEnds`, the body's scope: nested blocks, not inner
+  loops; r3.137); what it cannot express is
   "valid Inox, not yet supported" (E15), never a crash; `tir::verifyProgram`
   checks that every node has a type and a meaning.
 - **Never:** infers a type, compares a name, re-checks a rule (a decision
@@ -148,6 +150,13 @@ exception objects on the heap, will not show the cost.
   shares with the analysis are `semantic/CallMeaning.*`.
 
 ### 6. Code generation
+
+A loop whose `scopeEnds` hold an owner, a value holding owners or a linked
+local emits its body as a protected region whose `ensure` ends them
+(`emitLoopBody`, r3.137): every way out of the body (a round's end,
+`continue`, `leave`, `until`, `Return`, `Exit`, an exception) runs it in
+lexical order with the `ensure`s it crosses.
+
 - **In:** the typed IR (`tir::Program`) and the program's type context.
   **Out:** the LLVM IR text of the program.
 - **Guarantees:** valid IR or a clear stop (E15): "valid Inox, not yet
