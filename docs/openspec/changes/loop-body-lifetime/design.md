@@ -97,6 +97,16 @@ Runtime (`tests/runtime/`, under the string leak check with ASan):
   from inside a loop.
 - `pointers-loop-link-after-round` (`.trap`): reading a Link to a loop
   local after its round traps.
+- `pointers-loop-conditional-locals`: locals declared on conditional
+  paths: an `if` arm that runs in one round only and one that never runs,
+  alternative `case` arms (an owner, a struct of owners, a linked local), a
+  `try` body and its handler, a nested loop whose body declares on one
+  round only. Every such slot is allocated and emptied in the entry block
+  (`inox.entry-init`), so the end of a round in which the declaration did
+  not run releases an empty slot; checked by the LLVM verifier (`opt
+  -passes=verify`, and clang on every run) and under ASan+UBSan.
+- `tests/codegen/llvm-loop-conditional-owner-smoke.inox` (both harnesses):
+  the slot's entry initialization and the body's release from the slot.
 - `tests/tir/statements.tir`: the `ends` line of a loop.
 
 Gates (E19), with the snapshots of main 7401b1a: every program whose IR

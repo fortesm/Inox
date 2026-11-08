@@ -18,5 +18,5 @@
 
 ## 4. Gates
 
-- [x] 4.1 E19 gates (local, unidentified cloud container): Debug and Release suites 1199/1199, unit tests, ASan+UBSan 1 MiB 1199/1199, string_leak_check 74/74, owner_safety_check 45/45, stack_frames 0 grown (new recursion functions within budget: emitLoopBody 504, collectBodyLocals 280), fuzz 1 and 7, oracle, backend_gaps, grammar, openspec, constitution_check, version_check; against the compiler of PR #149 (0663469) over these programs: LLVM IR differs for 4 programs (the 2 new tests and pointers-moves-across-jumps, pointers-moves-across-until, whose loops declare owners), TIR for 38, only by their `ends` lines (69 lines; checked by stripping them); local evidence
+- [x] 4.1 E19 gates (local, unidentified cloud container, after the conditional-locals tests): Debug and Release suites 1201/1201, unit tests, ASan+UBSan 1 MiB 1201/1201, string_leak_check 75/75, owner_safety_check 46/46, stack_frames 0 grown (new recursion functions within budget), fuzz 1 and 7, oracle, backend_gaps, grammar, openspec, constitution_check, version_check; against the compiler of PR #149 over these programs: LLVM IR differs for the 4 programs listed in the PR and the 2 added conditional-locals tests, TIR only by `ends` lines; local evidence
 - [ ] 4.2 CI
