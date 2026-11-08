@@ -21,10 +21,11 @@ rule). Risk: high. No semantic change before approval.
 - A routine gives back every owner it received as `ref mut` on every exit,
   normal or by an exception: at each point where an exception may leave
   it, the owner must not be given away (after the `ensure`s crossed).
-- The points where an exception may leave a routine are named in phase 5:
-  `Raise`, a bare `Raise`, a `Retry` (its budget may be spent), a call of a
-  user routine, method or generic instance, and the built-ins that raise
-  (file I/O, the String conversions that raise `ConversionError`).
+- The points where an exception may leave a routine are named in phase 5
+  from the generated code's ground truth (design.md, section 1): `Raise`,
+  rethrow, a spent `Retry`, calls of routines, methods, generic instances
+  and implicit invariant checks, String-to-number conversions and the
+  Std.Files operations; a guard keeps the list exhaustive.
 - Then no caller ever sees a `ref mut` owner given away, whatever the
   argument: variable, field, field through an owner or `Self`.
 
@@ -38,4 +39,5 @@ rule). Risk: high. No semantic change before approval.
 - Programs it rejects: a routine that gives a `ref mut` owner away and
   then reaches a raising point before assigning it again.
 - `pointers-owner-field-lost-by-exception` becomes a diagnostic; trap 17
-  needs another independent check (Q3 of design.md).
+  keeps an emission test and an executable native fixture (Q3).
+- r3.135 Q2 stays unchanged (maintainer, 2026-11-08).
