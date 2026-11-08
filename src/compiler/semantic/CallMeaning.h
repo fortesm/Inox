@@ -90,4 +90,13 @@ BuiltinOp builtinOpNamed(std::string_view name, bool file = false);
 std::string_view builtinName(BuiltinOp op);
 std::string_view callKindName(CallKind kind);
 
+// Whether an exception may leave a call of this meaning (CANON-15,
+// CANON-25): a routine, a method or a generic instance may raise; so may a
+// conversion of text into a number (`textSource`, ConversionError) and the
+// operations of Std.Files (IOError and its subtypes). Every other call
+// traps on failure or cannot fail. The classification covers every
+// CallKind and BuiltinOp; CallMeaning.cpp rejects a missing one at compile
+// time.
+bool callMayRaise(CallKind kind, BuiltinOp op, bool textSource);
+
 } // namespace inox::compiler::semantic

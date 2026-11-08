@@ -21,6 +21,7 @@ int runTypeExprTests();
 int runSourceCursorTests();
 int runAstNormalizerTests();
 int runTypedIrTests();
+int runRaisingCallsTests();
 } // namespace inox::compiler::unit
 
 int main()
@@ -34,6 +35,7 @@ int main()
     runSourceCursorTests();
     runAstNormalizerTests();
     runTypedIrTests();
+    runRaisingCallsTests();
     if (failureCount() != 0) {
         return 1;
     }

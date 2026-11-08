@@ -432,6 +432,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
         // CANON-24: a struct born with its defaults satisfies its invariant.
         if (var.initializer() == nullptr && hasInvariant(type) && invariantChecksOn()) {
             result_.requireNewValueInvariant(var, type);
+            noteInvariantRaisingPoint(var);
         }
         declareOrThrow(var.name(), SymbolKind::Variable, type, true);
         recordDeclaredSymbol(&var, var.name(), VariableOrigin::Local);
@@ -571,7 +572,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
 
         // Safe pointers: the owner sets of every path through the try
         // (handlers, `ensure`, jumps and Retry) are kept in its frame.
-        const std::size_t tryIndex = enterTryOwners(tryStatement.hasEnsure());
+        const std::size_t tryIndex = enterTryOwners(tryStatement);
         analyzeStatements(tryStatement.body(), true);
         endTryBodyOwners(tryIndex);
 
@@ -655,6 +656,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             if (exceptionHandlerDepth_ == 0) {
                 throw SemanticError("bare Raise is only allowed inside an exception handler");
             }
+            noteRaisingPoint(nullptr, statement.position());
             endOwnerPath();
             break;
         }
@@ -669,6 +671,7 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
             throw SemanticError("Raise requires an exception type: " + identifier.name());
         }
         result_.setExceptionType(&raiseStatement, raised);
+        noteRaisingPoint(raised, statement.position());
         endOwnerPath();
         break;
     }
@@ -691,7 +694,9 @@ void SemanticAnalyzer::analyzeStatement(const ast::Statement& statement)
                 }
             }
         }
-        // `ensure` runs, then the try body again (CANON-15).
+        // A spent budget raises the exception again; otherwise `ensure`
+        // runs, then the try body again (CANON-15).
+        noteRaisingPoint(nullptr, statement.position());
         if (ownerPathReachable_) {
             for (std::size_t index = ownerFrames_.size(); index > 0; --index) {
                 if (ownerFrames_[index - 1].inRetryHandler) {

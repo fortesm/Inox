@@ -1,0 +1,35 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25, r3.136): a routine gives back an owner it received
+== as ref mut before an exception leaves it; an ensure that assigns the owner again on
+== one arm only does not give it back on the exception path.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Work(X Integer) :
+    PutLn(X)
+;
+
+Renew(ref mut P Own<TNode>, Fresh Bool) :
+    Free(P)
+    try
+        Work(1)
+    ensure
+        if Fresh
+            P := New(TNode)
+        ;
+    ;
+    P := New(TNode)
+;
+
+Main :
+    P := New(TNode(FValue := 1))
+    Renew(P, True)
+;

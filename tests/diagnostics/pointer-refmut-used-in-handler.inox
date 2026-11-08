@@ -5,18 +5,19 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== Safe pointers (CANON-25): an exception may leave the callee before it gives
-== the ref mut owner back, so the handler sees it as given away.
+== Safe pointers (CANON-25, r3.135 Q2, kept by r3.136): the caller does not
+== look into the callee, so an owner passed as ref mut inside a try is seen
+== as given away by the handler.
 Type
     TNode Struct
         FValue Integer := 0
     ;
 
 Renew(ref mut P Own<TNode>) :
-    Free(P)
     if True
         Raise RangeError
     ;
+    Free(P)
     P := New(TNode)
 ;
 

@@ -426,7 +426,7 @@ private:
         bool reachable = true;
     };
     enum class OwnerFrameKind : std::uint8_t { Loop, Repeat, Try };
-    enum class OwnerDepartureKind : std::uint8_t { LoopExit, NextRound, Retry, RoutineExit };
+    enum class OwnerDepartureKind : std::uint8_t { LoopExit, NextRound, Retry, RoutineExit, ExceptionExit };
     // A path leaving a try that has an `ensure`: it reaches its target once
     // `ensure` has run.
     struct OwnerDeparture {
@@ -434,6 +434,7 @@ private:
         OwnerDepartureKind kind = OwnerDepartureKind::LoopExit;
         MovedOwners moved;
         ast::SourcePosition position;
+        TypeRef raised = nullptr;  // ExceptionExit: the type a `Raise` names
     };
     // A loop or a try being analyzed: the owner sets of the paths that
     // leave it or come back to it.
@@ -449,7 +450,10 @@ private:
         MovedOwners startOfTry;
         MovedOwners handlerStart;
         OwnerState afterTry{{}, false};
+        std::vector<TypeRef> handlerTypes;  // try: the types of its On handlers
         bool hasEnsure = false;
+        bool catchesAll = false;  // try: a plain except, an Else or On Exception
+        bool inHandler = false;
         bool inRetryHandler = false;
         bool inEnsure = false;
     };
@@ -465,11 +469,15 @@ private:
                       const ast::SourcePosition& position);
     void sendOwnersOutOfLoop(OwnerDepartureKind kind, bool repeatOnly, const ast::SourcePosition& position);
     void sendOwnersOutOfRoutine(const ast::SourcePosition& position);
-    void requireRefMutOwnersBack(const ast::SourcePosition* position);
+    void requireRefMutOwnersBack(const ast::SourcePosition* position, bool byException = false);
+    void noteRaisingPoint(TypeRef raised, const ast::SourcePosition& position);
+    void noteRaisingCall(const ast::Expression& expression);
+    void noteInvariantRaisingPoint(const ast::AstNode& site);
+    void routeOwnersByException(std::size_t from, TypeRef raised, const ast::SourcePosition& position);
     void noteOwnerLentToCall(const ast::Expression& argument);
     void enterLoopOwners(OwnerFrameKind kind);
     void requireOwnersBackAfterLoop();
-    std::size_t enterTryOwners(bool hasEnsure);
+    std::size_t enterTryOwners(const ast::TryStatement& tryStatement);
     void endTryBodyOwners(std::size_t tryIndex);
     void enterHandlerOwners(std::size_t tryIndex, bool retryHandler);
     void endHandlerOwners(std::size_t tryIndex);

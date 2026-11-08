@@ -35,10 +35,10 @@ Swap<T>(ref mut A T, ref mut B T) :
 ;
 
 Risky(ref mut P Own<TNode>) :
-    Free(P)
     if Fails
         Raise RangeError
     ;
+    Free(P)
     P := New(TNode)
 ;
 

@@ -47,10 +47,10 @@ Walk(ref mut P Own<TNode>) :
 ;
 
 Renew(ref mut P Own<TNode>) :
-    Free(P)
     if True
         Raise RangeError
     ;
+    Free(P)
     P := New(TNode)
 ;
 

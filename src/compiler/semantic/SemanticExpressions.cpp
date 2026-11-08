@@ -164,6 +164,7 @@ TypeRef SemanticAnalyzer::analyzeExpression(const ast::Expression& expression)
     }
     integerContext_ = context;
     result_.setExpressionType(expression, type);
+    noteRaisingCall(expression);
     foldConstantExpression(expression);
     // CANON-8: constant overflow is a compile-time error in every integer type.
     if (isNarrowIntegerType(type)) {

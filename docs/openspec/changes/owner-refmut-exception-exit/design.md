@@ -177,23 +177,17 @@ inside the assignment's right side. The repository has no routine with a
 `ref mut` owner parameter outside the tests of r3.135, whose results stay
 as recorded.
 
-## Questions for the maintainer
+## Decisions (approved 2026-11-08)
 
-- **Q1.** Adopt C with the raising points of section 1 and the routing of
-  section 2, and CANON-25 reading "A routine gives back an owner it
-  received as `ref mut` before it returns or an exception leaves it"?
-  Recommendation: yes.
-- **Q2.** r3.135 Q2 kept unchanged (your instruction of 2026-11-08); its
-  relaxation, if any, in a separate proposal. Recorded, no decision left.
-- **Q3.** Trap 17: the emission test plus the native fixture with a null
-  owner, as its executable check (a new `run-tests.sh` step)?
-  Alternatives: a compiler-unit test that builds a TIR program directly
-  and runs the generated code (needs a clang call from the unit tests), or
-  a test-only flag that skips the move analysis (a new compiler option;
-  not recommended). Recommendation: the native fixture.
-- **Q4.** The exhaustiveness guard of section 1 (switch without default,
-  unit test of the runtime functions without `nounwind`)? Recommendation:
-  yes.
+- **Q1.** Alternative C with the raising points of section 1 and the
+  routing of section 2; CANON-25 reads "A routine gives back an owner it
+  received as `ref mut` before it returns or an exception leaves it."
+- **Q2.** The r3.135 caller rule stays unchanged; no relaxation here.
+- **Q3.** Trap 17 stays, with an LLVM emission test and an executable
+  fixture that respects the ABI (an empty owner is a null pointer).
+- **Q4.** Exhaustiveness: `-Wswitch-enum` (and `-Wswitch`) as errors over
+  the classification's switches, MSVC warnings 4061/4062 as errors, and a
+  unit test pinning the runtime functions without `nounwind`.
 
 ## Acceptance tests
 
@@ -251,4 +245,4 @@ differ, each listed in the PR as newly rejected or new.
 
 ## Approval
 
-Pending: the maintainer's decision on Q1-Q3 and dated approval (G7).
+Design approval: Marcelo Fortes, 2026-11-08 (G7), alternative C with Q1-Q4.

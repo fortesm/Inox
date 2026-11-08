@@ -1,0 +1,23 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25): reading an owner emits the check of an owner
+== given away (trap 17): a null test, expected false, and the fault call
+== with kind 17.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Peek(P Own<TNode>) Integer :
+    Return P.FValue
+;
+
+Main :
+    P := New(TNode(FValue := 3))
+    PutLn(Peek(Move(P)))
+;

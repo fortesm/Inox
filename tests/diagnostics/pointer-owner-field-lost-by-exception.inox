@@ -5,10 +5,9 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== Safe pointers: an owner field passed as ref mut to a routine that frees it
-== and raises is a path the analysis does not follow (item 2.5 of
-== safe-pointers-followups): the caller's use of the field stops with trap
-== 17, never a null access. This is the run-time test of that check.
+== Safe pointers (CANON-25, r3.136): a routine gives back an owner it received
+== as ref mut before an exception leaves it, so an owner field passed as
+== ref mut is never left empty; this callee frees it and then raises.
 Type
     TNode Struct
         FValue Integer := 0

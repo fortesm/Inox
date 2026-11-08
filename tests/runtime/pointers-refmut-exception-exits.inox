@@ -1,0 +1,182 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25, r3.136): a routine gives back an owner it received
+== as ref mut before an exception leaves it. Accepted: no raising point
+== between Free and the assignment; an ensure, a plain except, an Else or a
+== typed handler that provably catches gives it back; recursion, a method,
+== a generic instance; field arguments through a local struct, an owner,
+== Self and a ref mut struct, caught by handlers that then use the field.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+    TBox Struct
+        FNode Own<TNode>
+    ;
+    THolder Struct
+        FBox Own<TBox>
+    ;
+
+Check(X Integer) :
+    if X > 100
+        Raise RangeError
+    ;
+;
+
+== Raises before giving away, assigns at once after.
+Renew(ref mut P Own<TNode>) :
+    Before := P.FValue
+    Check(Before)
+    Free(P)
+    P := New(TNode(FValue := Before + 1))
+    Check(P.FValue)
+;
+
+== An ensure gives it back around the raising part, nested inner first.
+Guarded(ref mut P Own<TNode>) :
+    Before := P.FValue
+    Free(P)
+    try
+        try
+            Check(Before)
+        ensure
+            P := New(TNode(FValue := Before + 10))
+        ;
+    ensure
+        PutLn("outer ensure")
+    ;
+;
+
+== A plain except and an Else give it back.
+Plain(ref mut P Own<TNode>) :
+    Free(P)
+    try
+        Check(200)
+        P := New(TNode(FValue := 1))
+    except
+        P := New(TNode(FValue := 2))
+    ;
+;
+
+Otherwise(ref mut P Own<TNode>) :
+    Free(P)
+    try
+        Check(200)
+        P := New(TNode(FValue := 3))
+    except
+        On ConversionError
+            P := New(TNode(FValue := 4))
+        ;
+        Else
+            P := New(TNode(FValue := 5))
+        ;
+    ;
+;
+
+== A typed handler that provably catches the Raise gives it back.
+Typed(ref mut P Own<TNode>) :
+    Free(P)
+    try
+        Raise RangeError
+    except
+        On RangeError
+            P := New(TNode(FValue := 6))
+        ;
+    ;
+;
+
+== Recursion that gives back before recursing.
+Down(ref mut P Own<TNode>, N Integer) :
+    if N = 0
+        Exit
+    ;
+    Free(P)
+    P := New(TNode(FValue := N))
+    Down(P, N - 1)
+;
+
+== A method with a ref mut owner parameter.
+TBox.Adopt(Self mut, ref mut P Own<TNode>) :
+    X := Move(P)
+    P := New(TNode(FValue := Self.FNode.FValue))
+    Self.FNode := Move(X)
+;
+
+== A generic instance.
+Exchange<T>(ref mut A T, ref mut B T) :
+    X := Move(A)
+    A := Move(B)
+    B := Move(X)
+;
+
+== A callee that raises with its owner given back.
+Fails(ref mut P Own<TNode>) :
+    Free(P)
+    P := New(TNode(FValue := 77))
+    Raise RangeError
+;
+
+TBox.Refresh(Self mut) :
+    Fails(Self.FNode)
+;
+
+Outer(ref mut B TBox) :
+    Fails(B.FNode)
+;
+
+Main :
+    P := New(TNode(FValue := 1))
+    Renew(P)
+    PutLn("renew ", P.FValue)
+    Guarded(P)
+    PutLn("guarded ", P.FValue)
+    Plain(P)
+    PutLn("plain ", P.FValue)
+    Otherwise(P)
+    PutLn("else ", P.FValue)
+    Typed(P)
+    PutLn("typed ", P.FValue)
+    Down(P, 3)
+    PutLn("down ", P.FValue)
+    B := TBox(FNode := New(TNode(FValue := 8)))
+    B.Adopt(P)
+    PutLn("adopt ", P.FValue, " ", B.FNode.FValue)
+    Q := New(TNode(FValue := 9))
+    Exchange(P, Q)
+    PutLn("exchange ", P.FValue, " ", Q.FValue)
+    try
+        Fails(B.FNode)
+    except
+        On RangeError
+            PutLn("local field ", B.FNode.FValue)
+        ;
+    ;
+    H := THolder(FBox := New(TBox(FNode := New(TNode(FValue := 1)))))
+    try
+        Fails(H.FBox.FNode)
+    except
+        On RangeError
+            PutLn("through an owner ", H.FBox.FNode.FValue)
+        ;
+    ;
+    try
+        B.Refresh
+    except
+        On RangeError
+            PutLn("Self ", B.FNode.FValue)
+        ;
+    ;
+    try
+        Outer(B)
+    except
+        On RangeError
+            PutLn("ref mut struct")
+        ;
+    ;
+    PutLn("end ", H.FBox.FNode.FValue)
+;

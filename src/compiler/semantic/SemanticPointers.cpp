@@ -503,6 +503,7 @@ void SemanticAnalyzer::sendOwnersTo(std::size_t target, OwnerDepartureKind kind,
         frame.retries.push_back({target, kind, movedOwners_, position});
         break;
     case OwnerDepartureKind::RoutineExit:
+    case OwnerDepartureKind::ExceptionExit:
         break;
     }
 }
@@ -518,17 +519,94 @@ void SemanticAnalyzer::sendOwnersOutOfRoutine(const ast::SourcePosition& positio
 
 // CANON-25: a routine gives back every owner it received as `ref mut`
 // before it returns, so the caller's owner is valid after the call.
-void SemanticAnalyzer::requireRefMutOwnersBack(const ast::SourcePosition* position)
+void SemanticAnalyzer::requireRefMutOwnersBack(const ast::SourcePosition* position, bool byException)
 {
     for (const Symbol* parameter : refMutParameters_) {
         if (movedOwners_.contains(parameter)) {
             if (position != nullptr) {
                 notePosition(*position);
             }
+            if (byException) {
+                throw SemanticError(parameter->name + " is received as ref mut and given away (Move or Free) "
+                                    "where an exception may leave the routine: assign it again first");
+            }
             throw SemanticError(parameter->name + " is received as ref mut and given away (Move or Free) on a "
                                 "path that returns: assign it again before the routine returns");
         }
     }
+}
+
+// CANON-25: a routine gives back an owner it received as `ref mut` before
+// an exception leaves it. At a point where an exception may leave the
+// statement, the current set goes where the exception goes.
+void SemanticAnalyzer::noteRaisingPoint(TypeRef raised, const ast::SourcePosition& position)
+{
+    // An `ensure` the exception crosses may also give the owner away.
+    if (ownerPathReachable_ && !refMutParameters_.empty()) {
+        routeOwnersByException(ownerFrames_.size(), raised, position);
+    }
+}
+
+// An invariant check (CANON-24) may call a routine that raises.
+void SemanticAnalyzer::noteInvariantRaisingPoint(const ast::AstNode& site)
+{
+    noteRaisingPoint(nullptr, site.position().known() ? site.position() : diagnosticPlace().position);
+}
+
+// A call that may raise (CallMeaning.h, callMayRaise): a routine, a method,
+// a text-to-number conversion, a Std.Files operation.
+void SemanticAnalyzer::noteRaisingCall(const ast::Expression& expression)
+{
+    if (!ownerPathReachable_ || refMutParameters_.empty()) {
+        return;
+    }
+    const CallMeaning* meaning = result_.callMeaning(expression);
+    if (meaning == nullptr) {
+        return;
+    }
+    bool textSource = false;
+    if (meaning->kind == CallKind::Conversion && expression.kind() == ast::AstNodeKind::CallExpression) {
+        const auto& call = static_cast<const ast::CallExpression&>(expression);
+        const TypeRef source = call.arguments().empty() ? nullptr : result_.typeOf(*call.arguments()[0]);
+        textSource = source != nullptr && source->isString();
+    }
+    if (callMayRaise(meaning->kind, meaning->op, textSource)) {
+        // An expression without a position of its own reports its statement.
+        noteRaisingPoint(nullptr, expression.position().known() ? expression.position()
+                                                                : diagnosticPlace().position);
+    }
+}
+
+// The way out of an exception from frame `from` inward: a try whose body
+// holds the point catches it when it catches everything or provably the
+// raised type; a handler's or an `ensure`'s exception leaves its own try;
+// a try with `ensure` holds the path until `ensure` has run; at the
+// routine's edge every `ref mut` owner must be back.
+void SemanticAnalyzer::routeOwnersByException(std::size_t from, TypeRef raised, const ast::SourcePosition& position)
+{
+    for (std::size_t index = from; index > 0; --index) {
+        OwnerFrame& frame = ownerFrames_[index - 1];
+        if (frame.kind != OwnerFrameKind::Try || frame.inEnsure) {
+            continue;
+        }
+        if (!frame.inHandler) {
+            if (frame.catchesAll) {
+                return;
+            }
+            if (raised != nullptr) {
+                for (const TypeRef handlerType : frame.handlerTypes) {
+                    if (raised->isExceptionOf(handlerType)) {
+                        return;
+                    }
+                }
+            }
+        }
+        if (frame.hasEnsure) {
+            frame.departures.push_back({0, OwnerDepartureKind::ExceptionExit, movedOwners_, position, raised});
+            return;
+        }
+    }
+    requireRefMutOwnersBack(&position, true);
 }
 
 // CANON-25: an exception may leave the callee between giving a `ref mut`
@@ -581,11 +659,20 @@ void SemanticAnalyzer::enterLoopOwners(OwnerFrameKind kind)
     ownerFrames_.push_back(std::move(frame));
 }
 
-std::size_t SemanticAnalyzer::enterTryOwners(bool hasEnsure)
+std::size_t SemanticAnalyzer::enterTryOwners(const ast::TryStatement& tryStatement)
 {
     OwnerFrame frame;
     frame.kind = OwnerFrameKind::Try;
-    frame.hasEnsure = hasEnsure;
+    frame.hasEnsure = tryStatement.hasEnsure();
+    // CANON-15: a plain except catches every Inox exception, Else every one
+    // the On handlers miss, On Exception every one.
+    frame.catchesAll = tryStatement.hasPlainExcept() || !tryStatement.elseBody().empty();
+    for (const auto& handler : tryStatement.handlers()) {
+        if (const TypeRef type = exceptionTypeNamed(handler.typeName)) {
+            frame.handlerTypes.push_back(type);
+            frame.catchesAll = frame.catchesAll || type->exceptionParent() == nullptr;
+        }
+    }
     frame.startOfTry = movedOwners_;
     ownerFrames_.push_back(std::move(frame));
     return ownerFrames_.size() - 1;
@@ -604,6 +691,7 @@ void SemanticAnalyzer::endTryBodyOwners(std::size_t tryIndex)
 void SemanticAnalyzer::enterHandlerOwners(std::size_t tryIndex, bool retryHandler)
 {
     OwnerFrame& frame = ownerFrames_[tryIndex];
+    frame.inHandler = true;
     frame.inRetryHandler = retryHandler;
     setOwnerState({frame.handlerStart, true});
 }
@@ -611,6 +699,7 @@ void SemanticAnalyzer::enterHandlerOwners(std::size_t tryIndex, bool retryHandle
 void SemanticAnalyzer::endHandlerOwners(std::size_t tryIndex)
 {
     OwnerFrame& frame = ownerFrames_[tryIndex];
+    frame.inHandler = false;
     frame.inRetryHandler = false;
     joinCurrentOwnerState(frame.afterTry);
 }
@@ -656,7 +745,11 @@ void SemanticAnalyzer::leaveTryOwners(std::size_t tryIndex)
             const OwnerState current = ownerState();
             for (const OwnerDeparture& departure : frame.departures) {
                 movedOwners_ = departure.moved;
-                sendOwnersTo(departure.target, departure.kind, tryIndex, departure.position);
+                if (departure.kind == OwnerDepartureKind::ExceptionExit) {
+                    routeOwnersByException(tryIndex, departure.raised, departure.position);
+                } else {
+                    sendOwnersTo(departure.target, departure.kind, tryIndex, departure.position);
+                }
             }
             setOwnerState(current);
         }

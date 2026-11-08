@@ -579,6 +579,7 @@ TypeRef SemanticAnalyzer::analyzeConstruction(const ast::CallExpression& call, T
     // CANON-24: a new value satisfies its invariant.
     if (hasInvariant(type) && invariantChecksOn()) {
         result_.requireNewValueInvariant(call, type);
+        noteInvariantRaisingPoint(call);
     }
     result_.setConstructedStruct(call, type);
     recordCallMeaning(call, CallKind::Construction);

@@ -12,11 +12,10 @@ owner (`H.FBox.FNode`), through `Self` in a method, and through a
 `ref mut` struct parameter; the caller's handler, its `ensure`, or any
 outer handler then sees the empty field.
 
-Status: **proposal awaiting the maintainer's decision** (G7: memory
-ownership; the provisional acceptance of Q3 in r3.135 does not choose the
-rule). Risk: high. No semantic change before approval.
+Approval: Marcelo Fortes, 2026-11-08 (G7: memory ownership; alternative C,
+Q1-Q4 approved). Risk: high.
 
-## What Changes (recommended alternative C, see design.md)
+## What Changes (alternative C, see design.md)
 
 - A routine gives back every owner it received as `ref mut` on every exit,
   normal or by an exception: at each point where an exception may leave

@@ -1,0 +1,26 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25): the run-time check of an owner given away
+== (trap 17) stays in the generated code although no accepted program is
+== known to reach it. run-tests.sh links this program's Peek with
+== owner-check-host.cpp, which calls it with an empty owner (null, as Move
+== and Free leave a slot): the program must stop with "use of an owner
+== after Move or Free" and exit code 70.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Peek(P Own<TNode>) Integer :
+    Return P.FValue
+;
+
+Main :
+    P := New(TNode(FValue := 3))
+    PutLn(Peek(Move(P)))
+;
