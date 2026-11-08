@@ -1,0 +1,78 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (change loop-body-lifetime, r3.137): the end of a loop body
+== releases locals declared on conditional paths too: in an if arm that
+== runs in some rounds only or never, in alternative case arms, in a try
+== body and its handler, and in a nested loop. Each slot is allocated and
+== emptied in the routine's entry block, so a round in which the
+== declaration did not run releases an empty slot.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+    TPair Struct
+        FLeft Own<TNode>
+        FRight Own<TNode>
+    ;
+
+Main :
+    == the minimal case: P is declared in the first round only
+    for I in 1..2
+        if I = 1
+            P := New(TNode(FValue := I))
+            PutLn(P.FValue)
+        ;
+    ;
+    == an arm that never runs
+    for I in 1..2
+        if I = 99
+            Never := New(TNode(FValue := 99))
+            PutLn(Never.FValue)
+        ;
+        PutLn("round ", I)
+    ;
+    Keep := New(TNode)
+    L := Link(Keep)
+    for I in 1..3
+        == alternative case arms, one owner, one struct of owners, one linked local
+        case I
+            1
+                A := New(TNode(FValue := 1))
+                PutLn(A.FValue)
+            2
+                Q := TPair(FLeft := New(TNode(FValue := 2)), FRight := New(TNode(FValue := 3)))
+                PutLn(Q.FRight.FValue)
+            else
+                N TNode := TNode(FValue := 4)
+                L := Link(N)
+                PutLn(Value(L).FValue)
+        ;
+        == a try body and its handler
+        try
+            if I = 2
+                W := New(TNode(FValue := 5))
+                PutLn(W.FValue)
+                Raise RangeError
+            ;
+        except
+            On RangeError
+                C := New(TNode(FValue := 6))
+                PutLn(C.FValue)
+            ;
+        ;
+        == a nested loop whose body declares on one round only
+        for K in 1..2
+            if K = 2
+                D := New(TNode(FValue := 7))
+                L := Link(D)
+            ;
+        ;
+        PutLn("after inner ", Alive(L))
+    ;
+    PutLn("end ", Alive(L))
+;

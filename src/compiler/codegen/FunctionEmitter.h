@@ -124,6 +124,9 @@ private:
     void emitForIn(const tir::Stmt& statement);
 
     bool emitLoopStatements(const TirStatements& statements);
+    bool emitLoopBody(const tir::Stmt& loop);
+    void recordDeclaredSlots(const tir::Stmt& declaration);
+    void emitScopeRelease(const tir::Stmt& region);
 
     void emitUntil(const tir::Stmt& statement);
 
@@ -495,6 +498,19 @@ private:
     std::optional<LinkParts> withGuardCaptured_;
     std::unordered_set<std::string> tombstoneLocals_;
     std::unordered_map<std::string, std::string> tombstoneSlots_;
+    // The storage each declared local got (its value slot when it holds
+    // owners, its tombstone when a Link points to it): what the end of its
+    // loop body releases (change loop-body-lifetime).
+    struct DeclaredSlots {
+        std::string value;
+        TypeRef type = nullptr;
+        std::string llvmType;
+        std::string tombstone;
+    };
+    std::unordered_map<const semantic::Symbol*, DeclaredSlots> declaredSlots_;
+    // A loop body emitted as a protected region whose `ensure` ends its
+    // locals: the locals of each such region.
+    std::unordered_map<const tir::Stmt*, std::vector<const semantic::Symbol*>> scopeReleases_;
 
     // ---- Strings: `+` and Std.Strings / Std.StrUtils (change std-strings;
     // FunctionEmitterStringFunctions.cpp) ----

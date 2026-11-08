@@ -419,6 +419,7 @@ void FunctionEmitter::emitTry(const tir::Stmt& statement)
 
         output_ << ensureLabel << ":\n";
         unwindTargets_.push_back(ensureUnwind);
+        emitScopeRelease(statement);
         for (const tir::Stmt* st : parts.ensureBody) emitStatement(*st);
         unwindTargets_.pop_back();
         output_ << "  br label %" << afterEnsure << "\n\n";

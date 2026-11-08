@@ -51,6 +51,7 @@ void FunctionEmitter::emitStatementKind(const tir::Stmt& statement)
     switch (statement.kind) {
     case tir::StmtKind::Declare:
         emitDeclaration(statement);
+        recordDeclaredSlots(statement);
         return;
     case tir::StmtKind::Block:
         // A `var` block: its declarations, one statement.
@@ -59,6 +60,7 @@ void FunctionEmitter::emitStatementKind(const tir::Stmt& statement)
                 throw CodegenUnsupported("unsupported local variable declaration in Integer function");
             }
             emitDeclaration(*declaration);
+            recordDeclaredSlots(*declaration);
         }
         return;
     case tir::StmtKind::Evaluate:
@@ -147,6 +149,23 @@ void FunctionEmitter::emitDeclaration(const tir::Stmt& declaration)
         if (local != locals_.end()) {
             emitInvariantOf(declaration.invariants->newValue, local->second.slot);
         }
+    }
+}
+
+void FunctionEmitter::recordDeclaredSlots(const tir::Stmt& declaration)
+{
+    const std::string name = normalize(declaration.symbol->name);
+    DeclaredSlots slots;
+    if (const auto local = locals_.find(name); local != locals_.end() && isMoveOnly(local->second.type)) {
+        slots.value = local->second.slot;
+        slots.type = local->second.type;
+        slots.llvmType = local->second.llvmType;
+    }
+    if (const auto tombstone = tombstoneSlots_.find(name); tombstone != tombstoneSlots_.end()) {
+        slots.tombstone = tombstone->second;
+    }
+    if (!slots.value.empty() || !slots.tombstone.empty()) {
+        declaredSlots_.insert_or_assign(declaration.symbol, std::move(slots));
     }
 }
 

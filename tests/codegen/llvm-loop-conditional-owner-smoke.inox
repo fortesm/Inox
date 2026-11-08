@@ -1,0 +1,25 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Change loop-body-lifetime (r3.137): an owner declared on a conditional
+== path of a loop body has its slot allocated and emptied in the entry
+== block, and the body's end loads it from that slot, frees it and empties
+== it again, so a round in which the declaration did not run is safe and no
+== value is used where it is not defined.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Main :
+    for I in 1..2
+        if I = 1
+            P := New(TNode(FValue := I))
+            PutLn(P.FValue)
+        ;
+    ;
+;

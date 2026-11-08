@@ -849,6 +849,10 @@ Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-owner-check-smoke.inox")) `
     -RequiredFragments @("define i64 @inox_peek(ptr %p)", "icmp eq ptr", "call i1 @llvm.expect.i1(i1", "call void @__inox_arith_fault(i32 17)")
 
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-loop-conditional-owner-smoke.inox")) `
+    -RequiredFragments @("store ptr null, ptr %p ; inox.entry-init", "eh.ensure1:", "call void @__inox_own_free(ptr %", "store ptr null, ptr %p")
+
 Invoke-NativeOwnerCheckTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\native\owner-check.inox")) `
     -HostFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\native\owner-check-host.cpp")) `

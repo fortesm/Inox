@@ -222,6 +222,14 @@ void Printer::statement(const Stmt& statement, int depth)
     }
     output_ << '\n';
     invariants(statement.invariants, depth + 1);
+    if (!statement.scopeEnds.empty()) {
+        indent(depth + 1);
+        output_ << "ends";
+        for (const semantic::Symbol* local : statement.scopeEnds) {
+            output_ << ' ' << local->name;
+        }
+        output_ << '\n';
+    }
     statements(statement.body, depth + 1);
     for (const Branch& branch : statement.branches) {
         indent(depth);

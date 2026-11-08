@@ -1,0 +1,176 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (change loop-body-lifetime, r3.137): the owners and linked
+== locals a loop body declares end with each round and on every path out of
+== the body (continue, leave, until, Return, Exit, an exception), the last
+== declared first, interleaved in lexical order with the ensures crossed.
+== A Link to such a local is dead after its round.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+    TPair Struct
+        FLeft Own<TNode>
+        FRight Own<TNode>
+    ;
+
+Keep Own<TNode> :
+    Return New(TNode(FValue := -1))
+;
+
+== Return from inside a loop ends the body before the routine returns.
+FirstAbove(Limit Integer) Integer :
+    for I in 1..5
+        P := New(TNode(FValue := I))
+        if P.FValue > Limit
+            Return P.FValue
+        ;
+    ;
+    Return 0
+;
+
+== Exit likewise.
+ShowUntil(Limit Integer) :
+    for I in 1..5
+        P := New(TNode(FValue := I))
+        PutLn("show ", P.FValue)
+        if I = Limit
+            Exit
+        ;
+    ;
+;
+
+Main :
+    Outer := Keep
+    L := Link(Outer)
+    M := Link(Outer)
+    == for, while, repeat: the Link dies with the round
+    for I in 1..2
+        P := New(TNode(FValue := I))
+        L := Link(P)
+        PutLn("for in round ", Alive(L))
+    ;
+    PutLn("for after round ", Alive(L))
+    J Integer := 0
+    while J < 2
+        J := J + 1
+        P := New(TNode(FValue := J))
+        L := Link(P)
+    ;
+    PutLn("while after ", Alive(L))
+    J := 0
+    repeat
+        J := J + 1
+        P := New(TNode(FValue := J))
+        L := Link(P)
+        until J = 2
+    ;
+    PutLn("repeat after until ", Alive(L))
+
+    == a linked local (a struct value some Link points to)
+    for I in 1..2
+        N TNode := TNode(FValue := I)
+        M := Link(N)
+        PutLn("linked local in round ", Value(M).FValue)
+    ;
+    PutLn("linked local after ", Alive(M))
+
+    == continue and leave end the body; an owner moved out is not freed
+    for I in 1..4
+        P := New(TNode(FValue := I))
+        L := Link(P)
+        if I = 1
+            continue
+        ;
+        if I = 2
+            Outer := Move(P)
+            leave
+        ;
+    ;
+    PutLn("moved out ", Outer.FValue, " ", Alive(L))
+
+    == until inside a while inside a repeat ends both bodies
+    J := 0
+    repeat
+        A := New(TNode(FValue := 1))
+        M := Link(A)
+        while True
+            B := New(TNode(FValue := 2))
+            L := Link(B)
+            J := J + 1
+            until J > 0
+            leave
+        ;
+    ;
+    PutLn("until across ", Alive(L), " ", Alive(M))
+
+    == nested loops: the inner body ends each inner round
+    for I in 1..2
+        A := New(TNode(FValue := I))
+        M := Link(A)
+        for K in 1..2
+            B := New(TNode(FValue := K))
+            L := Link(B)
+        ;
+        PutLn("inner after ", Alive(L), " outer alive ", Alive(M))
+    ;
+
+    == owners in a struct and in an array declared in the body
+    for I in 1..2
+        Q := TPair(FLeft := New(TNode(FValue := I)), FRight := New(TNode(FValue := I * 2)))
+        L := Link(Q.FLeft)
+        R Array[1..2] Option<Own<TNode>> := Fill(None)
+        R[2] := New(TNode(FValue := 5))
+        M := Link(R[2])
+    ;
+    PutLn("struct and array after ", Alive(L), " ", Alive(M))
+
+    == an ensure inside the body runs while the body's locals live
+    for I in 1..1
+        P := New(TNode(FValue := 7))
+        L := Link(P)
+        try
+            leave
+        ensure
+            PutLn("ensure inside sees ", Alive(L))
+        ;
+    ;
+    PutLn("after leave ", Alive(L))
+
+    == an exception: the body ends before an outer ensure, inside it after
+    try
+        for I in 1..1
+            P := New(TNode(FValue := 8))
+            L := Link(P)
+            try
+                Raise RangeError
+            ensure
+                PutLn("inner ensure sees ", Alive(L))
+            ;
+        ;
+    except
+        On RangeError
+            PutLn("handler outside sees ", Alive(L))
+        ;
+    ensure
+        PutLn("outer ensure sees ", Alive(L))
+    ;
+    for I in 1..2
+        P := New(TNode(FValue := I))
+        try
+            Raise RangeError
+        except
+            On RangeError
+                PutLn("caught in round ", P.FValue)
+            ;
+        ;
+    ;
+
+    PutLn("return ", FirstAbove(2))
+    ShowUntil(2)
+;

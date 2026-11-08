@@ -71,6 +71,10 @@ NEW_PATHS = [
     r"inox::compiler::tir::\(anonymous namespace\)::Verifier::(statements|statement|expression|place|invariants)",
     r"inox::compiler::tir::\(anonymous namespace\)::Printer::(statements|statement|expression|place|invariants|operation|"
     r"inlineInvariants)",
+    # Change loop-body-lifetime: the locals of a loop body (5b), and a loop
+    # body emitted as a protected region (code generation).
+    r"inox::compiler::tir::detail::\(anonymous namespace\)::collectBodyLocals",
+    r"inox::compiler::codegen::detail::FunctionEmitter::emitLoopBody",
 ]
 NEW_PATH_BUDGET = 512
 # A function renamed or split by F4 is compared with the one it replaces.

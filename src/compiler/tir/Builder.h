@@ -59,6 +59,7 @@ private:
     // Statements.
     const Stmt* statement(const ast::Statement& statement);
     Span<const Stmt*> statements(const std::vector<ast::StatementPtr>& statements);
+    Span<const semantic::Symbol*> bodyLocals(Span<const Stmt*> body);
     const Stmt* expressionStatement(const ast::ExpressionStatement& statement);
     const Stmt* declaration(const ast::VarStatement& declaration);
     const Stmt* ifStatement(const ast::IfStatement& statement);

@@ -641,6 +641,8 @@ run_llvm_emission_test "$repo_root/tests/codegen/llvm-exceptions-retry-smoke.ino
 
 run_llvm_emission_test "$repo_root/tests/codegen/llvm-owner-check-smoke.inox" \
     "define i64 @inox_peek(ptr %p)" "icmp eq ptr" "call i1 @llvm.expect.i1(i1" "call void @__inox_arith_fault(i32 17)"
+run_llvm_emission_test "$repo_root/tests/codegen/llvm-loop-conditional-owner-smoke.inox" \
+    "store ptr null, ptr %p ; inox.entry-init" "eh.ensure1:" "call void @__inox_own_free(ptr %" "store ptr null, ptr %p"
 run_native_owner_check_test "$repo_root/tests/native/owner-check.inox" "$repo_root/tests/native/owner-check-host.cpp" \
     "Inox runtime error: use of an owner after Move or Free"
 
