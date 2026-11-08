@@ -1168,7 +1168,7 @@ $revisionsText = Get-Content -LiteralPath (Join-Path $repoRoot "docs\openspec\sp
 # "Language version: Inox 0.4.0 pre-alpha"; the program prints
 # MAJOR.MINOR.RELEASE.BUILD, BUILD being set by each build.
 $languageMatch = [regex]::Match($revisionsText, "(?m)^Language version: Inox ([0-9]+\.[0-9]+\.[0-9]+) ([a-z-]+)")
-$revisionMatch = [regex]::Match($revisionsText, "(?m)^Canon revision: (r[0-9.]+)")
+$revisionMatch = [regex]::Match($revisionsText, "(?m)^Canon revision: ([0-9][0-9.]+)")
 $expectedVersion = "inox $($languageMatch.Groups[1].Value).<BUILD> $($languageMatch.Groups[2].Value) (canon $($revisionMatch.Groups[1].Value))"
 $versionPattern = "^inox " + [regex]::Escape($languageMatch.Groups[1].Value) + "\.[0-9]{1,4} " +
     [regex]::Escape($languageMatch.Groups[2].Value) + " \(canon " + [regex]::Escape($revisionMatch.Groups[1].Value) + "\)$"

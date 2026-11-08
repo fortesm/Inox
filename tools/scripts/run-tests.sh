@@ -872,7 +872,7 @@ run_version_check() {
     # "Language version: Inox 0.4.0 pre-alpha"; the program prints
     # MAJOR.MINOR.RELEASE.BUILD, BUILD being set by each build.
     language="$(sed -n 's/^Language version: Inox \([0-9]*\.[0-9]*\.[0-9]*\) \([a-z-]*\).*/\1 \2/p' "$revisions" | head -n 1)"
-    revision="$(sed -n 's/^Canon revision: \(r[0-9.]*\).*/\1/p' "$revisions" | head -n 1)"
+    revision="$(sed -n 's/^Canon revision: \([0-9][0-9.]*\).*/\1/p' "$revisions" | head -n 1)"
     local number="${language%% *}"
     local stage="${language#* }"
     expected="inox ${number}.<BUILD> ${stage} (canon $revision)"
