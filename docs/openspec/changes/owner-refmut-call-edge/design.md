@@ -43,7 +43,7 @@
   argument (only a variable gives an owner away): the emptied field stays.
   Not recommended.
 
-## Decisions (proposed)
+## Decisions (approved 2026-11-06)
 
 1. **Obligation at normal exits (Q1).** While a routine is analyzed, its
    `ref mut` parameters of a move-only type are known. At the end of the
