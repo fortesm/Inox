@@ -210,6 +210,30 @@ function Invoke-ModeFragmentTest {
     }
 }
 
+# The runtime library next to the compiler, or INOX_RUNTIME_LIB.
+function Get-InoxRuntimeLibrary {
+    $runtimeLib = $env:INOX_RUNTIME_LIB
+    if ([string]::IsNullOrEmpty($runtimeLib)) {
+        $inoxDir = Split-Path -Parent $InoxExe
+        $runtimeLib = Join-Path $inoxDir "inoxrt.lib"
+        if (-not (Test-Path -LiteralPath $runtimeLib)) {
+            $runtimeLib = Join-Path $inoxDir "libinoxrt.a"
+        }
+    }
+    return $runtimeLib
+}
+
+# Links the inputs into an executable with clang++; returns its exit code.
+function Invoke-InoxLink {
+    param($Clang, [string[]]$Inputs, [string]$ExePath)
+    $clangArgs = @($Inputs) + @("-o", $ExePath)
+    if (-not $IsWindows) {
+        $clangArgs += "-lm"
+    }
+    & $Clang.Source @clangArgs *> $null
+    return $LASTEXITCODE
+}
+
 function Invoke-LinkedExecutionTest {
     param(
         [System.IO.FileInfo]$TestFile,
@@ -223,14 +247,7 @@ function Invoke-LinkedExecutionTest {
         Write-Host "[SKIP] $relativePath link/run (clang++ not found)"
         return
     }
-    $runtimeLib = $env:INOX_RUNTIME_LIB
-    if ([string]::IsNullOrEmpty($runtimeLib)) {
-        $inoxDir = Split-Path -Parent $InoxExe
-        $runtimeLib = Join-Path $inoxDir "inoxrt.lib"
-        if (-not (Test-Path -LiteralPath $runtimeLib)) {
-            $runtimeLib = Join-Path $inoxDir "libinoxrt.a"
-        }
-    }
+    $runtimeLib = Get-InoxRuntimeLibrary
 
     $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("inox-test-" + [System.Guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $tempDir | Out-Null
@@ -246,12 +263,7 @@ function Invoke-LinkedExecutionTest {
             return
         }
 
-        $clangArgs = @($llPath, $runtimeLib, "-o", $exePath)
-        if (-not $IsWindows) {
-            $clangArgs += "-lm"
-        }
-        & $clang.Source @clangArgs *> $null
-        $clangExit = $LASTEXITCODE
+        $clangExit = Invoke-InoxLink $clang @($llPath, $runtimeLib) $exePath
         if ($clangExit -ne 0) {
             $script:failed++
             Write-Host "[FAIL] $relativePath link/run"
@@ -297,14 +309,7 @@ function Invoke-NativeOwnerCheckTest {
         Write-Host "[SKIP] $relativePath native host (clang++ not found)"
         return
     }
-    $runtimeLib = $env:INOX_RUNTIME_LIB
-    if ([string]::IsNullOrEmpty($runtimeLib)) {
-        $inoxDir = Split-Path -Parent $InoxExe
-        $runtimeLib = Join-Path $inoxDir "inoxrt.lib"
-        if (-not (Test-Path -LiteralPath $runtimeLib)) {
-            $runtimeLib = Join-Path $inoxDir "libinoxrt.a"
-        }
-    }
+    $runtimeLib = Get-InoxRuntimeLibrary
 
     $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("inox-test-" + [System.Guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $tempDir | Out-Null
@@ -322,12 +327,7 @@ function Invoke-NativeOwnerCheckTest {
         Set-Content -LiteralPath $llPath -Value $renamed -Encoding ascii
         $exePath = Join-Path $tempDir "program.exe"
 
-        $clangArgs = @($llPath, $HostFile.FullName, $runtimeLib, "-o", $exePath)
-        if (-not $IsWindows) {
-            $clangArgs += "-lm"
-        }
-        & $clang.Source @clangArgs *> $null
-        $clangExit = $LASTEXITCODE
+        $clangExit = Invoke-InoxLink $clang @($llPath, $HostFile.FullName, $runtimeLib) $exePath
         if ($clangExit -ne 0) {
             $script:failed++
             Write-Host "[FAIL] $relativePath native host"
