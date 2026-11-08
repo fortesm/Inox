@@ -197,6 +197,23 @@ run_mode_fragment_test() {
     fi
 }
 
+# Links the inputs with libinoxrt (next to the compiler, or INOX_RUNTIME_LIB)
+# into the executable named first; returns clang++'s exit code.
+link_with_runtime() {
+    local exe_path="$1"
+    shift
+    local runtime_lib="${INOX_RUNTIME_LIB:-}"
+    if [[ -z "$runtime_lib" ]]; then
+        runtime_lib="$(dirname "$inox_exe")/libinoxrt.a"
+        [[ -f "$runtime_lib" ]] || runtime_lib="$(dirname "$inox_exe")/inoxrt.lib"
+    fi
+    local clang_args=("$@" "$runtime_lib" -o "$exe_path")
+    if [[ "$(uname -s)" != MINGW* && "$(uname -s)" != MSYS* && "$(uname -s)" != CYGWIN* ]]; then
+        clang_args+=("-lm")
+    fi
+    clang++ "${clang_args[@]}" >/dev/null 2>&1
+}
+
 run_linked_execution_test() {
     local test_file="$1"
     local expected_file="$2"
@@ -222,16 +239,7 @@ run_linked_execution_test() {
     fi
 
     # E1 (change console-abi-terminal): every program links libinoxrt.
-    local runtime_lib="${INOX_RUNTIME_LIB:-}"
-    if [[ -z "$runtime_lib" ]]; then
-        runtime_lib="$(dirname "$inox_exe")/libinoxrt.a"
-        [[ -f "$runtime_lib" ]] || runtime_lib="$(dirname "$inox_exe")/inoxrt.lib"
-    fi
-    local clang_args=("$ll_path" "$runtime_lib" -o "$exe_path")
-    if [[ "$(uname -s)" != MINGW* && "$(uname -s)" != MSYS* && "$(uname -s)" != CYGWIN* ]]; then
-        clang_args+=("-lm")
-    fi
-    clang++ "${clang_args[@]}" >/dev/null 2>&1
+    link_with_runtime "$exe_path" "$ll_path"
     local clang_exit=$?
     if [[ $clang_exit -ne 0 ]]; then
         rm -rf "$temp_dir"
@@ -280,16 +288,7 @@ run_native_owner_check_test() {
     fi
     sed 's/^define i32 @main(/define i32 @inox_program_main(/' "$temp_dir/emitted.ll" > "$ll_path"
 
-    local runtime_lib="${INOX_RUNTIME_LIB:-}"
-    if [[ -z "$runtime_lib" ]]; then
-        runtime_lib="$(dirname "$inox_exe")/libinoxrt.a"
-        [[ -f "$runtime_lib" ]] || runtime_lib="$(dirname "$inox_exe")/inoxrt.lib"
-    fi
-    local clang_args=("$ll_path" "$host_file" "$runtime_lib" -o "$exe_path")
-    if [[ "$(uname -s)" != MINGW* && "$(uname -s)" != MSYS* && "$(uname -s)" != CYGWIN* ]]; then
-        clang_args+=("-lm")
-    fi
-    if ! clang++ "${clang_args[@]}" >/dev/null 2>&1; then
+    if ! link_with_runtime "$exe_path" "$ll_path" "$host_file"; then
         rm -rf "$temp_dir"
         record_fail "$rel native host" "clang++ link failed"
         return 0
