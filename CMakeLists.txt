@@ -194,6 +194,7 @@ add_executable(inox-compiler-tests
     tests/compiler-unit/SourceCursorTests.cpp
     tests/compiler-unit/AstNormalizerTests.cpp
     tests/compiler-unit/TypedIrTests.cpp
+    tests/compiler-unit/RaisingCallsTests.cpp
 )
 target_link_libraries(inox-compiler-tests PRIVATE inox-compiler)
 # The corpus round trip of TypeExprTests reads tests/, examples/, stdlib/.

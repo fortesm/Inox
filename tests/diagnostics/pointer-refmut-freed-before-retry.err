@@ -1,0 +1,1 @@
+:24:13: semantic error: P is received as ref mut and given away (Move or Free) where an exception may leave the routine: assign it again first

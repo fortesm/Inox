@@ -5,8 +5,9 @@
 == License, v. 2.0. If a copy of the MPL was not distributed with this
 == file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-== Safe pointers (CANON-25): `ensure` also runs after an exception from the
-== callee, so it sees the ref mut owner as given away.
+== Safe pointers (CANON-25, r3.135 Q2, kept by r3.136): `ensure` also runs
+== after an exception from the callee, so it sees the ref mut owner as given
+== away.
 Type
     TNode Struct
         FValue Integer := 0

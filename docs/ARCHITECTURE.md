@@ -375,7 +375,11 @@ instead of searching the whole emitter.
     in `ownerFrames_` carry the sets of `leave`, `continue`, `until`,
     handlers, `ensure` and `Retry`, r3.134; `refMutParameters_` are
     checked at every normal exit, and a `ref mut` owner argument joins
-    the try frames as possibly given away, r3.135);
+    the try frames as possibly given away, r3.135; and at every point an
+    exception may leave, routed through the try frames, r3.136);
+  - `CallMeaning.cpp` — also `callMayRaise`, the calls an exception may
+    leave, exhaustive over `CallKind` and `BuiltinOp` (pinned against the
+    runtime functions without `nounwind` by `RaisingCallsTests`);
   - `SemanticDebug.cpp` — Std.Debug: Assert;
   - `SemanticEnums.cpp` — the ordinal built-ins of enums and Ranges (Ord,
     Succ, Pred, Low and High of a type) and `TEnum(I)` (CANON-13);

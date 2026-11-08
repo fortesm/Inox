@@ -197,6 +197,23 @@ run_mode_fragment_test() {
     fi
 }
 
+# Links the inputs with libinoxrt (next to the compiler, or INOX_RUNTIME_LIB)
+# into the executable named first; returns clang++'s exit code.
+link_with_runtime() {
+    local exe_path="$1"
+    shift
+    local runtime_lib="${INOX_RUNTIME_LIB:-}"
+    if [[ -z "$runtime_lib" ]]; then
+        runtime_lib="$(dirname "$inox_exe")/libinoxrt.a"
+        [[ -f "$runtime_lib" ]] || runtime_lib="$(dirname "$inox_exe")/inoxrt.lib"
+    fi
+    local clang_args=("$@" "$runtime_lib" -o "$exe_path")
+    if [[ "$(uname -s)" != MINGW* && "$(uname -s)" != MSYS* && "$(uname -s)" != CYGWIN* ]]; then
+        clang_args+=("-lm")
+    fi
+    clang++ "${clang_args[@]}" >/dev/null 2>&1
+}
+
 run_linked_execution_test() {
     local test_file="$1"
     local expected_file="$2"
@@ -222,16 +239,7 @@ run_linked_execution_test() {
     fi
 
     # E1 (change console-abi-terminal): every program links libinoxrt.
-    local runtime_lib="${INOX_RUNTIME_LIB:-}"
-    if [[ -z "$runtime_lib" ]]; then
-        runtime_lib="$(dirname "$inox_exe")/libinoxrt.a"
-        [[ -f "$runtime_lib" ]] || runtime_lib="$(dirname "$inox_exe")/inoxrt.lib"
-    fi
-    local clang_args=("$ll_path" "$runtime_lib" -o "$exe_path")
-    if [[ "$(uname -s)" != MINGW* && "$(uname -s)" != MSYS* && "$(uname -s)" != CYGWIN* ]]; then
-        clang_args+=("-lm")
-    fi
-    clang++ "${clang_args[@]}" >/dev/null 2>&1
+    link_with_runtime "$exe_path" "$ll_path"
     local clang_exit=$?
     if [[ $clang_exit -ne 0 ]]; then
         rm -rf "$temp_dir"
@@ -249,6 +257,53 @@ run_linked_execution_test() {
         record_fail "$rel link/run" "expected output: $expected" "actual output: $actual"
     fi
 
+    rm -rf "$temp_dir"
+}
+
+# The run-time check of an owner given away (trap 17), executed: the
+# routines of an Inox program linked with a C++ host whose main calls one of
+# them across the ABI (tests/native/owner-check.inox). The program's own main
+# is renamed so the host's runs.
+run_native_owner_check_test() {
+    local test_file="$1"
+    local host_file="$2"
+    local expected_message="$3"
+    local rel
+    rel="$(relative_path "$test_file")"
+
+    if ! command -v clang++ >/dev/null 2>&1; then
+        echo "[SKIP] $rel native host (clang++ not found)"
+        return 0
+    fi
+
+    local temp_dir
+    temp_dir="$(mktemp -d)"
+    local ll_path="$temp_dir/program.ll"
+    local exe_path="$temp_dir/program"
+
+    if ! "$inox_exe" --emit-llvm "$test_file" > "$temp_dir/emitted.ll"; then
+        rm -rf "$temp_dir"
+        record_fail "$rel native host" "LLVM emission failed"
+        return 0
+    fi
+    sed 's/^define i32 @main(/define i32 @inox_program_main(/' "$temp_dir/emitted.ll" > "$ll_path"
+
+    if ! link_with_runtime "$exe_path" "$ll_path" "$host_file"; then
+        rm -rf "$temp_dir"
+        record_fail "$rel native host" "clang++ link failed"
+        return 0
+    fi
+
+    "$exe_path" >/dev/null 2>"$temp_dir/stderr.txt"
+    local exit_code=$?
+    local stderr_text
+    stderr_text="$(sed 's/\r$//' "$temp_dir/stderr.txt")"
+    if [[ $exit_code -eq 70 && "$stderr_text" == *"$expected_message"* ]]; then
+        record_pass "$rel native host"
+    else
+        record_fail "$rel native host" "expected exit code 70 and: $expected_message" \
+            "actual exit code: $exit_code" "actual stderr: $stderr_text"
+    fi
     rm -rf "$temp_dir"
 }
 
@@ -583,6 +638,11 @@ run_llvm_emission_test "$repo_root/tests/codegen/llvm-string-append-smoke.inox" 
 run_llvm_emission_test "$repo_root/tests/codegen/llvm-exceptions-smoke.inox"     "personality ptr @__gxx_personality_v0" "invoke void @inox_fail()" "landingpad { ptr, i32 } catch ptr null" "call i64 @__inox_exception_type" "call void @__inox_exception_release" "call void @__inox_exception_rethrow"
 run_llvm_emission_test "$repo_root/tests/codegen/llvm-exceptions-retry-smoke.inox" \
     "%eh.retry.slot" "%eh.action.slot" "icmp slt i64" "store i32 2" "switch i32" "eh.retry.perform"
+
+run_llvm_emission_test "$repo_root/tests/codegen/llvm-owner-check-smoke.inox" \
+    "define i64 @inox_peek(ptr %p)" "icmp eq ptr" "call i1 @llvm.expect.i1(i1" "call void @__inox_arith_fault(i32 17)"
+run_native_owner_check_test "$repo_root/tests/native/owner-check.inox" "$repo_root/tests/native/owner-check-host.cpp" \
+    "Inox runtime error: use of an owner after Move or Free"
 
 run_linked_execution_test "$repo_root/tests/integration/output-basic.inox" "$repo_root/tests/integration/output-basic.out"
 run_build_driver_test "$repo_root/tests/integration/run-hello.inox"

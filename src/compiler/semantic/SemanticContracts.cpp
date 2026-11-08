@@ -146,6 +146,7 @@ void SemanticAnalyzer::recordInvariantPlaces(const ast::AstNode& site, const ast
             if (after) {
                 result_.addInvariantCheck(site, true, {current, type});
             }
+            noteInvariantRaisingPoint(site);
         }
         if (current->kind() != ast::AstNodeKind::CallExpression) {
             break;

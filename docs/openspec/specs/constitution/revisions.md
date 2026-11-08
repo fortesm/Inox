@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.1 pre-alpha
-Canon revision: r3.135
+Canon revision: r3.136
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -744,3 +744,12 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   (accepted provisionally; `safe-pointers-followups` 2.5). The generated
   code does not change. Part of the 0.5 work; the published version stays
   0.4.1. Change `owner-refmut-call-edge`.
+- r3.136 — 2026-11-08 — CANON-25 "Moves are checked" (approved by Marcelo
+  Fortes, 2026-11-08, G7): a routine gives back an owner it received as
+  `ref mut` before it returns or an exception leaves it. Phase 5 names the
+  raising points (from the runtime functions without `nounwind`, raise and
+  rethrow, calls of Inox routines, invariant checks) and routes them
+  through catch-all and provably matching handlers and `ensure`; the
+  r3.135 caller rule stays. The generated code does not change; trap 17
+  stays. Part of the 0.5 work; the published version stays 0.4.1. Change
+  `owner-refmut-exception-exit`.

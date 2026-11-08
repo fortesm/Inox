@@ -1988,13 +1988,13 @@ freed with it, in a loop. `Option<Own<T>>` may be `None`, and takes an
 Using an owner variable after `Move` or `Free` on any path SHALL be a
 compile error until it is assigned again; a loop gives an owner back before
 its next round. A routine gives back an owner it received as `ref mut`
-before it returns. Only a variable gives an owner away; a field that may be
+before it returns or an exception leaves it. Only a variable gives an owner away; a field that may be
 emptied is `Option<Own<T>>`. A path the analysis does not follow traps
 (`use of an owner after Move or Free`).
 
 #### Scenario: Use after Move or Free
 - **WHEN** an owner is used after Move, freed twice, freed on one branch, or moved in a loop
-- **THEN** it is rejected (tests/diagnostics/pointer-use-after-move.inox, tests/diagnostics/pointer-double-free.inox, tests/diagnostics/pointer-moved-on-a-branch.inox, tests/diagnostics/pointer-moved-in-loop.inox), and a path the analysis does not follow traps (tests/runtime/pointers-owner-field-lost-by-exception.inox)
+- **THEN** it is rejected (tests/diagnostics/pointer-use-after-move.inox, tests/diagnostics/pointer-double-free.inox, tests/diagnostics/pointer-moved-on-a-branch.inox, tests/diagnostics/pointer-moved-in-loop.inox), and the run-time check of an owner given away stays and traps (tests/native/owner-check.inox, tests/codegen/llvm-owner-check-smoke.inox)
 
 #### Scenario: Moves across jumps, handlers, ensure and Retry
 - **WHEN** an owner is given away before `leave`, `continue`, `until`, `Raise`, an exception, `Retry`, or in an `ensure` that a jump or `Retry` crosses
@@ -2003,6 +2003,10 @@ emptied is `Option<Own<T>>`. A path the analysis does not follow traps
 #### Scenario: Owners received as ref mut
 - **WHEN** a routine gives away an owner received as `ref mut` on a path that reaches the end of its body, a `Return` or an `Exit` (after the `ensure`s it crosses), or a handler or `ensure` uses an owner passed as `ref mut` inside its try without assigning it first
 - **THEN** it is rejected (tests/diagnostics/pointer-refmut-freed-by-callee.inox, tests/diagnostics/pointer-refmut-moved-by-callee.inox, tests/diagnostics/pointer-refmut-freed-on-a-branch.inox, tests/diagnostics/pointer-refmut-freed-before-return.inox, tests/diagnostics/pointer-refmut-freed-before-exit.inox, tests/diagnostics/pointer-refmut-freed-in-ensure.inox, tests/diagnostics/pointer-refmut-nested-return.inox, tests/diagnostics/pointer-refmut-nested-exit.inox, tests/diagnostics/pointer-refmut-freed-through-intermediate.inox, tests/diagnostics/pointer-refmut-generic-consume.inox, tests/diagnostics/pointer-refmut-field-freed-by-callee.inox, tests/modules/refmut-callee-gives-away/Main.inox, tests/diagnostics/pointer-refmut-used-in-handler.inox, tests/diagnostics/pointer-refmut-used-in-ensure.inox, tests/diagnostics/pointer-refmut-transitive-exception.inox, tests/diagnostics/pointer-refmut-transitive-exception-inner.inox); a routine that assigns it again before every return is accepted, and its caller's owner is valid after the call (tests/runtime/pointers-refmut-give-back.inox, tests/runtime/pointers-refmut-across-calls.inox, tests/runtime/pointers-refmut-nested-exits.inox, tests/modules/refmut-callee-gives-back/Main.inox)
+
+#### Scenario: Owners received as ref mut and exceptions
+- **WHEN** a routine gives away an owner it received as `ref mut` and then reaches a point where an exception may leave it (a `Raise`, a rethrow, a spent `Retry`, a call of a routine or method, an invariant check, a text-to-number conversion, a Std.Files operation) that no catch-all or provably matching handler catches and no `ensure` crossed gives it back
+- **THEN** it is rejected (tests/diagnostics/pointer-owner-field-lost-by-exception.inox, tests/diagnostics/pointer-refmut-freed-before-raise.inox, tests/diagnostics/pointer-refmut-freed-before-call.inox, tests/diagnostics/pointer-refmut-freed-before-method.inox, tests/diagnostics/pointer-refmut-freed-before-conversion.inox, tests/diagnostics/pointer-refmut-freed-before-file-write.inox, tests/diagnostics/pointer-refmut-raise-in-new-value.inox, tests/diagnostics/pointer-refmut-freed-before-invariant.inox, tests/diagnostics/pointer-refmut-freed-before-retry.inox, tests/diagnostics/pointer-refmut-freed-before-rethrow.inox, tests/diagnostics/pointer-refmut-typed-handler-not-proven.inox, tests/diagnostics/pointer-refmut-raise-in-handler.inox, tests/diagnostics/pointer-refmut-ensure-one-branch.inox, tests/diagnostics/pointer-refmut-nested-ensures-order.inox, tests/diagnostics/pointer-refmut-raise-in-ensure.inox, tests/diagnostics/pointer-refmut-generic-raise.inox, tests/diagnostics/pointer-refmut-recursive-raise.inox, tests/modules/refmut-raise-gives-away/Main.inox); a routine that gives it back before every such point is accepted, and a caller sees the owner, also an owner field, valid after the exception (tests/runtime/pointers-refmut-exception-exits.inox, tests/modules/refmut-raise-gives-back/Main.inox)
 
 ### Requirement: CANON-25 Links
 `Link(X)` SHALL reach an owned object, a variable, a field or an element
