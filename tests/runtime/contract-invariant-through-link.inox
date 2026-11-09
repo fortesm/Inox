@@ -1,0 +1,34 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24 (safe-pointers-followups 3.1): a field written through a Link
+== keeps the invariant of the struct the Link points at.
+Type
+    TBox Struct
+        FValue Integer := 1
+        invariant Self.FValue > 0, "the value is positive"
+    ;
+    THolder Struct
+        FBox TBox
+    ;
+    TOuter Struct (TBox)
+        FName String := ""
+    ;
+    TPair<T> Struct
+        FLow T
+        FHigh T
+        invariant Self.FLow <= Self.FHigh, "the low bound is not above the high one"
+    ;
+
+Main :
+    B := TBox(FValue := 2)
+    L := Link(B)
+    Value(L).FValue := 3
+    PutLn(B.FValue)
+    Value(L).FValue := -1
+    PutLn("not reached ", B.FValue)
+;

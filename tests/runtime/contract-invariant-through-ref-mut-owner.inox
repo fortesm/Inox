@@ -1,0 +1,37 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24 (safe-pointers-followups 3.1): a routine that receives an
+== owner as ref mut and writes through it keeps the invariant.
+Type
+    TBox Struct
+        FValue Integer := 1
+        invariant Self.FValue > 0, "the value is positive"
+    ;
+    THolder Struct
+        FBox TBox
+    ;
+    TOuter Struct (TBox)
+        FName String := ""
+    ;
+    TPair<T> Struct
+        FLow T
+        FHigh T
+        invariant Self.FLow <= Self.FHigh, "the low bound is not above the high one"
+    ;
+
+Lower(ref mut P Own<TBox>, X Integer) :
+    P.FValue := X
+;
+
+Main :
+    P := New(TBox(FValue := 2))
+    Lower(P, 1)
+    PutLn(P.FValue)
+    Lower(P, 0)
+    PutLn("not reached ", P.FValue)
+;

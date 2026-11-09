@@ -124,9 +124,15 @@ bool SemanticAnalyzer::invariantChecksOn() const
 
 // Every struct with an invariant on the path of `place`, from the place to
 // its root, except a bare `Self` (an unqualified call or a struct's own
-// write, which may break the invariant until the method returns).
+// write, which may break the invariant until the method returns). A pointer
+// on the path (an Own, an Option<Own> or a Link) stands for the struct it
+// points at: a write through it changes that struct. The place itself, when
+// it is a pointer, stands for its struct only when that struct is changed
+// through it (`changedThrough`: a field or element written, a method's
+// receiver); a pointer replaced or passed whole needs no check here: a new
+// object was checked when it was made, and a callee checks its own writes.
 void SemanticAnalyzer::recordInvariantPlaces(const ast::AstNode& site, const ast::Expression& place, bool before,
-                                             bool after)
+                                             bool after, bool changedThrough)
 {
     if (!invariantChecksOn()) {
         return;
@@ -134,17 +140,22 @@ void SemanticAnalyzer::recordInvariantPlaces(const ast::AstNode& site, const ast
     for (const ast::Expression* current = &place;;) {
         const bool bareSelf = current->kind() == ast::AstNodeKind::IdentifierExpression &&
                               equalsIgnoreCase(static_cast<const ast::IdentifierExpression&>(*current).name(), "Self");
-        const TypeRef type = result_.typeOf(*current);
-        if (!bareSelf && hasInvariant(type)) {
+        TypeRef type = result_.typeOf(*current);
+        bool through = false;
+        if (type != nullptr && type->isPointer() && (current != &place || changedThrough)) {
+            type = type->pointerTarget();
+            through = true;
+        }
+        if (!bareSelf && (through || type == nullptr || !type->isPointer()) && hasInvariant(type)) {
             if (!isSideEffectFree(*current)) {
                 throw SemanticError("the invariant of " + type->name() + " is checked on this place, so it must be "
                                     "computed without side effects (CANON-24): store the index in a variable first");
             }
             if (before) {
-                result_.addInvariantCheck(site, false, {current, type});
+                result_.addInvariantCheck(site, false, {current, type, through});
             }
             if (after) {
-                result_.addInvariantCheck(site, true, {current, type});
+                result_.addInvariantCheck(site, true, {current, type, through});
             }
             noteInvariantRaisingPoint(site);
         }

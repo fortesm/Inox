@@ -140,7 +140,6 @@ each version added.
 - Vector, `Option`, `Result`: not implemented (`Option` exists only as
   `Option<Own<T>>`).
 - Safe pointers: a Link to a parameter is rejected ("not supported yet");
-  struct invariants are not checked after a write through a pointer;
   a Link to a local always places the local in a generation block (the
   escape analysis that keeps it on the stack at no cost is not done); the
   run-time check of an owner given away (trap "use of an owner after Move

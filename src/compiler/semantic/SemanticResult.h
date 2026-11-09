@@ -323,6 +323,9 @@ public:
     struct InvariantCheck {
         const ast::Expression* place = nullptr;
         const types::Type* type = nullptr;  // a struct with an invariant
+        // The object the pointer `place` (an Own, an Option<Own> or a Link)
+        // points at, not the pointer itself.
+        bool through = false;
     };
     void addInvariantCheck(const ast::AstNode& site, bool after, InvariantCheck check)
     {

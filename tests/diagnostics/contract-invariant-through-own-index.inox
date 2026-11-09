@@ -1,0 +1,33 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24 (safe-pointers-followups 3.1): the invariant of a struct reached
+== through an Own is checked on the place written, which is computed again
+== for the check; an index with side effects must be stored first.
+Type
+    TBox Struct
+        FValue Integer := 1
+        invariant Self.FValue > 0, "the value is positive"
+    ;
+    THolder Struct
+        FItems Array[1..2] TBox
+    ;
+
+State
+    Count Integer := 0
+;
+
+Next Integer :
+    Count := Count + 1
+    Return Count
+;
+
+Main :
+    H := New(THolder(FItems := Fill(TBox(FValue := 1))))
+    H.FItems[Next].FValue := 2
+    PutLn(H.FItems[1].FValue)
+;

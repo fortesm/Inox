@@ -1,0 +1,38 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24 (safe-pointers-followups 3.1): the checks the analysis records on
+== writes through pointers: one check of the struct each Own or Link points
+== at, the place computed once more for it (after Value(P) := X when X is
+== not a construction, which is checked when made), none
+== for a pointer replaced whole, none inside the struct's own method
+== through Self.
+Type
+    TBox Struct
+        FValue Integer := 1
+        invariant Self.FValue > 0, "the value is positive"
+    ;
+    THolder Struct
+        FBox TBox
+    ;
+
+TBox.Set(Self mut, X Integer) :
+    Self.FValue := X
+;
+
+Main :
+    P := New(TBox(FValue := 2))
+    P.FValue := 3
+    L := Link(P)
+    Value(L).FValue := 4
+    H := New(THolder(FBox := TBox(FValue := 2)))
+    H.FBox.FValue := 5
+    P := New(TBox(FValue := 6))
+    Value(P) := TBox(FValue := 8)
+    P.Set(7)
+    PutLn(P.FValue, Value(L).FValue, H.FBox.FValue)
+;

@@ -1,0 +1,37 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24 (safe-pointers-followups 3.1): an Option<Own<T>> is reached through
+== Link(X), tested with Alive; writes and method calls through that Link
+== keep the invariant of the struct it points at: valid ones pass, a field
+== write that breaks it traps.
+Type
+    TBox Struct
+        FValue Integer := 1
+        invariant Self.FValue > 0, "the value is positive"
+    ;
+    TNode Struct
+        FNext Option<Own<TBox>>
+    ;
+
+TBox.Set(Self mut, X Integer) :
+    Self.FValue := X
+;
+
+Main :
+    N := New(TNode(FNext := New(TBox(FValue := 2))))
+    L := Link(N.FNext)
+    if Alive(L)
+        Value(L).FValue := 3
+        Value(L).Set(4)
+        PutLn(Value(L).FValue)
+    ;
+    O Option<Own<TBox>> := New(TBox(FValue := 2))
+    M := Link(O)
+    Value(M).FValue := -1
+    PutLn("not reached ", Value(M).FValue)
+;

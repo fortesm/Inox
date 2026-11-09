@@ -1,0 +1,82 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24 (safe-pointers-followups 3.1): writes through an Own or a Link
+== that keep the invariant: fields, nested fields, Value(P), a reused part,
+== array elements, a generic instance, a ref mut owner; a method may break
+== the invariant through Self while it runs; an exception raised by a
+== routine the invariant calls reaches the caller's handler.
+Type
+    TBox Struct
+        FValue Integer := 1
+        invariant Self.FValue > 0, "the value is positive"
+    ;
+    THolder Struct
+        FBox TBox
+        FItems Array[1..2] TBox
+    ;
+    TOuter Struct (TBox)
+        FName String := ""
+    ;
+    TPair<T> Struct
+        FLow T
+        FHigh T
+        invariant Self.FLow <= Self.FHigh, "the low bound is not above the high one"
+    ;
+    TLimited Struct
+        FValue Integer := 1
+        invariant Self.FValue <= Limit(Self.FValue), "within the limit"
+    ;
+
+Limit(X Integer) Integer :
+    if X > 100
+        Raise RangeError
+    ;
+    Return 100
+;
+
+Raise1(ref mut P Own<TBox>) :
+    P.FValue := P.FValue + 1
+;
+
+TBox.Swing(Self mut, X Integer) :
+    Self.FValue := -100
+    Self.FValue := X
+;
+
+Main :
+    P := New(TBox(FValue := 2))
+    P.FValue := 3
+    L := Link(P)
+    Value(L).FValue := 4
+    PutLn("own and link ", P.FValue, " ", Value(L).FValue)
+    H := New(THolder(FBox := TBox(FValue := 2), FItems := Fill(TBox(FValue := 1))))
+    H.FBox.FValue := 5
+    I := 2
+    H.FItems[I].FValue := 6
+    PutLn("nested ", H.FBox.FValue, " ", H.FItems[2].FValue)
+    Value(P) := TBox(FValue := 7)
+    PutLn("value ", P.FValue)
+    O := New(TOuter(TBox := TBox(FValue := 2), FName := "o"))
+    O.FValue := 8
+    PutLn("reused ", O.FValue)
+    G := New(TPair(FLow := 1, FHigh := 2))
+    G.FHigh := 9
+    PutLn("generic ", G.FHigh)
+    Raise1(P)
+    PutLn("ref mut ", P.FValue)
+    P.Swing(10)
+    PutLn("Self ", P.FValue)
+    T := New(TLimited(FValue := 5))
+    try
+        T.FValue := 101
+    except
+        On RangeError
+            PutLn("the invariant's routine raised, value ", T.FValue)
+        ;
+    ;
+;

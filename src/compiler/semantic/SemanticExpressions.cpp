@@ -621,7 +621,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             // its invariant (and the invariants of the structs around it).
             recordInvariantPlaces(expression,
                                   *static_cast<const ast::CallExpression&>(expression.left()).arguments()[0], false,
-                                  true);
+                                  true, true);
         } else if (isIndexTarget(expression.left())) {
             // CANON-13: `A[I] := X` writes an element. The root must be a
             // mutable variable; writing it is not reading it (OPEN-4).
@@ -646,7 +646,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             }
             recordInvariantPlaces(expression,
                                   *static_cast<const ast::CallExpression&>(expression.left()).arguments()[0], false,
-                                  true);
+                                  true, true);
             // ADR-0017: a slice is a read-only view.
             for (const ast::Expression* base = &expression.left();
                  base->kind() == ast::AstNodeKind::CallExpression;
@@ -679,6 +679,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
         if (!canAssignValue(targetType, rightType, expression.right())) {
             throw SemanticError("cannot assign " + types::nameOf(rightType) + " to " + types::nameOf(targetType));
         }
+        recordObjectReplacedThroughPointer(expression);
         if (expression.left().kind() == ast::AstNodeKind::IdentifierExpression) {
             if (const Symbol* target =
                     result_.symbolOf(static_cast<const ast::IdentifierExpression&>(expression.left()))) {
@@ -1086,6 +1087,23 @@ bool SemanticAnalyzer::isMemberCall(const ast::CallExpression& expression)
     return equalsIgnoreCase(callee.name(), "__member");
 }
 
+// CANON-24: `Value(P) := X` changes the object through its pointer, by a
+// value that may come from anywhere (a copy of a `Self` whose invariant a
+// method broke for a while, say); a construction was checked when made.
+void SemanticAnalyzer::recordObjectReplacedThroughPointer(const ast::BinaryExpression& assignment)
+{
+    const CallMeaning* target = result_.callMeaning(assignment.left());
+    if (target == nullptr || target->kind != CallKind::Builtin || target->op != BuiltinOp::Value) {
+        return;
+    }
+    const CallMeaning* value = result_.callMeaning(assignment.right());
+    if (value != nullptr && value->kind == CallKind::Construction) {
+        return;
+    }
+    recordInvariantPlaces(assignment, *static_cast<const ast::CallExpression&>(assignment.left()).arguments()[0],
+                          false, true, true);
+}
+
 bool SemanticAnalyzer::isSideEffectFree(const ast::Expression& expression) const
 {
     switch (expression.kind()) {
@@ -1109,6 +1127,12 @@ bool SemanticAnalyzer::isSideEffectFree(const ast::Expression& expression) const
         }
         const std::string& name = static_cast<const ast::IdentifierExpression&>(call.callee()).name();
         if (name == "__member") {
+            return isSideEffectFree(*call.arguments()[0]);
+        }
+        // `Value(P)`: the object a pointer points at, read without changing it.
+        if (const CallMeaning* meaning = result_.callMeaning(call);
+            meaning != nullptr && meaning->kind == CallKind::Builtin && meaning->op == BuiltinOp::Value &&
+            call.arguments().size() == 1) {
             return isSideEffectFree(*call.arguments()[0]);
         }
         if (name != "__index") {
