@@ -12,7 +12,7 @@ and its stage) and the canon revision (constitution VERSIONING). This check
 fails when a document that states them disagrees:
 
   docs/openspec/specs/constitution/revisions.md  "Language version: Inox X.Y.Z <stage>"
-                                                  "Canon revision: rN"
+                                                  "Canon revision: X.Y.Z.S.N"
   README.md                                       X.Y.Z and <stage> on one line
   CHANGELOG.md                                    a section "## X.Y.Z ..."
   docs/STATUS.md                                  "Inox X.Y.Z" in its verification line
@@ -58,6 +58,11 @@ def main():
     expect("docs/openspec/specs/constitution/revisions.md",
            r"^Canon revision: " + re.escape(canon) + r"$",
            "expected 'Canon revision: %s' (kCanonRevision)" % canon)
+    # VERSIONING: the canon revision is the version, then the documentation
+    # revision S.N (decided 2026-11-08, from 0.4.1.3.137 on).
+    if re.fullmatch(re.escape(version) + r"\.[0-9]+\.[0-9]+", canon) is None:
+        problems.append("Version.h: kCanonRevision %s does not start with the version %s and end with S.N"
+                        % (canon, version))
     expect("README.md", r"^(?=.*(?<![\w.])" + escaped + r"(?![\w.]))(?=.*\b" + re.escape(stage) + r"\b).*$",
            "expected %s and %s on one line" % (version, stage))
     expect("CHANGELOG.md", r"^## " + escaped + r"\b", "expected a section '## %s'" % version)

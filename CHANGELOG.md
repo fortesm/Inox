@@ -12,6 +12,9 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 
 ## Unreleased
 
+### Changed
+- Canon revision numbering (VERSIONING, decided by the maintainer on 2026-11-08, change `canon-revision-numbering`): a revision is labelled by the compiler version and the documentation revision, `MAJOR.MINOR.RELEASE.3.N`; r3.137 is now 0.4.1.3.137 and `inox --version` prints `(canon 0.4.1.3.137)`. `tools/version_check.py` checks that the prefix is the version.
+
 ### Added
 - Lifetime of loop-body locals (canon r3.137, CANON-25, change `loop-body-lifetime`): owners, values holding owners and linked locals declared in a loop body end with each round and on every path out of the body (`continue`, `leave`, `until`, `Return`, `Exit`, an exception), the last declared first, interleaved in lexical order with the `ensure`s crossed; a Link to such a local is dead after its round (before, it stayed alive until the next declaration or the routine's end). The TIR records each loop body's locals (`scopeEnds`). Strings keep their release.
 - Owners received as `ref mut` and exceptions (canon r3.136, CANON-25, change `owner-refmut-exception-exit`): a routine gives back an owner it received as `ref mut` before an exception leaves it, at every raising point (`Raise`, rethrow, a spent `Retry`, calls of routines and methods, invariant checks, text-to-number conversions, Std.Files operations) that no catch-all or provably matching handler catches, after the `ensure`s crossed; an owner field passed as `ref mut` is never left empty. The classification of raising calls is exhaustive at compile time and pinned against the runtime by a unit test; trap 17 stays, checked by an LLVM emission test and a native fixture.

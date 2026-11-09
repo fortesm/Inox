@@ -2109,13 +2109,20 @@ that keeps the version publishes nothing; old releases stay as history.
 - **THEN** the release workflow tags it and publishes both packages (.github/workflows/release.yml)
 
 ### Requirement: VERSIONING Canon revision
-The canon revision `rN.NN` SHALL number a set of recorded decisions (G3) and
-is never a version; entries up to v3.57 keep their `v3.xx` labels. `inox
---version` prints `inox MAJOR.MINOR.RELEASE.BUILD stage (canon rN.NN)`.
+The canon revision `MAJOR.MINOR.RELEASE.S.N` SHALL number a set of recorded
+decisions (G3): the compiler version of Version.h, then the documentation
+revision `S.N` (series 3), whose `N` grows by one with every recorded
+decision; a new compiler version changes the prefix and keeps `S.N`.
+`inox --version` prints `inox MAJOR.MINOR.RELEASE.BUILD stage (canon
+MAJOR.MINOR.RELEASE.S.N)`.
+
+#### Scenario: Earlier labels
+- **WHEN** a revision recorded before 2026-11-08 is cited
+- **THEN** it keeps its `r3.xx` label (entries up to v3.57 their `v3.xx`), and r3.137 is 0.4.1.3.137 (decided by Marcelo Fortes, 2026-11-08; tools/version_check.py)
 
 #### Scenario: Revision in the version line
 - **WHEN** `inox --version` runs
-- **THEN** it ends with the canon revision at the top of revisions.md (tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1)
+- **THEN** it ends with the canon revision at the top of revisions.md, whose prefix is the version (tools/scripts/run-tests.sh, tools/scripts/run-tests.ps1, tools/version_check.py)
 
 ### Requirement: FUTURE Concurrency
 Concurrency SHALL follow Chapel-style structured parallelism and Go-inspired

@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.1 pre-alpha
-Canon revision: r3.137
+Canon revision: 0.4.1.3.137
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -761,3 +761,9 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   each loop body's locals; code generation emits such a body as a
   protected region. Part of the 0.5 work; the published version stays
   0.4.1. Change `loop-body-lifetime`.
+- 0.4.1.3.137 — 2026-11-08 — VERSIONING (decided by Marcelo Fortes,
+  2026-11-08): a canon revision is labelled by the compiler version and the
+  documentation revision, `MAJOR.MINOR.RELEASE.3.N`; r3.137 is 0.4.1.3.137,
+  the next decision is 0.4.1.3.138, and a new compiler version changes the
+  prefix. Earlier labels stay as written. No other rule changes. Change
+  `canon-revision-numbering`.
