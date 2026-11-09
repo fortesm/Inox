@@ -19,6 +19,9 @@ rules are unchanged). Risk: medium.
   own writes).
 - `isSideEffectFree`: `Value(P)` of a side-effect-free place is free of
   side effects.
+- `Value(P) := X`: the invariant of the object is checked after the write
+  unless X is a construction (checked when made); code generation now emits
+  the recorded check for a `through` assignment, where it did not.
 - `SemanticResult::InvariantCheck::through`; the TIR builder wraps such a
   check's place in a `through` place; code generation is unchanged.
 
@@ -26,5 +29,6 @@ rules are unchanged). Risk: medium.
 
 Phase 5 (`SemanticContracts.cpp`, `SemanticExpressions.cpp`,
 `SemanticCalls.cpp`, `SemanticAnalyzer.h`, `SemanticResult.h`) and the TIR
-builder (`BuildExpressions.cpp`). Programs that write through pointers get
+builder (`BuildExpressions.cpp`); code generation emits the existing
+checks for a `through` assignment (`FunctionEmitterAggregates.cpp`). Programs that write through pointers get
 the checks; programs that broke an invariant that way now trap.

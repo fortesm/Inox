@@ -671,12 +671,6 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             // (change read-only-through-owners).
             targetType = analyzeExpression(expression.left());
             rejectReadOnlyOwnerTarget(expression.left(), "assignment target is read-only: ");
-            // CANON-24: the object is changed through its pointer, by a
-            // value that may come from anywhere (a copy of a `Self` whose
-            // invariant a method broke for a while, say).
-            recordInvariantPlaces(expression,
-                                  *static_cast<const ast::CallExpression&>(expression.left()).arguments()[0], false,
-                                  true, true);
         } else {
             throw SemanticError("assignment target must be an identifier, field or array element");
         }
@@ -685,6 +679,7 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
         if (!canAssignValue(targetType, rightType, expression.right())) {
             throw SemanticError("cannot assign " + types::nameOf(rightType) + " to " + types::nameOf(targetType));
         }
+        recordObjectReplacedThroughPointer(expression);
         if (expression.left().kind() == ast::AstNodeKind::IdentifierExpression) {
             if (const Symbol* target =
                     result_.symbolOf(static_cast<const ast::IdentifierExpression&>(expression.left()))) {
@@ -1090,6 +1085,23 @@ bool SemanticAnalyzer::isMemberCall(const ast::CallExpression& expression)
     }
     const auto& callee = static_cast<const ast::IdentifierExpression&>(expression.callee());
     return equalsIgnoreCase(callee.name(), "__member");
+}
+
+// CANON-24: `Value(P) := X` changes the object through its pointer, by a
+// value that may come from anywhere (a copy of a `Self` whose invariant a
+// method broke for a while, say); a construction was checked when made.
+void SemanticAnalyzer::recordObjectReplacedThroughPointer(const ast::BinaryExpression& assignment)
+{
+    const CallMeaning* target = result_.callMeaning(assignment.left());
+    if (target == nullptr || target->kind != CallKind::Builtin || target->op != BuiltinOp::Value) {
+        return;
+    }
+    const CallMeaning* value = result_.callMeaning(assignment.right());
+    if (value != nullptr && value->kind == CallKind::Construction) {
+        return;
+    }
+    recordInvariantPlaces(assignment, *static_cast<const ast::CallExpression&>(assignment.left()).arguments()[0],
+                          false, true, true);
 }
 
 bool SemanticAnalyzer::isSideEffectFree(const ast::Expression& expression) const

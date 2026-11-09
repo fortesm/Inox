@@ -209,6 +209,7 @@ private:
     TypeRef analyzePureCall(const ast::CallExpression& call);
     void rejectInContract(const std::string& what) const;
     bool hasInvariant(TypeRef type) const;
+    void recordObjectReplacedThroughPointer(const ast::BinaryExpression& assignment);
     void recordInvariantPlaces(const ast::AstNode& site, const ast::Expression& place, bool before, bool after,
                                bool changedThrough = false);
     bool invariantChecksOn() const;
