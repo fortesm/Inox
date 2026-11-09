@@ -82,10 +82,10 @@ void testPointersAndStructs()
     const Type* owner = context.own(node);
     context.setStructFields(node, {types::StructField{"FValue", context.builtin("Int16"), false, false, ""},
                                    types::StructField{"FName", context.stringType(), false, false, ""},
-                                   types::StructField{"FNext", context.optionOwn(owner), false, false, ""},
+                                   types::StructField{"FNext", context.option(owner), false, false, ""},
                                    types::StructField{"FParent", context.link(node), false, false, ""}});
     checkEqual(llvmValueType(owner), "ptr", "an owner is its object's address");
-    checkEqual(llvmValueType(context.optionOwn(owner)), "ptr", "an Option<Own> is a nullable address");
+    checkEqual(llvmValueType(context.option(owner)), "ptr", "an Option<Own> is a nullable address");
     checkEqual(llvmValueType(context.link(node)), "{ ptr, ptr, i64 }", "a Link carries header and generation");
     checkEqual(llvmValueType(node), "%tnode", "a struct is its named LLVM type");
     const auto value = fieldLayout(node, "fvalue");

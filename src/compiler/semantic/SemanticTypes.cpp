@@ -367,18 +367,18 @@ TypeRef SemanticAnalyzer::resolveTypeExpr(const ast::TypeExpr& syntax, std::stri
     switch (syntax.form) {
     case ast::TypeExpr::Form::Array:
         return resolveArrayType(syntax, written);
-    case ast::TypeExpr::Form::Generic:
-        if (detail::equalsIgnoreCase(syntax.name, "Set") && syntax.arguments.size() == 1) {
+    case ast::TypeExpr::Form::Generic: {
+        const types::BuiltinGeneric generic = types::builtinGeneric(syntax.name);
+        if (generic == types::BuiltinGeneric::Set && syntax.arguments.size() == 1) {
             return resolveSetType(syntax, written);  // CANON-13
         }
-        if (!detail::equalsIgnoreCase(syntax.name, "Slice") && !detail::equalsIgnoreCase(syntax.name, "Own") &&
-            !detail::equalsIgnoreCase(syntax.name, "Link") && !detail::equalsIgnoreCase(syntax.name, "Option")) {
+        if (generic == types::BuiltinGeneric::None || generic == types::BuiltinGeneric::Set) {
             return resolveGenericStructType(syntax, written);  // CANON-8: TPair<String, Integer>
         }
         if (syntax.arguments.size() != 1) {
             throw SemanticError(syntax.name + " takes one type argument: " + std::string(written));
         }
-        if (detail::equalsIgnoreCase(syntax.name, "Slice")) {
+        if (generic == types::BuiltinGeneric::Slice) {
             const std::string elementText = ast::spell(syntax.element());
             const TypeRef element = resolveTypeExpr(syntax.element(), elementText);
             if (!element->isArray() && !element->isNumeric() && !element->isBool() && !element->isEnum()) {
@@ -388,6 +388,7 @@ TypeRef SemanticAnalyzer::resolveTypeExpr(const ast::TypeExpr& syntax, std::stri
             return types().slice(element);
         }
         return resolvePointerType(syntax, written);
+    }
     case ast::TypeExpr::Form::Named:
         break;
     }

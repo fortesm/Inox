@@ -76,8 +76,11 @@ public:
     const Type* set(const Type* base);
     const Type* own(const Type* target);
     const Type* link(const Type* target);
-    // An Option holds an owner (CANON-25): `owner` is an Own.
-    const Type* optionOwn(const Type* owner);
+    // Option<T> for any T; the analysis accepts only Option<Own<T>> today
+    // (CANON-25), and decides which others the language admits.
+    const Type* option(const Type* value);
+    // The instance of a built-in generic for its type argument.
+    const Type* builtinInstance(BuiltinGeneric generic, const Type* argument);
     // An exception type, nominal, with the id the runtime transports; its
     // parent is set once every exception type is declared.
     const Type* declareException(std::string_view name, std::uint64_t id);

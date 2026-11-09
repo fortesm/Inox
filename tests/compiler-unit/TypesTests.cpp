@@ -78,7 +78,7 @@ void testPointersAndStructs()
     TypeContext context;
     const Type* node = context.declareStruct("TNode");
     const Type* owner = context.own(node);
-    const Type* option = context.optionOwn(owner);
+    const Type* option = context.option(owner);
     const Type* link = context.link(node);
     checkEqual(owner->name(), "Own<TNode>", "Own spelling");
     checkEqual(option->name(), "Option<Own<TNode>>", "Option spelling");
@@ -87,6 +87,33 @@ void testPointersAndStructs()
     check(owner->pointerTarget() == node && option->pointerTarget() == node && link->pointerTarget() == node,
           "every pointer reaches TNode");
     check(context.own(node) == owner && context.link(node) == link, "pointers are interned");
+
+    // One family of built-in generics (safe-pointers-followups 4.1).
+    using types::BuiltinGeneric;
+    check(types::builtinGeneric("own") == BuiltinGeneric::Own && types::builtinGeneric("LINK") == BuiltinGeneric::Link &&
+              types::builtinGeneric("Option") == BuiltinGeneric::Option &&
+              types::builtinGeneric("Slice") == BuiltinGeneric::Slice &&
+              types::builtinGeneric("set") == BuiltinGeneric::Set && types::builtinGeneric("TPair") == BuiltinGeneric::None,
+          "built-in generics by name, ignoring case");
+    checkEqual(std::string(types::builtinGenericName(BuiltinGeneric::Option)), "Option", "canonical spelling");
+    check(owner->builtinGeneric() == BuiltinGeneric::Own && owner->typeArgument() == node &&
+              option->builtinGeneric() == BuiltinGeneric::Option && option->typeArgument() == owner &&
+              link->builtinGeneric() == BuiltinGeneric::Link && node->builtinGeneric() == BuiltinGeneric::None &&
+              node->typeArgument() == nullptr,
+          "every instance knows its generic and its argument");
+    check(context.builtinInstance(BuiltinGeneric::Own, node) == owner &&
+              context.builtinInstance(BuiltinGeneric::Option, owner) == option &&
+              context.builtinInstance(BuiltinGeneric::Link, node) == link,
+          "an instance is built once, from its generic and its argument");
+    // Option<T> for any T in the representation: not a pointer unless it
+    // holds an owner.
+    const Type* maybe = context.option(context.int64Type());
+    checkEqual(maybe->name(), "Option<Int64>", "Option of a value spelling");
+    check(maybe->isOption() && !maybe->isOptionOwn() && !maybe->isPointer() && maybe->pointerTarget() == nullptr &&
+              maybe->typeArgument() == context.int64Type(),
+          "an Option of a value is no pointer");
+    check(option->isOption() && option->isOptionOwn(), "an Option of an owner is one");
+    check(context.option(owner) == option && context.option(context.int64Type()) == maybe, "Options are interned");
     check(context.lookup("tnode") == node, "a struct declares its name");
 
     // A struct may reach itself through a pointer, so its fields come later.

@@ -55,8 +55,14 @@ std::string llvmValueType(TypeRef type)
     case types::TypeKind::String:  // CANON-14: an immutable, counted block of the runtime
     case types::TypeKind::File:    // file-io: a handle of the runtime, owned like a String
     case types::TypeKind::Own:     // safe-pointers: an owner is its object's address
-    case types::TypeKind::Option:
         return "ptr";
+    case types::TypeKind::Option:
+        // Option<Own<T>>: null is None. Other Options have no layout yet
+        // (the analysis rejects them).
+        if (type->isOptionOwn()) {
+            return "ptr";
+        }
+        break;
     case types::TypeKind::Link:
         return std::string(kLinkLlvmType);
     case types::TypeKind::Slice:

@@ -283,16 +283,10 @@ ast::TypeExpr SemanticAnalyzer::writtenFormOf(TypeRef type, ast::SourcePosition 
         written.arguments.push_back(writtenFormOf(type->element(), position));
         return written;
     }
-    const char* generic = type->isSlice()       ? "Slice"
-                          : type->isSet()       ? "Set"
-                          : type->isOwn()       ? "Own"
-                          : type->isLink()      ? "Link"
-                          : type->isOptionOwn() ? "Option"
-                                                : nullptr;
-    if (generic != nullptr) {
+    if (const types::BuiltinGeneric generic = type->builtinGeneric(); generic != types::BuiltinGeneric::None) {
         written.form = ast::TypeExpr::Form::Generic;
-        written.name = generic;
-        written.arguments.push_back(writtenFormOf(type->element(), position));
+        written.name = std::string(types::builtinGenericName(generic));
+        written.arguments.push_back(writtenFormOf(type->typeArgument(), position));
     } else if (instance != structInstanceOf_.end()) {
         written.form = ast::TypeExpr::Form::Generic;
         written.name = instance->second.generic->name;
@@ -382,23 +376,12 @@ void SemanticAnalyzer::unifyTypeExpr(const ast::TypeExpr& pattern, TypeRef actua
     case ast::TypeExpr::Form::Generic:
         break;
     }
-    if (equalsIgnoreCase(pattern.name, "Slice")) {
-        if (actual->isSlice()) {
-            unifyTypeExpr(pattern.element(), actual->element(), parameters, bound, owner, from, fixed);
-        }
-        return;
-    }
-    if (equalsIgnoreCase(pattern.name, "Own") || equalsIgnoreCase(pattern.name, "Link")) {
-        const bool matches = equalsIgnoreCase(pattern.name, "Own") ? actual->isOwn() : actual->isLink();
-        if (matches) {
-            unifyTypeExpr(pattern.element(), actual->pointerTarget(), parameters, bound, owner, from, fixed);
-        }
-        return;
-    }
-    if (equalsIgnoreCase(pattern.name, "Option")) {
-        if (actual->isOptionOwn()) {
-            unifyTypeExpr(pattern.element(), types().own(actual->pointerTarget()), parameters, bound, owner, from,
-                            fixed);
+    // A built-in generic matches its own instances, argument by argument
+    // (a Set<T> pattern infers nothing yet, as before).
+    if (const types::BuiltinGeneric generic = types::builtinGeneric(pattern.name);
+        generic != types::BuiltinGeneric::None && generic != types::BuiltinGeneric::Set) {
+        if (actual->builtinGeneric() == generic) {
+            unifyTypeExpr(pattern.element(), actual->typeArgument(), parameters, bound, owner, from, fixed);
         }
         return;
     }
