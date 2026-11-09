@@ -82,6 +82,11 @@ rules:
     - >-
       A refactor starts with `tools/ir_snapshot.py record` and its gates
       include `compare`, with every intended difference listed.
+    - >-
+      G9: an implementation task is marked done only with its evidence: the
+      tests that show it, where they ran (local or in CI, said apart) and
+      their result; where possible, that the test fails before the change
+      and passes after it. A report or a specification is never evidence.
 
 operations:
   archive:

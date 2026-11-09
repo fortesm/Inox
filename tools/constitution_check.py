@@ -39,6 +39,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 CONSTITUTION = ROOT / "docs" / "openspec" / "specs" / "constitution"
 LOCK = CONSTITUTION / "constitution.lock"
+# G9 is entrenched: no revision removes or weakens it, so its text is pinned
+# here as well as in the lock, and a relock cannot change it.
+ENTRENCHED = {
+    "spec.md#G9 Evidence, not reports": "09b85cbd4e00ea3a",
+}
 SPECS = ROOT / "docs" / "openspec" / "specs"
 CHANGES = ROOT / "docs" / "openspec" / "changes"
 LOCKED_FILES = ("spec.md", "engineering.md")
@@ -157,6 +162,10 @@ def check() -> int:
             problems.append(f"{unit.name}: {problem}")
     for name in sorted(set(lock) - present):
         problems.append(f"removed without approval (relock --approval <change>): {name}")
+    digests = {unit.name: unit.digest for unit in units}
+    for name, pinned in ENTRENCHED.items():
+        if digests.get(name) != pinned:
+            problems.append(f"entrenched requirement changed or removed (G9): {name}")
     problems.extend(reference_problems())
     for problem in problems:
         print(f"FAIL {problem}")
