@@ -20,5 +20,7 @@ entry Main
   assign (field (field (through (local H)) FBox) FValue) := (lit Int64 5)
     invariant-after TBox (field (through (local H)) FBox)
   assign (local P) := (builtin Own<TBox> New (construct TBox FValue=(lit Int64 6) [invariant-of-new-value TBox]))
+  assign (through (local P)) := (construct TBox FValue=(lit Int64 8) [invariant-of-new-value TBox])
+    invariant-after TBox (through (local P))
   evaluate (call Void TBox.Set (read Own<TBox> (local P)) (lit Int64 7) [invariant-before TBox (through (local P))] [invariant-after TBox (through (local P))])
   evaluate (builtin Void PutLn (read Int64 (field (through (local P)) FValue)) (read Int64 (field (through (local L)) FValue)) (read Int64 (field (field (through (local H)) FBox) FValue)))

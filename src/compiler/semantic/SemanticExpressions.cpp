@@ -671,6 +671,12 @@ TypeRef SemanticAnalyzer::analyzeBinaryExpression(const ast::BinaryExpression& e
             // (change read-only-through-owners).
             targetType = analyzeExpression(expression.left());
             rejectReadOnlyOwnerTarget(expression.left(), "assignment target is read-only: ");
+            // CANON-24: the object is changed through its pointer, by a
+            // value that may come from anywhere (a copy of a `Self` whose
+            // invariant a method broke for a while, say).
+            recordInvariantPlaces(expression,
+                                  *static_cast<const ast::CallExpression&>(expression.left()).arguments()[0], false,
+                                  true, true);
         } else {
             throw SemanticError("assignment target must be an identifier, field or array element");
         }

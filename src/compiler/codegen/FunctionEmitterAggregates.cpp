@@ -521,6 +521,7 @@ void FunctionEmitter::emitAssignment(const tir::Stmt& assignment)
         const std::string value = emitValue(*assignment.value);
         const Place place = emitPlace(target);
         emitOwningStore(place.pointer, place.type, valueLlvmType(place.type), value);
+        emitInvariantChecks(assignment.invariants, true);
         return;
     }
     case tir::PlaceKind::Field: {

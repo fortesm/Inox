@@ -7,8 +7,9 @@
 
 == CANON-24 (safe-pointers-followups 3.1): the checks the analysis records on
 == writes through pointers: one check of the struct each Own or Link points
-== at, the place computed once more for it, none for a pointer replaced
-== whole, none inside the struct's own method through Self.
+== at, the place computed once more for it (also after Value(P) := X), none
+== for a pointer replaced whole, none inside the struct's own method
+== through Self.
 Type
     TBox Struct
         FValue Integer := 1
@@ -30,6 +31,7 @@ Main :
     H := New(THolder(FBox := TBox(FValue := 2)))
     H.FBox.FValue := 5
     P := New(TBox(FValue := 6))
+    Value(P) := TBox(FValue := 8)
     P.Set(7)
     PutLn(P.FValue, Value(L).FValue, H.FBox.FValue)
 ;

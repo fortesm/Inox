@@ -1,0 +1,30 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== CANON-24 (safe-pointers-followups 3.1): `Value(P) := X` writes the object
+== P points at and checks its invariant after the write, whatever X is. Here
+== X is no construction (whose own check would pass): it is a copy of a
+== `Self` whose invariant the method has broken for a while, so only the
+== check after the write can stop it.
+Type
+    TBox Struct
+        FValue Integer := 1
+        invariant Self.FValue > 0, "the value is positive"
+    ;
+
+TBox.CopyInto(Self mut, ref mut P Own<TBox>) :
+    Self.FValue := -5
+    Value(P) := Self
+    Self.FValue := 5
+;
+
+Main :
+    P := New(TBox(FValue := 2))
+    B := TBox(FValue := 3)
+    B.CopyInto(P)
+    PutLn("not reached ", P.FValue)
+;
