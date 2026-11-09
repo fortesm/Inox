@@ -283,9 +283,9 @@ ast::TypeExpr SemanticAnalyzer::writtenFormOf(TypeRef type, ast::SourcePosition 
         written.arguments.push_back(writtenFormOf(type->element(), position));
         return written;
     }
-    if (const types::BuiltinGeneric generic = type->builtinGeneric(); generic != types::BuiltinGeneric::None) {
+    if (const std::string_view generic = types::builtinGenericName(type->builtinGeneric()); !generic.empty()) {
         written.form = ast::TypeExpr::Form::Generic;
-        written.name = std::string(types::builtinGenericName(generic));
+        written.name.assign(generic);
         written.arguments.push_back(writtenFormOf(type->typeArgument(), position));
     } else if (instance != structInstanceOf_.end()) {
         written.form = ast::TypeExpr::Form::Generic;
