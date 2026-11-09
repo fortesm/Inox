@@ -12,6 +12,9 @@ share one version (constitution VERSIONING). Numbers such as `v3.57` or
 
 ## Unreleased
 
+### Fixed
+- An owner parameter's slot no longer gets an empty store before the argument's: under AddressSanitizer (`tools/owner_safety_check.py`) the argument's store could be hoisted above it, and a routine with instrumented locals saw its owner as given away (trap 17). Found by the new test `pointers-link-to-owner-parameter`; it failed on main 82477ab.
+
 ### Changed
 - Governance G9 "Evidence, not reports" (canon 0.4.1.3.139, decided by the maintainer on 2026-11-08, entrenched; change `evidence-over-reports`): a feature counts as done only on its implementation in `main`, its tests and their recorded results; a report, by an AI agent or anyone, is never evidence. `tools/constitution_check.py` pins the text of G9 so that no relock can change or remove it.
 - Canon revision numbering (VERSIONING, decided by the maintainer on 2026-11-08, change `canon-revision-numbering`): a revision is labelled by the compiler version and the documentation revision, `MAJOR.MINOR.RELEASE.3.N`; r3.137 is now 0.4.1.3.137 and `inox --version` prints `(canon 0.4.1.3.137)`. `tools/version_check.py` checks that the prefix is the version.
