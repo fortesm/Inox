@@ -350,7 +350,7 @@ TypeRef SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const ast
     if (isFree ? !ownerOrOption : !isMoveOnlyType(type)) {
         throw SemanticError(written + " takes an owner (Own or Option<Own>), got " + types::nameOf(type));
     }
-    if (type->isOptionOwn()) {
+    if (type != nullptr && type->isOptionOwn()) {
         // The place becomes None.
         const bool isVariable = argument.kind() == ast::AstNodeKind::IdentifierExpression;
         const Symbol* writable = writableRoot(argument);
