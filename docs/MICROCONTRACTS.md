@@ -172,6 +172,187 @@ Move, ownership, drop, alias and exception rules as ordinary Inox assignments
 must apply. A mapping cannot manufacture a writable borrow from a read-only
 receiver or bypass any visibility boundary.
 
+## 2.3 Earlier design sketches and contract-transformation examples
+
+This section preserves **recoverable technical examples from the September
+2026 exploration**, as distinct from the November Person/Audition example.
+The earlier sketches were discussion artifacts, **not a formally accepted
+grammar or an approved G7 design**. They are normalized here as code-shaped
+technical examples rather than transcripts. Some fragments of the original
+discussion are no longer available in a form that permits word-for-word
+verification; do not claim the entire historical exchange has been
+reproduced.
+
+### A. Initial field-argument idea versus adapting a complete method
+
+One motivating sketch passed a field identifier to a method, approximately:
+
+```text
+# Conceptual original idea, not valid current Inox
+TPerson.AlterValue(S String, TField):
+    # change the selected String field
+
+TPerson.AlterValue("Marcelo", FName)
+```
+
+The generic, **currently more ordinary** alternative is a separate
+operation taking a writable field reference:
+
+```inox
+AlterValue<T>(ref mut Field T, NewValue T):
+    Field := NewValue
+;
+```
+
+These solve an assignment, but the architectural goal moved beyond them:
+**adapt a whole method body** including reads/writes of multiple members,
+calls through `Self`, control flow, generic operations and contracts.
+No field-parameter convenience API is implied by the advanced proposal.
+
+### B. Historical `UpdateField` and `TAccount` mapping sketch
+
+The earlier exploration used `TPerson.UpdateField`, a second receiver
+`TAccount`, and a map from `FName` to `FAccountName`. The core of that
+example can be preserved as the following **historical pseudocode**:
+
+```text
+TPerson.UpdateField(Self mut, S String)
+    Pre S # ""
+    Pos Self.FName = S
+:
+    Self.FName := S
+;
+
+TAccount.UpdateField
+    Use TPerson.UpdateField
+    Map
+        FName = FAccountName
+;
+```
+
+The exact words `Use` and `Map` and the member correspondence
+`FName => FAccountName` capture the technical direction; **neither
+`=` nor `=>` is hereby approved as mapping syntax**, and `#` above
+is a historical notation for inequality, not a proposal to change modern
+Inox operators. An earlier design also considered a
+`Use ... With/Map`-style formulation. Final syntax remains undecided.
+
+The inferred requirement for the source method was at minimum:
+
+```text
+receiver: Self mut
+requires: writable FName : String
+operation: assignment from S : String
+contract: S is not empty; after call receiver.FName equals S
+```
+
+The **programmer supplies** the explicit semantic correspondence
+`FName -> FAccountName`; the **compiler infers and checks** the source
+method's receiver requirements. The compiler must reject a destination
+field of incompatible type, a read-only destination, an inaccessible
+member or a conflicting mapping, rather than silently adapting it.
+
+The *whole* specialization, not only the executable body, would be
+semantically equivalent to:
+
+```text
+# Conceptual expanded meaning only
+TAccount.UpdateField(Self mut, S String)
+    Pre S # ""
+    Pos Self.FAccountName = S
+:
+    Self.FAccountName := S
+;
+```
+
+In particular, **`Pos Self.FName = S` must become
+`Pos Self.FAccountName = S`**. A compiler that remaps only the
+assignment but leaves the postcondition referring to the source
+field would be incorrect.
+
+### C. `Old` and invariants were part of the original design discussion
+
+A second historical sketch used account balance and old-state capture:
+
+```text
+# Historical schematic notation, not a validated current Inox test
+TAccount.Deposit(Self mut, Value Integer)
+    Pre Value > 0
+    Pos Self.FBalance = Old(Self.FBalance) + Value
+:
+    Self.FBalance := Self.FBalance + Value
+;
+```
+
+`Old(Self.FBalance)` denotes the balance at routine entry. If an entire
+method containing such a contract were adapted to a different receiver,
+the type, access path and old-state expression must all be adapted
+consistently, without changing when the old value is captured or how
+owned values are handled. `Pre` must be checked at entry and `Pos`
+on the correctly specialized exit paths in accordance with CANON-24.
+
+Another illustrative invariant was:
+
+```text
+# Historical schematic notation
+TPerson.Invariant:
+    Length(Self.FName) <= 200
+;
+```
+
+An invariant is a property of its declaring type. **It is not
+automatically copied into the destination type merely because a method
+is rebound.** Whether and how to transfer or reinterpret source
+invariants requires a distinct G7 decision. Regardless of that
+decision, any destination invariant already imposed by CANON-24 must
+continue to be enforced on writes through the adapted method.
+
+### D. `Self` versus qualified source-member references
+
+The design exploration distinguished expressions reached *through*
+`Self` from explicitly qualified references to a concrete source type.
+At minimum:
+
+```text
+# Schematic: semantics deliberately unresolved
+Source.Method(Self mut):
+    Self.FName := "a"            # candidate for receiver rebinding
+    Source.Helper(...)           # explicit source qualification
+    Self.Helper()                # receiver-relative method call
+;
+```
+
+The second expression does not necessarily mean the same thing as the
+third. Rebinding `Self.Helper()` may require mapping a helper method or
+specializing another associated method transitively. An explicitly
+qualified `Source.Helper(...)` must not be casually rebound as though
+it were a `Self` call. Resolution, transitive requirement inference,
+recursion, `Override`, conflict handling and visibility need a formal
+design and diagnostic tests before implementation.
+
+### E. What can and cannot be called historical evidence
+
+**Recovered specifics:** the `TPerson.UpdateField` to
+`TAccount.UpdateField` adaptation, `FName -> FAccountName`,
+`Self mut` and writable-String inference, body/`Pre`/`Pos`/`Old`
+specialization, the account deposit old-state example, and the
+type-local nature of invariants. The original discussion's final
+syntax was **not approved**.
+
+**New November motivation:** `TPerson.FName` versus
+`TAudition.FIdentification`, the desire to reuse the entire
+`AlterValue` implementation, the explicit review of Java, C#,
+modern Object Pascal, Go, Rust and Swift, and the decision to preserve
+trade-offs and G7 questions in one consolidated study.
+
+**Not established by the historical record:** a complete original
+transcript; an exhaustive list of every code fragment ever mentioned;
+a final `Use`/`With`/`Map` grammar; a normative receiver
+conformance algorithm; permission to change CANON-9 delegation; or
+a finished solution for dynamic polymorphism, generic associated types
+or binary-compatible separate compilation. This document preserves
+what can be recovered and flags the remaining gaps explicitly.
+
 ## 3. Semantic model to evaluate
 
 A possible implementation direction is **explicitly requested, locally
