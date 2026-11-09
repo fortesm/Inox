@@ -137,7 +137,10 @@ exception objects on the heap, will not show the cost.
   origin of each variable, the symbol of each declaration, field indices,
   constants, checks) and resolves no name; a loop records the locals its
   body declares (`scopeEnds`, the body's scope: nested blocks, not inner
-  loops; r3.137); what it cannot express is
+  loops; r3.137); the Link analysis of each routine (`tir/LinkLifetime`,
+  0.4.1.3.140) records which linked locals live on the stack and which
+  with a generation block, and which Link uses are proven alive
+  (`Place::linkAlive`), so code generation decides neither; what it cannot express is
   "valid Inox, not yet supported" (E15), never a crash; `tir::verifyProgram`
   checks that every node has a type and a meaning.
 - **Never:** infers a type, compares a name, re-checks a rule (a decision
@@ -276,7 +279,9 @@ instead of searching the whole emitter.
   and calls, by their recorded meaning), `BuildPlaces.cpp` (places),
   `BuildStatements.cpp` (statements). `tir/Errors.h` the two kinds of
   failure (`UnsupportedConstructError`, `InvariantError`); `tir/Verify.cpp`
-  the verifier, `tir/Print.cpp` the text of `--dump-tir`.
+  the verifier, `tir/Print.cpp` the text of `--dump-tir`;
+  `tir/LinkLifetime.cpp` the Link analysis of a routine (escape of Links
+  to locals, Link uses proven alive; CANON-25 rules 7 and 10).
 - `src/compiler/semantic/SemanticRecords.cpp` — the analyzer's records
   for the typed IR: call meanings, variable origins, declared symbols.
 

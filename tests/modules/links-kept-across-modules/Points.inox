@@ -1,0 +1,37 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25, safe-pointers-followups 1.2): each routine of a
+== module decides where its linked locals live; a Link one returns is dead
+== in the module that receives it, one passed in is checked there.
+Type
+    TPoint Struct Public
+    Public
+        FX Integer := 0
+        FY Integer := 0
+    ;
+
+== Kept on the stack: the Link never leaves the routine.
+Shifted(DX Integer) Integer Public :
+    P TPoint := TPoint(FX := 1, FY := 2)
+    L := Link(P)
+    L.FX := L.FX + DX
+    Return L.FX + L.FY
+;
+
+== Returned: the local has a generation block.
+Escaped Link<Integer> Public :
+    X Integer := 7
+    Return Link(X)
+;
+
+== Checked once, then proven, in the module that receives the Link.
+Total(L Link<TPoint>) Integer Public :
+    A := L.FX
+    B := L.FY
+    Return A + B
+;

@@ -1,0 +1,82 @@
+{
+ "examples/pointers-tree.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "461267e0b502be0570b4d9eeeddfd057428fd1c13a20697c615f47556ccb4ba2",
+    "5e24ddd4dce9869b57914a5a2c3c1dcd0b626b522d0e726728cc540acbdcc0b9"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contract-invariant-through-link.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "22aa5bb009011f2383480521c5ac336a139549310ee568ff7e31512615f01ae8",
+    "6fd3abb6022888036ed3dff687b8e16ebb879791beb9fbf973a2fe560619acfc"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/pointers-strings.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "ceb0d8958b4a0af62f24e4315676d52c1c3e4e962692d31d7016c1beaec197a5",
+    "2ed1cf09d35bae43dbc8fe1957faf188307fae27a6df2287a3a92f2f930d6faf"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/pointers.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "8a8d532120b992a4788535dd776c7226b02e3a473d44a68890a9c87f29f54f60",
+    "22e43b8e7daa28faf7021aeef2190b20ea0c8509392ae2ec626f355a41e0b03f"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/tir/places.inox": {
+  "--emit-llvm": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "5ffdd4690881e70dc7aed0e3ff90b89db3d6a5ed2eb9fffab694a9c77a5fd74e",
+    "083d8722b5011b972e30e219f252b7ed0dee88d0c04f94f9715e9780708694c5"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ }
+}

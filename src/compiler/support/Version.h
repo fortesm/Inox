@@ -23,7 +23,7 @@ inline constexpr unsigned kVersionMinor = 4;    // 0..999
 inline constexpr unsigned kVersionRelease = 1;  // 0..999
 // kBuildNumber (0..9999) comes from InoxBuildNumber.h.
 inline constexpr std::string_view kVersionStage = "pre-alpha";
-inline constexpr std::string_view kCanonRevision = "0.4.1.3.139";
+inline constexpr std::string_view kCanonRevision = "0.4.1.3.140";
 
 // "0.4.0.206"
 inline std::string versionText()

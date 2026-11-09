@@ -1,0 +1,9 @@
+nested 9 heap true 5
+after free false nested 9
+ensure 1
+ensure 2
+ensure 3
+runs 3 count 3
+try 1 alive true
+try 2 alive false
+recursion 10

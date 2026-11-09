@@ -1,0 +1,146 @@
+{
+ "examples/pointers-navigator.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "ecdf1e3a45d6d21601d4be4740187760b4f2451f80be5221582731e052fe290a",
+    "1ac3fbe717a4531f2d9b95edb5d9f9eb31fcecf0a417da0abd8eaf73e33cc9fd"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "examples/pointers-tree.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "40c3d34b6520a133a1189df6510a1f49f003456eb128c6a9abbc1d2dfd2277db",
+    "12120bc7cb231879440390f838b5b71485e3802cc912eb639119c3061f394d6e"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/contract-invariant-through-link.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "3732f78f5dc77dee6f0860fa43c6d154247a3a181957c30685c9753914112179",
+    "896646f553845f5a149299f2f42f85ef31467b212ffc4315b4d82e74f541dcd2"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/pointers-escaped-link.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "156d7f2e131a134a6052adece7e162904855e3c7d40e4a242766048006cee444",
+    "cfbf6ddd0af916d83dfb37d483da0b228cc8bef10d486cbb314461989e07a1f0"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/pointers-loop-body-lifetime.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "397f45382869d5b075e7dbefc5e505773d0a3097ce1715de1a0d32d841a9c1aa",
+    "7f07bb6325c9907d1b65067aa2915b8d4415e6f108f808822ea6afb9ccbc5088"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/pointers-loop-conditional-locals.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "ac1d7767525fb40cde3b86c9cadc0950c391c93556dedbfd1177d261aace720e",
+    "dbdfd5bfbf3b9c87616bb9b53a38cec1c6c9c34f89535b8e45ebe84e05d6ea0f"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/pointers-strings.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "785c578376639b19e6df5c91314290f4dfbee1ac3f46c6547f67457157ccecaf",
+    "e817fd184fcfbe3f2b9ed92ad5b4040e1163f295d6ebf2d857e38b759fe610a5"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/runtime/pointers.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "c3f64285c601c234f17f7b85b0b88613a01fcee2ac8d84fa7773efba71a437e4",
+    "09f6390b46526eba13720bf1b9445a002b439f770354fcef0a1090a11c75e2e6"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ },
+ "tests/tir/places.inox": {
+  "--dump-tir": {
+   "exit": [
+    0,
+    0
+   ],
+   "sha256": [
+    "21ff0f4ca3cdab60af09ef74d7629bf8667f880bc386202fd9250d0235a41775",
+    "e761caf1fb1678ca9d046e4db6c7fc759eab810ff09a9461154b492f4c333c8b"
+   ],
+   "stderr": [
+    "",
+    ""
+   ]
+  }
+ }
+}

@@ -1,8 +1,8 @@
 ## 1. Links
 
-- [ ] 1.1 Link to a value parameter; decide Links to `ref`/`ref mut` parameters (needs approval)
-- [ ] 1.2 Escape analysis: linked locals stay on the stack when no Link escapes
-- [ ] 1.3 Remove generation checks proven unnecessary
+- [ ] 1.1 Link to a value parameter; decide Links to `ref`/`ref mut` parameters (needs approval). A Link to an owner parameter (by value or `ref mut`) already worked on main 82477ab; 0.4.1.3.140 adds its tests (same results on main and on the branch). Open: decisions D1 (value parameter that is not an owner, CANON-10), D2 (`ref mut`), D3 (`ref`) and D4 (CANON-25 text), presented to the maintainer on 2026-11-09
+- [x] 1.2 Escape analysis: linked locals stay on the stack when no Link escapes (`tir/LinkLifetime`, 0.4.1.3.140; tests/codegen/llvm-link-storage-smoke.inox: generation blocks 3 -> 1, checks 6 -> 0 against main 82477ab; runtime results unchanged)
+- [x] 1.3 Remove generation checks proven unnecessary (0.4.1.3.140: a Link that only reaches a stack local, and a Link checked earlier in the same block with nothing between that can free; tests/codegen/llvm-link-proven-check-smoke.inox: 5 -> 3 checks; four trap tests keep the necessary checks)
 
 ## 2. Owners
 
@@ -18,7 +18,7 @@
 
 ## 4. With generics
 
-- [ ] 4.1 `Own`, `Link`, `Option` as generic types of the type representation; `Option<T>` for any T; `Vector<Own<T>>`
+- [ ] 4.1 `Own`, `Link`, `Option` as generic types of the type representation; `Option<T>` for any T; `Vector<Own<T>>`. Done in 0.4.1.3.140: one family of built-in generics (`types::BuiltinGeneric`), `Option<T>` representable for any T, unit tests. Open: `Option<T>` for other T in the language and `Vector<T>` (FUTURE, need an approved design; decision D5)
 
 ## 5. Each task
 
