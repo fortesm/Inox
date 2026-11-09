@@ -13,6 +13,7 @@ spec.md#G6 Engineering quality is constitutional	dd60e78810848770	docs-layout
 spec.md#G7 OpenSpec carries every change	8d04837002782d8e	docs-layout
 spec.md#G7 High-risk changes wait for design approval	4eb7116c9261fe28	decisions-not-dialogue
 spec.md#G8 The lock	18add63f2c44e00a	decisions-not-dialogue
+spec.md#G9 Evidence, not reports	09b85cbd4e00ea3a	evidence-over-reports
 spec.md#CANON-1 Identity of Inox	7fc3e6d9b452398d	constitution
 spec.md#CANON-1 Post-object-oriented design	b9b696c3861f2275	modules-encapsulation
 spec.md#CANON-1 Safety defaults	a83657b87787156a	canon1-integer-division

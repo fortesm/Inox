@@ -2,6 +2,16 @@
 
 This file is the operational contract for AI agents working on Inox.
 
+## Evidence, not reports (G9, entrenched)
+
+A feature is done only when its implementation is merged in `main`, its
+tests exist, and the recorded results of running them (suite, E19 gates,
+CI) show it. A report — yours or anyone's — is a statement, never
+evidence: do not mark a task done, close a gap or announce a feature on a
+report or a specification alone; say which tests ran, where (local or CI)
+and with what result, and keep known gaps open until they are proven
+closed.
+
 ## Start here
 
 Before any task, read `docs/openspec/specs/constitution/spec.md` — the law of

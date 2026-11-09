@@ -228,6 +228,22 @@ change exists and records Marcelo Fortes's approval.
 - **WHEN** a locked requirement is edited, added or removed without a relock through an approved change
 - **THEN** CI fails (tools/constitution_check.py check)
 
+### Requirement: G9 Evidence, not reports
+A feature SHALL count as done only on evidence: its implementation merged
+in `main`, the tests that exercise it, and the recorded results of running
+them (the suite, the E19 gates, the CI checks). A report, by an AI agent or
+anyone, is a statement, never evidence: no task is marked done, no gap is
+closed and no feature is announced on a report or a specification alone.
+This requirement is entrenched: no revision removes or weakens it.
+
+#### Scenario: A task marked done
+- **WHEN** an implementation task of an OpenSpec change is marked done
+- **THEN** it names the tests that show it and where they ran, local or in CI, and those tests exist (docs/openspec/config.yaml rules; review)
+
+#### Scenario: Entrenched text
+- **WHEN** the text of this requirement is changed or removed, even through a relock
+- **THEN** CI fails (tools/constitution_check.py check)
+
 ### Requirement: CANON-1 Identity of Inox
 Inox SHALL be a compiled, strongly and nominally typed systems language for
 software where silent failure is unacceptable: aviation, finance and

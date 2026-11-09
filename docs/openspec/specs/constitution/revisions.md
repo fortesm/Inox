@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.1 pre-alpha
-Canon revision: 0.4.1.3.138
+Canon revision: 0.4.1.3.139
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -774,3 +774,9 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   `Option<Own>` and `Link` check that struct's invariant; the TIR carries
   the check on a `through` place. Part of the 0.5 work; the published
   version stays 0.4.1. Change `invariants-through-pointers`.
+- 0.4.1.3.139 — 2026-11-08 — G9 Evidence, not reports (decided by Marcelo
+  Fortes, 2026-11-08, entrenched): a feature counts as done only on its
+  implementation merged in `main`, its tests and their recorded results; a
+  report, by an AI agent or anyone, is a statement, never evidence. No
+  revision removes or weakens G9; `tools/constitution_check.py` pins its
+  text beyond the lock. Change `evidence-over-reports`.
