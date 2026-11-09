@@ -18,6 +18,7 @@
 // is built out of line (fail). tools/stack_frames.py keeps their budget.
 
 #include "Builder.h"
+#include "LinkLifetime.h"
 
 #include <algorithm>
 #include <string>
@@ -102,6 +103,7 @@ Routine* Builder::routineShell(const ast::FunctionDeclaration& function, bool en
 void Builder::routineBody(Routine& routine)
 {
     routine.body = statements(routine.origin->body());
+    analyzeLinks(routine, arena_);
 }
 
 void Builder::buildModule(const ast::ModuleNode& module)

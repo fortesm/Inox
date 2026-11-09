@@ -1,0 +1,110 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25, safe-pointers-followups 1.1): Link(P) of an owner
+== parameter reaches the object. A value parameter owns it: the Link dies
+== when the routine frees it at its exit, normal or by an exception, unless
+== the routine gave the object away; a ref mut one reaches the caller's
+== object, alive until the caller frees it. Links that escape by Return,
+== into State, a struct field or an array are dead after the call; one to
+== an object moved out stays alive.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+    THolder Struct
+        FLink Link<TNode>
+    ;
+
+State
+    Saved Link<TNode>
+;
+
+== Return carries the Link out; the object dies with the routine.
+Grab(P Own<TNode>) Link<TNode> :
+    L := Link(P)
+    Value(L).FValue := Value(L).FValue + 1
+    PutLn("inside ", Alive(L), " ", P.FValue)
+    Return L
+;
+
+== The object is given away, so its Link stays alive.
+Keep(P Own<TNode>, ref mut Out Own<TNode>) Link<TNode> :
+    L := Link(P)
+    Out := Move(P)
+    Return L
+;
+
+== Into State, a field and an array.
+Spread(P Own<TNode>) THolder :
+    Saved := Link(P)
+    A Array[1..2] Link<TNode> := Fill(Link(P))
+    PutLn("array inside ", Alive(A[2]))
+    Return THolder(FLink := Link(P))
+;
+
+== An exception leaves the routine: the object is freed on the way out,
+== after the routine's own ensure, which still sees it.
+Fail(P Own<TNode>) :
+    Saved := Link(P)
+    try
+        Raise RangeError
+    ensure
+        PutLn("ensure sees ", Alive(Saved))
+    ;
+;
+
+== Recursion: each call owns its own object.
+Depth(P Own<TNode>, N Integer) Integer :
+    L := Link(P)
+    if N = 0
+        Return Value(L).FValue
+    ;
+    Inner := Depth(New(TNode(FValue := N)), N - 1)
+    PutLn("level ", N, " alive ", Alive(L))
+    Return Inner + Value(L).FValue
+;
+
+== A ref mut owner parameter: the Link reaches the caller's object, which
+== outlives the call and dies when the caller frees it.
+Touch(ref mut P Own<TNode>) Link<TNode> :
+    L := Link(P)
+    Value(L).FValue := 20
+    Return L
+;
+
+== An Option<Own<T>> parameter: the Link is empty when the option is None.
+Peek(O Option<Own<TNode>>) :
+    L := Link(O)
+    PutLn("option alive ", Alive(L))
+;
+
+Main :
+    L := Grab(New(TNode(FValue := 1)))
+    PutLn("after return ", Alive(L))
+    Out := New(TNode)
+    K := Keep(New(TNode(FValue := 7)), Out)
+    PutLn("moved out ", Alive(K), " ", Value(K).FValue, " ", Out.FValue)
+    H := Spread(New(TNode(FValue := 3)))
+    PutLn("state ", Alive(Saved), " field ", Alive(H.FLink))
+    try
+        Fail(New(TNode(FValue := 4)))
+    except
+        On RangeError
+            PutLn("handler sees ", Alive(Saved))
+        ;
+    ;
+    D := Depth(New(TNode(FValue := 10)), 2)
+    PutLn("depth ", D)
+    C := New(TNode(FValue := 1))
+    T := Touch(C)
+    PutLn("ref mut ", Alive(T), " ", C.FValue)
+    Free(C)
+    PutLn("after the caller frees ", Alive(T))
+    Peek(New(TNode(FValue := 5)))
+    Peek(None)
+;

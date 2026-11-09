@@ -117,8 +117,18 @@ run_llvm_emission_test() {
     local exit_code=$?
     local missing=()
 
+    # A fragment "=N:text" must occur exactly N times (N = 0: never).
     for fragment in "${fragments[@]}"; do
-        if ! contains_fragment "$output" "$fragment"; then
+        if [[ "$fragment" =~ ^=([0-9]+):(.*)$ ]]; then
+            local expected="${BASH_REMATCH[1]}" text="${BASH_REMATCH[2]}" rest="$output" count=0
+            while [[ "$rest" == *"$text"* ]]; do
+                rest="${rest#*"$text"}"
+                count=$((count + 1))
+            done
+            if [[ $count -ne $expected ]]; then
+                missing+=("$text (expected $expected, found $count)")
+            fi
+        elif ! contains_fragment "$output" "$fragment"; then
             missing+=("$fragment")
         fi
     done
@@ -643,6 +653,10 @@ run_llvm_emission_test "$repo_root/tests/codegen/llvm-owner-check-smoke.inox" \
     "define i64 @inox_peek(ptr %p)" "icmp eq ptr" "call i1 @llvm.expect.i1(i1" "call void @__inox_arith_fault(i32 17)"
 run_llvm_emission_test "$repo_root/tests/codegen/llvm-loop-conditional-owner-smoke.inox" \
     "store ptr null, ptr %p ; inox.entry-init" "eh.ensure1:" "call void @__inox_own_free(ptr %" "store ptr null, ptr %p"
+run_llvm_emission_test "$repo_root/tests/codegen/llvm-link-storage-smoke.inox" \
+    "define i64 @inox_kept" "%p = alloca %tpoint" "=1:call ptr @__inox_own_alloc(i64 0)" "=0:call void @__inox_arith_fault(i32 16)"
+run_llvm_emission_test "$repo_root/tests/codegen/llvm-link-proven-check-smoke.inox" \
+    "define i64 @inox_sum(" "define i64 @inox_mixed(" "=3:call void @__inox_arith_fault(i32 16)"
 run_native_owner_check_test "$repo_root/tests/native/owner-check.inox" "$repo_root/tests/native/owner-check-host.cpp" \
     "Inox runtime error: use of an owner after Move or Free"
 

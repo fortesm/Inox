@@ -137,7 +137,20 @@ function Invoke-LlvmEmissionTest {
     $relativePath = [System.IO.Path]::GetRelativePath($repoRoot, $TestFile.FullName)
     $output = & $InoxExe "--emit-llvm" $TestFile.FullName 2>&1 | Out-String
     $exitCode = $LASTEXITCODE
-    $missingFragments = @($RequiredFragments | Where-Object { -not $output.Contains($_) })
+    # A fragment "=N:text" must occur exactly N times (N = 0: never).
+    $missingFragments = @()
+    foreach ($fragment in $RequiredFragments) {
+        if ($fragment -match '^=(\d+):(.*)$') {
+            $expected = [int]$Matches[1]
+            $text = $Matches[2]
+            $count = ([regex]::Matches($output, [regex]::Escape($text))).Count
+            if ($count -ne $expected) {
+                $missingFragments += "$text (expected $expected, found $count)"
+            }
+        } elseif (-not $output.Contains($fragment)) {
+            $missingFragments += $fragment
+        }
+    }
     $ok = $exitCode -eq 0 -and $missingFragments.Count -eq 0
 
     if ($ok) {
@@ -852,6 +865,14 @@ Invoke-LlvmEmissionTest `
 Invoke-LlvmEmissionTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-loop-conditional-owner-smoke.inox")) `
     -RequiredFragments @("store ptr null, ptr %p ; inox.entry-init", "eh.ensure1:", "call void @__inox_own_free(ptr %", "store ptr null, ptr %p")
+
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-link-storage-smoke.inox")) `
+    -RequiredFragments @("define i64 @inox_kept", "%p = alloca %tpoint", "=1:call ptr @__inox_own_alloc(i64 0)", "=0:call void @__inox_arith_fault(i32 16)")
+
+Invoke-LlvmEmissionTest `
+    -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\codegen\llvm-link-proven-check-smoke.inox")) `
+    -RequiredFragments @("define i64 @inox_sum(", "define i64 @inox_mixed(", "=3:call void @__inox_arith_fault(i32 16)")
 
 Invoke-NativeOwnerCheckTest `
     -TestFile (Get-Item -LiteralPath (Join-Path $repoRoot "tests\native\owner-check.inox")) `

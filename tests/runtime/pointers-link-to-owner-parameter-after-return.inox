@@ -1,0 +1,23 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25, safe-pointers-followups 1.1): a Link to the object
+== of a value owner parameter, returned by the routine, is dead once the
+== routine freed the object: reading it traps, never reads freed memory.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+Grab(P Own<TNode>) Link<TNode> :
+    Return Link(P)
+;
+
+Main :
+    L := Grab(New(TNode(FValue := 1)))
+    PutLn(Value(L).FValue)
+;

@@ -1,0 +1,39 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25, safe-pointers-followups 1.3): Sum uses its Link
+== in three statements with nothing between them that can free an object:
+== only the first use is checked. Mixed calls a routine between its two
+== uses, so both are checked: three checks in the module (five before).
+Type
+    TPoint Struct
+        FX Integer := 0
+        FY Integer := 0
+        FZ Integer := 0
+    ;
+
+Sum(L Link<TPoint>) Integer :
+    A := L.FX
+    B := L.FY
+    C := L.FZ
+    Return A + B + C
+;
+
+Twice(V Integer) Integer :
+    Return V * 2
+;
+
+Mixed(L Link<TPoint>) Integer :
+    A := L.FX
+    B := Twice(A)
+    Return B + L.FY
+;
+
+Main :
+    P := New(TPoint(FX := 1, FY := 2, FZ := 3))
+    PutLn(Sum(Link(P)), " ", Mixed(Link(P)))
+;

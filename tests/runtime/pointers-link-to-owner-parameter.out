@@ -1,0 +1,14 @@
+inside true 2
+after return false
+moved out true 7 7
+array inside true
+state false field false
+ensure sees true
+handler sees false
+level 1 alive true
+level 2 alive true
+depth 13
+ref mut true 20
+after the caller frees false
+option alive true
+option alive false
