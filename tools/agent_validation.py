@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -156,6 +155,7 @@ def main() -> int:
     parser.add_argument("action", choices=("verify", "stop"))
     parser.add_argument("--profile", choices=("quick", "full"), default="quick")
     args = parser.parse_args()
+    cwd = Path.cwd()
     if args.action == "stop":
         try:
             payload = json.loads(sys.stdin.read() or "{}")
@@ -163,7 +163,13 @@ def main() -> int:
             payload = {}
         if payload.get("stop_hook_active"):
             return 0  # Never create an unrepairable Stop-hook continuation loop.
-    return validate(ROOT, args.profile, stop=args.action == "stop")
+        cwd = Path(payload.get("cwd") or cwd)
+    try:
+        repo = Path(git(cwd, "rev-parse", "--show-toplevel").decode().strip())
+    except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
+        print(f"INOX_LOCAL NOT_RUN repository: {str(exc)[:150]}")
+        return 0 if args.action == "stop" else 1
+    return validate(repo, args.profile, stop=args.action == "stop")
 
 
 if __name__ == "__main__":
