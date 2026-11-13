@@ -31,10 +31,13 @@ required by default.
 
 ## Start here
 
-Before any task, read `docs/openspec/specs/constitution/spec.md` — the law of
-Inox: what it is, its syntax and semantics, and who decides — then
-`engineering.md` and `revisions.md` next to it (current version, revision
-and open questions). The detail of a topic is in
+At the start of a new session or after losing its context, read
+`docs/openspec/specs/constitution/spec.md` — the law of Inox: syntax,
+semantics and design authority — then `engineering.md` and `revisions.md`
+(current version and open questions). For later tasks within the same
+session, revisit the exact relevant CANON/G/E sections and capability spec;
+do not repeatedly dump the entire 1000+-line constitution into the model
+context. This changes reading economy, never the law's authority. The detail of a topic is in
 `docs/openspec/specs/{language,stdlib}/<topic>/spec.md`; what the compiler does today is
 `docs/STATUS.md`; how the compiler is built, phase by phase, and which file
 owns what is `docs/ARCHITECTURE.md` (read it before changing the compiler).
