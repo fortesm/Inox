@@ -14,11 +14,11 @@ Local automated verification SHALL execute without sending full successful test 
 
 #### Scenario: Successful run
 - **WHEN** all requested checks execute and pass
-- **THEN** the CLI summary reports PASS, the number of checks run and a retained log path, without dumping one PASS line per test (test to add).
+- **THEN** the CLI summary reports PASS, the number of checks run and a retained log path, without dumping one PASS line per test (tools/tests/test_agent_validation.py: test_quick_validation_is_cached_and_keeps_full_log; full Inox suite evidence in CI).
 
 #### Scenario: Partial environment
 - **WHEN** a prerequisite or configured machine identity is missing
-- **THEN** the CLI reports NOT_RUN or SKIP explicitly and never promotes a partial result to complete E19 coverage (test to add).
+- **THEN** the CLI reports NOT_RUN or SKIP explicitly and never promotes a partial result to complete E19 coverage (tools/tests/test_agent_validation.py: test_machine_missing_and_placeholder_are_not_faked and test_missing_machine_is_not_success_in_explicit_verify).
 
 ### Requirement: Implementation evidence matches the change kind
 
