@@ -65,8 +65,16 @@ rules:
       Every scenario names the test that proves it (tests/... path) or says
       "test to add".
     - >-
-      Requirements describe Inox programs and compiler diagnostics, never C++
-      internals.
+      Language requirements describe Inox programs and compiler diagnostics,
+      never C++ internals. Tooling capability requirements may describe
+      observable CLI/hook results; implementation mechanics belong in design.
+    - >-
+      For behavior changes add a focused test that reproduces old behavior
+      before implementation when feasible (RED/GREEN); for a pure refactor
+      capture a before/after baseline rather than fabricating a RED test.
+    - >-
+      Keep evidence machine-readable and failure-focused; long successful
+      command outputs go to logs outside the LLM context.
   design:
     - >-
       Describe the lowering to LLVM IR and the runtime faults involved.
@@ -89,6 +97,19 @@ rules:
       and passes after it. A report or a specification is never evidence.
 
 operations:
+  apply:
+    guidance:
+      - >-
+        Start with git status and .inox-machine; never assume that a cloud
+        checkout has the local machine identity or can run Windows gates.
+      - >-
+        Follow the applicable engineering phase and test type in
+        docs/AGENT_EXECUTION.md; use focused verification during implementation
+        and E19/CI for completion. Keep raw test logs outside the model
+        context, return bounded failure summaries and record SKIP/NOT_RUN.
+      - >-
+        Use the exact approved OpenSpec spec and report ambiguous semantics
+        under G4 rather than copying Rust, Java or C++ behavior.
   archive:
     guidance:
       - >-
