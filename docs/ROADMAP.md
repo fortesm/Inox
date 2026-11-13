@@ -87,6 +87,13 @@ after 1.0      concurrency with data-race safety (Chapel, Go, Rust, Delphi's
                (database objects)
 ```
 
+**Unapproved design study (no roadmap change):**
+[Microcontracts and receiver rebinding](MICROCONTRACTS.md) records the
+potential opt-in reuse of entire methods across structurally different
+structs, with explicit member mapping and inferred receiver requirements.
+It is not implemented, does not amend CANON-9 delegation, and awaits G7
+architecture decisions. The 0.5/0.6 sequence above remains unchanged.
+
 Stages (constitution VERSIONING): pre-alpha until the 1.0 scope is complete,
 then alpha, beta and stable. What belongs to the 1.0 scope is the
 maintainer's decision. Marcelo Fortes decided on 2026-10-21: concurrency

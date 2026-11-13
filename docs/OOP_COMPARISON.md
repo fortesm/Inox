@@ -13,6 +13,18 @@ Recorded on 2026-10-14 (canon r3.69 and r3.70) at the request of Marcelo
 Fortes, so that none of it is lost. The law is
 `docs/openspec/specs/constitution/spec.md`; this page only points to it.
 
+## Research note: adapted whole-method reuse (not implemented)
+
+See [Microcontracts and receiver rebinding](MICROCONTRACTS.md) for the
+non-normative design study of **explicit receiver rebinding**, **member
+mapping across differently shaped structs**, **compiler-inferred receiver
+microcontracts**, generic specialization, the limitations relative to
+Java/C#/Delphi/Go/Rust/Swift and unresolved G7 decisions. This is a distinct
+future possibility, not a claim that CANON-9 delegation has changed: the
+approved 2026-10-13 `method-reuse` implementation deliberately excluded
+rebinding and mapping, and they remain unimplemented. The study does not
+approve a new syntax, version, interface/trait type or dynamic dispatch.
+
 ## Already in Inox
 
 | What OO gives | Inox | Where |
