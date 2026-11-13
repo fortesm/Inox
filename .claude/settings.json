@@ -1,0 +1,22 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/tools/agent_validation.py",
+              "stop",
+              "--profile",
+              "quick"
+            ],
+            "timeout": 570,
+            "statusMessage": "Inox: validating local compiler changes"
+          }
+        ]
+      }
+    ]
+  }
+}
