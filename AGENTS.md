@@ -12,6 +12,23 @@ report or a specification alone; say which tests ran, where (local or CI)
 and with what result, and keep known gaps open until they are proven
 closed.
 
+## Low-token execution (operational, not language law)
+
+For approved compiler changes, prefer the non-generated
+`.claude/skills/inox-apply/SKILL.md` and `docs/AGENT_EXECUTION.md` over a raw,
+unqualified generated apply workflow. The latter remains available for
+OpenSpec CLI compatibility. OpenSpec is the sole planning artifact; a second
+Superpowers/Superspec task plan is not introduced.
+
+Read the law and context at the beginning of a fresh task or when context was
+lost; keep the exact relevant clauses available while editing. Do not re-paste
+the entire constitution and full successful test logs into the model context.
+For verification, preserve complete command logs outside the context and
+return only bounded gate summaries, failures, SKIPs and NOT_RUN. Local hook
+PASS means only its named local checks ran; it never replaces G9/E19/CI.
+An external independent reviewer may assess the PR; no Claude subagent is
+required by default.
+
 ## Start here
 
 Before any task, read `docs/openspec/specs/constitution/spec.md` — the law of
