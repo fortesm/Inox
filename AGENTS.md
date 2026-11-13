@@ -12,12 +12,32 @@ report or a specification alone; say which tests ran, where (local or CI)
 and with what result, and keep known gaps open until they are proven
 closed.
 
+## Low-token execution (operational, not language law)
+
+For approved compiler changes, prefer the non-generated
+`.claude/skills/inox-apply/SKILL.md` and `docs/AGENT_EXECUTION.md` over a raw,
+unqualified generated apply workflow. The latter remains available for
+OpenSpec CLI compatibility. OpenSpec is the sole planning artifact; a second
+Superpowers/Superspec task plan is not introduced.
+
+Read the law and context at the beginning of a fresh task or when context was
+lost; keep the exact relevant clauses available while editing. Do not re-paste
+the entire constitution and full successful test logs into the model context.
+For verification, preserve complete command logs outside the context and
+return only bounded gate summaries, failures, SKIPs and NOT_RUN. Local hook
+PASS means only its named local checks ran; it never replaces G9/E19/CI.
+An external independent reviewer may assess the PR; no Claude subagent is
+required by default.
+
 ## Start here
 
-Before any task, read `docs/openspec/specs/constitution/spec.md` — the law of
-Inox: what it is, its syntax and semantics, and who decides — then
-`engineering.md` and `revisions.md` next to it (current version, revision
-and open questions). The detail of a topic is in
+At the start of a new session or after losing its context, read
+`docs/openspec/specs/constitution/spec.md` — the law of Inox: syntax,
+semantics and design authority — then `engineering.md` and `revisions.md`
+(current version and open questions). For later tasks within the same
+session, revisit the exact relevant CANON/G/E sections and capability spec;
+do not repeatedly dump the entire 1000+-line constitution into the model
+context. This changes reading economy, never the law's authority. The detail of a topic is in
 `docs/openspec/specs/{language,stdlib}/<topic>/spec.md`; what the compiler does today is
 `docs/STATUS.md`; how the compiler is built, phase by phase, and which file
 owns what is `docs/ARCHITECTURE.md` (read it before changing the compiler).

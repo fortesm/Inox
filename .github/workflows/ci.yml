@@ -39,6 +39,8 @@ jobs:
         run: cmake --build --preset linux-clang-debug
       - name: Test suite
         run: bash tools/scripts/run-tests.sh build/linux-clang-debug/inox
+      - name: Agent verification self-tests (no model tokens)
+        run: python3 -m unittest discover -s tools/tests -p test_agent_validation.py -q
       - name: Backend gaps (0 BUG, emitted IR checked by clang)
         run: python3 tools/backend_gaps.py build/linux-clang-debug/inox
       - name: Exception state lifetime (every captured state released)
@@ -91,6 +93,8 @@ jobs:
         run: |
           pwsh -NoProfile -ExecutionPolicy Bypass -File tools/scripts/run-tests.ps1 -InoxExe build/windows-clang-msvc/Debug/inox.exe *>&1 | Tee-Object -FilePath test-output.txt
           python tools/ci_known_failures.py test-output.txt tests/ci/windows-known-failures.txt
+      - name: Agent verification self-tests (Windows)
+        run: python -m unittest discover -s tools/tests -p test_agent_validation.py -q
       - name: Failure details as an annotation
         if: always()
         shell: pwsh
