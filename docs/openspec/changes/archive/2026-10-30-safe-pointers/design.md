@@ -279,9 +279,15 @@ for later:
 - **No Link to a parameter yet** (rule 6 lists parameters): `Link(P)` of a
   parameter is a compile error, "not supported yet"; a local copy can be
   linked. Links to locals, fields, elements, State and owned objects work.
+  A Link to an owner parameter (by value or `ref mut`) reaches its object
+  and was accepted from the start (tests since 0.4.1.3.140); Links to the
+  other parameters wait for the maintainer's decision.
 - **No zero-cost Links yet** (rule 10): every linked local is placed in a
   generation block; the escape analysis that keeps it on the stack comes
   later. Rule 7's check removal is not done either: every use checks.
+  Since 0.4.1.3.140 (`safe-pointers-followups` 1.2, 1.3): a local every
+  Link to which stays in its block lives on the stack, and a Link use
+  proven alive within a block is not checked (`tir/LinkLifetime`).
 - **Release timing in loops**: an owner, or a linked local, declared inside
   a loop body is freed when its declaration runs again or when the routine
   returns, not at the end of each iteration; nothing leaks.

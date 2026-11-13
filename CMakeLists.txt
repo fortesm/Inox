@@ -92,6 +92,7 @@ set(INOX_COMPILER_SOURCES
     src/compiler/tir/BuildExpressions.cpp
     src/compiler/tir/BuildPlaces.cpp
     src/compiler/tir/BuildStatements.cpp
+    src/compiler/tir/LinkLifetime.cpp
     src/compiler/tir/Print.cpp
     src/compiler/tir/Tir.cpp
     src/compiler/tir/Verify.cpp

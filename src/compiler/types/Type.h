@@ -39,13 +39,25 @@ enum class TypeKind : std::uint8_t {
     Array,      // Array[Low..High] Element
     Slice,      // Slice<Element>
     Own,        // Own<Target>
-    Option,     // Option<Own<Target>>
+    Option,     // Option<Value>; the language accepts Option<Own<Target>> today
     Link,       // Link<Target>
     Enum,       // TSuit (Club, Diamond, Heart, Spade): ordinals 0..N-1
     Set,        // Set<Base>: a finite set over an Enum or a Range
 };
 
 class Type;
+
+// The generic types the language itself defines, each of one type argument
+// (CANON-8, CANON-13, CANON-25): `Slice<T>`, `Set<T>`, `Own<T>`, `Link<T>`
+// and `Option<T>`. A program's generic structs are instances of their own
+// declarations instead (CANON-8, `TPair<String, Integer>`).
+enum class BuiltinGeneric : std::uint8_t { None, Slice, Set, Own, Link, Option };
+
+// The built-in generic a written name stands for, ignoring case (`own`,
+// `Own`), or None.
+BuiltinGeneric builtinGeneric(std::string_view name) noexcept;
+// Its canonical spelling (`Option`); empty for None.
+std::string_view builtinGenericName(BuiltinGeneric generic) noexcept;
 
 // A field of a struct type, in declaration order (the LLVM field index).
 // What a field default stores, as the analysis resolved its literal (r3.82,
@@ -108,8 +120,16 @@ public:
     std::uint64_t length() const noexcept;
 
     // Array and Slice: the element; Own and Link: the target; Option: the
-    // Own it may hold.
+    // value it may hold.
     const Type* element() const noexcept { return element_; }
+
+    // A built-in generic (Slice, Set, Own, Link, Option): which one, and
+    // its type argument; None and null for any other type.
+    BuiltinGeneric builtinGeneric() const noexcept;
+    const Type* typeArgument() const noexcept
+    {
+        return builtinGeneric() != BuiltinGeneric::None ? element_ : nullptr;
+    }
 
     // Struct: the fields, in declaration order.
     const std::vector<StructField>& fields() const noexcept { return fields_; }
@@ -152,7 +172,10 @@ public:
     bool isArray() const noexcept { return kind_ == TypeKind::Array; }
     bool isSlice() const noexcept { return kind_ == TypeKind::Slice; }
     bool isOwn() const noexcept { return kind_ == TypeKind::Own; }
-    bool isOptionOwn() const noexcept { return kind_ == TypeKind::Option; }
+    bool isOption() const noexcept { return kind_ == TypeKind::Option; }
+    // An Option holding an owner (CANON-25), the only Option the analysis
+    // accepts today.
+    bool isOptionOwn() const noexcept { return isOption() && element_ != nullptr && element_->isOwn(); }
     bool isLink() const noexcept { return kind_ == TypeKind::Link; }
     // Range (CANON-13): an Integer Range `TMonth Range 1..12` holding
     // minValue..maxValue, a type of its own (range-types); its values are
@@ -175,7 +198,8 @@ public:
     const std::vector<std::string>& literals() const noexcept { return literals_; }
     // Own, Option<Own> and Link.
     bool isPointer() const noexcept { return isOwn() || isOptionOwn() || isLink(); }
-    // The object a pointer reaches (Option<Own<T>> reaches T); null otherwise.
+    // The object a pointer reaches (Option<Own<T>> reaches T); null otherwise
+    // (an Option of anything else is not a pointer).
     const Type* pointerTarget() const noexcept;
 
 private:

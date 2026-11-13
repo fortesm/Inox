@@ -49,25 +49,30 @@ const std::string kNeverCopied =
 TypeRef SemanticAnalyzer::resolvePointerType(const ast::TypeExpr& syntax, std::string_view written)
 {
     const ast::TypeExpr& argument = syntax.element();
-    if (equalsIgnoreCase(syntax.name, "Option")) {
-        if (argument.form != ast::TypeExpr::Form::Generic || !equalsIgnoreCase(argument.name, "Own")) {
+    const types::BuiltinGeneric generic = types::builtinGeneric(syntax.name);
+    const types::BuiltinGeneric inner = argument.form == ast::TypeExpr::Form::Generic
+                                            ? types::builtinGeneric(argument.name)
+                                            : types::BuiltinGeneric::None;
+    if (generic == types::BuiltinGeneric::Option) {
+        // The type representation holds Option<T> for any T; the language
+        // admits only an owner that may be absent until Option<T> is
+        // designed (FUTURE Ownership, absence and failure).
+        if (inner != types::BuiltinGeneric::Own) {
             throw SemanticError("Option holds an owner that may be absent: write Option<Own<T>> (other Option "
                                 "types come with generics), not " + std::string(written));
         }
-        return types().optionOwn(resolvePointerType(argument, ast::spell(argument)));
+        return types().option(resolvePointerType(argument, ast::spell(argument)));
     }
-    const bool own = equalsIgnoreCase(syntax.name, "Own");
-    if (argument.form == ast::TypeExpr::Form::Generic &&
-        (equalsIgnoreCase(argument.name, "Slice") || equalsIgnoreCase(argument.name, "Own") ||
-         equalsIgnoreCase(argument.name, "Link") || equalsIgnoreCase(argument.name, "Option"))) {
-        if (equalsIgnoreCase(argument.name, "Slice")) {
-            throw SemanticError("a pointer to a slice is not supported: " + std::string(written));
-        }
+    if (inner == types::BuiltinGeneric::Slice) {
+        throw SemanticError("a pointer to a slice is not supported: " + std::string(written));
+    }
+    if (inner == types::BuiltinGeneric::Own || inner == types::BuiltinGeneric::Link ||
+        inner == types::BuiltinGeneric::Option) {
         throw SemanticError("a pointer to a pointer is not supported: " + std::string(written));
     }
     const TypeRef target = resolveTypeExpr(argument, ast::spell(argument));
     rejectFileIn(target, "reached by a pointer");
-    return own ? types().own(target) : types().link(target);
+    return types().builtinInstance(generic, target);
 }
 
 bool SemanticAnalyzer::isMoveOnlyType(TypeRef type)
@@ -345,7 +350,7 @@ TypeRef SemanticAnalyzer::analyzePointerBuiltin(std::string_view name, const ast
     if (isFree ? !ownerOrOption : !isMoveOnlyType(type)) {
         throw SemanticError(written + " takes an owner (Own or Option<Own>), got " + types::nameOf(type));
     }
-    if (type->isOptionOwn()) {
+    if (type != nullptr && type->isOptionOwn()) {
         // The place becomes None.
         const bool isVariable = argument.kind() == ast::AstNodeKind::IdentifierExpression;
         const Symbol* writable = writableRoot(argument);

@@ -427,7 +427,7 @@ private:
     // owner given away traps (17), a dead or empty Link traps (16).
     std::string emitPointerTarget(const tir::Place& pointer);
     std::string emitPointerTarget(const tir::Expr& pointer);
-    std::string emitPointerTargetOf(const void* key, TypeRef type, const std::string& value);
+    std::string emitPointerTargetOf(const void* key, TypeRef type, const std::string& value, bool provenAlive = false);
     struct LinkParts {
         std::string target;
         std::string header;

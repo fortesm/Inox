@@ -25,6 +25,7 @@ routine Origin TPoint
   return (construct TPoint FX=(lit Int64 0) FY=(lit Int64 0))
 
 entry Main
+  linked, on the stack: X
   declare P TPoint := (construct TPoint FX=(lit Int64 1) FY=default)
   evaluate (call Void TPoint.Move (read TPoint (local P)) (lit Int64 2))
   evaluate (builtin Void PutLn (call Int64 TPoint.Sum (read TPoint (local P))))
@@ -40,7 +41,7 @@ entry Main
   assign (field (through (local N)) FValue) := (lit Int64 6)
   declare X Int64 := (lit Int64 10)
   declare L Link<Int64> := (builtin Link<Int64> Link (read Int64 (local X)))
-  assign (through (local L)) := (lit Int64 11)
+  assign (through (local L alive)) := (lit Int64 11)
   with __with_0 := (read TPoint (local P))
     assign (field (with __with_0) FY) := (read Int64 (field (with __with_0) FX))
   try

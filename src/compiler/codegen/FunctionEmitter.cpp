@@ -73,8 +73,14 @@ FunctionEmitter::FunctionEmitter(std::ostringstream& output,
         // every exit unless it gives it away with Move.
         if (isMoveOnly(parameter.type) && !(parameter.type->isStruct() && parameter.llvmType == "ptr")) {
             const std::string slot = "%" + parameter.llvmName + ".addr";
+            // The slot holds the argument from the first instruction after
+            // the entry-block initializations, before any code that can
+            // unwind, so it takes no empty initialization of its own: one
+            // would leave two stores to an argument's slot, which
+            // AddressSanitizer may reorder (it hoists the argument's store),
+            // and the routine would see its owner as given away.
             output_ << "  " << slot << " = alloca " << parameter.llvmType << "\n";
-            registerOwnedSlot(slot, parameter.type, parameter.llvmType);
+            registerOwnedSlot(slot, parameter.type, parameter.llvmType, false);
             output_ << "  store " << parameter.llvmType << " %" << parameter.llvmName << ", ptr " << slot << '\n';
             locals_.emplace(normalize(parameter.inoxName), LocalInfo{slot, parameter.type, parameter.llvmType});
             continue;

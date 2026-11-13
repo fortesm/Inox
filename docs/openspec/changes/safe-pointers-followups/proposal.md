@@ -7,8 +7,10 @@ for the deviations and the gaps to be recorded, to be fixed later. This change k
 task each, so none is lost. No language change is decided here: each item
 that touches the law goes through its own approval.
 
-Status: open, nothing implemented. Risk: medium to high per item (memory
-ownership).
+Status: open. Done: 2.1–2.5, 3.1, 1.2, 1.3 and the representation part of
+4.1 (0.4.1.3.140). Open: 1.1 for parameters that are not owners, and
+`Option<T>`/`Vector<T>` of 4.1, each waiting for a decision. Risk: medium
+to high per item (memory ownership).
 
 ## What differs from the design, and the target
 

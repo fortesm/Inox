@@ -1,0 +1,14 @@
+kept 15 17 true true
+array 0 7 8
+rounds 63
+try 40
+handler 2
+returned false
+state inside true 1
+array inside true
+state after false field after false
+argument inside true 5
+argument after false
+round 1 true 1
+round 2 true 2
+after the loop false

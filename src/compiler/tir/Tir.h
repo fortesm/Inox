@@ -133,6 +133,10 @@ struct Place {
     std::uint32_t field = 0;                   // Field
     Span<const Expr*> indices;                 // Element
     const Expr* value = nullptr;               // Value
+    // A variable of type Link whose value the Link analysis proved alive
+    // where this place is used to reach its object (tir/LinkLifetime): the
+    // use needs no generation check (CANON-25).
+    bool linkAlive = false;
 };
 
 enum class LiteralKind : std::uint8_t { Integer, Real, Decimal, String, Char, Bool, None };
@@ -304,6 +308,12 @@ struct Routine {
     Span<Parameter> parameters;
     TypeRef result = nullptr;  // null for a subroutine
     Span<const Stmt*> body;
+    // The variables some Link points into (tir/LinkLifetime, CANON-25):
+    // `generationLocals` may be outlived by a Link, so each lives with a
+    // generation block that dies with it; `stackLinkedLocals` are proven to
+    // outlive every Link to them and stay plain storage of the frame.
+    Span<const semantic::Symbol*> generationLocals;
+    Span<const semantic::Symbol*> stackLinkedLocals;
 };
 
 struct StateVariable {

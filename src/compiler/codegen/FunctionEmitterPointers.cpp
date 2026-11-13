@@ -254,7 +254,7 @@ const void* FunctionEmitter::pointerKey(const tir::Expr& pointer)
 
 std::string FunctionEmitter::emitPointerTarget(const tir::Place& pointer)
 {
-    return emitPointerTargetOf(&pointer, pointer.type, emitPlaceValue(pointer));
+    return emitPointerTargetOf(&pointer, pointer.type, emitPlaceValue(pointer), pointer.linkAlive);
 }
 
 std::string FunctionEmitter::emitPointerTarget(const tir::Expr& pointer)
@@ -267,13 +267,17 @@ std::string FunctionEmitter::emitPointerTarget(const tir::Expr& pointer)
 }
 
 // The address of the object a pointer value reaches, checked: an owner given
-// away traps (17), a dead or empty Link traps (16). `key` names the pointer
+// away traps (17), a dead or empty Link traps (16), unless the Link analysis
+// proved it alive (`provenAlive`, tir/LinkLifetime). `key` names the pointer
 // for the guards waiting for it.
-std::string FunctionEmitter::emitPointerTargetOf(const void* key, TypeRef type, const std::string& value)
+std::string FunctionEmitter::emitPointerTargetOf(const void* key, TypeRef type, const std::string& value,
+                                                 bool provenAlive)
 {
     if (isLinkType(type)) {
         const LinkParts parts = extractLink(value);
-        emitLinkCheck(parts);
+        if (!provenAlive) {
+            emitLinkCheck(parts);
+        }
         if (!placeGuards_.empty()) {
             capturePlaceGuards(key, parts.target, &parts);
         }
@@ -632,35 +636,13 @@ std::string FunctionEmitter::emitNewTombstone()
     return block;
 }
 
-// The variables some Link points into, directly or through fields and
-// elements (not through another pointer): each gets a tombstone.
+// The variables some Link may outlive (the Link analysis, tir/LinkLifetime):
+// each gets a tombstone. Those it keeps on the stack get none.
 void FunctionEmitter::collectTombstoneLocals()
 {
-    std::unordered_set<std::string> stateNames;
-    for (const StateGlobal& state : stateGlobals_) {
-        stateNames.insert(normalize(state.name));
+    for (const semantic::Symbol* local : routine_.generationLocals) {
+        tombstoneLocals_.insert(normalize(local->name));
     }
-    forEachStatement(routine_.body, [&](const tir::Stmt& statement) {
-        forEachExpressionOf(statement, [&](const tir::Expr& expression) {
-            if (expression.kind != tir::ExprKind::Builtin || expression.op != semantic::BuiltinOp::Link) {
-                return;
-            }
-            const tir::Expr& argument = bare(*expression.operands[0]);
-            if (isPointerType(argument.type) || argument.kind != tir::ExprKind::Read) {
-                return;
-            }
-            const tir::Place* root = argument.place;
-            while (root != nullptr && (root->kind == tir::PlaceKind::Field || root->kind == tir::PlaceKind::Element)) {
-                root = root->base->kind == tir::PlaceKind::Through ? nullptr : root->base;
-            }
-            if (root != nullptr && isVariablePlace(*root)) {
-                const std::string name = normalize(root->symbol->name);
-                if (!stateNames.contains(name)) {
-                    tombstoneLocals_.insert(name);
-                }
-            }
-        });
-    });
 }
 
 // A variable some Link points to gets a new tombstone at each declaration;

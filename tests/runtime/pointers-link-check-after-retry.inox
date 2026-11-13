@@ -1,0 +1,34 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25, safe-pointers-followups 1.3): a Link checked in a
+== protected region is checked again when Retry runs the region again: the
+== handler freed its object, so the use traps.
+Type
+    TInner Struct
+        FValue Integer := 0
+    ;
+
+Main :
+    P := New(TInner(FValue := 1))
+    H := Link(P)
+    Tries := 0
+    try
+        Tries := Tries + 1
+        PutLn("try ", Tries)
+        PutLn("value ", H.FValue)
+        if Tries = 1
+            Raise RangeError
+        ;
+    except
+        On RangeError
+            Free(P)
+            P := New(TInner(FValue := 2))
+            Retry(1)
+        ;
+    ;
+;

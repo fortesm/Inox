@@ -1,0 +1,33 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25, safe-pointers-followups 1.1): a Link to the object
+== of a value owner parameter, kept in State, is dead once an exception left
+== the routine: writing through it in the handler traps.
+Type
+    TNode Struct
+        FValue Integer := 0
+    ;
+
+State
+    Saved Link<TNode>
+;
+
+Fail(P Own<TNode>) :
+    Saved := Link(P)
+    Raise RangeError
+;
+
+Main :
+    try
+        Fail(New(TNode(FValue := 1)))
+    except
+        On RangeError
+            Value(Saved).FValue := 2
+        ;
+    ;
+;

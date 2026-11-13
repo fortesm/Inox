@@ -86,9 +86,28 @@ answers; a use traps with `use of a freed object or an empty Link`.
 - **WHEN** a Link is used after Free, after its block is reused, after its variable's routine returned, or empty
 - **THEN** the program traps (tests/runtime/pointers-freed-link.inox, tests/runtime/pointers-reused-block.inox, tests/runtime/pointers-escaped-link.inox, tests/runtime/pointers-empty-link.inox)
 
+#### Scenario: Links to owner parameters
+- **WHEN** a routine links an owner it received by value or as `ref mut`, and the Link leaves by Return, State, a field or an array, or the routine raises
+- **THEN** the Link is dead once the routine freed the object and alive while the object lives elsewhere (tests/runtime/pointers-link-to-owner-parameter.inox, tests/runtime/pointers-link-to-owner-parameter-after-return.inox, tests/runtime/pointers-link-to-owner-parameter-after-exception.inox); a Link to what a `ref` parameter owns is rejected (tests/diagnostics/pointer-link-to-ref-parameter.inox)
+
 #### Scenario: Not supported yet
-- **WHEN** a Link reaches a parameter, or a place whose index calls a routine
+- **WHEN** a Link reaches a parameter that is not an owner, or a place whose index calls a routine
 - **THEN** it is rejected (tests/diagnostics/pointer-link-to-parameter.inox, tests/diagnostics/pointer-link-side-effects.inox)
+
+### Requirement: Links proven alive
+A local every Link to which stays in its block SHALL live on the stack,
+without a generation block; any other linked local lives with one. A Link
+use the compiler proves alive needs no comparison: a Link that only
+reaches a local kept on the stack, or one an earlier statement of the same
+block checked with nothing between them that can free an object.
+
+#### Scenario: Kept on the stack, proven alive
+- **WHEN** every Link to a local stays in its block, or a Link is used again with nothing between that can free its object
+- **THEN** the local has no generation block and the use no check, with the same results (tests/runtime/pointers-link-kept-on-stack.inox, tests/runtime/pointers-link-kept-interactions.inox, tests/modules/links-kept-across-modules/Main.inox, tests/codegen/llvm-link-storage-smoke.inox, tests/codegen/llvm-link-proven-check-smoke.inox)
+
+#### Scenario: Checked again after code that may free
+- **WHEN** a Free, a call, an assignment of a value holding owners or a Retry comes between two uses of a Link whose object it frees
+- **THEN** the second use is checked and traps (tests/runtime/pointers-link-check-after-free.inox, tests/runtime/pointers-link-check-after-call.inox, tests/runtime/pointers-link-check-after-overwrite.inox, tests/runtime/pointers-link-check-after-retry.inox)
 
 ### Requirement: Access through pointers
 `P.Field`, `P[I]`, `P.Method` and `with P` SHALL reach the object of an

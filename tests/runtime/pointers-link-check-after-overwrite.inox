@@ -1,0 +1,25 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25, safe-pointers-followups 1.3): assigning a value
+== that holds owners frees the object it replaces, so a Link to that object
+== is checked again after the assignment, and traps.
+Type
+    TPoint Struct
+        FX Integer := 0
+    ;
+    TBox Struct
+        FPoint Own<TPoint>
+    ;
+
+Main :
+    B := TBox(FPoint := New(TPoint(FX := 1)))
+    L := Link(B.FPoint)
+    PutLn("before ", L.FX)
+    B.FPoint := New(TPoint(FX := 2))
+    PutLn("after ", L.FX)
+;

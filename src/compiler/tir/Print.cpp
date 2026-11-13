@@ -24,6 +24,7 @@ public:
 
 private:
     void routine(const Routine& routine);
+    void linkedLocals(const char* what, Span<const semantic::Symbol*> locals);
     void statements(const Span<const Stmt*>& statements, int depth);
     void statement(const Stmt& statement, int depth);
     void expression(const Expr* expression);
@@ -122,7 +123,21 @@ void Printer::routine(const Routine& routine)
         type(routine.result);
     }
     output_ << '\n';
+    linkedLocals("linked, generation", routine.generationLocals);
+    linkedLocals("linked, on the stack", routine.stackLinkedLocals);
     statements(routine.body, 1);
+}
+
+void Printer::linkedLocals(const char* what, Span<const semantic::Symbol*> locals)
+{
+    if (locals.empty()) {
+        return;
+    }
+    output_ << "  " << what << ':';
+    for (const semantic::Symbol* local : locals) {
+        output_ << ' ' << local->name;
+    }
+    output_ << '\n';
 }
 
 void Printer::statements(const Span<const Stmt*>& statements, int depth)
@@ -416,6 +431,9 @@ void Printer::place(const Place* place)
         output_ << ' ';
         expression(place->value);
         break;
+    }
+    if (place->linkAlive) {
+        output_ << " alive";  // no generation check (tir/LinkLifetime)
     }
     output_ << ')';
 }

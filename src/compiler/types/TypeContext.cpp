@@ -10,6 +10,8 @@
 #include <cctype>
 #include <limits>
 #include <stdexcept>
+#include <string_view>
+#include <utility>
 
 namespace inox::compiler::types {
 
@@ -55,10 +57,73 @@ const Type* Type::pointerTarget() const noexcept
     case TypeKind::Link:
         return element_;
     case TypeKind::Option:
-        return element_ != nullptr ? element_->element_ : nullptr;
+        return isOptionOwn() ? element_->element_ : nullptr;
     default:
         return nullptr;
     }
+}
+
+BuiltinGeneric Type::builtinGeneric() const noexcept
+{
+    switch (kind_) {
+    case TypeKind::Slice:
+        return BuiltinGeneric::Slice;
+    case TypeKind::Set:
+        return BuiltinGeneric::Set;
+    case TypeKind::Own:
+        return BuiltinGeneric::Own;
+    case TypeKind::Link:
+        return BuiltinGeneric::Link;
+    case TypeKind::Option:
+        return BuiltinGeneric::Option;
+    default:
+        return BuiltinGeneric::None;
+    }
+}
+
+namespace {
+
+constexpr std::pair<BuiltinGeneric, std::string_view> kBuiltinGenerics[] = {
+    {BuiltinGeneric::Slice, "Slice"}, {BuiltinGeneric::Set, "Set"},       {BuiltinGeneric::Own, "Own"},
+    {BuiltinGeneric::Link, "Link"},   {BuiltinGeneric::Option, "Option"},
+};
+
+bool sameIgnoringCase(std::string_view left, std::string_view right) noexcept
+{
+    if (left.size() != right.size()) {
+        return false;
+    }
+    for (std::size_t index = 0; index < left.size(); ++index) {
+        const auto lower = [](char letter) {
+            return letter >= 'A' && letter <= 'Z' ? static_cast<char>(letter - 'A' + 'a') : letter;
+        };
+        if (lower(left[index]) != lower(right[index])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+} // namespace
+
+BuiltinGeneric builtinGeneric(std::string_view name) noexcept
+{
+    for (const auto& [generic, spelling] : kBuiltinGenerics) {
+        if (sameIgnoringCase(name, spelling)) {
+            return generic;
+        }
+    }
+    return BuiltinGeneric::None;
+}
+
+std::string_view builtinGenericName(BuiltinGeneric generic) noexcept
+{
+    for (const auto& [candidate, spelling] : kBuiltinGenerics) {
+        if (candidate == generic) {
+            return spelling;
+        }
+    }
+    return {};
 }
 
 TypeContext::TypeContext()
@@ -218,12 +283,31 @@ const Type* TypeContext::link(const Type* target)
     return unary(TypeKind::Link, target, "Link<" + target->name() + ">");
 }
 
-const Type* TypeContext::optionOwn(const Type* owner)
+const Type* TypeContext::option(const Type* value)
 {
-    if (owner == nullptr || !owner->isOwn()) {
-        throw std::logic_error("an Option holds an Own");
+    if (value == nullptr) {
+        throw std::logic_error("an Option of no type");
     }
-    return unary(TypeKind::Option, owner, "Option<" + owner->name() + ">");
+    return unary(TypeKind::Option, value, "Option<" + value->name() + ">");
+}
+
+const Type* TypeContext::builtinInstance(BuiltinGeneric generic, const Type* argument)
+{
+    switch (generic) {
+    case BuiltinGeneric::Slice:
+        return slice(argument);
+    case BuiltinGeneric::Set:
+        return set(argument);
+    case BuiltinGeneric::Own:
+        return own(argument);
+    case BuiltinGeneric::Link:
+        return link(argument);
+    case BuiltinGeneric::Option:
+        return option(argument);
+    case BuiltinGeneric::None:
+        break;
+    }
+    throw std::logic_error("an instance of a type that is not a built-in generic");
 }
 
 const Type* TypeContext::declareException(std::string_view name, std::uint64_t id)

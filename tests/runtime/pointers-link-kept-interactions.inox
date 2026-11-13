@@ -1,0 +1,80 @@
+== SPDX-License-Identifier: MPL-2.0
+== Copyright © 2026 Marcelo Fortes and Inox contributors. All rights reserved.
+==
+== This Source Code Form is subject to the terms of the Mozilla Public
+== License, v. 2.0. If a copy of the MPL was not distributed with this
+== file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+== Safe pointers (CANON-25, safe-pointers-followups 1.2 and 1.3): Links kept
+== on the stack next to owners, Move, Free, ensure, Retry, nested structs and
+== a recursive routine. A Link checked in a protected region is checked again
+== after a Retry, and one to an object freed in between is dead.
+Type
+    TInner Struct
+        FValue Integer := 0
+    ;
+    TOuter Struct
+        FInner TInner
+        FNode Option<Own<TInner>>
+        FCount Integer := 0
+    ;
+
+Depth(N Integer) Integer :
+    V Integer := N
+    L := Link(V)
+    if N = 0
+        Return Value(L)
+    ;
+    Value(L) := Value(L) + Depth(N - 1)
+    Return Value(L)
+;
+
+Main :
+    == A Link into a nested struct, next to an owner that moves and is freed.
+    O := TOuter(FNode := New(TInner(FValue := 5)))
+    Deep := Link(O.FInner.FValue)
+    Value(Deep) := 9
+    Heap := Link(O.FNode)
+    Taken := Move(O.FNode)
+    PutLn("nested ", O.FInner.FValue, " heap ", Alive(Heap), " ", Heap.FValue)
+    Free(Taken)
+    PutLn("after free ", Alive(Heap), " nested ", Value(Deep))
+
+    == ensure and Retry: the stack Link is written on every run.
+    Runs := 0
+    try
+        Count := Link(O.FCount)
+        Value(Count) := Value(Count) + 1
+        Runs := Runs + 1
+        if Runs < 3
+            Raise RangeError
+        ;
+    except
+        On RangeError
+            Retry(3)
+        ;
+    ensure
+        Seen := Link(O.FCount)
+        PutLn("ensure ", Value(Seen))
+    ;
+    PutLn("runs ", Runs, " count ", O.FCount)
+
+    == A heap Link checked before a Retry whose handler frees the object.
+    P := New(TInner(FValue := 1))
+    H := Link(P)
+    Tries := 0
+    try
+        Tries := Tries + 1
+        PutLn("try ", Tries, " alive ", Alive(H))
+        if Tries = 1
+            Raise RangeError
+        ;
+    except
+        On RangeError
+            Free(P)
+            P := New(TInner(FValue := 2))
+            Retry(1)
+        ;
+    ;
+    PutLn("recursion ", Depth(4))
+;

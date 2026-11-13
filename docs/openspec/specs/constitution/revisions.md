@@ -2,7 +2,7 @@
 # Inox revisions
 
 Language version: Inox 0.4.1 pre-alpha
-Canon revision: 0.4.1.3.139
+Canon revision: 0.4.1.3.140
 Maintainer and sole design authority: Marcelo Fortes
 Repository: github.com/fortesm/Inox — license MPL-2.0
 
@@ -780,3 +780,14 @@ Each new line: revision — date — what changed — approval — OpenSpec chan
   report, by an AI agent or anyone, is a statement, never evidence. No
   revision removes or weakens G9; `tools/constitution_check.py` pins its
   text beyond the lock. Change `evidence-over-reports`.
+- 0.4.1.3.140 — 2026-11-09 — CANON-25, conformance (items 1.2, 1.3 and
+  4.1 of `safe-pointers-followups`, authorized by Marcelo Fortes,
+  2026-11-09, as rules 7 and 10 of the approved safe-pointers design; no
+  rule changes): a local every Link to which stays in its block lives on
+  the stack, with no generation block; a Link use the compiler proves
+  alive is not checked, and every other use still is, so a dead Link is
+  never reached. `Own`, `Link` and `Option` are one family of built-in
+  generics of the type representation, which holds `Option<T>` for any T;
+  the language still admits only `Option<Own<T>>`. Links to parameters
+  that are not owners wait for the maintainer's decision. Part of the 0.5
+  work; the published version stays 0.4.1. Change `safe-pointers-followups`.
