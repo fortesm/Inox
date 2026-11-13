@@ -136,6 +136,8 @@ def validate(repo: Path, profile: str, stop: bool = False) -> int:
     result = "PASS" if len(statuses) == len(commands) and all(s["status"] == "PASS" for s in statuses) else "FAIL"
     logtext = log.read_text(encoding="utf-8", errors="replace")
     skip = sum("[SKIP]" in line for line in logtext.splitlines())
+    suite_totals = next((line.strip()[:100] for line in reversed(logtext.splitlines())
+                         if line.strip().startswith("Summary:")), "counts=NOT_REPORTED")
     if skip and result == "PASS":
         result = "PARTIAL"
     record.write_text(json.dumps({"fingerprint": key, "result": result,
@@ -143,7 +145,7 @@ def validate(repo: Path, profile: str, stop: bool = False) -> int:
                                   "checks": statuses, "skipped_tests": skip,
                                   "ci_e19_complete": False}, indent=2) + "\n", encoding="utf-8")
     short = " ".join(f'{s["check"]}:{s["status"]}' for s in statuses)
-    print(f"INOX_LOCAL {result} machine={config['id']} profile={profile} {short} skipped={skip} log={log}")
+    print(f"INOX_LOCAL {result} machine={config['id']} profile={profile} {short} skipped={skip} {suite_totals} log={log}")
     if result == "FAIL":
         print("INOX_LOCAL_ERRORS " + summarize_failure(log), file=sys.stderr)
         return 2 if stop else 1
